@@ -47,6 +47,14 @@ impl XrayLogicalPath {
     &self.0
   }
 
+  /// Converts this engine identity to a host path relative to a trusted root.
+  ///
+  /// The returned path is built from logical components, so host I/O uses the platform separator
+  /// instead of creating a filename containing X-Ray's `\\` separator on Unix-like hosts.
+  pub fn to_host_relative_path(&self) -> PathBuf {
+    to_host_relative(&self.0)
+  }
+
   /// Appends a component below this path.
   ///
   /// # Errors
@@ -266,10 +274,17 @@ mod tests {
     // Built from components, so the platform inserts its own separator. A `\`-joined literal is one filename on Linux,
     // which would create a file called `configs\system.ltx` instead of one inside `configs`.
     assert_eq!(
-      to_host_relative("configs\\system.ltx"),
+      XrayLogicalPath::new("configs\\system.ltx")
+        .expect("valid logical path")
+        .to_host_relative_path(),
       Path::new("configs").join("system.ltx")
     );
-    assert_eq!(to_host_relative("system.ltx"), Path::new("system.ltx"));
+    assert_eq!(
+      XrayLogicalPath::new("system.ltx")
+        .expect("valid logical path")
+        .to_host_relative_path(),
+      Path::new("system.ltx")
+    );
     assert_eq!(
       normalize_host_relative(&to_host_relative("configs\\weapons\\ak74.ltx")).expect("valid"),
       "configs\\weapons\\ak74.ltx",

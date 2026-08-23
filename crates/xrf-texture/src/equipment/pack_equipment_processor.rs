@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use image::{DynamicImage, GenericImage, ImageBuffer, ImageReader, Rgba};
-use path_absolutize::*;
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_vfs::XrayLogicalPath;
 
 use crate::constants::{
   DDS_EXTENSION, EXTENSIONS_DIRECTORY, LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX,
@@ -36,7 +36,7 @@ impl PackEquipmentProcessor {
         continue;
       };
 
-      let Some((sprite_path, sprite)) = Self::read_sprite(&options, &sprite_descriptor) else {
+      let Some((sprite_path, sprite)) = Self::read_sprite(&options, &sprite_descriptor)? else {
         skipped_sections.push(section_name);
         continue;
       };
@@ -148,12 +148,12 @@ impl PackEquipmentProcessor {
   pub fn read_sprite(
     options: &PackEquipmentOptions,
     sprite: &InventorySpriteDescriptor,
-  ) -> Option<(PathBuf, DynamicImage)> {
+  ) -> XrfResult<Option<(PathBuf, DynamicImage)>> {
     let (_, _, w, h) = sprite.get_boundaries();
-    let sprite_path: PathBuf = Self::read_sprite_path(options, sprite);
+    let sprite_path: PathBuf = Self::read_sprite_path(options, sprite)?;
 
     match Self::read_sprite_from_path(&sprite_path, w, h) {
-      Ok(icon) => Some((sprite_path, icon)),
+      Ok(icon) => Ok(Some((sprite_path, icon))),
       Err(error) => {
         xrf_output::warning!(
           options.output,
@@ -163,7 +163,7 @@ impl PackEquipmentProcessor {
           error
         );
 
-        None
+        Ok(None)
       }
     }
   }
@@ -180,77 +180,60 @@ impl PackEquipmentProcessor {
   }
 
   /// Read equipment icon from custom path defined in ltx config directory.
-  pub fn read_sprite_path(options: &PackEquipmentOptions, descriptor: &InventorySpriteDescriptor) -> PathBuf {
+  pub fn read_sprite_path(
+    options: &PackEquipmentOptions,
+    descriptor: &InventorySpriteDescriptor,
+  ) -> XrfResult<PathBuf> {
     match descriptor.custom_icon.as_deref() {
       None => {
         let png_path: PathBuf = options.source.join(format!("{}.{}", descriptor.section, PNG_EXTENSION));
 
         if png_path.exists() {
-          png_path
+          Ok(png_path)
         } else {
-          options.source.join(format!("{}.{}", descriptor.section, DDS_EXTENSION))
+          Ok(options.source.join(format!("{}.{}", descriptor.section, DDS_EXTENSION)))
         }
       }
       Some(custom_path) => {
         // Handle custom gamedata source.
         if let Some(gamedata) = &options.gamedata {
           if custom_path.starts_with(LTX_PATH_GAMEDATA_MARKER) {
-            PathBuf::from(
-              gamedata
-                .join(custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap())
-                .absolutize()
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            Self::resolve_logical_path(
+              gamedata,
+              custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap(),
             )
           } else {
-            PathBuf::from(
-              gamedata
-                .join(TEXTURES_DIRECTORY)
-                .join(custom_path)
-                .absolutize()
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            )
+            Self::resolve_logical_path(&gamedata.join(TEXTURES_DIRECTORY), custom_path)
           }
           // Handle ~ path for xrf / system.ltx
         } else if custom_path.starts_with(LTX_PATH_GAMEDATA_MARKER) {
-          PathBuf::from(
-            options
+          Self::resolve_logical_path(
+            &options
               .ltx
               .directory
               .as_ref()
               .unwrap()
               .join("..")
               .join("..")
-              .join(RESOURCES_DIRECTORY)
-              .join(custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap())
-              .absolutize()
-              .unwrap()
-              .to_str()
-              .unwrap(),
+              .join(RESOURCES_DIRECTORY),
+            custom_path.strip_prefix(LTX_PATH_GAMEDATA_MARKER_PREFIX).unwrap(),
           )
           // Handle relative path for xrf / system.ltx extensions
         } else if custom_path.starts_with(LTX_PATH_EXTENSION_MARKER) {
-          PathBuf::from(
-            options
+          Self::resolve_logical_path(
+            &options
               .ltx
               .directory
               .as_ref()
               .unwrap()
               .join("..")
-              .join(EXTENSIONS_DIRECTORY)
-              .join(custom_path.strip_prefix(LTX_PATH_EXTENSION_MARKER_PREFIX).unwrap())
-              .absolutize()
-              .unwrap()
-              .to_str()
-              .unwrap(),
+              .join(EXTENSIONS_DIRECTORY),
+            custom_path.strip_prefix(LTX_PATH_EXTENSION_MARKER_PREFIX).unwrap(),
           )
           // Handle relative path for xrf / system.ltx
         } else {
-          PathBuf::from(
-            options
+          Self::resolve_logical_path(
+            &options
               .ltx
               .directory
               .as_ref()
@@ -258,15 +241,16 @@ impl PackEquipmentProcessor {
               .join("..")
               .join("..")
               .join(RESOURCES_DIRECTORY)
-              .join(TEXTURES_DIRECTORY)
-              .join(custom_path)
-              .absolutize()
-              .unwrap()
-              .to_str()
-              .unwrap(),
+              .join(TEXTURES_DIRECTORY),
+            custom_path,
           )
         }
       }
     }
+  }
+
+  /// Resolves an X-Ray path below a trusted host root without letting engine separators leak into host I/O.
+  fn resolve_logical_path(root: &Path, logical_path: &str) -> XrfResult<PathBuf> {
+    Ok(root.join(XrayLogicalPath::new(logical_path)?.to_host_relative_path()))
   }
 }

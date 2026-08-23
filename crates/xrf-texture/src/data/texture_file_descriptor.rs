@@ -1,4 +1,8 @@
 use std::cmp::max;
+use std::path::PathBuf;
+
+use xrf_error::XrfResult;
+use xrf_vfs::XrayLogicalPath;
 
 use crate::constants::DDS_BLOCK_ALIGNMENT;
 use crate::data::TextureSpriteDescriptor;
@@ -21,6 +25,14 @@ impl TextureFileDescriptor {
 
   pub fn add_sprite(&mut self, texture: TextureSpriteDescriptor) {
     self.sprites.push(texture);
+  }
+
+  /// Converts this description's X-Ray sheet name into a path relative to a trusted host root.
+  ///
+  /// Texture descriptions use engine separators regardless of where the CLI runs, so filesystem
+  /// callers must cross the path boundary through [`XrayLogicalPath`].
+  pub fn to_host_relative_path(&self) -> XrfResult<PathBuf> {
+    Ok(XrayLogicalPath::new(&self.name)?.to_host_relative_path())
   }
 
   /// Smallest `DDS_BLOCK_ALIGNMENT`-aligned canvas that holds every described sprite.
@@ -47,6 +59,8 @@ impl TextureFileDescriptor {
 
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
   use crate::data::{TextureFileDescriptor, TextureSpriteDescriptor};
 
   fn descriptor_of(sprites: &[(u32, u32, u32, u32)]) -> TextureFileDescriptor {
@@ -92,5 +106,15 @@ mod tests {
         "Expect an already aligned canvas not to gain a block"
       );
     }
+  }
+
+  #[test]
+  fn converts_a_nested_sheet_name_to_a_host_path() {
+    let descriptor: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\ui_actor_weapons");
+
+    assert_eq!(
+      descriptor.to_host_relative_path().expect("valid logical path"),
+      PathBuf::from("ui").join("ui_actor_weapons")
+    );
   }
 }

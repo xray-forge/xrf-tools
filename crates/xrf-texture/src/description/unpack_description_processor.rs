@@ -44,8 +44,9 @@ impl UnpackDescriptionProcessor {
   }
 
   pub fn unpack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
-    let full_name: PathBuf = options.base.join(format!("{}.{}", file.name, DDS_EXTENSION));
-    let destination: PathBuf = options.output_path.join(&file.name);
+    let relative_path: PathBuf = file.to_host_relative_path()?;
+    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION));
+    let destination: PathBuf = options.output_path.join(relative_path);
 
     xrf_output::verbose!(options.output, "Unpacking {}", full_name.display());
 
@@ -158,7 +159,12 @@ mod tests {
       !UnpackDescriptionProcessor::unpack_xml_description(&options, &file)
         .expect("non-strict unpacking to skip an unreadable sheet")
     );
-    assert!(!options.output_path.join(&file.name).exists());
+    assert!(
+      !options
+        .output_path
+        .join(file.to_host_relative_path().expect("valid logical path"))
+        .exists()
+    );
   }
 
   #[test]
@@ -167,6 +173,11 @@ mod tests {
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
     assert!(UnpackDescriptionProcessor::unpack_xml_description(&options, &file).is_err());
-    assert!(!options.output_path.join(&file.name).exists());
+    assert!(
+      !options
+        .output_path
+        .join(file.to_host_relative_path().expect("valid logical path"))
+        .exists()
+    );
   }
 }

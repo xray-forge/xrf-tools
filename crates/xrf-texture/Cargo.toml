@@ -10,7 +10,6 @@ image = { workspace = true, features = [
   "rayon", "bmp", "dds", "exr", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "tga", "tiff", "webp",
 ] }
 log = { workspace = true }
-path-absolutize = "4.0.1"
 rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
@@ -19,6 +18,7 @@ xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-output = { workspace = true }
 xrf-utils = { workspace = true }
+xrf-vfs = { workspace = true }
 xrf-xml = { workspace = true }
 
 [dev-dependencies]

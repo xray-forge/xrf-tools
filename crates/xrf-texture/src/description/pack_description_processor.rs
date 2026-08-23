@@ -35,7 +35,8 @@ impl PackDescriptionProcessor {
   }
 
   pub fn pack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
-    let full_name: PathBuf = options.base.join(format!("{}.{}", file.name, DDS_EXTENSION));
+    let relative_path: PathBuf = file.to_host_relative_path()?;
+    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION));
 
     let (width, height) = file.get_dimension_boundaries();
     let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::new(width, height);
@@ -60,7 +61,7 @@ impl PackDescriptionProcessor {
 
       let texture_path: PathBuf = options
         .base
-        .join(&file.name)
+        .join(&relative_path)
         .join(format!("{}.{}", texture.id, DDS_EXTENSION));
 
       match DdsFile::read_from_path(&texture_path).and_then(|dds| dds.decode_rgba(0)) {
@@ -103,7 +104,7 @@ impl PackDescriptionProcessor {
       }
     }
 
-    let destination: PathBuf = options.output_path.join(format!("{}.{}", file.name, DDS_EXTENSION));
+    let destination: PathBuf = options.output_path.join(relative_path.with_extension(DDS_EXTENSION));
 
     xrf_output::verbose!(options.output, "Saving file: {}", destination.display());
 
