@@ -2,10 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
-import {
-  DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS,
-  IVisualPreviewViewOptions,
-} from "@/core/visuals/components/scene";
+import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 

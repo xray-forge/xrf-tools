@@ -65,6 +65,7 @@ export function VisualsExplorerApplication({
       panels={VISUAL_EXPLORER_PANELS}
       textures={visualsService.textures}
       hasMotions={visualsService.hasMotions}
+      highlightedJoint={visualsService.highlightedJoint}
       tree={isBrowsing ? <VisualsMenu /> : undefined}
       isLoading={visualsService.visual.isLoading}
       error={visualsService.visual.error?.message}

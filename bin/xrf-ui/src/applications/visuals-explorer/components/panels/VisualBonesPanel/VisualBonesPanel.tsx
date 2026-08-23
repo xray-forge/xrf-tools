@@ -1,6 +1,6 @@
 import { RichTreeView, TreeViewDefaultItemModelProperties } from "@mui/x-tree-view";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useMemo } from "react";
+import { ReactElement, SyntheticEvent, useCallback, useMemo } from "react";
 
 import { toBoneTree } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
 import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
@@ -24,6 +24,11 @@ export function VisualBonesPanel({
 
   const items: Array<TreeViewDefaultItemModelProperties> = useMemo(() => toBoneTree(bones ?? []), [bones]);
 
+  const onSelectBone = useCallback(
+    (_: Nullable<SyntheticEvent>, name: Nullable<string>) => visualsService.highlightBone(name),
+    [visualsService]
+  );
+
   if (!bones || bones.length === 0) {
     return (
       <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Bones"}>
@@ -39,7 +44,12 @@ export function VisualBonesPanel({
         caption={"Bone names, parented as ogf stores them"}
         isFirst={true}
       >
-        <RichTreeView items={items} defaultExpandedItems={items.map((it) => it.id)} />
+        <RichTreeView
+          items={items}
+          defaultExpandedItems={items.map((it) => it.id)}
+          selectedItems={visualsService.highlightedBone}
+          onSelectedItemsChange={onSelectBone}
+        />
       </VisualPanelSection>
     </VisualPanel>
   );

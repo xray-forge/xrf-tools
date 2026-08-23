@@ -12,6 +12,8 @@ interface IVisualPreviewViewportProps {
   cameraResetToken: number;
   /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
   detail: number;
+  /** Joint to mark, already resolved to a position, or null when nothing is selected. */
+  highlightedJoint?: Nullable<[number, number, number]>;
   /** Loaded textures by submesh index, applied as they arrive. */
   textures?: ReadonlyMap<number, Texture>;
 }
@@ -31,6 +33,7 @@ export function VisualPreviewViewport({
   options,
   cameraResetToken,
   detail,
+  highlightedJoint = null,
   textures,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +78,11 @@ export function VisualPreviewViewport({
     detailRef.current = detail;
     sceneRef.current?.setDetailLevel(detail);
   }, [detail]);
+
+  // Depends on `model` as well, because a model change clears the mark and a selection that survived it must return.
+  useEffect(() => {
+    sceneRef.current?.setHighlightedJoint(highlightedJoint);
+  }, [highlightedJoint, model]);
 
   /**
    * Offers every loaded texture on each change rather than only the newest one.

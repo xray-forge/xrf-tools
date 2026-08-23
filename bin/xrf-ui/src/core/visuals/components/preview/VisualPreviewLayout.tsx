@@ -37,6 +37,8 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
    * them, so it is absent rather than disabled.
    */
   hasMotions?: boolean;
+  /** Joint to mark in the viewport, named elsewhere - the bones panel - and resolved to a position by its owner. */
+  highlightedJoint?: Nullable<[number, number, number]>;
   /** Whether a model is on its way, reported over the viewport rather than by replacing the screen. */
   isLoading?: boolean;
   /** Why the last open failed, shown in place of a model rather than dismissing the session. */
@@ -63,6 +65,7 @@ export function VisualPreviewLayout({
   panels,
   textures,
   hasMotions = false,
+  highlightedJoint = null,
   isLoading = false,
   error,
   onOpen,
@@ -143,6 +146,7 @@ export function VisualPreviewLayout({
           options={options}
           cameraResetToken={cameraResetToken}
           detail={detail}
+          highlightedJoint={highlightedJoint}
           textures={textures}
         />
 

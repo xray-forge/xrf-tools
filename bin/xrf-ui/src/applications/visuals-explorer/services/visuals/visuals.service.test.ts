@@ -14,6 +14,7 @@ import {
   mockPackedSubmesh,
   mockSelectedVisual,
   mockTextureDependency,
+  mockVisualBone,
   MockVisualBuffer,
   mockVisualDescription,
 } from "@/fixtures/mocks/visual.mocks";
@@ -46,7 +47,81 @@ describe("VisualsService observability", () => {
 
     expect(isObservableProp(service, "visual")).toBe(true);
     expect(isObservableProp(service, "isReady")).toBe(true);
+    expect(isObservableProp(service, "highlightedBone")).toBe(true);
     expect(isComputedProp(service, "sourceLabel")).toBe(true);
+    expect(isComputedProp(service, "highlightedJoint")).toBe(true);
+  });
+});
+
+describe("VisualsService bone highlight", () => {
+  /** A loadable visual whose skeleton has one placed bone and one that never got a bind position. */
+  function mockSkeletalVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const submesh = mockPackedSubmesh(buffer);
+
+    return {
+      selected: mockSelectedVisual({
+        description: mockVisualDescription({
+          submeshes: [submesh],
+          bufferLength: buffer.byteLength,
+          bones: [
+            mockVisualBone({ name: "wpn_body", bindPosition: { x: 1, y: 2, z: 3 } }),
+            mockVisualBone({ name: "wpn_scope", parent: "wpn_body", parentIndex: 0 }),
+          ],
+        }),
+      }),
+      buffer: buffer.toArrayBuffer(),
+    };
+  }
+
+  async function openSkeletal(service: VisualsService): Promise<void> {
+    const { selected, buffer } = mockSkeletalVisual();
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
+  }
+
+  it("resolves the selected bone to where it sits", async () => {
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService]);
+
+    await openSkeletal(service);
+    service.highlightBone("wpn_body");
+
+    expect(service.highlightedJoint).toEqual([1, 2, 3]);
+  });
+
+  it("has nowhere to mark for a bone the file never placed", async () => {
+    // A bone whose chain does not reach a root gets no position, and marking the origin would be a lie.
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService]);
+
+    await openSkeletal(service);
+    service.highlightBone("wpn_scope");
+
+    expect(service.highlightedJoint).toBeNull();
+  });
+
+  it("forgets a selection the next model does not have, without being told to", async () => {
+    // Resolved against the open model rather than cleared on load, so a stale name simply matches nothing.
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService]);
+
+    await openSkeletal(service);
+    service.highlightBone("wpn_body");
+
+    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.openFile("C:\\gamedata\\other.ogf");
+
+    expect(service.highlightedBone).toBe("wpn_body");
+    expect(service.highlightedJoint).toBeNull();
   });
 });
 

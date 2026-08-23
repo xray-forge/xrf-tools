@@ -12,6 +12,8 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  Points,
+  PointsMaterial,
   Scene,
   Texture,
   WebGLRenderer,
@@ -102,6 +104,10 @@ export class VisualPreviewScene {
   private meshes: Map<number, IVisualSubmeshMesh> = new Map();
   /** The bind pose overlay of the current model, or null when it carries no bind data. */
   private skeleton: Nullable<LineSegments<BufferGeometry, LineBasicMaterial>> = null;
+  /** The marker for a joint named elsewhere, kept across models rather than rebuilt. */
+  private highlight: Nullable<Points<BufferGeometry, PointsMaterial>> = null;
+  /** Where the marker points, kept so a toggle can show it again without the selection being sent a second time. */
+  private highlightedJoint: Nullable<[number, number, number]> = null;
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   private model: Nullable<IVisualModelViews> = null;
@@ -213,6 +219,59 @@ export class VisualPreviewScene {
   }
 
   /**
+   * Marks one joint in the viewport, or clears the mark.
+   *
+   * @param position - Joint position in renderer space, or null to clear the mark.
+   */
+  public setHighlightedJoint(position: Nullable<[number, number, number]>): void {
+    this.highlightedJoint = position;
+
+    if (position && !this.highlight) {
+      const geometry: BufferGeometry = new BufferGeometry();
+
+      geometry.setAttribute("position", new BufferAttribute(new Float32Array(3), 3));
+
+      this.highlight = new Points(
+        geometry,
+        new PointsMaterial({
+          color: this.config.highlightColor,
+          size: this.config.highlightSize,
+          sizeAttenuation: false,
+          depthTest: false,
+          transparent: true,
+        })
+      );
+      this.highlight.renderOrder = 2;
+
+      this.scene.add(this.highlight);
+    }
+
+    if (position && this.highlight) {
+      const attribute: BufferAttribute = this.highlight.geometry.getAttribute("position") as BufferAttribute;
+
+      attribute.setXYZ(0, position[0], position[1], position[2]);
+      attribute.needsUpdate = true;
+
+      // The marker is a single point, so its bounding sphere is stale after a move and frustum culling would drop it.
+      this.highlight.geometry.computeBoundingSphere();
+    }
+
+    this.applyHighlightVisibility();
+  }
+
+  /**
+   * Shows the joint marker only when there is one to show and the overlay it belongs to is on.
+   *
+   * One place decides it, because two inputs govern it - the selection and the toggle - and either can change without
+   * the other.
+   */
+  private applyHighlightVisibility(): void {
+    if (this.highlight) {
+      this.highlight.visible = Boolean(this.highlightedJoint) && (this.viewOptions?.isSkeletonVisible ?? false);
+    }
+  }
+
+  /**
    * Put a loaded texture on one submesh.
    *
    * Applied per submesh rather than per model because a visual's children each declare their own reference and they
@@ -268,6 +327,8 @@ export class VisualPreviewScene {
     if (this.skeleton) {
       this.skeleton.visible = options.isSkeletonVisible;
     }
+
+    this.applyHighlightVisibility();
   }
 
   /**
@@ -319,6 +380,13 @@ export class VisualPreviewScene {
     this.controls.dispose();
     this.clearModel();
 
+    if (this.highlight) {
+      this.scene.remove(this.highlight);
+      this.highlight.geometry.dispose();
+      this.highlight.material.dispose();
+      this.highlight = null;
+    }
+
     this.checker.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -348,6 +416,11 @@ export class VisualPreviewScene {
       this.skeleton.material.dispose();
       this.skeleton = null;
     }
+
+    // The marker itself survives a model change, but what it was pointing at does not. The owner re-sends the
+    // selection against the replacement model, which resolves to nothing when that model has no such bone.
+    this.highlightedJoint = null;
+    this.applyHighlightVisibility();
   }
 
   /**

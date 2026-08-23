@@ -4,6 +4,8 @@ import { Texture } from "three";
 
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { Vector3d } from "@/core/bindings/types/xrf-db";
+import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -15,7 +17,7 @@ import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 /**
  * The visual the explorer has open, and everything about choosing it.
@@ -30,6 +32,12 @@ export class VisualsService {
 
   @Observable()
   public isReady: boolean = false;
+
+  /**
+   * Bone the viewport marks, by name, or null when none is selected.
+   */
+  @Observable()
+  public highlightedBone: Nullable<string> = null;
 
   /**
    * @returns The visual being shown, straight from the loader.
@@ -59,6 +67,25 @@ export class VisualsService {
   @Computed()
   public get hasMotions(): boolean {
     return this.loadService.hasMotions;
+  }
+
+  /**
+   * @returns Where the highlighted bone sits, or null when none is selected or the open model has no such bone.
+   *
+   * Resolved against the open model rather than remembered, which is what makes a selection left over from the
+   * previous model harmless: the name simply matches nothing.
+   */
+  @Computed()
+  public get highlightedJoint(): Nullable<[number, number, number]> {
+    const bones: Array<VisualBone> = this.visual.value?.selected.description.bones ?? [];
+    const bone: Optional<VisualBone> = bones.find((it: VisualBone) => it.name === this.highlightedBone);
+    const position: Nullable<Vector3d> = bone?.bindPosition ?? null;
+
+    if (position === null || position.x === null || position.y === null || position.z === null) {
+      return null;
+    }
+
+    return [position.x, position.y, position.z];
   }
 
   /**
@@ -119,6 +146,16 @@ export class VisualsService {
 
     this.loadService.clear();
     releaseEditorProject(visualsCommands.closeModel);
+  }
+
+  /**
+   * Marks one bone in the viewport, or clears the mark.
+   *
+   * @param name - Bone name to mark, or null to clear it.
+   */
+  @BoundAction()
+  public highlightBone(name: Nullable<string>): void {
+    this.highlightedBone = name;
   }
 
   /**
