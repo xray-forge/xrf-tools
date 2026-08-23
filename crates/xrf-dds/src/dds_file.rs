@@ -86,6 +86,32 @@ impl DdsFile {
     })
   }
 
+  /// Reads header facts from bytes already in hand, without keeping the payload.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not begin with a readable DDS header.
+  pub fn read_metadata_from_bytes(bytes: &[u8]) -> XrfResult<DdsMetadata> {
+    let file_size: u64 = u64::try_from(bytes.len())
+      .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
+    let header: &[u8] = &bytes[..bytes.len().min(MAXIMUM_HEADER_SIZE as usize)];
+    let dds: Dds = Dds::read(&mut Cursor::new(header)).map_err(|error| {
+      XrfError::new_texture_processing_error(format!("Failed to read DDS header from memory: {error}."))
+    })?;
+
+    let metadata_size: u64 = if dds.header10.is_some() {
+      DX10_HEADER_SIZE
+    } else {
+      HEADER_SIZE
+    };
+
+    Ok(DdsMetadata {
+      data_size: usize::try_from(file_size.saturating_sub(metadata_size))
+        .map_err(|_| XrfError::new_texture_processing_error("DDS payload exceeds the supported size range"))?,
+      ..DdsMetadata::from_dds(&dds, file_size, metadata_size)
+    })
+  }
+
   pub fn read_from_bytes(bytes: &[u8]) -> XrfResult<Self> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;

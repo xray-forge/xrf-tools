@@ -108,9 +108,6 @@ export type VisualGeometry = {
    * reaching no vertex the submesh lacks — so choosing a level is a choice between drawable ranges rather than a
    * range check the consumer has to remember. A coarse level that fails validation is left out rather than
    * failing the submesh, so a model with one bad level still renders at the levels that are sound.
-   *
-   * The raw slide-window table is deliberately not shipped beside this: it carries the same information less
-   * safely, and two representations of one thing is how a consumer ends up drawing an unchecked range.
    */
   detailLevels: Array<VisualDrawRange>;
   bounds: VisualBounds;

@@ -2,7 +2,12 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import {
+  AssetTextureDescriptor,
+  AssetWorldSpec,
+  SelectedVisualDescription,
+  VisualSource,
+} from "@/core/bindings/types/xrf-app";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /** Commands */
@@ -42,6 +47,16 @@ export const visualsCommands = {
       world: AssetWorldSpec;
       description: VisualDescription;
       dependencies: VisualDependencies;
+      /**
+       * What each located texture file is, keyed by the logical path that located it.
+       *
+       * Keyed rather than paired with the dependencies, for two reasons. A texture two
+       * submeshes share is described once, so a total weighs a model's files rather than
+       * its references. And a reference that located nothing has no key at all, which is
+       * what keeps the difference between asked for and measured visible. An entry is
+       * absent when the file could not be reached.
+       */
+      textures: { [key in string]: AssetTextureDescriptor };
     } | null>("plugin:visuals|get_model"),
   /**
    * Start browsing a world of visuals.

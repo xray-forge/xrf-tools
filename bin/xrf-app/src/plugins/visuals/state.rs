@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 
 use serde::Serialize;
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage};
 
-use crate::core::assets::AssetWorldSpec;
+use crate::core::assets::{AssetTextureDescriptor, AssetWorldSpec};
 
 /// What the viewer currently points at: the world being browsed, and the visual open inside it.
 ///
@@ -39,6 +40,8 @@ pub struct SelectedVisual {
   pub package: VisualPackage,
   /// What the visual's own references came to, decided at open so a read is a lookup rather than a search.
   pub dependencies: VisualDependencies,
+  /// What the located texture files are, described at open so a reload reports them without reading anything again.
+  pub textures: HashMap<String, AssetTextureDescriptor>,
 }
 
 /// Where a visual is read from.
@@ -89,4 +92,6 @@ pub struct SelectedVisualDescription {
   pub world: AssetWorldSpec,
   pub description: VisualDescription,
   pub dependencies: VisualDependencies,
+  /// What each located texture file is, keyed by the logical path that located it.
+  pub textures: HashMap<String, AssetTextureDescriptor>,
 }

@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use xrf_dds::{DdsFile, DdsFormat, DdsMetadata};
+use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayProbePlan, XrayProbeStep, XrayResolution, XrayVfs};
 
 /// The outcome of resolving and reading one texture reference.
@@ -86,7 +86,7 @@ impl OgfTextureResolver {
       .entry(path.to_path_buf())
       .or_insert_with(|| {
         DdsFile::read_metadata_from_path(path)
-          .map(|metadata| (format_label(&metadata), metadata))
+          .map(|metadata| (metadata.get_format_label(), metadata))
           .map_err(|error| error.to_string())
       })
       .clone()
@@ -95,18 +95,5 @@ impl OgfTextureResolver {
   /// Returns the number of distinct texture files inspected by the sweep.
   pub fn distinct_textures(&self) -> usize {
     self.headers.len()
-  }
-}
-
-/// Formats a DDS format name while preserving an unknown format's FourCC.
-fn format_label(metadata: &DdsMetadata) -> String {
-  match metadata.format {
-    DdsFormat::D3d(format) => format!("{format:?}"),
-    DdsFormat::Dxgi(format) => format!("{format:?}"),
-    // `DdsFormat` is non-exhaustive, so an unrecognised variant keeps its fourCC visible rather than being dropped.
-    _ => match metadata.four_cc {
-      Some(four_cc) => format!("unknown({four_cc:#010x})"),
-      None => String::from("unknown(no fourcc)"),
-    },
   }
 }

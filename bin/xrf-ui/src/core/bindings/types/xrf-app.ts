@@ -31,6 +31,40 @@ export type ArchiveImagePreview = {
 };
 
 /**
+ * What a texture file is, once it has been located.
+ *
+ * Reported by the command that resolved the reference rather than derived by the frontend: the facts all come from a
+ * DDS header, `xrf-dds` already reads one, and a renderer-side reimplementation would name the same formats
+ * differently than the `verify-ogf` census does.
+ */
+export type AssetTextureDescriptor = {
+  /** Bytes the file occupies, which is also what a renderer uploads for a block-compressed texture. */
+  size: number;
+  /**
+   * Header facts, absent when the bytes are not a readable DDS.
+   *
+   * Nested rather than four independent options, so a partially known shape cannot be described: either the header
+   * parsed and every field is from it, or it did not and the size is all that is known.
+   */
+  shape: AssetTextureShape | null;
+};
+
+/** Pixel layout a DDS header declares. */
+export type AssetTextureShape = {
+  width: number;
+  height: number;
+  /**
+   * Levels the file carries, one meaning no mip chain at all.
+   *
+   * Load bearing rather than trivia: a texture without mips has to be sampled with a linear filter or webgl renders it
+   * black, and 1,805 of Anomaly's 2,197 distinct textures ship without one.
+   */
+  mipmapLevels: number;
+  /** Format name from [`DdsMetadata::get_format_label`], so the viewer and the sweep agree on what a file is. */
+  format: string;
+};
+
+/**
  * Where a caller wants an asset looked for, named rather than handed over.
  *
  * Self-describing on purpose: a world is identified by what it is made of, never by a handle the backend issued. A
@@ -67,6 +101,16 @@ export type SelectedVisualDescription = {
   world: AssetWorldSpec;
   description: VisualDescription;
   dependencies: VisualDependencies;
+  /**
+   * What each located texture file is, keyed by the logical path that located it.
+   *
+   * Keyed rather than paired with the dependencies, for two reasons. A texture two
+   * submeshes share is described once, so a total weighs a model's files rather than
+   * its references. And a reference that located nothing has no key at all, which is
+   * what keeps the difference between asked for and measured visible. An entry is
+   * absent when the file could not be reached.
+   */
+  textures: { [key in string]: AssetTextureDescriptor };
 };
 
 /**

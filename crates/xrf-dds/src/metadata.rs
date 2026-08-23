@@ -33,6 +33,20 @@ pub struct DdsMetadata {
 }
 
 impl DdsMetadata {
+  /// The format's name, keeping an unrecognised format's FourCC visible.
+  ///
+  /// [`DdsFormat`] is non-exhaustive, so an unrecognised variant reports its FourCC rather than being dropped.
+  pub fn get_format_label(&self) -> String {
+    match self.format {
+      DdsFormat::D3d(format) => format!("{format:?}"),
+      DdsFormat::Dxgi(format) => format!("{format:?}"),
+      _ => match self.four_cc {
+        Some(four_cc) => format!("unknown({four_cc:#010x})"),
+        None => String::from("unknown(no fourcc)"),
+      },
+    }
+  }
+
   pub(crate) fn from_dds(dds: &Dds, file_size: u64, metadata_size: u64) -> Self {
     let data_format = dds.get_format();
     let format: DdsFormat = if let Some(format) = dds.get_d3d_format() {

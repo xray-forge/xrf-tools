@@ -8,6 +8,7 @@ import {
 } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTexture.utils";
 import { VisualSubmeshTextureSource } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTextureSource";
 import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
+import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { EVisualTextureState, getLocatedAsset, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
@@ -17,12 +18,14 @@ import { Nullable } from "@/lib/types/general";
 export interface IVisualSubmeshTextureProps extends BaseComponentProps {
   texture: Nullable<VisualTextureDependency>;
   status: Nullable<IVisualTextureStatus>;
+  /** Descriptors the open reported, keyed by logical path, so a file two submeshes share is described once. */
+  textures?: Record<string, AssetTextureDescriptor>;
 }
 
 /**
- * What became of one submesh's texture: the outcome, the root that answered, and the file inside it.
+ * What became of one submesh's texture: the outcome, the root that answered, the file inside it, and what that file is.
  */
-export function VisualSubmeshTexture({ texture, status }: IVisualSubmeshTextureProps): ReactElement | null {
+export function VisualSubmeshTexture({ texture, status, textures }: IVisualSubmeshTextureProps): ReactElement | null {
   if (!texture) {
     return null;
   }
@@ -40,7 +43,9 @@ export function VisualSubmeshTexture({ texture, status }: IVisualSubmeshTextureP
       />
       <VisualPanelRow label={"Resolution"} value={describeResolution(resolution)} />
 
-      {located ? <VisualSubmeshTextureSource asset={located} /> : null}
+      {located ? (
+        <VisualSubmeshTextureSource asset={located} descriptor={textures?.[located.logicalPath] ?? null} />
+      ) : null}
 
       {resolution.kind === "missing"
         ? resolution.roots.map((root: string) => <VisualPanelRow key={root} label={"Searched"} value={root} />)

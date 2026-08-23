@@ -1,4 +1,4 @@
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import {
   VisualBounds,
   VisualDescription,
@@ -180,6 +180,21 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     description: mockVisualDescription(),
     dependencies: { motions: [], textures: [] },
     world: { asset: null, roots: [] },
+    textures: {},
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a located texture's descriptor fixture.
+ *
+ * @param overrides - Field values to override.
+ * @returns A texture descriptor fixture.
+ */
+export function mockTextureDescriptor(overrides: Partial<AssetTextureDescriptor> = {}): AssetTextureDescriptor {
+  return {
+    size: 349_672,
+    shape: { width: 512, height: 512, mipmapLevels: 10, format: "DXT5" },
     ...overrides,
   };
 }

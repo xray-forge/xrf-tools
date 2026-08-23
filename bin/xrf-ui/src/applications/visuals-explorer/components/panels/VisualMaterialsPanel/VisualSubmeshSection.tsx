@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { VisualSubmeshTexture } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
 import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
 import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
+import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -17,6 +18,8 @@ export interface IVisualSubmeshSectionProps extends BaseComponentProps {
   texture?: Nullable<VisualTextureDependency>;
   /** What the frontend then did with it. */
   status?: Nullable<IVisualTextureStatus>;
+  /** Descriptors the open reported, keyed by logical path. */
+  textures?: Record<string, AssetTextureDescriptor>;
 }
 
 /**
@@ -30,6 +33,7 @@ export function VisualSubmeshSection({
   isFirst,
   texture = null,
   status = null,
+  textures,
 }: IVisualSubmeshSectionProps): ReactElement {
   const { content } = submesh;
 
@@ -52,9 +56,10 @@ export function VisualSubmeshSection({
       }
     >
       <VisualPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} />
+
       <VisualPanelRow label={"Type"} value={submesh.modelTypeLabel} />
 
-      <VisualSubmeshTexture texture={texture} status={status} />
+      <VisualSubmeshTexture texture={texture} status={status} textures={textures} />
 
       {content.kind === "packed" ? (
         <>
