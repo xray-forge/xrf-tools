@@ -1,30 +1,28 @@
-import { Paper, Stack, TextField, Typography } from "@mui/material";
-import { ChangeEvent, ReactElement, useCallback } from "react";
-import { Handle, Position } from "reactflow";
+import { Chip, Paper, Stack, Typography } from "@mui/material";
+import { Handle, NodeProps, Position } from "@xyflow/react";
+import { ReactElement } from "react";
 
-import { AnyObject } from "@/lib/types/general";
+import { IPhraseNodeData } from "@/applications/dialogs-editor/types";
+import { TGraphNode } from "@/core/graph/lib/graph.types";
 
-interface IPhraseNodeProps {
-  data: AnyObject;
-  isConnectable?: boolean;
-}
-
-export function PhraseNode({ data, isConnectable }: IPhraseNodeProps): ReactElement {
-  const onChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    console.log(event.target.value);
-  }, []);
-
+/**
+ * One phrase: the line as it reads, and badges for the elements it carries.
+ *
+ * The text stays on the node and the fields do not: a dialog runs to 96 phrases, so a node holding a
+ * form is both a wall of inputs and too tall to follow. Editing belongs in the inspector panel.
+ */
+export function PhraseNode({ data, isConnectable }: NodeProps<TGraphNode<IPhraseNodeData>>): ReactElement {
   return (
-    <Paper variant={"outlined"} sx={{ padding: 1.5, minWidth: 200 }}>
-      <Handle type={"source"} position={Position.Top} isConnectable={isConnectable} />
+    <Paper variant={"outlined"} sx={{ padding: 1.5, minWidth: 200, maxWidth: 260 }}>
+      <Handle type={"target"} position={Position.Top} isConnectable={isConnectable} />
 
-      <Typography variant={"subtitle2"} gutterBottom>
+      <Typography variant={"body2"} gutterBottom>
         {data.label}
       </Typography>
 
-      <Stack spacing={1}>
-        {["Text", "Action", "Precondition", "Give info", "Disable info", "Is final"].map((field) => (
-          <TextField key={field} className={"nodrag"} label={field} size={"small"} fullWidth onChange={onChange} />
+      <Stack direction={"row"} spacing={0.5} useFlexGap sx={{ flexWrap: "wrap" }}>
+        {data.tags.map((tag: string) => (
+          <Chip key={tag} label={tag} size={"small"} variant={"outlined"} />
         ))}
       </Stack>
 

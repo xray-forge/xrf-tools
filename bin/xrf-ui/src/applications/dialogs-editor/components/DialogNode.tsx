@@ -1,28 +1,24 @@
-import { Paper, Stack, TextField, Typography } from "@mui/material";
-import { ChangeEvent, ReactElement, useCallback } from "react";
-import { Handle, Position } from "reactflow";
+import { Chip, Paper, Stack, Typography } from "@mui/material";
+import { Handle, NodeProps, Position } from "@xyflow/react";
+import { ReactElement } from "react";
 
-import { AnyObject } from "@/lib/types/general";
+import { IDialogNodeData } from "@/applications/dialogs-editor/types";
+import { TGraphNode } from "@/core/graph/lib/graph.types";
 
-interface IDialogNodeProps {
-  data: AnyObject;
-  isConnectable?: boolean;
-}
-
-export function DialogNode({ data, isConnectable }: IDialogNodeProps): ReactElement {
-  const onChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    console.log(event.target.value);
-  }, []);
-
+/**
+ * The root of one dialog: its identity and the conditions gating the whole conversation.
+ */
+export function DialogNode({ data, isConnectable }: NodeProps<TGraphNode<IDialogNodeData>>): ReactElement {
   return (
-    <Paper variant={"outlined"} sx={{ padding: 1.5, minWidth: 200 }}>
+    <Paper variant={"outlined"} sx={{ padding: 1.5, minWidth: 200, maxWidth: 260 }}>
       <Typography variant={"subtitle2"} gutterBottom>
         {data.label}
       </Typography>
 
-      <Stack spacing={1}>
-        <TextField className={"nodrag"} label={"Has info"} size={"small"} fullWidth onChange={onChange} />
-        <TextField className={"nodrag"} label={"No info"} size={"small"} fullWidth onChange={onChange} />
+      <Stack direction={"row"} spacing={0.5} useFlexGap sx={{ flexWrap: "wrap" }}>
+        {data.tags.map((tag: string) => (
+          <Chip key={tag} label={tag} size={"small"} variant={"outlined"} />
+        ))}
       </Stack>
 
       <Handle type={"source"} position={Position.Bottom} isConnectable={isConnectable} />
