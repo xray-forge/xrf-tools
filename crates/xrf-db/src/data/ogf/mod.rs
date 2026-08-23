@@ -16,6 +16,7 @@ pub(crate) mod ogf_lod_face;
 pub(crate) mod ogf_lod_vertex;
 pub(crate) mod ogf_motion;
 pub(crate) mod ogf_motion_definition;
+pub(crate) mod ogf_motion_keys;
 pub(crate) mod ogf_motion_mark;
 pub(crate) mod ogf_obb;
 pub(crate) mod ogf_part;
