@@ -7,8 +7,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, SyntheticEvent, useCallback, useMemo, useState } from "react";
 
 import { VisualTreeItem } from "@/applications/visuals-explorer/components/tree/VisualTreeItem";
-import { VisualsBrowseService } from "@/applications/visuals-explorer/store/browse";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";

@@ -4,7 +4,7 @@ import { IconButton, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TranslationsService } from "@/applications/translations-editor/store/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 
 export function TranslationsEditorActions(): ReactElement {

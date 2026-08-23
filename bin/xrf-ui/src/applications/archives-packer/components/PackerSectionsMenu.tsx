@@ -5,7 +5,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { EPackerSection, PackerService } from "@/applications/archives-packer/store/packer";
+import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [

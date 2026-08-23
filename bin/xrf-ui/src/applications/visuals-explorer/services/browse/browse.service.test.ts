@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import { VisualsBrowseService } from "@/applications/visuals-explorer/store/browse";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

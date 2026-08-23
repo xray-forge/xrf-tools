@@ -1,7 +1,7 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 import { lazy } from "react";
 
-import { PackerService } from "@/applications/archives-packer/store/packer";
+import { PackerService } from "@/applications/archives-packer/services/packer";
 import {
   EApplicationGroupId,
   EApplicationId,

@@ -1,8 +1,8 @@
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { lazy } from "react";
 
-import { VisualsBrowseService } from "@/applications/visuals-explorer/store/browse";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import {
   EApplicationGroupId,
   EApplicationId,

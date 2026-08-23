@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { ExportsOpenForm } from "@/applications/exports-explorer/components/ExportsOpenForm";
 import { ExportsEditor } from "@/applications/exports-explorer/components/viewer/ExportsEditor";
-import { ExportsService } from "@/applications/exports-explorer/store/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports";
 
 /** Picker until a project is open, viewer once it is. */
 export function ExportsExplorerApplication(): ReactElement {

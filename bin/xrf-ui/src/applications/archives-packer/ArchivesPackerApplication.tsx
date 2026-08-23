@@ -12,7 +12,7 @@ import { PackerHeaderSection } from "@/applications/archives-packer/components/s
 import { PackerOptionsSection } from "@/applications/archives-packer/components/sections/PackerOptionsSection";
 import { PackerOutputSection } from "@/applications/archives-packer/components/sections/PackerOutputSection";
 import { PackerSelectionSection } from "@/applications/archives-packer/components/sections/PackerSelectionSection";
-import { EPackerSection, PackerService } from "@/applications/archives-packer/store/packer";
+import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { getProjectArchivesPackPath, getProjectGamedataPath } from "@/core/settings/lib/path";

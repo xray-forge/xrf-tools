@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/store/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { EApplicationId } from "@/core/routing/application";
 import { ProjectService } from "@/core/settings/services/project";
 import { PickerForm } from "@/core/shell/editor/PickerForm";

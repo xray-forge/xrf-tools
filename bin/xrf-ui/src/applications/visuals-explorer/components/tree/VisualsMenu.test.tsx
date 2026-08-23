@@ -3,8 +3,8 @@ import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container, EventsPlugin } from "@wirestate/core";
 
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
-import { VisualsBrowseService } from "@/applications/visuals-explorer/store/browse";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { ProjectService } from "@/core/settings/services/project";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";

@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { TranslationsEditor } from "@/applications/translations-editor/components/TranslationsEditor";
 import { TranslationsEditorOpenForm } from "@/applications/translations-editor/components/TranslationsEditorOpenForm";
-import { TranslationsService } from "@/applications/translations-editor/store/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 
 /** Picker until a project is open, editor once it is. */

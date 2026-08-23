@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
-import { PackerService } from "@/applications/archives-packer/store/packer";
+import { PackerService } from "@/applications/archives-packer/services/packer/index";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
 import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { ProjectService } from "@/core/settings/services/project/project.service";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";

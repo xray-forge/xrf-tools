@@ -6,7 +6,7 @@ import { VisualMotionRow } from "@/applications/visuals-explorer/components/pane
 import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/applications/visuals-explorer/components/panels/VisualPanelEmpty";
 import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualDescription, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

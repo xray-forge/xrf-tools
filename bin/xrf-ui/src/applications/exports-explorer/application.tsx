@@ -1,7 +1,7 @@
 import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
 import { lazy } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/store/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import {
   EApplicationGroupId,
   EApplicationId,

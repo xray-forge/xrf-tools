@@ -1,7 +1,7 @@
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
 import { lazy } from "react";
 
-import { TranslationsService } from "@/applications/translations-editor/store/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import {
   EApplicationGroupId,
   EApplicationId,

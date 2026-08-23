@@ -5,7 +5,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { TranslationsEditorActions } from "@/applications/translations-editor/components/editor/TranslationsEditorActions";
 import { TranslationsProblemsPanel } from "@/applications/translations-editor/components/editor/TranslationsProblemsPanel";
 import { TranslationsEditorWorkspace } from "@/applications/translations-editor/components/TranslationsEditorWorkspace";
-import { TranslationsService } from "@/applications/translations-editor/store/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationFinding, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

@@ -4,7 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { VisualSubmeshSection } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshSection";
 import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/applications/visuals-explorer/components/panels/VisualPanelEmpty";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

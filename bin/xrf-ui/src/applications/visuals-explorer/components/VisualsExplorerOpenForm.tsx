@@ -2,8 +2,8 @@ import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { VisualsBrowseService } from "@/applications/visuals-explorer/store/browse";
-import { VisualsService } from "@/applications/visuals-explorer/store/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { EApplicationId } from "@/core/routing/application";
 import { getExistingProjectLinkedGamePath } from "@/core/settings/lib/path";
 import { ProjectService } from "@/core/settings/services/project";

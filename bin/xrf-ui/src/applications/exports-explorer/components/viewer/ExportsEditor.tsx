@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 import { groupExports, IExportGroup } from "@/applications/exports-explorer/components/viewer/exports/exports-groups";
 import { ExportsMenu } from "@/applications/exports-explorer/components/viewer/exports/ExportsMenu";
 import { ExportsViewer } from "@/applications/exports-explorer/components/viewer/exports/ExportsViewer";
-import { ExportsService } from "@/applications/exports-explorer/store/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

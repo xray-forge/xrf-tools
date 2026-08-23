@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
-import { ExportsService } from "@/applications/exports-explorer/store/exports/exports.service";
+import { ExportsService } from "@/applications/exports-explorer/services/exports/exports.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

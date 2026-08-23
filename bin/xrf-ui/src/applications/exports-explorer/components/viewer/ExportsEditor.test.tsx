@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
-import { ExportsService } from "@/applications/exports-explorer/store/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportsProject } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor, TValueExportDescriptor } from "@/core/exports";
 import { ProjectService } from "@/core/settings/services/project";
