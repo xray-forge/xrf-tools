@@ -1,5 +1,7 @@
 pub mod close_project;
 pub mod default_pack_config;
+pub mod describe_audio;
+pub mod describe_image;
 pub mod export_pack_config;
 pub mod extract_directory;
 pub mod extract_file;
@@ -8,7 +10,6 @@ pub mod has_project;
 pub mod import_pack_config;
 pub mod open_project;
 pub mod pack_directory;
-pub mod read_audio;
 pub mod read_file;
 pub mod read_image;
 pub mod unpack_directory;

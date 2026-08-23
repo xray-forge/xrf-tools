@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
+import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -16,7 +17,15 @@ const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
 
 const TEXT: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
-const PREVIEW = { name: TEXTURE.name, width: 256, height: 256, base64: "iVBORw0KGgo=" };
+const DESCRIPTOR: AssetTextureDescriptor = {
+  size: 2048,
+  shape: { width: 256, height: 256, mipmapLevels: 9, format: "DXT5" },
+};
+
+/** The world an archive project mounts, which both media calls have to name identically. */
+const WORLD = { asset: null, roots: ["C:\\game\\database"] };
+
+const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 
 /**
  * Creates an archive service with fixture files classified by its open project.
@@ -33,7 +42,10 @@ function createService(): ArchivesService {
 
 describe("ArchivesService image preview", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:archives|read_image"]: PREVIEW });
+    setMockInvokeResponses({
+      ["plugin:archives|describe_image"]: DESCRIPTOR,
+      ["plugin:archives|read_image"]: BYTES,
+    });
   });
 
   it("decodes a texture instead of reading it as text", async () => {
@@ -41,10 +53,41 @@ describe("ArchivesService image preview", () => {
 
     await service.selectArchiveFile(TEXTURE);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_image", { path: TEXTURE.name });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", {
+      world: WORLD,
+      logicalPath: TEXTURE.name,
+    });
     // The text path would have refused it anyway: this entry is compressed and .dds is not readable.
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
-    expect(service.content.value?.kind === "image" ? service.content.value.preview.width : null).toBe(256);
+    expect(service.content.value?.kind === "image" ? service.content.value.descriptor.shape?.width : null).toBe(256);
+  });
+
+  it("describes and reads one file, in one world", async () => {
+    const service: ArchivesService = createService();
+
+    await service.selectArchiveFile(TEXTURE);
+
+    // The dimensions the viewport lays out against come from the description, the pixels from the read. Addressed
+    // apart, they could belong to different volumes of the same tree.
+    const [describeArguments] = mockInvoke.mock.calls
+      .filter(([command]) => command === "plugin:archives|describe_image")
+      .map(([, args]) => args);
+    const [readArguments] = mockInvoke.mock.calls
+      .filter(([command]) => command === "plugin:archives|read_image")
+      .map(([, args]) => args);
+
+    expect(describeArguments).toEqual(readArguments);
+  });
+
+  it("carries the decoded png beside the source shape", async () => {
+    const service: ArchivesService = createService();
+
+    await service.selectArchiveFile(TEXTURE);
+
+    const content = service.content.value?.kind === "image" ? service.content.value : null;
+
+    expect(content?.descriptor.shape?.format).toBe("DXT5");
+    expect(Array.from(content?.bytes ?? [])).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 
   it("leaves text files on the text path", async () => {
@@ -52,14 +95,15 @@ describe("ArchivesService image preview", () => {
 
     await service.selectArchiveFile(TEXT);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_image", expect.anything());
-    expect(service.content.value?.kind === "image" ? service.content.value.preview : null).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_image", expect.anything());
+    expect(service.content.value?.kind).not.toBe("image");
   });
 
   it("reports a failed decode instead of staying loading", async () => {
     const service: ArchivesService = createService();
 
     setMockInvokeResponses({
+      ["plugin:archives|describe_image"]: DESCRIPTOR,
       ["plugin:archives|read_image"]: () => {
         throw new Error("unsupported DXT format");
       },
@@ -87,10 +131,10 @@ describe("ArchivesService image preview", () => {
     const service: ArchivesService = createService();
 
     await service.selectArchiveFile(TEXTURE);
-    expect(service.content.value?.kind === "image" ? service.content.value.preview : null).not.toBeNull();
+    expect(service.content.value?.kind).toBe("image");
 
     // An image outliving its file would be shown beside the next selection.
     service.selectArchiveDirectory("textures");
-    expect(service.content.value?.kind === "image" ? service.content.value.preview : null).toBeNull();
+    expect(service.content.value).toBeNull();
   });
 });

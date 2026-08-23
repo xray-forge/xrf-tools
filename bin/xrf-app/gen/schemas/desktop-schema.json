@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-audio`\n- `allow-read-file`\n- `allow-read-image`\n- `allow-unpack-directory`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-audio`\n- `allow-read-file`\n- `allow-read-image`\n- `allow-unpack-directory`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -2227,6 +2227,18 @@
           "type": "string",
           "const": "archives:allow-default-pack-config",
           "markdownDescription": "Enables the default_pack_config command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the describe_audio command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-describe-audio",
+          "markdownDescription": "Enables the describe_audio command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the describe_image command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-describe-image",
+          "markdownDescription": "Enables the describe_image command without any pre-configured scope."
         },
         {
           "description": "Enables the export_pack_config command without any pre-configured scope.",
@@ -2277,12 +2289,6 @@
           "markdownDescription": "Enables the pack_directory command without any pre-configured scope."
         },
         {
-          "description": "Enables the read_audio command without any pre-configured scope.",
-          "type": "string",
-          "const": "archives:allow-read-audio",
-          "markdownDescription": "Enables the read_audio command without any pre-configured scope."
-        },
-        {
           "description": "Enables the read_file command without any pre-configured scope.",
           "type": "string",
           "const": "archives:allow-read-file",
@@ -2311,6 +2317,18 @@
           "type": "string",
           "const": "archives:deny-default-pack-config",
           "markdownDescription": "Denies the default_pack_config command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe_audio command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-describe-audio",
+          "markdownDescription": "Denies the describe_audio command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe_image command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-describe-image",
+          "markdownDescription": "Denies the describe_image command without any pre-configured scope."
         },
         {
           "description": "Denies the export_pack_config command without any pre-configured scope.",
@@ -2359,12 +2377,6 @@
           "type": "string",
           "const": "archives:deny-pack-directory",
           "markdownDescription": "Denies the pack_directory command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the read_audio command without any pre-configured scope.",
-          "type": "string",
-          "const": "archives:deny-read-audio",
-          "markdownDescription": "Denies the read_audio command without any pre-configured scope."
         },
         {
           "description": "Denies the read_file command without any pre-configured scope.",

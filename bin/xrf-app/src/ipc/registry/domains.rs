@@ -15,6 +15,8 @@ macro_rules! for_each_tauri_command_domain {
       archives => "archives" {
         close_project => crate::plugins::archives::commands::close_project::archives_close_project,
         default_pack_config => crate::plugins::archives::commands::default_pack_config::archives_default_pack_config,
+        describe_audio => crate::plugins::archives::commands::describe_audio::archives_describe_audio,
+        describe_image => crate::plugins::archives::commands::describe_image::archives_describe_image,
         export_pack_config => crate::plugins::archives::commands::export_pack_config::archives_export_pack_config,
         import_pack_config => crate::plugins::archives::commands::import_pack_config::archives_import_pack_config,
         extract_file => crate::plugins::archives::commands::extract_file::archives_extract_file,
@@ -23,10 +25,12 @@ macro_rules! for_each_tauri_command_domain {
         has_project => crate::plugins::archives::commands::has_project::archives_has_project,
         open_project => crate::plugins::archives::commands::open_project::archives_open_project,
         pack_directory => crate::plugins::archives::commands::pack_directory::archives_pack_directory,
-        read_audio => crate::plugins::archives::commands::read_audio::archives_read_audio,
         read_file => crate::plugins::archives::commands::read_file::archives_read_file,
-        read_image => crate::plugins::archives::commands::read_image::archives_read_image,
         unpack_directory => crate::plugins::archives::commands::unpack_directory::archives_unpack_directory,
+      }
+      // Serves a decoded PNG rather than the stored DDS, so it stays here instead of joining the generic reads.
+      @raw {
+        read_image(world: "AssetWorldSpec", logicalPath: "string") => crate::plugins::archives::commands::read_image::archives_read_image,
       }
       configs => "configs" {
         check_directory_format => crate::plugins::configs::commands::check_directory_format::configs_check_directory_format,

@@ -3,33 +3,6 @@
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
-/** The X-Ray source parameters carried in a sound's first vorbis comment. */
-export type ArchiveAudioParameters = {
-  minDistance: number | null;
-  maxDistance: number | null;
-  baseVolume: number | null;
-  gameType: number;
-  maxAiDistance: number | null;
-};
-
-export type ArchiveAudioPreview = {
-  name: string;
-  channels: number;
-  sampleRate: number;
-  /** Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults. */
-  parameters: ArchiveAudioParameters | null;
-  /** The ogg bytes as stored, base64 encoded. The webview decodes vorbis itself. */
-  base64: string;
-};
-
-export type ArchiveImagePreview = {
-  name: string;
-  width: number;
-  height: number;
-  /** PNG bytes, base64 encoded so the webview can use them directly as an image source. */
-  base64: string;
-};
-
 /**
  * What a texture file is, once it has been located.
  *
@@ -80,6 +53,31 @@ export type AssetWorldSpec = {
   asset: string | null;
   /** Roots searched after the asset's own, in the order given. */
   roots: Array<string>;
+};
+
+/**
+ * What a sound is, once it has been located.
+ *
+ * Every field is optional because there are two independent ways to know less than everything: bytes that are not a
+ * readable ogg at all, and a perfectly good ogg carrying no X-Ray comment. Reporting a zero for either would make an
+ * unreadable file indistinguishable from a silent one.
+ */
+export type AudioDescriptor = {
+  /** Absent when the bytes carry no readable stream header. */
+  channels: number | null;
+  /** Absent when the bytes carry no readable stream header. */
+  sampleRate: number | null;
+  /** Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults. */
+  parameters: AudioSourceParameters | null;
+};
+
+/** The X-Ray source parameters carried in a sound's first vorbis comment. */
+export type AudioSourceParameters = {
+  minDistance: number | null;
+  maxDistance: number | null;
+  baseVolume: number | null;
+  gameType: number;
+  maxAiDistance: number | null;
 };
 
 export type EquipmentSpriteMetadata = {

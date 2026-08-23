@@ -2,7 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { ArchiveAudioPreview, ArchiveImagePreview } from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor, AssetWorldSpec, AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
@@ -28,6 +28,25 @@ export const archivesCommands = {
    * - the volume ceiling, the skip list, the mode - have one definition, in the packer.
    */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|default_pack_config"),
+  /**
+   * Report whatever the engine would read out of a sound, without handing over the sound.
+   *
+   * Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same world and
+   * logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
+   */
+  describeAudio: (world: AssetWorldSpec, logicalPath: string) =>
+    __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { world, logicalPath }),
+  /**
+   * Report the shape of a texture, without decoding it into a picture.
+   *
+   * Paired with `archives|read_image`, which serves the PNG the webview displays. Both are addressed by the same world
+   * and logical path, so the dimensions on screen belong to the picture beside them.
+   *
+   * Answers with the source DDS facts rather than the PNG's: format and mip count survive the description and would not
+   * survive the transcode, and a viewer of X-Ray textures wants both.
+   */
+  describeImage: (world: AssetWorldSpec, logicalPath: string) =>
+    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { world, logicalPath }),
   /**
    * Write the selection rules of a configuration out as an xrCompress configuration file.
    *
@@ -74,16 +93,7 @@ export const archivesCommands = {
    */
   packDirectory: (config: ArchivePackConfig) =>
     __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config }),
-  /** Hand an archived sound to the webview, along with whatever the engine would read from it. */
-  readAudio: (path: string) => __TAURI_INVOKE<ArchiveAudioPreview>("plugin:archives|read_audio", { path }),
   readFile: (path: string) => __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { path }),
-  /**
-   * Decode an archived DDS into a PNG the webview can display.
-   *
-   * Compressed entries are fine here, unlike the text preview: the bytes are decompressed on the way out
-   * of the archive, so compression is invisible by the time there is an image to decode.
-   */
-  readImage: (path: string) => __TAURI_INVOKE<ArchiveImagePreview>("plugin:archives|read_image", { path }),
   unpackDirectory: (from: string, destination: string) =>
     __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { from, destination }),
 };

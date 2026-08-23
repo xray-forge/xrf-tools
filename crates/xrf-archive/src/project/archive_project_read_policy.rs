@@ -11,6 +11,9 @@ use crate::project::constants::{
 ///
 /// A gate for interactive consumers rather than a format rule: [`crate::ArchiveProject::read_file_bytes`] ignores it,
 /// while [`crate::ArchiveProject::read_file_as_string`] refuses what the policy does not cover.
+///
+/// Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
+/// both through the mounted asset world rather than through this project, and so answers to no limit of its own.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,16 +29,6 @@ pub struct ArchiveProjectReadPolicy {
 }
 
 impl ArchiveProjectReadPolicy {
-  /// Whether this file is one the backend decodes into a picture rather than reading as text.
-  pub fn supports_image(&self, filename: &str) -> bool {
-    Self::has_extension(filename, self.image_extensions)
-  }
-
-  /// Whether this file is one the webview can play back directly.
-  pub fn supports_audio(&self, filename: &str) -> bool {
-    Self::has_extension(filename, self.audio_extensions)
-  }
-
   /// Whether this file is one the policy reads as text.
   pub fn supports_file(&self, filename: &str) -> bool {
     Self::has_extension(filename, self.extensions)
@@ -75,14 +68,10 @@ mod tests {
       assert!(policy.supports_file(&format!("preview.{}", extension.to_uppercase())));
     }
 
-    // Textures are read as images, never as text, which is the whole reason for the second list.
+    // Textures and sounds are routed to the viewer's own reads, never read as text, which is why they are listed
+    // separately and why the text gate must keep refusing them.
     assert!(!policy.supports_file("preview.dds"));
+    assert!(!policy.supports_file("ambient.ogg"));
     assert!(!policy.supports_file("preview"));
-    assert!(policy.supports_image("preview.dds"));
-    assert!(policy.supports_image("preview.DDS"));
-    assert!(!policy.supports_image("preview.ltx"));
-    assert!(policy.supports_audio("ambient.ogg"));
-    assert!(policy.supports_audio("ambient.OGG"));
-    assert!(!policy.supports_audio("preview.dds"));
   }
 }

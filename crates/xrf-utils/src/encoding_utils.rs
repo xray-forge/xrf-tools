@@ -12,13 +12,6 @@ pub type XRayEncoding = &'static Encoding;
 
 pub const CUSTOM_B64_ENGINE: GeneralPurpose = GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
-/// Standard, padded base64, as opposed to the url-safe unpadded form used for internal values.
-///
-/// Anything handed to a consumer that follows RFC 4648 - a `data:` url, most notably - has to use this
-/// one. The url-safe alphabet emits `-` and `_` where the standard expects `+` and `/`, which such a
-/// consumer rejects outright rather than decoding into something wrong.
-pub const STANDARD_B64_ENGINE: GeneralPurpose = GeneralPurpose::new(&alphabet::STANDARD, general_purpose::PAD);
-
 /// Return encoding factory for windows1250.
 #[inline]
 pub fn new_windows1250_encoder() -> XRayEncoding {
@@ -141,12 +134,6 @@ pub fn encode_string_to_base64(string: &str) -> String {
 #[inline]
 pub fn encode_bytes_to_base64(bytes: &[u8]) -> String {
   CUSTOM_B64_ENGINE.encode(bytes)
-}
-
-/// Encode bytes as standard, padded b64 value, for consumers that will not accept the url-safe form.
-#[inline]
-pub fn encode_bytes_to_standard_base64(bytes: &[u8]) -> String {
-  STANDARD_B64_ENGINE.encode(bytes)
 }
 
 /// Decode b64 as bytes.

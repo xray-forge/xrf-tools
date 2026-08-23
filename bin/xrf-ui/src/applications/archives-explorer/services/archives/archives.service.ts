@@ -20,6 +20,9 @@ import {
   TArchiveSelection,
 } from "@/core/archive";
 import { archivesCommands } from "@/core/bindings/commands/archives";
+import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
+import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
+import { AssetWorldSpec } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
@@ -47,7 +50,7 @@ export class ArchivesService {
   @Observable()
   public selection: TArchiveSelection = { kind: "none" };
 
-  /** Whatever was loaded for the selection - text, a decoded texture, and later audio. */
+  /** Whatever was loaded for the selection - text, or a decoded texture or sound with its description. */
   @Observable()
   public content: Loadable<Nullable<TArchiveContent>> = createLoadable(null);
 
@@ -141,6 +144,16 @@ export class ArchivesService {
     this.log.info("Deactivating, release archive project");
 
     releaseEditorProject(archivesCommands.closeProject);
+  }
+
+  /**
+   * The world an archived asset is read out of, which is the project's own tree.
+   *
+   * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
+   * root are the whole world. The same spec the model preview mounts, so both reach one set of bytes.
+   */
+  private getAssetWorld(project: ArchiveProject): AssetWorldSpec {
+    return { asset: null, roots: [project.root] };
   }
 
   @BoundAction()
@@ -361,16 +374,58 @@ export class ArchivesService {
     }
 
     if (isArchiveAudio(descriptor, project.readPolicy)) {
-      return await this.readContent(descriptor, "audio");
+      return await this.readContent(descriptor, "audio", project);
     }
 
     if (isArchiveImage(descriptor, project.readPolicy)) {
-      return await this.readContent(descriptor, "image");
+      return await this.readContent(descriptor, "image", project);
     }
 
     if (getArchivePreviewSupport(descriptor, project.readPolicy).kind === "supported") {
-      return await this.readContent(descriptor, "text");
+      return await this.readContent(descriptor, "text", project);
     }
+  }
+
+  /**
+   * Reads a sound as the description the engine would read plus the bytes the webview plays.
+   *
+   * Both calls name the same world and the same logical path, so a late response cannot pair one file's numbers with
+   * another file's sound. In parallel because neither needs the other.
+   *
+   * @param descriptor - Archive entry naming the sound.
+   * @param project - Open project whose tree the sound is read out of.
+   * @returns The sound's description and its bytes as stored.
+   */
+  private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
+    const world: AssetWorldSpec = this.getAssetWorld(project);
+
+    const [audio, bytes] = await Promise.all([
+      archivesCommands.describeAudio(world, descriptor.name),
+      assetsRawCommands.readAsset(world, descriptor.name),
+    ]);
+
+    return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
+  }
+
+  /**
+   * Reads a texture as its source shape plus the png the backend decoded it into.
+   *
+   * The description answers for the DDS and the bytes for the picture, which is why the read is domain owned rather
+   * than the generic one the sound uses: the webview cannot paint a DDS.
+   *
+   * @param descriptor - Archive entry naming the texture.
+   * @param project - Open project whose tree the texture is read out of.
+   * @returns The texture's shape and the decoded png bytes.
+   */
+  private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
+    const world: AssetWorldSpec = this.getAssetWorld(project);
+
+    const [texture, bytes] = await Promise.all([
+      archivesCommands.describeImage(world, descriptor.name),
+      archivesRawCommands.readImage(world, descriptor.name),
+    ]);
+
+    return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };
   }
 
   /**
@@ -378,9 +433,14 @@ export class ArchivesService {
    *
    * @param descriptor - Archive file to read.
    * @param kind - Preview representation to request from the backend.
+   * @param project - Target project to read from.
    * @returns Resolves after the current request publishes content or an error.
    */
-  private async readContent(descriptor: ArchiveFileDescriptor, kind: TArchiveContent["kind"]): Promise<void> {
+  private async readContent(
+    descriptor: ArchiveFileDescriptor,
+    kind: TArchiveContent["kind"],
+    project: ArchiveProject
+  ): Promise<void> {
     const requestId: number = ++this.contentRequestId;
     const timer: Timer = new Timer();
 
@@ -390,15 +450,9 @@ export class ArchivesService {
     try {
       const content: TArchiveContent =
         kind === "audio"
-          ? {
-              kind: "audio",
-              preview: await archivesCommands.readAudio(descriptor.name),
-            }
+          ? await this.readAudioContent(descriptor, project)
           : kind === "image"
-            ? {
-                kind: "image",
-                preview: await archivesCommands.readImage(descriptor.name),
-              }
+            ? await this.readImageContent(descriptor, project)
             : {
                 kind: "text",
                 result: await archivesCommands.readFile(descriptor.name),

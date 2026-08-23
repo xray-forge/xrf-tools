@@ -20,23 +20,72 @@ use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
 
-/// Every Tauri plugin whose typed commands are mirrored, as `(plugin name, Specta builder)`.
+/// One domain's mirrored surface: its typed Specta builder and the raw commands that builder cannot hold.
+///
+/// Raw commands travel beside the builder rather than in a second list, because a forgotten raw export fails silently
+/// - no error, just a binding file that is never written - and only surfaces as a missing import in the frontend.
+struct CommandModule<R: tauri::Runtime> {
+  name: &'static str,
+  builder: tauri_specta::Builder<R>,
+  /// Raw commands of the domain, empty for a domain declaring no `@raw` block.
+  raw: &'static [(&'static str, &'static [(&'static str, &'static str)])],
+}
+
+/// Every Tauri plugin whose commands are mirrored.
 ///
 /// A domain with no typed command at all would be absent: there would be no typed module to write.
-fn command_modules<R: tauri::Runtime>() -> Vec<(&'static str, tauri_specta::Builder<R>)> {
+fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
   vec![
-    // The raw `assets` read is absent from this builder by construction, and is generated beside it.
-    (AssetsPlugin::NAME, AssetsPlugin::specta_builder::<R>()),
-    (ArchivesPlugin::NAME, ArchivesPlugin::specta_builder::<R>()),
-    (ConfigsPlugin::NAME, ConfigsPlugin::specta_builder::<R>()),
-    (DialogsPlugin::NAME, DialogsPlugin::specta_builder::<R>()),
-    (EquipmentIconsPlugin::NAME, EquipmentIconsPlugin::specta_builder::<R>()),
-    (ExportsPlugin::NAME, ExportsPlugin::specta_builder::<R>()),
-    (SpawnPlugin::NAME, SpawnPlugin::specta_builder::<R>()),
-    (SystemPlugin::NAME, SystemPlugin::specta_builder::<R>()),
-    (TranslationsPlugin::NAME, TranslationsPlugin::specta_builder::<R>()),
-    // The raw `visuals` commands are absent from this builder by construction, and are generated beside it.
-    (VisualsPlugin::NAME, VisualsPlugin::specta_builder::<R>()),
+    CommandModule {
+      name: AssetsPlugin::NAME,
+      builder: AssetsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::assets::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: ArchivesPlugin::NAME,
+      builder: ArchivesPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::archives::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: ConfigsPlugin::NAME,
+      builder: ConfigsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::configs::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: DialogsPlugin::NAME,
+      builder: DialogsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::dialogs::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: EquipmentIconsPlugin::NAME,
+      builder: EquipmentIconsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::equipment_icons::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: ExportsPlugin::NAME,
+      builder: ExportsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::exports::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: SpawnPlugin::NAME,
+      builder: SpawnPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::spawn::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: SystemPlugin::NAME,
+      builder: SystemPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::system::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: TranslationsPlugin::NAME,
+      builder: TranslationsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::translations::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: VisualsPlugin::NAME,
+      builder: VisualsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::visuals::RAW_COMMANDS,
+    },
   ]
 }
 
@@ -50,15 +99,16 @@ fn export_typescript_bindings() {
   reset_directory(&commands_output);
 
   let collected: Arc<Mutex<Types>> = Arc::new(Mutex::new(Types::default()));
-  let plugins: Vec<(&str, tauri_specta::Builder<tauri::Wry>)> = command_modules();
+  let modules: Vec<CommandModule<tauri::Wry>> = command_modules();
 
-  for (plugin, builder) in &plugins {
-    builder
+  for module in &modules {
+    module
+      .builder
       .export(
         command_exporter(Arc::clone(&collected)),
-        commands_output.join(format!("{plugin}.ts")),
+        commands_output.join(format!("{}.ts", module.name)),
       )
-      .unwrap_or_else(|error| panic!("Failed to export {plugin} commands: {error}"));
+      .unwrap_or_else(|error| panic!("Failed to export {} commands: {error}", module.name));
   }
 
   let collected: Types = Arc::try_unwrap(collected)
@@ -67,21 +117,20 @@ fn export_typescript_bindings() {
     .expect("Collected types lock is poisoned");
   let ownership: TypeOwnership = export_type_modules(&types_output, &collected);
 
-  for (plugin, _) in &plugins {
-    finalize_command_module(&commands_output.join(format!("{plugin}.ts")), plugin, &ownership);
+  for module in &modules {
+    finalize_command_module(
+      &commands_output.join(format!("{}.ts", module.name)),
+      module.name,
+      &ownership,
+    );
+
+    if !module.raw.is_empty() {
+      export_raw_commands(
+        &commands_output.join(format!("{}-raw.ts", module.name)),
+        module.name,
+        module.raw,
+        &ownership,
+      );
+    }
   }
-
-  export_raw_commands(
-    &commands_output.join(format!("{}-raw.ts", crate::ipc::registry::assets::NAME)),
-    crate::ipc::registry::assets::NAME,
-    crate::ipc::registry::assets::RAW_COMMANDS,
-    &ownership,
-  );
-
-  export_raw_commands(
-    &commands_output.join(format!("{}-raw.ts", crate::ipc::registry::visuals::NAME)),
-    crate::ipc::registry::visuals::NAME,
-    crate::ipc::registry::visuals::RAW_COMMANDS,
-    &ownership,
-  );
 }

@@ -5,6 +5,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ArchivesExplorerApplication } from "@/applications/archives-explorer/ArchivesExplorerApplication";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { AssetService } from "@/core/assets/services";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ProjectService } from "@/core/settings/services/project";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
@@ -37,6 +38,10 @@ describe("opened archives editor", () => {
   beforeEach(() => {
     window.localStorage.clear();
 
+    // The picture reaches the element as an object url now, so the panel needs one jsdom does not mint on its own.
+    jest.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:decoded-texture");
+    jest.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
     setMockInvokeResponses({
       ["plugin:archives|get_project"]: PROJECT,
       ["plugin:archives|read_file"]: {
@@ -45,12 +50,11 @@ describe("opened archives editor", () => {
         size: TEXT_FILE.sizeReal,
       },
       ["plugin:archives|close_project"]: undefined,
-      ["plugin:archives|read_image"]: {
-        name: BINARY_FILE.name,
-        width: 64,
-        height: 64,
-        base64: "iVBORw0KGgo=",
+      ["plugin:archives|describe_image"]: {
+        size: BINARY_FILE.sizeReal,
+        shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
+      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
   });
 
@@ -60,7 +64,7 @@ describe("opened archives editor", () => {
         <ArchivesExplorerApplication />
         <ApplicationStatusBar />
       </>,
-      { route: "/archives-explorer", bindings: [ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
   }
 
@@ -93,8 +97,8 @@ describe("opened archives editor", () => {
     await userEvent.click(await findByText("texture.dds"));
 
     // Compressed and not a readable extension, so the text path would have refused it outright.
-    expect(await findByAltText(BINARY_FILE.name)).toHaveAttribute("src", "data:image/png;base64,iVBORw0KGgo=");
-    expect(await findByText("64 x 64")).toBeInTheDocument();
+    expect(await findByAltText(BINARY_FILE.name)).toHaveAttribute("src", "blob:decoded-texture");
+    expect(await findByText("64 x 64 · DXT1 · no mips")).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", {
       path: BINARY_FILE.name,
     });
@@ -190,7 +194,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
 
     const detailsButton: HTMLElement = await findByLabelText("File details");
@@ -211,7 +215,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
 
     await userEvent.click(await findByText("texture.dds"));
@@ -228,7 +232,7 @@ describe("opened archives editor", () => {
     // more, and the application already draws its picker whenever nothing is open.
     const { findByLabelText, findByText, queryByText } = renderWithProviders(<ArchivesExplorerApplication />, {
       route: "/archives-explorer",
-      bindings: [ProjectService, ArchivesService],
+      bindings: [AssetService, ProjectService, ArchivesService],
     });
 
     await userEvent.click(await findByLabelText("Back to Archives explorer"));
@@ -273,7 +277,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
 
     await userEvent.click(await findByText("readme.ltx"));
