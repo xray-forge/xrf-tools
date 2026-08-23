@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use xrf_error::XrfResult;
@@ -39,7 +39,13 @@ impl Ltx {
   }
 
   /// Write to a writer with options
+  ///
+  /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one `write_all`
+  /// per format piece, so writing straight to a `File` cost four syscalls a line — two orders of magnitude slower than
+  /// this on an export the size of the particles library. Flushed explicitly so a failing flush is returned instead of
+  /// being swallowed when the buffer drops.
   pub fn write_to<W: Write>(&self, writer: &mut W) -> XrfResult {
+    let mut writer: BufWriter<&mut W> = BufWriter::new(writer);
     let mut firstline: bool = true;
 
     // Write include statements.
@@ -83,6 +89,9 @@ impl Ltx {
         )?;
       }
     }
+
+    writer.flush()?;
+
     Ok(())
   }
 }
