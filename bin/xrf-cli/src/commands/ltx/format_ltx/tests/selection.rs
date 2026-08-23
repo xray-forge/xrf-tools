@@ -47,9 +47,7 @@ fn collects_ltx_files_from_folder_recursively() -> XrfResult {
   fs::write(nested.join("second.ltx"), "[b]\n")?;
   fs::write(root.join("ignored.txt"), "text")?;
 
-  let mut files: Vec<PathBuf> = LtxFormatSelection::select(&[&root])?.files;
-
-  files.sort();
+  let files: Vec<PathBuf> = LtxFormatSelection::select(&[&root])?.files;
 
   assert_eq!(files, vec![root.join("first.ltx"), nested.join("second.ltx")]);
 
@@ -84,11 +82,27 @@ fn de_duplicates_mixed_folder_and_file_paths() -> XrfResult {
   fs::write(&first, "[a]\n")?;
   fs::write(root.join("second.ltx"), "[b]\n")?;
 
-  let mut files: Vec<PathBuf> = LtxFormatSelection::select(&[&root, &first])?.files;
-
-  files.sort();
+  let files: Vec<PathBuf> = LtxFormatSelection::select(&[&root, &first])?.files;
 
   assert_eq!(files, vec![first, root.join("second.ltx")]);
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn sorts_multiple_explicit_paths() -> XrfResult {
+  let root: PathBuf = create_root("explicit-sorted")?;
+  let first: PathBuf = root.join("first.ltx");
+  let second: PathBuf = root.join("second.ltx");
+
+  fs::write(&first, "[a]\n")?;
+  fs::write(&second, "[b]\n")?;
+
+  let files: Vec<PathBuf> = LtxFormatSelection::select(&[&second, &first])?.files;
+
+  assert_eq!(files, vec![first, second]);
 
   fs::remove_dir_all(root)?;
 

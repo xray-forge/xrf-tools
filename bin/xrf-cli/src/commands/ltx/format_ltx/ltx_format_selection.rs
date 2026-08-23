@@ -39,6 +39,7 @@ impl LtxFormatSelection {
     }
 
     declined.sort();
+    files.sort();
 
     Ok(Self { declined, files })
   }
@@ -74,9 +75,6 @@ impl LtxFormatSelection {
         XrayAssetContainer::Archive { .. } => declined.push(Self::describe_declined(&location)),
       }
     }
-
-    files.sort();
-
     Ok(())
   }
 
