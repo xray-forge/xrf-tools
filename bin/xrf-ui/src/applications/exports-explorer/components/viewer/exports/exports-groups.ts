@@ -1,5 +1,6 @@
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor } from "@/core/exports";
+import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 
 export const ROOT_EXPORT_GROUP_ID: string = "group:root";
 
@@ -7,13 +8,6 @@ export interface IExportGroup {
   id: string;
   label: string;
   declarations: Array<ExportDescriptor>;
-}
-
-export interface IExportTreeItem {
-  id: string;
-  label: string;
-  kind: "group" | "declaration";
-  children?: Array<IExportTreeItem>;
 }
 
 /**
@@ -60,21 +54,30 @@ export function groupExports(declarations: ReadonlyArray<ExportDescriptor>): Arr
     }));
 }
 
-export function exportDeclarationItemId(name: string): string {
-  return `declaration:${name}`;
-}
+/**
+ * Turn namespace groups into the shared explorer tree shape.
+ *
+ * @param groups - Namespace groups to render.
+ * @returns Tree items in the order the groups were sorted into.
+ */
+export function exportGroupsToTree(groups: ReadonlyArray<IExportGroup>): Array<IPathTreeItem<ExportDescriptor>> {
+  return groups.map((group: IExportGroup) => {
+    const namespace: string = group.id === ROOT_EXPORT_GROUP_ID ? "" : group.label;
 
-export function exportGroupsToTree(groups: ReadonlyArray<IExportGroup>): Array<IExportTreeItem> {
-  return groups.map((group: IExportGroup) => ({
-    id: group.id,
-    label: `${group.label} (${group.declarations.length})`,
-    kind: "group",
-    children: group.declarations.map((declaration: ExportDescriptor) => ({
-      id: exportDeclarationItemId(declaration.name),
-      label: declaration.name,
-      kind: "declaration",
-    })),
-  }));
+    return {
+      id: toDirectoryItemId(namespace),
+      label: `${group.label} (${group.declarations.length})`,
+      path: namespace,
+      kind: "directory",
+      children: group.declarations.map((declaration: ExportDescriptor) => ({
+        id: toFileItemId(declaration.name),
+        label: declaration.name,
+        path: declaration.name,
+        kind: "file",
+        payload: declaration,
+      })),
+    };
+  });
 }
 
 export function getExportSearchText(declaration: ExportDescriptor): string {

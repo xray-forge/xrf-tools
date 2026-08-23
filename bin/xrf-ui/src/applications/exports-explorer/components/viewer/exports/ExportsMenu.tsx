@@ -2,26 +2,30 @@ import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
-import { RichTreeView } from "@mui/x-tree-view";
-import { ReactElement, SyntheticEvent, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import {
-  exportDeclarationItemId,
   exportGroupsToTree,
   getExportSearchText,
   groupExports,
   IExportGroup,
-  IExportTreeItem,
 } from "@/applications/exports-explorer/components/viewer/exports/exports-groups";
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
+import { getFileItemPath, IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
+import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-const DECLARATION_ITEM_PREFIX: string = "declaration:";
+/** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
+const EXPORT_TREE_ICONS: IVirtualizedTreeIcons = {
+  collapsed: <FolderIcon />,
+  expanded: <FolderOpenIcon />,
+  leaf: <DataObjectIcon />,
+};
 
 export interface IExportsMenuProps extends BaseComponentProps {
   declarations: Array<ExportDescriptor>;
@@ -30,10 +34,10 @@ export interface IExportsMenuProps extends BaseComponentProps {
 }
 
 export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMenuProps): ReactElement {
-  const [expandedItems, setExpandedItems] = useState<Array<string>>([]);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const groups: Array<IExportGroup> = useMemo(() => groupExports(declarations), [declarations]);
-  const items: Array<IExportTreeItem> = useMemo(() => exportGroupsToTree(groups), [groups]);
+  const items: Array<IPathTreeItem<ExportDescriptor>> = useMemo(() => exportGroupsToTree(groups), [groups]);
 
   const onSelectDeclaration = useCallback(
     (declaration: ExportDescriptor) => {
@@ -63,16 +67,32 @@ export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMe
     [search.results]
   );
 
-  const selectedItem: Nullable<string> = selectedName ? exportDeclarationItemId(selectedName) : null;
+  const selectedItem: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
 
   const onSelectItem = useCallback(
-    (_: Nullable<SyntheticEvent>, itemId: Nullable<string>) => {
-      if (itemId?.startsWith(DECLARATION_ITEM_PREFIX)) {
-        onSelect(itemId.slice(DECLARATION_ITEM_PREFIX.length));
+    (item: IPathTreeItem<ExportDescriptor>) => {
+      // Namespaces report too, and answer null here, which is what used to be spelled as disabling
+      // their selection.
+      const name: Nullable<string> = getFileItemPath(item.id);
+
+      if (name) {
+        onSelect(name);
       }
     },
     [onSelect]
   );
+
+  const onToggleExpanded = useCallback((itemId: string) => {
+    setExpandedIds((current: ReadonlySet<string>) => {
+      const next: Set<string> = new Set(current);
+
+      if (!next.delete(itemId)) {
+        next.add(itemId);
+      }
+
+      return next;
+    });
+  }, []);
 
   return (
     <EditorSideMenu
@@ -101,22 +121,15 @@ export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMe
           onSelect={onSelect}
         />
       ) : items.length ? (
-        <Box sx={{ padding: 0.5 }}>
-          <RichTreeView
-            isItemSelectionDisabled={(item: IExportTreeItem) => item.kind === "group"}
-            items={items}
-            expandedItems={expandedItems}
-            selectedItems={selectedItem}
-            expansionTrigger={"content"}
-            slots={{
-              collapseIcon: FolderOpenIcon,
-              expandIcon: FolderIcon,
-              endIcon: DataObjectIcon,
-            }}
-            onExpandedItemsChange={(_, next: Array<string>) => setExpandedItems(next)}
-            onSelectedItemsChange={onSelectItem}
-          />
-        </Box>
+        <VirtualizedTree<ExportDescriptor>
+          ariaLabel={"Exports"}
+          icons={EXPORT_TREE_ICONS}
+          items={items}
+          expandedIds={expandedIds}
+          selectedId={selectedItem}
+          onSelect={onSelectItem}
+          onToggleExpanded={onToggleExpanded}
+        />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>
           <Typography variant={"body2"} sx={{ color: "text.secondary" }}>

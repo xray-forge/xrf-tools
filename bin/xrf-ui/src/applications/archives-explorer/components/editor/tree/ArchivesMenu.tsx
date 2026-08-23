@@ -2,11 +2,9 @@ import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
-import { RichTreeView } from "@mui/x-tree-view";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, SyntheticEvent, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { ArchiveTreeItem } from "@/applications/archives-explorer/components/editor/tree/ArchiveTreeItem";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveTreeItem, parseTree, TArchiveSelection } from "@/core/archive";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
@@ -21,8 +19,16 @@ import {
   toDirectoryItemId,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
+import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable, Optional } from "@/lib/types/general";
+
+/** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
+const ARCHIVE_TREE_ICONS: IVirtualizedTreeIcons = {
+  collapsed: <FolderIcon />,
+  expanded: <FolderOpenIcon />,
+  leaf: <DescriptionIcon />,
+};
 
 export interface IArchivesMenuProps extends BaseComponentProps {}
 
@@ -33,7 +39,7 @@ export function ArchivesMenu({
 }: IArchivesMenuProps = {}): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const [expandedItems, setExpandedItems] = useState<Array<string>>([]);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const files: Array<ArchiveFileDescriptor> = archivesService.files;
 
@@ -93,12 +99,25 @@ export function ArchivesMenu({
     [archivesService, isBusy, onSelectDescriptor]
   );
 
+  const onToggleExpanded = useCallback((itemId: string) => {
+    setExpandedIds((current: ReadonlySet<string>) => {
+      const next: Set<string> = new Set(current);
+
+      if (!next.delete(itemId)) {
+        next.add(itemId);
+      }
+
+      return next;
+    });
+  }, []);
+
   const onSelectItem = useCallback(
-    (_: Nullable<SyntheticEvent>, itemId: Nullable<string>) => {
+    (item: IArchiveTreeItem) => {
       if (isBusy) {
         return;
       }
 
+      const itemId: string = item.id;
       const filePath: Nullable<string> = getFileItemPath(itemId);
 
       if (filePath) {
@@ -149,23 +168,15 @@ export function ArchivesMenu({
           onSelect={onSelectPath}
         />
       ) : items.length ? (
-        <Box sx={{ padding: 0.5 }}>
-          <RichTreeView
-            isItemSelectionDisabled={() => isBusy}
-            items={items}
-            expandedItems={expandedItems}
-            selectedItems={selectedItem}
-            expansionTrigger={"content"}
-            slots={{
-              item: ArchiveTreeItem,
-              collapseIcon: FolderOpenIcon,
-              expandIcon: FolderIcon,
-              endIcon: DescriptionIcon,
-            }}
-            onExpandedItemsChange={(_, next: Array<string>) => setExpandedItems(next)}
-            onSelectedItemsChange={onSelectItem}
-          />
-        </Box>
+        <VirtualizedTree<ArchiveFileDescriptor>
+          ariaLabel={"Archive files"}
+          icons={ARCHIVE_TREE_ICONS}
+          items={items}
+          expandedIds={expandedIds}
+          selectedId={selectedItem}
+          onSelect={onSelectItem}
+          onToggleExpanded={onToggleExpanded}
+        />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>
           <Typography variant={"body2"} sx={{ color: "text.secondary" }}>

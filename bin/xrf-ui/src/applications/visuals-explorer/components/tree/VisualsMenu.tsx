@@ -1,12 +1,10 @@
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { Box, Typography } from "@mui/material";
-import { RichTreeView } from "@mui/x-tree-view";
+import { Box, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, SyntheticEvent, useCallback, useMemo, useState } from "react";
+import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { VisualTreeItem } from "@/applications/visuals-explorer/components/tree/VisualTreeItem";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
@@ -21,11 +19,50 @@ import {
   parsePathTree,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
+import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualsMenuProps extends BaseComponentProps {}
+/** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
+const VISUAL_TREE_ICONS: IVirtualizedTreeIcons = {
+  collapsed: <FolderIcon />,
+  expanded: <FolderOpenIcon />,
+  leaf: <ViewInArIcon />,
+};
+
+/**
+ * Marks a visual that was read out of an archive, which is all a row says beyond its name.
+ *
+ * Replaces the former `VisualTreeItem` slot: with a flat tree the payload is in hand at render time, so
+ * the marker no longer needs a component that looks the item back up by id.
+ *
+ * @param item - Leaf being labelled.
+ * @returns The decorated label, or the plain name for a loose file.
+ */
+function renderVisualLabel(item: IPathTreeItem<XrayAsset>): ReactNode {
+  if (item.kind !== "file" || item.payload.container.kind !== "archive") {
+    return item.label;
+  }
+
+  return (
+    <Box sx={{ alignItems: "center", display: "flex", gap: 0.75, minWidth: 0 }}>
+      <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+        {item.label}
+      </Box>
+
+      <Tooltip title={"Read from an archive volume"}>
+        <Typography
+          component={"span"}
+          variant={"caption"}
+          sx={{ color: "text.secondary", flexShrink: 0, opacity: 0.75 }}
+        >
+          db
+        </Typography>
+      </Tooltip>
+    </Box>
+  );
+}
 
 /**
  * Every visual of the browsed world, as a tree.
@@ -35,11 +72,11 @@ export function VisualsMenu({
   id,
   className,
   sx,
-}: IVisualsMenuProps = {}): ReactElement {
+}: BaseComponentProps = {}): ReactElement {
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
   const visualsService: VisualsService = useInjection(VisualsService);
 
-  const [expandedItems, setExpandedItems] = useState<Array<string>>([]);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   // Memoized rather than defaulted inline, so an empty listing does not hand the tree a new array every render.
   const visuals: Array<XrayAsset> = useMemo(() => browseService.visuals.value ?? [], [browseService.visuals.value]);
@@ -87,9 +124,9 @@ export function VisualsMenu({
     : null;
   const selectedItem: Nullable<string> = openSource ? toFileItemId(openSource) : null;
 
-  const onSelectItem = useCallback(
-    (_: Nullable<SyntheticEvent>, itemId: Nullable<string>) => {
-      const path: Nullable<string> = getFileItemPath(itemId);
+  const onSelectAsset = useCallback(
+    (item: IPathTreeItem<XrayAsset>) => {
+      const path: Nullable<string> = getFileItemPath(item.id);
 
       if (path) {
         onOpenPath(path);
@@ -97,6 +134,18 @@ export function VisualsMenu({
     },
     [onOpenPath]
   );
+
+  const onToggleExpanded = useCallback((itemId: string) => {
+    setExpandedIds((current: ReadonlySet<string>) => {
+      const next: Set<string> = new Set(current);
+
+      if (!next.delete(itemId)) {
+        next.add(itemId);
+      }
+
+      return next;
+    });
+  }, []);
 
   return (
     <EditorSideMenu
@@ -129,22 +178,16 @@ export function VisualsMenu({
           onSelect={onOpenPath}
         />
       ) : items.length ? (
-        <Box sx={{ padding: 0.5 }}>
-          <RichTreeView
-            items={items}
-            expandedItems={expandedItems}
-            selectedItems={selectedItem}
-            expansionTrigger={"content"}
-            slots={{
-              item: VisualTreeItem,
-              collapseIcon: FolderOpenIcon,
-              expandIcon: FolderIcon,
-              endIcon: ViewInArIcon,
-            }}
-            onExpandedItemsChange={(_, next: Array<string>) => setExpandedItems(next)}
-            onSelectedItemsChange={onSelectItem}
-          />
-        </Box>
+        <VirtualizedTree<XrayAsset>
+          ariaLabel={"Visuals"}
+          icons={VISUAL_TREE_ICONS}
+          items={items}
+          expandedIds={expandedIds}
+          selectedId={selectedItem}
+          renderLabel={renderVisualLabel}
+          onSelect={onSelectAsset}
+          onToggleExpanded={onToggleExpanded}
+        />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>
           <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
