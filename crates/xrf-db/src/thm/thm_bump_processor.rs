@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::open_export_file;
 
@@ -99,7 +99,7 @@ impl ThmBumpProcessor {
 
   /// Rewrite the bump chunk of a thm file, copying every other chunk verbatim.
   pub fn write_bump_name_to_buffer<T: ByteOrder>(file: File, bump: &ThmBumpChunk) -> XrfResult<Vec<u8>> {
-    let mut chunks: Vec<ChunkReader> = ChunkReader::from_file(file)?.read_children()?;
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 

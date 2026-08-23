@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fs::File;
-use std::io::SeekFrom;
+use std::io::{Read, SeekFrom};
 
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
@@ -18,15 +18,6 @@ pub struct ChunkReader<T: ChunkDataSource = FileSlice> {
 }
 
 impl ChunkReader<FileSlice> {
-  /// Creates a reader spanning the whole file.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the file is empty.
-  pub fn from_file(file: File) -> XrfResult<Self> {
-    Self::from_slice(FileSlice::new(file))
-  }
-
   /// Creates a reader over the supplied file-slice boundaries.
   ///
   /// # Errors
@@ -47,6 +38,29 @@ impl ChunkReader<FileSlice> {
 }
 
 impl ChunkReader<InMemoryChunkDataSource> {
+  /// Creates a reader spanning the whole file, held in memory.
+  ///
+  /// Reading a chunked format is per field — a `u32` here, an `f32` there — and a file-backed source answers each one
+  /// with its own positioned read: 296k of them, 167ms, to read the 1.2MB particles library that costs two reads to
+  /// hold. The bytes are taken through a [`FileSlice`] rather than off the handle so the file's own cursor is left where
+  /// the caller had it, and reading still starts at offset 0. Use [`Self::from_slice`] for the windowed form.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be read, or is empty.
+  pub fn from_file(file: File) -> XrfResult<Self> {
+    let mut slice: FileSlice = FileSlice::new(file);
+    let mut buffer: Vec<u8> = Vec::with_capacity(slice.len());
+
+    slice.read_to_end(&mut buffer)?;
+
+    if buffer.is_empty() {
+      return Err(XrfError::new_invalid_error("Failed to create chunk from empty source"));
+    }
+
+    Self::from_vec(buffer)
+  }
+
   /// Creates a reader over a copied in-memory byte buffer.
   ///
   /// Prefer [`Self::from_vec`] when the bytes are already owned — this copies them.

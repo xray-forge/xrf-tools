@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::open_export_file;
 
@@ -63,7 +63,7 @@ impl OgfMotionRefsProcessor {
 
   /// Rewrite motion refs of an ogf file, copying every other chunk verbatim.
   pub fn write_motion_refs_to_buffer<T: ByteOrder>(file: File, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
-    let mut chunks: Vec<ChunkReader> = ChunkReader::from_file(file)?.read_children()?;
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 

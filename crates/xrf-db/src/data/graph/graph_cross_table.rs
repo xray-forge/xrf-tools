@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{
   ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkSizePackedIterator, ChunkWriter,
+  InMemoryChunkDataSource,
 };
 use xrf_error::XrfResult;
 
@@ -29,7 +30,7 @@ impl GraphCrossTable {
     let mut cross_tables: Vec<Self> = Vec::new();
 
     for cross_table_reader in ChunkSizePackedIterator::from_current(&mut ChunkReader::from_file(file.try_clone()?)?) {
-      let mut cross_table_reader: ChunkReader = cross_table_reader?;
+      let mut cross_table_reader: ChunkReader<InMemoryChunkDataSource> = cross_table_reader?;
 
       cross_tables.push(cross_table_reader.read_xr::<T, _>()?);
       cross_table_reader.assert_read("Expect cross table chunk to be ended")?;

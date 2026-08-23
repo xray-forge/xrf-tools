@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::open_export_file;
 
@@ -74,13 +74,13 @@ impl OgfTextureRefsProcessor {
 
   /// Rename texture references of an ogf file, copying every other chunk verbatim.
   pub fn write_texture_refs_to_buffer<T: ByteOrder>(file: File, from: &str, to: &str) -> XrfResult<(Vec<u8>, u32)> {
-    let mut chunks: Vec<ChunkReader> = ChunkReader::from_file(file)?.read_children()?;
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
     for chunk in &mut chunks {
       let payload: Vec<u8> = if chunk.id == OgfChildrenChunk::CHUNK_ID {
-        Self::rename_children_texture_refs::<T>(chunk, from, to, &mut patched_count)?
+        Self::rename_children_texture_refs::<T, _>(chunk, from, to, &mut patched_count)?
       } else {
         chunk.reset_pos()?;
         chunk.read_remaining()?
@@ -96,8 +96,8 @@ impl OgfTextureRefsProcessor {
   }
 
   /// Rebuild a children container payload, renaming texture references inside each nested object.
-  fn rename_children_texture_refs<T: ByteOrder>(
-    chunk: &mut ChunkReader,
+  fn rename_children_texture_refs<T: ByteOrder, D: ChunkDataSource>(
+    chunk: &mut ChunkReader<D>,
     from: &str,
     to: &str,
     patched_count: &mut u32,

@@ -289,7 +289,7 @@ mod tests {
 
   use byteorder::WriteBytesExt;
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::FileSlice;
@@ -323,7 +323,7 @@ mod tests {
     let path: PathBuf = std::env::temp_dir().join(format!("xrf-db-unknown-clsid-{}.chunk", std::process::id()));
     fs::write(&path, bytes)?;
 
-    let mut reader: ChunkReader = ChunkReader::from_file(File::open(&path)?)?;
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_file(File::open(&path)?)?;
     let result: XrfResult<AlifeObject> = AlifeObject::read::<XRayByteOrder, _>(&mut reader);
 
     drop(reader);

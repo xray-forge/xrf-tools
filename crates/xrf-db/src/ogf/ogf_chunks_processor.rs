@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::ChunkReader;
+use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::data::ogf::ogf_geometry::OgfGeometry;
@@ -66,7 +66,7 @@ impl OgfChunksProcessor {
   }
 
   pub fn collect_chunks<T: ByteOrder>(file: File) -> XrfResult<Vec<OgfChunkEntry>> {
-    let mut chunks: Vec<ChunkReader> = ChunkReader::from_file(file)?.read_children()?;
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
@@ -92,7 +92,11 @@ impl OgfChunksProcessor {
   ///
   /// The immediate children of a children container are array slots numbered from zero, not chunk
   /// types, so they are stepped through rather than recorded.
-  fn walk(chunks: &mut [ChunkReader], depth: usize, entries: &mut Vec<OgfChunkEntry>) -> XrfResult {
+  fn walk<D: ChunkDataSource>(
+    chunks: &mut [ChunkReader<D>],
+    depth: usize,
+    entries: &mut Vec<OgfChunkEntry>,
+  ) -> XrfResult {
     for chunk in chunks {
       entries.push(OgfChunkEntry {
         id: chunk.id,
