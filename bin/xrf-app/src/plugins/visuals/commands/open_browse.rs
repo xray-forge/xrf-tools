@@ -1,8 +1,8 @@
 use std::sync::MutexGuard;
+use xrf_vfs::XrayWorldSpec;
 
 use tauri::State;
 
-use crate::core::assets::AssetWorldSpec;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualState;
 
@@ -12,10 +12,10 @@ use crate::plugins::visuals::state::VisualState;
 /// from that through the generic asset listing. A reload asks for this and derives the rest again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_browse"))]
 #[tauri::command(rename = "open_browse")]
-pub async fn visuals_open_browse(world: AssetWorldSpec, state: State<'_, VisualState>) -> TauriResult {
-  log::info!("Browsing visuals in: {}", world.roots.join(", "));
+pub async fn visuals_open_browse(world: XrayWorldSpec, state: State<'_, VisualState>) -> TauriResult {
+  log::info!("Browsing visuals in: {}", world.describe());
 
-  let mut browsed: MutexGuard<Option<AssetWorldSpec>> = state
+  let mut browsed: MutexGuard<Option<XrayWorldSpec>> = state
     .browsed
     .lock()
     .map_err(|error| format!("Failed to browse visuals - browse state is unavailable: {error}"))?;

@@ -1,6 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /**
@@ -35,24 +36,6 @@ export type AssetTextureShape = {
   mipmapLevels: number;
   /** Format name from [`DdsMetadata::get_format_label`], so the viewer and the sweep agree on what a file is. */
   format: string;
-};
-
-/**
- * Where a caller wants an asset looked for, named rather than handed over.
- *
- * Self-describing on purpose: a world is identified by what it is made of, never by a handle the backend issued. A
- * webview reload therefore loses nothing, and a surface that did not open a world can still address assets in it —
- * which is what lets one plugin's selection be read by another's preview.
- *
- * The subject asset belongs to the spec rather than to the command that has one, because every command taking this
- * world must search the same places: resolving a model's texture against the model's own tree and then reading it
- * without that tree is how a loose model came back with geometry and no textures.
- */
-export type AssetWorldSpec = {
-  /** Asset whose own X-Ray root and installation are searched first, when the world is centred on one. */
-  asset: string | null;
-  /** Roots searched after the asset's own, in the order given. */
-  roots: Array<string>;
 };
 
 /**
@@ -96,7 +79,7 @@ export type EquipmentSpriteMetadata = {
 export type SelectedVisualDescription = {
   source: VisualSource;
   /** The world the selection was opened in, so a reloaded frontend asks for geometry the same way. */
-  world: AssetWorldSpec;
+  world: XrayWorldSpec;
   description: VisualDescription;
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */

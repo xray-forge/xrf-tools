@@ -89,6 +89,26 @@ impl XrayWorldSpec {
     self.asset.is_none() && self.roots.is_empty()
   }
 
+  /// Name this world for a log line or an error message.
+  ///
+  /// On the type because a spec has no single path to print and every surface reporting on one had
+  /// started writing its own join.
+  pub fn describe(&self) -> String {
+    if self.roots.is_empty() {
+      return match &self.asset {
+        Some(asset) => asset.clone(),
+        None => String::from("<no roots>"),
+      };
+    }
+
+    self
+      .roots
+      .iter()
+      .map(|root| root.path.clone())
+      .collect::<Vec<String>>()
+      .join(", ")
+  }
+
   /// The mounts this spec means, in search order.
   ///
   /// For a tool that lists and reads a whole tree. `XrayMountPlan::behind` dedupes by path, so a
@@ -127,7 +147,7 @@ impl XrayWorldSpec {
     }
 
     for root in &self.roots {
-      plan = plan.with_root(root.path.clone(), &root.path)?;
+      plan = plan.with_root_mode(root.path.clone(), &root.path, root.mode)?;
     }
 
     Ok(plan)

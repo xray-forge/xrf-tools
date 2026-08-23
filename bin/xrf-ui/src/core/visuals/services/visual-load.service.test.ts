@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import { AssetWorldSpec, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { createWorldSpec } from "@/core/assets/lib";
+import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
@@ -17,7 +19,7 @@ import {
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
-const WORLD: AssetWorldSpec = { asset: null, roots: ["C:\\game\\db"] };
+const WORLD: XrayWorldSpec = createWorldSpec(["C:\\game\\db"]);
 const ENTRY: string = "meshes\\actors\\stalker.ogf";
 
 /** A loadable visual whose description matches the buffer returned beside it. */

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
+import { createWorldSpec } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -45,7 +46,7 @@ describe("VisualsBrowseService", () => {
     await service.openRoot("C:\\gamedata");
 
     // No subject asset: a browsed root is the world itself, not a neighbourhood around one model.
-    expect(listParameters).toEqual({ kind: "ogf", world: { asset: null, roots: ["C:\\gamedata"] } });
+    expect(listParameters).toEqual({ kind: "ogf", world: createWorldSpec(["C:\\gamedata"]) });
     expect(service.visuals.value).toHaveLength(1);
     expect(service.isBrowsing).toBe(true);
     expect(service.roots).toEqual(["C:\\gamedata"]);
@@ -83,14 +84,14 @@ describe("VisualsBrowseService", () => {
 
     await service.openRoot("C:\\gamedata");
 
-    expect(recorded).toEqual({ world: { asset: null, roots: ["C:\\gamedata"] } });
+    expect(recorded).toEqual({ world: createWorldSpec(["C:\\gamedata"]) });
   });
 
   it("comes back to the world the backend is still browsing after a reload", async () => {
     // The session lives where every other application's does; a reload asks for it and derives the listing again, which
     // is cheap because the mounts that listing reads are already cached.
     setMockInvokeResponses({
-      ["plugin:visuals|get_browse"]: { asset: null, roots: ["C:\\gamedata"] },
+      ["plugin:visuals|get_browse"]: createWorldSpec(["C:\\gamedata"]),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 

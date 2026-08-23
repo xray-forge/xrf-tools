@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
+import { createWorldSpec } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -23,7 +25,7 @@ const DESCRIPTOR: AssetTextureDescriptor = {
 };
 
 /** The world an archive project mounts, which both media calls have to name identically. */
-const WORLD = { asset: null, roots: ["C:\\game\\database"] };
+const WORLD: XrayWorldSpec = createWorldSpec(["C:\\game\\database"]);
 
 const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 

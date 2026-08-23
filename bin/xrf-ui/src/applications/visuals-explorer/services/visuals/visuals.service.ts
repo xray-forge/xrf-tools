@@ -2,9 +2,11 @@ import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wire
 import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
 import { Texture } from "three";
 
+import { createWorldSpec } from "@/core/assets/lib";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { Vector3d } from "@/core/bindings/types/xrf-db";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
@@ -229,11 +231,11 @@ export class VisualsService {
    * @param asset - Asset the world is centred on.
    * @returns The world spec to open with.
    */
-  private async getWorld(roots: Array<string> = [], asset: Nullable<string> = null): Promise<AssetWorldSpec> {
+  private async getWorld(roots: Array<string> = [], asset: Nullable<string> = null): Promise<XrayWorldSpec> {
     const projectPath: Nullable<string> = this.projectService.xrfProjectPath;
     const project: Array<string> = projectPath ? [await getProjectGamedataPath(projectPath)] : [];
 
     // The caller's roots come first: a browsed tree is the nearer answer, and the project is the fallback behind it.
-    return { asset, roots: [...roots, ...project] };
+    return createWorldSpec([...roots, ...project], asset);
   }
 }

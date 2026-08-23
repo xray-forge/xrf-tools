@@ -1,10 +1,10 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
 
+import { createWorldSpec } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/bindings/commands/assets";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { AssetWorldSpec } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayWorldRoot , XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { createLoadable, Loadable } from "@/lib/loadable";
@@ -23,7 +23,7 @@ export class VisualsBrowseService {
 
   /** The world being browsed, or null when a single model was opened directly. */
   @Observable()
-  public world: Nullable<AssetWorldSpec> = null;
+  public world: Nullable<XrayWorldSpec> = null;
 
   @Observable()
   public visuals: Loadable<Array<XrayAsset>> = createLoadable([]);
@@ -41,7 +41,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get root(): Nullable<string> {
-    return this.world?.roots[0] ?? null;
+    return this.world?.roots[0]?.path ?? null;
   }
 
   /**
@@ -49,7 +49,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get roots(): Array<string> {
-    return this.world?.roots ?? [];
+    return this.world?.roots.map((root: XrayWorldRoot) => root.path) ?? [];
   }
 
   public constructor() {
@@ -65,7 +65,7 @@ export class VisualsBrowseService {
   @OnProvision()
   public async onProvision(): Promise<void> {
     try {
-      const world: Nullable<AssetWorldSpec> = await visualsCommands.getBrowse();
+      const world: Nullable<XrayWorldSpec> = await visualsCommands.getBrowse();
 
       if (world) {
         this.log.info("Restoring browsed world:", world.roots.join(", "));
@@ -99,7 +99,7 @@ export class VisualsBrowseService {
    */
   @BoundAction()
   public async openRoot(root: string): Promise<void> {
-    const world: AssetWorldSpec = { asset: null, roots: [root] };
+    const world: XrayWorldSpec = createWorldSpec([root]);
 
     this.log.info("Browsing root:", root);
 
@@ -127,7 +127,7 @@ export class VisualsBrowseService {
    *
    * @param world - World to list, already recorded as the browsed one.
    */
-  private async list(world: AssetWorldSpec): Promise<void> {
+  private async list(world: XrayWorldSpec): Promise<void> {
     runInAction(() => {
       this.world = world;
       this.visuals = this.visuals.asLoading();

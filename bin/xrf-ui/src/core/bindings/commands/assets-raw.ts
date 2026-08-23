@@ -1,10 +1,10 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { AssetWorldSpec } from "@/core/bindings/types/xrf-app";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { invokeRaw } from "@/core/ipc/raw";
 
 /** Commands answering with raw bytes, which Specta cannot type. */
 export const assetsRawCommands = {
-  readAsset: (world: AssetWorldSpec, logicalPath: string): Promise<ArrayBuffer> =>
+  readAsset: (world: XrayWorldSpec, logicalPath: string): Promise<ArrayBuffer> =>
     invokeRaw("plugin:assets|read_asset", { world, logicalPath }),
 };

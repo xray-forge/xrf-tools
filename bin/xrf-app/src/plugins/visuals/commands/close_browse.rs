@@ -1,8 +1,8 @@
 use std::sync::MutexGuard;
+use xrf_vfs::XrayWorldSpec;
 
 use tauri::State;
 
-use crate::core::assets::AssetWorldSpec;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualState;
 
@@ -15,7 +15,7 @@ use crate::plugins::visuals::state::VisualState;
 pub async fn visuals_close_browse(state: State<'_, VisualState>) -> TauriResult {
   log::info!("Closing browsed world");
 
-  let mut browsed: MutexGuard<Option<AssetWorldSpec>> = state
+  let mut browsed: MutexGuard<Option<XrayWorldSpec>> = state
     .browsed
     .lock()
     .map_err(|error| format!("Failed to close browse state: {error}"))?;

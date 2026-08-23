@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_vfs::XrayMountMode;
+use xrf_vfs::{XrayMountMode, XrayWorldRoot, XrayWorldSpec};
 
 use crate::commands::assets::list_assets::asset_lister::{AssetLister, AssetListing};
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -28,6 +28,9 @@ impl GenericCommand for ListAssetsCommand {
           .short('p')
           .long("path")
           .required(true)
+          // Both spellings layer: repeat the flag, or list several values after one of them.
+          .action(ArgAction::Append)
+          .num_args(1..)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -84,9 +87,10 @@ impl GenericCommand for ListAssetsCommand {
 
   /// Reports the assets a path resolves and their source mounts.
   fn execute(&self, matches: &ArgMatches) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
+    let paths: Vec<&PathBuf> = matches
+      .get_many::<PathBuf>("path")
+      .expect("Expected at least one path to be provided")
+      .collect();
     let prefix: Option<&String> = matches.get_one::<_>("prefix");
 
     let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
@@ -98,13 +102,19 @@ impl GenericCommand for ListAssetsCommand {
         .as_str(),
     )?;
 
+    // One vocabulary for naming a world, so a loose tree can be listed in front of an installation.
+    let world: XrayWorldSpec = XrayWorldSpec::roots(
+      paths
+        .iter()
+        .map(|path| XrayWorldRoot::new(path.display().to_string(), mode)),
+    );
+
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
       .map(|values| values.cloned().collect())
       .unwrap_or_default();
 
-    let listing: AssetListing = AssetLister::new(path)
-      .with_mode(mode)
+    let listing: AssetListing = AssetLister::new(&world)
       .with_ignored(&ignored)
       .with_prefix(prefix.map(String::as_str))
       .with_loose_only(matches.get_flag("loose"))

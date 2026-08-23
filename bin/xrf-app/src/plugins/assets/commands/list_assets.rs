@@ -1,7 +1,7 @@
 use tauri::State;
-use xrf_vfs::{XrayAsset, XrayAssetType};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayWorldSpec};
 
-use crate::core::assets::{AssetWorldSpec, AssetWorldState};
+use crate::core::assets::AssetWorldState;
 use crate::core::types::TauriResult;
 
 /// Every asset of one kind a world holds, winner first and shadowed copies omitted.
@@ -14,7 +14,7 @@ use crate::core::types::TauriResult;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_assets"))]
 #[tauri::command(rename = "list_assets")]
 pub async fn assets_list_assets(
-  world: AssetWorldSpec,
+  world: XrayWorldSpec,
   kind: XrayAssetType,
   state: State<'_, AssetWorldState>,
 ) -> TauriResult<Vec<XrayAsset>> {

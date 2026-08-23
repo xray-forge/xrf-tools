@@ -110,7 +110,7 @@ impl GenericCommand for ParseDialogCommand {
         .map(|path| XrayWorldRoot::new(path.display().to_string(), source)),
     );
 
-    xrf_output::info!(output, "Reading dialogs in {} ({:?})", describe(&world), source);
+    xrf_output::info!(output, "Reading dialogs in {} ({:?})", world.describe(), source);
 
     // A world that cannot be mounted is an execution failure, which the mount itself answers with, so
     // no separate existence check is needed here.
@@ -149,22 +149,12 @@ impl GenericCommand for ParseDialogCommand {
       Status::Error | Status::Incomplete | Status::Skipped => Err(
         XrfError::new_verify_error(format!(
           "No dialog files were read under {}, status: {status}",
-          describe(&world)
+          world.describe()
         ))
         .into(),
       ),
     }
   }
-}
-
-/// Name a world in a message, since a spec has no single path to print.
-fn describe(world: &XrayWorldSpec) -> String {
-  world
-    .roots
-    .iter()
-    .map(|root| root.path.clone())
-    .collect::<Vec<String>>()
-    .join(", ")
 }
 
 impl ParseDialogCommand {

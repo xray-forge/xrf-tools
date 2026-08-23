@@ -102,7 +102,7 @@ impl DialogProject {
     if assets.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
         "No dialog files under '{dialogs_prefix}' in {}",
-        Self::describe_roots(world)
+        world.describe()
       )));
     }
 
@@ -259,19 +259,5 @@ impl DialogProject {
 
   fn read_asset(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
     DialogFile::read_from_bytes(&scoped.read(logical_path)?)
-  }
-
-  /// Name a world in a message, since a spec has no single path to print.
-  fn describe_roots(world: &XrayWorldSpec) -> String {
-    if world.roots.is_empty() {
-      return String::from("<no roots>");
-    }
-
-    world
-      .roots
-      .iter()
-      .map(|root| root.path.clone())
-      .collect::<Vec<String>>()
-      .join(", ")
   }
 }

@@ -5,7 +5,8 @@ import { Texture } from "three";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
-import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import {
@@ -93,7 +94,7 @@ export class VisualLoadService {
    * @param world - World the source and its references are searched in.
    */
   @BoundAction()
-  public async load(source: VisualSource, world: AssetWorldSpec): Promise<void> {
+  public async load(source: VisualSource, world: XrayWorldSpec): Promise<void> {
     const timer: Timer = new Timer();
 
     this.log.info("Loading visual:", describeVisualSource(source));
@@ -221,7 +222,7 @@ export class VisualLoadService {
    * @param world - The mounted world the asset is read from.
    * @param request - Request identity used to discard a late response.
    */
-  private async loadTexture(texture: ILoadableTexture, world: AssetWorldSpec, request: number): Promise<void> {
+  private async loadTexture(texture: ILoadableTexture, world: XrayWorldSpec, request: number): Promise<void> {
     try {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(world, texture.logicalPath);
 

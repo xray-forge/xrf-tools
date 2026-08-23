@@ -2,7 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { AssetTextureDescriptor, AssetWorldSpec, AudioDescriptor } from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
@@ -17,6 +17,7 @@ import {
   ArchivePackResult,
   ArchiveUnpackResult,
 } from "@/core/bindings/types/xrf-pack";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {
@@ -34,7 +35,7 @@ export const archivesCommands = {
    * Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same world and
    * logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
    */
-  describeAudio: (world: AssetWorldSpec, logicalPath: string) =>
+  describeAudio: (world: XrayWorldSpec, logicalPath: string) =>
     __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { world, logicalPath }),
   /**
    * Report the shape of a texture, without decoding it into a picture.
@@ -45,7 +46,7 @@ export const archivesCommands = {
    * Answers with the source DDS facts rather than the PNG's: format and mip count survive the description and would not
    * survive the transcode, and a viewer of X-Ray textures wants both.
    */
-  describeImage: (world: AssetWorldSpec, logicalPath: string) =>
+  describeImage: (world: XrayWorldSpec, logicalPath: string) =>
     __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { world, logicalPath }),
   /**
    * Write the selection rules of a configuration out as an xrCompress configuration file.

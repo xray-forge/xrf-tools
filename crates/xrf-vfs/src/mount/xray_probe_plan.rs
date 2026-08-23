@@ -71,13 +71,34 @@ impl XrayProbePlan {
   /// # Errors
   ///
   /// Returns an error when the root exists but cannot be planned.
-  pub fn with_root(mut self, label: impl Into<String>, root: impl AsRef<Path>) -> XrfResult<Self> {
+  pub fn with_root(self, label: impl Into<String>, root: impl AsRef<Path>) -> XrfResult<Self> {
+    self.with_root_mode(label, root, XrayMountMode::Auto)
+  }
+
+  /// Searches one root, read the way the caller says rather than through the default.
+  ///
+  /// The same step as [`Self::with_root`], for a caller carrying a mode per root — a world spec names
+  /// one each, so a loose gamedata tree and the installation behind it can be read differently within
+  /// one search.
+  ///
+  /// A path that is not a directory plans nothing rather than failing, for the reason above: an
+  /// unconfigured project root is an ordinary state of a viewer, not an error to report.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the root exists but cannot be planned.
+  pub fn with_root_mode(
+    mut self,
+    label: impl Into<String>,
+    root: impl AsRef<Path>,
+    mode: XrayMountMode,
+  ) -> XrfResult<Self> {
     let root: PathBuf = root.as_ref().to_path_buf();
 
     self.steps.push(PlannedProbeStep {
       label: label.into(),
       plan: if root.is_dir() {
-        XrayMountMode::Auto.plan(&root)?
+        mode.plan(&root)?
       } else {
         XrayMountPlan::new()
       },

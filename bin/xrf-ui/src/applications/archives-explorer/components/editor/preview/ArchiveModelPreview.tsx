@@ -3,6 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { createWorldSpec } from "@/core/assets/lib";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -38,7 +39,7 @@ export function ArchiveModelPreview({
 
   useEffect(() => {
     if (root) {
-      void loadService.load({ kind: "asset", logicalPath: name }, { asset: null, roots: [root] });
+      void loadService.load({ kind: "asset", logicalPath: name }, createWorldSpec([root]));
     }
 
     return () => loadService.clear();

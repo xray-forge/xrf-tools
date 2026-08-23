@@ -1,11 +1,10 @@
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayPathCollision, XraySkippedMount,
-  XraySourceKind, XrayVfs,
+  XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XraySkippedMount, XraySourceKind,
+  XrayVfs, XrayWorldSpec,
 };
 
 /// Resolved assets and source metadata for one listing.
@@ -30,8 +29,7 @@ pub struct AssetListing {
 ///
 /// Entries identify their physical containers. Optional shadowed entries expose lower-priority copies of winning paths.
 pub struct AssetLister {
-  path: PathBuf,
-  mode: XrayMountMode,
+  world: XrayWorldSpec,
   prefix: Option<String>,
   ignored: Vec<String>,
   is_loose_only: bool,
@@ -39,29 +37,23 @@ pub struct AssetLister {
 }
 
 impl AssetLister {
-  pub fn new(path: &Path) -> Self {
+  /// Lists what a world resolves.
+  ///
+  /// The world carries a mode per root, so what used to be one path and one mode is now several of
+  /// each — which is what lets a listing show a loose tree shadowing the installation behind it.
+  pub fn new(world: &XrayWorldSpec) -> Self {
     Self {
       is_loose_only: false,
       is_shadowed_included: false,
-      // A listing exists to show what resolves, so it looks for a containing installation by default; its archives are
-      // invisible to a directory walk and omitting them would answer with a fraction of the tree.
       ignored: Vec::new(),
-      mode: XrayMountMode::ContainingInstallation,
-      path: path.to_path_buf(),
       prefix: None,
+      world: world.clone(),
     }
   }
 
   /// Logical prefixes the directory mounts omit, as `verify-gamedata --ignore` means them.
   pub fn with_ignored(mut self, ignored: &[String]) -> Self {
     self.ignored = ignored.to_vec();
-
-    self
-  }
-
-  /// Sets how the path is interpreted when planning its mounts.
-  pub fn with_mode(mut self, mode: XrayMountMode) -> Self {
-    self.mode = mode;
 
     self
   }
@@ -95,7 +87,7 @@ impl AssetLister {
   /// a valid X-Ray logical path.
   pub fn run(&self) -> XrfResult<AssetListing> {
     let started: Instant = Instant::now();
-    let vfs: XrayVfs = XrayVfs::from_plan(&self.mode.plan(&self.path)?.ignoring(&self.ignored)?)?;
+    let vfs: XrayVfs = XrayVfs::from_plan(&self.world.to_mount_plan()?.ignoring(&self.ignored)?)?;
     let scope: XrayLookupScope = self.scope()?;
     let entries: Vec<XrayAsset> = vfs.scoped(&scope).list_entries();
     let shadowed: Vec<XrayAsset> = if self.is_shadowed_included {
@@ -120,7 +112,7 @@ impl AssetLister {
           )
         })
         .collect(),
-      origin: format!("{} {}", self.mode, self.path.display()),
+      origin: self.world.describe(),
       shadowed,
       skipped: vfs.get_skipped_mounts().to_vec(),
     })

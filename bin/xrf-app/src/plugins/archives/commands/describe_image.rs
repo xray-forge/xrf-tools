@@ -1,8 +1,8 @@
 use tauri::State;
 use xrf_error::XrfError;
-use xrf_vfs::XrayAsset;
+use xrf_vfs::{XrayAsset, XrayWorldSpec};
 
-use crate::core::assets::{AssetTextureDescriptor, AssetWorldSpec, AssetWorldState};
+use crate::core::assets::{AssetTextureDescriptor, AssetWorldState};
 use crate::core::types::TauriResult;
 
 /// Report the shape of a texture, without decoding it into a picture.
@@ -15,7 +15,7 @@ use crate::core::types::TauriResult;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_image"))]
 #[tauri::command(rename = "describe_image")]
 pub async fn archives_describe_image(
-  world: AssetWorldSpec,
+  world: XrayWorldSpec,
   logical_path: String,
   assets: State<'_, AssetWorldState>,
 ) -> TauriResult<AssetTextureDescriptor> {

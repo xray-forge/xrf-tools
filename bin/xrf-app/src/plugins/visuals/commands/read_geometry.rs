@@ -1,10 +1,11 @@
 use std::sync::MutexGuard;
+use xrf_vfs::XrayWorldSpec;
 
 use tauri::State;
 use tauri::ipc::Response;
 use xrf_visual::VisualPackage;
 
-use crate::core::assets::{AssetWorldSpec, AssetWorldState};
+use crate::core::assets::AssetWorldState;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::pack_source;
 use crate::plugins::visuals::state::{SelectedVisual, VisualSource, VisualState};
@@ -17,7 +18,7 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualSource, VisualState};
 #[tauri::command(rename = "read_geometry")]
 pub async fn visuals_read_geometry(
   source: VisualSource,
-  world: AssetWorldSpec,
+  world: XrayWorldSpec,
   state: State<'_, VisualState>,
   assets: State<'_, AssetWorldState>,
 ) -> TauriResult<Response> {

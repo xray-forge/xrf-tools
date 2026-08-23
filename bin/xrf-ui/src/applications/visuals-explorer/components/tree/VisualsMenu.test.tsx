@@ -5,6 +5,7 @@ import { Container, EventsPlugin } from "@wirestate/core";
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { createWorldSpec } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { ProjectService } from "@/core/settings/services/project";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -78,7 +79,7 @@ describe("VisualsMenu", () => {
 
     expect(openParameters).toMatchObject({
       source: { kind: "asset", logicalPath: "meshes\\actors\\stalker.ogf" },
-      world: { roots: ["C:\\gamedata"] },
+      world: createWorldSpec(["C:\\gamedata"]),
     });
     expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry");
   });

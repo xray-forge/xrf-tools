@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
+use xrf_vfs::XrayWorldSpec;
 
 use serde::Serialize;
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage};
 
-use crate::core::assets::{AssetTextureDescriptor, AssetWorldSpec};
+use crate::core::assets::AssetTextureDescriptor;
 
 /// What the viewer currently points at: the world being browsed, and the visual open inside it.
 ///
@@ -21,7 +22,7 @@ pub struct VisualState {
   ///
   /// The listing is not kept beside it. It is derived from the world by the generic asset listing, and the mounts that
   /// listing reads are already cached, so re-deriving it after a reload costs a walk of an index that is in memory.
-  pub browsed: Mutex<Option<AssetWorldSpec>>,
+  pub browsed: Mutex<Option<XrayWorldSpec>>,
 }
 
 impl VisualState {
@@ -36,7 +37,7 @@ impl VisualState {
 pub struct SelectedVisual {
   pub source: VisualSource,
   /// The world the visual was opened in, kept so a later read searches what the open searched.
-  pub world: AssetWorldSpec,
+  pub world: XrayWorldSpec,
   pub package: VisualPackage,
   /// What the visual's own references came to, decided at open so a read is a lookup rather than a search.
   pub dependencies: VisualDependencies,
@@ -89,7 +90,7 @@ impl VisualSource {
 pub struct SelectedVisualDescription {
   pub source: VisualSource,
   /// The world the selection was opened in, so a reloaded frontend asks for geometry the same way.
-  pub world: AssetWorldSpec,
+  pub world: XrayWorldSpec,
   pub description: VisualDescription,
   pub dependencies: VisualDependencies,
   /// What each located texture file is, keyed by the logical path that located it.

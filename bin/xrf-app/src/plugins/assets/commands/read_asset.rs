@@ -1,7 +1,8 @@
 use tauri::State;
 use tauri::ipc::Response;
+use xrf_vfs::XrayWorldSpec;
 
-use crate::core::assets::{AssetWorldSpec, AssetWorldState, read_located_asset};
+use crate::core::assets::{AssetWorldState, read_located_asset};
 use crate::core::types::TauriResult;
 
 /// Returns the untouched bytes of one asset of a mounted world.
@@ -16,7 +17,7 @@ use crate::core::types::TauriResult;
 /// this is the world, not the command.
 #[tauri::command(rename = "read_asset")]
 pub async fn assets_read_asset(
-  world: AssetWorldSpec,
+  world: XrayWorldSpec,
   logical_path: String,
   state: State<'_, AssetWorldState>,
 ) -> TauriResult<Response> {

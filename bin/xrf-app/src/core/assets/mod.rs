@@ -2,8 +2,8 @@
 
 mod asset_read;
 mod asset_texture;
-mod asset_world;
+mod asset_world_state;
 
 pub use asset_read::read_located_asset;
 pub use asset_texture::AssetTextureDescriptor;
-pub use asset_world::{AssetWorldSpec, AssetWorldState};
+pub use asset_world_state::AssetWorldState;

@@ -1,8 +1,9 @@
 use serde::Serialize;
 use tauri::State;
 use xrf_sound::{SoundFile, SoundMetadata};
+use xrf_vfs::XrayWorldSpec;
 
-use crate::core::assets::{AssetWorldSpec, AssetWorldState, read_located_asset};
+use crate::core::assets::{AssetWorldState, read_located_asset};
 use crate::core::types::TauriResult;
 
 /// The X-Ray source parameters carried in a sound's first vorbis comment.
@@ -41,7 +42,7 @@ pub struct AudioDescriptor {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_audio"))]
 #[tauri::command(rename = "describe_audio")]
 pub async fn archives_describe_audio(
-  world: AssetWorldSpec,
+  world: XrayWorldSpec,
   logical_path: String,
   assets: State<'_, AssetWorldState>,
 ) -> TauriResult<AudioDescriptor> {

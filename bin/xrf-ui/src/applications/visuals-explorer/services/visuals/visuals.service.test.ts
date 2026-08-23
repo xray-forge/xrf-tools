@@ -3,7 +3,9 @@ import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { AssetWorldSpec, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { createWorldSpec } from "@/core/assets/lib";
+import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { ProjectService } from "@/core/settings/services/project/project.service";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
@@ -239,7 +241,7 @@ describe("VisualsService opening", () => {
       // The backend echoes the world it opened with, which is what later reads are addressed by.
       ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => ({
         ...selected,
-        world: (parameters as { world: AssetWorldSpec }).world,
+        world: (parameters as { world: XrayWorldSpec }).world,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
       ["plugin:visuals|read_geometry"]: buffer,
@@ -258,7 +260,7 @@ describe("VisualsService opening", () => {
     expect(readParameters).toEqual({
       logicalPath: "textures\\wpn\\wpn_ak74.dds",
       // Centred on the model: the texture resolved through the model's own tree, so it is read back through it too.
-      world: { asset: "C:\\gamedata\\wpn_ak74.ogf", roots: ["C:\\project\\target\\gamedata"] },
+      world: createWorldSpec(["C:\\project\\target\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
     });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });

@@ -2,12 +2,8 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import {
-  AssetTextureDescriptor,
-  AssetWorldSpec,
-  SelectedVisualDescription,
-  VisualSource,
-} from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
+import { XrayWorldRoot, XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /** Commands */
@@ -29,10 +25,14 @@ export const visualsCommands = {
    */
   getBrowse: () =>
     __TAURI_INVOKE<{
-      /** Asset whose own X-Ray root and installation are searched first, when the world is centred on one. */
+      /**
+       * Asset whose own X-Ray root and installation are searched first, when the world is centred on one.
+       *
+       * This is what finds a texture shipped beside a model rather than in the shared tree.
+       */
       asset: string | null;
       /** Roots searched after the asset's own, in the order given. */
-      roots: Array<string>;
+      roots: Array<XrayWorldRoot>;
     } | null>("plugin:visuals|get_browse"),
   /**
    * What the viewer had selected, or null when nothing is open.
@@ -44,7 +44,7 @@ export const visualsCommands = {
     __TAURI_INVOKE<{
       source: VisualSource;
       /** The world the selection was opened in, so a reloaded frontend asks for geometry the same way. */
-      world: AssetWorldSpec;
+      world: XrayWorldSpec;
       description: VisualDescription;
       dependencies: VisualDependencies;
       /** What each located texture file is, keyed by the logical path that located it. */
@@ -56,7 +56,7 @@ export const visualsCommands = {
    * Stores the intent rather than a listing: what the user chose is the world, and everything shown of it is derived
    * from that through the generic asset listing. A reload asks for this and derives the rest again.
    */
-  openBrowse: (world: AssetWorldSpec) => __TAURI_INVOKE<null>("plugin:visuals|open_browse", { world }),
+  openBrowse: (world: XrayWorldSpec) => __TAURI_INVOKE<null>("plugin:visuals|open_browse", { world }),
   /**
    * Select a visual and return what it contains, with every reference it declares resolved.
    *
@@ -67,6 +67,6 @@ export const visualsCommands = {
    * textures from costing forty round trips, and it is why the outcomes travel with the description rather than being
    * asked for afterwards.
    */
-  openModel: (source: VisualSource, world: AssetWorldSpec) =>
+  openModel: (source: VisualSource, world: XrayWorldSpec) =>
     __TAURI_INVOKE<SelectedVisualDescription>("plugin:visuals|open_model", { source, world }),
 };

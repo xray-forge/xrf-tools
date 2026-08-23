@@ -2,8 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { AssetWorldSpec } from "@/core/bindings/types/xrf-app";
-import { XrayAsset, XrayAssetType } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayAssetType, XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const assetsCommands = {
@@ -16,6 +15,6 @@ export const assetsCommands = {
    *
    * Assets keep the world's own logical paths, so an entry names the model a `visuals` open can then take verbatim.
    */
-  listAssets: (world: AssetWorldSpec, kind: XrayAssetType) =>
+  listAssets: (world: XrayWorldSpec, kind: XrayAssetType) =>
     __TAURI_INVOKE<Array<XrayAsset>>("plugin:assets|list_assets", { world, kind }),
 };
