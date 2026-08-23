@@ -1,6 +1,7 @@
 use crate::commands::archive::pack_archive::PackArchiveCommand;
 use crate::commands::archive::unpack_archive::UnpackArchiveCommand;
 use crate::commands::assets::list_assets::ListAssetsCommand;
+use crate::commands::dialog::parse_dialog::ParseDialogCommand;
 use crate::commands::docs::generate_docs::GenerateDocsCommand;
 use crate::commands::externs::export_externs::ExportExternsCommand;
 use crate::commands::gamedata::verify_gamedata::VerifyGamedataCommand;
@@ -49,6 +50,10 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
     CommandGroup {
       name: "Assets",
       commands: vec![ListAssetsCommand::new_box()],
+    },
+    CommandGroup {
+      name: "Dialog",
+      commands: vec![ParseDialogCommand::new_box()],
     },
     CommandGroup {
       name: "Docs",

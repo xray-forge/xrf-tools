@@ -1,0 +1,101 @@
+//! Which files a sweep picks up.
+
+use std::fs;
+use std::path::PathBuf;
+
+use xrf_error::XrfResult;
+use xrf_report::Status;
+
+use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult};
+
+const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
+
+fn create_root(name: &str) -> XrfResult<PathBuf> {
+  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-parse-dialog-{name}-{}", std::process::id()));
+
+  if root.exists() {
+    fs::remove_dir_all(&root)?;
+  }
+
+  fs::create_dir_all(&root)?;
+
+  Ok(root)
+}
+
+#[test]
+fn sweeps_only_dialog_named_xml_in_a_directory() -> XrfResult {
+  let root: PathBuf = create_root("selection")?;
+
+  fs::write(root.join("dialogs.xml"), DIALOG)?;
+  fs::write(root.join("dialogs_zaton.xml"), DIALOG)?;
+  // A gameplay directory holds these beside the dialogs, and neither is dialog data.
+  fs::write(root.join("info_zaton.xml"), "<game_information_portions/>")?;
+  fs::write(root.join("npc_profile.xml"), "<game_profile_list/>")?;
+  fs::write(root.join("dialogs.ltx"), "[section]")?;
+
+  let result: DialogSweepResult = DialogSweep::new(&root).run();
+
+  assert_eq!(result.census.files, 2);
+  assert_eq!(result.census.dialogs, 2);
+  assert!(result.report.checks().iter().all(|check| check.findings().is_empty()));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_named_file_the_directory_filter_would_have_skipped() -> XrfResult {
+  // A caller naming one file has already decided; the name filter exists for walking a tree.
+  let root: PathBuf = create_root("named-file")?;
+  let file: PathBuf = root.join("conversations.xml");
+
+  fs::write(&file, DIALOG)?;
+
+  let result: DialogSweepResult = DialogSweep::new(&file).run();
+
+  assert_eq!(result.census.files, 1);
+  assert_eq!(result.census.dialogs, 1);
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn walks_nested_directories() -> XrfResult {
+  let root: PathBuf = create_root("nested")?;
+  let nested: PathBuf = root.join("gameplay");
+
+  fs::create_dir_all(&nested)?;
+  fs::write(root.join("dialogs.xml"), DIALOG)?;
+  fs::write(nested.join("dialogs_jupiter.xml"), DIALOG)?;
+
+  let result: DialogSweepResult = DialogSweep::new(&root).run();
+
+  assert_eq!(result.census.files, 2);
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn skips_rather_than_passes_a_directory_with_no_dialogs() -> XrfResult {
+  let root: PathBuf = create_root("empty")?;
+
+  fs::write(root.join("info_zaton.xml"), "<game_information_portions/>")?;
+
+  let result: DialogSweepResult = DialogSweep::new(&root).run();
+
+  assert_eq!(result.census.files, 0);
+  assert_eq!(result.census.dialogs, 0);
+  // Nothing was read, so nothing was judged. Reporting this as a pass is how a mistyped path gets
+  // wired into CI and silently checks nothing.
+  assert_eq!(result.report.status(), Status::Skipped);
+  assert!(result.report.checks().iter().all(|check| check.findings().is_empty()));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
