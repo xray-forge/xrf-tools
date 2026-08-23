@@ -4,7 +4,7 @@ import { BoundAction, Computed, makeObservable, Observable, runInAction } from "
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/bindings/commands/assets";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { XrayAsset, XrayRoot , XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { createLoadable, Loadable } from "@/lib/loadable";

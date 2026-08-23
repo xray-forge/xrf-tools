@@ -45,6 +45,8 @@ impl OgfVertex {
   ///
   /// The final weight is not stored, because the set sums to one, so it is reconstructed here and every
   /// returned vertex carries a weight for each of its links.
+  ///
+  /// A two link vertex stores the weight of its _second_ bone, not its first.
   pub fn read_from_slice<T: ByteOrder>(vertex: &[u8], links_count: usize) -> Self {
     debug_assert!(links_count >= 1, "a vertex is linked to at least one bone");
 
@@ -62,26 +64,33 @@ impl OgfVertex {
     let weights_offset: usize = bones_size + Self::VECTORS_SIZE;
     let uv_offset: usize = weights_offset + (links_count - 1) * 4;
 
-    let mut links: Vec<OgfVertexLink> = Vec::with_capacity(links_count);
-    let mut remaining_weight: f32 = 1.0;
-
-    for index in 0..links_count {
-      let bone: u16 = T::read_u16(&vertex[index * 2..index * 2 + 2]);
-
-      // The last link takes whatever weight the stored ones did not claim.
-      let weight: f32 = if index + 1 == links_count {
-        remaining_weight
-      } else {
+    let stored: Vec<f32> = (0..links_count - 1)
+      .map(|index| {
         let offset: usize = weights_offset + index * 4;
-        let weight: f32 = T::read_f32(&vertex[offset..offset + 4]);
 
-        remaining_weight -= weight;
+        T::read_f32(&vertex[offset..offset + 4])
+      })
+      .collect();
 
-        weight
-      };
+    // Two links are the engine's lerp, whose one stored weight belongs to the second bone, leaving the remainder to the
+    // first. Three and four store a weight per bone but the last, which takes whatever the stored ones did not claim.
+    let weights: Vec<f32> = match links_count {
+      2 => vec![1.0 - stored[0], stored[0]],
+      _ => stored
+        .iter()
+        .copied()
+        .chain([1.0 - stored.iter().sum::<f32>()])
+        .collect(),
+    };
 
-      links.push(OgfVertexLink { bone, weight });
-    }
+    let links: Vec<OgfVertexLink> = weights
+      .into_iter()
+      .enumerate()
+      .map(|(index, weight)| OgfVertexLink {
+        bone: T::read_u16(&vertex[index * 2..index * 2 + 2]),
+        weight,
+      })
+      .collect();
 
     Self::read_geometry::<T>(
       &vertex[bones_size..bones_size + Self::VECTORS_SIZE],
@@ -194,19 +203,18 @@ mod tests {
   }
 
   #[test]
-  fn reads_a_two_link_vertex_and_reconstructs_the_last_weight() {
+  fn gives_a_two_link_vertexs_stored_weight_to_its_second_bone() {
+    // `vertBoned2W` is blended as `lerp(P0, P1, w)`, so the stored weight is the second bone's and the first takes the
+    // remainder - the opposite of the three and four link layouts. Reading it the uniform way still sums to one, which
+    // is why this asserts which bone got which weight rather than the total.
     let bytes: Vec<u8> = linked_vertex_bytes(&[3, 9], &[0.25]);
 
     let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 2);
 
     assert_geometry(&vertex);
     assert_eq!(vertex.links.len(), 2);
-    assert_eq!((vertex.links[0].bone, vertex.links[0].weight), (3, 0.25));
-    assert_eq!(
-      (vertex.links[1].bone, vertex.links[1].weight),
-      (9, 0.75),
-      "Expect the unstored final weight to complete the set"
-    );
+    assert_eq!((vertex.links[0].bone, vertex.links[0].weight), (3, 0.75));
+    assert_eq!((vertex.links[1].bone, vertex.links[1].weight), (9, 0.25));
   }
 
   #[test]

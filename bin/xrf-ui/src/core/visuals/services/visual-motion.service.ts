@@ -9,6 +9,15 @@ import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
+/**
+ * Rates playback is allowed to run at.
+ *
+ * A floor of one frame a second because zero is what pause is for, and a ceiling of a hundred and twenty because a
+ * `setInterval` cannot keep a shorter period and a viewer has nothing to learn from frames it cannot see.
+ */
+const MIN_FPS: number = 1;
+const MAX_FPS: number = 120;
+
 /** A posed motion: what the backend said it is, and every frame's bone transforms. */
 export interface IPosedMotion {
   bake: VisualMotionBake;
@@ -54,6 +63,16 @@ export class VisualMotionService {
 
   @Observable()
   public isLooping: boolean = true;
+
+  /**
+   * Frames a second playback advances at, which starts at the rate the format samples.
+   *
+   * A viewing aid rather than a property of the motion: the reported duration stays what the motion is, and playing it
+   * at another rate only changes how long looking at it takes. Slowing a two second animation down is the only way to
+   * see what a foot does in three frames.
+   */
+  @Observable()
+  public fps: number = VisualMotionService.SAMPLE_FPS;
 
   /**
    * @returns Frames the posed motion holds, or zero when nothing is posed.
@@ -112,15 +131,23 @@ export class VisualMotionService {
   }
 
   /**
-   * Poses one motion and starts it.
+   * Poses one motion and shows it from its first frame.
+   *
+   * Playback carries over: a motion picked while another was playing plays, and one picked while another was paused
+   * stays paused on frame zero, so comparing two motions frame by frame does not mean pausing each one again. The first
+   * pick of a session plays, because picking a motion with nothing posed is asking to see it move.
    *
    * @param name - Motion to pose, as `list` reported it.
    */
   @BoundAction()
   public async open(name: string): Promise<void> {
+    const resume: boolean = this.isPlaying || !this.posed.value;
     const request: number = runInAction(() => {
       this.requestId += 1;
       this.stopTicker();
+      // Cleared rather than left standing: `play` below is a no-op while this says playback is already running, which
+      // would leave the controls claiming to play a motion whose ticker was just stopped.
+      this.isPlaying = false;
       this.posed = this.posed.asLoading();
       this.frame = 0;
 
@@ -148,7 +175,9 @@ export class VisualMotionService {
         this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
       });
 
-      this.play();
+      if (resume) {
+        this.play();
+      }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -181,7 +210,21 @@ export class VisualMotionService {
     }
 
     this.isPlaying = true;
-    this.ticker = setInterval(() => this.advance(), 1000 / VisualMotionService.SAMPLE_FPS);
+    this.startTicker();
+  }
+
+  /**
+   * Plays at another rate, restarting the ticker so a change is felt without pressing play again.
+   *
+   * @param fps - Frames a second, clamped to something a `setInterval` can actually keep up with.
+   */
+  @BoundAction()
+  public setFps(fps: number): void {
+    this.fps = Math.max(MIN_FPS, Math.min(fps, MAX_FPS));
+
+    if (this.isPlaying) {
+      this.startTicker();
+    }
   }
 
   @BoundAction()
@@ -195,7 +238,13 @@ export class VisualMotionService {
     this.isLooping = !this.isLooping;
   }
 
-  /** Drops the posed motion and stops playing, which is what leaving or opening another model means. */
+  /**
+   * Drops the posed motion and stops playing, which is what leaving or opening another model means.
+   *
+   * The playback rate survives: it is a preference about looking at motions rather than a property of the one that was
+   * open. The list does not, because it named the previous model's motions; whoever shows them lists again for the
+   * model that replaced it.
+   */
   @BoundAction()
   public clear(): void {
     this.stopTicker();
@@ -229,6 +278,13 @@ export class VisualMotionService {
     }
 
     this.frame += 1;
+  }
+
+  /** (Re)starts the frame ticker at the current rate, replacing any ticker already running. */
+  private startTicker(): void {
+    this.stopTicker();
+
+    this.ticker = setInterval(() => this.advance(), 1_000 / this.fps);
   }
 
   private stopTicker(): void {

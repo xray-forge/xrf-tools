@@ -23,6 +23,7 @@ import { createRoots } from "@/core/assets/lib";
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
+import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -138,13 +139,17 @@ export class ArchivesService {
   }
 
   /**
-   * Releases the archive project when the editor deactivates.
+   * Releases the archive project when the editor deactivates, and the model its preview opened.
+   *
+   * Previewing an archived `.ogf` goes through the shared `visuals_open_model`, which parks the model in the backend's
+   * one visual selection.
    */
   @OnDeactivation()
   public onDeactivation(): void {
     this.log.info("Deactivating, release archive project");
 
     releaseEditorProject(archivesCommands.closeProject);
+    releaseEditorProject(visualsCommands.closeModel);
   }
 
   /**
@@ -202,6 +207,9 @@ export class ArchivesService {
 
     try {
       await archivesCommands.closeProject();
+
+      // Closing the project takes the preview off screen, so the model it parked in the backend goes with it.
+      releaseEditorProject(visualsCommands.closeModel);
 
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 

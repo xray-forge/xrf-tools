@@ -143,3 +143,33 @@ describe("ArchivesService file selection", () => {
     expect(service.selectedFile).toStrictEqual(descriptor);
   });
 });
+
+describe("ArchivesService visual preview lifecycle", () => {
+  it("drops the model its preview parked when the project closes", async () => {
+    // The preview goes through the shared visuals session, so a model left selected there is the one the visuals
+    // explorer restores next time it is opened - which is the leak issue 0010 records.
+    const invoked: Array<string> = [];
+
+    setMockInvokeResponses({
+      ["plugin:archives|close_project"]: () => void invoked.push("plugin:archives|close_project"),
+      ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
+    });
+
+    await mockArchivesService([]).closeProject();
+
+    expect(invoked).toEqual(["plugin:archives|close_project", "plugin:visuals|close_model"]);
+  });
+
+  it("drops it when the application deactivates too", () => {
+    const invoked: Array<string> = [];
+
+    setMockInvokeResponses({
+      ["plugin:archives|close_project"]: () => void invoked.push("plugin:archives|close_project"),
+      ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
+    });
+
+    mockArchivesService([]).onDeactivation();
+
+    expect(invoked).toEqual(["plugin:archives|close_project", "plugin:visuals|close_model"]);
+  });
+});

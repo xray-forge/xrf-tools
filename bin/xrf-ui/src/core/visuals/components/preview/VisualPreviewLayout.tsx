@@ -134,7 +134,7 @@ export function VisualPreviewLayout({
           onBrowse={onBrowse}
         />
       }
-      footer={hasMotions ? <VisualPreviewAnimationBar /> : undefined}
+      footer={hasMotions ? <VisualPreviewAnimationBar model={model} /> : undefined}
     >
       <Box
         data-testid={dataTestId}

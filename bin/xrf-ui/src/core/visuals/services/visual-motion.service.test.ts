@@ -61,6 +61,7 @@ describe("VisualMotionService", () => {
     expect(isObservableProp(service, "frame")).toBe(true);
     expect(isObservableProp(service, "isPlaying")).toBe(true);
     expect(isObservableProp(service, "isLooping")).toBe(true);
+    expect(isObservableProp(service, "fps")).toBe(true);
     expect(isComputedProp(service, "frameCount")).toBe(true);
     expect(isComputedProp(service, "floatsPerBone")).toBe(true);
   });
@@ -205,5 +206,105 @@ describe("VisualMotionService", () => {
     expect(service.frame).toBe(0);
     expect(service.isPlaying).toBe(false);
     expect(service.floatsPerBone).toBe(0);
+  });
+});
+
+describe("VisualMotionService playback state", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("plays the first motion picked, with nothing posed before it", async () => {
+    mockMotion();
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.open("norm_walk_fwd_1");
+
+    expect(service.isPlaying).toBe(true);
+    expect(service.frame).toBe(0);
+  });
+
+  it("keeps playing through a change of motion, from its first frame", async () => {
+    mockMotion();
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.open("norm_walk_fwd_1");
+    jest.advanceTimersByTime(1000 / 30);
+    expect(service.frame).toBe(1);
+
+    await service.open("norm_idle_0");
+
+    expect(service.isPlaying).toBe(true);
+    expect(service.frame).toBe(0);
+
+    // The ticker really is the new motion's: a stale one would leave this frame where the old motion had reached.
+    jest.advanceTimersByTime(1000 / 30);
+    expect(service.frame).toBe(1);
+  });
+
+  it("stays paused through a change of motion", async () => {
+    // Comparing two motions frame by frame should not mean pausing each one again.
+    mockMotion();
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.open("norm_walk_fwd_1");
+    service.pause();
+
+    await service.open("norm_idle_0");
+
+    expect(service.isPlaying).toBe(false);
+    expect(service.frame).toBe(0);
+
+    jest.advanceTimersByTime((1000 / 30) * 5);
+    expect(service.frame).toBe(0);
+  });
+
+  it("advances at the rate it is set to", async () => {
+    mockMotion(mockBake({ frameCount: 100 }), new Float32Array(100 * BONES * FLOATS).buffer as ArrayBuffer);
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.open("norm_walk_fwd_1");
+    service.setFps(10);
+
+    expect(service.fps).toBe(10);
+
+    // A tenth of a second is three frames at thirty and one at ten, so the rate is what moved rather than the clock.
+    jest.advanceTimersByTime(100);
+    expect(service.frame).toBe(1);
+  });
+
+  it("keeps the rate inside what playback can honour", () => {
+    const { service } = mockInjectedService(VisualMotionService);
+
+    service.setFps(0);
+    expect(service.fps).toBe(1);
+
+    service.setFps(1000);
+    expect(service.fps).toBe(120);
+  });
+
+  it("keeps the rate across a model change, and drops the list it named", async () => {
+    // The rate is a preference about looking at motions; the list belongs to the model that was open.
+    mockMotion();
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.list();
+    service.setFps(15);
+    await service.open("norm_walk_fwd_1");
+
+    service.clear();
+
+    expect(service.fps).toBe(15);
+    expect(service.motions.value).toEqual([]);
   });
 });
