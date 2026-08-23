@@ -39,7 +39,7 @@ export function VisualPanelRow({
         {label}
       </Typography>
 
-      <Typography variant={"body2"} sx={{ textAlign: "right", wordBreak: "break-all" }}>
+      <Typography component={"span"} variant={"body2"} sx={{ textAlign: "right", wordBreak: "break-all" }}>
         {value}
       </Typography>
     </Box>

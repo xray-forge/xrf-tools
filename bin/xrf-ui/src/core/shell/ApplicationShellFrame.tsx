@@ -54,7 +54,7 @@ export function ApplicationShellFrame({
   const applicationRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "right");
   const rightPanels: Array<IEditorPanel> = [...applicationRightPanels, NOTIFICATIONS_PANEL];
 
-  const leftSlot: IPanelSlot = usePanelSlot("left", leftPanels, applicationPath);
+  const leftSlot: IPanelSlot = usePanelSlot("left", leftPanels, application?.id);
   const rightSlot: IPanelSlot = usePanelSlot("right", rightPanels, "global");
 
   const onError = useCallback((props: IErrorBoundaryFallbackProps) => <ApplicationCrash {...props} />, []);

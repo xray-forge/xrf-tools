@@ -139,6 +139,9 @@ export function createApplicationTheme(): Theme {
       MuiButton: {
         defaultProps: { disableElevation: true },
       },
+      MuiDialog: {
+        defaultProps: { closeAfterTransition: false },
+      },
       MuiTextField: {
         defaultProps: { size: "small" },
       },
