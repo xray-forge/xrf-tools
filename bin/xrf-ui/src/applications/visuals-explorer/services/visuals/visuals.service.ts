@@ -95,7 +95,7 @@ export class VisualsService {
    * comes back showing the same model rather than an empty picker.
    */
   @OnProvision()
-  public async onProvision(): Promise<void> {
+  public async onProvision(/* todo: Respect strict mode and races here. */): Promise<void> {
     try {
       const selected: Nullable<SelectedVisualDescription> = await visualsCommands.getModel();
 
@@ -115,6 +115,8 @@ export class VisualsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
+    this.log.info("Deactivating and disposing visuals");
+
     this.loadService.clear();
     releaseEditorProject(visualsCommands.closeModel);
   }

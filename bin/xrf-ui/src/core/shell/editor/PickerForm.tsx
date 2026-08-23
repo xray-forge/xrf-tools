@@ -18,7 +18,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
-import { DELAYED_REVEAL_SX } from "@/core/ui/layout/delayed-reveal";
+import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { Maybe } from "@/lib/types/general";
 
 /** Wide enough for a full windows path at the monospace size the picker rows use. */
@@ -180,7 +180,9 @@ export function PickerForm({
                   variant={"contained"}
                   disabled={isSubmitDisabled || isLoading}
                   startIcon={
-                    isLoading ? <CircularProgress size={16} color={"inherit"} sx={DELAYED_REVEAL_SX} /> : undefined
+                    isLoading ? (
+                      <CircularProgress size={16} color={"inherit"} sx={DELAYED_REVEAL_SHORT_SX} />
+                    ) : undefined
                   }
                 >
                   {submitLabel}

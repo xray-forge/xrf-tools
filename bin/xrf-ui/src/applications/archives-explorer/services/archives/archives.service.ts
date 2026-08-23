@@ -26,8 +26,9 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
+import { formatDuration } from "@/lib/format/duration";
 import { createLoadable, Loadable } from "@/lib/loadable";
-import { Logger } from "@/lib/logging";
+import { Logger, Timer } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
@@ -137,7 +138,7 @@ export class ArchivesService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating");
+    this.log.info("Deactivating, release archive project");
 
     releaseEditorProject(archivesCommands.closeProject);
   }
@@ -152,6 +153,8 @@ export class ArchivesService {
 
   @BoundAction()
   public async openProject(path: string): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Opening archives project:", path);
 
     try {
@@ -160,11 +163,11 @@ export class ArchivesService {
 
       const response: ArchiveProject = await archivesCommands.openProject(path);
 
-      this.log.info("Archives project opened");
+      this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
 
       runInAction(() => (this.project = createLoadable(response, false)));
     } catch (error: unknown) {
-      this.log.error("Failed to open archives project:", error);
+      this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
       runInAction(() => (this.project = createLoadable(null, false, transformError(error))));
 
@@ -179,17 +182,21 @@ export class ArchivesService {
 
   @BoundAction()
   public async closeProject(): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Closing existing archives project");
 
     try {
       await archivesCommands.closeProject();
+
+      this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 
       runInAction(() => {
         this.clearFileSelection();
         this.project = createLoadable(null);
       });
     } catch (error: unknown) {
-      this.log.error("Failed to close archives project:", error);
+      this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
 
       throw transformError(error);
     }
@@ -237,12 +244,16 @@ export class ArchivesService {
    */
   @BoundAction()
   public async extractFile(descriptor: ArchiveFileDescriptor, destination: string): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Extracting archive file:", descriptor.name, destination);
 
     try {
       this.operation = createLoadable(null, true);
 
       await archivesCommands.extractFile(descriptor.name, destination);
+
+      this.log.info("Archive file extracted in:", formatDuration(timer.elapsed()));
 
       runInAction(() => (this.operation = createLoadable({ kind: "extract-file", destination })));
 
@@ -253,7 +264,7 @@ export class ArchivesService {
         title: `Extracted ${descriptor.name}`,
       });
     } catch (error: unknown) {
-      this.log.error("Failed to extract archive file:", error);
+      this.log.error("Failed to extract archive file after:", formatDuration(timer.elapsed()), error);
 
       runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
 
@@ -277,12 +288,16 @@ export class ArchivesService {
    */
   @BoundAction()
   public async extractArchiveDirectory(prefix: string, destination: string): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Extracting archive directory:", prefix || "<root>", destination);
 
     try {
       this.operation = createLoadable(null, true);
 
       const result: ArchiveExtractDirectoryResult = await archivesCommands.extractDirectory(prefix, destination);
+
+      this.log.info("Archive directory extracted in:", formatDuration(timer.elapsed()));
 
       runInAction(() => (this.operation = createLoadable({ kind: "extract-directory", result })));
 
@@ -301,7 +316,7 @@ export class ArchivesService {
             : `Extracted ${extractedCount} file(s) from ${extractedFrom}`,
       });
     } catch (error: unknown) {
-      this.log.error("Failed to extract archive directory:", error);
+      this.log.error("Failed to extract archive directory after:", formatDuration(timer.elapsed()), error);
 
       runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
 
@@ -367,6 +382,7 @@ export class ArchivesService {
    */
   private async readContent(descriptor: ArchiveFileDescriptor, kind: TArchiveContent["kind"]): Promise<void> {
     const requestId: number = ++this.contentRequestId;
+    const timer: Timer = new Timer();
 
     this.log.info("Reading archive content:", kind, descriptor.name);
     this.content = createLoadable(null, true);
@@ -392,13 +408,15 @@ export class ArchivesService {
         return;
       }
 
+      this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
+
       runInAction(() => (this.content = createLoadable(content)));
     } catch (error: unknown) {
       if (requestId !== this.contentRequestId) {
         return;
       }
 
-      this.log.error("Failed to read archive content:", descriptor.name, error);
+      this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), descriptor.name, error);
 
       runInAction(() => (this.content = createLoadable(null, false, transformError(error))));
     }

@@ -17,8 +17,9 @@ import {
   toLoadableTextures,
 } from "@/core/visuals/lib/visual-texture";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { formatDuration } from "@/lib/format/duration";
 import { createLoadable, Loadable } from "@/lib/loadable";
-import { Logger } from "@/lib/logging";
+import { Logger, Timer } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /** A visual that is loaded: what it is, where it came from, and the views the scene draws. */
@@ -93,6 +94,8 @@ export class VisualLoadService {
    */
   @BoundAction()
   public async load(source: VisualSource, world: AssetWorldSpec): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Loading visual:", describeVisualSource(source));
 
     try {
@@ -105,11 +108,16 @@ export class VisualLoadService {
 
       const selected: SelectedVisualDescription = await visualsCommands.openModel(source, world);
 
+      this.log.info("Visual described in:", formatDuration(timer.lap()));
+
       await this.view(selected, request);
+
+      // Geometry only: the textures this started keep loading and report their own duration.
+      this.log.info("Visual loaded in:", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Load error:", transformed);
+      this.log.error("Load error after:", formatDuration(timer.elapsed()), transformed);
 
       runInAction(() => {
         this.visual = this.visual.asFailed(transformed, null);
@@ -145,17 +153,27 @@ export class VisualLoadService {
    * @param request - Request identity used to discard stale geometry.
    */
   private async view(selected: SelectedVisualDescription, request: number): Promise<void> {
+    const timer: Timer = new Timer();
+
     // The world the open used travels back with the description, so a geometry read after a reload searches what the
     // open searched rather than whatever the caller would name now.
     const buffer: ArrayBuffer = await visualsRawCommands.readGeometry(selected.source, selected.world);
 
     if (request !== this.requestId) {
-      this.log.info("Discarding geometry for a visual already moved past:", describeVisualSource(selected.source));
+      this.log.info(
+        "Discarding geometry for a visual already moved past after:",
+        formatDuration(timer.elapsed()),
+        describeVisualSource(selected.source)
+      );
 
       return;
     }
 
+    this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
+
     const views: IVisualModelViews = createVisualViews(selected.description, buffer);
+
+    this.log.info("Visual views built in:", formatDuration(timer.lap()));
 
     runInAction(() => {
       this.visual = this.visual.asReady({ selected, views });
@@ -184,9 +202,13 @@ export class VisualLoadService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info(`Loading ${loadable.length} textures for:`, describeVisualSource(selected.source));
 
     await Promise.all(loadable.map((texture) => this.loadTexture(texture, selected.world, request)));
+
+    this.log.info(`Loaded ${loadable.length} textures in:`, formatDuration(timer.elapsed()));
   }
 
   /**

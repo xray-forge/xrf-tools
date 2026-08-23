@@ -79,13 +79,11 @@ export class VisualsBrowseService {
 
   /**
    * Drop the browsed world on the way out of the application.
-   *
-   * The counterpart of the selection being closed on deactivation: leaving means closing in place, so coming back must
-   * not show a tree beside a model the backend has already dropped. A reload runs no deactivation, which is what lets
-   * the session above survive one.
    */
   @OnDeactivation()
   public onDeactivation(): void {
+    this.log.info("Deactivating and releasing the project");
+
     runInAction(() => {
       this.world = null;
       this.visuals = createLoadable([]);

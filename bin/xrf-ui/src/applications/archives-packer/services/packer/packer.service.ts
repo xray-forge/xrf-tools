@@ -7,7 +7,8 @@ import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-
 import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
 
@@ -191,6 +192,8 @@ export class PackerService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Importing config:", path);
 
     this.isBusy = true;
@@ -199,6 +202,8 @@ export class PackerService {
     try {
       const imported: ArchivePackConfig = await archivesCommands.importPackConfig(path, this.config);
 
+      this.log.info("Config imported in:", formatDuration(timer.elapsed()));
+
       runInAction(() => {
         this.config = imported;
         this.configPath = path;
@@ -206,7 +211,7 @@ export class PackerService {
         this.result = null;
       });
     } catch (error: unknown) {
-      this.log.error("Import error:", error);
+      this.log.error("Import error after:", formatDuration(timer.elapsed()), error);
 
       runInAction(() => (this.error = transformError(error).message));
     } finally {
@@ -227,6 +232,8 @@ export class PackerService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Exporting config:", path);
 
     this.isBusy = true;
@@ -234,6 +241,8 @@ export class PackerService {
 
     try {
       await archivesCommands.exportPackConfig(path, config);
+
+      this.log.info("Config exported in:", formatDuration(timer.elapsed()));
 
       runInAction(() => {
         this.configPath = path;
@@ -247,7 +256,7 @@ export class PackerService {
         title: "Exported packing configuration",
       });
     } catch (error: unknown) {
-      this.log.error("Export error:", error);
+      this.log.error("Export error after:", formatDuration(timer.elapsed()), error);
 
       runInAction(() => (this.error = transformError(error).message));
     } finally {
@@ -265,6 +274,8 @@ export class PackerService {
    */
   @BoundAction()
   public async pack(config: ArchivePackConfig): Promise<void> {
+    const timer: Timer = new Timer();
+
     this.log.info("Packing:", config.source);
 
     this.isBusy = true;
@@ -273,6 +284,8 @@ export class PackerService {
 
     try {
       const packed: ArchivePackResult = await archivesCommands.packDirectory(config);
+
+      this.log.info("Packed in:", formatDuration(timer.elapsed()), `(backend ${formatDuration(packed.duration)})`);
 
       runInAction(() => (this.result = packed));
 
@@ -285,7 +298,7 @@ export class PackerService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Pack error:", transformed);
+      this.log.error("Pack error after:", formatDuration(timer.elapsed()), transformed);
 
       runInAction(() => (this.error = transformed.message));
 
