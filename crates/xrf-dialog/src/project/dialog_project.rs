@@ -1,39 +1,47 @@
 use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
-use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_portable_path_string;
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayMountMode, XrayScopedVfs, XrayVfs};
 
 use crate::file::DialogFile;
 use crate::project::descriptor::{DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor};
-use crate::project::layout::{normalize, relative};
 use crate::project::mode::DialogProjectMode;
-use crate::project::roots::{DialogProjectOverrides, DialogProjectRoots};
+use crate::project::options::DialogProjectOptions;
 
-const XML_EXTENSION: &str = "xml";
-
-/// Filename prefix that marks a file as dialog data.
+/// Filename prefix that marks a logical path as dialog data.
 ///
 /// A gameplay directory holds `info_*.xml` and `npc_profile*.xml` beside the dialogs, so the
 /// extension alone would sweep files this reader does not model.
 const DIALOG_FILE_PREFIX: &str = "dialog";
+const XML_SUFFIX: &str = ".xml";
 
-/// One file the project holds, parsed, with where it came from.
+/// One file the project holds, parsed, with where the engine found it.
 #[derive(Debug)]
 pub struct DialogProjectFile {
-  path: PathBuf,
-  relative_path: String,
+  logical_path: String,
+  physical_path: Option<PathBuf>,
   file: DialogFile,
 }
 
 impl DialogProjectFile {
-  pub fn get_path(&self) -> &Path {
-    &self.path
+  /// The engine identity, which is how the project keys it.
+  pub fn get_logical_path(&self) -> &str {
+    &self.logical_path
   }
 
-  /// Path relative to the dialogs root, separator-normalised, which is how the index keys it.
-  pub fn get_relative_path(&self) -> &str {
-    &self.relative_path
+  /// The host path, when the winning mount is a loose directory.
+  ///
+  /// Absent for an archived winner, and that absence is the write guard: bytes inside a `.db` volume
+  /// cannot be edited in place.
+  pub fn get_physical_path(&self) -> Option<&Path> {
+    self.physical_path.as_deref()
+  }
+
+  /// Whether an edit could write this file back.
+  pub fn is_editable(&self) -> bool {
+    self.physical_path.is_some()
   }
 
   pub fn get_file(&self) -> &DialogFile {
@@ -41,125 +49,141 @@ impl DialogProjectFile {
   }
 }
 
-/// An open dialog project: both roots, and every dialog file under the first of them.
+/// An open dialog project: a mounted world, and every dialog file under its dialogs prefix.
 ///
-/// The parsed files are kept rather than re-read per selection, because their spans are what a later
-/// edit splices and re-parsing would hand out ranges into a string nobody still holds.
-#[derive(Debug)]
+/// Reads go through `xrf-vfs` rather than `std::fs`, because the engine does not see a disk. On a real
+/// installation `configs\gameplay\dialogs.xml` comes out of `db\configs`, and a reader reaching for
+/// the filesystem reports it absent instead of reading it.
+///
+/// The VFS is owned rather than borrowed, for the reason `LtxProject` owns its own: `XrayVfs` is not
+/// `Clone`, and the project outlives any one lookup. The parsed files are kept too, because their
+/// spans are what a later edit splices.
 pub struct DialogProject {
   mode: DialogProjectMode,
   root: PathBuf,
-  roots: DialogProjectRoots,
+  dialogs_prefix: String,
+  translations_prefix: String,
+  vfs: XrayVfs,
   files: Vec<DialogProjectFile>,
   findings: Vec<DialogFinding>,
 }
 
 impl DialogProject {
-  /// Open a project, reading every dialog file its dialogs root holds.
+  /// Open a project, reading every dialog file the mounted world exposes under its dialogs prefix.
   ///
   /// A file that cannot be read becomes a finding and the project still opens: refusing the whole
   /// tree over one bad file would make the editor unable to reach the file you opened it to fix.
   ///
   /// # Errors
   ///
-  /// Returns a not-found error when the dialogs root is absent or holds no dialog files. Both mean
-  /// the caller named the wrong place, and answering with an empty project would hide that.
-  pub fn open(root: &Path, mode: DialogProjectMode, overrides: &DialogProjectOverrides) -> XrfResult<Self> {
-    let roots: DialogProjectRoots = DialogProjectRoots::resolve(root, mode, overrides);
-    let dialogs_root: &Path = roots.get_dialogs();
+  /// Returns an error when the path cannot be mounted, and a not-found error when the mounted world
+  /// exposes no dialog files under the prefix. The second means the caller named the wrong place, and
+  /// answering with an empty project would hide that.
+  pub fn open_with_mode(mode: XrayMountMode, options: &DialogProjectOptions) -> XrfResult<Self> {
+    Self::from_vfs(XrayVfs::open(mode, &options.root)?, options)
+  }
 
-    if !dialogs_root.exists() {
+  /// Open a project over a world somebody else mounted.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the world exposes no dialog files under the dialogs prefix.
+  pub fn from_vfs(vfs: XrayVfs, options: &DialogProjectOptions) -> XrfResult<Self> {
+    let dialogs_prefix: String = options.get_dialogs_prefix().to_owned();
+    let scope: XrayLookupScope = XrayLookupScope::all().with_prefix(&dialogs_prefix)?;
+    let assets: Vec<XrayAsset> = Self::list_dialog_assets(&vfs.scoped(&scope));
+
+    if assets.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
-        "Dialogs root does not exist: {}",
-        dialogs_root.display()
-      )));
-    }
-
-    let paths: Vec<PathBuf> = Self::list_dialog_paths(dialogs_root);
-
-    if paths.is_empty() {
-      return Err(XrfError::new_not_found_error(format!(
-        "No dialog files under {}",
-        dialogs_root.display()
+        "No dialog files under '{}' in {}",
+        dialogs_prefix,
+        options.root.display()
       )));
     }
 
     let mut files: Vec<DialogProjectFile> = Vec::new();
     let mut findings: Vec<DialogFinding> = Vec::new();
 
-    for path in paths {
-      let relative_path: String = relative(dialogs_root, &path);
+    for asset in assets {
+      let logical_path: String = asset.get_logical_path().as_str().to_owned();
 
-      match DialogFile::read_from_path(&path) {
+      match Self::read_asset(&vfs.scoped(&scope), &logical_path) {
         Ok(file) => {
           for issue in file.get_issues() {
             findings.push(DialogFinding::new(
               "dialog.schema",
-              Some(relative_path.clone()),
+              Some(logical_path.clone()),
               issue.to_string(),
             ));
           }
 
           files.push(DialogProjectFile {
-            path,
-            relative_path,
+            logical_path,
+            physical_path: asset.to_physical_path(),
             file,
           });
         }
         Err(error) => findings.push(DialogFinding::new(
           "dialog.unreadable",
-          Some(relative_path),
+          Some(logical_path),
           error.to_string(),
         )),
       }
     }
 
     Ok(Self {
-      mode,
-      root: root.to_path_buf(),
-      roots,
+      mode: options.mode,
+      root: options.root.clone(),
+      dialogs_prefix,
+      translations_prefix: options.get_translations_prefix().to_owned(),
+      vfs,
       files,
       findings,
     })
   }
 
-  /// Every dialog file under a root, in a stable order.
+  /// Every dialog asset a scoped world exposes, in logical-path order.
   ///
-  /// Sorted because `WalkDir` follows the filesystem, and an index is only comparable across runs and
-  /// machines if it does not.
-  pub fn list_dialog_paths(root: &Path) -> Vec<PathBuf> {
-    let mut paths: Vec<PathBuf> = WalkDir::new(root)
+  /// Sorted because mount order is not name order, and an index is only comparable across runs and
+  /// machines if it depends on neither.
+  pub fn list_dialog_assets(scoped: &XrayScopedVfs) -> Vec<XrayAsset> {
+    let mut assets: Vec<XrayAsset> = scoped
+      .list_entries()
       .into_iter()
-      .filter_map(Result::ok)
-      .filter(|entry| entry.file_type().is_file())
-      .map(|entry| entry.into_path())
-      .filter(|path| Self::is_dialog_path(path))
+      .filter(|asset| Self::is_dialog_logical_path(asset.get_logical_path().as_str()))
       .collect();
 
-    paths.sort();
+    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
-    paths
+    assets
   }
 
-  /// Whether a path names dialog data, by extension and filename prefix.
-  pub fn is_dialog_path(path: &Path) -> bool {
-    let is_xml: bool = path
-      .extension()
-      .is_some_and(|extension| extension.eq_ignore_ascii_case(XML_EXTENSION));
+  /// Whether a logical path names dialog data, by its file name.
+  pub fn is_dialog_logical_path(logical_path: &str) -> bool {
+    let name: &str = logical_path.rsplit('\\').next().unwrap_or(logical_path);
 
-    is_xml
-      && path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| name.to_ascii_lowercase().starts_with(DIALOG_FILE_PREFIX))
+    name.ends_with(XML_SUFFIX) && name.starts_with(DIALOG_FILE_PREFIX)
   }
 
   pub fn get_mode(&self) -> DialogProjectMode {
     self.mode
   }
 
-  pub fn get_roots(&self) -> &DialogProjectRoots {
-    &self.roots
+  pub fn get_root(&self) -> &Path {
+    &self.root
+  }
+
+  pub fn get_dialogs_prefix(&self) -> &str {
+    &self.dialogs_prefix
+  }
+
+  pub fn get_translations_prefix(&self) -> &str {
+    &self.translations_prefix
+  }
+
+  /// The mounted world, for a caller that needs to read something beside the dialogs.
+  pub fn get_vfs(&self) -> &XrayVfs {
+    &self.vfs
   }
 
   pub fn get_files(&self) -> &[DialogProjectFile] {
@@ -170,14 +194,25 @@ impl DialogProject {
     &self.findings
   }
 
-  /// The file at a path relative to the dialogs root.
-  pub fn find_file(&self, relative_path: &str) -> Option<&DialogProjectFile> {
-    self.files.iter().find(|file| file.get_relative_path() == relative_path)
+  /// The file at a logical path.
+  pub fn find_file(&self, logical_path: &str) -> Option<&DialogProjectFile> {
+    self
+      .files
+      .iter()
+      .find(|file| file.get_logical_path().eq_ignore_ascii_case(logical_path))
   }
 
   /// Total dialogs across every file the project read.
   pub fn sum_dialogs(&self) -> usize {
     self.files.iter().map(|file| file.get_file().get_dialogs().len()).sum()
+  }
+
+  /// Whether every file the project holds could be written back.
+  ///
+  /// False as soon as one winner is archived, which is what stops an editing session that could only
+  /// half succeed. `xrf-ltx` draws the same line between its rewrite and its read-only check.
+  pub fn is_editable(&self) -> bool {
+    self.files.iter().all(DialogProjectFile::is_editable)
   }
 
   /// The project as it crosses the wire: the index, not the phrases.
@@ -186,9 +221,10 @@ impl DialogProject {
 
     for entry in &self.files {
       files.insert(
-        entry.get_relative_path().to_owned(),
+        entry.get_logical_path().to_owned(),
         DialogFileDescriptor {
-          path: normalize(entry.get_path()),
+          physical_path: entry.get_physical_path().map(to_portable_path_string),
+          is_editable: entry.is_editable(),
           encoding: String::from(entry.get_file().get_encoding().name()),
           dialogs: entry
             .get_file()
@@ -206,11 +242,16 @@ impl DialogProject {
 
     DialogProjectDescriptor {
       mode: self.mode,
-      root: normalize(&self.root),
-      dialogs_root: normalize(self.roots.get_dialogs()),
-      translations_root: normalize(self.roots.get_translations()),
+      root: to_portable_path_string(&self.root),
+      dialogs_prefix: self.dialogs_prefix.clone(),
+      translations_prefix: self.translations_prefix.clone(),
+      is_editable: self.is_editable(),
       files,
       findings: self.findings.clone(),
     }
+  }
+
+  fn read_asset(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&scoped.read(logical_path)?)
   }
 }

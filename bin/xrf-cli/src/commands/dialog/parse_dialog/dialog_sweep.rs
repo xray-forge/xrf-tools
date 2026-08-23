@@ -1,11 +1,17 @@
-//! Reads every dialog file under a path and accounts for what came out.
+//! Reads every dialog file a mounted world exposes and accounts for what came out.
+//!
+//! Lives in the CLI rather than in `xrf-dialog` so that crate stays a reader with no reporting
+//! surface. The census is the point: it is what says whether the schema the reader models is the
+//! schema the shipped files are written in.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
+use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayMountMode, XrayScopedVfs, XrayVfs};
 
 /// What a sweep counted, beside what it found.
 ///
@@ -16,6 +22,7 @@ use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 pub struct DialogSweepCensus {
   pub files: usize,
   pub unreadable_files: usize,
+  pub archived_files: usize,
   pub dialogs: usize,
   pub phrases: usize,
   pub dialogs_without_phrases: usize,
@@ -45,43 +52,66 @@ pub struct DialogSweepResult {
   pub report: Report,
 }
 
+/// What to mount, and where to look inside it.
 pub struct DialogSweep<'a> {
   root: &'a Path,
+  source: XrayMountMode,
+  prefix: Option<&'a str>,
 }
 
 impl<'a> DialogSweep<'a> {
-  pub fn new(root: &'a Path) -> Self {
-    Self { root }
+  pub fn new(root: &'a Path, source: XrayMountMode, prefix: Option<&'a str>) -> Self {
+    Self { root, source, prefix }
   }
 
-  /// Read every dialog file the path covers.
+  /// Read every dialog file the mounted world exposes.
   ///
-  /// A file that cannot be read is recorded and the sweep continues: the point of a sweep over four
+  /// Reads through the VFS, so an installation sweeps as readily as a loose tree: on a real game the
+  /// dialogs come out of `db\configs`, and a reader reaching for the filesystem reports them absent.
+  ///
+  /// A file that cannot be read is recorded and the sweep continues: the point of sweeping several
   /// reference trees is the tally, and stopping at the first unreadable file would never produce one.
-  pub fn run(&self) -> DialogSweepResult {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the path cannot be mounted, or when the prefix is not a logical path.
+  pub fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
+
+    let vfs: XrayVfs = XrayVfs::open(self.source, self.root)?;
+    let scope: XrayLookupScope = match self.prefix {
+      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
+      None => XrayLookupScope::all(),
+    };
+    let scoped: XrayScopedVfs = vfs.scoped(&scope);
 
     let mut census: DialogSweepCensus = DialogSweepCensus::default();
     let mut read_findings: Vec<Finding> = Vec::new();
     let mut schema_findings: Vec<Finding> = Vec::new();
 
-    for path in self.dialog_paths() {
+    for asset in DialogProject::list_dialog_assets(&scoped) {
+      let logical_path: &str = asset.get_logical_path().as_str();
+
       census.files += 1;
 
-      match DialogFile::read_from_path(&path) {
+      if asset.to_physical_path().is_none() {
+        census.archived_files += 1;
+      }
+
+      match Self::read(&scoped, logical_path) {
         Ok(file) => {
           DialogSweepCensus::count(&mut census.encodings, file.get_encoding().name());
           Self::census_file(&mut census, &file);
 
           for issue in file.get_issues() {
-            schema_findings.push(Self::new_issue_finding(&path, issue));
+            schema_findings.push(Self::new_issue_finding(&asset, issue));
           }
         }
         Err(error) => {
           census.unreadable_files += 1;
           read_findings.push(Finding::new(
             Self::rule("unreadable"),
-            Some(path.display().to_string()),
+            Some(logical_path.to_owned()),
             error.to_string(),
           ));
         }
@@ -90,7 +120,7 @@ impl<'a> DialogSweep<'a> {
 
     let duration: Duration = started.elapsed();
 
-    // Nothing swept is not a pass. A mistyped path walks no files and produces no findings, and
+    // Nothing swept is not a pass. A mistyped path mounts an empty world and produces no findings, and
     // reporting that as success is how a sweep gets wired into CI and silently checks nothing.
     let status = |is_valid: bool| -> Status {
       if census.files == 0 {
@@ -100,7 +130,7 @@ impl<'a> DialogSweep<'a> {
       }
     };
 
-    DialogSweepResult {
+    Ok(DialogSweepResult {
       report: Report::new(vec![
         CheckReport::new(
           Self::check("read"),
@@ -117,19 +147,11 @@ impl<'a> DialogSweep<'a> {
       ]),
       census,
       duration,
-    }
+    })
   }
 
-  /// Every dialog file the sweep covers: one named file, or every dialog XML under a directory.
-  ///
-  /// Discovery belongs to the crate, so the sweep and a project open agree on what a dialog file is.
-  /// A named file is taken as given, so a caller can read a file the filter would not have picked up.
-  fn dialog_paths(&self) -> Vec<PathBuf> {
-    if self.root.is_file() {
-      return vec![self.root.to_path_buf()];
-    }
-
-    DialogProject::list_dialog_paths(self.root)
+  fn read(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&scoped.read(logical_path)?)
   }
 
   fn census_file(census: &mut DialogSweepCensus, file: &DialogFile) {
@@ -183,7 +205,7 @@ impl<'a> DialogSweep<'a> {
   }
 
   /// Turn a reader issue into a finding, keyed by the rule that would judge it.
-  fn new_issue_finding(path: &Path, issue: &DialogParseIssue) -> Finding {
+  fn new_issue_finding(asset: &XrayAsset, issue: &DialogParseIssue) -> Finding {
     let rule: &str = match issue.get_kind() {
       DialogParseIssueKind::UnknownElement => "unknown-element",
       DialogParseIssueKind::UnknownAttribute => "unknown-attribute",
@@ -191,7 +213,11 @@ impl<'a> DialogSweep<'a> {
       DialogParseIssueKind::InvalidPriority => "invalid-priority",
     };
 
-    Finding::new(Self::rule(rule), Some(path.display().to_string()), issue.to_string())
+    Finding::new(
+      Self::rule(rule),
+      Some(asset.get_logical_path().as_str().to_owned()),
+      issue.to_string(),
+    )
   }
 
   fn check(id: &str) -> CheckId {

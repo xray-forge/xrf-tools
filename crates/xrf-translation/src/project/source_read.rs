@@ -1,8 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use walkdir::{DirEntry, WalkDir};
-use xrf_error::{XrfError, XrfResult};
-
 use crate::json;
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
@@ -10,10 +7,13 @@ use crate::project::constants::{LANGUAGE_NEUTRAL, MULTILANGUAGE};
 use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode,
 };
-use crate::project::layout::{normalize, relative};
+use crate::project::layout::relative;
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 use crate::xml;
 use crate::xml::read::read_string_table;
+use walkdir::{DirEntry, WalkDir};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_portable_path_string;
 
 /// Read an XRF translations source tree.
 ///
@@ -73,7 +73,7 @@ pub fn read_source<P: AsRef<Path>>(root: P) -> XrfResult<TranslationProjectDescr
 }
 
 fn merge_json(root: &Path, path: &Path, descriptor: &mut TranslationProjectDescriptor) {
-  let subject: String = normalize(path);
+  let subject: String = to_portable_path_string(path);
 
   // The per-file reader stays strict because the build and the verifier rely on it. Its refusal is
   // caught here instead, so one unreadable file costs its own strings and not the whole project.
@@ -103,7 +103,7 @@ fn merge_json(root: &Path, path: &Path, descriptor: &mut TranslationProjectDescr
 }
 
 fn merge_xml(root: &Path, path: &Path, descriptor: &mut TranslationProjectDescriptor) {
-  let subject: String = normalize(path);
+  let subject: String = to_portable_path_string(path);
 
   // No language suffix means the build copies this file to every language, so presenting it as
   // English - which a filename fallback would do - would show a change to all of them as one.

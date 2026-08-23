@@ -1,18 +1,17 @@
 use std::fs::{self, DirEntry};
 use std::path::{Path, PathBuf};
 
-use xrf_error::XrfResult;
-
 use crate::language::TranslationLanguage;
 use crate::project::constants::{MAP_DESC_DIRECTORY, OPENXRAY_XML};
 use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode,
 };
-use crate::project::layout::normalize;
 use crate::types::{TranslationEntry, TranslationVariant};
 use crate::xml;
 use crate::xml::encoding::read_decoded;
 use crate::xml::read::read_string_table;
+use xrf_error::XrfResult;
+use xrf_utils::to_portable_path_string;
 
 /// Read a `text/` directory whose subdirectories are languages.
 ///
@@ -72,7 +71,7 @@ pub fn read_gamedata<P: AsRef<Path>>(root: P) -> XrfResult<TranslationProjectDes
 }
 
 fn merge_file(path: &Path, name: &str, language: &str, descriptor: &mut TranslationProjectDescriptor) {
-  let subject: String = normalize(path);
+  let subject: String = to_portable_path_string(path);
 
   let entries: Vec<(String, String)> = match read_string_table(path) {
     Ok(entries) => entries,
@@ -145,7 +144,7 @@ fn discover_languages(root: &Path, findings: &mut Vec<TranslationFinding>) -> Xr
     if TranslationLanguage::from_str_single(&name).is_err() {
       findings.push(TranslationFinding::new(
         "translations.unknown-language",
-        Some(normalize(&entry.path())),
+        Some(to_portable_path_string(&entry.path())),
         format!("'{name}' is a language the game loads but XRF does not build"),
       ));
     }

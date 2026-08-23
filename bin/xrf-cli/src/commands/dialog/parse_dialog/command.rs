@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
+use xrf_vfs::XrayMountMode;
 
 use crate::commands::dialog::parse_dialog::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
@@ -25,11 +26,26 @@ impl GenericCommand for ParseDialogCommand {
       .about("Command to read dialog xml and report what it holds")
       .arg(
         Arg::new("path")
-          .help("Path to a dialog xml file or a directory to sweep")
+          .help("Path to a game installation, a gamedata tree, or any root holding dialog xml")
           .short('p')
           .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("source")
+          .help(
+            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, installation requires one, containing-installation searches parent directories for one",
+          )
+          .long("source")
+          .default_value("containing-installation")
+          .value_parser(["auto", "directory", "installation", "containing-installation"]),
+      )
+      .arg(
+        Arg::new("prefix")
+          .help("Limit to one logical subtree, such as configs\\gameplay")
+          .long("prefix")
+          .value_parser(value_parser!(String)),
       )
       .arg(
         Arg::new("report")
@@ -74,15 +90,17 @@ impl GenericCommand for ParseDialogCommand {
 
     let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
 
-    // Checked before sweeping rather than inferred from an empty result: a mistyped path and a
-    // directory that genuinely holds no dialogs are different problems and deserve different words.
-    if !path.exists() {
-      return Err(XrfError::new_not_found_error(format!("Path does not exist: {}", path.display())).into());
-    }
+    let source: XrayMountMode = XrayMountMode::try_from(
+      matches
+        .get_one::<String>("source")
+        .expect("Expected source mode to default")
+        .as_str(),
+    )?;
+    let prefix: Option<&String> = matches.get_one::<_>("prefix");
 
-    xrf_output::info!(output, "Reading dialogs in {}", path.display());
+    xrf_output::info!(output, "Reading dialogs in {} ({:?})", path.display(), source);
 
-    let result: DialogSweepResult = DialogSweep::new(path).run();
+    let result: DialogSweepResult = DialogSweep::new(path, source, prefix.map(String::as_str)).run()?;
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
@@ -131,10 +149,11 @@ impl ParseDialogCommand {
 
     xrf_output::info!(
       output,
-      "Swept {} files in {}, {} unreadable",
+      "Swept {} files in {}, {} unreadable, {} archived",
       census.files,
       xrf_utils::format_duration(result.duration),
-      census.unreadable_files
+      census.unreadable_files,
+      census.archived_files
     );
     xrf_output::info!(
       output,

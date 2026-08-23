@@ -4,6 +4,7 @@ use std::path::Path;
 use xrf_report::RuleId;
 
 use crate::{Finding, GamedataVerificationRule};
+use xrf_utils::to_portable_path_string;
 
 /// Constructs shared report findings from gamedata verification inputs.
 pub(crate) struct GamedataFindingFactory;
@@ -14,11 +15,7 @@ impl GamedataFindingFactory {
     P: AsRef<Path>,
     M: Into<String>,
   {
-    Self::create(
-      rule,
-      Some(asset_path.as_ref().to_string_lossy().replace('\\', "/")),
-      message,
-    )
+    Self::create(rule, Some(to_portable_path_string(asset_path)), message)
   }
 
   pub(crate) fn without_asset<M>(rule: GamedataVerificationRule, message: M) -> Finding

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
+use xrf_vfs::XrayMountMode;
 
 use crate::commands::dialog::parse_dialog::command::ParseDialogCommand;
 use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
@@ -62,7 +63,7 @@ fn counts_what_the_files_hold() -> XrfResult {
     </game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
   let census = &result.census;
 
   assert_eq!(census.files, 1);
@@ -97,7 +98,7 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
     r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><go_back>1</go_back></phrase></phrase_list></dialog></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   assert_eq!(sum_findings(&result.report), 1);
   assert_eq!(result.report.status(), Status::Failed);
@@ -127,7 +128,7 @@ fn reports_an_unparsable_file_without_stopping_the_sweep() -> XrfResult {
     r#"<game_dialogs><dialog id="ok"/></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   assert_eq!(result.census.files, 2);
   assert_eq!(result.census.unreadable_files, 1);
@@ -159,10 +160,10 @@ fn succeeds_on_findings_unless_strict_was_asked_for() -> CommandResult {
   )?;
 
   // A tally that also fails the build cannot be run casually, so reporting is the default.
-  run(&root, &[])?;
+  run(&root, &["--source", "directory"])?;
 
   // `--strict` is the mode that judges, and it answers 3 per the CLI failure contract.
-  match run(&root, &["--strict"]) {
+  match run(&root, &["--source", "directory", "--strict"]) {
     Err(CommandError::CheckFailed { findings }) => assert_eq!(findings, 1),
     other => panic!("expected a check failure, got {other:?}"),
   }
@@ -182,7 +183,10 @@ fn writes_a_json_report_when_asked() -> CommandResult {
     r#"<game_dialogs><dialog id="d"/></game_dialogs>"#,
   )?;
 
-  run(&root, &["--report", &report.display().to_string()])?;
+  run(
+    &root,
+    &["--source", "directory", "--report", &report.display().to_string()],
+  )?;
 
   let written: String = fs::read_to_string(&report)?;
 
@@ -207,8 +211,8 @@ fn reads_files_in_a_stable_order() -> XrfResult {
     )?;
   }
 
-  let first: DialogSweepResult = DialogSweep::new(&root).run();
-  let second: DialogSweepResult = DialogSweep::new(&root).run();
+  let first: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
+  let second: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   let subjects = |result: &DialogSweepResult| -> Vec<String> {
     result
@@ -230,11 +234,13 @@ fn reads_files_in_a_stable_order() -> XrfResult {
 
 #[test]
 fn refuses_a_path_that_does_not_exist() -> XrfResult {
-  // A typo must not report success, which is the same guard `patch-ogf-texture-refs` carries.
+  // A typo must not report success, which is the same guard `patch-ogf-texture-refs` carries. A missing
+  // path now mounts an empty world rather than failing outright, so the assertion is on the class of
+  // failure rather than on wording the mount layer owns.
   let missing: PathBuf = std::env::temp_dir().join("xrf-cli-parse-dialog-missing-root");
 
-  match run(&missing, &[]) {
-    Err(CommandError::Execution(error)) => assert!(error.to_string().contains("Path does not exist")),
+  match run(&missing, &["--source", "directory"]) {
+    Err(error @ CommandError::Execution(_)) => assert_eq!(error.exit_code(), 1),
     other => panic!("expected an execution failure, got {other:?}"),
   }
 
@@ -248,7 +254,7 @@ fn refuses_a_directory_holding_no_dialogs() -> XrfResult {
   fs::write(root.join("info_zaton.xml"), "<game_information_portions/>")?;
 
   // Skipped is not a verdict, so it is an execution failure even without `--strict`.
-  match run(&root, &[]) {
+  match run(&root, &["--source", "directory"]) {
     Err(CommandError::Execution(error)) => assert!(error.to_string().contains("No dialog files were read")),
     other => panic!("expected an execution failure, got {other:?}"),
   }

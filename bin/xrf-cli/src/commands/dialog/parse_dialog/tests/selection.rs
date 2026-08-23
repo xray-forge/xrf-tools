@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
+use xrf_vfs::XrayMountMode;
 
 use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult};
 
@@ -33,29 +34,11 @@ fn sweeps_only_dialog_named_xml_in_a_directory() -> XrfResult {
   fs::write(root.join("npc_profile.xml"), "<game_profile_list/>")?;
   fs::write(root.join("dialogs.ltx"), "[section]")?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   assert_eq!(result.census.files, 2);
   assert_eq!(result.census.dialogs, 2);
   assert!(result.report.checks().iter().all(|check| check.findings().is_empty()));
-
-  fs::remove_dir_all(root)?;
-
-  Ok(())
-}
-
-#[test]
-fn reads_a_named_file_the_directory_filter_would_have_skipped() -> XrfResult {
-  // A caller naming one file has already decided; the name filter exists for walking a tree.
-  let root: PathBuf = create_root("named-file")?;
-  let file: PathBuf = root.join("conversations.xml");
-
-  fs::write(&file, DIALOG)?;
-
-  let result: DialogSweepResult = DialogSweep::new(&file).run();
-
-  assert_eq!(result.census.files, 1);
-  assert_eq!(result.census.dialogs, 1);
 
   fs::remove_dir_all(root)?;
 
@@ -71,7 +54,7 @@ fn walks_nested_directories() -> XrfResult {
   fs::write(root.join("dialogs.xml"), DIALOG)?;
   fs::write(nested.join("dialogs_jupiter.xml"), DIALOG)?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   assert_eq!(result.census.files, 2);
 
@@ -86,7 +69,7 @@ fn skips_rather_than_passes_a_directory_with_no_dialogs() -> XrfResult {
 
   fs::write(root.join("info_zaton.xml"), "<game_information_portions/>")?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root).run();
+  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
 
   assert_eq!(result.census.files, 0);
   assert_eq!(result.census.dialogs, 0);

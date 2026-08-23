@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::path::Path;
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
 use crate::mount::xray_root::implied_install_root;
@@ -12,7 +13,9 @@ use crate::{FsgameFile, XrayMountPlan};
 /// One vocabulary for every tool, so `--source` means the same thing everywhere. Each variant maps onto an
 /// [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name the choice
 /// rather than each re-deriving it.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum XrayMountMode {
   /// Treat the path as an installation when it declares one, as a volume set when it holds volumes, and as a complete
   /// root otherwise.

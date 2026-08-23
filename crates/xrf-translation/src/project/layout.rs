@@ -5,6 +5,7 @@ use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
 use crate::project::descriptor::TranslationProjectMode;
 use crate::{json, xml};
+use xrf_utils::to_portable_path_string;
 
 /// Report which layout a directory looks like.
 ///
@@ -44,11 +45,6 @@ pub fn detect_mode(root: &Path) -> TranslationProjectMode {
   }
 }
 
-/// Present a path the way the descriptor does, so a key matches whatever a caller compares it to.
-pub(crate) fn normalize(path: &Path) -> String {
-  path.to_string_lossy().replace('\\', "/")
-}
-
 pub(crate) fn relative(root: &Path, path: &Path) -> String {
-  normalize(path.strip_prefix(root).unwrap_or(path))
+  to_portable_path_string(path.strip_prefix(root).unwrap_or(path))
 }

@@ -6926,10 +6926,10 @@ dependencies = [
  "log",
  "serde",
  "specta",
- "walkdir",
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",
+ "xrf-vfs",
  "xrf-xml",
 ]
 

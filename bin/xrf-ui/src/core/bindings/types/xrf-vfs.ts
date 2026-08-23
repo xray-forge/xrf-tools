@@ -76,6 +76,26 @@ export type XrayAssetType =
 export type XrayLogicalPath = string;
 
 /**
+ * How a caller's path is turned into mounts.
+ *
+ * One vocabulary for every tool, so `--source` means the same thing everywhere. Each variant maps onto an
+ * [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name the choice
+ * rather than each re-deriving it.
+ */
+export type XrayMountMode =
+  /**
+   * Treat the path as an installation when it declares one, as a volume set when it holds volumes, and as a complete
+   * root otherwise.
+   */
+  | "auto"
+  /** Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it. */
+  | "directory"
+  /** Require the path to declare an installation, and mount everything it declares. */
+  | "installation"
+  /** Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`. */
+  | "containingInstallation";
+
+/**
  * What one reference lookup came to.
  *
  * A fact about a lookup, not about the kind of thing looked up: a texture, a motion set and a level asset all end in

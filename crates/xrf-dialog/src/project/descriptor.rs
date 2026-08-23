@@ -41,12 +41,17 @@ pub struct DialogDescriptor {
 }
 
 /// One dialog file the project holds.
+///
+/// Keyed by its logical path, so the key is the engine identity and the value says where that identity
+/// was actually found.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DialogFileDescriptor {
-  /// Absolute path on disk, which is what a later write has to reach.
-  pub path: String,
+  /// Host path when the winner is a loose file; absent when it comes out of an archive.
+  pub physical_path: Option<String>,
+  /// Whether an edit could write this file back. False for an archived winner.
+  pub is_editable: bool,
   /// The code page the file was decoded with, and the one a rewrite has to use.
   pub encoding: String,
   pub dialogs: Vec<DialogDescriptor>,
@@ -54,7 +59,7 @@ pub struct DialogFileDescriptor {
 
 /// An opened dialog project.
 ///
-/// Both roots are echoed back rather than left for the caller to re-derive: the mode and any
+/// Both prefixes are echoed back rather than left for the caller to re-derive: the mode and any
 /// overrides decided them, and a follow-up read that guessed differently would address another tree.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -62,9 +67,13 @@ pub struct DialogFileDescriptor {
 pub struct DialogProjectDescriptor {
   pub mode: DialogProjectMode,
   pub root: String,
-  pub dialogs_root: String,
-  pub translations_root: String,
-  /// Files keyed by their path relative to the dialogs root, in discovery order.
+  /// Logical prefix the dialogs were read from.
+  pub dialogs_prefix: String,
+  /// Logical prefix dialog text is read from.
+  pub translations_prefix: String,
+  /// Whether every file the project holds is loose, so an editing session could save all of it.
+  pub is_editable: bool,
+  /// Files keyed by their logical path, in logical-path order.
   pub files: IndexMap<String, DialogFileDescriptor>,
   pub findings: Vec<DialogFinding>,
 }
