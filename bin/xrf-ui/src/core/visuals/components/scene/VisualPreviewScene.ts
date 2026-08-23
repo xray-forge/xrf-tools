@@ -182,11 +182,16 @@ export class VisualPreviewScene {
   /**
    * Replace whatever is on screen with a different model, or with nothing.
    *
-   * Geometry is rebuilt while the renderer and controls survive. The camera is refitted to the replacement model.
+   * Geometry is rebuilt while the renderer and controls survive. The camera is fitted only when there was nothing on
+   * screen to have framed: stepping through a tree is comparing models, and a refit per model throws away the angle and
+   * the distance the comparison is being made from. A model of a very different size can land off frame that way, which
+   * is what the toolbar's reset is for.
    *
    * @param model - Model views to display, or `null` to clear the scene.
    */
   public setModel(model: Nullable<IVisualModelViews>): void {
+    const hadModel: boolean = Boolean(this.model);
+
     this.clearModel();
 
     this.model = model;
@@ -229,7 +234,10 @@ export class VisualPreviewScene {
     }
 
     this.applyScale();
-    this.resetCamera();
+
+    if (!hadModel) {
+      this.resetCamera();
+    }
   }
 
   /**

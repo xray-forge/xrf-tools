@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -112,10 +111,80 @@ describe("VisualLoadService", () => {
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
-    await waitFor(() => expect(service.textures.size).toBe(1));
 
+    // No waiting: the texture is published with the model rather than after it.
+    expect(service.textures.size).toBe(1);
     expect(readParameters).toEqual({ logicalPath: "textures\\wpn\\wpn_ak74.dds", roots: ROOTS });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
+  });
+
+  it("shows nothing until the textures of the model are in hand", async () => {
+    // Otherwise a model is on screen untextured for as long as its textures take, which reads as grey plastic.
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    let openWhileReading: Nullable<IOpenVisual> = null;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: () => {
+        openWhileReading = service.visual.value;
+
+        return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
+      },
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(openWhileReading).toBeNull();
+    expect(service.visual.value?.views.submeshes).toHaveLength(1);
+  });
+
+  it("keeps the model on screen while the next one loads its textures", async () => {
+    // The hold is what makes the swap look like one step: the previous model stays until the replacement is dressed.
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    const described: SelectedVisualDescription = {
+      ...selected,
+      dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+    };
+
+    let shownWhileReading: Nullable<string> = null;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: described,
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: () => {
+        shownWhileReading = service.sourceLabel;
+
+        return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
+      },
+    });
+
+    await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\first.ogf" }, ROOTS);
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...described,
+        source: { kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: () => {
+        shownWhileReading = service.sourceLabel;
+
+        return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
+      },
+    });
+
+    await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" }, ROOTS);
+
+    expect(shownWhileReading).toBe(ENTRY);
+    expect(service.sourceLabel).toBe("C:\\gamedata\\meshes\\second.ogf");
   });
 
   it("restores a selection the backend still holds without opening it again", async () => {
