@@ -23,7 +23,7 @@ export class NotificationsService {
   public static readonly DEV_LIMIT: number = 100;
 
   /** Logger scoped to the notification service. */
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Counter used to stamp unique, chronologically ordered record identifiers. */
   private nextId: number = 0;

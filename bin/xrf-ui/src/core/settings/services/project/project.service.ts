@@ -8,7 +8,7 @@ import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class ProjectService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
   public xrfProjectPath: Nullable<string> = null;

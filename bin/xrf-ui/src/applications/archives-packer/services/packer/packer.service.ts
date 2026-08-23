@@ -45,7 +45,7 @@ function toSavedState(config: ArchivePackConfig): string {
  */
 @Injectable()
 export class PackerService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Which section of the configuration is open. */
   @Observable()

@@ -28,7 +28,7 @@ import { Nullable, Optional } from "@/lib/types/general";
  */
 @Injectable()
 export class VisualsService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
   public isReady: boolean = false;

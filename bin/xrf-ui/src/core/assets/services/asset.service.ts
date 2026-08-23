@@ -8,7 +8,7 @@ import { Nullable } from "@/lib/types/general";
  */
 @Injectable()
 export class AssetService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Urls held against a caller supplied key, so a new one can displace the old automatically. */
   private readonly keyed: Map<string, string> = new Map();

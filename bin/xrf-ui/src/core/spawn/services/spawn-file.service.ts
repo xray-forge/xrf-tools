@@ -38,7 +38,7 @@ export interface ISpawnRowSelection {
  */
 @Injectable()
 export class SpawnFileService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
   public isReady: boolean = false;

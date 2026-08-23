@@ -12,7 +12,7 @@ import { Logger } from "@/lib/logging";
 @Injectable()
 export class ErrorCaptureService {
   /** Logger scoped to the error capture service. */
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Set while a capture is being recorded, so a failure in that path cannot re-enter and loop. */
   private isRecording: boolean = false;

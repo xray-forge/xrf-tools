@@ -36,7 +36,7 @@ import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class ArchivesService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private contentRequestId: number = 0;
 

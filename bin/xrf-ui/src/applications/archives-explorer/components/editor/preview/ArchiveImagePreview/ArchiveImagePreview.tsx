@@ -5,7 +5,7 @@ import { ReactElement, useEffect, useMemo, useState } from "react";
 import { formatMipmapLevels } from "@/applications/archives-explorer/components/editor/preview/ArchiveImagePreview/ArchiveImagePreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { TArchiveBytes, TArchiveContent } from "@/core/archive";
+import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
 import { AssetService } from "@/core/assets/services";
 import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
@@ -27,7 +27,12 @@ export function ArchiveImagePreview(): ReactElement {
   const [url, setUrl] = useState<Nullable<string>>(null);
 
   const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
-  const image: Nullable<TArchiveContent & { kind: "image" }> = content.value?.kind === "image" ? content.value : null;
+
+  // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
+  const image: Nullable<TArchiveContent & { kind: "image" }> = useLastContent(
+    content.value?.kind === "image" ? content.value : null,
+    content.isLoading
+  );
 
   // The shape is the source DDS's rather than the png's, so the caption can name a format and a mip chain the transcode
   // has already thrown away. A header that would not parse leaves nothing to lay the viewport out against.
@@ -41,13 +46,19 @@ export function ArchiveImagePreview(): ReactElement {
     setUrl(blob ? assetService.swap(ARCHIVE_IMAGE_ASSET_KEY, blob) : null);
   }, [assetService, blob]);
 
-  if (content.isLoading) {
-    return <DelayedProgress />;
-  } else if (content.error) {
+  if (content.error) {
     return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
   }
 
-  return shape && url ? (
+  if (!shape || !url) {
+    return content.isLoading ? (
+      <DelayedProgress />
+    ) : (
+      <EmptyState title={"Preview unavailable"} description={"This texture could not be decoded."} />
+    );
+  }
+
+  return (
     <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
       <ImageViewport
         alt={archivesService.selectedFile?.name ?? "Texture"}
@@ -62,7 +73,5 @@ export function ArchiveImagePreview(): ReactElement {
         </Typography>
       </Box>
     </Box>
-  ) : (
-    <EmptyState title={"Preview unavailable"} description={"This texture could not be decoded."} />
   );
 }

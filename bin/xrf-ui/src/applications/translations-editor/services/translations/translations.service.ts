@@ -33,7 +33,7 @@ export type TPendingEdits = Record<string, Record<string, Record<string, TPendin
 
 @Injectable()
 export class TranslationsService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
   public isReady: boolean = false;

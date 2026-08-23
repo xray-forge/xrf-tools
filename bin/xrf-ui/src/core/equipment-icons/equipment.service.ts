@@ -35,7 +35,7 @@ const SPRITE_ASSET_KEY: string = "equipment-sprite";
 
 @Injectable()
 export class EquipmentService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
   public isReady: boolean = false;

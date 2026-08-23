@@ -38,7 +38,7 @@ export interface IOpenVisual {
  */
 @Injectable()
 export class VisualLoadService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Distinguishes a response for the visual being asked about from one the caller already moved past. */
   private requestId: number = 0;

@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 
+import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
 import { Nullable } from "@/lib/types/general";
 
@@ -36,12 +37,13 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
   const audioRef = useRef<Nullable<HTMLAudioElement>>(null);
   const canvasRef = useRef<Nullable<HTMLCanvasElement>>(null);
 
+  const volume: IMediaVolume = useMediaVolume();
+
   const [peaks, setPeaks] = useState<Nullable<Float32Array>>(null);
   const [isPlaying, setPlaying] = useState<boolean>(false);
   const [isLooping, setLooping] = useState<boolean>(false);
   const [position, setPosition] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(1);
 
   const onTogglePlay = useCallback(() => {
     const audio: Nullable<HTMLAudioElement> = audioRef.current;
@@ -96,16 +98,20 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
     setDuration(event.currentTarget.duration);
   }, []);
 
-  const onChangeVolume = useCallback((_: Event, next: number | Array<number>) => {
-    const level: number = next as number;
+  const onChangeVolume = useCallback(
+    (_: Event, next: number | Array<number>) => {
+      volume.set(next as number);
+    },
+    [volume]
+  );
 
-    setVolume(level);
-
-    // Written straight to the element: volume is not a rendered attribute, so state alone would not carry.
+  // Volume is not a rendered attribute, so it has to be written to the element itself - and written again for each new
+  // source, because a remembered level would otherwise show on the slider while the sound played at full.
+  useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = level;
+      audioRef.current.volume = volume.value;
     }
-  }, []);
+  }, [src, volume.value]);
 
   // Selecting another sound replaces the source silently - the element fires no `pause` for it - so the
   // transport would otherwise keep offering to pause a sound that already stopped, at its old length.
@@ -250,7 +256,7 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
           min={0}
           max={1}
           step={0.01}
-          value={volume}
+          value={volume.value}
           sx={{ width: 96 }}
           onChange={onChangeVolume}
         />

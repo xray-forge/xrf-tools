@@ -6,6 +6,26 @@ import { default as observerPlugin } from "mobx-react-observer/vite-plugin";
 import { defineConfig, Plugin } from "vite";
 import { default as inlineSource } from "vite-plugin-inline-source";
 
+import { replaceModuleName } from "./cli/build/module-name";
+
+/**
+ * Substitutes `__MODULE_NAME__` with the source file's name, before anything else compiles it.
+ *
+ * Shares its implementation with `cli/test/transformer.cjs` so a tag reads the same under vite, jest, and a release
+ * bundle - which is the whole point, since a bundle keeps neither the module's path nor its class names.
+ */
+function moduleNamePlugin(): Plugin {
+  return {
+    name: "xrf-module-name",
+    enforce: "pre",
+    transform(code, id) {
+      const replaced: string = replaceModuleName(code, id);
+
+      return replaced === code ? null : { code: replaced, map: null };
+    },
+  };
+}
+
 function reactObserverPlugin(): Plugin {
   const plugin: Plugin = observerPlugin() as Plugin;
   const transform = plugin.transform;
@@ -47,7 +67,7 @@ function getInitialVendorChunk(id: string): string | null {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [wirestate(), inlineSource({ optimizeJs: true }), react(), reactObserverPlugin()],
+  plugins: [moduleNamePlugin(), wirestate(), inlineSource({ optimizeJs: true }), react(), reactObserverPlugin()],
   build: {
     outDir: "target",
     rolldownOptions: {

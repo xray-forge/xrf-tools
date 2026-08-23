@@ -12,7 +12,7 @@ import { Logger } from "@/lib/logging";
 export class SettingsService {
   private static readonly DEV_MODE_STORAGE_KEY: string = "xrf-dev-mode";
 
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Surfaces dev traces and captured runtime errors that are otherwise hidden. */
   @Observable()

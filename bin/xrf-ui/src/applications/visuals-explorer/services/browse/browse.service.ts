@@ -19,7 +19,7 @@ import { Nullable } from "@/lib/types/general";
  */
 @Injectable()
 export class VisualsBrowseService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The world being browsed, or null when a single model was opened directly. */
   @Observable()

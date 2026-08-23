@@ -5,11 +5,20 @@ const babel = require("@babel/core");
 const swcJest = require("@swc/jest");
 const observingComponents = require("babel-plugin-observing-components");
 
+const { replaceModuleName } = require("../build/module-name.ts");
+
 // The package default-exports a factory returning a `[plugin, options]` tuple, so it has to be called
 // rather than referenced by name. This is the identical call `mobx-react-observer/vite-plugin` makes.
 const createObserverPlugin = observingComponents.default ?? observingComponents;
 
-const SELF_HASH = crypto.createHash("sha1").update(fs.readFileSync(__filename)).digest("hex").slice(0, 12);
+// Covers the shared module-name substitution too: it is as much a part of the output as this file is, and a cache keyed
+// on only one of them serves code compiled by the other's previous version.
+const SELF_HASH = crypto
+  .createHash("sha1")
+  .update(fs.readFileSync(__filename))
+  .update(fs.readFileSync(require.resolve("../build/module-name.ts")))
+  .digest("hex")
+  .slice(0, 12);
 
 /**
  * Compile with swc, after wrapping components in `observer()` with babel.
@@ -69,7 +78,12 @@ module.exports = {
   process(source, filename, options) {
     const transformer = filename.endsWith(".tsx") ? tsxTransformer : tsTransformer;
 
-    return transformer.process(applyObserver(source, filename), filename, options);
+    // Runs before the observer pass for the same reason it is `enforce: "pre"` in vite: the token is source text, and
+    // every later stage should see the name rather than the placeholder. Unlike the observer step this applies to
+    // `.ts` too, which is where the services that use it live.
+    const named = replaceModuleName(source, filename);
+
+    return transformer.process(applyObserver(named, filename), filename, options);
   },
   getCacheKey(source, filename, options) {
     const transformer = filename.endsWith(".tsx") ? tsxTransformer : tsTransformer;

@@ -6,7 +6,7 @@ import { ArchiveFileDetailRow } from "@/applications/archives-explorer/component
 import { formatAudioChannels } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview/ArchiveAudioPreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { TArchiveBytes, TArchiveContent } from "@/core/archive";
+import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
 import { AssetService } from "@/core/assets/services";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
@@ -32,7 +32,12 @@ export function ArchiveAudioPreview(): ReactElement {
   const [url, setUrl] = useState<Nullable<string>>(null);
 
   const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
-  const audio: Nullable<TArchiveContent & { kind: "audio" }> = content.value?.kind === "audio" ? content.value : null;
+
+  // The previous sound stays on screen while the next one loads, so the transport is never torn down mid-selection.
+  const audio: Nullable<TArchiveContent & { kind: "audio" }> = useLastContent(
+    content.value?.kind === "audio" ? content.value : null,
+    content.isLoading
+  );
 
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
   const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
@@ -42,16 +47,16 @@ export function ArchiveAudioPreview(): ReactElement {
     setUrl(blob ? assetService.swap(ARCHIVE_AUDIO_ASSET_KEY, blob) : null);
   }, [assetService, blob]);
 
-  if (content.isLoading) {
-    return <DelayedProgress />;
-  }
-
   if (content.error) {
     return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
   }
 
   if (!descriptor || !url) {
-    return <EmptyState title={"Preview unavailable"} description={"This sound could not be read."} />;
+    return content.isLoading ? (
+      <DelayedProgress />
+    ) : (
+      <EmptyState title={"Preview unavailable"} description={"This sound could not be read."} />
+    );
   }
 
   return (

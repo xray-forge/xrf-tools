@@ -156,4 +156,18 @@ describe("AudioPlayer", () => {
 
     expect(getAudio(container).volume).toBeCloseTo(0.25);
   });
+
+  it("opens the next sound at the level the last one was set to", () => {
+    const first = renderWithProviders(<AudioPlayer src={SRC} />);
+
+    fireEvent.change(first.getByLabelText("Volume"), { target: { value: "0.5" } });
+    first.unmount();
+
+    // Selecting another file unmounts this player and builds a new one, so the level has to outlive the component
+    // rather than live in its state - and it has to reach the element, not just the slider.
+    const second = renderWithProviders(<AudioPlayer src={"blob:mock/other"} />);
+
+    expect(getAudio(second.container).volume).toBeCloseTo(0.5);
+    expect(second.getByLabelText("Volume")).toHaveValue("0.5");
+  });
 });

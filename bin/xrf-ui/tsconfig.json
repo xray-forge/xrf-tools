@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "tsBuildInfoFile": "./target/tsconfig.tsbuildinfo",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -24,5 +25,6 @@
     }
   },
   "include": ["src", "cli"],
+  "exclude": ["cli/build"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

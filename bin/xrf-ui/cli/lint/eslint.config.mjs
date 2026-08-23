@@ -179,4 +179,10 @@ export default [
       "@typescript-eslint/explicit-member-accessibility": "off",
     },
   },
+  {
+    files: ["**/*.d.ts"],
+    rules: {
+      "unused-imports/no-unused-vars": "off",
+    },
+  },
 ];
