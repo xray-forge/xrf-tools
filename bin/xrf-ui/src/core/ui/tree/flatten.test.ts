@@ -1,12 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
-import {
-  IPathTreeItem,
-  LOGICAL_PATH_SEPARATOR,
-  parsePathTree,
-  toDirectoryItemId,
-} from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, LOGICAL_PATH_SEPARATOR, parsePathTree, toDirectoryItemId } from "@/core/ui/tree/path-tree";
 
 /** Joins segments with the engine separator, so no test carries an escaped literal of it. */
 function at(...segments: Array<string>): string {

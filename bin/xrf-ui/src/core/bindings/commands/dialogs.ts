@@ -45,10 +45,6 @@ export const dialogsCommands = {
   /**
    * Open a dialog tree, in the layout the caller names.
    *
-   * `source` is the same `XrayMountMode` vocabulary every surface exposes, so an installation opens as
-   * readily as a loose tree: on a real game the dialogs come out of `db\configs`, and a reader reaching
-   * for the filesystem would report them absent.
-   *
    * The layout mode is obeyed, never re-derived: it decides which files a later save writes, so a guess
    * acted on here would decide what gets overwritten. `detect_mode` is what preselects it.
    *

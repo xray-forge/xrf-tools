@@ -52,8 +52,7 @@ describe("exportGroupsToTree", () => {
     // The count travels in the label, as it did before the tree changed shape.
     expect(items[0].label).toBe("xr_effects (2)");
 
-    const children: Array<IPathTreeItem<ExportDescriptor>> =
-      items[0].kind === "directory" ? items[0].children : [];
+    const children: Array<IPathTreeItem<ExportDescriptor>> = items[0].kind === "directory" ? items[0].children : [];
 
     expect(children.map((it) => it.kind)).toEqual(["file", "file"]);
     expect(children.map((it) => getFileItemPath(it.id))).toEqual(["xr_effects.run", "xr_effects.stop"]);

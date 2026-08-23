@@ -79,8 +79,8 @@ export type XrayLogicalPath = string;
  * How a caller's path is turned into mounts.
  *
  * One vocabulary for every tool, so `--source` means the same thing everywhere. Each variant maps onto an
- * [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name the choice
- * rather than each re-deriving it.
+ * [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name
+ * the choice rather than each re-deriving it.
  */
 export type XrayMountMode =
   /**

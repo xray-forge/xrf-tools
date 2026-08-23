@@ -3,6 +3,7 @@ import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { default as MapIcon } from "@mui/icons-material/Map";
 import { default as SettingsApplicationsIcon } from "@mui/icons-material/SettingsApplications";
+import { default as SportsEsportsIcon } from "@mui/icons-material/SportsEsports";
 import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
@@ -10,6 +11,7 @@ import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";
 import { ARCHIVES_PACKER_APPLICATION } from "@/applications/archives-packer";
 import { ARCHIVES_UNPACKER_APPLICATION } from "@/applications/archives-unpacker";
+import { CHARACTERS_EXPLORER_APPLICATION } from "@/applications/characters-explorer";
 import { CONFIGS_EXPLORER_APPLICATION } from "@/applications/configs-explorer";
 import { CONFIGS_FORMATTER_APPLICATION } from "@/applications/configs-formatter";
 import { CONFIGS_VERIFIER_APPLICATION } from "@/applications/configs-verifier";
@@ -21,9 +23,11 @@ import { EQUIPMENT_ICONS_EDITOR_APPLICATION } from "@/applications/equipment-ico
 import { EQUIPMENT_ICONS_PACKER_APPLICATION } from "@/applications/equipment-icons-packer";
 import { EQUIPMENT_ICONS_UNPACKER_APPLICATION } from "@/applications/equipment-icons-unpacker";
 import { EXPORTS_EXPLORER_APPLICATION } from "@/applications/exports-explorer";
+import { INFO_PORTIONS_EXPLORER_APPLICATION } from "@/applications/info-portions-explorer";
 import { SPAWN_EDITOR_APPLICATION } from "@/applications/spawn-editor";
 import { SPAWN_PACKER_APPLICATION } from "@/applications/spawn-packer";
 import { SPAWN_UNPACKER_APPLICATION } from "@/applications/spawn-unpacker";
+import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
 import { TRANSLATIONS_VERIFIER_APPLICATION } from "@/applications/translations-verifier";
@@ -49,6 +53,9 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     CONFIGS_FORMATTER_APPLICATION,
     DIALOGS_EDITOR_APPLICATION,
     EXPORTS_EXPLORER_APPLICATION,
+    CHARACTERS_EXPLORER_APPLICATION,
+    INFO_PORTIONS_EXPLORER_APPLICATION,
+    TASKS_EXPLORER_APPLICATION,
     EQUIPMENT_ICONS_EDITOR_APPLICATION,
     EQUIPMENT_ICONS_PACKER_APPLICATION,
     EQUIPMENT_ICONS_UNPACKER_APPLICATION,
@@ -87,6 +94,12 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.EXPORTS,
       label: "Exports",
       icon: <SwapHorizIcon />,
+    },
+    {
+      accent: { light: "#a8442a", dark: "#ef8a68" },
+      id: EApplicationGroupId.GAMEPLAY,
+      label: "Gameplay",
+      icon: <SportsEsportsIcon />,
     },
     {
       accent: { light: "#7b4aa3", dark: "#c291e7" },

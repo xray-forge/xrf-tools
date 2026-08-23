@@ -11,8 +11,8 @@ use crate::{FsgameFile, XrayMountPlan};
 /// How a caller's path is turned into mounts.
 ///
 /// One vocabulary for every tool, so `--source` means the same thing everywhere. Each variant maps onto an
-/// [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name the choice
-/// rather than each re-deriving it.
+/// [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name
+/// the choice rather than each re-deriving it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
