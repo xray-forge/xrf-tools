@@ -112,7 +112,7 @@ impl ArchiveUnpacker {
     for descriptor in project.files.values() {
       // Archives carry entries that name a directory rather than a file, and entries with no bytes at
       // all. `unpack` skips them; opening one as a file is an operating system error, not a file.
-      if descriptor.size_real == 0 || descriptor.name.ends_with(['\\', '/']) {
+      if descriptor.is_directory {
         continue;
       }
 

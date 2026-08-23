@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { listArchiveFiles } from "@/core/archive/files";
 import { IArchiveTreeItem, isUnderArchiveDirectory, parseTree } from "@/core/archive/tree";
-import { mockArchiveFileDescriptor } from "@/fixtures/mocks/archive.mocks";
+import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 
 const CONFIGS_DIALOGS: string = ["configs", "gameplay", "dialogs.xml"].join("\\");
 const CONFIGS_BACKUP: string = ["configs_backup", "a.ltx"].join("\\");
@@ -28,6 +30,32 @@ describe("archive tree", () => {
         payload: config,
       });
     }
+  });
+});
+
+describe("listArchiveFiles", () => {
+  it("leaves out the directories a volume records", () => {
+    // The name table lists them beside the files; taken as files they show as a leaf next to the directory of the
+    // same name, and the volume above counts four entries for its two files.
+    const project: ArchiveProject = mockArchivesProject([
+      mockArchiveFileDescriptor({ name: "meshes", sizeCompressed: 0, sizeReal: 0 }),
+      mockArchiveFileDescriptor({ name: "meshes\\actors\\", sizeCompressed: 0, sizeReal: 0 }),
+      mockArchiveFileDescriptor({ name: "meshes\\actors\\stalker.ogf" }),
+      mockArchiveFileDescriptor({ name: "readme.ltx" }),
+    ]);
+
+    expect(listArchiveFiles(project).map((descriptor) => descriptor.name)).toEqual([
+      "meshes\\actors\\stalker.ogf",
+      "readme.ltx",
+    ]);
+    expect(parseTree(listArchiveFiles(project), "\\").map((item) => item.id)).toEqual([
+      "directory:meshes",
+      "file:readme.ltx",
+    ]);
+  });
+
+  it("has nothing to list without a project", () => {
+    expect(listArchiveFiles(null)).toEqual([]);
   });
 });
 

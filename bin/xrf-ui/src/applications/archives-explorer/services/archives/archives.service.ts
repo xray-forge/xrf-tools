@@ -14,6 +14,7 @@ import {
   getArchivePreviewSupport,
   isArchiveAudio,
   isArchiveImage,
+  listArchiveFiles,
   TArchiveContent,
   TArchiveOperation,
   TArchiveSelection,
@@ -52,6 +53,16 @@ export class ArchivesService {
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
   public operation: Loadable<Nullable<TArchiveOperation>> = createLoadable(null);
+
+  /**
+   * Returns the files the opened project holds, without the directories its volumes record.
+   *
+   * @returns Descriptors of the entries that are files, empty when no project is open.
+   */
+  @Computed()
+  public get files(): Array<ArchiveFileDescriptor> {
+    return listArchiveFiles(this.project.value);
+  }
 
   /**
    * Returns the selected file, or null when a directory or nothing is selected.

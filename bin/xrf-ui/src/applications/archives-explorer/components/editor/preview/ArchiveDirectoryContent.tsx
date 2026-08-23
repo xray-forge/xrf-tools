@@ -8,7 +8,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
-import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { Loadable } from "@/lib/loadable";
@@ -32,18 +32,18 @@ export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps)
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const project: Nullable<ArchiveProject> = archivesService.project.value;
+  const files: Array<ArchiveFileDescriptor> = archivesService.files;
   const operation: Loadable<Nullable<TArchiveOperation>> = archivesService.operation;
   // A file extraction started elsewhere must not be reported here as if this directory had been written.
   const extracted: Nullable<ArchiveExtractDirectoryResult> =
     operation.value?.kind === "extract-directory" ? operation.value.result : null;
 
-  const summary: { count: number; size: number } = useMemo(() => {
+  const summary = useMemo(() => {
     let count: number = 0;
     let size: number = 0;
 
     // Same rule the backend extracts by, so the promised count is the delivered one.
-    for (const descriptor of Object.values(project?.files ?? {}) as Array<ArchiveFileDescriptor>) {
+    for (const descriptor of files) {
       if (isUnderArchiveDirectory(descriptor, path)) {
         count += 1;
         size += descriptor.sizeReal;
@@ -51,7 +51,7 @@ export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps)
     }
 
     return { count, size };
-  }, [path, project?.files]);
+  }, [files, path]);
 
   const onExtract = useCallback(async () => {
     const destination: Nullable<string> = (await dialog.open({

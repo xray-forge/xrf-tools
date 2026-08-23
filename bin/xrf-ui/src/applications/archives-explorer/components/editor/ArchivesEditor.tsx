@@ -26,7 +26,7 @@ export function ArchivesEditor(): ReactElement {
   const project: Nullable<ArchiveProject> = archivesService.project.value;
 
   const archiveCount: number = project?.archives.length ?? 0;
-  const fileCount: number = Object.keys(project?.files ?? {}).length;
+  const fileCount: number = archivesService.files.length;
   const totalSize: number = project?.sizeReal ?? 0;
   const projectRoot: string = project?.root ?? "";
 

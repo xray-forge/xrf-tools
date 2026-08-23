@@ -28,6 +28,13 @@ export type ArchiveFileDescriptor = {
   destination: string;
   /** Lower-cased extension derived from [`Self::name`], empty when the name has none. */
   extension: string;
+  /**
+   * Whether the entry names a directory rather than a file with bytes.
+   *
+   * A volume records the directories it contains so an unpacker can recreate them, and the engine writes those
+   * entries with no payload — usually under the bare directory path, sometimes with a trailing separator.
+   */
+  isDirectory: boolean;
   /** Entry name as authored, which the engine registers verbatim. */
   name: string;
   /** Byte offset of the payload inside [`Self::source`]. */

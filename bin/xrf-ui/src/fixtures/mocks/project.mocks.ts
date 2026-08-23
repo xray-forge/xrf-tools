@@ -4,7 +4,7 @@ import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translat
 import { IEquipmentSectionDescriptor } from "@/core/equipment-icons";
 import { TCallableExportDescriptor } from "@/core/exports";
 
-import { mockArchiveReadPolicy } from "./archive.mocks";
+import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "./archive.mocks";
 
 /**
  * Creates an archive file fixture.
@@ -13,7 +13,8 @@ import { mockArchiveReadPolicy } from "./archive.mocks";
  * @returns An archive file fixture.
  */
 export function mockArchiveFile(overrides: Partial<ArchiveFileDescriptor> = {}): ArchiveFileDescriptor {
-  return {
+  // Through the descriptor fixture, so `isDirectory` is derived in one place rather than spelled out in two.
+  return mockArchiveFileDescriptor({
     crc: 123456,
     destination: "gamedata\\config\\system.ltx",
     extension: "ltx",
@@ -23,7 +24,7 @@ export function mockArchiveFile(overrides: Partial<ArchiveFileDescriptor> = {}):
     sizeReal: 2048,
     source: "db\\db0",
     ...overrides,
-  };
+  });
 }
 
 /**

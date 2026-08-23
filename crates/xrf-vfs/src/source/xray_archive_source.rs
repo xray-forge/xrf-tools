@@ -35,7 +35,7 @@ impl XrayArchiveSource {
     let entries: HashMap<String, String> = project
       .files
       .iter()
-      .filter(|(name, descriptor)| !is_directory_entry(name, descriptor.size_real))
+      .filter(|(_, descriptor)| !descriptor.is_directory)
       .filter_map(|(name, _)| {
         normalize_logical(name)
           .inspect_err(|error| log::warn!("Skipping archive entry '{name}': {error}"))
@@ -70,16 +70,6 @@ impl Debug for XrayArchiveSource {
       .field("entries", &self.entries.len())
       .finish()
   }
-}
-
-/// Whether an archive entry names a directory rather than an asset.
-///
-/// A volume records the directories it contains so an unpacker can recreate them, and those entries would otherwise become
-/// phantom assets: `contains("configs")` would answer true and enumeration would count four extras for a three-file tree.
-/// The rule matches `ArchiveUnpacker::extract_directory`, which skips on the same two conditions, so an entry the unpacker
-/// declines to write is one a lookup cannot resolve. A genuinely empty file is skipped too, exactly as it is there.
-fn is_directory_entry(name: &str, size_real: u32) -> bool {
-  size_real == 0 || name.ends_with(['\\', '/'])
 }
 
 impl XrayAssetSource for XrayArchiveSource {

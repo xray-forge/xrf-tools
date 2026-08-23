@@ -22,9 +22,26 @@ describe("ArchivesService file selection", () => {
   it("registers derived state as MobX computed properties", () => {
     const service: ArchivesService = mockArchivesService([]);
 
+    expect(isComputedProp(service, "files")).toBe(true);
     expect(isComputedProp(service, "selectedFile")).toBe(true);
     expect(isComputedProp(service, "selectedDirectory")).toBe(true);
     expect(isComputedProp(service, "isBusy")).toBe(true);
+  });
+
+  it("publishes the files of a project without the directories its volumes record", () => {
+    // Every surface reads this one, so the rule is applied once per opened project rather than once per render.
+    const service: ArchivesService = mockArchivesService([
+      mockArchiveFileDescriptor({ name: "meshes", sizeCompressed: 0, sizeReal: 0 }),
+      mockArchiveFileDescriptor({ name: "meshes\\actors\\stalker.ogf" }),
+    ]);
+
+    expect(service.files.map((descriptor) => descriptor.name)).toEqual(["meshes\\actors\\stalker.ogf"]);
+  });
+
+  it("has no files before a project is opened", () => {
+    const { service } = mockInjectedService(ArchivesService);
+
+    expect(service.files).toEqual([]);
   });
 
   it("loads supported selected files", async () => {

@@ -30,16 +30,24 @@ export function mockArchiveReadPolicy(overrides: Partial<ArchiveProjectReadPolic
  * @returns An archive file descriptor fixture.
  */
 export function mockArchiveFileDescriptor(overrides: Partial<ArchiveFileDescriptor> = {}): ArchiveFileDescriptor {
-  return {
+  const descriptor: ArchiveFileDescriptor = {
     crc: 0x12345678,
     destination: "gamedata",
     extension: "ltx",
+    isDirectory: false,
     name: "configs\\system.ltx",
     offset: 4096,
     sizeCompressed: 2048,
     sizeReal: 2048,
     source: "C:\\game\\database\\configs.db0",
     ...overrides,
+  };
+
+  // Derived exactly as `ArchiveFileDescriptor::new` derives it, so a fixture cannot describe an entry the reader would
+  // never produce - a payload-less entry that is somehow still a file.
+  return {
+    ...descriptor,
+    isDirectory: overrides.isDirectory ?? (!descriptor.sizeReal || /[\\/]$/.test(descriptor.name)),
   };
 }
 

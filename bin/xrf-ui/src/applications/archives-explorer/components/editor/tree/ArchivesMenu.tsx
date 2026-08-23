@@ -35,10 +35,7 @@ export function ArchivesMenu({
 
   const [expandedItems, setExpandedItems] = useState<Array<string>>([]);
 
-  const files: Array<ArchiveFileDescriptor> = useMemo(
-    () => Object.values(archivesService.project.value?.files ?? {}),
-    [archivesService.project.value?.files]
-  );
+  const files: Array<ArchiveFileDescriptor> = archivesService.files;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
 

@@ -17,6 +17,11 @@ pub struct ArchiveFileDescriptor {
   pub destination: PathBuf,
   /// Lower-cased extension derived from [`Self::name`], empty when the name has none.
   pub extension: String,
+  /// Whether the entry names a directory rather than a file with bytes.
+  ///
+  /// A volume records the directories it contains so an unpacker can recreate them, and the engine writes those
+  /// entries with no payload — usually under the bare directory path, sometimes with a trailing separator.
+  pub is_directory: bool,
   /// Entry name as authored, which the engine registers verbatim.
   pub name: String,
   /// Byte offset of the payload inside [`Self::source`].
@@ -36,6 +41,7 @@ impl ArchiveFileDescriptor {
       source: PathBuf::new(),
       destination: PathBuf::new(),
       extension: Self::extension_from_path(&name),
+      is_directory: size_real == 0 || name.ends_with(['\\', '/']),
       name,
       offset,
       size_compressed,
@@ -80,5 +86,18 @@ mod tests {
       assert_eq!(descriptor.destination, Path::new("gamedata"));
       assert_eq!(descriptor.extension, expected);
     }
+  }
+
+  #[test]
+  fn an_entry_without_payload_is_marked_a_directory() {
+    // Both spellings occur: the engine writes the bare directory path, some packers add the separator.
+    for name in ["meshes", "meshes\\actors", "meshes\\actors\\", "meshes/actors/"] {
+      assert!(
+        ArchiveFileDescriptor::new(0, name.into(), 0, 0, 0).is_directory,
+        "'{name}' names a directory"
+      );
+    }
+
+    assert!(!ArchiveFileDescriptor::new(0, "meshes\\actors\\stalker.ogf".into(), 0, 512, 512).is_directory);
   }
 }

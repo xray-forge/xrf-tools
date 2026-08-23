@@ -4,17 +4,17 @@ import { IPathDirectoryTreeItem, IPathFileTreeItem, IPathTreeItem, parsePathTree
 /**
  * Whether an archived file would be written when its directory is extracted.
  *
- * Mirrors `ArchiveProject::extract_directory` on the rust side, including both of its skips. Counting with
- * a plain `startsWith` here instead would promise more files than the backend writes, and would let
- * `configs` swallow `configs_backup`.
+ * Mirrors `ArchiveUnpacker::extract_directory` on the rust side, including its skip: what it declines to write is what
+ * `isDirectory` marks, so this reads the flag rather than guessing from the name and size a second time. Counting with
+ * a plain `startsWith` here instead would promise more files than the backend writes, and would let `configs` swallow
+ * `configs_backup`.
  *
  * @param descriptor - Archive file metadata to test.
  * @param prefix - Archive-relative directory path to match.
  * @returns Whether extraction would write the file under the directory.
  */
 export function isUnderArchiveDirectory(descriptor: ArchiveFileDescriptor, prefix: string): boolean {
-  // Directory entries and empty entries are never written out.
-  if (!descriptor.sizeReal || /[\\/]$/.test(descriptor.name)) {
+  if (descriptor.isDirectory) {
     return false;
   }
 
