@@ -20,9 +20,8 @@ pub use crate::issue::{DialogParseIssue, DialogParseIssueKind};
 pub use crate::phrase::DialogPhrase;
 pub use crate::project::descriptor::{DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor};
 pub use crate::project::dialog_project::{DialogProject, DialogProjectFile};
-pub use crate::project::layout::{detect_mode, detect_mode_in};
+pub use crate::project::layout::{DialogProjectLayout, detect_mode, detect_mode_in};
 pub use crate::project::mode::DialogProjectMode;
-pub use crate::project::options::DialogProjectOptions;
 
 #[cfg(test)]
 mod tests;

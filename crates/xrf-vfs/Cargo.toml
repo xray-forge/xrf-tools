@@ -22,4 +22,5 @@ typescript-bindings = ["specta"]
 workspace = true
 
 [dev-dependencies]
+serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }

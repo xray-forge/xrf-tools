@@ -5,13 +5,12 @@
 //! schema the shipped files are written in.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayMountMode, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs, XrayWorldSpec};
 
 /// What a sweep counted, beside what it found.
 ///
@@ -52,16 +51,15 @@ pub struct DialogSweepResult {
   pub report: Report,
 }
 
-/// What to mount, and where to look inside it.
+/// Which world to mount, and where to look inside it.
 pub struct DialogSweep<'a> {
-  root: &'a Path,
-  source: XrayMountMode,
+  world: &'a XrayWorldSpec,
   prefix: Option<&'a str>,
 }
 
 impl<'a> DialogSweep<'a> {
-  pub fn new(root: &'a Path, source: XrayMountMode, prefix: Option<&'a str>) -> Self {
-    Self { root, source, prefix }
+  pub fn new(world: &'a XrayWorldSpec, prefix: Option<&'a str>) -> Self {
+    Self { world, prefix }
   }
 
   /// Read every dialog file the mounted world exposes.
@@ -78,7 +76,7 @@ impl<'a> DialogSweep<'a> {
   pub fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
 
-    let vfs: XrayVfs = XrayVfs::open(self.source, self.root)?;
+    let vfs: XrayVfs = self.world.open()?;
     let scope: XrayLookupScope = match self.prefix {
       Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
       None => XrayLookupScope::all(),

@@ -1,14 +1,13 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_vfs::XrayMountMode;
+use xrf_vfs::{XrayMountMode, XrayWorldSpec};
 
 use crate::project::descriptor::DialogProjectDescriptor;
 use crate::project::dialog_project::DialogProject;
-use crate::project::layout::detect_mode;
+use crate::project::layout::{DialogProjectLayout, detect_mode};
 use crate::project::mode::DialogProjectMode;
-use crate::project::options::DialogProjectOptions;
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d" priority="-5"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
@@ -52,14 +51,19 @@ fn create_source(name: &str) -> XrfResult<PathBuf> {
   Ok(root)
 }
 
-fn open(root: &PathBuf, mode: DialogProjectMode) -> XrfResult<DialogProject> {
-  DialogProject::open_with_mode(XrayMountMode::Directory, &DialogProjectOptions::new(root, mode))
+/// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
+fn world(root: &Path) -> XrayWorldSpec {
+  XrayWorldSpec::root(root.display().to_string(), XrayMountMode::Directory)
+}
+
+fn open(root: &Path, mode: DialogProjectMode) -> XrfResult<DialogProject> {
+  DialogProject::open(&world(root), &DialogProjectLayout::new(mode))
 }
 
 #[test]
 fn defaults_both_prefixes_from_the_mode() {
-  let gamedata: DialogProjectOptions = DialogProjectOptions::new("root", DialogProjectMode::Gamedata);
-  let source: DialogProjectOptions = DialogProjectOptions::new("root", DialogProjectMode::Source);
+  let gamedata: DialogProjectLayout = DialogProjectLayout::new(DialogProjectMode::Gamedata);
+  let source: DialogProjectLayout = DialogProjectLayout::new(DialogProjectMode::Source);
 
   // The one thing the layouts agree on.
   assert_eq!(gamedata.get_dialogs_prefix(), r"configs\gameplay");
@@ -73,14 +77,14 @@ fn defaults_both_prefixes_from_the_mode() {
 #[test]
 fn takes_a_prefix_override() {
   // A mod keeping its dialogs somewhere the layout does not predict.
-  let options: DialogProjectOptions = DialogProjectOptions {
+  let layout: DialogProjectLayout = DialogProjectLayout {
     dialogs_prefix: Some(String::from(r"custom\talks")),
     translations_prefix: Some(String::from("strings")),
-    ..DialogProjectOptions::new("root", DialogProjectMode::Gamedata)
+    ..DialogProjectLayout::new(DialogProjectMode::Gamedata)
   };
 
-  assert_eq!(options.get_dialogs_prefix(), r"custom\talks");
-  assert_eq!(options.get_translations_prefix(), "strings");
+  assert_eq!(layout.get_dialogs_prefix(), r"custom\talks");
+  assert_eq!(layout.get_translations_prefix(), "strings");
 }
 
 #[test]
@@ -107,7 +111,7 @@ fn recognises_a_dialog_logical_path_by_its_file_name() {
 fn detects_source_from_a_translations_prefix_holding_json() -> XrfResult {
   let root: PathBuf = create_source("detect-source")?;
 
-  assert_eq!(detect_mode(XrayMountMode::Directory, &root)?, DialogProjectMode::Source);
+  assert_eq!(detect_mode(&world(&root))?, DialogProjectMode::Source);
 
   fs::remove_dir_all(root)?;
 
@@ -119,15 +123,9 @@ fn detects_gamedata_for_anything_else() -> XrfResult {
   let gamedata: PathBuf = create_gamedata("detect-gamedata")?;
   let empty: PathBuf = create_root("detect-empty")?;
 
-  assert_eq!(
-    detect_mode(XrayMountMode::Directory, &gamedata)?,
-    DialogProjectMode::Gamedata
-  );
+  assert_eq!(detect_mode(&world(&gamedata))?, DialogProjectMode::Gamedata);
   // A world the heuristic cannot make sense of reads as the mode the tooling targets.
-  assert_eq!(
-    detect_mode(XrayMountMode::Directory, &empty)?,
-    DialogProjectMode::Gamedata
-  );
+  assert_eq!(detect_mode(&world(&empty))?, DialogProjectMode::Gamedata);
 
   fs::remove_dir_all(gamedata)?;
   fs::remove_dir_all(empty)?;

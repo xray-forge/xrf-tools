@@ -4,7 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_vfs::XrayMountMode;
+use xrf_vfs::{XrayMountMode, XrayWorldRoot, XrayWorldSpec};
 
 use crate::commands::dialog::parse_dialog::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
@@ -26,10 +26,13 @@ impl GenericCommand for ParseDialogCommand {
       .about("Command to read dialog xml and report what it holds")
       .arg(
         Arg::new("path")
-          .help("Path to a game installation, a gamedata tree, or any root holding dialog xml")
+          .help("Root holding dialog xml. Repeat to layer worlds, highest priority first")
           .short('p')
           .long("path")
           .required(true)
+          // Both spellings layer: repeat the flag, or list several values after one of them.
+          .action(ArgAction::Append)
+          .num_args(1..)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -82,9 +85,10 @@ impl GenericCommand for ParseDialogCommand {
   /// tally, and a tally that also fails the build cannot be run casually. `--strict` is the mode that
   /// judges, and it is the one a CI step uses.
   fn execute(&self, matches: &ArgMatches) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
+    let paths: Vec<&PathBuf> = matches
+      .get_many::<PathBuf>("path")
+      .expect("Expected at least one path to be provided")
+      .collect();
     let report_path: Option<&PathBuf> = matches.get_one::<_>("report");
     let is_strict: bool = matches.get_flag("strict");
 
@@ -98,9 +102,19 @@ impl GenericCommand for ParseDialogCommand {
     )?;
     let prefix: Option<&String> = matches.get_one::<_>("prefix");
 
-    xrf_output::info!(output, "Reading dialogs in {} ({:?})", path.display(), source);
+    // One vocabulary for naming a world, so repeating `--path` layers a tree in front of an
+    // installation exactly as the desktop app does it.
+    let world: XrayWorldSpec = XrayWorldSpec::roots(
+      paths
+        .iter()
+        .map(|path| XrayWorldRoot::new(path.display().to_string(), source)),
+    );
 
-    let result: DialogSweepResult = DialogSweep::new(path, source, prefix.map(String::as_str)).run()?;
+    xrf_output::info!(output, "Reading dialogs in {} ({:?})", describe(&world), source);
+
+    // A world that cannot be mounted is an execution failure, which the mount itself answers with, so
+    // no separate existence check is needed here.
+    let result: DialogSweepResult = DialogSweep::new(&world, prefix.map(String::as_str)).run()?;
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
@@ -135,12 +149,22 @@ impl GenericCommand for ParseDialogCommand {
       Status::Error | Status::Incomplete | Status::Skipped => Err(
         XrfError::new_verify_error(format!(
           "No dialog files were read under {}, status: {status}",
-          path.display()
+          describe(&world)
         ))
         .into(),
       ),
     }
   }
+}
+
+/// Name a world in a message, since a spec has no single path to print.
+fn describe(world: &XrayWorldSpec) -> String {
+  world
+    .roots
+    .iter()
+    .map(|root| root.path.clone())
+    .collect::<Vec<String>>()
+    .join(", ")
 }
 
 impl ParseDialogCommand {

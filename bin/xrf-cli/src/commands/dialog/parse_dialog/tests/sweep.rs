@@ -5,12 +5,17 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_vfs::XrayMountMode;
+use xrf_vfs::{XrayMountMode, XrayWorldSpec};
 
 use crate::commands::dialog::parse_dialog::command::ParseDialogCommand;
 use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+
+/// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
+fn world(root: &Path) -> XrayWorldSpec {
+  XrayWorldSpec::root(root.display().to_string(), XrayMountMode::Directory)
+}
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-parse-dialog-sweep-{name}-{}", std::process::id()));
@@ -63,7 +68,7 @@ fn counts_what_the_files_hold() -> XrfResult {
     </game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
   let census = &result.census;
 
   assert_eq!(census.files, 1);
@@ -98,7 +103,7 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
     r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><go_back>1</go_back></phrase></phrase_list></dialog></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
 
   assert_eq!(sum_findings(&result.report), 1);
   assert_eq!(result.report.status(), Status::Failed);
@@ -128,7 +133,7 @@ fn reports_an_unparsable_file_without_stopping_the_sweep() -> XrfResult {
     r#"<game_dialogs><dialog id="ok"/></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
 
   assert_eq!(result.census.files, 2);
   assert_eq!(result.census.unreadable_files, 1);
@@ -211,8 +216,8 @@ fn reads_files_in_a_stable_order() -> XrfResult {
     )?;
   }
 
-  let first: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
-  let second: DialogSweepResult = DialogSweep::new(&root, XrayMountMode::Directory, None).run()?;
+  let first: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let second: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
 
   let subjects = |result: &DialogSweepResult| -> Vec<String> {
     result
