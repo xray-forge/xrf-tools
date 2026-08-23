@@ -19,6 +19,7 @@ pub use crate::data::ogf::ogf_box::*;
 pub use crate::data::ogf::ogf_geometry::*;
 pub use crate::data::ogf::ogf_motion::*;
 pub use crate::data::ogf::ogf_motion_keys::{OgfBoneMotion, Quaternion, SAMPLE_FPS};
+pub use crate::data::ogf::ogf_part::OgfPart;
 pub use crate::data::ogf::ogf_slide_window::*;
 pub use crate::data::ogf::ogf_sphere::*;
 pub use crate::data::ogf::ogf_vertex::*;
