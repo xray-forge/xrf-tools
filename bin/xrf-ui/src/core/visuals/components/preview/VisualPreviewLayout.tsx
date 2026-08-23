@@ -81,6 +81,7 @@ export function VisualPreviewLayout({
    */
   const triangleCount: number = model ? countVisualTriangles(model, detail) : 0;
   const hasDetailLevels: boolean = (model?.levelCount ?? 1) > 1;
+  const hasSkeleton: boolean = Boolean(model?.skeleton);
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
@@ -118,6 +119,7 @@ export function VisualPreviewLayout({
         <VisualPreviewToolbar
           isOpenEnabled={Boolean(onOpen)}
           hasDetailLevels={hasDetailLevels}
+          hasSkeleton={hasSkeleton}
           subtitle={subtitle}
           options={options}
           detail={detail}

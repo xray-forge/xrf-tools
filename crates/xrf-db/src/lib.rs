@@ -14,6 +14,7 @@ pub(crate) mod types;
 pub use xrf_chunk::XRayByteOrder;
 
 pub use crate::data::ogf::ogf_bone::OgfBone;
+pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
 pub use crate::data::ogf::ogf_box::*;
 pub use crate::data::ogf::ogf_geometry::*;
 pub use crate::data::ogf::ogf_motion::*;
@@ -67,8 +68,8 @@ pub use crate::level::level_shader_entry::*;
 pub use crate::level::level_shaders_chunk::*;
 pub use crate::ogf::chunks::{
   ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
-  ogf_header_chunk::OgfHeaderChunk, ogf_kinematics_chunk::OgfKinematicsChunk, ogf_swi_data_chunk::OgfSwiDataChunk,
-  ogf_texture_chunk::OgfTextureChunk,
+  ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,
+  ogf_swi_data_chunk::OgfSwiDataChunk, ogf_texture_chunk::OgfTextureChunk,
 };
 pub use crate::ogf::ogf_chunks_processor::*;
 pub use crate::ogf::ogf_file::*;

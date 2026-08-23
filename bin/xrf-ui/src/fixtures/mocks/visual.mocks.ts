@@ -1,5 +1,6 @@
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import {
+  VisualBone,
   VisualBounds,
   VisualDescription,
   VisualGeometry,
@@ -164,6 +165,22 @@ export function mockVisualDescription(overrides: Partial<VisualDescription> = {}
     motionRefs: [],
     embeddedMotions: [],
     bufferLength: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a bone fixture, placed in the bind pose when given a position.
+ *
+ * @param overrides - Field values to override.
+ * @returns A bone fixture.
+ */
+export function mockVisualBone(overrides: Partial<VisualBone> = {}): VisualBone {
+  return {
+    name: "bip01",
+    parent: "",
+    parentIndex: null,
+    bindPosition: null,
     ...overrides,
   };
 }

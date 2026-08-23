@@ -12,6 +12,21 @@ import { XrayResolution } from "@/core/bindings/types/xrf-vfs";
 export type VisualBone = {
   name: string;
   parent: string;
+  /**
+   * Index of the parent in this same list, or `None` for a root or a parent no bone carries.
+   *
+   * Resolved here so a consumer drawing the hierarchy does not have to search names for every bone, and so a
+   * dangling parent is reported as absent rather than as a name that looks resolvable.
+   */
+  parentIndex: number | null;
+  /**
+   * Where the joint sits in the bind pose, in renderer space, or `None` when the file carries no IK chunk.
+   *
+   * World space, already composed down the parent chain and mirrored the same way the mesh is: the whole point is
+   * that it lands inside the geometry. The matrices behind it stay in this crate - operand order and euler
+   * convention are where this goes wrong silently, and it goes wrong the same way for every consumer.
+   */
+  bindPosition: Vector3d | null;
 };
 
 /**

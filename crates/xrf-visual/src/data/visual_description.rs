@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_db::Vector3d;
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_submesh::VisualSubmesh;
@@ -13,6 +14,10 @@ use crate::data::visual_submesh::VisualSubmesh;
 pub struct VisualBone {
   pub name: String,
   pub parent: String,
+  /// Index of the parent in this same list, or `None` for a root or a parent no bone carries.
+  pub parent_index: Option<u32>,
+  /// Where the joint sits in the bind pose, in renderer space, or `None` when the file carries no IK chunk.
+  pub bind_position: Option<Vector3d>,
 }
 
 /// Everything about a packed visual except the bytes themselves.

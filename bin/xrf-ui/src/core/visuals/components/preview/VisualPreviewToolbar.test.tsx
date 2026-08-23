@@ -2,7 +2,10 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/components/scene";
+import {
+  DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS,
+  IVisualPreviewViewOptions,
+} from "@/core/visuals/components/scene";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -17,12 +20,55 @@ function renderToolbar(
       isOpenEnabled
       detail={detail}
       hasDetailLevels={hasDetailLevels}
+      hasSkeleton
       onChangeOptions={jest.fn()}
       onChangeDetail={onChangeDetail}
       onResetCamera={jest.fn()}
     />
   );
 }
+
+describe("VisualPreviewToolbar skeleton toggle", () => {
+  it("offers nothing to draw on a model with no bind pose", () => {
+    // Every model measured in gamedata carries one, so this state cannot be reached by opening a real file there -
+    // which is exactly why it needs a test rather than a look.
+    const render: RenderResult = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        isOpenEnabled
+        detail={0}
+        hasDetailLevels
+        hasSkeleton={false}
+        onChangeOptions={jest.fn()}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    expect(render.getByRole("button", { name: "Bind pose skeleton" })).toBeDisabled();
+  });
+
+  it("asks for the overlay when a bind pose is there to draw", () => {
+    const changes: Array<IVisualPreviewViewOptions> = [];
+    const render: RenderResult = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        isOpenEnabled
+        detail={0}
+        hasDetailLevels
+        hasSkeleton
+        onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    fireEvent.click(render.getByRole("button", { name: "Bind pose skeleton" }));
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].isSkeletonVisible).toBe(true);
+  });
+});
 
 describe("VisualPreviewToolbar detail control", () => {
   it("offers nothing to decimate on a model with one level", () => {

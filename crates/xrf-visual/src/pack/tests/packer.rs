@@ -337,12 +337,17 @@ fn reports_bones_motion_refs_and_embedded_motions() {
       crate::data::visual_description::VisualBone {
         name: String::from("wpn_body"),
         parent: String::new(),
+        parent_index: None,
+        bind_position: None,
       },
       crate::data::visual_description::VisualBone {
         name: String::from("magazin"),
         parent: String::from("wpn_body"),
+        parent_index: Some(0),
+        bind_position: None,
       },
-    ]
+    ],
+    "expect the hierarchy without positions, since this fixture carries no ik chunk"
   );
   assert_eq!(
     package.description.motion_refs,

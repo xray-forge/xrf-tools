@@ -3,6 +3,7 @@ import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocu
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
+import { default as PolylineIcon } from "@mui/icons-material/Polyline";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { default as TuneIcon } from "@mui/icons-material/Tune";
@@ -21,6 +22,8 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   isOpenEnabled: boolean;
   /** How far down each submesh's collapse chain the viewport is drawing: 0 is full detail, 1 is coarsest. */
   detail: number;
+  /** Whether the open model carries a bind pose to draw. */
+  hasSkeleton: boolean;
   /** Whether the open model has anything to decimate. */
   hasDetailLevels: boolean;
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
@@ -44,6 +47,7 @@ export function VisualPreviewToolbar({
   isOpenEnabled,
   detail,
   hasDetailLevels,
+  hasSkeleton,
   onChangeOptions,
   onChangeDetail,
   onResetCamera,
@@ -83,6 +87,10 @@ export function VisualPreviewToolbar({
 
   const onToggleChecker = useCallback(() => {
     onChangeOptions({ ...options, isCheckerVisible: !options.isCheckerVisible });
+  }, [options, onChangeOptions]);
+
+  const onToggleSkeleton = useCallback(() => {
+    onChangeOptions({ ...options, isSkeletonVisible: !options.isSkeletonVisible });
   }, [options, onChangeOptions]);
 
   return (
@@ -170,6 +178,20 @@ export function VisualPreviewToolbar({
             >
               <TextureIcon />
             </IconButton>
+          </Tooltip>
+
+          <Tooltip title={hasSkeleton ? "Bind pose skeleton" : "No bind pose in this model"} describeChild>
+            <span>
+              <IconButton
+                aria-label={"Bind pose skeleton"}
+                color={"inherit"}
+                sx={{ opacity: options.isSkeletonVisible ? 1 : 0.45 }}
+                disabled={!hasSkeleton}
+                onClick={onToggleSkeleton}
+              >
+                <PolylineIcon />
+              </IconButton>
+            </span>
           </Tooltip>
 
           <Tooltip title={"Grid"}>

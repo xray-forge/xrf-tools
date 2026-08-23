@@ -1,12 +1,13 @@
 import { Vector3d } from "@/core/bindings/types/xrf-db";
 import {
+  VisualBone,
   VisualBounds,
   VisualDescription,
   VisualDrawRange,
   VisualSection,
   VisualSubmesh,
 } from "@/core/bindings/types/xrf-visual";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 /** Framing values a camera needs, derived from what the model actually spans. */
 export interface IVisualCameraFit {
@@ -37,6 +38,14 @@ export interface IVisualSubmeshViews {
 export interface IVisualModelViews {
   submeshes: Array<IVisualSubmeshViews>;
   fit: IVisualCameraFit;
+  /**
+   * Bind pose joints as line-segment endpoints, or null when the model carries no bind data.
+   *
+   * One pair of positions per bone that has a placed parent, ready for `LineSegments` without further arithmetic. The
+   * positions are already in renderer space: the backend composed the chain and mirrored it the same way the mesh is,
+   * so the skeleton sits inside the geometry rather than beside it.
+   */
+  skeleton: Nullable<Float32Array>;
   vertexCount: number;
   /**
    * Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach.
@@ -163,9 +172,43 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
   return {
     submeshes,
     fit: createVisualCameraFit(description),
+    skeleton: createVisualSkeleton(description.bones),
     vertexCount,
     levelCount,
   };
+}
+
+/**
+ * Turn a bone hierarchy into the line segments that draw it.
+ *
+ * A segment per bone that has a placed parent, so a root contributes nothing and a chain draws as a connected run.
+ * Returns null rather than an empty buffer when nothing can be drawn - a model with no IK chunk, or a single bone with
+ * no parent to reach - so the caller can tell "no skeleton to show" from "a skeleton of no bones".
+ *
+ * @param bones - Bones the backend reported, with composed bind positions.
+ * @returns Flat xyz pairs for `LineSegments`, or null when the model has no drawable skeleton.
+ */
+export function createVisualSkeleton(bones: Array<VisualBone>): Nullable<Float32Array> {
+  const segments: Array<number> = [];
+
+  for (const bone of bones) {
+    const parent: Optional<VisualBone> = bone.parentIndex === null ? undefined : bones[bone.parentIndex];
+
+    if (!bone.bindPosition || !parent?.bindPosition) {
+      continue;
+    }
+
+    segments.push(
+      bone.bindPosition.x ?? 0,
+      bone.bindPosition.y ?? 0,
+      bone.bindPosition.z ?? 0,
+      parent.bindPosition.x ?? 0,
+      parent.bindPosition.y ?? 0,
+      parent.bindPosition.z ?? 0
+    );
+  }
+
+  return segments.length ? new Float32Array(segments) : null;
 }
 
 /**

@@ -1,13 +1,14 @@
 use xrf_db::{OgfFile, OgfGeometry, OgfSlideWindow, OgfVertex, Vector3d};
 
 use crate::data::visual_bounds::VisualBounds;
-use crate::data::visual_description::{VisualBone, VisualDescription};
+use crate::data::visual_description::VisualDescription;
 use crate::data::visual_model_type::VisualModelType;
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
 use crate::pack::visual_package::VisualPackage;
+use crate::pack::visual_skeleton::convert_bones;
 
 /// A submesh that produced no geometry, as the packer's internal early return.
 ///
@@ -78,15 +79,7 @@ impl VisualPacker {
       bones: file
         .bones
         .as_ref()
-        .map(|it| {
-          it.bones
-            .iter()
-            .map(|bone| VisualBone {
-              name: bone.name.clone(),
-              parent: bone.parent.clone(),
-            })
-            .collect()
-        })
+        .map(|it| convert_bones(&it.bones, file.ik_data.as_ref().map(|ik| ik.bones.as_slice())))
         .unwrap_or_default(),
       motion_refs: file
         .kinematics

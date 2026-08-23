@@ -1,11 +1,14 @@
 import {
   AmbientLight,
   AxesHelper,
+  BufferAttribute,
   BufferGeometry,
   Color,
   DataTexture,
   DirectionalLight,
   GridHelper,
+  LineBasicMaterial,
+  LineSegments,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
@@ -31,6 +34,7 @@ export const DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS: IVisualPreviewViewOptions = {
   isGridVisible: true,
   isAxesVisible: true,
   isCheckerVisible: false,
+  isSkeletonVisible: false,
 };
 
 /** Radius assumed when a model reports no usable extent, so the camera and helpers still have a scale. */
@@ -54,6 +58,13 @@ export interface IVisualPreviewViewOptions {
    * until textures land and come out mirrored.
    */
   isCheckerVisible: boolean;
+  /**
+   * Draws the bind pose over the mesh.
+   *
+   * Rendered with depth testing off, because a skeleton is only useful when it can be seen through the mesh it sits
+   * inside - which is the point when checking where a weapon's attach bone actually is.
+   */
+  isSkeletonVisible: boolean;
 }
 
 /**
@@ -89,6 +100,8 @@ export class VisualPreviewScene {
    * position in an array would be the wrong thing to trust.
    */
   private meshes: Map<number, IVisualSubmeshMesh> = new Map();
+  /** The bind pose overlay of the current model, or null when it carries no bind data. */
+  private skeleton: Nullable<LineSegments<BufferGeometry, LineBasicMaterial>> = null;
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   private model: Nullable<IVisualModelViews> = null;
@@ -164,6 +177,8 @@ export class VisualPreviewScene {
       this.meshes.set(submesh.index, { mesh, texture: null });
       this.scene.add(mesh);
     }
+
+    this.applySkeleton(model);
 
     if (this.viewOptions) {
       this.applyViewOptions(this.viewOptions);
@@ -249,6 +264,10 @@ export class VisualPreviewScene {
 
     this.grid.visible = options.isGridVisible;
     this.axes.visible = options.isAxesVisible;
+
+    if (this.skeleton) {
+      this.skeleton.visible = options.isSkeletonVisible;
+    }
   }
 
   /**
@@ -322,6 +341,41 @@ export class VisualPreviewScene {
     }
 
     this.meshes = new Map();
+
+    if (this.skeleton) {
+      this.scene.remove(this.skeleton);
+      this.skeleton.geometry.dispose();
+      this.skeleton.material.dispose();
+      this.skeleton = null;
+    }
+  }
+
+  /**
+   * Builds the bind pose overlay, when the model came with one.
+   *
+   * `depthTest` off so the skeleton shows through the mesh it sits inside, which is the only way it answers where a
+   * bone is. Kept out of `meshes` because it is not a submesh: no texture ever addresses it, and the detail control
+   * has no range to set on it.
+   */
+  private applySkeleton(model: Nullable<IVisualModelViews>): void {
+    const positions: Nullable<Float32Array> = model?.skeleton ?? null;
+
+    if (!positions) {
+      return;
+    }
+
+    const geometry: BufferGeometry = new BufferGeometry();
+
+    geometry.setAttribute("position", new BufferAttribute(positions, 3));
+
+    this.skeleton = new LineSegments(
+      geometry,
+      new LineBasicMaterial({ color: this.config.skeletonColor, depthTest: false, transparent: true })
+    );
+    this.skeleton.renderOrder = 1;
+    this.skeleton.visible = this.viewOptions?.isSkeletonVisible ?? false;
+
+    this.scene.add(this.skeleton);
   }
 
   /** Size the helpers to the model, so the grid reads as ground rather than as a backdrop. */
