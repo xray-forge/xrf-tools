@@ -32,8 +32,9 @@ pub async fn visuals_list_motions(
     return Ok(Vec::new());
   };
 
-  let names: Vec<String> =
-    assets.with_probe(&current.roots, |probe| list_motion_names(probe, skeleton, &current.dependencies))?;
+  let names: Vec<String> = assets.with_probe(&current.roots, |probe| {
+    list_motion_names(probe, skeleton, &current.dependencies)
+  })?;
 
   log::info!("Listed {} motions for: {}", names.len(), current.source.label());
 

@@ -6,8 +6,20 @@ import {
   VisualDrawRange,
   VisualSection,
   VisualSubmesh,
+  VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
 import { Nullable, Optional } from "@/lib/types/general";
+
+/**
+ * Floats one bone transform occupies: three basis vectors and a translation.
+ *
+ * The same layout a baked motion uses, which `VisualMotionBake.floatsPerBone` states on the wire. Named here because a
+ * bind transform arrives as a value rather than in that buffer, and the two are read by the same arithmetic.
+ */
+export const FLOATS_PER_BONE: number = 12;
+
+/** Where a transform's translation starts within its floats, the basis occupying the nine before it. */
+export const TRANSLATION_OFFSET: number = 9;
 
 /** Framing values a camera needs, derived from what the model actually spans. */
 export interface IVisualCameraFit {
@@ -30,14 +42,23 @@ export interface IVisualSubmeshViews {
   normals: Float32Array;
   uvs: Float32Array;
   indices: Uint16Array;
+  /**
+   * Four bone indices and four weights per vertex, or null for geometry that carries no links.
+   *
+   * Both or neither: the packer emits the pair together, because a renderer's skin attributes are useless one without
+   * the other.
+   */
+  skinIndices: Nullable<Uint16Array>;
+  skinWeights: Nullable<Float32Array>;
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
 }
 
-/** Segment endpoints of a skeleton, and which bones each segment joins. */
+/** Segment endpoints of a skeleton, which bones each segment joins, and every bone's bind transform. */
 export interface IVisualSkeletonViews {
   positions: Nullable<Float32Array>;
   pairs: Nullable<Uint16Array>;
+  binds: Nullable<Float32Array>;
 }
 
 /** Everything the scene needs to build meshes, and nothing it does not. */
@@ -59,6 +80,14 @@ export interface IVisualModelViews {
    * two joints each drawn segment joins. Null exactly when `skeleton` is.
    */
   skeletonPairs: Nullable<Uint16Array>;
+  /**
+   * Every bone's bind transform, twelve floats each - basis then translation - or null with no bind data.
+   *
+   * What skinning inverts: a vertex is posed by its bone's animated transform times the inverse of this one, so a
+   * renderer builds its bone inverses from here once per model. One flat array rather than a matrix per bone because
+   * that is the shape both the wire and a renderer's matrix want, and indexing it needs no bone objects.
+   */
+  skeletonBinds: Nullable<Float32Array>;
   vertexCount: number;
   /**
    * Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach.
@@ -179,6 +208,8 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
       normals: toFloatView(buffer, geometry.normals),
       uvs: toFloatView(buffer, geometry.uvs),
       indices: toIndexView(buffer, geometry.indices),
+      skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
+      skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
     });
   }
@@ -188,6 +219,7 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
     fit: createVisualCameraFit(description),
     skeleton: skeleton.positions,
     skeletonPairs: skeleton.pairs,
+    skeletonBinds: skeleton.binds,
     vertexCount,
     levelCount,
   };
@@ -200,34 +232,71 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
  * Returns null rather than an empty buffer when nothing can be drawn - a model with no IK chunk, or a single bone with
  * no parent to reach - so the caller can tell "no skeleton to show" from "a skeleton of no bones".
  *
- * @param bones - Bones the backend reported, with composed bind positions.
- * @returns Segment endpoints for `LineSegments` and the bone pairs they join, both null when nothing is drawable.
+ * Bind transforms come back beside them, one per bone in bone order, because skinning needs every bone's - including a
+ * root's, which draws no segment at all.
+ *
+ * @param bones - Bones the backend reported, with composed bind transforms.
+ * @returns Segment endpoints for `LineSegments`, the bone pairs they join, and every bone's bind transform.
  */
 export function createVisualSkeleton(bones: Array<VisualBone>): IVisualSkeletonViews {
   const segments: Array<number> = [];
   const pairs: Array<number> = [];
+  const binds: Float32Array = new Float32Array(bones.length * FLOATS_PER_BONE);
+
+  let placed: number = 0;
 
   for (const [index, bone] of bones.entries()) {
+    const transform: Nullable<VisualTransform> = bone.bindTransform ?? null;
     const parent: Optional<VisualBone> = bone.parentIndex === null ? undefined : bones[bone.parentIndex];
 
-    if (!bone.bindPosition || !parent?.bindPosition || bone.parentIndex === null) {
+    if (transform) {
+      binds.set(toTransformFloats(transform), index * FLOATS_PER_BONE);
+      placed += 1;
+    }
+
+    if (!transform || !parent?.bindTransform || bone.parentIndex === null) {
       continue;
     }
 
     segments.push(
-      bone.bindPosition.x ?? 0,
-      bone.bindPosition.y ?? 0,
-      bone.bindPosition.z ?? 0,
-      parent.bindPosition.x ?? 0,
-      parent.bindPosition.y ?? 0,
-      parent.bindPosition.z ?? 0
+      transform.c.x ?? 0,
+      transform.c.y ?? 0,
+      transform.c.z ?? 0,
+      parent.bindTransform.c.x ?? 0,
+      parent.bindTransform.c.y ?? 0,
+      parent.bindTransform.c.z ?? 0
     );
     pairs.push(index, bone.parentIndex);
   }
 
-  return segments.length
-    ? { positions: new Float32Array(segments), pairs: new Uint16Array(pairs) }
-    : { positions: null, pairs: null };
+  return {
+    positions: segments.length ? new Float32Array(segments) : null,
+    pairs: segments.length ? new Uint16Array(pairs) : null,
+    binds: placed ? binds : null,
+  };
+}
+
+/**
+ * One transform flattened the way the baked motion buffer stores it, so both are read by the same arithmetic.
+ *
+ * @param transform - Basis and translation as the backend sent them.
+ * @returns Twelve floats: `i`, `j`, `k`, then `c`.
+ */
+function toTransformFloats(transform: VisualTransform): Array<number> {
+  return [
+    transform.i.x ?? 0,
+    transform.i.y ?? 0,
+    transform.i.z ?? 0,
+    transform.j.x ?? 0,
+    transform.j.y ?? 0,
+    transform.j.z ?? 0,
+    transform.k.x ?? 0,
+    transform.k.y ?? 0,
+    transform.k.z ?? 0,
+    transform.c.x ?? 0,
+    transform.c.y ?? 0,
+    transform.c.z ?? 0,
+  ];
 }
 
 /**

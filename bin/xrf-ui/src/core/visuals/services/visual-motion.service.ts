@@ -9,18 +9,18 @@ import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
-/** A posed motion: what the backend said it is, and every frame's joint positions. */
+/** A posed motion: what the backend said it is, and every frame's bone transforms. */
 export interface IPosedMotion {
   bake: VisualMotionBake;
-  joints: Float32Array;
+  transforms: Float32Array;
 }
 
 /**
  * Playing one of the open visual's motions.
  *
  * The whole motion is fetched once and played locally, because at thirty frames a second a round trip per frame is not
- * playback. What crosses is joint positions rather than bone matrices: the skeleton overlay draws segments between
- * joints, so positions are all it can use.
+ * playback. What crosses is one transform per bone per frame, which poses the mesh through its skinning and the
+ * skeleton overlay through those transforms' translations: one buffer, both surfaces.
  */
 @Injectable()
 export class VisualMotionService {
@@ -64,11 +64,13 @@ export class VisualMotionService {
   }
 
   /**
-   * @returns Floats one frame of the joint buffer occupies, which the scene needs to index into it.
+   * @returns Floats one bone occupies in the posed buffer, which the scene needs to index into it.
+   *
+   * Read off the bake rather than assumed, so the buffer's layout is stated by whoever produced it.
    */
   @Computed()
-  public get jointStride(): number {
-    return (this.posed.value?.bake.boneCount ?? 0) * 3;
+  public get floatsPerBone(): number {
+    return this.posed.value?.bake.floatsPerBone ?? 0;
   }
 
   public constructor() {
@@ -133,7 +135,7 @@ export class VisualMotionService {
         return this.log.info("Discarding a motion already moved past:", name);
       }
 
-      const expected: number = bake.frameCount * bake.boneCount * 3 * Float32Array.BYTES_PER_ELEMENT;
+      const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 
       if (bytes.byteLength !== expected) {
         throw new Error(
@@ -143,7 +145,7 @@ export class VisualMotionService {
       }
 
       runInAction(() => {
-        this.posed = this.posed.asReady({ bake, joints: new Float32Array(bytes) });
+        this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
       });
 
       this.play();

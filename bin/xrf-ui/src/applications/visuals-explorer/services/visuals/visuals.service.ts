@@ -82,7 +82,7 @@ export class VisualsService {
   public get highlightedJoint(): Nullable<[number, number, number]> {
     const bones: Array<VisualBone> = this.visual.value?.selected.description.bones ?? [];
     const bone: Optional<VisualBone> = bones.find((it: VisualBone) => it.name === this.highlightedBone);
-    const position: Nullable<Vector3d> = bone?.bindPosition ?? null;
+    const position: Nullable<Vector3d> = bone?.bindTransform?.c ?? null;
 
     if (position === null || position.x === null || position.y === null || position.z === null) {
       return null;

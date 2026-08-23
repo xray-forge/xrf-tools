@@ -6,10 +6,10 @@ use tauri::ipc::Response;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
-/// The baked joint positions of the posed motion, as bytes.
+/// The baked bone transforms of the posed motion, as bytes.
 ///
-/// Frame major `f32` triples: frame zero's bones, then frame one's. The frame and bone counts to read them by came
-/// back from `open_motion`, the same pairing geometry uses.
+/// Frame major `f32`: frame zero's bones, then frame one's, each bone a basis and a translation. The frame count,
+/// bone count and floats per bone to read them by came back from `open_motion`, the same pairing geometry uses.
 ///
 /// Serves only what `open_motion` parked, and is named by that motion rather than taking one: composing here instead
 /// would let a caller ask for bytes whose shape no description had reported.
@@ -31,7 +31,7 @@ pub async fn visuals_read_motion(name: String, state: State<'_, VisualState>) ->
     ));
   }
 
-  let bytes: Vec<u8> = posed.positions.iter().flat_map(|it| it.to_le_bytes()).collect();
+  let bytes: Vec<u8> = posed.transforms.iter().flat_map(|it| it.to_le_bytes()).collect();
 
   log::info!(
     "Serving {} bytes of posed motion '{name}', {} frames of {} bones",

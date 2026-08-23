@@ -1,6 +1,6 @@
 use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_vfs::{XrayAsset, XrayProbe, XrayResolution};
-use xrf_visual::{VisualDependencies, VisualMotionPositions, bake_motion};
+use xrf_visual::{VisualDependencies, VisualMotionPose, bake_motion};
 
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
@@ -20,7 +20,7 @@ pub fn bake_named_motion(
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
   name: &str,
-) -> TauriResult<VisualMotionPositions> {
+) -> TauriResult<VisualMotionPose> {
   if let Some(motion) = skeleton.embedded_motions.iter().find(|it| it.name == name) {
     return bake_motion(&skeleton.bones, &skeleton.binds, &skeleton.embedded_parts, motion)
       .map_err(|error| format!("Failed to pose embedded motion '{name}': {error}"));

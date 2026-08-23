@@ -39,6 +39,9 @@ pub struct OgfVerificationCensus {
   pub malformed_submeshes: usize,
   pub progressive_submeshes: usize,
   pub progressive_submeshes_drawing_part_of_the_buffer: usize,
+  pub skinned_submeshes: usize,
+  /// Vertices whose four weights do not sum to one, which a renderer would draw pulled toward the origin.
+  pub vertices_with_stray_skin_weights: usize,
   pub bounds_disagreements: usize,
   pub versions: BTreeMap<u8, usize>,
   pub root_model_types: BTreeMap<String, usize>,
@@ -74,6 +77,10 @@ pub struct OgfVerifier<'a> {
 }
 
 impl<'a> OgfVerifier<'a> {
+  /// How far a vertex's weights may sum from one before it is counted as astray, which is float noise rather than a
+  /// judgement about the file.
+  const SKIN_WEIGHT_TOLERANCE: f32 = 1e-3;
+
   pub fn new(root: &'a Path) -> Self {
     Self { root }
   }
@@ -112,6 +119,7 @@ impl<'a> OgfVerifier<'a> {
       let package: VisualPackage = VisualPacker::pack(&file);
 
       self.census_package(&mut census, &package.description);
+      Self::census_skin(&mut census, &package);
 
       geometry_findings.extend(self.geometry_findings(&path, &package.description));
 
@@ -242,6 +250,34 @@ impl<'a> OgfVerifier<'a> {
           None => {}
         },
       }
+    }
+  }
+
+  /// Count skinned submeshes, and the vertices among them whose weights do not sum to one.
+  ///
+  /// Read out of the packed buffer rather than off the parsed vertices, because the buffer is what a renderer skins
+  /// with: the last weight of a set is reconstructed by the reader, so a sum that drifts is a statement about the
+  /// arithmetic this crate performs and not only about the file. A vertex whose weights sum to less than one is drawn
+  /// pulled toward the origin, which is why the count is worth having rather than assumed.
+  fn census_skin(census: &mut OgfVerificationCensus, package: &VisualPackage) {
+    for submesh in &package.description.submeshes {
+      let Some(skin) = submesh.geometry().and_then(|it| it.skin.as_ref()) else {
+        continue;
+      };
+
+      census.skinned_submeshes += 1;
+
+      let start: usize = skin.weights.byte_offset as usize;
+      let end: usize = start + skin.weights.byte_length as usize;
+      let weights: Vec<f32> = package.buffer[start..end]
+        .chunks_exact(size_of::<f32>())
+        .map(|bytes| f32::from_le_bytes(bytes.try_into().expect("four bytes make one f32")))
+        .collect();
+
+      census.vertices_with_stray_skin_weights += weights
+        .chunks_exact(4)
+        .filter(|vertex| (vertex.iter().sum::<f32>() - 1.0).abs() > Self::SKIN_WEIGHT_TOLERANCE)
+        .count();
     }
   }
 

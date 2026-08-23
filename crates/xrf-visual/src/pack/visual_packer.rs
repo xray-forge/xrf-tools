@@ -4,7 +4,7 @@ use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::VisualDescription;
 use crate::data::visual_model_type::VisualModelType;
 use crate::data::visual_section::VisualDrawRange;
-use crate::data::visual_submesh::{VisualGeometry, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
+use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
 use crate::pack::visual_package::VisualPackage;
@@ -36,6 +36,12 @@ impl VisualSkip {
   }
 }
 
+/// One submesh's skinning links, flattened four per vertex and paired so neither can be pushed without the other.
+struct FlatSkin {
+  indices: Vec<u16>,
+  weights: Vec<f32>,
+}
+
 /// Flattens a parsed OGF visual into renderer ready buffers.
 ///
 /// Packing never fails. A child that carries nothing drawable becomes a submesh holding the reason it
@@ -44,6 +50,10 @@ impl VisualSkip {
 pub struct VisualPacker {}
 
 impl VisualPacker {
+  /// Skinning links per vertex, which is both the format ceiling (`vertBoned4W`) and the width of a renderer's
+  /// `vec4` skin attributes.
+  const SKIN_LINKS: usize = 4;
+
   /// Converts an OGF visual into a description and one interleaved byte buffer.
   ///
   /// Submeshes retain source order. Unsupported or malformed geometry is represented in the
@@ -51,10 +61,14 @@ impl VisualPacker {
   pub fn pack(file: &OgfFile) -> VisualPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
 
+    // Skinning links name bones of the whole visual, so validating one needs the model's bone count rather than
+    // anything the child carries.
+    let bone_count: usize = file.bones.as_ref().map_or(0, |it| it.bones.len());
+
     let submeshes: Vec<VisualSubmesh> = Self::submesh_sources(file)
       .into_iter()
       .enumerate()
-      .map(|(index, source)| Self::pack_submesh(&mut builder, index as u32, source))
+      .map(|(index, source)| Self::pack_submesh(&mut builder, index as u32, source, bone_count))
       .collect();
 
     let computed_bounds: Option<VisualBounds> = submeshes
@@ -112,7 +126,7 @@ impl VisualPacker {
     }
   }
 
-  fn pack_submesh(builder: &mut VisualBufferBuilder, index: u32, source: &OgfFile) -> VisualSubmesh {
+  fn pack_submesh(builder: &mut VisualBufferBuilder, index: u32, source: &OgfFile, bone_count: usize) -> VisualSubmesh {
     let model_type: u8 = source.header.model_type;
 
     VisualSubmesh {
@@ -121,7 +135,7 @@ impl VisualPacker {
       model_type_label: VisualModelType::label(model_type),
       texture_name: source.texture.as_ref().map(|it| it.texture_name.clone()),
       shader_name: source.texture.as_ref().map(|it| it.shader_name.clone()),
-      content: match Self::pack_geometry(builder, source) {
+      content: match Self::pack_geometry(builder, source, bone_count) {
         Ok(geometry) => VisualSubmeshContent::Packed { geometry },
         Err(skip) => VisualSubmeshContent::Skipped {
           cause: skip.cause,
@@ -135,7 +149,11 @@ impl VisualPacker {
   ///
   /// The error type is the reason a consumer displays, not a failure: every early return here ends up
   /// beside the submesh in the description.
-  fn pack_geometry(builder: &mut VisualBufferBuilder, source: &OgfFile) -> Result<VisualGeometry, VisualSkip> {
+  fn pack_geometry(
+    builder: &mut VisualBufferBuilder,
+    source: &OgfFile,
+    bone_count: usize,
+  ) -> Result<VisualGeometry, VisualSkip> {
     // Geometry can live in a shared vertex or index container outside the file, in which case the
     // chunk is legitimately absent rather than missing, so none of these are malformed files.
     let geometry: &OgfGeometry = source
@@ -198,6 +216,8 @@ impl VisualPacker {
       })
       .collect();
 
+    let skin: Option<FlatSkin> = Self::flatten_skin(vertices, bone_count)?;
+
     let mut wound_indices: Vec<u16> = indices.clone();
 
     reverse_triangle_winding(&mut wound_indices);
@@ -209,9 +229,64 @@ impl VisualPacker {
       normals: builder.push_f32_section(&flat_normals),
       uvs: builder.push_f32_section(&flat_uvs),
       indices: builder.push_u16_section(&wound_indices),
+      skin: skin.map(|it| VisualSkin {
+        indices: builder.push_u16_section(&it.indices),
+        weights: builder.push_f32_section(&it.weights),
+      }),
       detail_levels,
       bounds,
     })
+  }
+
+  /// Every vertex's skinning links, widened to four, or `None` when the geometry carries none.
+  ///
+  /// Widened rather than stored at their natural width because a renderer's skin attributes are `vec4` whatever the
+  /// source layout was, and a padding link at weight zero moves nothing. Whether a submesh is skinned at all is read
+  /// off the vertices rather than off the vertex format, so a layout added to the reader later needs no change here.
+  ///
+  /// A visual with no bone list gets no skin either: a link is an index into that list, so without one it names
+  /// nothing, and geometry that cannot be posed is better drawn as it is stored than bound to a skeleton of no bones.
+  ///
+  /// # Errors
+  ///
+  /// A link naming a bone the visual does not have is malformed: the engine would index its bone array out of bounds,
+  /// and `MeshAssetsVerifier` already reports the same thing as a finding.
+  fn flatten_skin(vertices: &[OgfVertex], bone_count: usize) -> Result<Option<FlatSkin>, VisualSkip> {
+    if bone_count == 0 || vertices.iter().all(|it| it.links.is_empty()) {
+      return Ok(None);
+    }
+
+    let mut indices: Vec<u16> = Vec::with_capacity(vertices.len() * Self::SKIN_LINKS);
+    let mut weights: Vec<f32> = Vec::with_capacity(vertices.len() * Self::SKIN_LINKS);
+
+    for vertex in vertices {
+      if vertex.links.len() > Self::SKIN_LINKS {
+        return Err(VisualSkip::malformed(format!(
+          "A vertex carries {} skinning links, and the format stores at most {}",
+          vertex.links.len(),
+          Self::SKIN_LINKS
+        )));
+      }
+
+      for link in &vertex.links {
+        if link.bone as usize >= bone_count {
+          return Err(VisualSkip::malformed(format!(
+            "A vertex is skinned to bone {}, and the skeleton has {bone_count}",
+            link.bone
+          )));
+        }
+
+        indices.push(link.bone);
+        weights.push(link.weight);
+      }
+
+      for _ in vertex.links.len()..Self::SKIN_LINKS {
+        indices.push(0);
+        weights.push(0.0);
+      }
+    }
+
+    Ok(Some(FlatSkin { indices, weights }))
   }
 
   /// The index range that draws a submesh at full detail.

@@ -135,6 +135,12 @@ impl VerifyOgfCommand {
     );
     xrf_output::info!(
       output,
+      "Skinned submeshes: {}, vertices whose weights do not sum to one: {}",
+      census.skinned_submeshes,
+      census.vertices_with_stray_skin_weights
+    );
+    xrf_output::info!(
+      output,
       "Unreadable files: {}, files with nothing drawable: {}, bounds disagreements: {}",
       census.unreadable_files,
       census.files_without_geometry,

@@ -1,16 +1,16 @@
 use xrf_db::{OgfBone, OgfBoneIkData};
 
 use crate::data::visual_description::VisualBone;
-use crate::pack::visual_conversion::convert_vector;
 use crate::pack::visual_transform::BindTransform;
 
 /// Converts a bone list into the renderer-facing skeleton, resolving the bind pose when the file carries one.
 ///
-/// Only each joint's model-space position and its parent's index survive: that is what draws a skeleton, and it keeps the
-/// matrix work - which is where a sign or an operand order goes wrong invisibly - on this side of the wire. Positions
-/// pass through the same conversion as the mesh, so the skeleton lands in the geometry rather than mirrored beside it.
+/// Each bone's model-space bind transform and its parent's index survive: the transform's translation is what draws a
+/// skeleton, and the whole transform is what skinning inverts. Composition stays on this side of the wire, which is
+/// where a sign or an operand order goes wrong invisibly, and transforms leave in renderer space so the skeleton lands
+/// in the geometry rather than mirrored beside it.
 ///
-/// A visual with no IK chunk still reports its bone names and parents, with no positions: the hierarchy is worth
+/// A visual with no IK chunk still reports its bone names and parents, with no transforms: the hierarchy is worth
 /// listing even when nothing can be drawn from it.
 pub fn convert_bones(bones: &[OgfBone], ik_data: Option<&[OgfBoneIkData]>) -> Vec<VisualBone> {
   // The engine reads one IK record per bone, in bone order (`SkeletonCustom.cpp:297`), so a chunk of a different
@@ -28,7 +28,7 @@ pub fn convert_bones(bones: &[OgfBone], ik_data: Option<&[OgfBoneIkData]>) -> Ve
       name: bone.name.clone(),
       parent: bone.parent.clone(),
       parent_index: find_parent(bones, &bone.parent).map(|it| it as u32),
-      bind_position: model[index].as_ref().map(|transform| convert_vector(&transform.c)),
+      bind_transform: model[index].as_ref().map(BindTransform::to_renderer_space),
     })
     .collect()
 }

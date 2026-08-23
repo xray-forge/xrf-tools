@@ -14,8 +14,14 @@ export type VisualBone = {
   parent: string;
   /** Index of the parent in this same list, or `None` for a root or a parent no bone carries. */
   parentIndex: number | null;
-  /** Where the joint sits in the bind pose, in renderer space, or `None` when the file carries no IK chunk. */
-  bindPosition: Vector3d | null;
+  /**
+   * The bone's whole bind transform in model space, or `None` when the file carries no IK chunk.
+   *
+   * The whole transform rather than only the joint position, because skinning needs its inverse: a vertex is posed as
+   * `animated_model * inverse(bind_model)` (`SkeletonCustom.cpp:508`), and the position alone cannot produce that.
+   * `c` is the joint, which is what a skeleton overlay draws.
+   */
+  bindTransform: VisualTransform | null;
 };
 
 /**
@@ -104,6 +110,8 @@ export type VisualGeometry = {
   normals: VisualSection;
   uvs: VisualSection;
   indices: VisualSection;
+  /** Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored. */
+  skin: VisualSkin | null;
   /**
    * Every range a consumer may draw, finest first, and never empty.
    *
@@ -118,7 +126,7 @@ export type VisualGeometry = {
 };
 
 /**
- * One motion's joint positions, every frame baked, ready to play without asking for more.
+ * What one baked motion is, beside the frames themselves.
  *
  * Baked rather than sampled on demand because playback runs at thirty frames a second and every frame would otherwise
  * be a round trip. A measured motion averages 78 frames, so a 47 bone skeleton bakes to about 44 kilobytes - cheaper
@@ -132,6 +140,8 @@ export type VisualMotionBake = {
   duration: number | null;
   /** How many bones the motion actually drives, the rest holding their bind pose. */
   animatedBoneCount: number;
+  /** Floats one bone's transform occupies in the baked buffer, so a consumer indexes it without agreeing a constant. */
+  floatsPerBone: number;
 };
 
 /**
@@ -155,6 +165,20 @@ export type VisualMotionDependency = {
 export type VisualSection = {
   byteOffset: number;
   byteLength: number;
+};
+
+/**
+ * Where one submesh's skinning links sit in the geometry buffer.
+ *
+ * Four per vertex whatever the source layout stores, because that is the width a renderer's skin attributes have:
+ * a vertex with fewer links is padded with bone zero at weight zero, which contributes nothing. Indices are `u16`
+ * into the visual's own bone list - the engine looks a link up as `LL_GetBoneInstance(v.matrix)`
+ * (`xray-16/src/Layers/xrRender/SkeletonX.cpp:359`), so they are global to the model rather than local to the
+ * submesh - and each vertex's weights sum to one, the last one having been reconstructed by the reader.
+ */
+export type VisualSkin = {
+  indices: VisualSection;
+  weights: VisualSection;
 };
 
 /**
@@ -215,4 +239,19 @@ export type VisualTextureDependency = {
   submeshIndex: number;
   reference: string;
   resolution: XrayResolution;
+};
+
+/**
+ * One transform in renderer space: three basis vectors and a translation.
+ *
+ * Four vectors rather than sixteen floats because that is what it is - the fourth row of a 4x4 is never anything but
+ * `0 0 0 1` here - and because `i`, `j`, `k`, `c` are the names the engine's own `Fmatrix` uses, so a value crossing
+ * the wire reads against the source it was composed from. Laid out in this order, the floats are already a
+ * column-major 4x4's first three columns and its translation, which is the layout a renderer's matrix expects.
+ */
+export type VisualTransform = {
+  i: Vector3d;
+  j: Vector3d;
+  k: Vector3d;
+  c: Vector3d;
 };

@@ -1,7 +1,7 @@
 use std::sync::MutexGuard;
 
 use tauri::State;
-use xrf_visual::{VisualMotionBake, VisualMotionPositions};
+use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
@@ -38,8 +38,9 @@ pub async fn visuals_open_motion(
   };
 
   // Posed inside the roots the open used, so the animation files are looked for where the model's own references were.
-  let posed: VisualMotionPositions =
-    assets.with_probe(&current.roots, |probe| bake_named_motion(probe, skeleton, &current.dependencies, &name))??;
+  let posed: VisualMotionPose = assets.with_probe(&current.roots, |probe| {
+    bake_named_motion(probe, skeleton, &current.dependencies, &name)
+  })??;
 
   let description: VisualMotionBake = posed.description.clone();
 

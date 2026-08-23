@@ -20,6 +20,7 @@ import {
   mockVisualBone,
   MockVisualBuffer,
   mockVisualDescription,
+  mockVisualTransform,
 } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
@@ -68,7 +69,7 @@ describe("VisualsService bone highlight", () => {
           submeshes: [submesh],
           bufferLength: buffer.byteLength,
           bones: [
-            mockVisualBone({ name: "wpn_body", bindPosition: { x: 1, y: 2, z: 3 } }),
+            mockVisualBone({ name: "wpn_body", bindTransform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }),
             mockVisualBone({ name: "wpn_scope", parent: "wpn_body", parentIndex: 0 }),
           ],
         }),

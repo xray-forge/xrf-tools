@@ -33,11 +33,7 @@ impl SelectedSkeleton {
     Some(Self {
       bones: bones.clone(),
       binds: binds.clone(),
-      embedded_motions: file
-        .motions
-        .as_ref()
-        .map(|it| it.motions.clone())
-        .unwrap_or_default(),
+      embedded_motions: file.motions.as_ref().map(|it| it.motions.clone()).unwrap_or_default(),
       embedded_parts: file
         .motion_parameters
         .as_ref()

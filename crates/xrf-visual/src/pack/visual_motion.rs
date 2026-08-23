@@ -1,11 +1,11 @@
 use serde::Serialize;
-use xrf_db::{OgfBone, OgfBoneIkData, OgfBoneMotion, OgfMotion, OgfPart, SAMPLE_FPS, Vector3d, XRayByteOrder};
+use xrf_db::{OgfBone, OgfBoneIkData, OgfBoneMotion, OgfMotion, OgfPart, SAMPLE_FPS, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::pack::visual_conversion::convert_vector;
+use crate::data::visual_description::VisualTransform;
 use crate::pack::visual_transform::BindTransform;
 
-/// One motion's joint positions, every frame baked, ready to play without asking for more.
+/// What one baked motion is, beside the frames themselves.
 ///
 /// Baked rather than sampled on demand because playback runs at thirty frames a second and every frame would otherwise
 /// be a round trip. A measured motion averages 78 frames, so a 47 bone skeleton bakes to about 44 kilobytes - cheaper
@@ -21,23 +21,32 @@ pub struct VisualMotionBake {
   pub duration: f32,
   /// How many bones the motion actually drives, the rest holding their bind pose.
   pub animated_bone_count: u32,
+  /// Floats one bone's transform occupies in the baked buffer, so a consumer indexes it without agreeing a constant.
+  pub floats_per_bone: u32,
 }
 
-/// Joint positions of one baked motion, frame major: frame 0's bones, then frame 1's, three floats each.
+/// Bone transforms of one baked motion, frame major: frame 0's bones, then frame 1's.
+///
+/// Each bone contributes [`FLOATS_PER_BONE`] floats - the basis `i`, `j`, `k` and the translation `c`, in that order -
+/// which is a column-major 4x4 without its constant fourth row. Whole transforms rather than joint positions because
+/// skinning needs the rotation as well, and a skeleton overlay reads the translation out of the same buffer rather than
+/// being sent a second one.
 ///
 /// Kept beside the description rather than inside it because it crosses to a renderer as raw bytes, the same split the
 /// geometry buffer uses.
 #[derive(Clone, Debug, PartialEq)]
-pub struct VisualMotionPositions {
+pub struct VisualMotionPose {
   pub description: VisualMotionBake,
-  pub positions: Vec<f32>,
+  pub transforms: Vec<f32>,
 }
 
-/// Bakes every frame of one motion into model-space joint positions.
+/// Floats one baked bone transform occupies: three basis vectors and a translation.
+pub const FLOATS_PER_BONE: usize = 12;
+
+/// Bakes every frame of one motion into model-space bone transforms.
 ///
-/// Composed in engine space and converted only at the end, exactly as the bind pose is: mirroring a position is one
-/// sign, while mirroring a rotation is a similarity transform that is easy to get subtly wrong. Since a skeleton
-/// overlay needs positions and nothing else, the rotations never have to leave engine space at all.
+/// Composed in engine space and mirrored only on the way out, exactly as the bind pose is, so every formula here reads
+/// against the engine rather than against a mirrored copy of it.
 ///
 /// A bone the motion does not drive keeps its bind transform rather than snapping to the origin, which is what the
 /// engine's remap leaves untouched for a bone no partition names.
@@ -51,7 +60,7 @@ pub fn bake_motion(
   binds: &[OgfBoneIkData],
   parts: &[OgfPart],
   motion: &OgfMotion,
-) -> XrfResult<VisualMotionPositions> {
+) -> XrfResult<VisualMotionPose> {
   if binds.len() != bones.len() {
     return Err(XrfError::new_parsing_error(format!(
       "Motion '{}' cannot be posed: {} bones carry {} bind records",
@@ -73,7 +82,7 @@ pub fn bake_motion(
     .collect();
 
   let frame_count: usize = motion.count.max(1) as usize;
-  let mut positions: Vec<f32> = Vec::with_capacity(frame_count * bones.len() * 3);
+  let mut transforms: Vec<f32> = Vec::with_capacity(frame_count * bones.len() * FLOATS_PER_BONE);
 
   for frame in 0..frame_count {
     let locals: Vec<BindTransform> = (0..bones.len())
@@ -84,26 +93,30 @@ pub fn bake_motion(
       .collect();
 
     for transform in compose_chain(&locals, &parents) {
-      let converted: Vector3d = match transform {
-        Some(transform) => convert_vector(&transform.c),
-        // A bone whose chain never reaches a root has no place to be drawn; the origin is the only honest answer, and
-        // the segment it would draw is dropped by the consumer anyway.
-        None => Vector3d { x: 0.0, y: 0.0, z: 0.0 },
-      };
+      // A bone whose chain never reaches a root has no place to be posed; the identity is the only honest answer, and
+      // it leaves whatever is skinned to that bone sitting in model space rather than collapsed to a point.
+      let posed: VisualTransform = transform
+        .as_ref()
+        .unwrap_or(&BindTransform::identity())
+        .to_renderer_space();
 
-      positions.extend([converted.x, converted.y, converted.z]);
+      transforms.extend([
+        posed.i.x, posed.i.y, posed.i.z, posed.j.x, posed.j.y, posed.j.z, posed.k.x, posed.k.y, posed.k.z, posed.c.x,
+        posed.c.y, posed.c.z,
+      ]);
     }
   }
 
-  Ok(VisualMotionPositions {
+  Ok(VisualMotionPose {
     description: VisualMotionBake {
       name: motion.name.clone(),
       frame_count: frame_count as u32,
       bone_count: bones.len() as u32,
       duration: frame_count as f32 / SAMPLE_FPS,
       animated_bone_count: animated.iter().filter(|it| it.is_some()).count() as u32,
+      floats_per_bone: FLOATS_PER_BONE as u32,
     },
-    positions,
+    transforms,
   })
 }
 

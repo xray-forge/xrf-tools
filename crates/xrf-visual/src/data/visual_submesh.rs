@@ -4,6 +4,21 @@ use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_model_type::VisualModelType;
 use crate::data::visual_section::{VisualDrawRange, VisualSection};
 
+/// Where one submesh's skinning links sit in the geometry buffer.
+///
+/// Four per vertex whatever the source layout stores, because that is the width a renderer's skin attributes have:
+/// a vertex with fewer links is padded with bone zero at weight zero, which contributes nothing. Indices are `u16`
+/// into the visual's own bone list - the engine looks a link up as `LL_GetBoneInstance(v.matrix)`
+/// (`xray-16/src/Layers/xrRender/SkeletonX.cpp:359`), so they are global to the model rather than local to the
+/// submesh - and each vertex's weights sum to one, the last one having been reconstructed by the reader.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VisualSkin {
+  pub indices: VisualSection,
+  pub weights: VisualSection,
+}
+
 /// Where one submesh's attributes sit inside the geometry buffer, and what to draw from them.
 ///
 /// Every section is a byte range into the one buffer the model ships as, so a consumer builds views
@@ -20,6 +35,8 @@ pub struct VisualGeometry {
   pub normals: VisualSection,
   pub uvs: VisualSection,
   pub indices: VisualSection,
+  /// Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored.
+  pub skin: Option<VisualSkin>,
   /// Every range a consumer may draw, finest first, and never empty.
   ///
   /// A static submesh has exactly one: its whole index buffer. A progressive one has a range per detail level of

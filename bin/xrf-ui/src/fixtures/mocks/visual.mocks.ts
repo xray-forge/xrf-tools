@@ -1,5 +1,6 @@
 import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { Vector3d } from "@/core/bindings/types/xrf-db";
 import {
   VisualBone,
   VisualBounds,
@@ -8,6 +9,7 @@ import {
   VisualSection,
   VisualSubmesh,
   VisualTextureDependency,
+  VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
 
 const ALIGNMENT: number = 4;
@@ -120,6 +122,7 @@ export function mockPackedSubmesh(
         normals,
         uvs,
         indices,
+        skin: null,
         detailLevels: [{ start: 0, count: 3 }],
         bounds: mockVisualBounds(),
         ...geometryOverrides,
@@ -171,7 +174,22 @@ export function mockVisualDescription(overrides: Partial<VisualDescription> = {}
 }
 
 /**
- * Creates a bone fixture, placed in the bind pose when given a position.
+ * Creates an unrotated transform at one position, which is what most tests mean by "a bone is here".
+ *
+ * @param translation - Where the transform places its origin.
+ * @returns A transform fixture with an identity basis.
+ */
+export function mockVisualTransform(translation: Vector3d): VisualTransform {
+  return {
+    i: { x: 1, y: 0, z: 0 },
+    j: { x: 0, y: 1, z: 0 },
+    k: { x: 0, y: 0, z: 1 },
+    c: translation,
+  };
+}
+
+/**
+ * Creates a bone fixture, placed in the bind pose when given a transform.
  *
  * @param overrides - Field values to override.
  * @returns A bone fixture.
@@ -181,7 +199,7 @@ export function mockVisualBone(overrides: Partial<VisualBone> = {}): VisualBone 
     name: "bip01",
     parent: "",
     parentIndex: null,
-    bindPosition: null,
+    bindTransform: null,
     ...overrides,
   };
 }

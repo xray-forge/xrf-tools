@@ -1,10 +1,10 @@
 //! Holds what a packed visual promises: the right triangles, in the right space, with a reason for
 //! every piece that produced none.
 
-use xrf_db::{OgfFile, OgfGeometry};
+use xrf_db::{OgfFile, OgfGeometry, OgfVertex, OgfVertexLink};
 
 use crate::data::visual_section::VisualDrawRange;
-use crate::data::visual_submesh::{VisualGeometry, VisualSkipCause, VisualSubmesh};
+use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh};
 use crate::pack::tests::fixtures::{
   MODEL_TYPE_GEOMDEF_PM, MODEL_TYPE_GEOMDEF_ST, PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES,
   PROGRESSIVE_INDICES, bones, description, embedded_motions, geometry, geometry_of_unknown_format, kinematics,
@@ -338,13 +338,13 @@ fn reports_bones_motion_refs_and_embedded_motions() {
         name: String::from("wpn_body"),
         parent: String::new(),
         parent_index: None,
-        bind_position: None,
+        bind_transform: None,
       },
       crate::data::visual_description::VisualBone {
         name: String::from("magazin"),
         parent: String::from("wpn_body"),
         parent_index: Some(0),
-        bind_position: None,
+        bind_transform: None,
       },
     ],
     "expect the hierarchy without positions, since this fixture carries no ik chunk"
@@ -531,4 +531,90 @@ fn ignores_an_out_of_range_index_outside_the_drawn_range() {
   let package: VisualPackage = VisualPacker::pack(&skeleton(vec![child]));
 
   assert!(only_submesh(&package).geometry().is_some());
+}
+
+#[test]
+fn packs_four_skinning_links_per_vertex_whatever_the_vertex_carries() {
+  // Widening is the point: one vertex links two bones and the other one, and both must come back four wide with the
+  // padding weighted to nothing, because a renderer reads them as one `vec4` pair.
+  let mut two_link: OgfVertex = vertex(vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 1.0), 0.0, 0.0);
+
+  two_link.links = vec![
+    OgfVertexLink { bone: 1, weight: 0.75 },
+    OgfVertexLink { bone: 0, weight: 0.25 },
+  ];
+
+  let file: OgfFile = OgfFile {
+    bones: Some(bones(&[("root", ""), ("child", "root")])),
+    ..skeleton(vec![OgfFile {
+      geometry: Some(geometry(
+        vec![
+          two_link,
+          vertex(vector(1.0, 0.0, 0.0), vector(0.0, 1.0, 0.0), 1.0, 0.0),
+          vertex(vector(0.0, 1.0, 0.0), vector(1.0, 0.0, 0.0), 0.0, 1.0),
+        ],
+        vec![0, 1, 2],
+      )),
+      ..visual(MODEL_TYPE_GEOMDEF_ST)
+    }])
+  };
+
+  let package: VisualPackage = VisualPacker::pack(&file);
+  let geometry: &VisualGeometry = only_geometry(&package);
+  let skin: &VisualSkin = geometry
+    .skin
+    .as_ref()
+    .expect("expect skinned geometry to carry skin sections");
+
+  assert_eq!(
+    read_u16_section(&package.buffer, skin.indices),
+    vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "expect four bone indices per vertex, padded with bone zero"
+  );
+  assert_eq!(
+    read_f32_section(&package.buffer, skin.weights),
+    vec![0.75, 0.25, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+    "expect the padding links to be weighted to nothing"
+  );
+}
+
+#[test]
+fn leaves_a_visual_with_no_bones_unskinned() {
+  // A link is an index into the bone list, so without one it names nothing. The geometry still draws.
+  let package: VisualPackage = VisualPacker::pack(&skeleton(vec![static_triangle_child()]));
+
+  assert_eq!(only_geometry(&package).skin, None);
+}
+
+#[test]
+fn skips_a_submesh_skinned_to_a_bone_the_skeleton_does_not_have() {
+  let mut stray: OgfVertex = vertex(vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 1.0), 0.0, 0.0);
+
+  stray.links = vec![OgfVertexLink { bone: 4, weight: 1.0 }];
+
+  let file: OgfFile = OgfFile {
+    bones: Some(bones(&[("root", "")])),
+    ..skeleton(vec![OgfFile {
+      geometry: Some(geometry(
+        vec![
+          stray,
+          vertex(vector(1.0, 0.0, 0.0), vector(0.0, 1.0, 0.0), 1.0, 0.0),
+          vertex(vector(0.0, 1.0, 0.0), vector(1.0, 0.0, 0.0), 0.0, 1.0),
+        ],
+        vec![0, 1, 2],
+      )),
+      ..visual(MODEL_TYPE_GEOMDEF_ST)
+    }])
+  };
+
+  let package: VisualPackage = VisualPacker::pack(&file);
+  let submesh: &VisualSubmesh = only_submesh(&package);
+
+  assert_eq!(
+    submesh.skipped(),
+    Some((
+      VisualSkipCause::Malformed,
+      "A vertex is skinned to bone 4, and the skeleton has 1"
+    ))
+  );
 }

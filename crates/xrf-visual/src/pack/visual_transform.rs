@@ -1,5 +1,7 @@
 use xrf_db::{Quaternion, Vector3d};
 
+use crate::data::visual_description::VisualTransform;
+
 /// A bone's transform: a rotation basis in row-vector order, and a translation.
 ///
 /// Mirrors `Fmatrix`'s 4x3 use, whose rows `i`, `j`, `k` are the basis and `c` the translation, because that is the
@@ -106,6 +108,53 @@ impl BindTransform {
     }
   }
 
+  /// The same transform expressed in the renderer's mirrored space.
+  ///
+  /// Geometry reaches the renderer with Z negated (`convert_vector`), so a transform that is to act on it has to be
+  /// mirrored too - and mirroring a transform is not mirroring its parts. Conjugating by `S = diag(1, 1, -1)` gives
+  /// `S M S`, which negates the z of the first two basis vectors, the x and y of the third, and the z of the
+  /// translation. Negating every z instead leaves a rotation that turns the wrong way about x and y, which looks
+  /// plausible on a symmetric pose and wrong on every other frame.
+  pub(crate) fn mirrored(&self) -> Self {
+    Self {
+      i: Vector3d {
+        x: self.i.x,
+        y: self.i.y,
+        z: -self.i.z,
+      },
+      j: Vector3d {
+        x: self.j.x,
+        y: self.j.y,
+        z: -self.j.z,
+      },
+      k: Vector3d {
+        x: -self.k.x,
+        y: -self.k.y,
+        z: self.k.z,
+      },
+      c: Vector3d {
+        x: self.c.x,
+        y: self.c.y,
+        z: -self.c.z,
+      },
+    }
+  }
+
+  /// The mirrored transform as the wire carries it, which is the only form that leaves this crate.
+  ///
+  /// Mirroring happens here rather than at the call sites so a transform cannot reach a renderer in engine space:
+  /// there is one way out, and it converts.
+  pub(crate) fn to_renderer_space(&self) -> VisualTransform {
+    let mirrored: Self = self.mirrored();
+
+    VisualTransform {
+      i: mirrored.i,
+      j: mirrored.j,
+      k: mirrored.k,
+      c: mirrored.c,
+    }
+  }
+
   pub(crate) fn rotate(&self, vector: &Vector3d) -> Vector3d {
     Vector3d {
       x: self.i.x * vector.x + self.j.x * vector.y + self.k.x * vector.z,
@@ -132,6 +181,7 @@ mod tests {
   use xrf_db::Quaternion;
 
   use super::{BindTransform, Vector3d};
+  use crate::pack::visual_conversion::convert_vector;
 
   fn vector(x: f32, y: f32, z: f32) -> Vector3d {
     Vector3d { x, y, z }
@@ -231,5 +281,30 @@ mod tests {
     assert_close(&transform.j, vector(0.0, 1.0, 0.0));
     assert_close(&transform.k, vector(-1.0, 0.0, 0.0));
     assert_close(&transform.transform(&vector(1.0, 0.0, 0.0)), vector(0.0, 0.0, 1.0));
+  }
+
+  #[test]
+  fn mirroring_a_transform_agrees_with_mirroring_what_it_produces() {
+    // The property that makes a mirrored transform usable on mirrored geometry: posing a point and then converting it
+    // must land where converting the point and then posing it with the mirrored transform does. An asymmetric rotation
+    // and an off-axis translation, because a rotation about y alone survives the wrong mirror unnoticed.
+    let transform: BindTransform = BindTransform::from_bind(&vector(0.3, -0.7, 1.1), &vector(1.0, -2.0, 3.0));
+    let point: Vector3d = vector(0.4, 0.5, -0.6);
+
+    let posed_then_converted: Vector3d = convert_vector(&transform.transform(&point));
+    let converted_then_posed: Vector3d = transform.mirrored().transform(&convert_vector(&point));
+
+    assert_close(&converted_then_posed, posed_then_converted);
+  }
+
+  #[test]
+  fn mirroring_twice_returns_the_transform() {
+    let transform: BindTransform = BindTransform::from_bind(&vector(0.3, -0.7, 1.1), &vector(1.0, -2.0, 3.0));
+    let round_trip: BindTransform = transform.mirrored().mirrored();
+
+    assert_close(&round_trip.i, transform.i.clone());
+    assert_close(&round_trip.j, transform.j.clone());
+    assert_close(&round_trip.k, transform.k.clone());
+    assert_close(&round_trip.c, transform.c.clone());
   }
 }

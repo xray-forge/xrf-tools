@@ -12,11 +12,11 @@ export interface IVisualPreviewViewportProps {
   cameraResetToken: number;
   /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
   detail: number;
-  /** Baked joint positions of a playing motion, or null when the skeleton should show its bind pose. */
-  motionJoints?: Nullable<Float32Array>;
-  /** Which frame of those joints to show, and how many floats one frame holds. */
+  /** Baked bone transforms of a playing motion, or null when the model should show its bind pose. */
+  motionTransforms?: Nullable<Float32Array>;
+  /** Which frame of those transforms to show, and how many floats one bone occupies in them. */
   motionFrame?: number;
-  motionStride?: number;
+  motionFloatsPerBone?: number;
   /** Joint to mark, already resolved to a position, or null when nothing is selected. */
   highlightedJoint?: Nullable<[number, number, number]>;
   /** Loaded textures by submesh index, applied as they arrive. */
@@ -39,9 +39,9 @@ export function VisualPreviewViewport({
   cameraResetToken,
   detail,
   highlightedJoint = null,
-  motionJoints = null,
+  motionTransforms = null,
   motionFrame = 0,
-  motionStride = 0,
+  motionFloatsPerBone = 0,
   textures,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,15 +93,14 @@ export function VisualPreviewViewport({
   }, [highlightedJoint, model]);
 
   /**
-   * Poses the skeleton overlay, or returns it to its bind pose when nothing is playing.
+   * Poses the mesh and the skeleton overlay, or returns both to the bind pose when nothing is playing.
    *
-   * Depends on `model` for the same reason the mark does: a replaced model rebuilds the overlay from its bind pose, so
-   * a motion that survived the replacement has to be written into the new buffer.
+   * Depends on `model` for the same reason the mark does: a replaced model builds new bones and a new overlay, and a
+   * motion that survived the replacement has to be written into them.
    */
   useEffect(() => {
-    sceneRef.current?.setJointStride(motionStride);
-    sceneRef.current?.setSkeletonPose(motionJoints, motionFrame);
-  }, [motionJoints, motionFrame, motionStride, model]);
+    sceneRef.current?.setPose(motionTransforms, motionFrame, motionFloatsPerBone);
+  }, [motionTransforms, motionFrame, motionFloatsPerBone, model]);
 
   /**
    * Offers every loaded texture on each change rather than only the newest one.

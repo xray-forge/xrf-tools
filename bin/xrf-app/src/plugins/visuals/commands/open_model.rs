@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::MutexGuard;
 
 use tauri::State;
-use xrf_vfs::{XrayProbe, XrayRoots};
 use xrf_db::OgfFile;
+use xrf_vfs::{XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};

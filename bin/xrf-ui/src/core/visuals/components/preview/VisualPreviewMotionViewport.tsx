@@ -23,9 +23,9 @@ export function VisualPreviewMotionViewport(props: IVisualPreviewViewportProps):
   return (
     <VisualPreviewViewport
       {...props}
-      motionJoints={posed?.joints ?? null}
+      motionTransforms={posed?.transforms ?? null}
       motionFrame={service.frame}
-      motionStride={service.jointStride}
+      motionFloatsPerBone={service.floatsPerBone}
     />
   );
 }

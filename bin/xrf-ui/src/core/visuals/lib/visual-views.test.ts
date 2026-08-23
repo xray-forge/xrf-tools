@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { VisualDescription } from "@/core/bindings/types/xrf-visual";
+import { VisualDescription, VisualSubmesh } from "@/core/bindings/types/xrf-visual";
 import {
   countVisualTriangles,
   createVisualCameraFit,
@@ -17,6 +17,7 @@ import {
   mockVisualBounds,
   MockVisualBuffer,
   mockVisualDescription,
+  mockVisualTransform,
 } from "@/fixtures/mocks/visual.mocks";
 
 describe("visual views", () => {
@@ -180,9 +181,19 @@ describe("visual views", () => {
 describe("visual skeleton", () => {
   it("draws a segment from each placed bone to its placed parent", () => {
     const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({ name: "root", bindPosition: { x: 0, y: 0, z: 0 } }),
-      mockVisualBone({ name: "spine", parent: "root", parentIndex: 0, bindPosition: { x: 0, y: 1, z: 0 } }),
-      mockVisualBone({ name: "head", parent: "spine", parentIndex: 1, bindPosition: { x: 0, y: 2, z: 0 } }),
+      mockVisualBone({ name: "root", bindTransform: mockVisualTransform({ x: 0, y: 0, z: 0 }) }),
+      mockVisualBone({
+        name: "spine",
+        parent: "root",
+        parentIndex: 0,
+        bindTransform: mockVisualTransform({ x: 0, y: 1, z: 0 }),
+      }),
+      mockVisualBone({
+        name: "head",
+        parent: "spine",
+        parentIndex: 1,
+        bindTransform: mockVisualTransform({ x: 0, y: 2, z: 0 }),
+      }),
     ]);
 
     // Two segments for three bones: the root has no parent to reach, so it contributes none.
@@ -206,8 +217,18 @@ describe("visual skeleton", () => {
     // The backend leaves a bone unplaced when its chain does not reach a root, and a segment to nowhere would draw a
     // line through the origin.
     const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({ name: "orphan", parent: "missing", parentIndex: null, bindPosition: { x: 5, y: 5, z: 5 } }),
-      mockVisualBone({ name: "child", parent: "orphan", parentIndex: 0, bindPosition: { x: 6, y: 5, z: 5 } }),
+      mockVisualBone({
+        name: "orphan",
+        parent: "missing",
+        parentIndex: null,
+        bindTransform: mockVisualTransform({ x: 5, y: 5, z: 5 }),
+      }),
+      mockVisualBone({
+        name: "child",
+        parent: "orphan",
+        parentIndex: 0,
+        bindTransform: mockVisualTransform({ x: 6, y: 5, z: 5 }),
+      }),
     ]);
 
     expect(Array.from(skeleton.positions ?? [])).toEqual([6, 5, 5, 5, 5, 5]);
@@ -259,5 +280,62 @@ describe("visual camera fit", () => {
     );
 
     expect(fit.radius).toBe(1);
+  });
+});
+
+describe("visual skin", () => {
+  it("views a submesh's skinning links as four wide attributes", () => {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const submesh: VisualSubmesh = mockPackedSubmesh(buffer, {}, {});
+    const skin = {
+      indices: buffer.pushIndices([1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0]),
+      weights: buffer.pushFloats([1, 0, 0, 0, 0.75, 0.25, 0, 0, 1, 0, 0, 0]),
+    };
+
+    if (submesh.content.kind === "packed") {
+      submesh.content.geometry.skin = skin;
+    }
+
+    const views: IVisualModelViews = createVisualViews(
+      mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
+      buffer.toArrayBuffer()
+    );
+
+    expect(Array.from(views.submeshes[0].skinIndices ?? [])).toEqual([1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0]);
+    expect(Array.from(views.submeshes[0].skinWeights ?? [])).toEqual([1, 0, 0, 0, 0.75, 0.25, 0, 0, 1, 0, 0, 0]);
+  });
+
+  it("leaves the skin views absent for geometry that carries none", () => {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const views: IVisualModelViews = createVisualViews(
+      mockVisualDescription({ submeshes: [mockPackedSubmesh(buffer)], bufferLength: buffer.byteLength }),
+      buffer.toArrayBuffer()
+    );
+
+    expect(views.submeshes[0].skinIndices).toBeNull();
+    expect(views.submeshes[0].skinWeights).toBeNull();
+  });
+
+  it("returns every bone's bind transform, including a root that draws no segment", () => {
+    // Skinning needs all of them: a root bone is bound to by vertices even though it joins nothing.
+    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
+      mockVisualBone({ name: "root", bindTransform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }),
+      mockVisualBone({
+        name: "spine",
+        parent: "root",
+        parentIndex: 0,
+        bindTransform: mockVisualTransform({ x: 4, y: 5, z: 6 }),
+      }),
+    ]);
+
+    expect(Array.from(skeleton.binds ?? [])).toEqual([
+      1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 2, 3, 1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 5, 6,
+    ]);
+  });
+
+  it("has no bind transforms when the model carries no bind data", () => {
+    const skeleton: IVisualSkeletonViews = createVisualSkeleton([mockVisualBone({ name: "root" })]);
+
+    expect(skeleton.binds).toBeNull();
   });
 });

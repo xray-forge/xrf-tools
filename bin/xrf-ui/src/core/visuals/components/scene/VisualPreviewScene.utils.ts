@@ -55,6 +55,13 @@ export function createSubmeshGeometry(submesh: IVisualSubmeshViews, detail: numb
   geometry.setAttribute("uv", new BufferAttribute(submesh.uvs, 2));
   geometry.setIndex(new BufferAttribute(submesh.indices, 1));
 
+  // Both or neither, as the packer emits them. Present, they make this geometry drawable by a `SkinnedMesh`; absent,
+  // the same geometry draws as it is stored.
+  if (submesh.skinIndices && submesh.skinWeights) {
+    geometry.setAttribute("skinIndex", new BufferAttribute(submesh.skinIndices, 4));
+    geometry.setAttribute("skinWeight", new BufferAttribute(submesh.skinWeights, 4));
+  }
+
   const level: IVisualSubmeshLevel = getVisualSubmeshLevel(submesh, detail);
 
   geometry.setDrawRange(level.start, level.count);
