@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -25,8 +25,8 @@ const DESCRIPTOR: AudioDescriptor = {
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
 };
 
-/** The world an archive project mounts, which both media calls have to name identically. */
-const WORLD: XrayWorldSpec = createWorldSpec(["C:\\game\\database"]);
+/** The roots an archive project mounts, which both media calls have to name identically. */
+const ROOTS: XrayRoots = createRoots(["C:\\game\\database"]);
 
 const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 
@@ -52,14 +52,14 @@ describe("ArchivesService audio preview", () => {
     await service.selectArchiveFile(SOUND);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
-      world: WORLD,
+      roots: ROOTS,
       logicalPath: SOUND.name,
     });
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
     expect(service.content.value?.kind).toBe("audio");
   });
 
-  it("describes and reads one file, in one world", async () => {
+  it("describes and reads one file, from the same roots", async () => {
     const service: ArchivesService = createService();
 
     await service.selectArchiveFile(SOUND);
@@ -120,7 +120,7 @@ describe("ArchivesService audio preview", () => {
     setMockInvokeResponses({
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
       ["plugin:assets|read_asset"]: () => {
-        throw new Error("resolves to nothing in the mounted world");
+        throw new Error("resolves to nothing in the mounted roots");
       },
     });
 

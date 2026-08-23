@@ -3,11 +3,11 @@ use std::path::PathBuf;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::{XrayMountMode, XrayMountPlan, XrayProbePlan, XrayVfs, XrayWorldRoot, XrayWorldSpec};
+use crate::{XrayMountMode, XrayMountPlan, XrayProbePlan, XrayRoot, XrayRoots, XrayVfs};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_world_spec/{name}"));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_roots/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 
@@ -30,7 +30,7 @@ fn paths(plan: &XrayMountPlan) -> Vec<String> {
 #[test]
 fn plans_one_root() {
   let first: PathBuf = root("single", r"configs\system.ltx");
-  let spec: XrayWorldSpec = XrayWorldSpec::root(first.display().to_string(), XrayMountMode::Directory);
+  let spec: XrayRoots = XrayRoots::one(first.display().to_string(), XrayMountMode::Directory);
 
   assert_eq!(
     paths(&spec.to_mount_plan().expect("plan")),
@@ -44,9 +44,9 @@ fn keeps_roots_in_declaration_order() {
   let front: PathBuf = root("order-front", r"configs\system.ltx");
   let back: PathBuf = root("order-back", r"configs\system.ltx");
 
-  let spec: XrayWorldSpec = XrayWorldSpec::roots([
-    XrayWorldRoot::new(front.display().to_string(), XrayMountMode::Directory),
-    XrayWorldRoot::new(back.display().to_string(), XrayMountMode::Directory),
+  let spec: XrayRoots = XrayRoots::new([
+    XrayRoot::new(front.display().to_string(), XrayMountMode::Directory),
+    XrayRoot::new(back.display().to_string(), XrayMountMode::Directory),
   ]);
 
   assert_eq!(
@@ -61,9 +61,9 @@ fn drops_a_root_named_twice() {
   let only: PathBuf = root("duplicate", r"configs\system.ltx");
   let named: String = only.display().to_string();
 
-  let spec: XrayWorldSpec = XrayWorldSpec::roots([
-    XrayWorldRoot::new(named.clone(), XrayMountMode::Directory),
-    XrayWorldRoot::new(named.clone(), XrayMountMode::Directory),
+  let spec: XrayRoots = XrayRoots::new([
+    XrayRoot::new(named.clone(), XrayMountMode::Directory),
+    XrayRoot::new(named.clone(), XrayMountMode::Directory),
   ]);
 
   assert_eq!(paths(&spec.to_mount_plan().expect("plan")), vec![named]);
@@ -71,14 +71,14 @@ fn drops_a_root_named_twice() {
 
 #[test]
 fn defaults_a_root_to_auto() {
-  let spec: XrayWorldRoot = XrayWorldRoot::default();
+  let spec: XrayRoot = XrayRoot::default();
 
   assert_eq!(spec.mode, XrayMountMode::Auto);
 }
 
 #[test]
 fn plans_nothing_for_an_empty_spec() {
-  let spec: XrayWorldSpec = XrayWorldSpec::default();
+  let spec: XrayRoots = XrayRoots::default();
 
   assert!(spec.is_empty());
   assert!(spec.to_mount_plan().expect("plan").is_empty());
@@ -87,13 +87,13 @@ fn plans_nothing_for_an_empty_spec() {
 
 #[test]
 fn centres_on_an_asset_only_when_none_was_named() {
-  let spec: XrayWorldSpec = XrayWorldSpec::default();
-  let centred: XrayWorldSpec = spec.centred_on(Some(std::path::Path::new("C:/game/model.ogf")));
+  let spec: XrayRoots = XrayRoots::default();
+  let centred: XrayRoots = spec.centred_on(Some(std::path::Path::new("C:/game/model.ogf")));
 
   assert_eq!(centred.asset.as_deref(), Some("C:/game/model.ogf"));
 
   // A caller that named its own subject keeps it.
-  let kept: XrayWorldSpec = centred.centred_on(Some(std::path::Path::new("C:/other/thing.ogf")));
+  let kept: XrayRoots = centred.centred_on(Some(std::path::Path::new("C:/other/thing.ogf")));
 
   assert_eq!(kept.asset.as_deref(), Some("C:/game/model.ogf"));
 }
@@ -101,12 +101,9 @@ fn centres_on_an_asset_only_when_none_was_named() {
 #[test]
 fn plans_probe_steps_for_an_asset_and_its_roots() {
   let first: PathBuf = root("probe", r"configs\system.ltx");
-  let spec: XrayWorldSpec = XrayWorldSpec {
+  let spec: XrayRoots = XrayRoots {
     asset: Some(first.join("configs/system.ltx").display().to_string()),
-    roots: vec![XrayWorldRoot::new(
-      first.display().to_string(),
-      XrayMountMode::Directory,
-    )],
+    roots: vec![XrayRoot::new(first.display().to_string(), XrayMountMode::Directory)],
   };
 
   let plan: XrayProbePlan = spec.to_probe_plan().expect("plan");
@@ -115,11 +112,11 @@ fn plans_probe_steps_for_an_asset_and_its_roots() {
 }
 
 #[test]
-fn opens_a_world_it_planned() {
+fn opens_what_it_planned() {
   let first: PathBuf = root("open", r"configs\system.ltx");
-  let spec: XrayWorldSpec = XrayWorldSpec::root(first.display().to_string(), XrayMountMode::Directory);
+  let spec: XrayRoots = XrayRoots::one(first.display().to_string(), XrayMountMode::Directory);
 
-  let vfs: XrayVfs = spec.open().expect("world opens");
+  let vfs: XrayVfs = spec.open().expect("roots opens");
 
   assert!(vfs.read(r"configs\system.ltx").is_ok());
 }
@@ -127,23 +124,20 @@ fn opens_a_world_it_planned() {
 #[test]
 fn survives_a_round_trip_through_serde() {
   // The spec is what a command surface and a stored setting both name, so its wire shape matters.
-  let spec: XrayWorldSpec = XrayWorldSpec::roots([
-    XrayWorldRoot::new("C:/gamedata", XrayMountMode::Directory),
-    XrayWorldRoot::new("C:/game", XrayMountMode::ContainingInstallation),
+  let spec: XrayRoots = XrayRoots::new([
+    XrayRoot::new("C:/gamedata", XrayMountMode::Directory),
+    XrayRoot::new("C:/game", XrayMountMode::ContainingInstallation),
   ]);
 
   let json: String = serde_json::to_string(&spec).expect("serializes");
 
   assert!(json.contains("containingInstallation"));
-  assert_eq!(
-    serde_json::from_str::<XrayWorldSpec>(&json).expect("deserializes"),
-    spec
-  );
+  assert_eq!(serde_json::from_str::<XrayRoots>(&json).expect("deserializes"), spec);
 }
 
 #[test]
 fn takes_a_root_with_no_mode_as_auto() {
-  let spec: XrayWorldSpec =
+  let spec: XrayRoots =
     serde_json::from_str(r#"{"asset":null,"roots":[{"path":"C:/gamedata"}]}"#).expect("deserializes");
 
   assert_eq!(spec.roots[0].mode, XrayMountMode::Auto);

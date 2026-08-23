@@ -1,4 +1,4 @@
-import { XrayMountMode, XrayWorldRoot, XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayMountMode, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -11,7 +11,7 @@ import { Nullable } from "@/lib/types/general";
 export const DEFAULT_MOUNT_MODE: XrayMountMode = "auto";
 
 /**
- * Names a world for the backend to mount.
+ * Names where the backend should read from.
  *
  * Every surface says where to read from the same way, so the mode default lives here rather than being
  * repeated at each call site. Roots are searched in the order given, and the first one holding a path
@@ -19,14 +19,14 @@ export const DEFAULT_MOUNT_MODE: XrayMountMode = "auto";
  *
  * @param roots - Paths to search, highest priority first. Empty entries are dropped.
  * @param asset - Asset whose own root and installation are searched before them.
- * @returns A world spec the backend can mount.
+ * @returns A roots spec the backend can mount.
  */
-export function createWorldSpec(roots: Array<Nullable<string>>, asset: Nullable<string> = null): XrayWorldSpec {
+export function createRoots(roots: Array<Nullable<string>>, asset: Nullable<string> = null): XrayRoots {
   return {
     asset,
     roots: roots
       .filter((root: Nullable<string>): root is string => Boolean(root))
-      .map((root: string) => createWorldRoot(root)),
+      .map((root: string) => createRoot(root)),
   };
 }
 
@@ -35,8 +35,25 @@ export function createWorldSpec(roots: Array<Nullable<string>>, asset: Nullable<
  *
  * @param path - Path to search.
  * @param mode - How the path is read. Defaults to `auto`.
- * @returns One root of a world spec.
+ * @returns One root of a declaration.
  */
-export function createWorldRoot(path: string, mode: XrayMountMode = DEFAULT_MOUNT_MODE): XrayWorldRoot {
+export function createRoot(path: string, mode: XrayMountMode = DEFAULT_MOUNT_MODE): XrayRoot {
   return { mode, path };
+}
+
+/**
+ * Names roots for a log line or a message.
+ *
+ * Mirrors `XrayRoots::describe` on the Rust side, because roots have no single path to print and a
+ * caller joining the root objects directly gets `[object Object]`.
+ *
+ * @param roots - Roots to name.
+ * @returns The paths, comma separated, or the subject asset when there are none.
+ */
+export function describeRoots(roots: XrayRoots): string {
+  if (!roots.roots.length) {
+    return roots.asset ?? "<no roots>";
+  }
+
+  return roots.roots.map((root: XrayRoot) => root.path).join(", ");
 }

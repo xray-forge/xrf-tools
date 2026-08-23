@@ -65,7 +65,7 @@ function renderVisualLabel(item: IPathTreeItem<XrayAsset>): ReactNode {
 }
 
 /**
- * Every visual of the browsed world, as a tree.
+ * Every visual of the browsed roots, as a tree.
  */
 export function VisualsMenu({
   "data-testid": dataTestId = "visuals-menu",
@@ -92,9 +92,9 @@ export function VisualsMenu({
 
   const onOpenPath = useCallback(
     (logicalPath: string) => {
-      void visualsService.openAsset(logicalPath, browseService.roots);
+      void visualsService.openAsset(logicalPath, browseService.rootPaths);
     },
-    [browseService.roots, visualsService]
+    [browseService.rootPaths, visualsService]
   );
 
   const search: IUseRankedSearch<XrayAsset> = useRankedSearch({

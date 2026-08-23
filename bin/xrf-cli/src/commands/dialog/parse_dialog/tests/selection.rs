@@ -5,15 +5,15 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_vfs::{XrayMountMode, XrayWorldSpec};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult};
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
-fn world(root: &Path) -> XrayWorldSpec {
-  XrayWorldSpec::root(root.display().to_string(), XrayMountMode::Directory)
+fn roots(root: &Path) -> XrayRoots {
+  XrayRoots::one(root.display().to_string(), XrayMountMode::Directory)
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
@@ -39,7 +39,7 @@ fn sweeps_only_dialog_named_xml_in_a_directory() -> XrfResult {
   fs::write(root.join("npc_profile.xml"), "<game_profile_list/>")?;
   fs::write(root.join("dialogs.ltx"), "[section]")?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   assert_eq!(result.census.files, 2);
   assert_eq!(result.census.dialogs, 2);
@@ -59,7 +59,7 @@ fn walks_nested_directories() -> XrfResult {
   fs::write(root.join("dialogs.xml"), DIALOG)?;
   fs::write(nested.join("dialogs_jupiter.xml"), DIALOG)?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   assert_eq!(result.census.files, 2);
 
@@ -74,7 +74,7 @@ fn skips_rather_than_passes_a_directory_with_no_dialogs() -> XrfResult {
 
   fs::write(root.join("info_zaton.xml"), "<game_information_portions/>")?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   assert_eq!(result.census.files, 0);
   assert_eq!(result.census.dialogs, 0);

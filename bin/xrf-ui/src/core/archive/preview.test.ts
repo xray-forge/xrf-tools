@@ -20,7 +20,7 @@ describe("archive preview support", () => {
   });
 
   it("offers a model preview for a visual, which no policy limit gates", () => {
-    // A model is never read through the archive project: it is addressed logically and read through the asset world, so
+    // A model is never read through the archive project: it is addressed logically and read through the asset roots, so
     // the size ceilings that bound a text or image read do not apply to it.
     expect(
       getArchivePreviewSupport(

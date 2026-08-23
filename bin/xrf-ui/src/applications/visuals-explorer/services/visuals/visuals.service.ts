@@ -2,11 +2,11 @@ import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wire
 import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
 import { Texture } from "three";
 
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
@@ -25,7 +25,7 @@ import { Nullable, Optional } from "@/lib/types/general";
  * The visual the explorer has open, and everything about choosing it.
  *
  * Loading itself belongs to `VisualLoadService`, which the archives preview uses too. What is here is what only this
- * application decides: which world a source is searched in, that a failure is worth a notification, and that leaving
+ * application decides: which roots a source is searched in, that a failure is worth a notification, and that leaving
  * drops the backend's selection.
  */
 @Injectable()
@@ -168,15 +168,15 @@ export class VisualsService {
   @BoundAction()
   public async openFile(path: string): Promise<void> {
     // Centred on the file, so its own tree and installation are searched for its textures - and searched again when
-    // those textures are read, because the world travels with the description.
+    // those textures are read, because the roots travels with the description.
     await this.open({ kind: "file", path }, [], path);
   }
 
   /**
-   * Open a visual of a browsed world, loose or archived alike.
+   * Open a visual of a browsed roots, loose or archived alike.
    *
    * The roots come from the caller because the browsed root is what makes the asset addressable at all: opening
-   * `meshes\wpn\wpn_ak74.ogf` means nothing without the world it names.
+   * `meshes\wpn\wpn_ak74.ogf` means nothing without the roots it names.
    *
    * @param logicalPath - Engine identity of the visual, as the listing reported it.
    * @param roots - Roots searched ahead of the project's own, usually the browsed one.
@@ -199,14 +199,14 @@ export class VisualsService {
   }
 
   /**
-   * Load a visual in the world this application composes, and report a failure the way this application reports one.
+   * Load a visual in the roots this application composes, and report a failure the way this application reports one.
    *
    * @param source - Visual source to open.
    * @param roots - Roots searched ahead of the project's own.
-   * @param asset - Asset the world is centred on, whose own tree is searched first.
+   * @param asset - Asset the roots is centred on, whose own tree is searched first.
    */
   private async open(source: VisualSource, roots: Array<string> = [], asset: Nullable<string> = null): Promise<void> {
-    await this.loadService.load(source, await this.getWorld(roots, asset));
+    await this.loadService.load(source, await this.getRoots(roots, asset));
 
     const error: Nullable<Error> = this.visual.error;
 
@@ -221,21 +221,21 @@ export class VisualsService {
   }
 
   /**
-   * The world a visual's references are searched in, after the visual's own tree.
+   * The roots a visual's references are searched in, after the visual's own tree.
    *
-   * Only the frontend knows which project is configured, which is why the world is named on every call rather than
+   * Only the frontend knows which project is configured, which is why the roots is named on every call rather than
    * derived by the backend: it can derive the roots implied by an asset, but not an ambient one. Naming it rather than
    * holding a handle is also what lets a reload pick up where it left off, and another surface address the same assets.
    *
    * @param roots - Roots searched ahead of the project's own.
-   * @param asset - Asset the world is centred on.
-   * @returns The world spec to open with.
+   * @param asset - Asset the roots is centred on.
+   * @returns The roots spec to open with.
    */
-  private async getWorld(roots: Array<string> = [], asset: Nullable<string> = null): Promise<XrayWorldSpec> {
+  private async getRoots(roots: Array<string> = [], asset: Nullable<string> = null): Promise<XrayRoots> {
     const projectPath: Nullable<string> = this.projectService.xrfProjectPath;
     const project: Array<string> = projectPath ? [await getProjectGamedataPath(projectPath)] : [];
 
     // The caller's roots come first: a browsed tree is the nearer answer, and the project is the fallback behind it.
-    return createWorldSpec([...roots, ...project], asset);
+    return createRoots([...roots, ...project], asset);
   }
 }

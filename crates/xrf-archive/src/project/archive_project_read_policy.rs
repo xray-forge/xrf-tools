@@ -13,7 +13,7 @@ use crate::project::constants::{
 /// while [`crate::ArchiveProject::read_file_as_string`] refuses what the policy does not cover.
 ///
 /// Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
-/// both through the mounted asset world rather than through this project, and so answers to no limit of its own.
+/// both through the shared mounted assets rather than through this project, and so answers to no limit of its own.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

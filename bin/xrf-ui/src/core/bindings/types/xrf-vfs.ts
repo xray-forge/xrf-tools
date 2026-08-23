@@ -140,34 +140,34 @@ export type XrayResolution =
    */
   | { kind: "rejected"; reason: string };
 
-/** One root a world is assembled from, and how that root becomes mounts. */
-export type XrayWorldRoot = {
+/** One place to read from, and how that place becomes mounts. */
+export type XrayRoot = {
   path: string;
   /** How this path becomes mounts. `Auto` unless the caller says otherwise. */
   mode?: XrayMountMode;
 };
 
 /**
- * Where a world is: an optional subject asset, then ordered roots.
+ * Everywhere a caller wants read: an optional subject asset, then ordered roots.
  *
- * The one way every surface names a world, so `--source` on a command, a setting in the app, and an
- * editor session all say the same thing. What sits *inside* the world is a separate question that
- * stays with each domain — a dialog layout and a translations layout disagree, and a spawn file has
- * no answer at all.
+ * The one way every surface says where to read from, so `--source` on a command, a setting in the
+ * app, and an editor session all name the same thing. What sits *inside* those roots is a separate
+ * question that stays with each domain — a dialog layout and a translations layout disagree about it,
+ * and a spawn file has no answer at all.
  *
- * Several roots is layering, which is how modding actually works: a loose gamedata tree in front of
- * an installation. Search order is declaration order, and the first mount holding a path wins.
+ * Several roots means layering, which is how modding actually works: a loose gamedata tree in front
+ * of an installation. Search order is declaration order, and the first mount holding a path wins.
  *
  * Callers do not assemble mounts from this themselves. They hand it to whatever owns mounting and
- * receive a world or a probe, so there is one place that decides what a spec means.
+ * receive a VFS or a probe back, so one place decides what a declaration means.
  */
-export type XrayWorldSpec = {
+export type XrayRoots = {
   /**
-   * Asset whose own X-Ray root and installation are searched first, when the world is centred on one.
+   * Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
    *
    * This is what finds a texture shipped beside a model rather than in the shared tree.
    */
   asset: string | null;
   /** Roots searched after the asset's own, in the order given. */
-  roots: Array<XrayWorldRoot>;
+  roots: Array<XrayRoot>;
 };

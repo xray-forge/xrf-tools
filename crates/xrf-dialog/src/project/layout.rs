@@ -1,13 +1,13 @@
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayLookupScope, XrayVfs, XrayWorldSpec};
+use xrf_vfs::{XrayLookupScope, XrayRoots, XrayVfs};
 
 use crate::project::mode::DialogProjectMode;
 
 const JSON_SUFFIX: &str = ".json";
 
-/// Where inside a world this domain's data sits.
+/// Where inside roots this domain's data sits.
 ///
-/// The other half of opening a project. A world says which trees are searched and in what order;
+/// The other half of opening a project. A roots says which trees are searched and in what order;
 /// this says which logical prefixes inside them hold dialogs and dialog text. Every tool shares the
 /// first question and answers the second for itself.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -44,14 +44,14 @@ impl DialogProjectLayout {
   }
 }
 
-/// Report which layout a mounted world looks like.
+/// Report which layout mounted roots looks like.
 ///
 /// Advisory only, on the rule `xrf-translation` already states: the mode a project is opened with is
 /// whatever the caller passes, because the two layouts read and write different files and a heuristic
 /// must not be what decides that.
 ///
 /// A `translations` prefix holding JSON is what only the XRF sources have. Everything else, including
-/// a world this cannot make sense of, reads as gamedata — the mode dialog tooling targets.
+/// roots this cannot make sense of, reads as gamedata — the mode dialog tooling targets.
 pub fn detect_mode_in(vfs: &XrayVfs) -> DialogProjectMode {
   let Ok(scope) = XrayLookupScope::all().with_prefix(DialogProjectMode::Source.get_translations_prefix()) else {
     return DialogProjectMode::Gamedata;
@@ -70,14 +70,14 @@ pub fn detect_mode_in(vfs: &XrayVfs) -> DialogProjectMode {
   }
 }
 
-/// Mount a world just to report which layout it looks like.
+/// Mount roots just to report which layout it looks like.
 ///
-/// For an open form that has a world and no session yet. A caller already holding one asks
+/// For an open form that has roots and no session yet. A caller already holding one asks
 /// [`detect_mode_in`] instead of mounting a second.
 ///
 /// # Errors
 ///
-/// Returns an error when the world cannot be mounted.
-pub fn detect_mode(world: &XrayWorldSpec) -> XrfResult<DialogProjectMode> {
-  Ok(detect_mode_in(&world.open()?))
+/// Returns an error when the roots cannot be mounted.
+pub fn detect_mode(roots: &XrayRoots) -> XrfResult<DialogProjectMode> {
+  Ok(detect_mode_in(&roots.open()?))
 }

@@ -1,11 +1,11 @@
 use std::sync::MutexGuard;
-use xrf_vfs::XrayWorldSpec;
+use xrf_vfs::XrayRoots;
 
 use tauri::State;
 use tauri::ipc::Response;
 use xrf_visual::VisualPackage;
 
-use crate::core::assets::AssetWorldState;
+use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::pack_source;
 use crate::plugins::visuals::state::{SelectedVisual, VisualSource, VisualState};
@@ -18,9 +18,9 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualSource, VisualState};
 #[tauri::command(rename = "read_geometry")]
 pub async fn visuals_read_geometry(
   source: VisualSource,
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   state: State<'_, VisualState>,
-  assets: State<'_, AssetWorldState>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<Response> {
   log::info!("Reading visual geometry: {}", source.label());
 
@@ -39,7 +39,7 @@ pub async fn visuals_read_geometry(
 
   drop(selected);
 
-  let package: VisualPackage = assets.with_probe(&world.centred_on(source.physical_path()), |probe| {
+  let package: VisualPackage = assets.with_probe(&roots.centred_on(source.physical_path()), |probe| {
     pack_source(&source, probe)
   })??;
 

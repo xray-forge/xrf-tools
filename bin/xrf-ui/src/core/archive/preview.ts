@@ -58,7 +58,7 @@ export function getArchivePreviewSupport(
   descriptor: ArchiveFileDescriptor,
   policy: ArchiveProjectReadPolicy
 ): ArchivePreviewSupport {
-  // Models are read through the asset world rather than through this project, so no policy limit applies to them.
+  // Models are read through the asset roots rather than through this project, so no policy limit applies to them.
   if (isArchiveModel(descriptor)) {
     return { kind: "model" };
   }

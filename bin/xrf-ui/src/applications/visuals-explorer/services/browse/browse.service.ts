@@ -1,10 +1,10 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
 
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots, describeRoots } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/bindings/commands/assets";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { XrayAsset, XrayWorldRoot , XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayRoot , XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { createLoadable, Loadable } from "@/lib/loadable";
@@ -12,7 +12,7 @@ import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * The world being browsed, and every visual in it.
+ * The roots being browsed, and every visual in them.
  *
  * Separate from the service that owns the open model because the two have different lifetimes: a root outlives the
  * dozens of models opened under it, and a model can be open with no root at all.
@@ -21,19 +21,19 @@ import { Nullable } from "@/lib/types/general";
 export class VisualsBrowseService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** The world being browsed, or null when a single model was opened directly. */
+  /** What is being browsed, or null when a single model was opened directly. */
   @Observable()
-  public world: Nullable<XrayWorldSpec> = null;
+  public browsed: Nullable<XrayRoots> = null;
 
   @Observable()
   public visuals: Loadable<Array<XrayAsset>> = createLoadable([]);
 
   /**
-   * @returns Whether a world is open, which is what publishes the tree panel.
+   * @returns Whether anything is open, which is what publishes the tree panel.
    */
   @Computed()
   public get isBrowsing(): boolean {
-    return this.world !== null;
+    return this.browsed !== null;
   }
 
   /**
@@ -41,15 +41,15 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get root(): Nullable<string> {
-    return this.world?.roots[0]?.path ?? null;
+    return this.browsed?.roots[0]?.path ?? null;
   }
 
   /**
-   * @returns The roots an open searches ahead of the project's own.
+   * @returns The paths an open searches ahead of the project's own.
    */
   @Computed()
-  public get roots(): Array<string> {
-    return this.world?.roots.map((root: XrayWorldRoot) => root.path) ?? [];
+  public get rootPaths(): Array<string> {
+    return this.browsed?.roots.map((root: XrayRoot) => root.path) ?? [];
   }
 
   public constructor() {
@@ -57,7 +57,7 @@ export class VisualsBrowseService {
   }
 
   /**
-   * Restore whatever world the backend is still browsing.
+   * Restore whatever roots the backend is still browsing.
    *
    * A reload loses the tree but not the session, and coming back to an empty panel beside a model that is still open
    * reads as a failure rather than a fresh start.
@@ -65,27 +65,27 @@ export class VisualsBrowseService {
   @OnProvision()
   public async onProvision(): Promise<void> {
     try {
-      const world: Nullable<XrayWorldSpec> = await visualsCommands.getBrowse();
+      const roots: Nullable<XrayRoots> = await visualsCommands.getBrowse();
 
-      if (world) {
-        this.log.info("Restoring browsed world:", world.roots.join(", "));
+      if (roots) {
+        this.log.info("Restoring browsed roots:", describeRoots(roots));
 
-        await this.list(world);
+        await this.list(roots);
       }
     } catch (error) {
-      this.log.error("Failed to restore browsed world:", error);
+      this.log.error("Failed to restore browsed roots:", error);
     }
   }
 
   /**
-   * Drop the browsed world on the way out of the application.
+   * Drop the browsed roots on the way out of the application.
    */
   @OnDeactivation()
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the project");
 
     runInAction(() => {
-      this.world = null;
+      this.browsed = null;
       this.visuals = createLoadable([]);
     });
 
@@ -99,48 +99,48 @@ export class VisualsBrowseService {
    */
   @BoundAction()
   public async openRoot(root: string): Promise<void> {
-    const world: XrayWorldSpec = createWorldSpec([root]);
+    const roots: XrayRoots = createRoots([root]);
 
     this.log.info("Browsing root:", root);
 
-    await visualsCommands.openBrowse(world);
-    await this.list(world);
+    await visualsCommands.openBrowse(roots);
+    await this.list(roots);
   }
 
   /** Stop browsing, leaving whatever model is open on screen. */
   @BoundAction()
   public async close(): Promise<void> {
     runInAction(() => {
-      this.world = null;
+      this.browsed = null;
       this.visuals = createLoadable([]);
     });
 
     try {
       await visualsCommands.closeBrowse();
     } catch (error) {
-      this.log.error("Failed to close browsed world:", error);
+      this.log.error("Failed to close browsed roots:", error);
     }
   }
 
   /**
-   * Lists a world and puts it on screen.
+   * Lists roots and puts the result on screen.
    *
-   * @param world - World to list, already recorded as the browsed one.
+   * @param roots - Roots to list, already recorded as the browsed one.
    */
-  private async list(world: XrayWorldSpec): Promise<void> {
+  private async list(roots: XrayRoots): Promise<void> {
     runInAction(() => {
-      this.world = world;
+      this.browsed = roots;
       this.visuals = this.visuals.asLoading();
     });
 
     try {
-      const visuals: Array<XrayAsset> = await assetsCommands.listAssets(world, "ogf");
+      const visuals: Array<XrayAsset> = await assetsCommands.listAssets(roots, "ogf");
 
       runInAction(() => {
         this.visuals = this.visuals.asReady(visuals);
       });
 
-      this.log.info(`Listed ${visuals.length} visuals in:`, world.roots.join(", "));
+      this.log.info(`Listed ${visuals.length} visuals in:`, describeRoots(roots));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 

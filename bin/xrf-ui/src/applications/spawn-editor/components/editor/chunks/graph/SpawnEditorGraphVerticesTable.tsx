@@ -5,7 +5,7 @@ import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/
 import { GraphVertex } from "@/core/bindings/types/xrf-db";
 import { textColumn, tupleColumn, vectorColumn } from "@/core/ui/table";
 
-/** Offsets locate a vertex inside the file rather than in the world; available, off by default. */
+/** Offsets locate a vertex inside the file rather than in the roots; available, off by default. */
 const HIDDEN_COLUMNS: Array<string> = ["edgesOffset", "levelPointsOffset"];
 
 interface IGraphVertexRow extends GraphVertex {

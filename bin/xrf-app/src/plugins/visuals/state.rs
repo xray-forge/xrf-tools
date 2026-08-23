@@ -1,28 +1,28 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
-use xrf_vfs::XrayWorldSpec;
+use xrf_vfs::XrayRoots;
 
 use serde::Serialize;
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
 
-/// What the viewer currently points at: the world being browsed, and the visual open inside it.
+/// What the viewer currently points at: the roots being browsed, and the visual open inside it.
 ///
 /// Both are state for the same reason an open archive is: a reload re-provisions the frontend, and without them the
 /// viewer would come back empty while the window still says a model is open. Loading itself is not stateful - every
 /// command takes the source it acts on - so this only ever answers what was selected, never gates what can be read.
 ///
-/// The mounted sources are not here. They live in `core/`'s asset world, shared with every other domain, so opening the
-/// same gamedata in two surfaces indexes it once. What is here is the intent: which world the user chose to browse.
+/// The mounted sources are not here. They live in `core/`'s asset roots, shared with every other domain, so opening the
+/// same gamedata in two surfaces indexes it once. What is here is the intent: which roots the user chose to browse.
 pub struct VisualState {
   pub selected: Mutex<Option<SelectedVisual>>,
-  /// The world being browsed, or `None` when a single visual was opened directly.
+  /// The roots being browsed, or `None` when a single visual was opened directly.
   ///
-  /// The listing is not kept beside it. It is derived from the world by the generic asset listing, and the mounts that
+  /// The listing is not kept beside it. It is derived from the roots by the generic asset listing, and the mounts that
   /// listing reads are already cached, so re-deriving it after a reload costs a walk of an index that is in memory.
-  pub browsed: Mutex<Option<XrayWorldSpec>>,
+  pub browsed: Mutex<Option<XrayRoots>>,
 }
 
 impl VisualState {
@@ -36,8 +36,8 @@ impl VisualState {
 
 pub struct SelectedVisual {
   pub source: VisualSource,
-  /// The world the visual was opened in, kept so a later read searches what the open searched.
-  pub world: XrayWorldSpec,
+  /// The roots the visual was opened in, kept so a later read searches what the open searched.
+  pub roots: XrayRoots,
   pub package: VisualPackage,
   /// What the visual's own references came to, decided at open so a read is a lookup rather than a search.
   pub dependencies: VisualDependencies,
@@ -48,15 +48,15 @@ pub struct SelectedVisual {
 /// Where a visual is read from.
 ///
 /// Both variants are self-describing, and neither is a handle into mount state: an asset is named by its engine
-/// identity, which any surface can spell without having opened anything. The world it is looked for in travels beside
-/// the source on every command that takes one, so one call can never mix two worlds.
+/// identity, which any surface can spell without having opened anything. The roots it is looked for in travels beside
+/// the source on every command that takes one, so one call can never mix two roots.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum VisualSource {
   /// A loose `.ogf` file on disk, named by its filesystem path.
   File { path: String },
-  /// An asset of the world, loose or archived, named by its engine identity.
+  /// An asset of the roots, loose or archived, named by its engine identity.
   Asset { logical_path: String },
 }
 
@@ -71,7 +71,7 @@ impl VisualSource {
   /// Returns the visual's filesystem path when its source provides one.
   ///
   /// An asset has none to give: it may live inside a volume, and the point of addressing it logically is not having to
-  /// care. Its own neighborhood is therefore not searched — the world it came from already covers it.
+  /// care. Its own neighborhood is therefore not searched — the roots it came from already covers it.
   pub fn physical_path(&self) -> Option<&Path> {
     match self {
       Self::File { path } => Some(Path::new(path)),
@@ -89,8 +89,8 @@ impl VisualSource {
 #[serde(rename_all = "camelCase")]
 pub struct SelectedVisualDescription {
   pub source: VisualSource,
-  /// The world the selection was opened in, so a reloaded frontend asks for geometry the same way.
-  pub world: XrayWorldSpec,
+  /// The roots the selection was opened in, so a reloaded frontend asks for geometry the same way.
+  pub roots: XrayRoots,
   pub description: VisualDescription,
   pub dependencies: VisualDependencies,
   /// What each located texture file is, keyed by the logical path that located it.

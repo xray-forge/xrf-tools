@@ -10,7 +10,7 @@ macro_rules! for_each_tauri_command_domain {
         list_assets => crate::plugins::assets::commands::list_assets::assets_list_assets,
       }
       @raw {
-        read_asset(world: "XrayWorldSpec", logicalPath: "string") => crate::plugins::assets::commands::read_asset::assets_read_asset,
+        read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::commands::read_asset::assets_read_asset,
       }
       archives => "archives" {
         close_project => crate::plugins::archives::commands::close_project::archives_close_project,
@@ -30,7 +30,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       // Serves a decoded PNG rather than the stored DDS, so it stays here instead of joining the generic reads.
       @raw {
-        read_image(world: "XrayWorldSpec", logicalPath: "string") => crate::plugins::archives::commands::read_image::archives_read_image,
+        read_image(roots: "XrayRoots", logicalPath: "string") => crate::plugins::archives::commands::read_image::archives_read_image,
       }
       configs => "configs" {
         check_directory_format => crate::plugins::configs::commands::check_directory_format::configs_check_directory_format,
@@ -87,7 +87,7 @@ macro_rules! for_each_tauri_command_domain {
       // Returns `tauri::ipc::Response`, so it is dispatched and permitted like any command but cannot join
       // the Specta collection.
       @raw {
-        read_geometry(source: "VisualSource", world: "XrayWorldSpec") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
+        read_geometry(source: "VisualSource", roots: "XrayRoots") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
       }
       translations => "translations" {
         close_project => crate::plugins::translations::commands::close_project::translations_close_project,

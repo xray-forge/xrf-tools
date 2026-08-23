@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs, XrayWorldSpec};
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::file::DialogFile;
 use crate::project::descriptor::{DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor};
@@ -49,7 +49,7 @@ impl DialogProjectFile {
   }
 }
 
-/// An open dialog project: a mounted world, and every dialog file under its dialogs prefix.
+/// An open dialog project: mounted roots, and every dialog file under its dialogs prefix.
 ///
 /// Reads go through `xrf-vfs` rather than `std::fs`, because the engine does not see a disk. On a real
 /// installation `configs\gameplay\dialogs.xml` comes out of `db\configs`, and a reader reaching for
@@ -59,7 +59,7 @@ impl DialogProjectFile {
 /// `Clone`, and the project outlives any one lookup. The parsed files are kept too, because their
 /// spans are what a later edit splices.
 pub struct DialogProject {
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   mode: DialogProjectMode,
   dialogs_prefix: String,
   translations_prefix: String,
@@ -69,9 +69,9 @@ pub struct DialogProject {
 }
 
 impl DialogProject {
-  /// Open a project over a world, reading every dialog file it exposes under the layout prefix.
+  /// Open a project over roots, reading every dialog file it exposes under the layout prefix.
   ///
-  /// Two arguments, because opening answers two questions: a world says which trees are searched and
+  /// Two arguments, because opening answers two questions: roots say which trees are searched and
   /// in what order, and a layout says where inside them this domain keeps its data.
   ///
   /// A file that cannot be read becomes a finding and the project still opens: refusing the whole
@@ -79,22 +79,22 @@ impl DialogProject {
   ///
   /// # Errors
   ///
-  /// Returns an error when the world cannot be mounted, and a not-found error when it exposes no
+  /// Returns an error when the roots cannot be mounted, and a not-found error when it exposes no
   /// dialog files under the prefix. The second means the caller named the wrong place, and answering
   /// with an empty project would hide that.
-  pub fn open(world: &XrayWorldSpec, layout: &DialogProjectLayout) -> XrfResult<Self> {
-    Self::from_vfs(world.open()?, world, layout)
+  pub fn open(roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
+    Self::from_vfs(roots.open()?, roots, layout)
   }
 
-  /// Open a project over a world somebody else mounted.
+  /// Open a project over roots somebody else mounted.
   ///
   /// The spec is still required, because it is what the descriptor echoes back so a follow-up read
   /// addresses the tree the open searched.
   ///
   /// # Errors
   ///
-  /// Returns a not-found error when the world exposes no dialog files under the dialogs prefix.
-  pub fn from_vfs(vfs: XrayVfs, world: &XrayWorldSpec, layout: &DialogProjectLayout) -> XrfResult<Self> {
+  /// Returns a not-found error when the roots exposes no dialog files under the dialogs prefix.
+  pub fn from_vfs(vfs: XrayVfs, roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
     let dialogs_prefix: String = layout.get_dialogs_prefix().to_owned();
     let scope: XrayLookupScope = XrayLookupScope::all().with_prefix(&dialogs_prefix)?;
     let assets: Vec<XrayAsset> = Self::list_dialog_assets(&vfs.scoped(&scope));
@@ -102,7 +102,7 @@ impl DialogProject {
     if assets.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
         "No dialog files under '{dialogs_prefix}' in {}",
-        world.describe()
+        roots.describe()
       )));
     }
 
@@ -137,7 +137,7 @@ impl DialogProject {
     }
 
     Ok(Self {
-      world: world.clone(),
+      roots: roots.clone(),
       mode: layout.mode,
       dialogs_prefix,
       translations_prefix: layout.get_translations_prefix().to_owned(),
@@ -147,7 +147,7 @@ impl DialogProject {
     })
   }
 
-  /// Every dialog asset a scoped world exposes, in logical-path order.
+  /// Every dialog asset a scoped roots exposes, in logical-path order.
   ///
   /// Sorted because mount order is not name order, and an index is only comparable across runs and
   /// machines if it depends on neither.
@@ -174,9 +174,9 @@ impl DialogProject {
     self.mode
   }
 
-  /// The world this project was opened over, as the caller named it.
-  pub fn get_world(&self) -> &XrayWorldSpec {
-    &self.world
+  /// The roots this project was opened over, as the caller named them.
+  pub fn get_roots(&self) -> &XrayRoots {
+    &self.roots
   }
 
   pub fn get_dialogs_prefix(&self) -> &str {
@@ -187,7 +187,7 @@ impl DialogProject {
     &self.translations_prefix
   }
 
-  /// The mounted world, for a caller that needs to read something beside the dialogs.
+  /// The mounted roots, for a caller that needs to read something beside the dialogs.
   pub fn get_vfs(&self) -> &XrayVfs {
     &self.vfs
   }
@@ -248,7 +248,7 @@ impl DialogProject {
 
     DialogProjectDescriptor {
       mode: self.mode,
-      world: self.world.clone(),
+      roots: self.roots.clone(),
       dialogs_prefix: self.dialogs_prefix.clone(),
       translations_prefix: self.translations_prefix.clone(),
       is_editable: self.is_editable(),

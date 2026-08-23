@@ -15,7 +15,7 @@ import { Nullable } from "@/lib/types/general";
 export interface IVisualsExplorerApplicationProps extends BaseComponentProps {}
 
 /**
- * Browse a world of visuals, or look at one model on its own.
+ * Browse a tree of visuals, or look at one model on its own.
  *
  * The layout is mounted for as long as the application is: a load shows in the toolbar and over the viewport instead of
  * replacing the screen, so clicking through a tree keeps the tree, the camera and the webgl context rather than tearing

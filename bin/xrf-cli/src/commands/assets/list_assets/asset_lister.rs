@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XraySkippedMount, XraySourceKind,
-  XrayVfs, XrayWorldSpec,
+  XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XrayRoots, XraySkippedMount,
+  XraySourceKind, XrayVfs,
 };
 
 /// Resolved assets and source metadata for one listing.
@@ -29,7 +29,7 @@ pub struct AssetListing {
 ///
 /// Entries identify their physical containers. Optional shadowed entries expose lower-priority copies of winning paths.
 pub struct AssetLister {
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   prefix: Option<String>,
   ignored: Vec<String>,
   is_loose_only: bool,
@@ -37,17 +37,17 @@ pub struct AssetLister {
 }
 
 impl AssetLister {
-  /// Lists what a world resolves.
+  /// Lists what roots resolves.
   ///
-  /// The world carries a mode per root, so what used to be one path and one mode is now several of
+  /// The roots carries a mode per root, so what used to be one path and one mode is now several of
   /// each — which is what lets a listing show a loose tree shadowing the installation behind it.
-  pub fn new(world: &XrayWorldSpec) -> Self {
+  pub fn new(roots: &XrayRoots) -> Self {
     Self {
       is_loose_only: false,
       is_shadowed_included: false,
       ignored: Vec::new(),
       prefix: None,
-      world: world.clone(),
+      roots: roots.clone(),
     }
   }
 
@@ -87,7 +87,7 @@ impl AssetLister {
   /// a valid X-Ray logical path.
   pub fn run(&self) -> XrfResult<AssetListing> {
     let started: Instant = Instant::now();
-    let vfs: XrayVfs = XrayVfs::from_plan(&self.world.to_mount_plan()?.ignoring(&self.ignored)?)?;
+    let vfs: XrayVfs = XrayVfs::from_plan(&self.roots.to_mount_plan()?.ignoring(&self.ignored)?)?;
     let scope: XrayLookupScope = self.scope()?;
     let entries: Vec<XrayAsset> = vfs.scoped(&scope).list_entries();
     let shadowed: Vec<XrayAsset> = if self.is_shadowed_included {
@@ -112,7 +112,7 @@ impl AssetLister {
           )
         })
         .collect(),
-      origin: self.world.describe(),
+      origin: self.roots.describe(),
       shadowed,
       skipped: vfs.get_skipped_mounts().to_vec(),
     })

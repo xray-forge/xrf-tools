@@ -91,7 +91,7 @@ export type IPathTreeItem<T> = IPathDirectoryTreeItem<T> | IPathFileTreeItem<T>;
  * Build a directory-first explorer tree from separated paths.
  *
  * Generic over the leaf payload because two surfaces build the same tree out of different things — archive entries and
- * world assets — and the splitting, the canonical node paths and the sort order are the parts neither should own.
+ * roots assets — and the splitting, the canonical node paths and the sort order are the parts neither should own.
  *
  * @param entries - Paths to attach, each with the payload its leaf carries.
  * @param separator - Separator used by the paths, and used to rebuild each canonical node path.

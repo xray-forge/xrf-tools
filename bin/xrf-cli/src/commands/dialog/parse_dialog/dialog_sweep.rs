@@ -1,4 +1,4 @@
-//! Reads every dialog file a mounted world exposes and accounts for what came out.
+//! Reads every dialog file mounted roots exposes and accounts for what came out.
 //!
 //! Lives in the CLI rather than in `xrf-dialog` so that crate stays a reader with no reporting
 //! surface. The census is the point: it is what says whether the schema the reader models is the
@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs, XrayWorldSpec};
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 /// What a sweep counted, beside what it found.
 ///
@@ -51,18 +51,18 @@ pub struct DialogSweepResult {
   pub report: Report,
 }
 
-/// Which world to mount, and where to look inside it.
+/// Which roots to mount, and where to look inside it.
 pub struct DialogSweep<'a> {
-  world: &'a XrayWorldSpec,
+  roots: &'a XrayRoots,
   prefix: Option<&'a str>,
 }
 
 impl<'a> DialogSweep<'a> {
-  pub fn new(world: &'a XrayWorldSpec, prefix: Option<&'a str>) -> Self {
-    Self { world, prefix }
+  pub fn new(roots: &'a XrayRoots, prefix: Option<&'a str>) -> Self {
+    Self { roots, prefix }
   }
 
-  /// Read every dialog file the mounted world exposes.
+  /// Read every dialog file the mounted roots exposes.
   ///
   /// Reads through the VFS, so an installation sweeps as readily as a loose tree: on a real game the
   /// dialogs come out of `db\configs`, and a reader reaching for the filesystem reports them absent.
@@ -76,7 +76,7 @@ impl<'a> DialogSweep<'a> {
   pub fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
 
-    let vfs: XrayVfs = self.world.open()?;
+    let vfs: XrayVfs = self.roots.open()?;
     let scope: XrayLookupScope = match self.prefix {
       Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
       None => XrayLookupScope::all(),
@@ -118,7 +118,7 @@ impl<'a> DialogSweep<'a> {
 
     let duration: Duration = started.elapsed();
 
-    // Nothing swept is not a pass. A mistyped path mounts an empty world and produces no findings, and
+    // Nothing swept is not a pass. A mistyped path mounts an empty roots and produces no findings, and
     // reporting that as success is how a sweep gets wired into CI and silently checks nothing.
     let status = |is_valid: bool| -> Status {
       if census.files == 0 {

@@ -17,7 +17,7 @@ import {
   ArchivePackResult,
   ArchiveUnpackResult,
 } from "@/core/bindings/types/xrf-pack";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {
@@ -32,22 +32,22 @@ export const archivesCommands = {
   /**
    * Report whatever the engine would read out of a sound, without handing over the sound.
    *
-   * Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same world and
+   * Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same roots and
    * logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
    */
-  describeAudio: (world: XrayWorldSpec, logicalPath: string) =>
-    __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { world, logicalPath }),
+  describeAudio: (roots: XrayRoots, logicalPath: string) =>
+    __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { roots, logicalPath }),
   /**
    * Report the shape of a texture, without decoding it into a picture.
    *
-   * Paired with `archives|read_image`, which serves the PNG the webview displays. Both are addressed by the same world
+   * Paired with `archives|read_image`, which serves the PNG the webview displays. Both are addressed by the same roots
    * and logical path, so the dimensions on screen belong to the picture beside them.
    *
    * Answers with the source DDS facts rather than the PNG's: format and mip count survive the description and would not
    * survive the transcode, and a viewer of X-Ray textures wants both.
    */
-  describeImage: (world: XrayWorldSpec, logicalPath: string) =>
-    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { world, logicalPath }),
+  describeImage: (roots: XrayRoots, logicalPath: string) =>
+    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
   /**
    * Write the selection rules of a configuration out as an xrCompress configuration file.
    *

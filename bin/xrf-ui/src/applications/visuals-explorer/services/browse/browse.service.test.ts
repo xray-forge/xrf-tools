@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -23,11 +23,11 @@ describe("VisualsBrowseService", () => {
   it("applies its mobx annotations", () => {
     const { service } = mockInjectedService(VisualsBrowseService);
 
-    expect(isObservableProp(service, "world")).toBe(true);
+    expect(isObservableProp(service, "browsed")).toBe(true);
     expect(isObservableProp(service, "visuals")).toBe(true);
     expect(isComputedProp(service, "isBrowsing")).toBe(true);
     expect(isComputedProp(service, "root")).toBe(true);
-    expect(isComputedProp(service, "roots")).toBe(true);
+    expect(isComputedProp(service, "rootPaths")).toBe(true);
   });
 
   it("lists every visual of the root it browses, asking for models only", async () => {
@@ -45,11 +45,11 @@ describe("VisualsBrowseService", () => {
 
     await service.openRoot("C:\\gamedata");
 
-    // No subject asset: a browsed root is the world itself, not a neighbourhood around one model.
-    expect(listParameters).toEqual({ kind: "ogf", world: createWorldSpec(["C:\\gamedata"]) });
+    // No subject asset: a browsed root is the roots itself, not a neighbourhood around one model.
+    expect(listParameters).toEqual({ kind: "ogf", roots: createRoots(["C:\\gamedata"]) });
     expect(service.visuals.value).toHaveLength(1);
     expect(service.isBrowsing).toBe(true);
-    expect(service.roots).toEqual(["C:\\gamedata"]);
+    expect(service.rootPaths).toEqual(["C:\\gamedata"]);
   });
 
   it("reports a failed listing without pretending the root is empty of intent", async () => {
@@ -68,7 +68,7 @@ describe("VisualsBrowseService", () => {
     expect(service.isBrowsing).toBe(true);
   });
 
-  it("records the browsed world in the backend rather than keeping it to itself", async () => {
+  it("records the browsed roots in the backend rather than keeping it to itself", async () => {
     let recorded: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
@@ -84,14 +84,14 @@ describe("VisualsBrowseService", () => {
 
     await service.openRoot("C:\\gamedata");
 
-    expect(recorded).toEqual({ world: createWorldSpec(["C:\\gamedata"]) });
+    expect(recorded).toEqual({ roots: createRoots(["C:\\gamedata"]) });
   });
 
-  it("comes back to the world the backend is still browsing after a reload", async () => {
+  it("comes back to the roots the backend is still browsing after a reload", async () => {
     // The session lives where every other application's does; a reload asks for it and derives the listing again, which
     // is cheap because the mounts that listing reads are already cached.
     setMockInvokeResponses({
-      ["plugin:visuals|get_browse"]: createWorldSpec(["C:\\gamedata"]),
+      ["plugin:visuals|get_browse"]: createRoots(["C:\\gamedata"]),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 
@@ -103,7 +103,7 @@ describe("VisualsBrowseService", () => {
     expect(service.visuals.value).toHaveLength(1);
   });
 
-  it("releases the browsed world on deactivation, so leaving closes in place", async () => {
+  it("releases the browsed roots on deactivation, so leaving closes in place", async () => {
     // The selection is dropped on the way out, so a session left open would come back beside a model the backend no
     // longer has. A reload runs no deactivation, which is what keeps the restore above working.
     const released: Array<string> = [];
@@ -129,7 +129,7 @@ describe("VisualsBrowseService", () => {
     expect(released).toEqual(["closed"]);
   });
 
-  it("forgets the world when browsing is closed, backend included", async () => {
+  it("forgets the roots when browsing is closed, backend included", async () => {
     const closed: Array<string> = [];
 
     setMockInvokeResponses({
@@ -151,7 +151,7 @@ describe("VisualsBrowseService", () => {
 
     expect(service.root).toBeNull();
     expect(service.isBrowsing).toBe(false);
-    expect(service.roots).toEqual([]);
+    expect(service.rootPaths).toEqual([]);
     expect(closed).toEqual(["closed"]);
 
     const next = mockInjectedService(VisualsBrowseService);

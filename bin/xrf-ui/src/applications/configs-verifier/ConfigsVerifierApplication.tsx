@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsVerifyResult } from "@/applications/configs-verifier/components/ConfigsVerifyResult";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { configsCommands } from "@/core/bindings/commands/configs";
 import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
@@ -48,7 +48,7 @@ export function ConfigsVerifierApplication(): ReactElement {
       log.info("Verifying:", configs.value);
 
       const verified: LtxProjectVerifyResult = await configsCommands.verifyDirectory(
-        createWorldSpec([configs.value]),
+        createRoots([configs.value]),
         null
       );
 

@@ -80,7 +80,7 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
     }
 
     // Either mode starts a session rather than adding to one, so whatever the other mode had open is closed first: a
-    // model from a previous root has nothing to do with the world being opened now, and leaving it on screen beside a
+    // model from a previous root has nothing to do with the roots being opened now, and leaving it on screen beside a
     // tree that does not contain it is the kind of disagreement the viewport is supposed to prevent.
     if (mode === "folder") {
       await visualsService.close();

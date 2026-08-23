@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayMountMode, XrayWorldSpec};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::project::descriptor::DialogProjectDescriptor;
 use crate::project::dialog_project::DialogProject;
@@ -52,12 +52,12 @@ fn create_source(name: &str) -> XrfResult<PathBuf> {
 }
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
-fn world(root: &Path) -> XrayWorldSpec {
-  XrayWorldSpec::root(root.display().to_string(), XrayMountMode::Directory)
+fn roots(root: &Path) -> XrayRoots {
+  XrayRoots::one(root.display().to_string(), XrayMountMode::Directory)
 }
 
 fn open(root: &Path, mode: DialogProjectMode) -> XrfResult<DialogProject> {
-  DialogProject::open(&world(root), &DialogProjectLayout::new(mode))
+  DialogProject::open(&roots(root), &DialogProjectLayout::new(mode))
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn recognises_a_dialog_logical_path_by_its_file_name() {
 fn detects_source_from_a_translations_prefix_holding_json() -> XrfResult {
   let root: PathBuf = create_source("detect-source")?;
 
-  assert_eq!(detect_mode(&world(&root))?, DialogProjectMode::Source);
+  assert_eq!(detect_mode(&roots(&root))?, DialogProjectMode::Source);
 
   fs::remove_dir_all(root)?;
 
@@ -123,9 +123,9 @@ fn detects_gamedata_for_anything_else() -> XrfResult {
   let gamedata: PathBuf = create_gamedata("detect-gamedata")?;
   let empty: PathBuf = create_root("detect-empty")?;
 
-  assert_eq!(detect_mode(&world(&gamedata))?, DialogProjectMode::Gamedata);
-  // A world the heuristic cannot make sense of reads as the mode the tooling targets.
-  assert_eq!(detect_mode(&world(&empty))?, DialogProjectMode::Gamedata);
+  assert_eq!(detect_mode(&roots(&gamedata))?, DialogProjectMode::Gamedata);
+  // A roots the heuristic cannot make sense of reads as the mode the tooling targets.
+  assert_eq!(detect_mode(&roots(&empty))?, DialogProjectMode::Gamedata);
 
   fs::remove_dir_all(gamedata)?;
   fs::remove_dir_all(empty)?;
@@ -204,7 +204,7 @@ fn reports_a_loose_tree_as_editable_with_a_physical_path_per_file() -> XrfResult
 }
 
 #[test]
-fn refuses_a_world_exposing_no_dialog_files() -> XrfResult {
+fn refuses_roots_exposing_no_dialog_files() -> XrfResult {
   // Answering with an empty project would hide that the caller named the wrong place.
   let root: PathBuf = create_root("no-dialog-files")?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
@@ -212,10 +212,10 @@ fn refuses_a_world_exposing_no_dialog_files() -> XrfResult {
   fs::create_dir_all(&gameplay)?;
   fs::write(gameplay.join("info_zaton.xml"), "<game_information_portions/>")?;
 
-  // Mapped to unit so the assertion does not force `Debug` onto a project holding a mounted world.
+  // Mapped to unit so the assertion does not force `Debug` onto a project holding mounted roots.
   let error = open(&root, DialogProjectMode::Gamedata)
     .map(|_| ())
-    .expect_err("a world with no dialogs should be refused");
+    .expect_err("roots with no dialogs should be refused");
 
   assert!(error.to_string().contains("No dialog files under"));
 

@@ -69,7 +69,7 @@ export type ArchiveProject = {
  * while [`crate::ArchiveProject::read_file_as_string`] refuses what the policy does not cover.
  *
  * Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
- * both through the mounted asset world rather than through this project, and so answers to no limit of its own.
+ * both through the shared mounted assets rather than through this project, and so answers to no limit of its own.
  */
 export type ArchiveProjectReadPolicy = {
   extensions: Array<string>;

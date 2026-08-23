@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_vfs::{XrayMountMode, XrayWorldRoot, XrayWorldSpec};
+use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::commands::assets::list_assets::asset_lister::{AssetLister, AssetListing};
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -102,19 +102,15 @@ impl GenericCommand for ListAssetsCommand {
         .as_str(),
     )?;
 
-    // One vocabulary for naming a world, so a loose tree can be listed in front of an installation.
-    let world: XrayWorldSpec = XrayWorldSpec::roots(
-      paths
-        .iter()
-        .map(|path| XrayWorldRoot::new(path.display().to_string(), mode)),
-    );
+    // One vocabulary for naming roots, so a loose tree can be listed in front of an installation.
+    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.display().to_string(), mode)));
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
       .map(|values| values.cloned().collect())
       .unwrap_or_default();
 
-    let listing: AssetListing = AssetLister::new(&world)
+    let listing: AssetListing = AssetLister::new(&roots)
       .with_ignored(&ignored)
       .with_prefix(prefix.map(String::as_str))
       .with_loose_only(matches.get_flag("loose"))

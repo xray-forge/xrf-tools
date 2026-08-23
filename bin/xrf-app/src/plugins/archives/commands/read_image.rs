@@ -1,9 +1,9 @@
 use tauri::State;
 use tauri::ipc::Response;
 use xrf_dds::{DdsFile, DdsPng};
-use xrf_vfs::XrayWorldSpec;
+use xrf_vfs::XrayRoots;
 
-use crate::core::assets::{AssetWorldState, read_located_asset};
+use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::types::TauriResult;
 
 /// Decode a located DDS into the PNG bytes the webview displays.
@@ -15,14 +15,14 @@ use crate::core::types::TauriResult;
 /// cannot display a DDS, and the transcode belongs beside the format knowledge rather than in the generic read.
 #[tauri::command(rename = "read_image")]
 pub async fn archives_read_image(
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   logical_path: String,
-  assets: State<'_, AssetWorldState>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<Response> {
   log::info!("Reading image: {logical_path}");
 
   let bytes: Vec<u8> = assets
-    .with_probe(&world, |probe| read_located_asset(probe, &logical_path))?
+    .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
     .map_err(|error| format!("Failed to read image '{logical_path}': {error}"))?;
 
   let png: DdsPng = DdsFile::read_from_bytes(&bytes)

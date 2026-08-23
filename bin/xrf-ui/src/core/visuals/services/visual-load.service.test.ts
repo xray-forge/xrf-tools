@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
@@ -19,7 +19,7 @@ import {
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
-const WORLD: XrayWorldSpec = createWorldSpec(["C:\\game\\db"]);
+const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const ENTRY: string = "meshes\\actors\\stalker.ogf";
 
 /** A loadable visual whose description matches the buffer returned beside it. */
@@ -30,7 +30,7 @@ function mockLoadable(): { selected: SelectedVisualDescription; buffer: ArrayBuf
   return {
     selected: mockSelectedVisual({
       source: { kind: "asset", logicalPath: ENTRY },
-      world: WORLD,
+      roots: ROOTS,
       description: mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
     }),
     buffer: buffer.toArrayBuffer(),
@@ -52,7 +52,7 @@ describe("VisualLoadService", () => {
     expect(isComputedProp(service, "hasMotions")).toBe(true);
   });
 
-  it("loads a visual by source and world, whichever surface asked", async () => {
+  it("loads a visual by source and roots, whichever surface asked", async () => {
     // The archives preview and the visuals explorer both arrive here; neither one's policy is expressed in the call.
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
@@ -68,9 +68,9 @@ describe("VisualLoadService", () => {
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, WORLD);
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
-    expect(openParameters).toEqual({ source: { kind: "asset", logicalPath: ENTRY }, world: WORLD });
+    expect(openParameters).toEqual({ source: { kind: "asset", logicalPath: ENTRY }, roots: ROOTS });
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
     expect(service.sourceLabel).toBe(ENTRY);
   });
@@ -85,14 +85,14 @@ describe("VisualLoadService", () => {
       },
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, WORLD);
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.visual.value).toBeNull();
     expect(service.visual.error?.message).toBe("chunk declares more bytes than the entry holds");
     expect(service.visual.isLoading).toBe(false);
   });
 
-  it("reads each texture by the path the open resolved, in the world it named", async () => {
+  it("reads each texture by the path the open resolved, in the roots it named", async () => {
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
 
@@ -111,10 +111,10 @@ describe("VisualLoadService", () => {
       },
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, WORLD);
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
     await waitFor(() => expect(service.textures.size).toBe(1));
 
-    expect(readParameters).toEqual({ logicalPath: "textures\\wpn\\wpn_ak74.dds", world: WORLD });
+    expect(readParameters).toEqual({ logicalPath: "textures\\wpn\\wpn_ak74.dds", roots: ROOTS });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });
 
@@ -148,7 +148,7 @@ describe("VisualLoadService", () => {
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, WORLD);
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
     service.clear();
 
     expect(service.visual.value).toBeNull();

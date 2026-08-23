@@ -19,13 +19,13 @@ import {
   TArchiveOperation,
   TArchiveSelection,
 } from "@/core/archive";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -148,13 +148,13 @@ export class ArchivesService {
   }
 
   /**
-   * The world an archived asset is read out of, which is the project's own tree.
+   * The roots an archived asset is read out of, which is the project's own tree.
    *
    * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
-   * root are the whole world. The same spec the model preview mounts, so both reach one set of bytes.
+   * root are the whole roots. The same spec the model preview mounts, so both reach one set of bytes.
    */
-  private getAssetWorld(project: ArchiveProject): XrayWorldSpec {
-    return createWorldSpec([project.root]);
+  private getAssetRoots(project: ArchiveProject): XrayRoots {
+    return createRoots([project.root]);
   }
 
   @BoundAction()
@@ -390,7 +390,7 @@ export class ArchivesService {
   /**
    * Reads a sound as the description the engine would read plus the bytes the webview plays.
    *
-   * Both calls name the same world and the same logical path, so a late response cannot pair one file's numbers with
+   * Both calls name the same roots and the same logical path, so a late response cannot pair one file's numbers with
    * another file's sound. In parallel because neither needs the other.
    *
    * @param descriptor - Archive entry naming the sound.
@@ -398,11 +398,11 @@ export class ArchivesService {
    * @returns The sound's description and its bytes as stored.
    */
   private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const world: XrayWorldSpec = this.getAssetWorld(project);
+    const roots: XrayRoots = this.getAssetRoots(project);
 
     const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(world, descriptor.name),
-      assetsRawCommands.readAsset(world, descriptor.name),
+      archivesCommands.describeAudio(roots, descriptor.name),
+      assetsRawCommands.readAsset(roots, descriptor.name),
     ]);
 
     return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
@@ -419,11 +419,11 @@ export class ArchivesService {
    * @returns The texture's shape and the decoded png bytes.
    */
   private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const world: XrayWorldSpec = this.getAssetWorld(project);
+    const roots: XrayRoots = this.getAssetRoots(project);
 
     const [texture, bytes] = await Promise.all([
-      archivesCommands.describeImage(world, descriptor.name),
-      archivesRawCommands.readImage(world, descriptor.name),
+      archivesCommands.describeImage(roots, descriptor.name),
+      archivesRawCommands.readImage(roots, descriptor.name),
     ]);
 
     return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };

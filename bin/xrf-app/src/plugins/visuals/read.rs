@@ -22,7 +22,7 @@ pub fn pack_source(source: &VisualSource, probe: &XrayProbe) -> TauriResult<Visu
   Ok(VisualPacker::pack(&file))
 }
 
-/// Reads a visual out of the mounted world, loose or archived alike.
+/// Reads a visual out of the mounted roots, loose or archived alike.
 fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<OgfFile> {
   let resolution: XrayResolution = probe
     .find(logical_path)

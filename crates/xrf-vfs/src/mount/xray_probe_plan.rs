@@ -77,7 +77,7 @@ impl XrayProbePlan {
 
   /// Searches one root, read the way the caller says rather than through the default.
   ///
-  /// The same step as [`Self::with_root`], for a caller carrying a mode per root — a world spec names
+  /// The same step as [`Self::with_root`], for a caller carrying a mode per root — an `XrayRoots` names
   /// one each, so a loose gamedata tree and the installation behind it can be read differently within
   /// one search.
   ///

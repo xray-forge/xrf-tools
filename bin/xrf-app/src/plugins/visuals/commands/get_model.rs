@@ -24,7 +24,7 @@ pub async fn visuals_get_model(state: State<'_, VisualState>) -> TauriResult<Opt
       Ok(Some(SelectedVisualDescription {
         source: current.source.clone(),
         description: current.package.description.clone(),
-        world: current.world.clone(),
+        roots: current.roots.clone(),
         dependencies: current.dependencies.clone(),
         textures: current.textures.clone(),
       }))

@@ -5,7 +5,7 @@ import { Container, EventsPlugin } from "@wirestate/core";
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { ProjectService } from "@/core/settings/services/project";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -20,7 +20,7 @@ function mockArchivedVisual(logicalPath: string): XrayAsset {
   return { container: { kind: "archive", path: "C:\\game\\db\\meshes.db0" }, logicalPath };
 }
 
-/** Renders the menu over a browse service that has already listed a world. */
+/** Renders the menu over a browse service that has already listed roots. */
 async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderResult; container: Container }> {
   setMockInvokeResponses({ ["plugin:assets|list_assets"]: visuals, ["plugin:visuals|get_model"]: null });
 
@@ -58,7 +58,7 @@ describe("VisualsMenu", () => {
     expect(render.getAllByText("db")).toHaveLength(1);
   });
 
-  it("opens the visual a leaf names, in the browsed world", async () => {
+  it("opens the visual a leaf names, in the browsed roots", async () => {
     const { container, render } = await renderMenu([mockLooseVisual("meshes\\actors\\stalker.ogf")]);
 
     let openParameters: Record<string, unknown> = {};
@@ -79,7 +79,7 @@ describe("VisualsMenu", () => {
 
     expect(openParameters).toMatchObject({
       source: { kind: "asset", logicalPath: "meshes\\actors\\stalker.ogf" },
-      world: createWorldSpec(["C:\\gamedata"]),
+      roots: createRoots(["C:\\gamedata"]),
     });
     expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry");
   });

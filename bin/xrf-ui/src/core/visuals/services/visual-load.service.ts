@@ -6,7 +6,7 @@ import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import {
@@ -34,7 +34,7 @@ export interface IOpenVisual {
  *
  * Two calls by design - the description is typed and the geometry is raw bytes, and a tauri command returns one or the
  * other, never both - followed by the textures, which arrive one at a time so a model shows its first without waiting
- * for its last. Everything is addressed by source and world rather than by what is currently loaded, so a response that
+ * for its last. Everything is addressed by source and roots rather than by what is currently loaded, so a response that
  * arrives after the caller moved on is discardable instead of being paired with the wrong model.
  */
 @Injectable()
@@ -91,10 +91,10 @@ export class VisualLoadService {
    * that does not is not obliged to catch.
    *
    * @param source - Visual source to open.
-   * @param world - World the source and its references are searched in.
+   * @param roots - Roots the source and its references are searched in.
    */
   @BoundAction()
-  public async load(source: VisualSource, world: XrayWorldSpec): Promise<void> {
+  public async load(source: VisualSource, roots: XrayRoots): Promise<void> {
     const timer: Timer = new Timer();
 
     this.log.info("Loading visual:", describeVisualSource(source));
@@ -107,7 +107,7 @@ export class VisualLoadService {
         return this.requestId;
       });
 
-      const selected: SelectedVisualDescription = await visualsCommands.openModel(source, world);
+      const selected: SelectedVisualDescription = await visualsCommands.openModel(source, roots);
 
       this.log.info("Visual described in:", formatDuration(timer.lap()));
 
@@ -156,9 +156,9 @@ export class VisualLoadService {
   private async view(selected: SelectedVisualDescription, request: number): Promise<void> {
     const timer: Timer = new Timer();
 
-    // The world the open used travels back with the description, so a geometry read after a reload searches what the
+    // The roots the open used travels back with the description, so a geometry read after a reload searches what the
     // open searched rather than whatever the caller would name now.
-    const buffer: ArrayBuffer = await visualsRawCommands.readGeometry(selected.source, selected.world);
+    const buffer: ArrayBuffer = await visualsRawCommands.readGeometry(selected.source, selected.roots);
 
     if (request !== this.requestId) {
       this.log.info(
@@ -207,7 +207,7 @@ export class VisualLoadService {
 
     this.log.info(`Loading ${loadable.length} textures for:`, describeVisualSource(selected.source));
 
-    await Promise.all(loadable.map((texture) => this.loadTexture(texture, selected.world, request)));
+    await Promise.all(loadable.map((texture) => this.loadTexture(texture, selected.roots, request)));
 
     this.log.info(`Loaded ${loadable.length} textures in:`, formatDuration(timer.elapsed()));
   }
@@ -219,12 +219,12 @@ export class VisualLoadService {
    * substituted dummy included — rather than from a second lookup that could answer differently.
    *
    * @param texture - Submesh identity and the logical path resolution located.
-   * @param world - The mounted world the asset is read from.
+   * @param roots - The mounted roots the asset is read from.
    * @param request - Request identity used to discard a late response.
    */
-  private async loadTexture(texture: ILoadableTexture, world: XrayWorldSpec, request: number): Promise<void> {
+  private async loadTexture(texture: ILoadableTexture, roots: XrayRoots, request: number): Promise<void> {
     try {
-      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(world, texture.logicalPath);
+      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, texture.logicalPath);
 
       if (request !== this.requestId) {
         return;

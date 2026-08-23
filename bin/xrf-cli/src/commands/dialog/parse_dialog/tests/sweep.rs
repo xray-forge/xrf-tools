@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_vfs::{XrayMountMode, XrayWorldSpec};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::parse_dialog::command::ParseDialogCommand;
 use crate::commands::dialog::parse_dialog::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
@@ -13,8 +13,8 @@ use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
-fn world(root: &Path) -> XrayWorldSpec {
-  XrayWorldSpec::root(root.display().to_string(), XrayMountMode::Directory)
+fn roots(root: &Path) -> XrayRoots {
+  XrayRoots::one(root.display().to_string(), XrayMountMode::Directory)
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
@@ -68,7 +68,7 @@ fn counts_what_the_files_hold() -> XrfResult {
     </game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
   let census = &result.census;
 
   assert_eq!(census.files, 1);
@@ -103,7 +103,7 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
     r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><go_back>1</go_back></phrase></phrase_list></dialog></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   assert_eq!(sum_findings(&result.report), 1);
   assert_eq!(result.report.status(), Status::Failed);
@@ -133,7 +133,7 @@ fn reports_an_unparsable_file_without_stopping_the_sweep() -> XrfResult {
     r#"<game_dialogs><dialog id="ok"/></game_dialogs>"#,
   )?;
 
-  let result: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   assert_eq!(result.census.files, 2);
   assert_eq!(result.census.unreadable_files, 1);
@@ -216,8 +216,8 @@ fn reads_files_in_a_stable_order() -> XrfResult {
     )?;
   }
 
-  let first: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
-  let second: DialogSweepResult = DialogSweep::new(&world(&root), None).run()?;
+  let first: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
+  let second: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
   let subjects = |result: &DialogSweepResult| -> Vec<String> {
     result
@@ -240,7 +240,7 @@ fn reads_files_in_a_stable_order() -> XrfResult {
 #[test]
 fn refuses_a_path_that_does_not_exist() -> XrfResult {
   // A typo must not report success, which is the same guard `patch-ogf-texture-refs` carries. A missing
-  // path now mounts an empty world rather than failing outright, so the assertion is on the class of
+  // path now mounts an empty roots rather than failing outright, so the assertion is on the class of
   // failure rather than on wording the mount layer owns.
   let missing: PathBuf = std::env::temp_dir().join("xrf-cli-parse-dialog-missing-root");
 

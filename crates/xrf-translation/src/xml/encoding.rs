@@ -103,7 +103,7 @@ pub(crate) fn decode(identity: TranslationIdentity, data: &[u8]) -> XrfResult<De
 
 /// Read a string table off disk and decode it.
 ///
-/// For a caller that holds one file and no mounted world; everything reading a tree goes through the
+/// For a caller that holds one file and no mounted roots; everything reading a tree goes through the
 /// VFS and calls [`decode`] with the bytes it already has.
 ///
 /// # Errors

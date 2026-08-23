@@ -1,9 +1,9 @@
 use serde::Serialize;
 use tauri::State;
 use xrf_sound::{SoundFile, SoundMetadata};
-use xrf_vfs::XrayWorldSpec;
+use xrf_vfs::XrayRoots;
 
-use crate::core::assets::{AssetWorldState, read_located_asset};
+use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::types::TauriResult;
 
 /// The X-Ray source parameters carried in a sound's first vorbis comment.
@@ -37,19 +37,19 @@ pub struct AudioDescriptor {
 
 /// Report whatever the engine would read out of a sound, without handing over the sound.
 ///
-/// Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same world and
+/// Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same roots and
 /// logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_audio"))]
 #[tauri::command(rename = "describe_audio")]
 pub async fn archives_describe_audio(
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   logical_path: String,
-  assets: State<'_, AssetWorldState>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<AudioDescriptor> {
   log::info!("Describing audio: {logical_path}");
 
   let bytes: Vec<u8> = assets
-    .with_probe(&world, |probe| read_located_asset(probe, &logical_path))?
+    .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
     .map_err(|error| format!("Failed to describe audio '{logical_path}': {error}"))?;
 
   // A sound that cannot be parsed is still worth playing: plenty of ogg in a mod was not produced by the x-ray tools,

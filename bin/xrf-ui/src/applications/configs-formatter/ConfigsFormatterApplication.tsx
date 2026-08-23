@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsFormatResult } from "@/applications/configs-formatter/components/ConfigsFormatResult";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { configsCommands } from "@/core/bindings/commands/configs";
 import { LtxProjectFormatResult } from "@/core/bindings/types/xrf-ltx";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
@@ -49,8 +49,8 @@ export function ConfigsFormatterApplication(): ReactElement {
       log.info("Performing format command:", isCheck, configs.value);
 
       const formatted: LtxProjectFormatResult = await (isCheck
-        ? configsCommands.checkDirectoryFormat(createWorldSpec([configs.value]), null)
-        : configsCommands.formatDirectory(createWorldSpec([configs.value]), null));
+        ? configsCommands.checkDirectoryFormat(createRoots([configs.value]), null)
+        : configsCommands.formatDirectory(createRoots([configs.value]), null));
 
       setResult(formatted);
 

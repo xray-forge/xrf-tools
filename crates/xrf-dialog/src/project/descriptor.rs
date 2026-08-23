@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use xrf_vfs::XrayWorldSpec;
+use xrf_vfs::XrayRoots;
 
 use crate::project::mode::DialogProjectMode;
 
@@ -68,8 +68,8 @@ pub struct DialogFileDescriptor {
 #[serde(rename_all = "camelCase")]
 pub struct DialogProjectDescriptor {
   pub mode: DialogProjectMode,
-  /// The world this project was opened over, echoed back so a follow-up read addresses the same trees.
-  pub world: XrayWorldSpec,
+  /// The roots this project was opened over, echoed back so a follow-up read addresses the same trees.
+  pub roots: XrayRoots,
   /// Logical prefix the dialogs were read from.
   pub dialogs_prefix: String,
   /// Logical prefix dialog text is read from.

@@ -3,7 +3,7 @@
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 import { AssetTextureDescriptor, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayWorldRoot, XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /** Commands */
@@ -11,14 +11,14 @@ export const visualsCommands = {
   /**
    * Stop browsing, leaving whatever visual is open on screen.
    *
-   * The mounted sources stay: they belong to the shared asset world, which outlives any one session and is what makes
+   * The mounted sources stay: they belong to the shared asset roots, which outlives any one session and is what makes
    * browsing the same root again free.
    */
   closeBrowse: () => __TAURI_INVOKE<null>("plugin:visuals|close_browse"),
   /** Drop the selected visual and its packed geometry. */
   closeModel: () => __TAURI_INVOKE<null>("plugin:visuals|close_model"),
   /**
-   * The world the viewer was browsing, or null when it was showing one visual on its own.
+   * The roots the viewer was browsing, or null when it was showing one visual on its own.
    *
    * The rehydration probe for the tree, beside the one the selection already has: a reloaded frontend asks what is
    * being browsed and lists it again, so the panel comes back rather than emptying beside a model still open.
@@ -26,13 +26,13 @@ export const visualsCommands = {
   getBrowse: () =>
     __TAURI_INVOKE<{
       /**
-       * Asset whose own X-Ray root and installation are searched first, when the world is centred on one.
+       * Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
        *
        * This is what finds a texture shipped beside a model rather than in the shared tree.
        */
       asset: string | null;
       /** Roots searched after the asset's own, in the order given. */
-      roots: Array<XrayWorldRoot>;
+      roots: Array<XrayRoot>;
     } | null>("plugin:visuals|get_browse"),
   /**
    * What the viewer had selected, or null when nothing is open.
@@ -43,20 +43,20 @@ export const visualsCommands = {
   getModel: () =>
     __TAURI_INVOKE<{
       source: VisualSource;
-      /** The world the selection was opened in, so a reloaded frontend asks for geometry the same way. */
-      world: XrayWorldSpec;
+      /** The roots the selection was opened in, so a reloaded frontend asks for geometry the same way. */
+      roots: XrayRoots;
       description: VisualDescription;
       dependencies: VisualDependencies;
       /** What each located texture file is, keyed by the logical path that located it. */
       textures: { [key in string]: AssetTextureDescriptor };
     } | null>("plugin:visuals|get_model"),
   /**
-   * Start browsing a world of visuals.
+   * Start browsing roots of visuals.
    *
-   * Stores the intent rather than a listing: what the user chose is the world, and everything shown of it is derived
+   * Stores the intent rather than a listing: what the user chose is the roots, and everything shown of it is derived
    * from that through the generic asset listing. A reload asks for this and derives the rest again.
    */
-  openBrowse: (world: XrayWorldSpec) => __TAURI_INVOKE<null>("plugin:visuals|open_browse", { world }),
+  openBrowse: (roots: XrayRoots) => __TAURI_INVOKE<null>("plugin:visuals|open_browse", { roots }),
   /**
    * Select a visual and return what it contains, with every reference it declares resolved.
    *
@@ -67,6 +67,6 @@ export const visualsCommands = {
    * textures from costing forty round trips, and it is why the outcomes travel with the description rather than being
    * asked for afterwards.
    */
-  openModel: (source: VisualSource, world: XrayWorldSpec) =>
-    __TAURI_INVOKE<SelectedVisualDescription>("plugin:visuals|open_model", { source, world }),
+  openModel: (source: VisualSource, roots: XrayRoots) =>
+    __TAURI_INVOKE<SelectedVisualDescription>("plugin:visuals|open_model", { source, roots }),
 };

@@ -23,8 +23,8 @@ pub mod vfs;
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
 pub use mount::{
-  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XraySkippedMount,
-  XrayWorldRoot, XrayWorldSpec,
+  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XrayRoot, XrayRoots,
+  XraySkippedMount,
 };
 pub use path::{XrayLogicalPath, XrayPathCollision};
 pub use source::{XrayArchiveSource, XrayAssetSource, XraySourceKind};

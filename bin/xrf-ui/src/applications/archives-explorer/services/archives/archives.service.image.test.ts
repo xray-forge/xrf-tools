@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -24,8 +24,8 @@ const DESCRIPTOR: AssetTextureDescriptor = {
   shape: { width: 256, height: 256, mipmapLevels: 9, format: "DXT5" },
 };
 
-/** The world an archive project mounts, which both media calls have to name identically. */
-const WORLD: XrayWorldSpec = createWorldSpec(["C:\\game\\database"]);
+/** The roots an archive project mounts, which both media calls have to name identically. */
+const ROOTS: XrayRoots = createRoots(["C:\\game\\database"]);
 
 const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 
@@ -56,7 +56,7 @@ describe("ArchivesService image preview", () => {
     await service.selectArchiveFile(TEXTURE);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", {
-      world: WORLD,
+      roots: ROOTS,
       logicalPath: TEXTURE.name,
     });
     // The text path would have refused it anyway: this entry is compressed and .dds is not readable.
@@ -64,7 +64,7 @@ describe("ArchivesService image preview", () => {
     expect(service.content.value?.kind === "image" ? service.content.value.descriptor.shape?.width : null).toBe(256);
   });
 
-  it("describes and reads one file, in one world", async () => {
+  it("describes and reads one file, from the same roots", async () => {
     const service: ArchivesService = createService();
 
     await service.selectArchiveFile(TEXTURE);

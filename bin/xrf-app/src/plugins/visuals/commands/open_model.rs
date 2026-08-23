@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::MutexGuard;
 
 use tauri::State;
-use xrf_vfs::{XrayProbe, XrayWorldSpec};
+use xrf_vfs::{XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualPackage};
 
-use crate::core::assets::{AssetTextureDescriptor, AssetWorldState};
+use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::pack_source;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
@@ -22,19 +22,19 @@ use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, 
 #[tauri::command(rename = "open_model")]
 pub async fn visuals_open_model(
   source: VisualSource,
-  world: XrayWorldSpec,
+  roots: XrayRoots,
   state: State<'_, VisualState>,
-  assets: State<'_, AssetWorldState>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<SelectedVisualDescription> {
   log::info!("Opening visual: {}", source.label());
 
-  // Centred on the model unless the caller centred it elsewhere, and the effective world is what travels back: a texture
+  // Centred on the model unless the caller centred it elsewhere, and the effective roots is what travels back: a texture
   // resolved through the model's own tree has to be readable through the same tree afterwards.
-  let world: XrayWorldSpec = world.centred_on(source.physical_path());
+  let roots: XrayRoots = roots.centred_on(source.physical_path());
 
   // Read, resolve and describe inside one probe, so the model, its references and the files behind them are all looked
-  // for in the same world: a second probe could mount a source between the calls and answer differently.
-  let (package, dependencies, textures) = assets.with_probe(&world, |probe| {
+  // for in the same roots: a second probe could mount a source between the calls and answer differently.
+  let (package, dependencies, textures) = assets.with_probe(&roots, |probe| {
     let package: VisualPackage = pack_source(&source, probe)?;
     let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
     let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
@@ -44,7 +44,7 @@ pub async fn visuals_open_model(
 
   let description: SelectedVisualDescription = SelectedVisualDescription {
     source: source.clone(),
-    world: world.clone(),
+    roots: roots.clone(),
     description: package.description.clone(),
     dependencies: dependencies.clone(),
     textures: textures.clone(),
@@ -57,7 +57,7 @@ pub async fn visuals_open_model(
 
   *selected = Some(SelectedVisual {
     source,
-    world,
+    roots,
     package,
     dependencies,
     textures,

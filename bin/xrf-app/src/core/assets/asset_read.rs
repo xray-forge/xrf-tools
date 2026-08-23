@@ -9,7 +9,7 @@ pub fn read_located_asset(probe: &XrayProbe, logical_path: &str) -> XrfResult<Ve
   match probe.find(logical_path)?.get_asset() {
     Some(asset) => probe.read_asset(asset),
     None => Err(XrfError::new_asset_error(format!(
-      "'{logical_path}' resolves to nothing in the mounted world"
+      "'{logical_path}' resolves to nothing in the mounted roots"
     ))),
   }
 }

@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /**
  * One dialog, as the project index lists it.
@@ -51,8 +51,8 @@ export type DialogFinding = {
  */
 export type DialogProjectDescriptor = {
   mode: DialogProjectMode;
-  /** The world this project was opened over, echoed back so a follow-up read addresses the same trees. */
-  world: XrayWorldSpec;
+  /** The roots this project was opened over, echoed back so a follow-up read addresses the same trees. */
+  roots: XrayRoots;
   /** Logical prefix the dialogs were read from. */
   dialogsPrefix: string;
   /** Logical prefix dialog text is read from. */

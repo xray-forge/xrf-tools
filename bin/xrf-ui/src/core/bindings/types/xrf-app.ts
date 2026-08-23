@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /**
@@ -78,8 +78,8 @@ export type EquipmentSpriteMetadata = {
  */
 export type SelectedVisualDescription = {
   source: VisualSource;
-  /** The world the selection was opened in, so a reloaded frontend asks for geometry the same way. */
-  world: XrayWorldSpec;
+  /** The roots the selection was opened in, so a reloaded frontend asks for geometry the same way. */
+  roots: XrayRoots;
   description: VisualDescription;
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */
@@ -90,11 +90,11 @@ export type SelectedVisualDescription = {
  * Where a visual is read from.
  *
  * Both variants are self-describing, and neither is a handle into mount state: an asset is named by its engine
- * identity, which any surface can spell without having opened anything. The world it is looked for in travels beside
- * the source on every command that takes one, so one call can never mix two worlds.
+ * identity, which any surface can spell without having opened anything. The roots it is looked for in travels beside
+ * the source on every command that takes one, so one call can never mix two roots.
  */
 export type VisualSource =
   /** A loose `.ogf` file on disk, named by its filesystem path. */
   | { kind: "file"; path: string }
-  /** An asset of the world, loose or archived, named by its engine identity. */
+  /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };

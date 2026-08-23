@@ -8,19 +8,19 @@ import {
   DialogProjectDescriptor,
   DialogProjectMode,
 } from "@/core/bindings/types/xrf-dialog";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const dialogsCommands = {
   closeProject: () => __TAURI_INVOKE<null>("plugin:dialogs|close_project"),
   /**
-   * Report which layout a world looks like, for the open form to preselect.
+   * Report which layout roots looks like, for the open form to preselect.
    *
    * Advisory: `open_project` obeys whatever layout mode it is given, because the two layouts read and
-   * write different files and a heuristic must not be what decides that. This mounts the world to
+   * write different files and a heuristic must not be what decides that. This mounts the roots to
    * answer, so it names one the same way the open does.
    */
-  detectMode: (world: XrayWorldSpec) => __TAURI_INVOKE<DialogProjectMode>("plugin:dialogs|detect_mode", { world }),
+  detectMode: (roots: XrayRoots) => __TAURI_INVOKE<DialogProjectMode>("plugin:dialogs|detect_mode", { roots }),
   /**
    * The open project, described again rather than cached.
    *
@@ -30,8 +30,8 @@ export const dialogsCommands = {
   getProject: () =>
     __TAURI_INVOKE<{
       mode: DialogProjectMode;
-      /** The world this project was opened over, echoed back so a follow-up read addresses the same trees. */
-      world: XrayWorldSpec;
+      /** The roots this project was opened over, echoed back so a follow-up read addresses the same trees. */
+      roots: XrayRoots;
       /** Logical prefix the dialogs were read from. */
       dialogsPrefix: string;
       /** Logical prefix dialog text is read from. */
@@ -45,8 +45,8 @@ export const dialogsCommands = {
   /**
    * Open a dialog tree.
    *
-   * Two arguments, because opening answers two questions. `world` is the shared vocabulary every
-   * surface names a world with — ordered roots, each with its own mount mode — so an installation opens
+   * Two arguments, because opening answers two questions. `roots` is the shared vocabulary every
+   * surface names roots with — ordered roots, each with its own mount mode — so an installation opens
    * as readily as a loose tree and a gamedata tree layers in front of one. `layout` is this domain's
    * own half: where inside those trees the dialogs and their text sit.
    *
@@ -54,13 +54,13 @@ export const dialogsCommands = {
    * acted on here would decide what gets overwritten. `detect_mode` is what preselects it.
    */
   openProject: (
-    world: XrayWorldSpec,
+    roots: XrayRoots,
     mode: DialogProjectMode,
     dialogsPrefix: string | null,
     translationsPrefix: string | null
   ) =>
     __TAURI_INVOKE<DialogProjectDescriptor>("plugin:dialogs|open_project", {
-      world,
+      roots,
       mode,
       dialogsPrefix,
       translationsPrefix,

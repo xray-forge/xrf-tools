@@ -4,7 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_vfs::{XrayMountMode, XrayWorldRoot, XrayWorldSpec};
+use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::commands::dialog::parse_dialog::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
@@ -26,7 +26,7 @@ impl GenericCommand for ParseDialogCommand {
       .about("Command to read dialog xml and report what it holds")
       .arg(
         Arg::new("path")
-          .help("Root holding dialog xml. Repeat to layer worlds, highest priority first")
+          .help("Root holding dialog xml. Repeat to layer roots, highest priority first")
           .short('p')
           .long("path")
           .required(true)
@@ -102,19 +102,19 @@ impl GenericCommand for ParseDialogCommand {
     )?;
     let prefix: Option<&String> = matches.get_one::<_>("prefix");
 
-    // One vocabulary for naming a world, so repeating `--path` layers a tree in front of an
+    // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
     // installation exactly as the desktop app does it.
-    let world: XrayWorldSpec = XrayWorldSpec::roots(
+    let roots: XrayRoots = XrayRoots::new(
       paths
         .iter()
-        .map(|path| XrayWorldRoot::new(path.display().to_string(), source)),
+        .map(|path| XrayRoot::new(path.display().to_string(), source)),
     );
 
-    xrf_output::info!(output, "Reading dialogs in {} ({:?})", world.describe(), source);
+    xrf_output::info!(output, "Reading dialogs in {} ({:?})", roots.describe(), source);
 
-    // A world that cannot be mounted is an execution failure, which the mount itself answers with, so
+    // A roots that cannot be mounted is an execution failure, which the mount itself answers with, so
     // no separate existence check is needed here.
-    let result: DialogSweepResult = DialogSweep::new(&world, prefix.map(String::as_str)).run()?;
+    let result: DialogSweepResult = DialogSweep::new(&roots, prefix.map(String::as_str)).run()?;
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
@@ -149,7 +149,7 @@ impl GenericCommand for ParseDialogCommand {
       Status::Error | Status::Incomplete | Status::Skipped => Err(
         XrfError::new_verify_error(format!(
           "No dialog files were read under {}, status: {status}",
-          world.describe()
+          roots.describe()
         ))
         .into(),
       ),

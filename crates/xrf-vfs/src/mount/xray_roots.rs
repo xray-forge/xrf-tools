@@ -8,18 +8,18 @@ use crate::mount::xray_mount_plan::XrayMountPlan;
 use crate::mount::xray_probe_plan::XrayProbePlan;
 use crate::vfs::XrayVfs;
 
-/// One root a world is assembled from, and how that root becomes mounts.
+/// One place to read from, and how that place becomes mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct XrayWorldRoot {
+pub struct XrayRoot {
   pub path: String,
   /// How this path becomes mounts. `Auto` unless the caller says otherwise.
   #[serde(default)]
   pub mode: XrayMountMode,
 }
 
-impl XrayWorldRoot {
+impl XrayRoot {
   pub fn new(path: impl Into<String>, mode: XrayMountMode) -> Self {
     Self {
       path: path.into(),
@@ -28,48 +28,48 @@ impl XrayWorldRoot {
   }
 }
 
-/// Where a world is: an optional subject asset, then ordered roots.
+/// Everywhere a caller wants read: an optional subject asset, then ordered roots.
 ///
-/// The one way every surface names a world, so `--source` on a command, a setting in the app, and an
-/// editor session all say the same thing. What sits *inside* the world is a separate question that
-/// stays with each domain — a dialog layout and a translations layout disagree, and a spawn file has
-/// no answer at all.
+/// The one way every surface says where to read from, so `--source` on a command, a setting in the
+/// app, and an editor session all name the same thing. What sits *inside* those roots is a separate
+/// question that stays with each domain — a dialog layout and a translations layout disagree about it,
+/// and a spawn file has no answer at all.
 ///
-/// Several roots is layering, which is how modding actually works: a loose gamedata tree in front of
-/// an installation. Search order is declaration order, and the first mount holding a path wins.
+/// Several roots means layering, which is how modding actually works: a loose gamedata tree in front
+/// of an installation. Search order is declaration order, and the first mount holding a path wins.
 ///
 /// Callers do not assemble mounts from this themselves. They hand it to whatever owns mounting and
-/// receive a world or a probe, so there is one place that decides what a spec means.
+/// receive a VFS or a probe back, so one place decides what a declaration means.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct XrayWorldSpec {
-  /// Asset whose own X-Ray root and installation are searched first, when the world is centred on one.
+pub struct XrayRoots {
+  /// Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
   ///
   /// This is what finds a texture shipped beside a model rather than in the shared tree.
   pub asset: Option<String>,
   /// Roots searched after the asset's own, in the order given.
-  pub roots: Vec<XrayWorldRoot>,
+  pub roots: Vec<XrayRoot>,
 }
 
-impl XrayWorldSpec {
-  /// A world of one root.
-  pub fn root(path: impl Into<String>, mode: XrayMountMode) -> Self {
+impl XrayRoots {
+  /// One root, read the given way.
+  pub fn one(path: impl Into<String>, mode: XrayMountMode) -> Self {
     Self {
       asset: None,
-      roots: vec![XrayWorldRoot::new(path, mode)],
+      roots: vec![XrayRoot::new(path, mode)],
     }
   }
 
-  /// A world of several roots, in search order.
-  pub fn roots(roots: impl IntoIterator<Item = XrayWorldRoot>) -> Self {
+  /// Several roots, in search order.
+  pub fn new(roots: impl IntoIterator<Item = XrayRoot>) -> Self {
     Self {
       asset: None,
       roots: roots.into_iter().collect(),
     }
   }
 
-  /// The same world, centred on an asset when it does not already name one.
+  /// The same roots, centred on an asset when it does not already name one.
   ///
   /// Lets a command fill in the subject it knows about while leaving a caller free to name a different
   /// one, and the result is what travels back to the frontend — so a later read searches what the open
@@ -84,14 +84,14 @@ impl XrayWorldSpec {
     }
   }
 
-  /// Whether this spec names nowhere at all.
+  /// Whether this names nowhere at all.
   pub fn is_empty(&self) -> bool {
     self.asset.is_none() && self.roots.is_empty()
   }
 
-  /// Name this world for a log line or an error message.
+  /// Name these roots for a log line or an error message.
   ///
-  /// On the type because a spec has no single path to print and every surface reporting on one had
+  /// On the type because roots have no single path to print and every surface reporting on one had
   /// started writing its own join.
   pub fn describe(&self) -> String {
     if self.roots.is_empty() {
@@ -109,7 +109,7 @@ impl XrayWorldSpec {
       .join(", ")
   }
 
-  /// The mounts this spec means, in search order.
+  /// The mounts these roots mean, in search order.
   ///
   /// For a tool that lists and reads a whole tree. `XrayMountPlan::behind` dedupes by path, so a
   /// fallback root that happens to be the tree the asset already implied is not mounted twice.
@@ -131,7 +131,7 @@ impl XrayWorldSpec {
     Ok(plan)
   }
 
-  /// The ordered probe steps this spec means.
+  /// The ordered probe steps these roots mean.
   ///
   /// For a per-asset lookup that has to report which step answered. Each root is labelled with its own
   /// path, because that is the string a failed lookup lists as searched.
@@ -153,7 +153,7 @@ impl XrayWorldSpec {
     Ok(plan)
   }
 
-  /// Mount this world and hand back the result.
+  /// Mount these roots and hand back the result.
   ///
   /// # Errors
   ///

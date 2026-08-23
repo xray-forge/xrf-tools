@@ -3,9 +3,9 @@ import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayWorldSpec } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { ProjectService } from "@/core/settings/services/project/project.service";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
@@ -227,7 +227,7 @@ describe("VisualsService opening", () => {
     expect(service.sourceLabel).toBe("C:\\gamedata\\second.ogf");
   });
 
-  it("reads a texture by the path the open resolved, in the world it named", async () => {
+  it("reads a texture by the path the open resolved, in the roots it named", async () => {
     // Reading by resolved path rather than by reference is what keeps the bytes and the reported outcome describing the
     // same file - including a substituted dummy, which by reference would resolve to nothing.
     const { selected, buffer } = mockOpenableVisual();
@@ -238,10 +238,10 @@ describe("VisualsService opening", () => {
     let readParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
-      // The backend echoes the world it opened with, which is what later reads are addressed by.
+      // The backend echoes the roots it opened with, which is what later reads are addressed by.
       ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => ({
         ...selected,
-        world: (parameters as { world: XrayWorldSpec }).world,
+        roots: (parameters as { roots: XrayRoots }).roots,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
       ["plugin:visuals|read_geometry"]: buffer,
@@ -260,7 +260,7 @@ describe("VisualsService opening", () => {
     expect(readParameters).toEqual({
       logicalPath: "textures\\wpn\\wpn_ak74.dds",
       // Centred on the model: the texture resolved through the model's own tree, so it is read back through it too.
-      world: createWorldSpec(["C:\\project\\target\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
+      roots: createRoots(["C:\\project\\target\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
     });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });

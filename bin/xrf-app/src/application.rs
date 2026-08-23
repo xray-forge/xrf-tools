@@ -2,7 +2,7 @@ use tauri::Manager;
 use tauri::utils::config::WindowConfig;
 use tauri::webview::WebviewWindowBuilder;
 
-use crate::core::assets::AssetWorldState;
+use crate::core::assets::AssetMountState;
 use crate::core::webview_extensions::DevExtensions;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
@@ -33,8 +33,8 @@ pub fn run() {
     .plugin(TranslationsPlugin::init())
     .plugin(VisualsPlugin::init())
     .setup(|app| {
-      // Core state before any command can run, so every domain sharing the asset world finds it managed.
-      app.manage(AssetWorldState::new());
+      // Core state before any command can run, so every domain sharing the asset roots finds it managed.
+      app.manage(AssetMountState::new());
 
       // The window stays described by tauri.conf.json with `create: false` and is built here so a
       // debug build can extend it with locally supplied extensions: their path reaches the webview

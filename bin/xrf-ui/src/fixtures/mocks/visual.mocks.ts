@@ -1,4 +1,4 @@
-import { createWorldSpec } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import {
   VisualBone,
@@ -197,7 +197,7 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     source: { kind: "file", path: "C:\\gamedata\\meshes\\wpn_ak74.ogf" },
     description: mockVisualDescription(),
     dependencies: { motions: [], textures: [] },
-    world: createWorldSpec([]),
+    roots: createRoots([]),
     textures: {},
     ...overrides,
   };
