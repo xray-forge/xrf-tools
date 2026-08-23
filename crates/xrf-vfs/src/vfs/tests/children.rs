@@ -1,7 +1,4 @@
 //! Lists what sits directly inside a logical directory.
-//!
-//! This is what a browser or tree view expands one node with, and what a wildcard include means by one directory. It is
-//! deliberately not `entries` with a prefix, which answers everything below.
 
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
 use crate::{XrayDirectoryListing, XrayLookupScope, XrayVfs};

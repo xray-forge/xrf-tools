@@ -9,6 +9,7 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-db = { workspace = true }

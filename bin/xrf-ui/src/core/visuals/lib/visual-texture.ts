@@ -43,7 +43,20 @@ export interface IVisualTextureStatus {
  * is the point of substituting rather than leaving the submesh blank.
  */
 export function getLocatedAsset(resolution: XrayResolution): Nullable<XrayAsset> {
-  return resolution.kind === "resolved" || resolution.kind === "substituted" ? (resolution.assets[0] ?? null) : null;
+  return listLocatedAssets(resolution)[0] ?? null;
+}
+
+/**
+ * Every asset an outcome located, which for a masked reference is more than one.
+ *
+ * A texture reference answers with exactly one file, but a motion reference may be a mask - `wpn\wpn_ak74_*.omf` - so
+ * naming only the first would misreport what was found.
+ *
+ * @param resolution - What the backend reported for one reference.
+ * @returns The located assets, empty when the outcome located nothing.
+ */
+export function listLocatedAssets(resolution: XrayResolution): Array<XrayAsset> {
+  return resolution.kind === "resolved" || resolution.kind === "substituted" ? resolution.assets : [];
 }
 
 /** A submesh texture whose bytes can be fetched, and the located file to fetch them from. */

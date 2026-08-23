@@ -1,33 +1,26 @@
 import { ReactElement } from "react";
 
 import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
-import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IVisualSubmeshTextureSourceProps extends BaseComponentProps {
-  container: XrayAssetContainer;
+  asset: XrayAsset;
 }
 
 /**
- * Displays the physical source of a resolved texture.
- *
- * Directory entries show their root and relative path. Archive entries show the volume-set path instead of inventing a
- * filesystem path for the entry.
+ * Which file answered a texture reference, and where that file lives.
  */
-export function VisualSubmeshTextureSource({ container }: IVisualSubmeshTextureSourceProps): ReactElement {
-  if (container.kind === "archive") {
-    return (
-      <>
-        <VisualPanelRow label={"Source"} value={"Archive"} />
-        <VisualPanelRow label={"Archive"} value={container.path} />
-      </>
-    );
-  }
-
+export function VisualSubmeshTextureSource({ asset }: IVisualSubmeshTextureSourceProps): ReactElement {
   return (
     <>
-      <VisualPanelRow label={"Root"} value={container.root} />
-      <VisualPanelRow label={"File"} value={container.relativePath} />
+      <VisualPanelRow label={"Path"} value={asset.logicalPath} />
+
+      {asset.container.kind === "archive" ? (
+        <VisualPanelRow label={"Archive"} value={asset.container.path} />
+      ) : (
+        <VisualPanelRow label={"Root"} value={asset.container.root} />
+      )}
     </>
   );
 }

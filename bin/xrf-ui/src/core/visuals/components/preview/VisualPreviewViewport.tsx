@@ -10,6 +10,8 @@ interface IVisualPreviewViewportProps {
   model: Nullable<IVisualModelViews>;
   options: IVisualPreviewViewOptions;
   cameraResetToken: number;
+  /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
+  detail: number;
   /** Loaded textures by submesh index, applied as they arrive. */
   textures?: ReadonlyMap<number, Texture>;
 }
@@ -28,11 +30,13 @@ export function VisualPreviewViewport({
   model,
   options,
   cameraResetToken,
+  detail,
   textures,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Nullable<VisualPreviewScene>>(null);
   const optionsRef = useRef<IVisualPreviewViewOptions>(options);
+  const detailRef = useRef<number>(detail);
   const modelRef = useRef<Nullable<IVisualModelViews>>(model);
 
   modelRef.current = model;
@@ -48,6 +52,7 @@ export function VisualPreviewViewport({
 
     scene.mount(containerRef.current);
     scene.applyViewOptions(optionsRef.current);
+    scene.setDetailLevel(detailRef.current);
 
     return () => {
       sceneRef.current = null;
@@ -55,6 +60,7 @@ export function VisualPreviewViewport({
     };
   }, []);
 
+  // The scene keeps the selected level across a model change, so this does not re-apply it.
   useEffect(() => {
     sceneRef.current?.setModel(model);
     sceneRef.current?.applyViewOptions(optionsRef.current);
@@ -64,6 +70,11 @@ export function VisualPreviewViewport({
     optionsRef.current = options;
     sceneRef.current?.applyViewOptions(options);
   }, [options]);
+
+  useEffect(() => {
+    detailRef.current = detail;
+    sceneRef.current?.setDetailLevel(detail);
+  }, [detail]);
 
   /**
    * Offers every loaded texture on each change rather than only the newest one.

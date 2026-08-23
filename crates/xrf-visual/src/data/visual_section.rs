@@ -23,16 +23,3 @@ pub struct VisualDrawRange {
   pub start: u32,
   pub count: u32,
 }
-
-/// One progressive mesh detail level, mirroring `OgfSlideWindow` with renderer-facing names.
-///
-/// Shipped in full even though only level zero is drawn today: the index buffer carries every level,
-/// so withholding the table would make the coarser levels unreachable without a second read.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualSlideWindow {
-  pub offset: u32,
-  pub triangle_count: u32,
-  pub vertex_count: u32,
-}

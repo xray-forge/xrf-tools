@@ -1,7 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription } from "@/core/bindings/types/xrf-visual";
-import { createVisualCameraFit, createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import {
+  countVisualTriangles,
+  createVisualCameraFit,
+  createVisualViews,
+  getVisualSubmeshLevel,
+  IVisualModelViews,
+} from "@/core/visuals/lib/visual-views";
 import {
   mockPackedSubmesh,
   mockSkippedSubmesh,
@@ -38,14 +44,20 @@ describe("visual views", () => {
     expect(() => createVisualViews(description, buffer.toArrayBuffer())).toThrow(/came from different reads/);
   });
 
-  it("keeps the draw range separate from the whole index buffer", () => {
-    // A progressive submesh ships every detail level, and only the first is drawn. Uploading the buffer
-    // but drawing the reported range is the whole arrangement.
+  it("keeps every detail level separate from the whole index buffer", () => {
+    // A progressive submesh ships every detail level and uploads the whole buffer. Which of them is drawn is a range,
+    // so a level the viewer picks costs no second read.
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const submesh = mockPackedSubmesh(
       buffer,
       {},
-      { indexCount: 12, drawRange: { start: 6, count: 6 }, windows: [{ offset: 6, triangleCount: 2, vertexCount: 6 }] }
+      {
+        indexCount: 12,
+        detailLevels: [
+          { start: 6, count: 6 },
+          { start: 0, count: 12 },
+        ],
+      }
     );
     const description: VisualDescription = mockVisualDescription({
       submeshes: [submesh],
@@ -54,10 +66,68 @@ describe("visual views", () => {
 
     const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
 
-    expect(views.submeshes[0].drawStart).toBe(6);
-    expect(views.submeshes[0].drawCount).toBe(6);
-    expect(views.submeshes[0].triangleCount).toBe(2);
-    expect(views.triangleCount).toBe(2);
+    expect(views.levelCount).toBe(2);
+    expect(views.submeshes[0].levels).toEqual([
+      { start: 6, count: 6, triangleCount: 2 },
+      { start: 0, count: 12, triangleCount: 4 },
+    ]);
+    expect(countVisualTriangles(views, 0)).toBe(2);
+    expect(countVisualTriangles(views, 1)).toBe(4);
+  });
+
+  it("takes the same share of each submesh's chain rather than the same level index", () => {
+    // A measured character carries 230 collapse steps on one submesh and 948 on another. A shared index would drive
+    // the short chain to its coarsest while the long one was a quarter down, decimating the model unevenly.
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const long = mockPackedSubmesh(
+      buffer,
+      { index: 0 },
+      {
+        indexCount: 12,
+        detailLevels: [
+          { start: 6, count: 6 },
+          { start: 3, count: 6 },
+          { start: 0, count: 12 },
+        ],
+      }
+    );
+    const short = mockPackedSubmesh(buffer, { index: 1 }, { indexCount: 3, detailLevels: [{ start: 0, count: 3 }] });
+    const description: VisualDescription = mockVisualDescription({
+      submeshes: [long, short],
+      bufferLength: buffer.byteLength,
+    });
+
+    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+
+    // Halfway down a three-entry chain is its middle entry, and a one-entry chain has nowhere to go.
+    expect(getVisualSubmeshLevel(views.submeshes[0], 0.5)).toEqual({ start: 3, count: 6, triangleCount: 2 });
+    expect(getVisualSubmeshLevel(views.submeshes[1], 0.5)).toEqual({ start: 0, count: 3, triangleCount: 1 });
+    expect(countVisualTriangles(views, 1)).toBe(5);
+  });
+
+  it("holds detail inside its range whatever it is given", () => {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description: VisualDescription = mockVisualDescription({
+      submeshes: [
+        mockPackedSubmesh(
+          buffer,
+          {},
+          {
+            indexCount: 12,
+            detailLevels: [
+              { start: 6, count: 6 },
+              { start: 0, count: 12 },
+            ],
+          }
+        ),
+      ],
+      bufferLength: buffer.byteLength,
+    });
+
+    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+
+    expect(getVisualSubmeshLevel(views.submeshes[0], -1).start).toBe(6);
+    expect(getVisualSubmeshLevel(views.submeshes[0], 42).start).toBe(0);
   });
 
   it("leaves out submeshes that packed nothing", () => {

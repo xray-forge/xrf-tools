@@ -16,8 +16,7 @@ Identities are engine paths — lower case, `\`-separated on every platform — 
 `std::fs` answers "what is on disk". This crate answers "what would the engine load, and from where":
 
 - One lookup spans loose trees and archive volumes, first hit wins — the same winner `CLocatorAPI` picks.
-- `XrayLogicalPath` keeps engine identities apart from host paths. It deliberately does not implement `AsRef<Path>`, so
-  handing an engine path to host I/O cannot compile.
+- `XrayLogicalPath` keeps engine identities apart from host paths.
 - Reading goes through the VFS, so an asset resolves the same whether it is loose or archived.
 
 ## Quickstart
@@ -163,8 +162,6 @@ Advanced flows are documented on their types: layering a mod tree over an instal
 `XrayAssetSource`.
 
 ## Errors
-
-Everything speaks `xrf_error::XrfError`, and absence is deliberately split from failure:
 
 | Operation            | Absent asset               | Failure                                                                                              |
 |----------------------|----------------------------|------------------------------------------------------------------------------------------------------|

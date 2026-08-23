@@ -85,9 +85,6 @@ impl<'a> LevelReconciliationVerifier<'a> {
   }
 
   /// Levels declared in single player and multiplayer map configurations.
-  ///
-  /// A declaration without a bundle is legal and is deliberately not reported: shipped
-  /// configurations declare maps for levels that were never built.
   fn declared_map_levels(&self) -> XrfResult<BTreeSet<String>> {
     let mut declared: BTreeSet<String> = BTreeSet::new();
 

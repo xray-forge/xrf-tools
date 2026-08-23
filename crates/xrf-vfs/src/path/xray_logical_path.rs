@@ -7,11 +7,6 @@ use xrf_error::{XrfError, XrfResult};
 
 /// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
 ///
-/// This is an engine identity, not a location on disk. The asset it names may sit inside an archive and have no file at
-/// all, so the type deliberately does not implement `AsRef<Path>` — handing one to host I/O must not compile. Read it
-/// through an [`crate::XrayVfs`], and ask [`crate::XrayAsset::to_physical_path`] when a real file is genuinely
-/// required.
-///
 /// Being separator-explicit is what makes it portable: it splits on `\` itself rather than deferring to
 /// `std::path`, so `parent` and `file_name` answer the same on Linux as on Windows, where a `std::path::Path`
 /// would treat the whole thing as one component.
@@ -154,10 +149,6 @@ pub(crate) fn normalize(path: &str) -> XrfResult<Cow<'_, str>> {
 }
 
 /// Whether a path is already in the form [`normalize`] would produce.
-///
-/// Deliberately conservative: it answers `false` for anything needing a decision, so a path it accepts is byte-identical
-/// to the rewritten form. `char::is_uppercase` rather than the ASCII test, because `to_lowercase` folds Cyrillic too and
-/// engine paths carry it.
 fn is_canonical(path: &str) -> bool {
   !path.is_empty()
     && !path.starts_with('\\')

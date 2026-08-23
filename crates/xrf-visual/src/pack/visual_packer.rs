@@ -3,7 +3,7 @@ use xrf_db::{OgfFile, OgfGeometry, OgfSlideWindow, OgfVertex, Vector3d};
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::{VisualBone, VisualDescription};
 use crate::data::visual_model_type::VisualModelType;
-use crate::data::visual_section::{VisualDrawRange, VisualSlideWindow};
+use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
@@ -175,15 +175,9 @@ impl VisualPacker {
       )));
     }
 
-    let windows: Vec<VisualSlideWindow> = source
-      .swi_data
-      .as_ref()
-      .map(|swi| swi.windows.iter().map(Self::convert_window).collect())
-      .unwrap_or_default();
-
-    let draw_range: VisualDrawRange = Self::resolve_draw_range(source.header.model_type, &windows, indices.len())?;
-
-    Self::assert_drawn_indices_in_range(indices, draw_range, vertices.len())?;
+    let detail_levels: Vec<VisualDrawRange> =
+      Self::resolve_detail_levels(source, indices, vertices.len(), source.header.model_type)?;
+    let draw_range: VisualDrawRange = detail_levels[0];
 
     let positions: Vec<Vector3d> = vertices.iter().map(|it| convert_vector(&it.position)).collect();
     let drawn_start: usize = draw_range.start as usize;
@@ -222,8 +216,7 @@ impl VisualPacker {
       normals: builder.push_f32_section(&flat_normals),
       uvs: builder.push_f32_section(&flat_uvs),
       indices: builder.push_u16_section(&wound_indices),
-      draw_range,
-      windows,
+      detail_levels,
       bounds,
     })
   }
@@ -233,66 +226,86 @@ impl VisualPacker {
   /// Static geometry draws its whole buffer. Progressive geometry stores every detail level in that
   /// same buffer with the finest one at level zero, which `FSkinned.cpp:419` selects when it wants
   /// full geometry, so drawing all of it would stack the coarse shells over the fine mesh.
-  fn resolve_draw_range(
+  fn resolve_detail_levels(
+    source: &OgfFile,
+    indices: &[u16],
+    vertex_count: usize,
     model_type: u8,
-    windows: &[VisualSlideWindow],
-    index_count: usize,
-  ) -> Result<VisualDrawRange, VisualSkip> {
+  ) -> Result<Vec<VisualDrawRange>, VisualSkip> {
     let is_progressive: bool = VisualModelType::from_raw(model_type).is_some_and(VisualModelType::is_progressive);
 
     if !is_progressive {
-      return Ok(VisualDrawRange {
+      let whole: VisualDrawRange = VisualDrawRange {
         start: 0,
-        count: index_count as u32,
-      });
+        count: indices.len() as u32,
+      };
+
+      Self::assert_level_in_range(indices, whole, vertex_count)
+        .map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
+
+      return Ok(vec![whole]);
     }
 
     // Falling back to the whole buffer would draw every detail level at once, which reads as a fatter
     // model rather than as an error, so a progressive submesh without its table is refused instead.
-    let window: &VisualSlideWindow = windows.first().ok_or_else(|| {
-      VisualSkip::malformed("Progressive geometry carries no detail table, so its full detail range is unknown")
-    })?;
+    let windows: &[OgfSlideWindow] = source
+      .swi_data
+      .as_ref()
+      .map(|swi| swi.windows.as_slice())
+      .filter(|windows| !windows.is_empty())
+      .ok_or_else(|| {
+        VisualSkip::malformed("Progressive geometry carries no detail table, so its full detail range is unknown")
+      })?;
 
-    let count: u32 = window.triangle_count * 3;
+    let mut levels: Vec<VisualDrawRange> = Vec::with_capacity(windows.len());
 
-    if window.offset as u64 + count as u64 > index_count as u64 {
-      return Err(VisualSkip::malformed(format!(
-        "Detail level 0 draws {} indices from offset {}, past the {} the index chunk holds",
-        count, window.offset, index_count
-      )));
+    for (level, window) in windows.iter().enumerate() {
+      let range: VisualDrawRange = VisualDrawRange {
+        start: window.offset,
+        count: u32::from(window.num_tris) * 3,
+      };
+
+      match Self::assert_level_in_range(indices, range, vertex_count) {
+        Ok(()) => levels.push(range),
+        // The finest level is what the model is: without it there is nothing honest to draw. A coarser one is an
+        // option the viewer offers, so a bad one costs the option rather than the submesh.
+        Err(reason) => {
+          if level == 0 {
+            return Err(VisualSkip::malformed(format!("Detail level 0 {reason}")));
+          }
+
+          log::warn!("Dropping unusable detail level {level}, which {reason}");
+        }
+      }
     }
 
-    Ok(VisualDrawRange {
-      start: window.offset,
-      count,
-    })
+    Ok(levels)
   }
 
-  /// Reject a drawn range that addresses a vertex the submesh does not have.
+  /// Reject a range that leaves the index buffer or addresses a vertex the submesh does not have.
   ///
-  /// Only the drawn range is checked. Coarser detail levels are shipped but never dereferenced, so a
-  /// consumer that starts drawing one must range check it then rather than trusting this.
-  fn assert_drawn_indices_in_range(
-    indices: &[u16],
-    draw_range: VisualDrawRange,
-    vertex_count: usize,
-  ) -> Result<(), VisualSkip> {
-    let start: usize = draw_range.start as usize;
-    let drawn: &[u16] = &indices[start..start + draw_range.count as usize];
+  /// Returns the reason rather than a skip, because whether an unusable level fails its submesh or merely
+  /// disappears from the choices depends on which level it is, which the caller knows and this does not.
+  fn assert_level_in_range(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
+    let start: usize = range.start as usize;
+    let count: usize = range.count as usize;
 
-    match drawn.iter().copied().find(|index| *index as usize >= vertex_count) {
-      Some(index) => Err(VisualSkip::malformed(format!(
-        "Drawn range references vertex {index}, past the {vertex_count} the vertex chunk holds"
-      ))),
-      None => Ok(()),
+    if range.start as u64 + range.count as u64 > indices.len() as u64 {
+      return Err(format!(
+        "draws {count} indices from offset {start}, past the {} the index chunk holds",
+        indices.len()
+      ));
     }
-  }
 
-  fn convert_window(window: &OgfSlideWindow) -> VisualSlideWindow {
-    VisualSlideWindow {
-      offset: window.offset,
-      triangle_count: window.num_tris as u32,
-      vertex_count: window.num_verts as u32,
+    match indices[start..start + count]
+      .iter()
+      .copied()
+      .find(|index| *index as usize >= vertex_count)
+    {
+      Some(index) => Err(format!(
+        "references vertex {index}, past the {vertex_count} the vertex chunk holds"
+      )),
+      None => Ok(()),
     }
   }
 }

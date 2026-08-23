@@ -20,7 +20,7 @@ import {
   IVisualPreviewSceneConfig,
 } from "@/core/visuals/components/scene/scene-config";
 import { createCheckerTexture, createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
-import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { getVisualSubmeshLevel, IVisualModelViews, IVisualSubmeshLevel } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -92,6 +92,13 @@ export class VisualPreviewScene {
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   private model: Nullable<IVisualModelViews> = null;
+  /**
+   * How far down its collapse chain every mesh is currently drawing, 0 being full detail.
+   *
+   * Held here so a model replaced while detail is reduced arrives reduced, rather than snapping back to full and
+   * leaving the toolbar saying otherwise.
+   */
+  private detail: number = 0;
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
   private isResizePending: boolean = false;
@@ -148,7 +155,7 @@ export class VisualPreviewScene {
 
     for (const submesh of model?.submeshes ?? []) {
       const mesh: Mesh<BufferGeometry, MeshStandardMaterial> = new Mesh(
-        createSubmeshGeometry(submesh),
+        createSubmeshGeometry(submesh, this.detail),
         new MeshStandardMaterial({ color: this.config.meshColor, metalness: 0.05, roughness: 0.75 })
       );
 
@@ -164,6 +171,30 @@ export class VisualPreviewScene {
 
     this.applyScale();
     this.resetCamera();
+  }
+
+  /**
+   * Draw every mesh at a different point along its collapse chain.
+   *
+   * Only a draw range changes: all levels are already in the uploaded index buffer, so this touches no attribute and
+   * costs no upload — which is what makes dragging the control smooth on a model carrying nine hundred levels.
+   * Bounding spheres are left alone deliberately: they describe the same geometry, and refitting the camera on every
+   * step would make comparing detail impossible.
+   *
+   * @param detail - How far down each chain to go: 0 is full detail, 1 is the coarsest each submesh has.
+   */
+  public setDetailLevel(detail: number): void {
+    this.detail = detail;
+
+    for (const submesh of this.model?.submeshes ?? []) {
+      const drawn: Nullable<IVisualSubmeshMesh> = this.meshes.get(submesh.index) ?? null;
+
+      if (drawn) {
+        const level: IVisualSubmeshLevel = getVisualSubmeshLevel(submesh, detail);
+
+        drawn.mesh.geometry.setDrawRange(level.start, level.count);
+      }
+    }
   }
 
   /**

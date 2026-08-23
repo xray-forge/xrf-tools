@@ -152,6 +152,14 @@ const PROGRESSIVE_COARSE_ONLY_VERTEX: u16 = 3;
 /// whole buffer draws six times the triangles as stacked shells. This is that shape in miniature: the
 /// leading six indices are the coarse level and must not be drawn.
 pub(crate) fn progressive_child() -> OgfFile {
+  progressive_child_with_windows(vec![
+    window(PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES, 6),
+    window(0, 4, 4),
+  ])
+}
+
+/// The same progressive child with a detail table of the caller's choosing, for the levels that do not validate.
+pub(crate) fn progressive_child_with_windows(windows: Vec<OgfSlideWindow>) -> OgfFile {
   OgfFile {
     geometry: Some(geometry(
       (0..6)
@@ -167,10 +175,7 @@ pub(crate) fn progressive_child() -> OgfFile {
         .collect(),
       PROGRESSIVE_INDICES.to_vec(),
     )),
-    swi_data: Some(swi(vec![
-      window(PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES, 6),
-      window(0, 4, 4),
-    ])),
+    swi_data: Some(swi(windows)),
     ..visual(MODEL_TYPE_GEOMDEF_PM)
   }
 }

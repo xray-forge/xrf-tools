@@ -1,7 +1,7 @@
 import { BufferAttribute, BufferGeometry, DataTexture, NearestFilter, RepeatWrapping, RGBAFormat } from "three";
 
 import { IVisualPreviewSceneConfig } from "@/core/visuals/components/scene/scene-config";
-import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
+import { getVisualSubmeshLevel, IVisualSubmeshLevel, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 /**
  * A small procedural checkerboard, built as raw pixels rather than through a canvas so it needs no dom.
@@ -38,22 +38,26 @@ export function createCheckerTexture(config: IVisualPreviewSceneConfig): DataTex
 }
 
 /**
- * Build one submesh's geometry, drawing only the range that renders it at full detail.
+ * Build one submesh's geometry, drawing the range of the chosen detail level.
  *
- * `setDrawRange` rather than a trimmed index buffer, because the coarser detail levels stay in the buffer: switching
- * level later is a different range over the same upload.
+ * `setDrawRange` rather than a trimmed index buffer, because every detail level stays in the buffer: switching level
+ * is a different range over the same upload, which is why the picker costs no re-read and no re-upload.
  *
- * @param submesh - Views over the shared geometry buffer, and the range to draw from them.
+ * @param submesh - Views over the shared geometry buffer, and the ranges to draw from them.
+ * @param detail - How far down this submesh's collapse chain to draw: 0 is full detail, 1 is its coarsest.
  * @returns Geometry ready to upload.
  */
-export function createSubmeshGeometry(submesh: IVisualSubmeshViews): BufferGeometry {
+export function createSubmeshGeometry(submesh: IVisualSubmeshViews, detail: number): BufferGeometry {
   const geometry: BufferGeometry = new BufferGeometry();
 
   geometry.setAttribute("position", new BufferAttribute(submesh.positions, 3));
   geometry.setAttribute("normal", new BufferAttribute(submesh.normals, 3));
   geometry.setAttribute("uv", new BufferAttribute(submesh.uvs, 2));
   geometry.setIndex(new BufferAttribute(submesh.indices, 1));
-  geometry.setDrawRange(submesh.drawStart, submesh.drawCount);
+
+  const level: IVisualSubmeshLevel = getVisualSubmeshLevel(submesh, detail);
+
+  geometry.setDrawRange(level.start, level.count);
   geometry.computeBoundingSphere();
 
   return geometry;

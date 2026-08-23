@@ -1,7 +1,9 @@
 import { Box, Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { listLocatedAssets } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IVisualMotionRowProps extends BaseComponentProps {
@@ -10,9 +12,6 @@ export interface IVisualMotionRowProps extends BaseComponentProps {
 
 /**
  * One motion reference and whether it was found.
- *
- * A reference may be a mask naming a set, so a located outcome reports how many files answered it rather than implying
- * one: `wpn\wpn_ak74_*.omf` resolving to two files and to twenty are different situations.
  */
 export function VisualMotionRow({
   "data-testid": dataTestId = "visual-motion-row",
@@ -21,36 +20,43 @@ export function VisualMotionRow({
   motion,
 }: IVisualMotionRowProps): ReactElement {
   const { resolution } = motion;
-  const located: number = resolution.kind === "resolved" ? resolution.assets.length : 0;
+  const assets: Array<XrayAsset> = listLocatedAssets(resolution);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, paddingY: 0.4 }}
-    >
-      <Typography variant={"body2"} sx={{ minWidth: 0, wordBreak: "break-all" }}>
-        {motion.reference}
-      </Typography>
+    <Box data-testid={dataTestId} id={id} className={className} sx={{ paddingY: 0.4 }}>
+      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
+        <Typography variant={"body2"} sx={{ minWidth: 0, wordBreak: "break-all" }}>
+          {motion.reference}
+        </Typography>
 
-      {located > 0 ? (
-        <Chip
-          size={"small"}
-          color={"success"}
-          variant={"outlined"}
-          label={located > 1 ? `${located} files` : "Found"}
-          sx={{ flexShrink: 0 }}
-        />
-      ) : (
-        <Chip
-          size={"small"}
-          color={resolution.kind === "rejected" ? "error" : "warning"}
-          variant={"outlined"}
-          label={resolution.kind === "rejected" ? "Unusable" : "Not found"}
-          sx={{ flexShrink: 0 }}
-        />
-      )}
+        {assets.length > 0 ? (
+          <Chip
+            size={"small"}
+            color={"success"}
+            variant={"outlined"}
+            label={assets.length > 1 ? `${assets.length} files` : "Found"}
+            sx={{ flexShrink: 0 }}
+          />
+        ) : (
+          <Chip
+            size={"small"}
+            color={resolution.kind === "rejected" ? "error" : "warning"}
+            variant={"outlined"}
+            label={resolution.kind === "rejected" ? "Unusable" : "Not found"}
+            sx={{ flexShrink: 0 }}
+          />
+        )}
+      </Box>
+
+      {assets.map((asset: XrayAsset) => (
+        <Typography
+          key={asset.logicalPath}
+          variant={"caption"}
+          sx={{ display: "block", color: "text.secondary", wordBreak: "break-all" }}
+        >
+          {asset.logicalPath}
+        </Typography>
+      ))}
     </Box>
   );
 }

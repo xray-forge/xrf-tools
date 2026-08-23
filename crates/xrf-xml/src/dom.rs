@@ -4,9 +4,6 @@ use crate::encoding::decode_xml_bytes;
 use crate::options::XmlParseOptions;
 
 /// A parsed XML document detached from its input buffer.
-///
-/// Owns everything it reports, so it can outlive the text it came from. Use `XmlSourceDocument` when
-/// positions matter; this one deliberately has none to go stale.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct XmlDocument {
   root: XmlElement,

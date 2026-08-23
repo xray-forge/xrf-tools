@@ -133,8 +133,6 @@ fn selects_an_installation_through_the_vfs_and_finds_its_loose_configs() -> XrfR
 
 #[test]
 fn ignores_non_ltx_entries_of_an_installation() -> XrfResult {
-  // Selection through the VFS enumerates every asset, not only configs, so the extension filter is load bearing there in a
-  // way the directory walk already handled.
   let root: PathBuf = create_installation("installation-mixed", &["configs\\system.ltx"])?;
 
   fs::create_dir_all(root.join("gamedata/textures"))?;

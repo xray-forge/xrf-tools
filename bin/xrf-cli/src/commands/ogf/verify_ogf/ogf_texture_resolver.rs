@@ -55,10 +55,6 @@ impl OgfTextureResolver {
 
   /// Resolves one reference in the visual's own tree, as a physical path to read a header from.
   ///
-  /// One probe step and no fallback reference, deliberately narrower than the viewer's search: substituting the
-  /// engine's dummy would report a missing texture as a present one, and a fallback root would hide the gap that
-  /// verification exists to find.
-  ///
   /// Do not widen this to installation archives: archive reads load complete entries, while verification needs only DDS
   /// metadata. Add header-only archive reads before including them.
   fn locate(&mut self, root: &Path, reference: &str) -> Option<PathBuf> {

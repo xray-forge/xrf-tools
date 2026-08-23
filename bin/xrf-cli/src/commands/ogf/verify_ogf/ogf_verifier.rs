@@ -228,10 +228,10 @@ impl<'a> OgfVerifier<'a> {
         Some(geometry) => {
           census.packed_submeshes += 1;
 
-          if !geometry.windows.is_empty() {
+          if submesh.is_progressive() {
             census.progressive_submeshes += 1;
 
-            if geometry.draw_range.count < geometry.index_count {
+            if geometry.get_default_level().count < geometry.index_count {
               census.progressive_submeshes_drawing_part_of_the_buffer += 1;
             }
           }

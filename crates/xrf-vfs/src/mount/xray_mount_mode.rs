@@ -16,9 +16,6 @@ use crate::{FsgameFile, XrayMountPlan};
 pub enum XrayMountMode {
   /// Treat the path as an installation when it declares one, as a volume set when it holds volumes, and as a complete
   /// root otherwise.
-  ///
-  /// Detection looks **only** at the path given. It deliberately does not search upwards: widening
-  /// `<install>\gamedata\configs` into the whole game would silently change what a command touches.
   #[default]
   Auto,
   /// Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it.
@@ -54,8 +51,6 @@ impl XrayMountMode {
       }
       Self::Directory => XrayMountPlan::root(path),
       Self::Installation => XrayMountPlan::from_fsgame(path),
-      // A path contains itself, so a declaration here wins before the search walks up. `implied_install_root` deliberately
-      // skips the starting path, which is why this checks it first rather than delegating outright.
       Self::ContainingInstallation => {
         if Self::declares_installation(path) {
           return XrayMountPlan::from_fsgame(path);

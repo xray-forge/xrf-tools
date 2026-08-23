@@ -1,14 +1,15 @@
 use serde::Serialize;
 
 use crate::data::visual_bounds::VisualBounds;
-use crate::data::visual_section::{VisualDrawRange, VisualSection, VisualSlideWindow};
+use crate::data::visual_model_type::VisualModelType;
+use crate::data::visual_section::{VisualDrawRange, VisualSection};
 
 /// Where one submesh's attributes sit inside the geometry buffer, and what to draw from them.
 ///
 /// Every section is a byte range into the one buffer the model ships as, so a consumer builds views
 /// over it without copying. `indices` covers the whole index buffer, including the coarser detail
-/// levels a progressive submesh carries; the resolved draw range renders the model at full
-/// detail, already resolved so a consumer never has to pick.
+/// levels a progressive submesh carries; [`Self::detail_levels`] names which slices of it are
+/// drawable, and a consumer that does not want to choose draws [`Self::get_default_level`].
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,13 +20,27 @@ pub struct VisualGeometry {
   pub normals: VisualSection,
   pub uvs: VisualSection,
   pub indices: VisualSection,
-  pub draw_range: VisualDrawRange,
-  /// Detail levels of a progressive submesh, empty for a static one.
+  /// Every range a consumer may draw, finest first, and never empty.
   ///
-  /// Indices outside the resolved draw range are validated only when a consumer decides to draw them, so a
-  /// detail level other than the first must be range checked before use.
-  pub windows: Vec<VisualSlideWindow>,
+  /// A static submesh has exactly one: its whole index buffer. A progressive one has a range per detail level of
+  /// its slide-window table, coarsening as the index rises. Each is validated here — inside the index buffer, and
+  /// reaching no vertex the submesh lacks — so choosing a level is a choice between drawable ranges rather than a
+  /// range check the consumer has to remember. A coarse level that fails validation is left out rather than
+  /// failing the submesh, so a model with one bad level still renders at the levels that are sound.
+  pub detail_levels: Vec<VisualDrawRange>,
   pub bounds: VisualBounds,
+}
+
+impl VisualGeometry {
+  /// The range drawn unless a consumer picks another level: the finest one.
+  ///
+  /// # Panics
+  ///
+  /// Never in practice. [`Self::detail_levels`] is non-empty by construction - a submesh whose finest level does
+  /// not validate is reported as skipped rather than packed - and this states that invariant where it is relied on.
+  pub fn get_default_level(&self) -> VisualDrawRange {
+    self.detail_levels[0]
+  }
 }
 
 /// Why a submesh produced no geometry, graded so a caller does not read the message to find out.
@@ -71,6 +86,14 @@ pub struct VisualSubmesh {
 }
 
 impl VisualSubmesh {
+  /// Whether the submesh stores its geometry as a progressive mesh, which its model type decides.
+  ///
+  /// Asked here rather than inferred from the detail table: a static submesh that happens to carry a slide-window
+  /// chunk is not progressive, and a progressive one whose coarse levels were all unusable still is.
+  pub fn is_progressive(&self) -> bool {
+    VisualModelType::from_raw(self.model_type).is_some_and(VisualModelType::is_progressive)
+  }
+
   pub fn geometry(&self) -> Option<&VisualGeometry> {
     match &self.content {
       VisualSubmeshContent::Packed { geometry } => Some(geometry),

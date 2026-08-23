@@ -26,11 +26,6 @@ interface IPackerHeaderSectionProps {
 
 /**
  * The header written into the archive, which is how the engine decides where its contents mount.
- *
- * The entry point and the auto load flag get controls of their own because they are the two keys the
- * engine acts on; everything else is carried through as typed. An archive without an entry point is not
- * merely unmounted: unless it is named `xdb`, the engine reads it as an encrypted Shadow of Chernobyl
- * archive and decodes noise.
  */
 export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHeaderSectionProps): ReactElement {
   const [newKey, setNewKey] = useState<string>("");
@@ -118,9 +113,9 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
                 />
 
                 <IconButton
+                  aria-label={`Remove ${key}`}
                   size={"small"}
                   disabled={isDisabled}
-                  aria-label={`Remove ${key}`}
                   onClick={() => onChange({ header: writeHeaderValue(config.header, key, "") })}
                 >
                   <DeleteIcon fontSize={"small"} />

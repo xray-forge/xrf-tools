@@ -15,7 +15,7 @@ import {
   VisualPreviewViewport,
 } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
-import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -70,8 +70,17 @@ export function VisualPreviewLayout({
 }: IVisualPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<IVisualPreviewViewOptions>(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS);
   const [cameraResetToken, setCameraResetToken] = useState(0);
+  const [detail, setDetail] = useState(0);
 
   const onResetCamera = useCallback(() => setCameraResetToken((it) => it + 1), []);
+
+  /**
+   * Detail is a fraction of each submesh's collapse chain, so it needs no clamping and survives a model change
+   * meaningfully: stepping through a tree at half detail stays at half detail whether the next model carries four
+   * collapse steps or nine hundred.
+   */
+  const triangleCount: number = model ? countVisualTriangles(model, detail) : 0;
+  const hasDetailLevels: boolean = (model?.levelCount ?? 1) > 1;
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
@@ -97,9 +106,9 @@ export function VisualPreviewLayout({
     }
 
     return model
-      ? [`${model.submeshes.length} submeshes`, `${model.vertexCount} vertices`, `${model.triangleCount} triangles`]
+      ? [`${model.submeshes.length} submeshes`, `${model.vertexCount} vertices`, `${triangleCount} triangles`]
       : ["No visual open"];
-  }, [isLoading, model]);
+  }, [isLoading, model, triangleCount]);
 
   useEditorStatus(status);
 
@@ -107,10 +116,13 @@ export function VisualPreviewLayout({
     <EditorLayout
       toolbar={
         <VisualPreviewToolbar
+          isOpenEnabled={Boolean(onOpen)}
+          hasDetailLevels={hasDetailLevels}
           subtitle={subtitle}
           options={options}
-          isOpenEnabled={Boolean(onOpen)}
+          detail={detail}
           onChangeOptions={setOptions}
+          onChangeDetail={setDetail}
           onResetCamera={onResetCamera}
           onOpen={onOpen}
           onBrowse={onBrowse}
@@ -118,10 +130,6 @@ export function VisualPreviewLayout({
       }
       footer={hasMotions ? <VisualPreviewAnimationBar /> : undefined}
     >
-      {/* `minWidth: 0` is load bearing: a flex item defaults to `min-width: auto`, and the canvas inside carries an
-          imperative style width from `renderer.setSize`. Without it this box refuses to shrink below the canvas's
-          current width, so opening a panel leaves the canvas overflowing underneath it — and because the box never
-          gets smaller, the scene's resize observer never shrinks the canvas back. */}
       <Box
         data-testid={dataTestId}
         id={id}
@@ -132,6 +140,7 @@ export function VisualPreviewLayout({
           model={model}
           options={options}
           cameraResetToken={cameraResetToken}
+          detail={detail}
           textures={textures}
         />
 

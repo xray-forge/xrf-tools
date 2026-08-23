@@ -1,5 +1,11 @@
 import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { VisualBounds, VisualDescription, VisualSection, VisualSubmesh } from "@/core/bindings/types/xrf-visual";
+import {
+  VisualBounds,
+  VisualDescription,
+  VisualDrawRange,
+  VisualSection,
+  VisualSubmesh,
+} from "@/core/bindings/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
 
 /** Framing values a camera needs, derived from what the model actually spans. */
@@ -8,7 +14,14 @@ export interface IVisualCameraFit {
   radius: number;
 }
 
-/** One submesh's attributes as views over the shared buffer, plus the range that draws it. */
+/** One drawable range of a submesh, already validated by the packer. */
+export interface IVisualSubmeshLevel {
+  start: number;
+  count: number;
+  triangleCount: number;
+}
+
+/** One submesh's attributes as views over the shared buffer, plus the ranges that draw it. */
 export interface IVisualSubmeshViews {
   index: number;
   label: string;
@@ -16,9 +29,8 @@ export interface IVisualSubmeshViews {
   normals: Float32Array;
   uvs: Float32Array;
   indices: Uint16Array;
-  drawStart: number;
-  drawCount: number;
-  triangleCount: number;
+  /** Finest first, never empty. A submesh with one entry has no choice to offer. */
+  levels: Array<IVisualSubmeshLevel>;
 }
 
 /** Everything the scene needs to build meshes, and nothing it does not. */
@@ -26,7 +38,12 @@ export interface IVisualModelViews {
   submeshes: Array<IVisualSubmeshViews>;
   fit: IVisualCameraFit;
   vertexCount: number;
-  triangleCount: number;
+  /**
+   * Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach.
+   *
+   * One means every submesh is static and there is nothing to decimate.
+   */
+  levelCount: number;
 }
 
 /**
@@ -115,7 +132,7 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
   const submeshes: Array<IVisualSubmeshViews> = [];
 
   let vertexCount: number = 0;
-  let triangleCount: number = 0;
+  let levelCount: number = 0;
 
   for (const submesh of description.submeshes as Array<VisualSubmesh>) {
     if (submesh.content.kind !== "packed") {
@@ -123,10 +140,14 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
     }
 
     const { geometry } = submesh.content;
-    const drawCount: number = geometry.drawRange.count;
+    const levels: Array<IVisualSubmeshLevel> = geometry.detailLevels.map((range: VisualDrawRange) => ({
+      start: range.start,
+      count: range.count,
+      triangleCount: range.count / 3,
+    }));
 
     vertexCount += geometry.vertexCount;
-    triangleCount += drawCount / 3;
+    levelCount = Math.max(levelCount, levels.length);
 
     submeshes.push({
       index: submesh.index,
@@ -135,9 +156,7 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
       normals: toFloatView(buffer, geometry.normals),
       uvs: toFloatView(buffer, geometry.uvs),
       indices: toIndexView(buffer, geometry.indices),
-      drawStart: geometry.drawRange.start,
-      drawCount,
-      triangleCount: drawCount / 3,
+      levels,
     });
   }
 
@@ -145,6 +164,39 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
     submeshes,
     fit: createVisualCameraFit(description),
     vertexCount,
-    triangleCount,
+    levelCount,
   };
+}
+
+/**
+ * The range one submesh draws at a chosen point along its collapse chain.
+ *
+ * Detail is a fraction rather than a level index because an X-Ray slide-window table is one entry per edge collapse,
+ * not a handful of authored LODs: a measured `stalker_bandit_1` carries 230 entries on one submesh and 948 on the
+ * other, each step shedding about two triangles. A shared index would drive the first submesh to its coarsest while
+ * the second was a quarter of the way down, so the same fraction of each chain is what keeps a model decimating
+ * evenly — and what makes the setting mean the same thing across models with different chain lengths.
+ *
+ * @param submesh - Submesh whose range is being resolved.
+ * @param detail - How far down the chain to go: 0 is full detail, 1 is the coarsest level the submesh has.
+ * @returns The range to draw, never undefined because a packed submesh always has at least one level.
+ */
+export function getVisualSubmeshLevel(submesh: IVisualSubmeshViews, detail: number): IVisualSubmeshLevel {
+  const coarsest: number = submesh.levels.length - 1;
+
+  return submesh.levels[Math.round(Math.min(Math.max(detail, 0), 1) * coarsest)];
+}
+
+/**
+ * Triangles a model draws at a chosen detail fraction, summed over its submeshes.
+ *
+ * @param model - Views of the loaded model.
+ * @param detail - How far down each collapse chain to go, 0 to 1.
+ * @returns Total triangle count at that setting.
+ */
+export function countVisualTriangles(model: IVisualModelViews, detail: number): number {
+  return model.submeshes.reduce(
+    (total: number, submesh: IVisualSubmeshViews) => total + getVisualSubmeshLevel(submesh, detail).triangleCount,
+    0
+  );
 }

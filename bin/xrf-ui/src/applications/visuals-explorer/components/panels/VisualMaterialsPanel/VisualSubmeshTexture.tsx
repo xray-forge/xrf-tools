@@ -40,7 +40,7 @@ export function VisualSubmeshTexture({ texture, status }: IVisualSubmeshTextureP
       />
       <VisualPanelRow label={"Resolution"} value={describeResolution(resolution)} />
 
-      {located ? <VisualSubmeshTextureSource container={located.container} /> : null}
+      {located ? <VisualSubmeshTextureSource asset={located} /> : null}
 
       {resolution.kind === "missing"
         ? resolution.roots.map((root: string) => <VisualPanelRow key={root} label={"Searched"} value={root} />)

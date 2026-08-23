@@ -90,8 +90,8 @@ export type VisualDrawRange = {
  *
  * Every section is a byte range into the one buffer the model ships as, so a consumer builds views
  * over it without copying. `indices` covers the whole index buffer, including the coarser detail
- * levels a progressive submesh carries; the resolved draw range renders the model at full
- * detail, already resolved so a consumer never has to pick.
+ * levels a progressive submesh carries; [`Self::detail_levels`] names which slices of it are
+ * drawable, and a consumer that does not want to choose draws [`Self::get_default_level`].
  */
 export type VisualGeometry = {
   vertexCount: number;
@@ -100,14 +100,19 @@ export type VisualGeometry = {
   normals: VisualSection;
   uvs: VisualSection;
   indices: VisualSection;
-  drawRange: VisualDrawRange;
   /**
-   * Detail levels of a progressive submesh, empty for a static one.
+   * Every range a consumer may draw, finest first, and never empty.
    *
-   * Indices outside the resolved draw range are validated only when a consumer decides to draw them, so a
-   * detail level other than the first must be range checked before use.
+   * A static submesh has exactly one: its whole index buffer. A progressive one has a range per detail level of
+   * its slide-window table, coarsening as the index rises. Each is validated here — inside the index buffer, and
+   * reaching no vertex the submesh lacks — so choosing a level is a choice between drawable ranges rather than a
+   * range check the consumer has to remember. A coarse level that fails validation is left out rather than
+   * failing the submesh, so a model with one bad level still renders at the levels that are sound.
+   *
+   * The raw slide-window table is deliberately not shipped beside this: it carries the same information less
+   * safely, and two representations of one thing is how a consumer ends up drawing an unchecked range.
    */
-  windows: Array<VisualSlideWindow>;
+  detailLevels: Array<VisualDrawRange>;
   bounds: VisualBounds;
 };
 
@@ -148,18 +153,6 @@ export type VisualSkipCause =
   | "unsupported"
   /** Geometry contradicts itself, such as a detail level reaching past the index buffer it indexes. */
   | "malformed";
-
-/**
- * One progressive mesh detail level, mirroring `OgfSlideWindow` with renderer-facing names.
- *
- * Shipped in full even though only level zero is drawn today: the index buffer carries every level,
- * so withholding the table would make the coarser levels unreachable without a second read.
- */
-export type VisualSlideWindow = {
-  offset: number;
-  triangleCount: number;
-  vertexCount: number;
-};
 
 /** Enclosing sphere in three.js space. */
 export type VisualSphere = {

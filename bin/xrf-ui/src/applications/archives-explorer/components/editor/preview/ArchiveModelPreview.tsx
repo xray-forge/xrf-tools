@@ -20,9 +20,6 @@ export interface IArchiveModelPreviewProps extends BaseComponentProps {
 
 /**
  * Shows an archived model, read out of the volumes it sits in.
- *
- * The viewport is the visuals explorer's own: a model is a model wherever it came from, and a second renderer would be
- * a second set of answers about winding, scale and uv orientation.
  */
 export function ArchiveModelPreview({
   "data-testid": dataTestId = "archive-model-preview",
@@ -64,6 +61,7 @@ export function ArchiveModelPreview({
       sx={{ position: "relative", display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
     >
       <VisualPreviewViewport
+        detail={0}
         model={visual.value?.views ?? null}
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         cameraResetToken={cameraResetToken}

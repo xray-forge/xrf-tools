@@ -53,7 +53,7 @@ impl VisualModelType {
   ///
   /// A progressive submesh stores every detail level in one buffer, so drawing all of it stacks the
   /// coarse shells over the fine one. Such a submesh is only drawable through its detail table.
-  pub(crate) const fn is_progressive(self) -> bool {
+  pub const fn is_progressive(self) -> bool {
     matches!(self, Self::Progressive | Self::SkeletonGeomdefPm | Self::TreePm)
   }
 

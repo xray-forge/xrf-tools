@@ -16,10 +16,6 @@ use crate::unpack::archive_unpack_progress::ArchiveUnpackProgress;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 
 /// Writes the contents of an archive project back out to a directory.
-///
-/// The mirror of [`crate::ArchivePacker`], and deliberately separate from [`ArchiveProject`]: the project
-/// answers what an archive set holds, while this decides what lands on disk. Nothing here mutates the
-/// project, so a caller may read from one while unpacking it.
 pub struct ArchiveUnpacker;
 
 impl ArchiveUnpacker {

@@ -34,6 +34,10 @@ export const LAYOUT = {
    */
   titleBarHeight: 36,
   windowControlWidth: 36,
+  /**
+   * A slider hosted in a toolbar popover.
+   */
+  toolbarSliderWidth: 200,
 } as const;
 
 /**

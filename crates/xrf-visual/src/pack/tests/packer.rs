@@ -3,12 +3,13 @@
 
 use xrf_db::{OgfFile, OgfGeometry};
 
-use crate::data::visual_section::{VisualDrawRange, VisualSlideWindow};
+use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkipCause, VisualSubmesh};
 use crate::pack::tests::fixtures::{
   MODEL_TYPE_GEOMDEF_PM, MODEL_TYPE_GEOMDEF_ST, PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES,
   PROGRESSIVE_INDICES, bones, description, embedded_motions, geometry, geometry_of_unknown_format, kinematics,
-  progressive_child, skeleton, static_triangle_child, swi, textured, vector, vertex, visual, window,
+  progressive_child, progressive_child_with_windows, skeleton, static_triangle_child, swi, textured, vector, vertex,
+  visual, window,
 };
 use crate::pack::tests::reader::{read_f32_section, read_u16_section};
 use crate::pack::visual_package::VisualPackage;
@@ -43,10 +44,10 @@ fn draws_the_whole_index_buffer_of_a_static_submesh() {
 
   assert_eq!(geometry.vertex_count, 3);
   assert_eq!(geometry.index_count, 3);
-  assert_eq!(geometry.draw_range, VisualDrawRange { start: 0, count: 3 });
-  assert!(
-    geometry.windows.is_empty(),
-    "expect a static submesh to carry no detail table"
+  assert_eq!(
+    geometry.detail_levels,
+    vec![VisualDrawRange { start: 0, count: 3 }],
+    "expect a static submesh to offer its whole buffer as its one level"
   );
 }
 
@@ -60,43 +61,57 @@ fn draws_only_detail_level_zero_of_a_progressive_submesh() {
 
   assert_eq!(geometry.index_count, PROGRESSIVE_INDICES.len() as u32);
   assert_eq!(
-    geometry.draw_range,
+    geometry.get_default_level(),
     VisualDrawRange {
       start: PROGRESSIVE_FINE_OFFSET,
       count: u32::from(PROGRESSIVE_FINE_TRIANGLES) * 3,
     }
   );
   assert!(
-    geometry.draw_range.count < geometry.index_count,
+    geometry.get_default_level().count < geometry.index_count,
     "expect the drawn range to be a slice of the buffer, not all of it"
   );
 }
 
 #[test]
-fn ships_the_whole_index_buffer_and_the_detail_table_of_a_progressive_submesh() {
-  // Nothing is discarded at the boundary: a later detail level picker changes a draw range rather than
+fn ships_the_whole_index_buffer_and_every_usable_level_of_a_progressive_submesh() {
+  // Nothing is discarded at the boundary: the detail level picker changes a draw range rather than
   // re-reading the file, so the coarse levels have to survive packing.
   let package: VisualPackage = VisualPacker::pack(&skeleton(vec![progressive_child()]));
   let geometry: &VisualGeometry = only_geometry(&package);
 
   assert_eq!(
-    geometry.windows,
+    geometry.detail_levels,
     vec![
-      VisualSlideWindow {
-        offset: PROGRESSIVE_FINE_OFFSET,
-        triangle_count: u32::from(PROGRESSIVE_FINE_TRIANGLES),
-        vertex_count: 6,
+      VisualDrawRange {
+        start: PROGRESSIVE_FINE_OFFSET,
+        count: u32::from(PROGRESSIVE_FINE_TRIANGLES) * 3,
       },
-      VisualSlideWindow {
-        offset: 0,
-        triangle_count: 4,
-        vertex_count: 4,
-      },
+      VisualDrawRange { start: 0, count: 12 },
     ]
   );
   assert_eq!(
     read_u16_section(&package.buffer, geometry.indices).len(),
     PROGRESSIVE_INDICES.len()
+  );
+}
+
+#[test]
+fn drops_an_unusable_coarse_level_without_failing_the_submesh() {
+  // A bad coarse level costs the option, not the mesh: the finest level is what the model is, and the
+  // viewer can still draw it. Reaching past the index buffer is the shape this takes in the wild.
+  let package: VisualPackage = VisualPacker::pack(&skeleton(vec![progressive_child_with_windows(vec![
+    window(PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES, 6),
+    window(0, 64, 4),
+  ])]));
+  let geometry: &VisualGeometry = only_geometry(&package);
+
+  assert_eq!(
+    geometry.detail_levels,
+    vec![VisualDrawRange {
+      start: PROGRESSIVE_FINE_OFFSET,
+      count: u32::from(PROGRESSIVE_FINE_TRIANGLES) * 3,
+    }]
   );
 }
 
@@ -108,8 +123,8 @@ fn winds_each_triangle_in_place_so_detail_offsets_stay_valid() {
   let geometry: &VisualGeometry = only_geometry(&package);
   let indices: Vec<u16> = read_u16_section(&package.buffer, geometry.indices);
 
-  let start: usize = geometry.draw_range.start as usize;
-  let drawn: &[u16] = &indices[start..start + geometry.draw_range.count as usize];
+  let start: usize = geometry.get_default_level().start as usize;
+  let drawn: &[u16] = &indices[start..start + geometry.get_default_level().count as usize];
 
   assert_eq!(
     drawn,

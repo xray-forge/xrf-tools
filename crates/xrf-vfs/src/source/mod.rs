@@ -1,8 +1,4 @@
 //! Mountable asset sources, and the indexing a directory source needs.
-//!
-//! [`XrayAssetSource`] is the seam: a source for a format this crate does not own belongs beside that format and
-//! implements the trait. The directory index behind the directory source is deliberately private — resolution belongs to
-//! [`crate::XrayVfs`] alone.
 
 mod directory_asset;
 mod directory_asset_index;

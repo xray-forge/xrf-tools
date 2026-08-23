@@ -7143,6 +7143,7 @@ dependencies = [
 name = "xrf-visual"
 version = "0.1.0"
 dependencies = [
+ "log",
  "serde",
  "specta",
  "xrf-db",

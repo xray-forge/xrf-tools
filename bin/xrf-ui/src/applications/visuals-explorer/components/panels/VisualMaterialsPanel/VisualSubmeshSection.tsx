@@ -21,10 +21,6 @@ export interface IVisualSubmeshSectionProps extends BaseComponentProps {
 
 /**
  * One submesh: what it is textured with, how much of it there is, or why there is none of it.
- *
- * A skipped submesh is listed rather than hidden, because a model missing a piece is only explicable if the missing
- * piece says what happened to it. The texture reference is the heading, since that is what identifies a submesh to
- * someone looking for the piece that is wrong.
  */
 export function VisualSubmeshSection({
   "data-testid": dataTestId = "visual-submesh-section",
@@ -63,12 +59,14 @@ export function VisualSubmeshSection({
       {content.kind === "packed" ? (
         <>
           <VisualPanelRow label={"Vertices"} value={content.geometry.vertexCount} />
+
           <VisualPanelRow
-            label={"Triangles drawn"}
-            value={`${content.geometry.drawRange.count / 3} of ${content.geometry.indexCount / 3}`}
+            label={"Triangles"}
+            value={`${content.geometry.detailLevels[0].count / 3} of ${content.geometry.indexCount / 3}`}
           />
-          {content.geometry.windows.length > 0 ? (
-            <VisualPanelRow label={"Detail levels"} value={content.geometry.windows.length} />
+
+          {content.geometry.detailLevels.length > 1 ? (
+            <VisualPanelRow label={"Detail levels"} value={content.geometry.detailLevels.length} />
           ) : null}
         </>
       ) : (

@@ -1,7 +1,4 @@
 //! Engine names and the host paths they cross into: the only place this crate decides separators.
-//!
-//! An archive stores names the way the engine writes them — `\` separated, whatever the platform — so packing and
-//! unpacking both have to cross that boundary deliberately. `xrf-vfs` keeps the same concern in its own `path` group.
 
 use std::path::PathBuf;
 
