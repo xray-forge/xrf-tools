@@ -180,10 +180,10 @@ export function VisualPreviewToolbar({
             </IconButton>
           </Tooltip>
 
-          <Tooltip title={hasSkeleton ? "Bind pose skeleton" : "No bind pose in this model"} describeChild>
+          <Tooltip title={hasSkeleton ? "Skeleton" : "No skeleton in this model"} describeChild>
             <span>
               <IconButton
-                aria-label={"Bind pose skeleton"}
+                aria-label={"Skeleton"}
                 color={"inherit"}
                 sx={{ opacity: options.isSkeletonVisible ? 1 : 0.45 }}
                 disabled={!hasSkeleton}

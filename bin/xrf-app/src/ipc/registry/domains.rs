@@ -81,13 +81,16 @@ macro_rules! for_each_tauri_command_domain {
         close_model => crate::plugins::visuals::commands::close_model::visuals_close_model,
         get_browse => crate::plugins::visuals::commands::get_browse::visuals_get_browse,
         get_model => crate::plugins::visuals::commands::get_model::visuals_get_model,
+        list_motions => crate::plugins::visuals::commands::list_motions::visuals_list_motions,
         open_browse => crate::plugins::visuals::commands::open_browse::visuals_open_browse,
         open_model => crate::plugins::visuals::commands::open_model::visuals_open_model,
+        open_motion => crate::plugins::visuals::commands::open_motion::visuals_open_motion,
       }
       // Returns `tauri::ipc::Response`, so it is dispatched and permitted like any command but cannot join
       // the Specta collection.
       @raw {
         read_geometry(source: "VisualSource", roots: "XrayRoots") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
+        read_motion(name: "string") => crate::plugins::visuals::commands::read_motion::visuals_read_motion,
       }
       translations => "translations" {
         close_project => crate::plugins::translations::commands::close_project::translations_close_project,

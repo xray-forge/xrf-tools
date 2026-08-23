@@ -38,6 +38,10 @@ export const LAYOUT = {
    * A slider hosted in a toolbar popover.
    */
   toolbarSliderWidth: 200,
+  /** The motion picker, wide enough for a name like `norm_walk_fwd_1` without truncating it. */
+  motionPickerWidth: 260,
+  /** Frame counter beside the motion slider, sized so a four digit frame of a four digit total does not reflow it. */
+  motionCounterWidth: 118,
 } as const;
 
 /**

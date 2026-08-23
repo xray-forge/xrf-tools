@@ -6,12 +6,17 @@ import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/co
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
-interface IVisualPreviewViewportProps {
+export interface IVisualPreviewViewportProps {
   model: Nullable<IVisualModelViews>;
   options: IVisualPreviewViewOptions;
   cameraResetToken: number;
   /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
   detail: number;
+  /** Baked joint positions of a playing motion, or null when the skeleton should show its bind pose. */
+  motionJoints?: Nullable<Float32Array>;
+  /** Which frame of those joints to show, and how many floats one frame holds. */
+  motionFrame?: number;
+  motionStride?: number;
   /** Joint to mark, already resolved to a position, or null when nothing is selected. */
   highlightedJoint?: Nullable<[number, number, number]>;
   /** Loaded textures by submesh index, applied as they arrive. */
@@ -34,6 +39,9 @@ export function VisualPreviewViewport({
   cameraResetToken,
   detail,
   highlightedJoint = null,
+  motionJoints = null,
+  motionFrame = 0,
+  motionStride = 0,
   textures,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,6 +91,17 @@ export function VisualPreviewViewport({
   useEffect(() => {
     sceneRef.current?.setHighlightedJoint(highlightedJoint);
   }, [highlightedJoint, model]);
+
+  /**
+   * Poses the skeleton overlay, or returns it to its bind pose when nothing is playing.
+   *
+   * Depends on `model` for the same reason the mark does: a replaced model rebuilds the overlay from its bind pose, so
+   * a motion that survived the replacement has to be written into the new buffer.
+   */
+  useEffect(() => {
+    sceneRef.current?.setJointStride(motionStride);
+    sceneRef.current?.setSkeletonPose(motionJoints, motionFrame);
+  }, [motionJoints, motionFrame, motionStride, model]);
 
   /**
    * Offers every loaded texture on each change rather than only the newest one.

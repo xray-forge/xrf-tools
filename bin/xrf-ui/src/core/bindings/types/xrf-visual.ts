@@ -118,6 +118,23 @@ export type VisualGeometry = {
 };
 
 /**
+ * One motion's joint positions, every frame baked, ready to play without asking for more.
+ *
+ * Baked rather than sampled on demand because playback runs at thirty frames a second and every frame would otherwise
+ * be a round trip. A measured motion averages 78 frames, so a 47 bone skeleton bakes to about 44 kilobytes - cheaper
+ * to send once than to ask for repeatedly.
+ */
+export type VisualMotionBake = {
+  name: string;
+  frameCount: number;
+  boneCount: number;
+  /** Seconds the motion runs for, from the format's fixed sample rate. */
+  duration: number | null;
+  /** How many bones the motion actually drives, the rest holding their bind pose. */
+  animatedBoneCount: number;
+};
+
+/**
  * One motion file set a visual animates from, and what the reference came to.
  *
  * A reference may be a mask — `wpn\wpn_ak74_*.omf` names every matching file — so one entry can hold several located

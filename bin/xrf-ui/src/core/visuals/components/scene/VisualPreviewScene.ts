@@ -108,6 +108,8 @@ export class VisualPreviewScene {
   private highlight: Nullable<Points<BufferGeometry, PointsMaterial>> = null;
   /** Where the marker points, kept so a toggle can show it again without the selection being sent a second time. */
   private highlightedJoint: Nullable<[number, number, number]> = null;
+  /** Floats per frame of the joint buffer a motion handed over, zero when none is playing. */
+  private jointStride: number = 0;
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   private model: Nullable<IVisualModelViews> = null;
@@ -216,6 +218,57 @@ export class VisualPreviewScene {
         drawn.mesh.geometry.setDrawRange(level.start, level.count);
       }
     }
+  }
+
+  /**
+   * Poses the skeleton overlay from one frame of a baked motion, or returns it to the bind pose.
+   *
+   * Rewrites the segment buffer in place rather than rebuilding geometry: at thirty frames a second, allocating a
+   * buffer per frame is what turns playback into stutter. The bone pairs say which two joints each segment joins, so
+   * a frame is a scatter of twelve bytes per segment and no upload of anything else.
+   *
+   * @param joints - Every frame's joint positions, frame major, or null to show the bind pose again.
+   * @param frame - Which frame of that buffer to show.
+   */
+  public setSkeletonPose(joints: Nullable<Float32Array>, frame: number): void {
+    const pairs: Nullable<Uint16Array> = this.model?.skeletonPairs ?? null;
+    const bind: Nullable<Float32Array> = this.model?.skeleton ?? null;
+
+    if (!this.skeleton || !pairs || !bind) {
+      return;
+    }
+
+    const attribute: BufferAttribute = this.skeleton.geometry.getAttribute("position") as BufferAttribute;
+
+    if (!joints || this.jointStride === 0) {
+      attribute.array.set(bind);
+    } else {
+      const base: number = frame * this.jointStride;
+
+      for (let segment: number = 0; segment < pairs.length / 2; segment += 1) {
+        const child: number = base + pairs[segment * 2] * 3;
+        const parent: number = base + pairs[segment * 2 + 1] * 3;
+
+        attribute.array.set(joints.subarray(child, child + 3), segment * 6);
+        attribute.array.set(joints.subarray(parent, parent + 3), segment * 6 + 3);
+      }
+    }
+
+    attribute.needsUpdate = true;
+
+    this.skeleton.geometry.computeBoundingSphere();
+  }
+
+  /**
+   * How many floats one frame of a joint buffer holds: three times the bone count.
+   *
+   * Told rather than derived, because nothing in the buffer itself says where one frame ends and the pairs index into
+   * a single frame.
+   *
+   * @param stride - Floats per frame.
+   */
+  public setJointStride(stride: number): void {
+    this.jointStride = stride;
   }
 
   /**

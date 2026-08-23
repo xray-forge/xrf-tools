@@ -34,6 +34,12 @@ export interface IVisualSubmeshViews {
   levels: Array<IVisualSubmeshLevel>;
 }
 
+/** Segment endpoints of a skeleton, and which bones each segment joins. */
+export interface IVisualSkeletonViews {
+  positions: Nullable<Float32Array>;
+  pairs: Nullable<Uint16Array>;
+}
+
 /** Everything the scene needs to build meshes, and nothing it does not. */
 export interface IVisualModelViews {
   submeshes: Array<IVisualSubmeshViews>;
@@ -46,6 +52,13 @@ export interface IVisualModelViews {
    * so the skeleton sits inside the geometry rather than beside it.
    */
   skeleton: Nullable<Float32Array>;
+  /**
+   * Bone and parent index of each segment the skeleton draws, in the order `skeleton` lays them out.
+   *
+   * What lets a posed frame reuse the same buffer: a motion arrives as joint positions per bone, and these say which
+   * two joints each drawn segment joins. Null exactly when `skeleton` is.
+   */
+  skeletonPairs: Nullable<Uint16Array>;
   vertexCount: number;
   /**
    * Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach.
@@ -138,6 +151,7 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
     );
   }
 
+  const skeleton: IVisualSkeletonViews = createVisualSkeleton(description.bones);
   const submeshes: Array<IVisualSubmeshViews> = [];
 
   let vertexCount: number = 0;
@@ -172,7 +186,8 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
   return {
     submeshes,
     fit: createVisualCameraFit(description),
-    skeleton: createVisualSkeleton(description.bones),
+    skeleton: skeleton.positions,
+    skeletonPairs: skeleton.pairs,
     vertexCount,
     levelCount,
   };
@@ -186,15 +201,16 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
  * no parent to reach - so the caller can tell "no skeleton to show" from "a skeleton of no bones".
  *
  * @param bones - Bones the backend reported, with composed bind positions.
- * @returns Flat xyz pairs for `LineSegments`, or null when the model has no drawable skeleton.
+ * @returns Segment endpoints for `LineSegments` and the bone pairs they join, both null when nothing is drawable.
  */
-export function createVisualSkeleton(bones: Array<VisualBone>): Nullable<Float32Array> {
+export function createVisualSkeleton(bones: Array<VisualBone>): IVisualSkeletonViews {
   const segments: Array<number> = [];
+  const pairs: Array<number> = [];
 
-  for (const bone of bones) {
+  for (const [index, bone] of bones.entries()) {
     const parent: Optional<VisualBone> = bone.parentIndex === null ? undefined : bones[bone.parentIndex];
 
-    if (!bone.bindPosition || !parent?.bindPosition) {
+    if (!bone.bindPosition || !parent?.bindPosition || bone.parentIndex === null) {
       continue;
     }
 
@@ -206,9 +222,12 @@ export function createVisualSkeleton(bones: Array<VisualBone>): Nullable<Float32
       parent.bindPosition.y ?? 0,
       parent.bindPosition.z ?? 0
     );
+    pairs.push(index, bone.parentIndex);
   }
 
-  return segments.length ? new Float32Array(segments) : null;
+  return segments.length
+    ? { positions: new Float32Array(segments), pairs: new Uint16Array(pairs) }
+    : { positions: null, pairs: null };
 }
 
 /**

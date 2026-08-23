@@ -8,6 +8,7 @@ import {
   createVisualViews,
   getVisualSubmeshLevel,
   IVisualModelViews,
+  IVisualSkeletonViews,
 } from "@/core/visuals/lib/visual-views";
 import {
   mockPackedSubmesh,
@@ -17,7 +18,6 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
 } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 describe("visual views", () => {
   it("builds typed array views over the packed sections", () => {
@@ -179,35 +179,38 @@ describe("visual views", () => {
 
 describe("visual skeleton", () => {
   it("draws a segment from each placed bone to its placed parent", () => {
-    const skeleton: Nullable<Float32Array> = createVisualSkeleton([
+    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
       mockVisualBone({ name: "root", bindPosition: { x: 0, y: 0, z: 0 } }),
       mockVisualBone({ name: "spine", parent: "root", parentIndex: 0, bindPosition: { x: 0, y: 1, z: 0 } }),
       mockVisualBone({ name: "head", parent: "spine", parentIndex: 1, bindPosition: { x: 0, y: 2, z: 0 } }),
     ]);
 
     // Two segments for three bones: the root has no parent to reach, so it contributes none.
-    expect(Array.from(skeleton ?? [])).toEqual([0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0]);
+    expect(Array.from(skeleton.positions ?? [])).toEqual([0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0]);
+    // Which two joints each segment joins, so a posed frame can rewrite the same buffer.
+    expect(Array.from(skeleton.pairs ?? [])).toEqual([1, 0, 2, 1]);
   });
 
   it("has nothing to draw when the model carries no bind positions", () => {
     // A visual with no IK chunk still lists its hierarchy, so the bones are present and only the positions are not.
-    const skeleton: Nullable<Float32Array> = createVisualSkeleton([
+    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
       mockVisualBone({ name: "root" }),
       mockVisualBone({ name: "spine", parent: "root", parentIndex: 0 }),
     ]);
 
-    expect(skeleton).toBeNull();
+    expect(skeleton.positions).toBeNull();
+    expect(skeleton.pairs).toBeNull();
   });
 
   it("skips a bone whose parent was never placed", () => {
     // The backend leaves a bone unplaced when its chain does not reach a root, and a segment to nowhere would draw a
     // line through the origin.
-    const skeleton: Nullable<Float32Array> = createVisualSkeleton([
+    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
       mockVisualBone({ name: "orphan", parent: "missing", parentIndex: null, bindPosition: { x: 5, y: 5, z: 5 } }),
       mockVisualBone({ name: "child", parent: "orphan", parentIndex: 0, bindPosition: { x: 6, y: 5, z: 5 } }),
     ]);
 
-    expect(Array.from(skeleton ?? [])).toEqual([6, 5, 5, 5, 5, 5]);
+    expect(Array.from(skeleton.positions ?? [])).toEqual([6, 5, 5, 5, 5, 5]);
   });
 });
 

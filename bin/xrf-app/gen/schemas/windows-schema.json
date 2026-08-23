@@ -6825,10 +6825,10 @@
           "markdownDescription": "Denies the validate_text command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-read-geometry`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`",
           "type": "string",
           "const": "visuals:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-read-geometry`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`"
         },
         {
           "description": "Enables the close_browse command without any pre-configured scope.",
@@ -6855,6 +6855,12 @@
           "markdownDescription": "Enables the get_model command without any pre-configured scope."
         },
         {
+          "description": "Enables the list_motions command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:allow-list-motions",
+          "markdownDescription": "Enables the list_motions command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open_browse command without any pre-configured scope.",
           "type": "string",
           "const": "visuals:allow-open-browse",
@@ -6867,10 +6873,22 @@
           "markdownDescription": "Enables the open_model command without any pre-configured scope."
         },
         {
+          "description": "Enables the open_motion command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:allow-open-motion",
+          "markdownDescription": "Enables the open_motion command without any pre-configured scope."
+        },
+        {
           "description": "Enables the read_geometry command without any pre-configured scope.",
           "type": "string",
           "const": "visuals:allow-read-geometry",
           "markdownDescription": "Enables the read_geometry command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_motion command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:allow-read-motion",
+          "markdownDescription": "Enables the read_motion command without any pre-configured scope."
         },
         {
           "description": "Denies the close_browse command without any pre-configured scope.",
@@ -6897,6 +6915,12 @@
           "markdownDescription": "Denies the get_model command without any pre-configured scope."
         },
         {
+          "description": "Denies the list_motions command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:deny-list-motions",
+          "markdownDescription": "Denies the list_motions command without any pre-configured scope."
+        },
+        {
           "description": "Denies the open_browse command without any pre-configured scope.",
           "type": "string",
           "const": "visuals:deny-open-browse",
@@ -6909,10 +6933,22 @@
           "markdownDescription": "Denies the open_model command without any pre-configured scope."
         },
         {
+          "description": "Denies the open_motion command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:deny-open-motion",
+          "markdownDescription": "Denies the open_motion command without any pre-configured scope."
+        },
+        {
           "description": "Denies the read_geometry command without any pre-configured scope.",
           "type": "string",
           "const": "visuals:deny-read-geometry",
           "markdownDescription": "Denies the read_geometry command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_motion command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:deny-read-motion",
+          "markdownDescription": "Denies the read_motion command without any pre-configured scope."
         }
       ]
     },

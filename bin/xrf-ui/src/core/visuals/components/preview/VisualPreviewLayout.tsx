@@ -11,8 +11,8 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import {
   VisualPreviewAnimationBar,
+  VisualPreviewMotionViewport,
   VisualPreviewToolbar,
-  VisualPreviewViewport,
 } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
@@ -53,7 +53,8 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
  * The shared preview chrome: toolbar, viewport, panel stripe and animation bar.
  *
  * Data comes in as props rather than being read here, so this stays usable by an application that has a
- * backing service and by one that does not.
+ * backing service and by one that does not. Playback is the exception: the bar and the pose read
+ * `VisualMotionService` themselves, so an application mounting this has to bind it.
  */
 export function VisualPreviewLayout({
   "data-testid": dataTestId = "visual-preview-layout",
@@ -141,7 +142,7 @@ export function VisualPreviewLayout({
         className={className}
         sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
       >
-        <VisualPreviewViewport
+        <VisualPreviewMotionViewport
           model={model}
           options={options}
           cameraResetToken={cameraResetToken}

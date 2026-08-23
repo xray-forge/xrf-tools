@@ -4,9 +4,10 @@ use std::sync::Mutex;
 use xrf_vfs::XrayRoots;
 
 use serde::Serialize;
-use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPositions, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
+use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
 /// What the viewer currently points at: the roots being browsed, and the visual open inside it.
 ///
@@ -41,6 +42,10 @@ pub struct SelectedVisual {
   pub package: VisualPackage,
   /// What the visual's own references came to, decided at open so a read is a lookup rather than a search.
   pub dependencies: VisualDependencies,
+  /// What posing needs from the file, or `None` when the visual carries no bind pose.
+  pub skeleton: Option<SelectedSkeleton>,
+  /// The motion baked by the last `open_motion`, so reading its bytes serves that pose rather than composing again.
+  pub posed: Option<VisualMotionPositions>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,
 }

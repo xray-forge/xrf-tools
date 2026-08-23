@@ -17,6 +17,7 @@ import { ProjectService } from "@/core/settings/services/project/project.service
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -112,7 +113,8 @@ export class VisualsService {
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
     private readonly projectService: ProjectService = inject(ProjectService),
-    private readonly loadService: VisualLoadService = inject(VisualLoadService)
+    private readonly loadService: VisualLoadService = inject(VisualLoadService),
+    private readonly motionService: VisualMotionService = inject(VisualMotionService)
   ) {
     makeObservable(this);
   }
@@ -189,6 +191,7 @@ export class VisualsService {
   /** Close what is open, on screen and in the backend. */
   @BoundAction()
   public async close(): Promise<void> {
+    this.motionService.clear();
     this.loadService.clear();
 
     try {
@@ -206,6 +209,9 @@ export class VisualsService {
    * @param asset - Asset the roots is centred on, whose own tree is searched first.
    */
   private async open(source: VisualSource, roots: Array<string> = [], asset: Nullable<string> = null): Promise<void> {
+    // A motion belongs to the skeleton it was baked against, and the backend has just parked a different selection.
+    this.motionService.clear();
+
     await this.loadService.load(source, await this.getRoots(roots, asset));
 
     const error: Nullable<Error> = this.visual.error;

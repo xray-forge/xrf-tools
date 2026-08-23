@@ -1,15 +1,47 @@
+import { default as PauseIcon } from "@mui/icons-material/Pause";
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { Box, IconButton, MenuItem, Paper, Select, Slider, Tooltip, Typography } from "@mui/material";
-import { ReactElement } from "react";
+import { Autocomplete, IconButton, Paper, Slider, TextField, Tooltip, Typography } from "@mui/material";
+import { useInjection } from "@wirestate/react";
+import { ReactElement, SyntheticEvent, useCallback, useEffect } from "react";
+
+import { LAYOUT } from "@/core/theme/tokens";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { formatDuration } from "@/lib/format/duration";
+import { Nullable } from "@/lib/types/general";
 
 /**
- * Placeholder for the motion playback bar.
+ * Picking and playing one of the open visual's motions.
  *
- * Entirely disabled: omf motions are a later phase, and the bar exists now only so the preview page is
- * laid out around it rather than being rearranged once playback arrives.
+ * An autocomplete rather than a plain select because a character references thousands of motions - a measured actor
+ * offers 2,500 - so the list has to be typed into rather than scrolled. Dragging the slider pauses, because otherwise
+ * playback and the drag fight over the same frame.
  */
 export function VisualPreviewAnimationBar(): ReactElement {
+  const service: VisualMotionService = useInjection(VisualMotionService);
+
+  const names: Array<string> = service.motions.value ?? [];
+  const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
+  const frames: number = service.frameCount;
+  const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
+
+  const onPick = useCallback(
+    (_: SyntheticEvent, name: Nullable<string>) => {
+      if (name) {
+        void service.open(name);
+      }
+    },
+    [service]
+  );
+
+  const onSeek = useCallback((_: Event, value: number | Array<number>) => service.seek(value as number), [service]);
+
+  const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
+
+  // Listed when the bar appears rather than when the model opens: naming motions means reading every animation file
+  // the visual references, and the bar only exists for a visual that has some.
+  useEffect(() => void service.list(), [service]);
+
   return (
     <Paper
       square
@@ -24,33 +56,72 @@ export function VisualPreviewAnimationBar(): ReactElement {
         backgroundColor: "background.default",
       }}
     >
-      <Select size={"small"} value={"none"} disabled sx={{ minWidth: 200 }}>
-        <MenuItem value={"none"}>No motions loaded</MenuItem>
-      </Select>
+      <Autocomplete
+        size={"small"}
+        options={names}
+        value={posed}
+        loading={service.motions.isLoading}
+        disabled={!names.length && !service.motions.isLoading}
+        sx={{ width: LAYOUT.motionPickerWidth, flexShrink: 0 }}
+        renderInput={(parameters) => (
+          <TextField
+            {...parameters}
+            placeholder={service.motions.isLoading ? "Listing motions…" : "Pick a motion"}
+            // Merged rather than replaced: the autocomplete's own `input` slot carries the ref its popup anchors to.
+            slotProps={{
+              ...parameters.slotProps,
+              htmlInput: { ...parameters.slotProps.htmlInput, "aria-label": "Motion" },
+            }}
+          />
+        )}
+        onChange={onPick}
+      />
 
-      <Tooltip title={"Playback (not implemented)"}>
+      <Tooltip title={service.isPlaying ? "Pause" : "Play"}>
         <span>
-          <IconButton size={"small"} disabled>
-            <PlayArrowIcon />
+          <IconButton
+            size={"small"}
+            aria-label={service.isPlaying ? "Pause" : "Play"}
+            disabled={!frames}
+            onClick={onTogglePlay}
+          >
+            {service.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
           </IconButton>
         </span>
       </Tooltip>
 
-      <Slider size={"small"} value={0} disabled sx={{ marginX: 1 }} />
+      <Slider
+        aria-label={"Motion frame"}
+        size={"small"}
+        min={0}
+        max={Math.max(0, frames - 1)}
+        value={service.frame}
+        disabled={!frames}
+        sx={{ marginX: 1 }}
+        onChange={onSeek}
+      />
 
-      <Typography variant={"caption"} sx={{ minWidth: 72, textAlign: "right" }}>
-        0 / 0
+      <Typography variant={"caption"} sx={{ minWidth: LAYOUT.motionCounterWidth, textAlign: "right" }}>
+        {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
+        {duration ? ` · ${formatDuration(Math.round(duration * 1000))}` : ""}
       </Typography>
 
-      <Tooltip title={"Loop (not implemented)"}>
-        <span>
-          <IconButton size={"small"} disabled>
-            <RepeatIcon />
-          </IconButton>
-        </span>
+      <Tooltip title={service.isLooping ? "Looping" : "Play once"}>
+        <IconButton
+          aria-label={"Loop"}
+          size={"small"}
+          sx={{ opacity: service.isLooping ? 1 : 0.45 }}
+          onClick={service.toggleLoop}
+        >
+          <RepeatIcon />
+        </IconButton>
       </Tooltip>
 
-      <Box sx={{ width: 8 }} />
+      {service.posed.error ? (
+        <Typography variant={"caption"} sx={{ color: "error.main", wordBreak: "break-word" }}>
+          {service.posed.error.message}
+        </Typography>
+      ) : null}
     </Paper>
   );
 }

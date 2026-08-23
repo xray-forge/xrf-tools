@@ -3,11 +3,13 @@ use std::sync::MutexGuard;
 
 use tauri::State;
 use xrf_vfs::{XrayProbe, XrayRoots};
-use xrf_visual::{VisualDependencies, VisualPackage};
+use xrf_db::OgfFile;
+use xrf_visual::{VisualDependencies, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
 use crate::core::types::TauriResult;
-use crate::plugins::visuals::read::pack_source;
+use crate::plugins::visuals::read::read_source;
+use crate::plugins::visuals::skeleton::SelectedSkeleton;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
 
 /// Select a visual and return what it contains, with every reference it declares resolved.
@@ -34,12 +36,15 @@ pub async fn visuals_open_model(
 
   // Read, resolve and describe inside one probe, so the model, its references and the files behind them are all looked
   // for in the same roots: a second probe could mount a source between the calls and answer differently.
-  let (package, dependencies, textures) = assets.with_probe(&roots, |probe| {
-    let package: VisualPackage = pack_source(&source, probe)?;
+  let (package, dependencies, textures, skeleton) = assets.with_probe(&roots, |probe| {
+    // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
+    // no second read of a file that may sit inside a volume.
+    let file: OgfFile = read_source(&source, probe)?;
+    let package: VisualPackage = VisualPacker::pack(&file);
     let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
     let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
 
-    TauriResult::Ok((package, dependencies, textures))
+    TauriResult::Ok((package, dependencies, textures, SelectedSkeleton::of(&file)))
   })??;
 
   let description: SelectedVisualDescription = SelectedVisualDescription {
@@ -60,6 +65,8 @@ pub async fn visuals_open_model(
     roots,
     package,
     dependencies,
+    skeleton,
+    posed: None,
     textures,
   });
 

@@ -42,7 +42,7 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
       />
     );
 
-    expect(render.getByRole("button", { name: "Bind pose skeleton" })).toBeDisabled();
+    expect(render.getByRole("button", { name: "Skeleton" })).toBeDisabled();
   });
 
   it("asks for the overlay when a bind pose is there to draw", () => {
@@ -60,7 +60,7 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
       />
     );
 
-    fireEvent.click(render.getByRole("button", { name: "Bind pose skeleton" }));
+    fireEvent.click(render.getByRole("button", { name: "Skeleton" }));
 
     expect(changes).toHaveLength(1);
     expect(changes[0].isSkeletonVisible).toBe(true);

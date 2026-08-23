@@ -13,13 +13,16 @@ use crate::plugins::visuals::state::VisualSource;
 /// A loose file is read from its path and an asset through the probe, because an archived entry has no file to slice —
 /// which is the whole reason a visual is addressable logically.
 pub fn pack_source(source: &VisualSource, probe: &XrayProbe) -> TauriResult<VisualPackage> {
-  let file: OgfFile = match source {
-    VisualSource::File { path } => OgfFile::read_from_path::<XRayByteOrder, _>(path)
-      .map_err(|error| format!("Failed to read visual '{path}': {error}"))?,
-    VisualSource::Asset { logical_path } => read_asset(probe, logical_path)?,
-  };
+  Ok(VisualPacker::pack(&read_source(source, probe)?))
+}
 
-  Ok(VisualPacker::pack(&file))
+/// Reads a visual, whichever way its source names it.
+pub fn read_source(source: &VisualSource, probe: &XrayProbe) -> TauriResult<OgfFile> {
+  match source {
+    VisualSource::File { path } => OgfFile::read_from_path::<XRayByteOrder, _>(path)
+      .map_err(|error| format!("Failed to read visual '{path}': {error}")),
+    VisualSource::Asset { logical_path } => read_asset(probe, logical_path),
+  }
 }
 
 /// Reads a visual out of the mounted roots, loose or archived alike.
