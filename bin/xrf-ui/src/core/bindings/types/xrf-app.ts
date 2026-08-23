@@ -101,15 +101,7 @@ export type SelectedVisualDescription = {
   world: AssetWorldSpec;
   description: VisualDescription;
   dependencies: VisualDependencies;
-  /**
-   * What each located texture file is, keyed by the logical path that located it.
-   *
-   * Keyed rather than paired with the dependencies, for two reasons. A texture two
-   * submeshes share is described once, so a total weighs a model's files rather than
-   * its references. And a reference that located nothing has no key at all, which is
-   * what keeps the difference between asked for and measured visible. An entry is
-   * absent when the file could not be reached.
-   */
+  /** What each located texture file is, keyed by the logical path that located it. */
   textures: { [key in string]: AssetTextureDescriptor };
 };
 
