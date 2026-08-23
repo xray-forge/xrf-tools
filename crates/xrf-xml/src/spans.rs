@@ -119,6 +119,17 @@ impl XmlElementSpan {
       .map(|(_, value)| value.as_str())
   }
 
+  /// Iterates over `(name, value)` pairs in source order.
+  ///
+  /// Asking by name answers what a reader wants; enumerating answers what a validator wants, which is
+  /// whether the element carries an attribute nobody expected.
+  pub fn attributes(&self) -> impl Iterator<Item = (&str, &str)> {
+    self
+      .attributes
+      .iter()
+      .map(|(name, value)| (name.as_str(), value.as_str()))
+  }
+
   /// Byte range of the whole element, both tags included.
   pub fn element_range(&self) -> &Range<usize> {
     &self.element

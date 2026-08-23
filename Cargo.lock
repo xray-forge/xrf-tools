@@ -6917,6 +6917,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-dialog"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-xml",
+]
+
+[[package]]
 name = "xrf-error"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,18 @@
+[package]
+name = "xrf-dialog"
+version = "0.1.0"
+publish = false
+edition = "2024"
+rust-version.workspace = true
+
+[dependencies]
+log = { workspace = true }
+xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
+xrf-xml = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[lints]
+workspace = true
