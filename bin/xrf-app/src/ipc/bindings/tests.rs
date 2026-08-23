@@ -12,6 +12,7 @@ use crate::ipc::bindings::types_module::export_type_modules;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
+use crate::plugins::dialogs::plugin::DialogsPlugin;
 use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
@@ -28,6 +29,7 @@ fn command_modules<R: tauri::Runtime>() -> Vec<(&'static str, tauri_specta::Buil
     (AssetsPlugin::NAME, AssetsPlugin::specta_builder::<R>()),
     (ArchivesPlugin::NAME, ArchivesPlugin::specta_builder::<R>()),
     (ConfigsPlugin::NAME, ConfigsPlugin::specta_builder::<R>()),
+    (DialogsPlugin::NAME, DialogsPlugin::specta_builder::<R>()),
     (EquipmentIconsPlugin::NAME, EquipmentIconsPlugin::specta_builder::<R>()),
     (ExportsPlugin::NAME, ExportsPlugin::specta_builder::<R>()),
     (SpawnPlugin::NAME, SpawnPlugin::specta_builder::<R>()),

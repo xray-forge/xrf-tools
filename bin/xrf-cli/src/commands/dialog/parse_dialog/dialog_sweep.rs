@@ -4,17 +4,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use walkdir::WalkDir;
-use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase};
+use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-
-const DIALOG_EXTENSION: &str = "xml";
-
-/// Files whose name marks them as dialog data.
-///
-/// A gameplay directory holds `info_*.xml` and `npc_profile*.xml` beside the dialogs, and every one
-/// of them is XML, so the extension alone would sweep files this reader does not model.
-const DIALOG_FILE_PREFIX: &str = "dialog";
 
 /// What a sweep counted, beside what it found.
 ///
@@ -131,37 +122,14 @@ impl<'a> DialogSweep<'a> {
 
   /// Every dialog file the sweep covers: one named file, or every dialog XML under a directory.
   ///
-  /// A named file is taken as given, so a caller can read a file this would not have picked up.
+  /// Discovery belongs to the crate, so the sweep and a project open agree on what a dialog file is.
+  /// A named file is taken as given, so a caller can read a file the filter would not have picked up.
   fn dialog_paths(&self) -> Vec<PathBuf> {
     if self.root.is_file() {
       return vec![self.root.to_path_buf()];
     }
 
-    let mut paths: Vec<PathBuf> = WalkDir::new(self.root)
-      .into_iter()
-      .filter_map(Result::ok)
-      .filter(|entry| entry.file_type().is_file())
-      .map(|entry| entry.into_path())
-      .filter(|path| Self::is_dialog_file(path))
-      .collect();
-
-    // `WalkDir` order depends on the filesystem, and a report is only comparable across runs and
-    // machines if the files entered it in the same order.
-    paths.sort();
-
-    paths
-  }
-
-  fn is_dialog_file(path: &Path) -> bool {
-    let is_xml: bool = path
-      .extension()
-      .is_some_and(|it| it.eq_ignore_ascii_case(DIALOG_EXTENSION));
-
-    is_xml
-      && path
-        .file_name()
-        .and_then(|it| it.to_str())
-        .is_some_and(|name| name.to_ascii_lowercase().starts_with(DIALOG_FILE_PREFIX))
+    DialogProject::list_dialog_paths(self.root)
   }
 
   fn census_file(census: &mut DialogSweepCensus, file: &DialogFile) {

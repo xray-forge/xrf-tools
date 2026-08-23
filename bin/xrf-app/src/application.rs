@@ -7,6 +7,7 @@ use crate::core::webview_extensions::DevExtensions;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
+use crate::plugins::dialogs::plugin::DialogsPlugin;
 use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
@@ -23,6 +24,7 @@ pub fn run() {
     // Custom plugins.
     .plugin(AssetsPlugin::init())
     .plugin(ArchivesPlugin::init())
+    .plugin(DialogsPlugin::init())
     .plugin(ExportsPlugin::init())
     .plugin(SpawnPlugin::init())
     .plugin(ConfigsPlugin::init())

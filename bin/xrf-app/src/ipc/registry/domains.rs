@@ -33,6 +33,12 @@ macro_rules! for_each_tauri_command_domain {
         format_directory => crate::plugins::configs::commands::format_directory::configs_format_directory,
         verify_directory => crate::plugins::configs::commands::verify_directory::configs_verify_directory,
       }
+      dialogs => "dialogs" {
+        close_project => crate::plugins::dialogs::commands::close_project::dialogs_close_project,
+        detect_mode => crate::plugins::dialogs::commands::detect_mode::dialogs_detect_mode,
+        get_project => crate::plugins::dialogs::commands::get_project::dialogs_get_project,
+        open_project => crate::plugins::dialogs::commands::open_project::dialogs_open_project,
+      }
       exports => "exports" {
         close_project => crate::plugins::exports::commands::close_project::exports_close_project,
         open_project => crate::plugins::exports::commands::open_project::exports_open_project,

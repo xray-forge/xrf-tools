@@ -30,6 +30,7 @@ xrf-archive = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-dialog = { workspace = true }
 xrf-error = { workspace = true }
 xrf-export = { workspace = true }
 xrf-ltx = { workspace = true }
@@ -54,6 +55,7 @@ typescript-bindings = [
     "xrf-archive/typescript-bindings",
     "xrf-vfs/typescript-bindings",
     "xrf-db/typescript-bindings",
+    "xrf-dialog/typescript-bindings",
     "xrf-error/typescript-bindings",
     "xrf-export/typescript-bindings",
     "xrf-ltx/typescript-bindings",

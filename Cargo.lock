@@ -6813,6 +6813,7 @@ dependencies = [
  "xrf-archive",
  "xrf-db",
  "xrf-dds",
+ "xrf-dialog",
  "xrf-error",
  "xrf-export",
  "xrf-ltx",
@@ -6921,7 +6922,11 @@ dependencies = [
 name = "xrf-dialog"
 version = "0.1.0"
 dependencies = [
+ "indexmap 2.14.0",
  "log",
+ "serde",
+ "specta",
+ "walkdir",
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",

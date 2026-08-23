@@ -31,6 +31,7 @@
     "assets:default",
     "archives:default",
     "configs:default",
+    "dialogs:default",
     "exports:default",
     "equipment-icons:default",
     "spawn:default",

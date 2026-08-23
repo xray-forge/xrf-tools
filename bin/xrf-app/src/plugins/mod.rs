@@ -7,6 +7,7 @@
 pub mod archives;
 pub mod assets;
 pub mod configs;
+pub mod dialogs;
 pub mod equipment_icons;
 pub mod exports;
 pub mod spawn;

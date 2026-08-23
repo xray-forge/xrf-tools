@@ -19,6 +19,7 @@ use crate::phrase::DialogPhrase;
 /// The source travels with the model on purpose. Every range a dialog or phrase reports is a byte
 /// offset into this exact string, so an edit splices what was actually on disk, keeping the comment
 /// banners and indentation that re-serializing would drop.
+#[derive(Debug)]
 pub struct DialogFile {
   source: String,
   dialogs: Vec<Dialog>,
