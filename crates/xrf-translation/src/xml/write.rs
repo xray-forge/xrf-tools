@@ -9,7 +9,7 @@ use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_tex
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
 use crate::staged_write::write_file_staged;
-use crate::xml::encoding::read_decoded;
+use crate::xml::encoding::{DecodedTranslation, read_decoded};
 use crate::xml::layout::{XmlLayout, removal_range};
 
 /// Apply edits to one string table file, leaving every untouched byte as it was found.
@@ -28,10 +28,11 @@ pub fn apply_edits(path: &Path, edits: &[TranslationEdit]) -> XrfResult {
     return Ok(());
   }
 
-  let (mark, encoding, source) = read_decoded(path)?;
-  let edited: String = splice_edits(path, source, edits, encoding)?;
+  let decoded: DecodedTranslation = read_decoded(path)?;
+  let encoding: XRayEncoding = decoded.encoding;
+  let edited: String = splice_edits(path, decoded.text, edits, encoding)?;
 
-  let mut written: Vec<u8> = mark.clone();
+  let mut written: Vec<u8> = decoded.byte_order_mark;
 
   written.extend(encode_string_to_bytes(&edited, encoding)?);
 

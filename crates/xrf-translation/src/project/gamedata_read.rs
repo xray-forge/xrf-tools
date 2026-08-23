@@ -57,7 +57,7 @@ pub fn read_gamedata<P: AsRef<Path>>(root: P) -> XrfResult<TranslationProjectDes
     if let Some(encoding) = names
       .first()
       .and_then(|name| read_decoded(&directory.join(name)).ok())
-      .map(|(_, encoding, _)| encoding.name().to_lowercase())
+      .map(|decoded| decoded.encoding.name().to_lowercase())
     {
       descriptor.encodings.insert(language.clone(), encoding);
     }
@@ -144,7 +144,7 @@ fn discover_languages(root: &Path, findings: &mut Vec<TranslationFinding>) -> Xr
     if TranslationLanguage::from_str_single(&name).is_err() {
       findings.push(TranslationFinding::new(
         "translations.unknown-language",
-        Some(to_portable_path_string(&entry.path())),
+        Some(to_portable_path_string(entry.path())),
         format!("'{name}' is a language the game loads but XRF does not build"),
       ));
     }

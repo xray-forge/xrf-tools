@@ -110,7 +110,11 @@ pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> Xr
 /// Returns an IO error when a source cannot be read or a target cannot be written.
 pub fn build_xml_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult {
   let path_display: Display = path.as_ref().display();
-  let locale: Option<TranslationLanguage> = TranslationLanguage::from_file_name(path.as_ref());
+  let locale: Option<TranslationLanguage> = path
+    .as_ref()
+    .file_name()
+    .and_then(|it| it.to_str())
+    .and_then(TranslationLanguage::from_file_name);
 
   if let Some(locale) = locale {
     xrf_output::info!(options.output, "Building XML based translations {path_display}");

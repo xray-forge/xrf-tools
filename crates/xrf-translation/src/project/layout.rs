@@ -30,7 +30,13 @@ pub fn detect_mode(root: &Path) -> TranslationProjectMode {
     if path.is_file() {
       match path.extension().and_then(|extension| extension.to_str()) {
         Some(json::FILE_EXTENSION) => return TranslationProjectMode::Source,
-        Some(xml::FILE_EXTENSION) if TranslationLanguage::from_file_name(&path).is_some() => {
+        Some(xml::FILE_EXTENSION)
+          if path
+            .file_name()
+            .and_then(|it| it.to_str())
+            .and_then(TranslationLanguage::from_file_name)
+            .is_some() =>
+        {
           return TranslationProjectMode::Source;
         }
         _ => {}

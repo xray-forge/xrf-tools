@@ -107,8 +107,11 @@ fn merge_xml(root: &Path, path: &Path, descriptor: &mut TranslationProjectDescri
 
   // No language suffix means the build copies this file to every language, so presenting it as
   // English - which a filename fallback would do - would show a change to all of them as one.
-  let language: String =
-    TranslationLanguage::from_file_name(path).map_or_else(|| LANGUAGE_NEUTRAL.to_owned(), |locale| locale.to_string());
+  let language: String = path
+    .file_name()
+    .and_then(|it| it.to_str())
+    .and_then(TranslationLanguage::from_file_name)
+    .map_or_else(|| LANGUAGE_NEUTRAL.to_owned(), |locale| locale.to_string());
 
   let entries: Vec<(String, String)> = match read_string_table(path) {
     Ok(entries) => entries,

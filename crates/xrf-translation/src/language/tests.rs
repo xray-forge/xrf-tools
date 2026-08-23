@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::str::FromStr;
 
 use xrf_utils::{new_windows1250_encoder, new_windows1252_encoder};
@@ -46,25 +45,23 @@ fn selects_the_xray_encoding_for_each_language() {
 
 #[test]
 fn reads_the_language_off_a_source_filename() {
+  // A name rather than a path, so a caller in either path domain asks the same question.
   assert_eq!(
-    TranslationLanguage::from_file_name(Path::new("translations/dialogs.ukr.xml")),
+    TranslationLanguage::from_file_name("dialogs.ukr.xml"),
     Some(TranslationLanguage::Ukrainian)
   );
   // No suffix is not English, it is no language at all: the build copies such a file everywhere.
-  assert_eq!(TranslationLanguage::from_file_name(Path::new("example.xml")), None);
-  assert_eq!(TranslationLanguage::from_file_name(Path::new("dialogs.all.xml")), None);
+  assert_eq!(TranslationLanguage::from_file_name("example.xml"), None);
+  assert_eq!(TranslationLanguage::from_file_name("dialogs.all.xml"), None);
 }
 
 #[test]
 fn reads_the_language_off_a_gamedata_directory() {
   assert_eq!(
-    TranslationLanguage::from_parent_directory(Path::new("configs/text/rus/st_dialogs.xml")),
+    TranslationLanguage::from_directory_name("rus"),
     Some(TranslationLanguage::Russian)
   );
-  assert_eq!(
-    TranslationLanguage::from_parent_directory(Path::new("configs/text/cze/st_dialogs.xml")),
-    None
-  );
+  assert_eq!(TranslationLanguage::from_directory_name("cze"), None);
 }
 
 #[test]

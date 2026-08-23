@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::str::FromStr;
 
 use derive_more::Display;
@@ -90,8 +89,11 @@ impl TranslationLanguage {
   }
 
   /// Read the language off a `name.eng.xml` style filename, which is how sources carry it.
-  pub(crate) fn from_file_name(path: &Path) -> Option<Self> {
-    let file_name: &str = path.file_name()?.to_str()?;
+  ///
+  /// Takes the name rather than a path, because the two path domains spell a path differently and the
+  /// rule is about neither: an engine identity is `\`-separated where a host path is not, so
+  /// `Path::file_name` on an engine path answers the whole path on Linux.
+  pub(crate) fn from_file_name(file_name: &str) -> Option<Self> {
     let mut parts = file_name.rsplit('.');
 
     parts.next()?;
@@ -99,10 +101,9 @@ impl TranslationLanguage {
     Self::from_str_single(parts.next()?).ok()
   }
 
-  /// Read the language off a `text/rus/st_dialogs.xml` parent directory, which is how gamedata
-  /// carries it.
-  pub(crate) fn from_parent_directory(path: &Path) -> Option<Self> {
-    Self::from_str_single(path.parent()?.file_name()?.to_str()?).ok()
+  /// Read the language off the `rus` of a `text/rus/st_dialogs.xml`, which is how gamedata carries it.
+  pub(crate) fn from_directory_name(directory_name: &str) -> Option<Self> {
+    Self::from_str_single(directory_name).ok()
   }
 }
 

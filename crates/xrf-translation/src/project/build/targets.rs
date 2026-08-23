@@ -106,7 +106,11 @@ pub(crate) fn target_languages_for_source(path: &Path, options: &ProjectBuildOpt
         vec![options.language]
       }
     }
-    Some(xml::FILE_EXTENSION) => match TranslationLanguage::from_file_name(path) {
+    Some(xml::FILE_EXTENSION) => match path
+      .file_name()
+      .and_then(|it| it.to_str())
+      .and_then(TranslationLanguage::from_file_name)
+    {
       Some(locale) if options.language == TranslationLanguage::All || options.language == locale => vec![locale],
       Some(_) => Vec::new(),
       None if options.language == TranslationLanguage::All => TranslationLanguage::get_all(),
