@@ -21,7 +21,16 @@ args = ["fmt", "--all", "--", "--check"]
 description = "Lint rust codebase with clippy tool."
 workspace = false
 command = "cargo"
-args = ["clippy"]
+args = [
+  "clippy",
+  "--workspace",
+  "--all-targets",
+  "--features",
+  "xrf-app/typescript-bindings",
+  "--",
+  "-D",
+  "warnings",
+]
 
 [tasks.build-cli]
 description = "Build CLI application in debug mode."

@@ -34,6 +34,9 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+      - name: Run linter
+        run: cargo clippy --workspace --all-targets --features xrf-app/typescript-bindings -- -D warnings
+
       - name: Run workspace tests and verify frontend bindings
         run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
