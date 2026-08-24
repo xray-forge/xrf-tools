@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
 import {
@@ -135,7 +135,7 @@ export class SpawnFileService {
       this.isOpen = isOpen;
 
       if (isOpen) {
-        yield* call(this.loadPath());
+        yield* this.loadPath();
         yield* this.fetchChunk("header", spawnCommands.getHeader);
       }
     } catch (error: unknown) {
@@ -354,11 +354,9 @@ export class SpawnFileService {
     }
   }
 
-  private async loadPath(): Promise<void> {
+  private *loadPath(): TFlow {
     try {
-      const path: Nullable<string> = await spawnCommands.getPath();
-
-      runInAction(() => (this.path = path));
+      this.path = yield* call(spawnCommands.getPath());
     } catch (error: unknown) {
       // The path only names what is open, so failing to read it must not look like a failure to open.
       this.log.error("Failed to read spawn file path:", error);

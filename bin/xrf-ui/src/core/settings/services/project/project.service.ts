@@ -1,9 +1,10 @@
 import { exists } from "@tauri-apps/plugin-fs";
-import { Injectable, OnDeprovision, OnProvision, ProvisionId, WireStatus } from "@wirestate/core";
-import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
+import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
+import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
@@ -13,23 +14,31 @@ export class ProjectService {
   @Observable()
   public xrfProjectPath: Nullable<string> = null;
 
-  public constructor(private readonly status: WireStatus = WireStatus.track(this)) {}
-
   @OnProvision()
-  public onProvision(provisionId: ProvisionId): void {
+  public async onProvision(provisionId: ProvisionId): Promise<void> {
     this.log.info("Provisioning:", provisionId);
 
-    this.getXrfProjectPath().then((path) => {
-      if (provisionId === this.status.provisionId) {
-        this.log.info("Loaded getXrfProjectPath:", path);
-        runInAction(() => (this.xrfProjectPath = path));
-      }
-    });
+    await flowResult(this.restore());
   }
 
   @OnDeprovision()
   public onDeprovision(provisionId: ProvisionId): void {
     this.log.info("Deprovisioning:", provisionId);
+  }
+
+  /**
+   * Reads back the path this project was last pointed at.
+   *
+   * Exclusive so a second provisioning joins the read in flight rather than issuing another, and so a path the user
+   * sets meanwhile is not overwritten by an answer that was already on its way.
+   */
+  @ExclusiveFlow("xrfProjectPath")
+  private *restore(): TFlow {
+    const path: Nullable<string> = yield* call(this.getXrfProjectPath());
+
+    this.log.info("Loaded getXrfProjectPath:", path);
+
+    this.xrfProjectPath = path;
   }
 
   @BoundAction()

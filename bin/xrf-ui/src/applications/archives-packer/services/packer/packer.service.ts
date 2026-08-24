@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { archivesCommands } from "@/core/bindings/commands/archives";
@@ -146,10 +146,11 @@ export class PackerService {
   /**
    * Reads the packing defaults the backend reports.
    *
-   * Exclusive rather than latest: an import the user started owns the configuration, and a defaults read that has not
-   * finished must join that rather than land on top of it. `importConfig` takes the lane the other way round.
+   * Exclusive rather than latest: an operation the user started owns the packer, and a defaults read that has not
+   * finished must join it rather than land on top. Every user operation takes the lane the other way round, which
+   * is the same mutual exclusion `isBusy` reports to the form.
    */
-  @ExclusiveFlow("config")
+  @ExclusiveFlow("isBusy")
   private *restore(): TFlow {
     try {
       this.config = yield* call(archivesCommands.defaultPackConfig());
@@ -194,7 +195,7 @@ export class PackerService {
    *
    * @param path - Configuration file to read.
    */
-  @LatestFlow("config")
+  @LatestFlow("isBusy")
   public *importConfig(path: string): TFlow {
     if (!this.config) {
       return;
@@ -231,8 +232,8 @@ export class PackerService {
    *
    * @param path - Configuration file to write.
    */
-  @BoundAction()
-  public async exportConfig(path: string): Promise<void> {
+  @LatestFlow("isBusy")
+  public *exportConfig(path: string): TFlow {
     const config: Nullable<ArchivePackConfig> = this.config;
 
     if (!config) {
@@ -247,14 +248,12 @@ export class PackerService {
     this.error = null;
 
     try {
-      await archivesCommands.exportPackConfig(path, config);
+      yield* call(archivesCommands.exportPackConfig(path, config));
 
       this.log.info("Config exported in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => {
-        this.configPath = path;
-        this.savedState = toSavedState(config);
-      });
+      this.configPath = path;
+      this.savedState = toSavedState(config);
 
       emitNotification(this.eventBus, {
         details: path,
@@ -265,9 +264,9 @@ export class PackerService {
     } catch (error: unknown) {
       this.log.error("Export error after:", formatDuration(timer.elapsed()), error);
 
-      runInAction(() => (this.error = transformError(error).message));
+      this.error = transformError(error).message;
     } finally {
-      runInAction(() => (this.isBusy = false));
+      this.isBusy = false;
     }
   }
 
@@ -279,8 +278,8 @@ export class PackerService {
    *
    * @param config - Configuration with the source and destination filled in.
    */
-  @BoundAction()
-  public async pack(config: ArchivePackConfig): Promise<void> {
+  @LatestFlow("isBusy")
+  public *pack(config: ArchivePackConfig): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Packing:", config.source);
@@ -290,11 +289,11 @@ export class PackerService {
     this.error = null;
 
     try {
-      const packed: ArchivePackResult = await archivesCommands.packDirectory(config);
+      const packed: ArchivePackResult = yield* call(archivesCommands.packDirectory(config));
 
       this.log.info("Packed in:", formatDuration(timer.elapsed()), `(backend ${formatDuration(packed.duration)})`);
 
-      runInAction(() => (this.result = packed));
+      this.result = packed;
 
       emitNotification(this.eventBus, {
         details: `${config.source}\n${config.destination}`,
@@ -307,7 +306,7 @@ export class PackerService {
 
       this.log.error("Pack error after:", formatDuration(timer.elapsed()), transformed);
 
-      runInAction(() => (this.error = transformed.message));
+      this.error = transformed.message;
 
       emitNotification(this.eventBus, {
         details: `${config.source}\n${transformed.message}`,
@@ -316,7 +315,7 @@ export class PackerService {
         title: "Could not pack archives",
       });
     } finally {
-      runInAction(() => (this.isBusy = false));
+      this.isBusy = false;
     }
   }
 }

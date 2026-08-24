@@ -1,6 +1,7 @@
 import { default as SaveIcon } from "@mui/icons-material/Save";
 import { default as UndoIcon } from "@mui/icons-material/Undo";
 import { IconButton, Tooltip } from "@mui/material";
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -19,7 +20,7 @@ export function TranslationsEditorActions(): ReactElement {
     // Sequential rather than concurrent: each save re-reads the project, so overlapping them would
     // race the descriptor every one of them returns.
     for (const file of translationsService.dirtyFiles) {
-      if (!(await translationsService.saveFile(file))) {
+      if (!(await flowResult(translationsService.saveFile(file)))) {
         return;
       }
     }

@@ -3,7 +3,7 @@ import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
@@ -19,7 +19,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { all, call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 export interface IEquipmentPngDescriptor {
@@ -104,7 +104,7 @@ export class EquipmentService {
 
     this.spriteImage = createLoadable(spriteImage);
 
-    yield* call(this.resolveRepackSource(spriteImage.path));
+    yield* this.resolveRepackSource(spriteImage.path);
   }
 
   @BoundAction()
@@ -143,7 +143,7 @@ export class EquipmentService {
 
       this.spriteImage = createLoadable(spriteImage);
 
-      yield* call(this.resolveRepackSource(spriteImage.path));
+      yield* this.resolveRepackSource(spriteImage.path);
     } catch (error) {
       this.log.error("Failed to open equipment editor project:", error);
 
@@ -183,7 +183,7 @@ export class EquipmentService {
 
       this.spriteImage = createLoadable(spriteImage);
 
-      yield* call(this.resolveRepackSource(spriteImage.path));
+      yield* this.resolveRepackSource(spriteImage.path);
     } catch (error) {
       this.log.error("Failed to reopen equipment editor project:", error);
 
@@ -252,20 +252,19 @@ export class EquipmentService {
    * @returns Resolves whether an unpacked sibling directory is available.
    */
   @BoundAction()
-  public async resolveRepackSource(spritePath: string): Promise<void> {
+  public *resolveRepackSource(spritePath: string): TFlow {
     try {
-      const sourcePath: string = await path.join(
-        await path.dirname(spritePath),
-        await path.basename(spritePath, await path.extname(spritePath))
-      );
+      // The directory does not depend on the extension, so both go out together rather than one after the other.
+      const [directory, extension] = yield* all([path.dirname(spritePath), path.extname(spritePath)] as const);
+      const name: string = yield* call(path.basename(spritePath, extension));
+      const sourcePath: string = yield* call(path.join(directory, name));
+      const isPresent: boolean = yield* call(exists(sourcePath));
 
-      const isPresent: boolean = await exists(sourcePath);
-
-      runInAction(() => (this.repackSourcePath = isPresent ? sourcePath : null));
+      this.repackSourcePath = isPresent ? sourcePath : null;
     } catch (error) {
       this.log.error("Failed to resolve repack source directory:", error);
 
-      runInAction(() => (this.repackSourcePath = null));
+      this.repackSourcePath = null;
     }
   }
 

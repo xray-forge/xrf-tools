@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { translationsCommands } from "@/core/bindings/commands/translations";
 import {
@@ -194,8 +194,8 @@ ${transformError(error).message}`,
    * The refreshed descriptor comes back from the write rather than being patched in here: a save can
    * add or drop entries, and what is on disk is the only version worth showing.
    */
-  @BoundAction()
-  public async saveFile(file: string): Promise<boolean> {
+  @LatestFlow("project")
+  public *saveFile(file: string): TFlow<boolean> {
     const pending: Record<string, Record<string, TPendingValue>> | undefined = this.edits[file];
 
     if (!pending) {
@@ -217,15 +217,13 @@ ${transformError(error).message}`,
       ])
     );
 
-    runInAction(() => (this.savingFile = file));
+    this.savingFile = file;
 
     try {
-      const response: TranslationProjectDescriptor = await translationsCommands.saveFile(file, edits);
+      const response: TranslationProjectDescriptor = yield* call(translationsCommands.saveFile(file, edits));
 
-      runInAction(() => {
-        this.project = createLoadable(response);
-        this.savingFile = null;
-      });
+      this.project = createLoadable(response);
+      this.savingFile = null;
 
       // Only cleared once the write came back: a failed save has to leave the work where it was.
       this.discardFile(file);
@@ -234,7 +232,7 @@ ${transformError(error).message}`,
     } catch (error) {
       this.log.error("Failed to save translations file:", error);
 
-      runInAction(() => (this.savingFile = null));
+      this.savingFile = null;
 
       emitNotification(this.eventBus, {
         details: `${file}\n${transformError(error).message}`,
