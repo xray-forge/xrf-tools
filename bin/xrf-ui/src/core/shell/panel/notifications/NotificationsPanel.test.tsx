@@ -1,13 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container, EventsPlugin } from "@wirestate/core";
+import { Container } from "@wirestate/core";
 
 import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
 import { EApplicationId } from "@/core/routing/application";
 import { SettingsService } from "@/core/settings/services/settings";
 import { NotificationsPanel } from "@/core/shell/panel/notifications/NotificationsPanel";
+import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 interface IPanelRender {
@@ -23,10 +24,7 @@ interface IPanelRender {
  * @returns Render result and the notifications service used by the panel.
  */
 function renderPanel(seed: Array<INotificationPayload> = [], isDevModeEnabled: boolean = false): IPanelRender {
-  const container: Container = new Container({
-    bindings: [NotificationsService, SettingsService],
-    plugins: [new EventsPlugin()],
-  });
+  const container: Container = mockContainer([NotificationsService, SettingsService]);
   const service: NotificationsService = container.get(NotificationsService);
   const settingsService: SettingsService = container.get(SettingsService);
 

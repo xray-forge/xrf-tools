@@ -3,12 +3,12 @@ import { CacheProvider } from "@emotion/react";
 import { GlobalStyles } from "@mui/material";
 import { default as CssBaseline } from "@mui/material/CssBaseline";
 import { Theme, ThemeProvider } from "@mui/material/styles";
-import { ContainerConfig, EventsPlugin } from "@wirestate/core";
-import { DevToolsPlugin } from "@wirestate/core/devtools";
+import { ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
 import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 
+import { createContainerPlugins } from "@/core/container";
 import { ErrorCaptureService, NotificationsService } from "@/core/notifications/services";
 import { ProjectService } from "@/core/settings/services/project";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -31,7 +31,7 @@ export function ApplicationProvider({
   const config: Nullable<ContainerConfig> = useMemo(
     () => ({
       bindings: [ProjectService, SettingsService, NotificationsService, ErrorCaptureService],
-      plugins: [new EventsPlugin(), ...(isDevelopmentBuild() ? [new DevToolsPlugin()] : [])],
+      plugins: createContainerPlugins(isDevelopmentBuild()),
     }),
     []
   );

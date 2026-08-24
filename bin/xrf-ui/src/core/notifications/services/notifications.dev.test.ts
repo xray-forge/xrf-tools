@@ -1,25 +1,16 @@
 import { describe, expect, it } from "@jest/globals";
-import { Container } from "@wirestate/core";
 import { autorun, IReactionDisposer } from "@wirestate/mobx";
 
 import { ENotificationSeverity, INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
 import { EApplicationId } from "@/core/routing/application";
+import { mockInjectedService } from "@/fixtures/utils/container";
 
 const SOURCE: EApplicationId = EApplicationId.EQUIPMENT_ICONS_EDITOR;
 
-/**
- * Create an isolated notification service for developer trace tests.
- *
- * @returns Notification service under test.
- */
-function mockService(): NotificationsService {
-  return new Container({ bindings: [NotificationsService] }).get(NotificationsService);
-}
-
 describe("NotificationsService dev traces", () => {
   it("keeps traces out of the list real outcomes live in", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.DEV, source: SOURCE, title: "grid recomputed" });
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "Pack failed" });
@@ -29,7 +20,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("records traces whatever the dev mode switch says, so it can be turned on afterwards", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.DEV, source: SOURCE, title: "grid recomputed" });
 
@@ -38,7 +29,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("gives traces their own budget, so a chatty one cannot evict a real outcome", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "Pack failed" });
 
@@ -51,7 +42,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("leaves the badge alone, so traces cannot keep it permanently lit", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.DEV, source: SOURCE, title: "grid recomputed" });
 
@@ -60,7 +51,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("merges both lists into one chronology for the dev mode reading", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "first" });
     service.push({ severity: ENotificationSeverity.DEV, source: SOURCE, title: "second" });
@@ -70,7 +61,8 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("tracks both lists, so the panel re-renders whichever one changed", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
+
     const seen: Array<number> = [];
 
     const dispose: IReactionDisposer = autorun(() => seen.push(service.allNotifications.length));
@@ -84,7 +76,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("hands back one array until something changes, rather than re-sorting per read", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "Pack failed" });
 
@@ -104,7 +96,7 @@ describe("NotificationsService dev traces", () => {
   });
 
   it("clears both lists at once", () => {
-    const service: NotificationsService = mockService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.DEV, source: SOURCE, title: "trace" });
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "Pack failed" });

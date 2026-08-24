@@ -5,6 +5,7 @@ import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Nullable } from "@/lib/types/general";
 
 const FRAMES: number = 3;
 const BONES: number = 2;
@@ -84,6 +85,29 @@ describe("VisualMotionService", () => {
 
     expect(service.motions.value).toEqual(["norm_walk_fwd_1"]);
     expect(calls).toBe(1);
+  });
+
+  it("does not repopulate motions listed for a model that was cleared mid-flight", async () => {
+    const listing: { resolve: Nullable<(names: Array<string>) => void> } = { resolve: null };
+
+    setMockInvokeResponses({
+      ["plugin:visuals|list_motions"]: () =>
+        new Promise<Array<string>>((resolve) => {
+          listing.resolve = resolve;
+        }),
+    });
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    // The list is in flight when the model it names goes away, which is what opening another model does.
+    const listed: Promise<void> = service.list() as unknown as Promise<void>;
+
+    service.clear();
+    listing.resolve?.(["norm_walk_fwd_1"]);
+
+    await listed;
+
+    expect(service.motions.value).toEqual([]);
   });
 
   it("poses a motion and starts it playing", async () => {

@@ -1,22 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
-import { Container, EventBus, EventsPlugin } from "@wirestate/core";
+import { Container, EventBus } from "@wirestate/core";
 
 import { emitNotification, ENotificationSeverity, INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
 import { EApplicationId } from "@/core/routing/application";
-
-/**
- * Create an isolated notification service for unit tests.
- *
- * @returns Notification service under test.
- */
-function createService(): NotificationsService {
-  return new Container({ bindings: [NotificationsService] }).get(NotificationsService);
-}
+import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 describe("NotificationsService", () => {
   it("stamps a record and keeps the newest first", () => {
-    const service: NotificationsService = createService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.SUCCESS, source: EApplicationId.ARCHIVES_EXPLORER, title: "First" });
     service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Second" });
@@ -27,7 +19,7 @@ describe("NotificationsService", () => {
   });
 
   it("drops the oldest record rather than growing without bound", () => {
-    const service: NotificationsService = createService();
+    const { service } = mockInjectedService(NotificationsService);
 
     for (let it = 0; it <= NotificationsService.LIMIT; it += 1) {
       service.push({
@@ -43,7 +35,7 @@ describe("NotificationsService", () => {
   });
 
   it("badges the most urgent unread severity, not the newest one", () => {
-    const service: NotificationsService = createService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" });
     service.push({
@@ -57,7 +49,7 @@ describe("NotificationsService", () => {
   });
 
   it("has nothing to badge once everything is read", () => {
-    const service: NotificationsService = createService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" });
     service.markAllRead();
@@ -69,7 +61,7 @@ describe("NotificationsService", () => {
   });
 
   it("clears everything on request", () => {
-    const service: NotificationsService = createService();
+    const { service } = mockInjectedService(NotificationsService);
 
     service.push({
       severity: ENotificationSeverity.INFO,
@@ -82,10 +74,7 @@ describe("NotificationsService", () => {
   });
 
   it("records what the event bus delivers, which is how every editor reaches it", () => {
-    const container: Container = new Container({
-      bindings: [NotificationsService],
-      plugins: [new EventsPlugin()],
-    });
+    const container: Container = mockContainer([NotificationsService]);
 
     container.provision();
 

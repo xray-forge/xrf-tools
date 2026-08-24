@@ -83,6 +83,8 @@ export default [
       "jsdoc/require-param-type": "off",
       "jsdoc/require-returns": "off",
       "jsdoc/require-returns-type": "off",
+      "jsdoc/require-yields": "off",
+      "jsdoc/require-yields-type": "off",
       "array-element-newline": ["error", "consistent"],
       "arrow-parens": ["error", "always"],
       "arrow-spacing": "error",

@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
@@ -7,6 +7,7 @@ import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, cancelFlows, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -37,9 +38,6 @@ export class VisualMotionService {
   public static readonly SAMPLE_FPS: number = 30;
 
   public readonly log: Logger = new Logger(this.constructor.name);
-
-  /** Discards a motion whose bytes arrive after the user picked another. */
-  private requestId: number = 0;
 
   private ticker: Nullable<ReturnType<typeof setInterval>> = null;
 
@@ -92,10 +90,6 @@ export class VisualMotionService {
     return this.posed.value?.bake.floatsPerBone ?? 0;
   }
 
-  public constructor() {
-    makeObservable(this);
-  }
-
   /** Stops the ticker when the application goes away, so a hidden viewer is not still animating. */
   @OnDeactivation()
   public onDeactivation(): void {
@@ -103,30 +97,24 @@ export class VisualMotionService {
   }
 
   /** Lists what the open visual can play, once. */
-  @BoundAction()
-  public async list(): Promise<void> {
+  @LatestFlow()
+  public *list(): TFlow {
     if (this.motions.isLoading || this.motions.value?.length) {
       return;
     }
 
-    runInAction(() => {
-      this.motions = this.motions.asLoading();
-    });
+    this.motions = this.motions.asLoading();
 
     try {
-      const names: Array<string> = await visualsCommands.listMotions();
+      const names: Array<string> = yield* call(visualsCommands.listMotions());
 
-      runInAction(() => {
-        this.motions = this.motions.asReady(names);
-      });
+      this.motions = this.motions.asReady(names);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to list motions:", transformed);
 
-      runInAction(() => {
-        this.motions = this.motions.asFailed(transformed, []);
-      });
+      this.motions = this.motions.asFailed(transformed, []);
     }
   }
 
@@ -139,28 +127,21 @@ export class VisualMotionService {
    *
    * @param name - Motion to pose, as `list` reported it.
    */
-  @BoundAction()
-  public async open(name: string): Promise<void> {
+  @LatestFlow()
+  public *open(name: string): TFlow {
     const resume: boolean = this.isPlaying || !this.posed.value;
-    const request: number = runInAction(() => {
-      this.requestId += 1;
-      this.stopTicker();
-      // Cleared rather than left standing: `play` below is a no-op while this says playback is already running, which
-      // would leave the controls claiming to play a motion whose ticker was just stopped.
-      this.isPlaying = false;
-      this.posed = this.posed.asLoading();
-      this.frame = 0;
 
-      return this.requestId;
-    });
+    this.stopTicker();
+
+    // Cleared rather than left standing: `play` below is a no-op while this says playback is already running, which
+    // would leave the controls claiming to play a motion whose ticker was just stopped.
+    this.isPlaying = false;
+    this.posed = this.posed.asLoading(null);
+    this.frame = 0;
 
     try {
-      const bake: VisualMotionBake = await visualsCommands.openMotion(name);
-      const bytes: ArrayBuffer = await visualsRawCommands.readMotion(name);
-
-      if (request !== this.requestId) {
-        return this.log.info("Discarding a motion already moved past:", name);
-      }
+      const bake: VisualMotionBake = yield* call(visualsCommands.openMotion(name));
+      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(name));
 
       const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 
@@ -171,9 +152,7 @@ export class VisualMotionService {
         );
       }
 
-      runInAction(() => {
-        this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
-      });
+      this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
 
       if (resume) {
         this.play();
@@ -183,9 +162,7 @@ export class VisualMotionService {
 
       this.log.error(`Failed to pose motion '${name}':`, transformed);
 
-      runInAction(() => {
-        this.posed = this.posed.asFailed(transformed, null);
-      });
+      this.posed = this.posed.asFailed(transformed, null);
     }
   }
 
@@ -247,15 +224,13 @@ export class VisualMotionService {
    */
   @BoundAction()
   public clear(): void {
-    this.stopTicker();
+    cancelFlows(this);
 
-    runInAction(() => {
-      this.requestId += 1;
-      this.isPlaying = false;
-      this.frame = 0;
-      this.posed = createLoadable(null);
-      this.motions = createLoadable([]);
-    });
+    this.stopTicker();
+    this.isPlaying = false;
+    this.frame = 0;
+    this.posed = createLoadable(null);
+    this.motions = createLoadable([]);
   }
 
   /** One frame on, wrapping or stopping at the end depending on the loop toggle. */

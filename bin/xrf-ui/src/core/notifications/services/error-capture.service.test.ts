@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { Container, EventBus, EventsPlugin, WireEvent } from "@wirestate/core";
+import { Container, EventBus, WireEvent } from "@wirestate/core";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
+import { mockContainer } from "@/fixtures/utils/container";
 
 interface IWatchedCapture {
   container: Container;
@@ -16,10 +17,7 @@ interface IWatchedCapture {
  * @returns Provisionable container, service instance, and emitted payload collection.
  */
 function watchCapture(): IWatchedCapture {
-  const container: Container = new Container({
-    bindings: [ErrorCaptureService],
-    plugins: [new EventsPlugin()],
-  });
+  const container: Container = mockContainer([ErrorCaptureService]);
 
   const raised: Array<INotificationPayload> = [];
 

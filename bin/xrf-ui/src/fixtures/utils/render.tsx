@@ -1,11 +1,12 @@
 import { render, RenderResult } from "@testing-library/react";
-import { Container, ContainerConfig, EventsPlugin } from "@wirestate/core";
+import { Container, ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
 import { Fragment, PropsWithChildren, ReactElement, ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ApplicationProvider } from "@/ApplicationProvider";
+import { createContainerPlugins } from "@/core/container";
 import { NotificationsService } from "@/core/notifications/services";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
@@ -60,7 +61,7 @@ export function renderWithProviders(
 ): RenderResult {
   const config: ContainerConfig = {
     bindings: [NotificationsService, SettingsService, ...bindings],
-    plugins: [new EventsPlugin()],
+    plugins: createContainerPlugins(),
   };
 
   function TestRouter({ children }: PropsWithChildren): ReactElement {

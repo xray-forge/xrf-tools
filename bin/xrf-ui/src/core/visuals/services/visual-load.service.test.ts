@@ -91,6 +91,56 @@ describe("VisualLoadService", () => {
     expect(service.visual.isLoading).toBe(false);
   });
 
+  it("decodes and uploads nothing for a load abandoned while its textures were being read", async () => {
+    // The point of running the load as a flow: cancelling resumes the generator with a return completion, so the
+    // decode and the gpu upload below the last yield never happen. They used to happen in full and be disposed.
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+    const read: { resolve: Nullable<(bytes: ArrayBuffer) => void>; issued: Nullable<() => void> } = {
+      resolve: null,
+      issued: null,
+    };
+    const isRead: Promise<void> = new Promise<void>((resolve) => {
+      read.issued = resolve;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: () => {
+        read.issued?.();
+
+        return new Promise<ArrayBuffer>((resolve) => {
+          read.resolve = resolve;
+        });
+      },
+    });
+
+    const loading: Promise<void> = service.load(
+      { kind: "asset", logicalPath: ENTRY },
+      ROOTS
+    ) as unknown as Promise<void>;
+
+    // Waited for on purpose: cancelling before the read is issued would prove only that a flow can be stopped at its
+    // first yield. The case worth pinning is the one where the bytes are already on the wire.
+    await isRead;
+
+    service.clear();
+    read.resolve?.(mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }));
+
+    await loading;
+    // Drained deliberately: cancelling settles the flow at once, so anything that leaked past it lands after the
+    // await. Asserting straight away would pass on timing rather than on the work not happening.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(service.textures.size).toBe(0);
+    expect(service.textureStatuses.size).toBe(0);
+    expect(service.visual.value).toBeNull();
+  });
+
   it("reads each texture by the path the open resolved, in the roots it named", async () => {
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);

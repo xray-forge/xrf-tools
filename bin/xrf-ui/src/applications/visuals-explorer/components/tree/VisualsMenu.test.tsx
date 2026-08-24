@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
-import { Container, EventsPlugin } from "@wirestate/core";
+import { Container } from "@wirestate/core";
 
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
@@ -11,6 +11,7 @@ import { ProjectService } from "@/core/settings/services/project";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function mockLooseVisual(logicalPath: string): XrayAsset {
@@ -25,10 +26,13 @@ function mockArchivedVisual(logicalPath: string): XrayAsset {
 async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderResult; container: Container }> {
   setMockInvokeResponses({ ["plugin:assets|list_assets"]: visuals, ["plugin:visuals|get_model"]: null });
 
-  const container: Container = new Container({
-    bindings: [ProjectService, VisualLoadService, VisualMotionService, VisualsBrowseService, VisualsService],
-    plugins: [new EventsPlugin()],
-  });
+  const container: Container = mockContainer([
+    ProjectService,
+    VisualLoadService,
+    VisualMotionService,
+    VisualsBrowseService,
+    VisualsService,
+  ]);
 
   await container.get(VisualsBrowseService).openRoot("C:\\gamedata");
 
@@ -82,6 +86,7 @@ describe("VisualsMenu", () => {
       source: { kind: "asset", logicalPath: "meshes\\actors\\stalker.ogf" },
       roots: createRoots(["C:\\gamedata"]),
     });
-    expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry");
+
+    await waitFor(() => expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry"));
   });
 });
