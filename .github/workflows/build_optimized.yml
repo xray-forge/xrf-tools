@@ -45,7 +45,7 @@ jobs:
       # profile settings, so restoring them here would mean recompiling everything anyway.
       - uses: Swatinem/rust-cache@v2
         with:
-          key: optimized
+          key: optimized-${{ hashFiles('.github/workflows/build_optimized.yml') }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp
@@ -89,7 +89,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: optimized
+          key: optimized-${{ hashFiles('.github/workflows/build_optimized.yml') }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp
