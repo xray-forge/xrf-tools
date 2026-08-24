@@ -113,10 +113,9 @@ impl GamedataProject {
     let declarations: Vec<(String, String)> = descriptor_paths
       .par_iter()
       .filter_map(|relative_path| {
-        match self
-          .read_asset_chunks(relative_path)
-          .and_then(|mut chunks| ThmFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-        {
+        match self.read_parsed(AssetType::Thm, relative_path, |chunk| {
+          ThmFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+        }) {
           Ok(descriptor) => descriptor
             .used_bump_name()
             .map(|bump_name| (relative_path.clone(), bump_name.to_owned())),
@@ -168,6 +167,6 @@ impl GamedataProject {
     _options: &GamedataProjectVerifyOptions,
     logical_path: &str,
   ) -> XrfResult<bool> {
-    Ok(DdsFile::read_from_bytes(&self.read_asset(logical_path)?)?.is_xray_compatible())
+    Ok(DdsFile::read_from_bytes(&self.read_bytes(logical_path)?)?.is_xray_compatible())
   }
 }

@@ -120,23 +120,15 @@ impl GamedataProject {
 
   /// Reads an asset's bytes through the VFS, whether it is loose or inside an archive volume.
   ///
+  /// For content with no parsed form worth keeping — a Lua script's source, an xml document a check reads once. Anything
+  /// that becomes a typed value goes through [`Self::read_parsed`] instead, so retention is a policy question rather
+  /// than a per-call-site one.
+  ///
   /// # Errors
   ///
   /// Returns an error when nothing in scope holds the path, or the source cannot read it.
-  pub(crate) fn read_asset(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
-    self.vfs().scoped(&self.scope).read(logical_path)
-  }
-
-  /// Opens a chunk reader over an asset's bytes.
-  ///
-  /// The single way a check reads a chunked format, so none of them has to care whether the asset is loose or archived. An
-  /// archived entry has no file to slice, which is why this goes through bytes rather than a path.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the asset cannot be read or holds no chunk.
-  pub(crate) fn read_asset_chunks(&self, logical_path: &str) -> XrfResult<ChunkReader<InMemoryChunkDataSource>> {
-    ChunkReader::from_vec(self.read_asset(logical_path)?)
+  pub(crate) fn read_bytes(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
+    self.vfs().scoped(&self.scope).read_bytes(logical_path)
   }
 
   /// Reads and parses a chunked asset, serving what this project is already holding.
@@ -150,7 +142,7 @@ impl GamedataProject {
   ///
   /// Returns whatever reading the asset or parsing it answers with. A failure is not retained, so each caller of a
   /// broken asset reports the real error rather than a copy of the first one.
-  pub(crate) fn read_cached_asset<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
+  pub(crate) fn read_parsed<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
     F: FnOnce(&mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<T>,
@@ -158,7 +150,7 @@ impl GamedataProject {
     self
       .vfs()
       .scoped(&self.scope)
-      .read_cached(kind, logical_path, |bytes| parse(&mut ChunkReader::from_vec(bytes)?))
+      .read_parsed(kind, logical_path, |bytes| parse(&mut ChunkReader::from_vec(bytes)?))
   }
 
   /// Files any mount holds but cannot reach, because another file in the same mount claims their engine identity.
@@ -270,7 +262,7 @@ impl GamedataProject {
   ///
   /// Returns an error when no mount holds the asset's container, or the source cannot read it.
   pub(crate) fn read_resolved(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
-    self.vfs().read_asset(asset)
+    self.vfs().read_asset_bytes(asset)
   }
 
   /// Opens a chunk reader over an asset the project already resolved.

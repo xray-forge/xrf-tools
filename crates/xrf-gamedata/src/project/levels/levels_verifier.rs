@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use std::collections::BTreeSet;
 use std::time::Instant;
 
@@ -46,7 +48,7 @@ impl<'a> LevelsVerifier<'a> {
 
     findings.extend(reconciliation.verify(&roster, &bundles)?);
 
-    let shader_library: Option<ShaderLibraryFile> = LevelReferencesVerifier::read_library(self.project);
+    let shader_library: Option<Arc<ShaderLibraryFile>> = LevelReferencesVerifier::read_library(self.project);
 
     let mut checked_references_count: u32 = 0;
     let mut invalid_references_count: u32 = 0;
@@ -65,7 +67,7 @@ impl<'a> LevelsVerifier<'a> {
 
       if let Some(shaders) = &binaries.shaders {
         let references: LevelReferencesOutcome =
-          LevelReferencesVerifier::new(&bundle, shader_library.as_ref()).verify(shaders);
+          LevelReferencesVerifier::new(&bundle, shader_library.as_deref()).verify(shaders);
 
         checked_references_count += references.checked_count;
         invalid_references_count += references.invalid_count;

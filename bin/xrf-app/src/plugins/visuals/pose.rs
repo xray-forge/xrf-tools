@@ -83,7 +83,7 @@ fn located_assets(resolution: &XrayResolution) -> &[XrayAsset] {
 
 fn read_omf(probe: &XrayProbe, asset: &XrayAsset) -> TauriResult<OmfFile> {
   let bytes: Vec<u8> = probe
-    .read_asset(asset)
+    .read_asset_bytes(asset)
     .map_err(|error| format!("Failed to read '{}': {error}", asset.get_logical_path()))?;
 
   OmfFile::read_from_bytes::<XRayByteOrder>(bytes)

@@ -38,7 +38,7 @@ impl<'a> SoundFilesVerifier<'a> {
         xrf_output::verbose!(self.options.output, "Verify sound: {relative_path}");
 
         // Read through the VFS, so an archived sound is decoded rather than reported missing.
-        let bytes: Vec<u8> = match self.project.read_asset(relative_path) {
+        let bytes: Vec<u8> = match self.project.read_bytes(relative_path) {
           Ok(bytes) => bytes,
           Err(_) => {
             return Some(GamedataFindingFactory::for_asset(

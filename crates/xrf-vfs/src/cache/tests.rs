@@ -165,3 +165,25 @@ fn retains_nothing_under_an_empty_policy() {
 
   assert_eq!(cache.get_stats().entries, 0);
 }
+
+#[test]
+fn forgets_one_path_under_every_type_and_scope() {
+  let cache: XrayAssetCache = cache();
+  let narrowed: XrayLookupScope = XrayLookupScope::all().with_prefix("meshes").unwrap();
+
+  cache.insert(&scope(), "a.omf", XrayAssetType::Omf, 8, Arc::new(Parsed("whole")));
+  cache.insert(&scope(), "a.omf", XrayAssetType::Omf, 4, Arc::new(Projection(1)));
+  cache.insert(&narrowed, "a.omf", XrayAssetType::Omf, 8, Arc::new(Parsed("narrow")));
+  cache.insert(&scope(), "b.omf", XrayAssetType::Omf, 8, Arc::new(Parsed("other")));
+
+  // A write changes that path's bytes for anyone: every shape and every scope holding it has to go, because working out
+  // which scopes were serving the written mount needs a resolve each.
+  assert_eq!(cache.forget("a.omf"), 3);
+  assert!(cache.get::<Parsed>(&scope(), "a.omf").is_none());
+  assert!(cache.get::<Projection>(&scope(), "a.omf").is_none());
+  assert!(cache.get::<Parsed>(&narrowed, "a.omf").is_none());
+  assert_eq!(
+    cache.get::<Parsed>(&scope(), "b.omf").as_deref(),
+    Some(&Parsed("other"))
+  );
+}

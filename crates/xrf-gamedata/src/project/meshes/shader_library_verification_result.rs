@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_db::ShaderLibraryFile;
 
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
@@ -7,11 +9,11 @@ pub(crate) struct GamedataShaderLibraryVerificationResult {
   pub(crate) checked_count: u32,
   pub(crate) findings: Vec<Finding>,
   pub(crate) invalid_count: u32,
-  library: Option<ShaderLibraryFile>,
+  library: Option<Arc<ShaderLibraryFile>>,
 }
 
 impl GamedataShaderLibraryVerificationResult {
-  pub(crate) fn passed(library: ShaderLibraryFile) -> Self {
+  pub(crate) fn passed(library: Arc<ShaderLibraryFile>) -> Self {
     Self {
       blender_count: library.blenders_count(),
       checked_count: 1,
@@ -32,7 +34,7 @@ impl GamedataShaderLibraryVerificationResult {
   }
 
   pub(crate) fn library(&self) -> Option<&ShaderLibraryFile> {
-    self.library.as_ref()
+    self.library.as_deref()
   }
 }
 

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_db::{LevelShaderReference, LevelShadersChunk, ShaderLibraryFile};
 
 use crate::GamedataFindingFactory;
@@ -28,10 +30,13 @@ impl<'a> LevelReferencesVerifier<'a> {
   ///
   /// An absent or unreadable library is reported by the meshes check, so level shader names are
   /// simply left unresolved rather than reported twice.
-  pub(crate) fn read_library(project: &GamedataProject) -> Option<ShaderLibraryFile> {
+  pub(crate) fn read_library(project: &GamedataProject) -> Option<Arc<ShaderLibraryFile>> {
     project
-      .read_asset_chunks(xrf_vfs::XrayAssetType::SHADER_LIBRARY_PATH)
-      .and_then(|mut chunks| ShaderLibraryFile::read_from_chunk(&mut chunks))
+      .read_parsed(
+        xrf_vfs::XrayAssetType::Shader,
+        xrf_vfs::XrayAssetType::SHADER_LIBRARY_PATH,
+        ShaderLibraryFile::read_from_chunk,
+      )
       .ok()
   }
 

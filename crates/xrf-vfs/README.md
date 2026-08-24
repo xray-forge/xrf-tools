@@ -26,7 +26,7 @@ use xrf_vfs::{XrayMountMode, XrayVfs};
 
 # fn main() -> xrf_error::XrfResult {
 let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
-let bytes: Vec<u8> = vfs.read("configs\\system.ltx")?;
+let bytes: Vec<u8> = vfs.read_bytes("configs\\system.ltx")?;
 # Ok(())
 # }
 ```
@@ -82,7 +82,7 @@ let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
 
 if let Some(asset) = vfs.find("configs\\system.ltx")? {
   // Prefer read_asset once a lookup produced the asset: it reads from the mount that answered.
-  let bytes: Vec<u8> = vfs.read_asset(&asset)?;
+  let bytes: Vec<u8> = vfs.read_asset_bytes(&asset)?;
 
   // to_physical_path is None for an archived asset — reading must go through the VFS.
   println!("{} bytes from {:?}", bytes.len(), asset.to_physical_path());
@@ -148,7 +148,7 @@ let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
 
 // Only the configs subtree — a config project and an asset lookup share one VFS and differ only in scope.
 let configs: XrayLookupScope = XrayLookupScope::all().with_prefix("configs")?;
-let system: Vec<u8> = vfs.scoped(&configs).read("configs\\system.ltx")?;
+let system: Vec<u8> = vfs.scoped(&configs).read_bytes("configs\\system.ltx")?;
 
 // Other narrowings: only writable mounts, only named mounts, only one storage kind.
 let writable: XrayLookupScope = XrayLookupScope::writable();

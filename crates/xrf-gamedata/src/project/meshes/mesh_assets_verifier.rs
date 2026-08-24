@@ -52,11 +52,9 @@ impl<'a> MeshAssetsVerifier<'a> {
         // Read through the VFS, so a mesh inside an archive volume is verified rather than reported missing.
         let path: &str = relative_path;
 
-        match self
-          .project
-          .read_asset_chunks(path)
-          .and_then(|mut chunks| OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-        {
+        match self.project.read_parsed(AssetType::Ogf, path, |chunk| {
+          OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+        }) {
           Ok(ogf) => match self.verify_mesh_findings(options, shader_library, &ogf, Some(path), None) {
             Ok(findings) if findings.is_empty() => Vec::new(),
             Ok(findings) => {
@@ -153,8 +151,8 @@ impl<'a> MeshAssetsVerifier<'a> {
           for motion_path in motion_paths {
             // Retained per path, because a shared animation bank is referenced by hundreds of visuals and each read is
             // a whole-entry decompression: four Anomaly banks account for 47GB of a sweep's 77GB without this.
-            match self.project.read_cached_asset(AssetType::Omf, &motion_path, |chunks| {
-              OmfFile::read_from_chunk::<XRayByteOrder, _>(chunks)
+            match self.project.read_parsed(AssetType::Omf, &motion_path, |chunk| {
+              OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
             }) {
               Ok(omf) => match self.verify_mesh_motion_findings(options, ogf, &omf, Some(&motion_path)) {
                 Ok(motion_findings) => findings.extend(motion_findings),

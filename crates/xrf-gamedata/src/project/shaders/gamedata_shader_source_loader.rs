@@ -28,6 +28,6 @@ impl XRayShaderSourceLoader for GamedataShaderSourceLoader<'_> {
       return Ok(None);
     }
 
-    self.vfs.scoped(self.scope).read(logical_path).map(Some)
+    self.vfs.scoped(self.scope).read_bytes(logical_path).map(Some)
   }
 }

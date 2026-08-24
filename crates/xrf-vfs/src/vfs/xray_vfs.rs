@@ -100,6 +100,11 @@ impl XrayVfs {
 
     self.mounts.push(XrayMount::new(id, base, source)?);
 
+    // A new mount can win any path, so nothing retained can be trusted to describe this world any more. Per-path
+    // reasoning is not available here: the mount is indexed, but which paths it now shadows is exactly the question a
+    // resolve answers, and answering it for every retained entry costs more than parsing them again.
+    self.cache.clear();
+
     Ok(id)
   }
 
@@ -197,7 +202,7 @@ impl XrayVfs {
   ///
   /// Returns a not-found error when nothing holds the path, an invalid-path error when it is not a valid X-Ray
   /// logical path, or the source's own error when the bytes cannot be read.
-  pub fn read(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
+  pub fn read_bytes(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
     self.read_in(&XrayLookupScope::default(), logical_path)
   }
 
@@ -226,7 +231,7 @@ impl XrayVfs {
   ///
   /// Returns a not-found error when no mount in this VFS holds the asset's container — most often because the asset came
   /// from a different VFS, or its mount has since been replaced.
-  pub fn read_asset(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
+  pub fn read_asset_bytes(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
     let container_root: &Path = match asset.get_container() {
       XrayAssetContainer::Directory { root, .. } => root,
       XrayAssetContainer::Archive { path } => path,
@@ -511,7 +516,14 @@ impl XrayVfs {
       )));
     }
 
-    mount.get_source().write(source_path, bytes)
+    mount.get_source().write(source_path, bytes)?;
+
+    // Whatever was parsed from the old bytes now describes a file that no longer exists in that form. Dropped for every
+    // type and scope holding the path rather than for the ones that resolved to this mount: deciding which those were
+    // needs a resolve per scope, where a write is rare and dropping is cheap.
+    self.cache.forget(&logical_path);
+
+    Ok(())
   }
 
   /// Creates a loose override in the highest-priority writable mount in scope.
@@ -579,6 +591,10 @@ impl XrayVfs {
   ///
   /// Returns an error when the mount does not exist or its root can no longer be indexed.
   pub fn remount(&mut self, id: XrayMountId) -> XrfResult<()> {
+    // Reindexing changes which paths a mount answers for, so retained values may describe entries it no longer wins.
+    // This is also the choke point `write_override` passes through, which is why that path needs no hook of its own.
+    self.cache.clear();
+
     let Some(mount) = self.mounts.get(id.0) else {
       return Err(XrfError::new_asset_error(format!("no mount {id:?} to remount")));
     };

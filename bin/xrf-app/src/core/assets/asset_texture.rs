@@ -60,7 +60,7 @@ impl AssetTextureDescriptor {
         })
       }
       None => {
-        let bytes: Vec<u8> = probe.read_asset(asset).ok()?;
+        let bytes: Vec<u8> = probe.read_asset_bytes(asset).ok()?;
 
         Some(Self {
           size: bytes.len() as u64,

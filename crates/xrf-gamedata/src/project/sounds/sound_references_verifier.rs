@@ -101,7 +101,7 @@ impl<'a> SoundReferencesVerifier<'a> {
         .to_physical_path()
         .unwrap_or_else(|| PathBuf::from(logical_path.as_str()));
 
-      let contents: Vec<u8> = match self.project.read_asset(logical_path.as_str()) {
+      let contents: Vec<u8> = match self.project.read_bytes(logical_path.as_str()) {
         Ok(contents) => contents,
         Err(error) => {
           result.checked_references_count += 1;

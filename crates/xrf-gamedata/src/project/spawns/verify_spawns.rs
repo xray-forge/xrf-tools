@@ -88,10 +88,9 @@ impl GamedataProject {
 
     xrf_output::verbose!(options.output, "Verify spawn file: {}", file_path);
 
-    match self
-      .read_asset_chunks(path)
-      .and_then(|mut chunks| SpawnFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-    {
+    match self.read_parsed(AssetType::Spawn, path, |chunk| {
+      SpawnFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+    }) {
       Ok(_) => {
         xrf_output::verbose!(options.output, "Verify spawn file: {}", file_path);
 

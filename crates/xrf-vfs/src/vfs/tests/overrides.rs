@@ -36,7 +36,7 @@ fn an_override_creates_a_loose_file_that_then_wins() {
     "it lands in the writable mount"
   );
   assert_eq!(
-    vfs.scoped(&scope).read("configs\\system.ltx").unwrap(),
+    vfs.scoped(&scope).read_bytes("configs\\system.ltx").unwrap(),
     b"overridden",
     "and wins immediately, without the caller remounting"
   );
@@ -131,7 +131,7 @@ fn an_override_lands_in_the_highest_priority_writable_mount() {
     .expect("override is created");
 
   assert_eq!(location.get_root(), Some(front.as_path()));
-  assert_eq!(vfs.read("configs\\system.ltx").unwrap(), b"overridden");
+  assert_eq!(vfs.read_bytes("configs\\system.ltx").unwrap(), b"overridden");
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn reads_an_asset_from_the_source_that_resolved_it() {
   let asset: XrayAsset = vfs.find("configs\\system.ltx").expect("lookup").expect("resolves");
 
   // The helper writes the tree's name as each file's contents, so this proves which source answered.
-  assert_eq!(vfs.read_asset(&asset).expect("reads"), b"read_asset");
+  assert_eq!(vfs.read_asset_bytes(&asset).expect("reads"), b"read_asset");
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn reading_an_asset_from_another_vfs_is_not_found_rather_than_wrong_bytes() {
     .expect("lookup")
     .expect("resolves");
 
-  assert!(XrayVfs::new().read_asset(&asset).is_err());
+  assert!(XrayVfs::new().read_asset_bytes(&asset).is_err());
 }
 
 #[test]

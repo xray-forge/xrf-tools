@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use rayon::prelude::*;
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
@@ -111,9 +112,16 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
           for linked_visual in &linked_visuals {
             match self
               .project
-              .read_asset_chunks(linked_visual)
-              .and_then(|mut chunks| OmfFile::read_motions_from_chunk::<XRayByteOrder, _>(&mut chunks))
-            {
+              .read_parsed(AssetType::Omf, linked_visual, |chunk| {
+                OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+              })
+              .map(|omf| {
+                omf
+                  .get_motion_names()
+                  .into_iter()
+                  .map(str::to_owned)
+                  .collect::<Vec<String>>()
+              }) {
               Ok(motions) => {
                 if motions.is_empty() {
                   xrf_output::error!(
@@ -234,8 +242,12 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
   }
 
   fn read_motion_refs(&self, path: &str) -> XrfResult<HashSet<String>> {
-    let mut chunks = self.project.read_asset_chunks(path)?;
-    let motion_refs: Vec<String> = OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunks)?;
+    // todo: Fix and use read_parsed.
+    // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
+    // reads fine, and this check must still see those refs.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(self.project.read_bytes(path)?)?;
+    let motion_refs: Vec<String> = OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)?;
+
     let mut assets: HashSet<String> = HashSet::new();
 
     for motion_ref in &motion_refs {

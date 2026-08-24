@@ -31,7 +31,7 @@ impl LtxProject {
     xrf_output::heading!(options.output, "Checking {} file(s)", self.ltx_files.len());
 
     for logical_path in &self.ltx_files {
-      let contents: Vec<u8> = self.vfs().scoped(self.scope()).read(logical_path.as_str())?;
+      let contents: Vec<u8> = self.vfs().scoped(self.scope()).read_bytes(logical_path.as_str())?;
 
       result.record_checked(self.path_of(logical_path), Ltx::is_formatted(&contents)?, &options);
     }

@@ -214,7 +214,10 @@ fn reads_a_located_asset_through_the_probed_vfs() {
 
   let asset: &crate::XrayAsset = resolution.get_asset().expect("model resolves");
 
-  assert_eq!(probe.read_asset(asset).expect("bytes are readable"), b"volume".to_vec());
+  assert_eq!(
+    probe.read_asset_bytes(asset).expect("bytes are readable"),
+    b"volume".to_vec()
+  );
 }
 
 #[test]

@@ -50,7 +50,7 @@ fn the_first_mount_holding_a_name_wins_and_the_shadowed_copy_stays_visible() {
     "the shadowed copy is still reportable"
   );
   assert_eq!(
-    vfs.scoped(&scope).read("textures\\wpn\\wpn_ak74.dds").unwrap(),
+    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
     b"overlay"
   );
 }
@@ -101,7 +101,7 @@ fn an_archived_entry_resolves_and_reads_but_offers_no_physical_path() {
 
   assert_eq!(location.to_physical_path(), None);
   assert_eq!(
-    vfs.scoped(&scope).read("textures\\wpn\\wpn_ak74.dds").unwrap(),
+    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
     b"textures"
   );
 }
@@ -121,7 +121,7 @@ fn a_loose_file_overrides_an_archived_one() {
     )
     .expect("archive mounts");
 
-  assert_eq!(vfs.read("textures\\wpn\\wpn_ak74.dds").unwrap(), b"loose_wins");
+  assert_eq!(vfs.read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(), b"loose_wins");
 }
 
 #[test]

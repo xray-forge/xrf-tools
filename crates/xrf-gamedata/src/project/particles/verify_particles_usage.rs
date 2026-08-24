@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -140,10 +142,9 @@ impl GamedataProject {
         continue;
       };
 
-      let spawn_file: SpawnFile = match self
-        .read_asset_chunks(&spawn_path)
-        .and_then(|mut chunks| SpawnFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-      {
+      let spawn_file: Arc<SpawnFile> = match self.read_parsed(AssetType::Spawn, &spawn_path, |chunk| {
+        SpawnFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+      }) {
         Ok(spawn_file) => spawn_file,
         Err(error) => {
           xrf_output::error!(

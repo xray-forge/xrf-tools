@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use uuid::Uuid;
+use xrf_chunk::ChunkReader;
 use xrf_db::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayAssetType as AssetType;
@@ -58,9 +59,12 @@ impl LevelRoster {
     for source in &sources {
       let path: &String = source;
 
+      // Narrow read rather than the parsed seam: this needs the graphs chunk of a spawn that runs to 97MB in a shipped
+      // game, and parsing the whole file to reach one chunk would cost more than every other level check together.
       let graphs: SpawnGraphsChunk = project
-        .read_asset_chunks(path)
-        .and_then(|mut chunks| SpawnFile::read_graphs_from_chunk::<XRayByteOrder, _>(&mut chunks))
+        .read_bytes(path)
+        .and_then(ChunkReader::from_vec)
+        .and_then(|mut chunk| SpawnFile::read_graphs_from_chunk::<XRayByteOrder, _>(&mut chunk))
         .map_err(|error| {
           XrfError::new_verify_error(format!("Failed to read level roster from spawn file {source}: {error}"))
         })?;

@@ -38,7 +38,7 @@ fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<OgfFile> {
   };
 
   let bytes: Vec<u8> = probe
-    .read_asset(asset)
+    .read_asset_bytes(asset)
     .map_err(|error| format!("Failed to read visual '{logical_path}': {error}"))?;
 
   OgfFile::read_from_bytes::<XRayByteOrder>(bytes)

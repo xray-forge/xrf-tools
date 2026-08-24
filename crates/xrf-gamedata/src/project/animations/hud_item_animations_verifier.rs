@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use rayon::prelude::*;
+use xrf_chunk::ChunkReader;
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
@@ -170,9 +172,11 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     let mut motions: HashSet<String> = HashSet::new();
 
     for linked in linked_assets {
-      let mut chunks = self.project.read_asset_chunks(&linked)?;
+      let omf: Arc<OmfFile> = self.project.read_parsed(AssetType::Omf, &linked, |chunk| {
+        OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+      })?;
 
-      motions.extend(OmfFile::read_motions_from_chunk::<XRayByteOrder, _>(&mut chunks)?);
+      motions.extend(omf.get_motion_names().into_iter().map(str::to_owned));
     }
 
     Ok(Some(motions))
@@ -180,10 +184,15 @@ impl<'a> HudItemAnimationsVerifier<'a> {
 
   /// Resolve omf assets linked by the model motion refs, or `None` when the model has no refs.
   fn read_motion_refs(&self, path: &str) -> XrfResult<Option<HashSet<String>>> {
+    // todo: Review why full read fails and use plain read_parsed.
+    // Narrow read, assembled here rather than taken through the parsed seam: a full visual parse fails on visuals whose
+    // geometry will not read, while their motion refs chunk reads fine, and this check must still see those refs.
+    // `patch-ogf-motion-refs` depends on the same tolerance.
     let motion_refs: Vec<String> = match self
       .project
-      .read_asset_chunks(path)
-      .and_then(|mut chunks| OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunks))
+      .read_bytes(path)
+      .and_then(ChunkReader::from_vec)
+      .and_then(|mut chunk| OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk))
     {
       Ok(refs) => refs,
       // Model has no motion refs chunk, so it is a static visual without animations.

@@ -194,7 +194,7 @@ impl<'a> ShadersVerifier<'a> {
 
   /// Reads one shader script as text, through the same mounts its sources come from.
   fn read_script(&self, logical_path: &str) -> Result<String, XrfError> {
-    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read(logical_path)?;
+    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
 
     String::from_utf8(bytes).map_err(|error| XrfError::new_read_error(format!("not valid utf-8: {error}")))
   }

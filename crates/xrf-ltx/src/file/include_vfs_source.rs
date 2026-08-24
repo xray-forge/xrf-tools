@@ -25,7 +25,7 @@ impl<'a> LtxIncludeVfsSource<'a> {
 
   /// Reads and parses one logical path, with its logical location recorded so nested includes resolve against it.
   pub fn read_ltx(&self, logical_path: &str) -> XrfResult<Ltx> {
-    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read(logical_path)?;
+    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
     let contents: String = decode_bytes_to_string(&bytes, new_windows1251_encoder())?;
     let mut ltx: Ltx = Ltx::read_from_str(&contents)?;
     let path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;

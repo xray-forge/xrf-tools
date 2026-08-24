@@ -4,6 +4,7 @@ use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, Section};
 use xrf_vfs::XrayAssetType;
+use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
 use crate::project::weapons::constants::NO_SOUND;
@@ -181,10 +182,9 @@ impl GamedataProject {
         .flatten()
         .map(|location| location.get_logical_path().to_string())
     }) {
-      if let Err(error) = self
-        .read_asset_chunks(visual)
-        .and_then(|mut chunks| OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-      {
+      if let Err(error) = self.read_parsed(AssetType::Ogf, visual, |chunk| {
+        OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+      }) {
         xrf_output::error!(
           options.output,
           "Failed to read weapon visual: [{}] - {:?} - {}",
@@ -227,25 +227,33 @@ impl GamedataProject {
         .flatten()
         .map(|location| location.get_logical_path().to_string())
     }) {
-      match self
-        .read_asset_chunks(visual_path)
-        .and_then(|mut chunks| OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-      {
+      match self.read_parsed(AssetType::Ogf, visual_path, |chunk| {
+        OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+      }) {
         Ok(hud_visual) => {
-          if let Some(motion_refs) = hud_visual.kinematics.map(|it| it.motion_refs) {
+          if let Some(motion_refs) = hud_visual.kinematics.as_ref().map(|it| &it.motion_refs) {
             let mut ref_animations: Vec<String> = Vec::new();
 
-            for motion_ref in &motion_refs {
+            for motion_ref in motion_refs {
               if let Some(motion_file_path) = self
                 .omf(motion_ref)
                 .ok()
                 .flatten()
                 .map(|location| location.get_logical_path().to_string())
               {
+                // The whole bank, which the meshes and animations checks read too: shared banks are the reason this
+                // check spent most of its time re-reading the same megabytes.
                 match self
-                  .read_asset_chunks(&motion_file_path)
-                  .and_then(|mut chunks| OmfFile::read_motions_from_chunk::<XRayByteOrder, _>(&mut chunks))
-                {
+                  .read_parsed(AssetType::Omf, &motion_file_path, |chunk| {
+                    OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+                  })
+                  .map(|omf| {
+                    omf
+                      .get_motion_names()
+                      .into_iter()
+                      .map(str::to_owned)
+                      .collect::<Vec<String>>()
+                  }) {
                   Ok(motions) => ref_animations.extend(motions),
                   Err(error) => {
                     xrf_output::error!(

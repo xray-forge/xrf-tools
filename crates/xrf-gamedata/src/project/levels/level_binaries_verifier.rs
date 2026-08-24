@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use xrf_db::{
   LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk, XRayByteOrder,
 };
+use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
@@ -49,12 +52,9 @@ impl<'a> LevelBinariesVerifier<'a> {
 
     let asset_path: String = self.bundle.file_path(LEVEL_FILE);
 
-    let level_file: LevelFile = match self
-      .bundle
-      .project()
-      .read_asset_chunks(&path)
-      .and_then(|mut chunks| LevelFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-    {
+    let level_file: Arc<LevelFile> = match self.bundle.project().read_parsed(AssetType::Level, &path, |chunk| {
+      LevelFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+    }) {
       Ok(level_file) => level_file,
       Err(error) => {
         return LevelBinariesOutcome {
@@ -91,7 +91,7 @@ impl<'a> LevelBinariesVerifier<'a> {
 
     LevelBinariesOutcome {
       findings,
-      shaders: level_file.shaders,
+      shaders: level_file.shaders.clone(),
     }
   }
 
@@ -112,12 +112,9 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let cform: LevelCformFile = match self
-      .bundle
-      .project()
-      .read_asset_chunks(&path)
-      .and_then(|mut chunks| LevelCformFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-    {
+    let cform: Arc<LevelCformFile> = match self.bundle.project().read_parsed(AssetType::CForm, &path, |chunks| {
+      LevelCformFile::read_from_chunk::<XRayByteOrder, _>(chunks)
+    }) {
       Ok(cform) => cform,
       Err(error) => {
         return vec![GamedataFindingFactory::for_asset(
@@ -156,12 +153,9 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let ai: LevelAiFile = match self
-      .bundle
-      .project()
-      .read_asset_chunks(&path)
-      .and_then(|mut chunks| LevelAiFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-    {
+    let ai: Arc<LevelAiFile> = match self.bundle.project().read_parsed(AssetType::Ai, &path, |chunks| {
+      LevelAiFile::read_from_chunk::<XRayByteOrder, _>(chunks)
+    }) {
       Ok(ai) => ai,
       Err(error) => {
         return vec![GamedataFindingFactory::for_asset(

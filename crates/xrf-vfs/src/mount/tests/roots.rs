@@ -118,7 +118,7 @@ fn opens_what_it_planned() {
 
   let vfs: XrayVfs = spec.open().expect("roots opens");
 
-  assert!(vfs.read(r"configs\system.ltx").is_ok());
+  assert!(vfs.read_bytes(r"configs\system.ltx").is_ok());
 }
 
 #[test]

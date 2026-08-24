@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use rayon::prelude::*;
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
@@ -105,13 +106,14 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     let mut owners: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
     for bank in &banks {
-      let Ok(motions) = self
-        .project
-        .read_asset_chunks(bank)
-        .and_then(|mut chunks| OmfFile::read_motions_from_chunk::<XRayByteOrder, _>(&mut chunks))
-      else {
+      // The whole bank, shared with the meshes and hud-item checks rather than parsed once per reader.
+      let Ok(omf) = self.project.read_parsed(AssetType::Omf, bank, |chunk| {
+        OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+      }) else {
         continue;
       };
+
+      let motions: Vec<String> = omf.get_motion_names().into_iter().map(str::to_owned).collect();
 
       // The bank's file name, taken from the logical path: reports name the omf, not its whole path.
       let bank_name: String = bank.rsplit('\\').next().unwrap_or(bank).to_string();
@@ -139,9 +141,12 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
   /// Resolve omf assets linked by the model motion refs, wildcards included.
   fn read_motion_refs(&self, path: &str) -> XrfResult<Vec<String>> {
     let mut assets: Vec<String> = Vec::new();
-    let mut chunks = self.project.read_asset_chunks(path)?;
+    // todo: Review why full read fails and use plain read_parsed.
+    // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
+    // reads fine, and this check must still see those refs.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(self.project.read_bytes(path)?)?;
 
-    for motion_ref in &OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunks)? {
+    for motion_ref in &OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)? {
       for location in self
         .project
         .vfs()

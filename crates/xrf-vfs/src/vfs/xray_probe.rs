@@ -1,8 +1,9 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 
-use crate::vfs::XrayResolution;
+use crate::vfs::{XrayResolution, XrayScopedVfs};
 use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
 
 /// One place a probe looks, and the name a report calls it by.
@@ -224,8 +225,41 @@ impl<'a> XrayProbe<'a> {
   /// # Errors
   ///
   /// Returns an error when the asset's source cannot produce its bytes.
-  pub fn read_asset(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
-    self.vfs.read_asset(asset)
+  pub fn read_asset_bytes(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
+    self.vfs.read_asset_bytes(asset)
+  }
+
+  /// Reads and parses an asset, serving a retained value when this world is already holding one.
+  ///
+  /// Keyed on the step that resolved the asset rather than on the probe, so two probes ordering their steps differently
+  /// cannot serve each other a value from a tree the other searches later. The kind comes from the asset itself, which is
+  /// what the retention policy is stated in terms of; an asset whose extension names no kind is never retained.
+  ///
+  /// # Errors
+  ///
+  /// Returns whatever reading the asset or parsing it answers with.
+  pub fn read_asset_parsed<T, F>(&self, asset: &XrayAsset, parse: F) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(Vec<u8>) -> XrfResult<T>,
+  {
+    let logical_path: &str = asset.get_logical_path().as_str();
+
+    for step in &self.steps {
+      let scoped: XrayScopedVfs = self.vfs.scoped(step.get_scope());
+
+      if scoped.find(logical_path)?.is_some() {
+        return match asset.get_asset_type() {
+          Some(kind) => scoped.read_parsed(kind, logical_path, parse),
+          // An extension naming no kind is something a retention policy cannot speak about, so it is read and parsed
+          // without being retained.
+          None => Ok(Arc::new(parse(scoped.read_bytes(logical_path)?)?)),
+        };
+      }
+    }
+
+    // Nothing this probe searches holds it, which happens for an asset resolved elsewhere. Read it where it lives.
+    Ok(Arc::new(parse(self.vfs.read_asset_bytes(asset)?)?))
   }
 
   /// The first step holding the reference, with everything it holds for it.

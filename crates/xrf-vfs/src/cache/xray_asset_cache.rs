@@ -113,6 +113,19 @@ impl XrayAssetCache {
     entries.insert(key, XrayCacheEntry { value, bytes });
   }
 
+  /// Drops everything retained for one logical path, whatever type or scope held it.
+  ///
+  /// Called when a write changes that path's bytes. Deliberately blunt: only a resolve per scope could say which scopes
+  /// were serving the mount that was written, and a write is rare where a parse is not.
+  pub fn forget(&self, logical_path: &str) -> usize {
+    let mut entries = self.entries.write().expect("asset cache lock is never poisoned");
+    let before: usize = entries.len();
+
+    entries.retain(|key, _| key.path != logical_path);
+
+    before - entries.len()
+  }
+
   /// Drops everything no caller is holding, and answers how many entries went.
   ///
   /// The refcount is the liveness signal, so this is safe at any moment: an entry with one reference is held by this

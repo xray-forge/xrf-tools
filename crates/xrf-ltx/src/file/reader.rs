@@ -92,7 +92,7 @@ impl Ltx {
   ///
   /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
   pub fn read_included_from_vfs(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<LtxIncluded> {
-    let bytes: Vec<u8> = vfs.scoped(scope).read(logical_path)?;
+    let bytes: Vec<u8> = vfs.scoped(scope).read_bytes(logical_path)?;
 
     Self::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }

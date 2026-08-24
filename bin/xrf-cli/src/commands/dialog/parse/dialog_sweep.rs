@@ -149,7 +149,7 @@ impl<'a> DialogSweep<'a> {
   }
 
   fn read(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&scoped.read(logical_path)?)
+    DialogFile::read_from_bytes(&scoped.read_bytes(logical_path)?)
   }
 
   fn census_file(census: &mut DialogSweepCensus, file: &DialogFile) {

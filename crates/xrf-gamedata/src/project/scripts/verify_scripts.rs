@@ -107,7 +107,7 @@ impl GamedataProject {
   ///
   /// Read through the VFS, so an archived script is parsed rather than reported missing.
   pub fn verify_script(&self, _options: &GamedataProjectVerifyOptions, logical_path: &str) -> XrfResult<bool> {
-    let bytes: Vec<u8> = self.read_asset(logical_path)?;
+    let bytes: Vec<u8> = self.read_bytes(logical_path)?;
     let code: String = read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?;
 
     verify_luajit_script(&code, Path::new(logical_path))?;

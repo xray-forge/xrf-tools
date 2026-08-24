@@ -109,41 +109,6 @@ impl OmfFile {
 }
 
 impl OmfFile {
-  /// Read only list of motions specifically and skip other data parts.
-  pub fn read_motions_from_path<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<Vec<String>> {
-    Self::read_motions_from_file::<T>(File::open(path)?)
-  }
-
-  pub fn read_motions_from_file<T: ByteOrder>(file: File) -> XrfResult<Vec<String>> {
-    Self::read_motions_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
-  }
-
-  /// Lists motion names from a chunk reader over any data source.
-  ///
-  /// The route an archived omf takes: a volume entry has no file, so only its decompressed bytes are available.
-  pub fn read_motions_from_chunk<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<String>> {
-    let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-
-    log::info!(
-      "Reading omf file motions, {} chunks, {} bytes",
-      chunks.len(),
-      reader.read_bytes_len(),
-    );
-
-    Ok(
-      find_required_chunk_by_id(&chunks, OmfMotionsChunk::CHUNK_ID)?
-        .read_xr::<T, OmfMotionsChunk>()?
-        .motions
-        .iter()
-        .map(|it| it.name.clone())
-        .collect(),
-    )
-  }
-}
-
-impl OmfFile {
   /// List names of motions stored in the file, as used for engine lookups.
   pub fn get_motion_names(&self) -> Vec<&str> {
     self.parameters.motions.iter().map(|it| it.name.as_str()).collect()

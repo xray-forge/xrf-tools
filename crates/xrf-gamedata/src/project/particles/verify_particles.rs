@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
 use crate::project::particles::verify_particles_result::GamedataParticlesVerificationResult;
@@ -31,10 +32,9 @@ impl GamedataProject {
       .map(|path| {
         xrf_output::verbose!(options.output, "Verify particles file: {}", path);
 
-        match self
-          .read_asset_chunks(path)
-          .and_then(|mut chunks| ParticlesFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-        {
+        match self.read_parsed(AssetType::XrPack, path, |chunk| {
+          ParticlesFile::read_from_chunk::<XRayByteOrder, _>(chunk)
+        }) {
           Ok(particles_file) => {
             let particle_findings: Vec<Finding> = self.verify_particle(options, &particles_file, path);
 
