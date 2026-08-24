@@ -4,10 +4,28 @@ use crate::core::command_error::CommandError;
 
 pub type CommandResult<T = ()> = Result<T, CommandError>;
 
-/// Named set of related commands; drives both CLI registration order and generated documentation layout.
+/// Named set of related commands; drives CLI registration and generated documentation.
 pub struct CommandGroup {
-  pub name: &'static str,
+  /// Lowercase command token used by the parser and command paths.
+  pub slug: &'static str,
+  /// Human-facing domain label, preserving established acronym capitalization.
+  pub label: &'static str,
+  /// Concise description shown in root CLI help.
+  pub about: &'static str,
   pub commands: Vec<Box<dyn GenericCommand>>,
+}
+
+impl CommandGroup {
+  /// Builds the domain node that owns this group's operation subcommands.
+  pub fn init(&self) -> Command {
+    let mut group: Command = Command::new(self.slug).about(self.about).arg_required_else_help(true);
+
+    for command in &self.commands {
+      group = group.subcommand(command.init());
+    }
+
+    group
+  }
 }
 
 pub trait GenericCommand {
@@ -25,7 +43,8 @@ pub trait GenericCommand {
     Box::new(Self::default())
   }
 
-  fn name(&self) -> &'static str;
+  /// Operation token within this command's registered domain.
+  fn operation(&self) -> &'static str;
 
   fn init(&self) -> Command;
 

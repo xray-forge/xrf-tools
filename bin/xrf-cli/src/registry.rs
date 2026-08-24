@@ -1,167 +1,169 @@
-use crate::commands::archive::pack_archive::PackArchiveCommand;
-use crate::commands::archive::unpack_archive::UnpackArchiveCommand;
-use crate::commands::assets::list_assets::ListAssetsCommand;
-use crate::commands::dialog::parse_dialog::ParseDialogCommand;
-use crate::commands::docs::generate_docs::GenerateDocsCommand;
-use crate::commands::externs::export_externs::ExportExternsCommand;
-use crate::commands::gamedata::verify_gamedata::VerifyGamedataCommand;
-use crate::commands::ltx::format_ltx::FormatLtxCommand;
-use crate::commands::ltx::verify_ltx::VerifyLtxCommand;
-use crate::commands::ogf::info_ogf::InfoOgfCommand;
-use crate::commands::ogf::patch_ogf_motion_refs::PatchOgfMotionRefsCommand;
-use crate::commands::ogf::patch_ogf_texture_refs::PatchOgfTextureRefsCommand;
-use crate::commands::ogf::verify_ogf::VerifyOgfCommand;
-use crate::commands::omf::duplicate_omf_motion::DuplicateOmfMotionCommand;
-use crate::commands::omf::filter_omf_motions::FilterOmfMotionsCommand;
-use crate::commands::omf::info_omf::InfoOmfCommand;
-use crate::commands::omf::rename_omf_motions::RenameOmfMotionsCommand;
-use crate::commands::omf::repack_omf::RepackOmfCommand;
-use crate::commands::particle::info_particles::InfoParticlesCommand;
-use crate::commands::particle::pack_particles::PackParticlesCommand;
-use crate::commands::particle::re_unpack_particles::ReUnpackParticlesCommand;
-use crate::commands::particle::repack_particles::RepackParticlesCommand;
-use crate::commands::particle::unpack_particles::UnpackParticlesCommand;
-use crate::commands::particle::verify_particles::VerifyParticlesCommand;
-use crate::commands::spawn::info_spawn::InfoSpawnCommand;
-use crate::commands::spawn::pack_spawn::PackSpawnCommand;
-use crate::commands::spawn::repack_spawn::RepackSpawnCommand;
-use crate::commands::spawn::unpack_spawn::UnpackSpawnCommand;
-use crate::commands::spawn::verify_spawn::VerifySpawnCommand;
-use crate::commands::texture::crop_dds::CropDdsCommand;
-use crate::commands::texture::info_dds::InfoDdsCommand;
-use crate::commands::texture::pack_equipment_icons::PackEquipmentIconsCommand;
-use crate::commands::texture::pack_texture_description::PackTextureDescriptionCommand;
-use crate::commands::texture::unpack_equipment_icons::UnpackEquipmentIconsCommand;
-use crate::commands::texture::unpack_texture_description::UnpackTextureDescriptionCommand;
-use crate::commands::texture::verify_equipment_icons::VerifyEquipmentIconsCommand;
-use crate::commands::thm::patch_thm_bump::PatchThmBumpCommand;
-use crate::commands::translation::build_translation::BuildTranslationCommand;
-use crate::commands::translation::initialize_translation::InitializeTranslationCommand;
-use crate::commands::translation::parse_translation::ParseTranslationCommand;
-use crate::commands::translation::verify_translation::VerifyTranslationCommand;
+use crate::commands::{
+  archive, assets, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, spawn, texture, thm, translation,
+};
 use crate::core::generic_command::{CommandGroup, GenericCommand};
 
+/// Registers every public CLI domain and the operations it exposes.
 pub fn setup_command_groups() -> Vec<CommandGroup> {
   vec![
     CommandGroup {
-      name: "Archive",
-      commands: vec![PackArchiveCommand::new_box(), UnpackArchiveCommand::new_box()],
-    },
-    CommandGroup {
-      name: "Assets",
-      commands: vec![ListAssetsCommand::new_box()],
-    },
-    CommandGroup {
-      name: "Dialog",
-      commands: vec![ParseDialogCommand::new_box()],
-    },
-    CommandGroup {
-      name: "Docs",
-      commands: vec![GenerateDocsCommand::new_box()],
-    },
-    CommandGroup {
-      name: "Externs",
-      commands: vec![ExportExternsCommand::new_box()],
-    },
-    CommandGroup {
-      name: "Gamedata",
-      commands: vec![VerifyGamedataCommand::new_box()],
-    },
-    CommandGroup {
-      name: "LTX",
-      commands: vec![FormatLtxCommand::new_box(), VerifyLtxCommand::new_box()],
-    },
-    CommandGroup {
-      name: "OGF",
+      slug: "archive",
+      label: "Archive",
+      about: "X-Ray archive tools",
       commands: vec![
-        InfoOgfCommand::new_box(),
-        PatchOgfMotionRefsCommand::new_box(),
-        PatchOgfTextureRefsCommand::new_box(),
-        VerifyOgfCommand::new_box(),
+        archive::pack::PackCommand::new_box(),
+        archive::unpack::UnpackCommand::new_box(),
       ],
     },
     CommandGroup {
-      name: "OMF",
+      slug: "assets",
+      label: "Assets",
+      about: "Game asset listing tools",
+      commands: vec![assets::list::ListCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "dialog",
+      label: "Dialog",
+      about: "Dialog parsing tools",
+      commands: vec![dialog::parse::ParseCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "docs",
+      label: "Docs",
+      about: "CLI documentation tools",
+      commands: vec![docs::generate::GenerateCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "externs",
+      label: "Externs",
+      about: "Script extern export tools",
+      commands: vec![externs::export::ExportCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "gamedata",
+      label: "Gamedata",
+      about: "Assembled gamedata verification tools",
+      commands: vec![gamedata::verify::VerifyCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "ltx",
+      label: "LTX",
+      about: "LTX configuration tools",
       commands: vec![
-        DuplicateOmfMotionCommand::new_box(),
-        FilterOmfMotionsCommand::new_box(),
-        InfoOmfCommand::new_box(),
-        RenameOmfMotionsCommand::new_box(),
-        RepackOmfCommand::new_box(),
+        ltx::format::FormatCommand::new_box(),
+        ltx::verify::VerifyCommand::new_box(),
       ],
     },
     CommandGroup {
-      name: "Particle",
+      slug: "ogf",
+      label: "OGF",
+      about: "OGF model tools",
       commands: vec![
-        InfoParticlesCommand::new_box(),
-        PackParticlesCommand::new_box(),
-        RepackParticlesCommand::new_box(),
-        ReUnpackParticlesCommand::new_box(),
-        UnpackParticlesCommand::new_box(),
-        VerifyParticlesCommand::new_box(),
+        ogf::info::InfoCommand::new_box(),
+        ogf::patch_motion_refs::PatchMotionRefsCommand::new_box(),
+        ogf::patch_texture_refs::PatchTextureRefsCommand::new_box(),
+        ogf::verify::VerifyCommand::new_box(),
       ],
     },
     CommandGroup {
-      name: "Spawn",
+      slug: "omf",
+      label: "OMF",
+      about: "OMF motion tools",
       commands: vec![
-        InfoSpawnCommand::new_box(),
-        PackSpawnCommand::new_box(),
-        RepackSpawnCommand::new_box(),
-        UnpackSpawnCommand::new_box(),
-        VerifySpawnCommand::new_box(),
+        omf::duplicate_motion::DuplicateMotionCommand::new_box(),
+        omf::filter_motions::FilterMotionsCommand::new_box(),
+        omf::info::InfoCommand::new_box(),
+        omf::rename_motions::RenameMotionsCommand::new_box(),
+        omf::repack::RepackCommand::new_box(),
       ],
     },
     CommandGroup {
-      name: "Texture",
+      slug: "particle",
+      label: "Particle",
+      about: "Particle library tools",
       commands: vec![
-        CropDdsCommand::new_box(),
-        InfoDdsCommand::new_box(),
-        PackEquipmentIconsCommand::new_box(),
-        PackTextureDescriptionCommand::new_box(),
-        UnpackEquipmentIconsCommand::new_box(),
-        VerifyEquipmentIconsCommand::new_box(),
-        UnpackTextureDescriptionCommand::new_box(),
+        particle::info::InfoCommand::new_box(),
+        particle::pack::PackCommand::new_box(),
+        particle::repack::RepackCommand::new_box(),
+        particle::re_unpack::ReUnpackCommand::new_box(),
+        particle::unpack::UnpackCommand::new_box(),
+        particle::verify::VerifyCommand::new_box(),
       ],
     },
     CommandGroup {
-      name: "THM",
-      commands: vec![PatchThmBumpCommand::new_box()],
+      slug: "spawn",
+      label: "Spawn",
+      about: "Spawn file tools",
+      commands: vec![
+        spawn::info::InfoCommand::new_box(),
+        spawn::pack::PackCommand::new_box(),
+        spawn::repack::RepackCommand::new_box(),
+        spawn::unpack::UnpackCommand::new_box(),
+        spawn::verify::VerifyCommand::new_box(),
+      ],
     },
     CommandGroup {
-      name: "Translation",
+      slug: "texture",
+      label: "Texture",
+      about: "Texture asset tools",
       commands: vec![
-        BuildTranslationCommand::new_box(),
-        InitializeTranslationCommand::new_box(),
-        ParseTranslationCommand::new_box(),
-        VerifyTranslationCommand::new_box(),
+        texture::crop_dds::CropDdsCommand::new_box(),
+        texture::info_dds::InfoDdsCommand::new_box(),
+        texture::pack_equipment_icons::PackEquipmentIconsCommand::new_box(),
+        texture::pack_texture_description::PackTextureDescriptionCommand::new_box(),
+        texture::unpack_equipment_icons::UnpackEquipmentIconsCommand::new_box(),
+        texture::unpack_texture_description::UnpackTextureDescriptionCommand::new_box(),
+        texture::verify_equipment_icons::VerifyEquipmentIconsCommand::new_box(),
+      ],
+    },
+    CommandGroup {
+      slug: "thm",
+      label: "THM",
+      about: "THM texture metadata tools",
+      commands: vec![thm::patch_bump::PatchBumpCommand::new_box()],
+    },
+    CommandGroup {
+      slug: "translation",
+      label: "Translation",
+      about: "Translation file tools",
+      commands: vec![
+        translation::build::BuildCommand::new_box(),
+        translation::initialize::InitializeCommand::new_box(),
+        translation::parse::ParseCommand::new_box(),
+        translation::verify::VerifyCommand::new_box(),
       ],
     },
   ]
-}
-
-pub fn setup_subcommands() -> Vec<Box<dyn GenericCommand>> {
-  setup_command_groups()
-    .into_iter()
-    .flat_map(|group| group.commands)
-    .collect()
 }
 
 #[cfg(test)]
 mod tests {
   use std::collections::HashSet;
 
-  use super::setup_subcommands;
+  use super::setup_command_groups;
 
   #[test]
-  fn registered_command_names_are_unique() {
-    let mut names: HashSet<&'static str> = HashSet::new();
+  fn registered_domain_slugs_are_unique() {
+    let mut slugs = HashSet::new();
 
-    for command in setup_subcommands() {
-      assert!(
-        names.insert(command.name()),
-        "Duplicated command name '{}'",
-        command.name()
-      );
+    for group in setup_command_groups() {
+      assert!(slugs.insert(group.slug), "Duplicated domain slug '{}'", group.slug);
+    }
+  }
+
+  #[test]
+  fn registered_operation_slugs_are_unique_within_each_domain() {
+    for group in setup_command_groups() {
+      let mut operations = HashSet::new();
+
+      for command in group.commands {
+        assert!(
+          operations.insert(command.operation()),
+          "Duplicated operation '{}' in '{}'",
+          command.operation(),
+          group.slug
+        );
+      }
     }
   }
 }

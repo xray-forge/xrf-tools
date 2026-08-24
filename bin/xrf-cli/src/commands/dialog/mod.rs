@@ -1,1 +1,1 @@
-pub(crate) mod parse_dialog;
+pub(crate) mod parse;

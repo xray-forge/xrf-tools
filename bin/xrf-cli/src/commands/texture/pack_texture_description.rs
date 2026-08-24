@@ -12,13 +12,13 @@ use crate::core::output::TerminalOutput;
 pub struct PackTextureDescriptionCommand;
 
 impl GenericCommand for PackTextureDescriptionCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "pack-texture-description"
   }
 
   /// Create command for packing of texture description file.
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to pack texture description xml")
       .arg(
         Arg::new("description")

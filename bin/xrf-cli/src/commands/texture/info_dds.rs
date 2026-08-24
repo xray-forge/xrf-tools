@@ -11,13 +11,13 @@ use crate::core::output::TerminalOutput;
 pub struct InfoDdsCommand;
 
 impl GenericCommand for InfoDdsCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "info-dds"
   }
 
   /// Create command for printing texture info.
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to print information about provided dds file")
       .arg(
         Arg::new("path")

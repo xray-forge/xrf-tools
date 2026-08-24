@@ -1,2 +1,2 @@
-pub(crate) mod pack_archive;
-pub(crate) mod unpack_archive;
+pub(crate) mod pack;
+pub(crate) mod unpack;

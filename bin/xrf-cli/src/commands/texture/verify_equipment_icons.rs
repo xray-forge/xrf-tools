@@ -14,13 +14,13 @@ use crate::core::output::TerminalOutput;
 pub struct VerifyEquipmentIconsCommand;
 
 impl GenericCommand for VerifyEquipmentIconsCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "verify-equipment-icons"
   }
 
   /// Create command for verifying the inventory icon grid.
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to check inventory icon grid rects for overlaps")
       .arg(
         Arg::new("system-ltx")

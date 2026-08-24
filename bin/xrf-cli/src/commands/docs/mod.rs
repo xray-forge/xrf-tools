@@ -1,1 +1,1 @@
-pub(crate) mod generate_docs;
+pub(crate) mod generate;

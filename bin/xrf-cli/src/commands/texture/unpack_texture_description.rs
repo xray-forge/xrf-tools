@@ -13,12 +13,12 @@ use crate::core::output::TerminalOutput;
 pub struct UnpackTextureDescriptionCommand;
 
 impl GenericCommand for UnpackTextureDescriptionCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "unpack-texture-description"
   }
 
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to unpack dds icons into multiple icons")
       .arg(
         Arg::new("description")

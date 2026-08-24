@@ -12,13 +12,13 @@ use crate::core::output::TerminalOutput;
 pub struct CropDdsCommand;
 
 impl GenericCommand for CropDdsCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "crop-dds"
   }
 
   /// Create command for cropping a region out of a dds file.
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to crop a rectangular region out of a dds file into a new dds file")
       .arg(
         Arg::new("source")

@@ -1,1 +1,1 @@
-pub(crate) mod patch_thm_bump;
+pub(crate) mod patch_bump;

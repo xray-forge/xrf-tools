@@ -1,6 +1,6 @@
-pub(crate) mod info_particles;
-pub(crate) mod pack_particles;
-pub(crate) mod re_unpack_particles;
-pub(crate) mod repack_particles;
-pub(crate) mod unpack_particles;
-pub(crate) mod verify_particles;
+pub(crate) mod info;
+pub(crate) mod pack;
+pub(crate) mod re_unpack;
+pub(crate) mod repack;
+pub(crate) mod unpack;
+pub(crate) mod verify;

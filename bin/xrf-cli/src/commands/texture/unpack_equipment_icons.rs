@@ -15,13 +15,13 @@ use crate::core::output::TerminalOutput;
 pub struct UnpackEquipmentIconsCommand;
 
 impl GenericCommand for UnpackEquipmentIconsCommand {
-  fn name(&self) -> &'static str {
+  fn operation(&self) -> &'static str {
     "unpack-equipment-icons"
   }
 
   /// Create command to unpack equipment icons.
   fn init(&self) -> Command {
-    Command::new(self.name())
+    Command::new(self.operation())
       .about("Command to unpack dds icons into multiple icons")
       .arg(
         Arg::new("system-ltx")
