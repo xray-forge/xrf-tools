@@ -16,8 +16,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: dtolnay/rust-toolchain@1.97.1
-
       - name: Configure Git line endings
         run: |
           git config --global core.autocrlf false
