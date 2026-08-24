@@ -41,6 +41,10 @@ jobs:
         run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
   build-cli-windows:
+    env:
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+
     runs-on: windows-latest
 
     steps:
@@ -62,9 +66,6 @@ jobs:
 
       # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build CLI
-        env:
-          CARGO_PROFILE_RELEASE_LTO: "false"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
         run: cargo build -p xrf-cli --release --locked
 
       - name: Mark the CLI binary as a development build
@@ -134,6 +135,10 @@ jobs:
           key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
 
   build-app-windows:
+    env:
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+
     runs-on: windows-latest
 
     steps:
@@ -175,9 +180,6 @@ jobs:
       # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build application
         working-directory: bin/xrf-app
-        env:
-          CARGO_PROFILE_RELEASE_LTO: "false"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
         run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
 
       - name: Mark the application binary as a development build
@@ -192,6 +194,10 @@ jobs:
           retention-days: 1
 
   check-and-build-linux:
+    env:
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+
     runs-on: ubuntu-latest
 
     steps:
@@ -218,9 +224,6 @@ jobs:
 
       # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build CLI
-        env:
-          CARGO_PROFILE_RELEASE_LTO: "false"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
         run: cargo build -p xrf-cli --release --locked
 
       - name: Mark the CLI binary as a development build
