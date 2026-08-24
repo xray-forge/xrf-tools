@@ -9,6 +9,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   XRF_BUILD_KIND: development
+  CARGO_PROFILE_RELEASE_LTO: "false"
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,10 +38,6 @@ jobs:
         run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
   build-cli-windows:
-    env:
-      CARGO_PROFILE_RELEASE_LTO: "false"
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
-
     runs-on: windows-latest
 
     steps:
@@ -52,7 +51,6 @@ jobs:
         shell: bash
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
 
@@ -123,10 +121,6 @@ jobs:
           key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
 
   build-app-windows:
-    env:
-      CARGO_PROFILE_RELEASE_LTO: "false"
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
-
     runs-on: windows-latest
 
     steps:
@@ -159,7 +153,6 @@ jobs:
         shell: bash
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build application
         working-directory: bin/xrf-app
         run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
@@ -176,10 +169,6 @@ jobs:
           retention-days: 1
 
   check-and-build-linux:
-    env:
-      CARGO_PROFILE_RELEASE_LTO: "false"
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
-
     runs-on: ubuntu-latest
 
     steps:
@@ -207,7 +196,6 @@ jobs:
       - name: Record the build timestamp
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
 
