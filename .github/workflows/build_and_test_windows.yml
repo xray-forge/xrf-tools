@@ -14,12 +14,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  checks:
     runs-on: windows-latest
 
-    strategy:
-      matrix:
-        node-version: [ 24.x ]
+    steps:
+      - uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Configure Git line endings
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run formatter
+        run: cargo fmt --all -- --check
+
+      - name: Run xray workspace tests
+        run: cargo test --verbose --workspace --lib
+
+  build-cli:
+    runs-on: windows-latest
+
+    steps:
+      - uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Configure Git line endings
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build CLI
+        run: cargo build -p xrf-cli --release --locked
+
+      - name: Upload CLI build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: xrf-cli
+          path: target/release/xrf-cli.exe
+          retention-days: 1
+
+  build-app:
+    runs-on: windows-latest
 
     steps:
       - uses: dtolnay/rust-toolchain@1.97.1
@@ -36,31 +77,14 @@ jobs:
           package_json_file: bin/xrf-ui/package.json
           run_install: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
+          node-version: 24.x
+          cache: pnpm
           cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
 
       - uses: Swatinem/rust-cache@v2
-
-      - name: Run formatter
-        run: cargo fmt --all -- --check
-
-      - name: Run xray workspace tests
-        run: cargo test --verbose --workspace --lib
-
-      - name: Build CLI
-        run: cargo build -p xrf-cli --release --locked
-
-      - name: Upload CLI build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          if-no-files-found: error
-          name: xrf-cli
-          path: target/release/xrf-cli.exe
-          retention-days: 1
 
       - name: Install UI dependencies
         run: pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile
@@ -81,11 +105,11 @@ jobs:
       - name: Typecheck UI
         run: pnpm.cmd --dir bin/xrf-ui typecheck
 
-      - name: Lint UI
-        run: pnpm.cmd --dir bin/xrf-ui lint
-
       - name: Run UI tests
         run: pnpm.cmd --dir bin/xrf-ui test --maxWorkers=100%
+
+      - name: Lint UI
+        run: pnpm.cmd --dir bin/xrf-ui lint
 
       - name: Build UI
         run: pnpm.cmd --dir bin/xrf-ui build
@@ -102,10 +126,9 @@ jobs:
           path: target/release/xrf-app.exe
           retention-days: 1
 
-
   upload-nightly:
     if: ${{ github.ref_name == 'main' && github.event_name != 'pull_request' }}
-    needs: [ build ]
+    needs: [ checks, build-cli, build-app ]
     runs-on: ubuntu-latest
 
     steps:
