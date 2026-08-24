@@ -111,7 +111,7 @@ export class EquipmentService {
     this.gridSize = Math.round(clamp(size, 10, 100));
   }
 
-  @LatestFlow("sprite")
+  @LatestFlow("spriteImage")
   public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string): TFlow {
     this.log.info("Opening equipment project:", equipmentDdsPath, systemLtxPath);
 
@@ -144,7 +144,7 @@ export class EquipmentService {
     }
   }
 
-  @LatestFlow("sprite")
+  @LatestFlow("spriteImage")
   public *reopenEquipmentProject(): TFlow {
     yield* this.reopen();
   }
@@ -181,7 +181,7 @@ export class EquipmentService {
     }
   }
 
-  @LatestFlow("sprite")
+  @LatestFlow("spriteImage")
   public *repackAndOpenProject(): TFlow {
     const { spriteImage, repackSourcePath } = this;
 
@@ -255,7 +255,7 @@ export class EquipmentService {
     }
   }
 
-  @LatestFlow("sprite")
+  @LatestFlow("spriteImage")
   public *closeEquipmentProject(): TFlow {
     this.log.info("Closing equipment project");
 

@@ -7,6 +7,15 @@ import { Nullable } from "@/lib/types/general";
  */
 type TCancellablePromise<T> = Promise<T> & { cancel: () => void };
 
+/**
+ * A flow decorator, with the decorated class in an inference position.
+ */
+type TFlowDecorator<T> = (
+  target: T,
+  key: PropertyKey,
+  descriptor: TypedPropertyDescriptor<any>
+) => TypedPropertyDescriptor<any>;
+
 /** Generator shape a flow decorated method has. */
 type TFlowGenerator = (...args: Array<any>) => Generator<any, any, any>;
 
@@ -96,17 +105,17 @@ function toBoundDescriptor(key: PropertyKey, run: (...args: Array<any>) => Promi
  *   they name the lane instead: a restore that lands after a load must not publish over it.
  * @returns The method decorator that wraps the generator.
  */
-export function LatestFlow(lane?: PropertyKey): MethodDecorator {
+export function LatestFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
   return function decorateLatestFlow(
-    _target: object,
+    _target: T,
     key: PropertyKey,
     descriptor: TypedPropertyDescriptor<any>
   ): TypedPropertyDescriptor<any> {
-    const slot: PropertyKey = lane ?? key;
+    const slot: PropertyKey = (lane as PropertyKey) ?? key;
     const runner: (...args: Array<any>) => TCancellablePromise<any> = flow(descriptor.value as TFlowGenerator);
 
     function runLatest(this: object, ...args: Array<any>): Promise<any> {
-      cancelFlow(this, slot);
+      cancelLane(this, slot);
 
       const promise: TCancellablePromise<any> = runner.apply(this, args);
       const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(this) ?? new Map();
@@ -132,13 +141,13 @@ export function LatestFlow(lane?: PropertyKey): MethodDecorator {
  * @param lane - Name shared by every method feeding one lane. Defaults to the method's own name.
  * @returns The method decorator that wraps the generator.
  */
-export function ExclusiveFlow(lane?: PropertyKey): MethodDecorator {
+export function ExclusiveFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
   return function decorateExclusiveFlow(
-    _target: object,
+    _target: T,
     key: PropertyKey,
     descriptor: TypedPropertyDescriptor<any>
   ): TypedPropertyDescriptor<any> {
-    const slot: PropertyKey = lane ?? key;
+    const slot: PropertyKey = (lane as PropertyKey) ?? key;
     const runner: (...args: Array<any>) => TCancellablePromise<any> = flow(descriptor.value as TFlowGenerator);
 
     function runExclusive(this: object, ...args: Array<any>): Promise<any> {
@@ -180,13 +189,26 @@ export function ExclusiveFlow(lane?: PropertyKey): MethodDecorator {
  * finish and write into state nobody is looking at any more.
  *
  * @param instance - Instance owning the run.
- * @param key - Name of the flow decorated method.
+ * @param lane - Member the lane is named after: the field the run publishes to, or the method that owns it.
  */
-export function cancelFlow(instance: object, key: PropertyKey): void {
-  const running = RUNNING.get(instance)?.get(key) ?? null;
+export function cancelFlow<T extends object>(instance: T, lane: keyof T): void {
+  cancelLane(instance, lane as PropertyKey);
+}
+
+/**
+ * Cancels one lane without the caller having to name it as a member.
+ *
+ * Internal because the public form deliberately forces a lane to be a real member name: it is the field the run
+ * publishes to, or the method that owns it, so a rename cannot leave a cancel pointing at nothing.
+ *
+ * @param instance - Instance owning the run.
+ * @param slot - Lane to abandon.
+ */
+function cancelLane(instance: object, slot: PropertyKey): void {
+  const running: Nullable<TCancellablePromise<any>> = RUNNING.get(instance)?.get(slot) ?? null;
 
   running?.cancel();
-  RUNNING.get(instance)?.delete(key);
+  RUNNING.get(instance)?.delete(slot);
 }
 
 /**

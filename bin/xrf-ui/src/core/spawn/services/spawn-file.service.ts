@@ -150,7 +150,7 @@ export class SpawnFileService {
     releaseEditorProject(spawnCommands.closeFile);
   }
 
-  @LatestFlow("file")
+  @LatestFlow("header")
   public *openFile(path: string): TFlow {
     this.log.info("Opening spawn file:", path);
 
@@ -181,7 +181,7 @@ export class SpawnFileService {
     }
   }
 
-  @LatestFlow("file")
+  @LatestFlow("header")
   public *closeFile(): TFlow {
     this.log.info("Closing existing spawn file");
 
@@ -370,7 +370,7 @@ export class SpawnFileService {
 
   private resetChunks(): void {
     // Abandoned rather than merely cleared: a read already on the wire would otherwise land under the next file.
-    for (const lane of ["loadHeader", "loadAlifeSpawn", "loadArtefactSpawn", "loadPatrols", "loadGraphs"]) {
+    for (const lane of ["loadHeader", "loadAlifeSpawn", "loadArtefactSpawn", "loadPatrols", "loadGraphs"] as const) {
       cancelFlow(this, lane);
     }
 
