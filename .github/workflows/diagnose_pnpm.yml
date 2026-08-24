@@ -1,0 +1,77 @@
+name: Diagnose pnpm on windows
+
+# Throwaway.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: bin/xrf-ui/package.json
+          run_install: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+          cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+
+      - name: Report where the store sits relative to the checkout
+        shell: pwsh
+        run: |
+          $store = (pnpm store path).Trim()
+          Write-Host "store path : $store"
+          Write-Host "workspace  : $env:GITHUB_WORKSPACE"
+          $sameVolume = (Split-Path -Qualifier $store) -eq (Split-Path -Qualifier $env:GITHUB_WORKSPACE)
+          Write-Host "same volume: $sameVolume"
+          if (-not $sameVolume) {
+            Write-Host "==> Cross-volume: pnpm cannot hard-link and must copy every file."
+          }
+
+      # Timed from a clean tree so the number is the linking work, not the download.
+      - name: Install with the default store
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force bin/xrf-ui/node_modules -ErrorAction SilentlyContinue
+          $elapsed = Measure-Command { pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile | Out-Host }
+          Write-Host "default store install: $([int]$elapsed.TotalSeconds)s"
+
+      - name: Check whether the installed files are links or copies
+        shell: pwsh
+        run: |
+          $sample = Get-ChildItem -Recurse -File -Path bin/xrf-ui/node_modules/.pnpm -Filter *.js |
+            Select-Object -First 1
+          if (-not $sample) { Write-Host "no sample file found"; exit 0 }
+          Write-Host "sample: $($sample.FullName)"
+          # A hard-linked file reports every path sharing its content; a copy reports only itself.
+          $links = @(fsutil hardlink list $sample.FullName)
+          $links | ForEach-Object { Write-Host "  link: $_" }
+          Write-Host "hard-linked to the store: $($links.Count -gt 1)"
+
+      - name: Install with the store on the workspace volume
+        shell: pwsh
+        run: |
+          $local = Join-Path $env:GITHUB_WORKSPACE ".pnpm-store"
+          pnpm config set store-dir $local --global
+          Write-Host "store path : $((pnpm store path).Trim())"
+          pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile | Out-Host
+          Remove-Item -Recurse -Force bin/xrf-ui/node_modules -ErrorAction SilentlyContinue
+          $elapsed = Measure-Command { pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile | Out-Host }
+          Write-Host "workspace store install: $([int]$elapsed.TotalSeconds)s"
+
+      - name: Check links again with the relocated store
+        shell: pwsh
+        run: |
+          $sample = Get-ChildItem -Recurse -File -Path bin/xrf-ui/node_modules/.pnpm -Filter *.js |
+            Select-Object -First 1
+          if (-not $sample) { Write-Host "no sample file found"; exit 0 }
+          $links = @(fsutil hardlink list $sample.FullName)
+          $links | ForEach-Object { Write-Host "  link: $_" }
+          Write-Host "hard-linked to the store: $($links.Count -gt 1)"
