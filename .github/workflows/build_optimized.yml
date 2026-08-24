@@ -1,0 +1,131 @@
+name: Build optimized
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  XRF_BUILD_KIND: optimized
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Configure Git line endings
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # Pinned to main rather than the dispatch ref: a dispatch can name any branch, and these artifacts
+      # go to the nightly release, which tracks main.
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: bin/xrf-ui/package.json
+          run_install: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+          cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+
+      # Deliberately not sharing a cache with the routine jobs: their artifacts are built under relaxed
+      # profile settings, so restoring them here would mean recompiling everything anyway.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: optimized
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Record the build timestamp
+        shell: bash
+        run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Install UI dependencies
+        run: pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile
+
+      - name: Build UI
+        run: pnpm.cmd --dir bin/xrf-ui build
+
+      # No CARGO_PROFILE_RELEASE_* overrides anywhere in this workflow: the committed profile is the
+      # maximal build, so producing it means leaving it alone.
+      - name: Build CLI
+        run: cargo build -p xrf-cli --release --locked
+
+      - name: Build application
+        working-directory: bin/xrf-app
+        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
+
+      - name: Upload optimized windows builds
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: optimized-windows
+          path: |
+            target/release/xrf-cli.exe
+            target/release/xrf-app.exe
+          retention-days: 1
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: dtolnay/rust-toolchain@1.97.1
+
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: optimized
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Record the build timestamp
+        run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Build CLI
+        run: cargo build -p xrf-cli --release --locked
+
+      - name: Upload optimized linux build
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: optimized-linux
+          path: target/release/xrf-cli
+          retention-days: 1
+
+  publish:
+    needs: [ build-windows, build-linux ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: optimized-windows
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: optimized-linux
+
+      # The nightly tag is left where the routine workflow put it. These binaries carry their own commit,
+      # which `xrf-cli --version` and the application's settings dialog both report.
+      - name: Publish optimized builds to the nightly release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload --clobber nightly xrf-cli.exe xrf-app.exe xrf-cli
