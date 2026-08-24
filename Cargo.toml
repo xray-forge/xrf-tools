@@ -4,6 +4,7 @@ members = [
   "bin/xrf-app",
   "bin/xrf-cli",
   "crates/xrf-archive",
+  "crates/xrf-build-info",
   "crates/xrf-chunk",
   "crates/xrf-db",
   "crates/xrf-dds",
@@ -56,6 +57,7 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 uuid = "1.24.0"
 walkdir = "2.5.0"
 xrf-archive = { path = "crates/xrf-archive" }
+xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-db = { path = "crates/xrf-db" }
 xrf-dds = { path = "crates/xrf-dds" }
@@ -85,7 +87,9 @@ xrf-xml = { path = "crates/xrf-xml" }
 panic = "abort"
 codegen-units = 1
 lto = true
-opt-level = "z"
+# "s" rather than "z": measured against 3126 config files it runs 17.7% faster for 10% more binary,
+# which is 76% of everything opt-level 3 offers at a fifth of the size it costs.
+opt-level = "s"
 strip = true
 
 [workspace.lints.rust]

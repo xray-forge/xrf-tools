@@ -2,6 +2,7 @@ import { default as CloseIcon } from "@mui/icons-material/Close";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton } from "@mui/material";
 import { ReactElement } from "react";
 
+import { SettingsBuildInfo } from "@/core/settings/components/SettingsBuildInfo";
 import { SettingsForm } from "@/core/settings/components/SettingsForm";
 
 export interface ISettingsDialogProps {
@@ -27,6 +28,10 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
 
       <DialogContent sx={{ paddingY: 3 }}>
         <SettingsForm />
+
+        <Divider sx={{ marginY: 3 }} />
+
+        <SettingsBuildInfo />
       </DialogContent>
 
       <Divider />

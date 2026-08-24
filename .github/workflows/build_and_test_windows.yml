@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  XRF_BUILD_KIND: development
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -52,7 +53,11 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # todo: build the size-optimised binaries the committed profile describes in a scheduled workflow.
+      - name: Record the build timestamp
+        shell: bash
+        run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build CLI
         env:
           CARGO_PROFILE_RELEASE_LTO: thin
@@ -160,7 +165,11 @@ jobs:
       - name: Build UI
         run: pnpm.cmd --dir bin/xrf-ui build
 
-      # todo: build the size-optimised binaries the committed profile describes in a scheduled workflow.
+      - name: Record the build timestamp
+        shell: bash
+        run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
       - name: Build application
         working-directory: bin/xrf-app
         env:

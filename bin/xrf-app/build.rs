@@ -9,6 +9,8 @@ mod registry;
 use tauri_build::{Attributes, WindowsAttributes};
 
 fn main() {
+  xrf_build_info::emit();
+
   clear_stale_inline_plugin_permissions().expect("failed to clear stale inline-plugin permissions");
 
   tauri_build::try_build(registry::configure(

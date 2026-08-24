@@ -6,10 +6,12 @@ import { useColorScheme } from "@mui/material/styles";
 import { open } from "@tauri-apps/plugin-shell";
 import { ReactElement, useCallback, useState } from "react";
 
+import { REPOSITORY_URL } from "@/core/configs";
 import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { IEditorPanel } from "@/core/shell/panel/context";
 import { RailButton } from "@/core/shell/panel/RailButton";
+import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 export interface IApplicationRailProps {
@@ -30,7 +32,7 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
   const isLightMode: boolean = resolvedMode === "light";
 
   const onOpenGithubLink = useCallback(() => {
-    open("https://github.com/xray-forge/xrf-tools").catch(console.error);
+    open(REPOSITORY_URL).catch(Logger.error);
   }, []);
 
   const onToggleTheme = useCallback(() => {

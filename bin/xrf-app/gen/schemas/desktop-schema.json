@@ -6729,16 +6729,28 @@
           "markdownDescription": "Denies the unpack_file command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-reveal-path`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-reveal-path`",
           "type": "string",
           "const": "system:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-reveal-path`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-reveal-path`"
+        },
+        {
+          "description": "Enables the get_build_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:allow-get-build-info",
+          "markdownDescription": "Enables the get_build_info command without any pre-configured scope."
         },
         {
           "description": "Enables the reveal_path command without any pre-configured scope.",
           "type": "string",
           "const": "system:allow-reveal-path",
           "markdownDescription": "Enables the reveal_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_build_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:deny-get-build-info",
+          "markdownDescription": "Denies the get_build_info command without any pre-configured scope."
         },
         {
           "description": "Denies the reveal_path command without any pre-configured scope.",

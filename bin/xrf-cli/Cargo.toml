@@ -5,8 +5,13 @@ publish = false
 edition = "2024"
 rust-version.workspace = true
 
+[build-dependencies]
+xrf-build-info = { workspace = true }
+
 [dependencies]
-clap = { version = "4.6.6", features = ["derive", "default"] }
+xrf-build-info = { workspace = true }
+# `string` accepts owned values for the builder, which the version text is - it is composed at runtime.
+clap = { version = "4.6.6", features = ["derive", "default", "string"] }
 colored = "3.1.1"
 env_logger = { workspace = true }
 log = { workspace = true }

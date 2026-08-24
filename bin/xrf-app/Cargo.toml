@@ -8,6 +8,7 @@ edition = "2024"
 rust-version.workspace = true
 
 [build-dependencies]
+xrf-build-info = { workspace = true }
 tauri-build = { version = "2.6.3", features = [
     "codegen"
 ] }
@@ -27,6 +28,7 @@ tauri-plugin-dialog = "2.7.2"
 tauri-plugin-fs = "2.5.1"
 tauri-plugin-shell = "2.3.5"
 xrf-archive = { workspace = true }
+xrf-build-info = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
 xrf-dds = { workspace = true }
@@ -58,6 +60,7 @@ typescript-bindings = [
     "specta-util",
     "tauri-specta",
     "xrf-archive/typescript-bindings",
+    "xrf-build-info/typescript-bindings",
     "xrf-vfs/typescript-bindings",
     "xrf-db/typescript-bindings",
     "xrf-dialog/typescript-bindings",

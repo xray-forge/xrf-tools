@@ -6901,6 +6901,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-specta",
  "xrf-archive",
+ "xrf-build-info",
  "xrf-db",
  "xrf-dds",
  "xrf-dialog",
@@ -6938,6 +6939,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-build-info"
+version = "0.1.0"
+dependencies = [
+ "jiff",
+ "serde",
+ "specta",
+]
+
+[[package]]
 name = "xrf-chunk"
 version = "0.1.0"
 dependencies = [
@@ -6961,6 +6971,7 @@ dependencies = [
  "tokio",
  "walkdir",
  "xrf-archive",
+ "xrf-build-info",
  "xrf-db",
  "xrf-dds",
  "xrf-dialog",

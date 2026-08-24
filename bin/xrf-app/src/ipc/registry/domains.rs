@@ -74,6 +74,7 @@ macro_rules! for_each_tauri_command_domain {
         unpack_file => crate::plugins::spawn::commands::unpack_file::spawn_unpack_file,
       }
       system => "system" {
+        get_build_info => crate::plugins::system::commands::get_build_info::system_get_build_info,
         reveal_path => crate::plugins::system::commands::reveal_path::system_reveal_path,
       }
       visuals => "visuals" {

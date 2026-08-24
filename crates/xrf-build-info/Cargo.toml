@@ -1,0 +1,21 @@
+[package]
+name = "xrf-build-info"
+version = "0.1.0"
+publish = false
+edition = "2024"
+rust-version.workspace = true
+
+[dependencies]
+# `emit` is library code that consumers call from their build script, so this is a normal dependency
+# rather than a build one. Already compiled in every binary through env_logger, so it adds nothing.
+# No default features: the timestamp is UTC, so the bundled timezone database is dead weight.
+jiff = { version = "0.2.35", default-features = false, features = ["std"] }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+
+[features]
+# Mirrors the build description into the frontend types, for the surfaces that display it.
+typescript-bindings = ["specta"]
+
+[lints]
+workspace = true
