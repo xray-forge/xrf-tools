@@ -7,9 +7,11 @@
 mod command_module;
 mod constants;
 mod exporter;
+mod normalization;
 mod output;
 mod ownership;
 mod references;
+mod surface;
 mod types_module;
 
 #[cfg(test)]

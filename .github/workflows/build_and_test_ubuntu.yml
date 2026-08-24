@@ -21,9 +21,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97.1
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run xray crates tests
         run: cargo test --verbose --workspace --lib
+
+      - name: Run CLI tests
+        run: cargo test --verbose -p xrf-cli --bins
+
+      - name: Run derive macro diagnostics
+        run: cargo test --verbose -p xrf-error-derive --test ui
 
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked

@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
+  checks-rust:
     runs-on: windows-latest
 
     steps:
@@ -27,12 +27,14 @@ jobs:
 
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run formatter
         run: cargo fmt --all -- --check
 
-      - name: Run xray workspace tests
-        run: cargo test --verbose --workspace --lib
+      - name: Run xray workspace tests and verify frontend bindings
+        run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
   build-cli:
     runs-on: windows-latest
@@ -47,6 +49,8 @@ jobs:
 
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
@@ -58,6 +62,61 @@ jobs:
           name: xrf-cli
           path: target/release/xrf-cli.exe
           retention-days: 1
+
+  check-typescript:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: bin/xrf-ui/package.json
+          run_install: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+          cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+
+      - name: Restore frontend tool state
+        id: frontend-tools
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            bin/xrf-ui/target/jest-cache
+            bin/xrf-ui/target/eslint
+            bin/xrf-ui/target/tsconfig.tsbuildinfo
+            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+          key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-
+            frontend-tools-${{ runner.os }}-
+
+      - name: Install UI dependencies
+        run: pnpm --dir bin/xrf-ui install --frozen-lockfile
+
+      - name: Typecheck UI
+        run: pnpm --dir bin/xrf-ui typecheck
+
+      - name: Run UI tests
+        run: pnpm --dir bin/xrf-ui test --maxWorkers=100%
+
+      - name: Lint UI
+        run: pnpm --dir bin/xrf-ui lint
+
+      - name: Save frontend tool state
+        if: ${{ github.ref == 'refs/heads/main' && steps.frontend-tools.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            bin/xrf-ui/target/jest-cache
+            bin/xrf-ui/target/eslint
+            bin/xrf-ui/target/tsconfig.tsbuildinfo
+            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+          key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
 
   build-app:
     runs-on: windows-latest
@@ -85,31 +144,11 @@ jobs:
           cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install UI dependencies
         run: pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile
-
-      - name: Regenerate frontend bindings
-        run: cargo test -p xrf-app --features typescript-bindings export_typescript_bindings
-
-      - name: Format regenerated frontend bindings
-        run: pnpm.cmd --dir bin/xrf-ui run format:bindings
-
-      # The mirrors are committed, so a Rust type can change without them following. Comparing a fresh
-      # generation against the tree is what makes the committed output a function of the Rust sources.
-      - name: Verify frontend bindings match the Rust sources
-        run: |
-          git add --intent-to-add -- bin/xrf-ui/src/core/bindings
-          git diff --exit-code -- bin/xrf-ui/src/core/bindings
-
-      - name: Typecheck UI
-        run: pnpm.cmd --dir bin/xrf-ui typecheck
-
-      - name: Run UI tests
-        run: pnpm.cmd --dir bin/xrf-ui test --maxWorkers=100%
-
-      - name: Lint UI
-        run: pnpm.cmd --dir bin/xrf-ui lint
 
       - name: Build UI
         run: pnpm.cmd --dir bin/xrf-ui build
@@ -128,7 +167,7 @@ jobs:
 
   upload-nightly:
     if: ${{ github.ref_name == 'main' && github.event_name != 'pull_request' }}
-    needs: [ checks, build-cli, build-app ]
+    needs: [ checks-rust, build-cli, check-typescript, build-app ]
     runs-on: ubuntu-latest
 
     steps:

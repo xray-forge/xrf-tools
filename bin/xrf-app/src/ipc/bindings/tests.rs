@@ -1,13 +1,15 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use specta::Types;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::ipc::bindings::command_module::{export_raw_commands, finalize_command_module};
 use crate::ipc::bindings::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
 use crate::ipc::bindings::exporter::command_exporter;
 use crate::ipc::bindings::output::reset_directory;
 use crate::ipc::bindings::ownership::TypeOwnership;
+use crate::ipc::bindings::surface::{SurfaceDrift, compare_surfaces, read_surface};
 use crate::ipc::bindings::types_module::export_type_modules;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
@@ -89,9 +91,34 @@ fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
   ]
 }
 
+/// Path of the mirrors the frontend compiles against.
+fn committed_bindings() -> PathBuf {
+  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../xrf-ui/src/core/bindings")
+}
+
+/// Rewrite the committed mirrors in place.
+///
+/// Ignored so that a plain workspace test run cannot dirty the tree: the output is formatted by the frontend
+/// toolchain afterwards, which only `cargo make generate-typescript` goes on to do.
 #[test]
+#[ignore]
 fn export_typescript_bindings() {
-  let output: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../xrf-ui/src/core/bindings");
+  export_bindings_to(&committed_bindings());
+}
+
+/// Fail only where the committed mirrors no longer describe what the Rust sources produce.
+#[test]
+fn verify_typescript_bindings() {
+  let generated: PathBuf = build_absolute_generated_test_resource_path("bindings");
+
+  export_bindings_to(&generated);
+
+  let drift: SurfaceDrift = compare_surfaces(&read_surface(&committed_bindings()), &read_surface(&generated));
+
+  assert!(!drift.is_breaking(), "{}", drift.describe());
+}
+
+fn export_bindings_to(output: &Path) {
   let types_output: PathBuf = output.join(TYPES_DIRECTORY);
   let commands_output: PathBuf = output.join(COMMANDS_DIRECTORY);
 

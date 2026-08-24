@@ -39,8 +39,12 @@ xrf-sound = { workspace = true }
 xrf-texture = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-translation = { workspace = true }
+xrf-typescript = { workspace = true, optional = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
@@ -48,6 +52,7 @@ custom-protocol = ["tauri/custom-protocol"]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
 typescript-bindings = [
     "specta",
+    "xrf-typescript/codegen",
     "specta-serde",
     "specta-typescript",
     "specta-util",
