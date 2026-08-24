@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { archivesCommands } from "@/core/bindings/commands/archives";
@@ -10,6 +10,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /** Sections of the packing configuration, in the order they are edited. */
@@ -139,14 +140,23 @@ export class PackerService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      const defaults: ArchivePackConfig = await archivesCommands.defaultPackConfig();
+    await flowResult(this.restore());
+  }
 
-      runInAction(() => (this.config = defaults));
+  /**
+   * Reads the packing defaults the backend reports.
+   *
+   * Exclusive rather than latest: an import the user started owns the configuration, and a defaults read that has not
+   * finished must join that rather than land on top of it. `importConfig` takes the lane the other way round.
+   */
+  @ExclusiveFlow("config")
+  private *restore(): TFlow {
+    try {
+      this.config = yield* call(archivesCommands.defaultPackConfig());
     } catch (error: unknown) {
       this.log.error("Could not read packing defaults:", error);
 
-      runInAction(() => (this.config = FALLBACK_PACK_CONFIG));
+      this.config = FALLBACK_PACK_CONFIG;
     }
   }
 
@@ -184,8 +194,8 @@ export class PackerService {
    *
    * @param path - Configuration file to read.
    */
-  @BoundAction()
-  public async importConfig(path: string): Promise<void> {
+  @LatestFlow("config")
+  public *importConfig(path: string): TFlow {
     if (!this.config) {
       return;
     }
@@ -198,22 +208,21 @@ export class PackerService {
     this.error = null;
 
     try {
-      const imported: ArchivePackConfig = await archivesCommands.importPackConfig(path, this.config);
+      const imported: ArchivePackConfig = yield* call(archivesCommands.importPackConfig(path, this.config));
 
       this.log.info("Config imported in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => {
-        this.config = imported;
-        this.configPath = path;
-        this.savedState = toSavedState(imported);
-        this.result = null;
-      });
+      this.config = imported;
+      this.configPath = path;
+      this.savedState = toSavedState(imported);
+      this.result = null;
     } catch (error: unknown) {
       this.log.error("Import error after:", formatDuration(timer.elapsed()), error);
 
-      runInAction(() => (this.error = transformError(error).message));
+      this.error = transformError(error).message;
     } finally {
-      runInAction(() => (this.isBusy = false));
+      // Reached on cancellation too, so a superseded import does not leave the form disabled.
+      this.isBusy = false;
     }
   }
 

@@ -1,14 +1,5 @@
-import {
-  EventBus,
-  inject,
-  Injectable,
-  OnDeactivation,
-  OnDeprovision,
-  OnProvision,
-  ProvisionId,
-  WireStatus,
-} from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import {
   getArchivePreviewSupport,
@@ -34,7 +25,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
@@ -99,35 +90,23 @@ export class ArchivesService {
     return this.content.isLoading || this.operation.isLoading;
   }
 
-  public constructor(
-    private readonly status: WireStatus = WireStatus.track(this),
-    private readonly eventBus: EventBus = inject(EventBus)
-  ) {}
+  /**
+   * The roots an archived asset is read out of, which is the project's own tree.
+   *
+   * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
+   * root are the whole roots. The same spec the model preview mounts, so both reach one set of bytes.
+   */
+  private getAssetRoots(project: ArchiveProject): XrayRoots {
+    return createRoots([project.root]);
+  }
+
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
     this.log.info("Provisioning:", provisionId);
 
-    const existing: Nullable<ArchiveProject> = await archivesCommands.getProject();
-
-    if (this.status.provisionId !== provisionId) {
-      return this.log.info("Discard outdated get archives request:", provisionId, "<", this.status.provisionId);
-    }
-
-    if (existing) {
-      this.log.info("Existing archives project detected");
-
-      runInAction(() => {
-        this.project = createLoadable(existing);
-        this.isReady = true;
-      });
-    } else {
-      this.log.info("No existing archives project");
-
-      runInAction(() => {
-        this.isReady = true;
-      });
-    }
+    await flowResult(this.restore());
   }
 
   @OnDeprovision()
@@ -150,13 +129,23 @@ export class ArchivesService {
   }
 
   /**
-   * The roots an archived asset is read out of, which is the project's own tree.
+   * Puts back whatever the backend already had open.
    *
-   * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
-   * root are the whole roots. The same spec the model preview mounts, so both reach one set of bytes.
+   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
+   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
+   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
    */
-  private getAssetRoots(project: ArchiveProject): XrayRoots {
-    return createRoots([project.root]);
+  @ExclusiveFlow("project")
+  private *restore(): TFlow {
+    const existing: Nullable<ArchiveProject> = yield* call(archivesCommands.getProject());
+
+    this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
+
+    if (existing) {
+      this.project = createLoadable(existing);
+    }
+
+    this.isReady = true;
   }
 
   @BoundAction()
@@ -259,8 +248,8 @@ export class ArchivesService {
    * @param destination - Output file path.
    * @returns Resolves after the extraction outcome is published.
    */
-  @BoundAction()
-  public async extractFile(descriptor: ArchiveFileDescriptor, destination: string): Promise<void> {
+  @LatestFlow("operation")
+  public *extractFile(descriptor: ArchiveFileDescriptor, destination: string): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Extracting archive file:", descriptor.name, destination);
@@ -268,11 +257,11 @@ export class ArchivesService {
     try {
       this.operation = createLoadable(null, true);
 
-      await archivesCommands.extractFile(descriptor.name, destination);
+      yield* call(archivesCommands.extractFile(descriptor.name, destination));
 
       this.log.info("Archive file extracted in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => (this.operation = createLoadable({ kind: "extract-file", destination })));
+      this.operation = createLoadable({ kind: "extract-file", destination });
 
       emitNotification(this.eventBus, {
         details: destination,
@@ -283,7 +272,7 @@ export class ArchivesService {
     } catch (error: unknown) {
       this.log.error("Failed to extract archive file after:", formatDuration(timer.elapsed()), error);
 
-      runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
+      this.operation = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${destination}\n${transformError(error).message}`,
@@ -301,10 +290,9 @@ export class ArchivesService {
    *
    * @param prefix - Archive-relative directory prefix; an empty string selects the archive root.
    * @param destination - Output directory path.
-   * @returns Resolves after the extraction outcome is published.
    */
-  @BoundAction()
-  public async extractArchiveDirectory(prefix: string, destination: string): Promise<void> {
+  @LatestFlow("operation")
+  public *extractArchiveDirectory(prefix: string, destination: string): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Extracting archive directory:", prefix || "<root>", destination);
@@ -312,11 +300,11 @@ export class ArchivesService {
     try {
       this.operation = createLoadable(null, true);
 
-      const result: ArchiveExtractDirectoryResult = await archivesCommands.extractDirectory(prefix, destination);
+      const result: ArchiveExtractDirectoryResult = yield* call(archivesCommands.extractDirectory(prefix, destination));
 
       this.log.info("Archive directory extracted in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => (this.operation = createLoadable({ kind: "extract-directory", result })));
+      this.operation = createLoadable({ kind: "extract-directory", result });
 
       // Reported without a count rather than not at all: a response the parser did not fill in is no
       // reason to turn a write that happened into a thrown error.
@@ -335,7 +323,7 @@ export class ArchivesService {
     } catch (error: unknown) {
       this.log.error("Failed to extract archive directory after:", formatDuration(timer.elapsed()), error);
 
-      runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
+      this.operation = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${destination}\n${transformError(error).message}`,

@@ -3,7 +3,7 @@ import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
@@ -19,7 +19,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 export interface IEquipmentPngDescriptor {
@@ -67,21 +67,7 @@ export class EquipmentService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    const response: Nullable<IEquipmentSpriteMetadata> = await equipmentIconsCommands.getSprite();
-
-    if (response) {
-      this.log.info("Existing equipment sprite detected");
-      runInAction(() => (this.isReady = true));
-
-      const spriteImage: IEquipmentPngDescriptor = await this.spriteFromResponse(response);
-
-      runInAction(() => (this.spriteImage = createLoadable(spriteImage)));
-
-      await this.resolveRepackSource(spriteImage.path);
-    } else {
-      this.log.info("No existing sprite detected file");
-      runInAction(() => (this.isReady = true));
-    }
+    await flowResult(this.restore());
   }
 
   /**
@@ -91,6 +77,34 @@ export class EquipmentService {
   public onDeactivation(): void {
     this.assetService.releaseKey(SPRITE_ASSET_KEY);
     releaseEditorProject(equipmentIconsCommands.closeSprite);
+  }
+
+  /**
+   * Puts back whatever the backend already had open.
+   *
+   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
+   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
+   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   */
+  @ExclusiveFlow("spriteImage")
+  private *restore(): TFlow {
+    const response: Nullable<IEquipmentSpriteMetadata> = yield* call(equipmentIconsCommands.getSprite());
+
+    if (!response) {
+      this.log.info("No existing sprite detected file");
+      this.isReady = true;
+
+      return;
+    }
+
+    this.log.info("Existing equipment sprite detected");
+    this.isReady = true;
+
+    const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
+
+    this.spriteImage = createLoadable(spriteImage);
+
+    yield* call(this.resolveRepackSource(spriteImage.path));
   }
 
   @BoundAction()

@@ -1,14 +1,5 @@
-import {
-  EventBus,
-  inject,
-  Injectable,
-  OnDeactivation,
-  OnDeprovision,
-  OnProvision,
-  ProvisionId,
-  WireStatus,
-} from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
 import {
@@ -94,10 +85,7 @@ export class SpawnFileService {
     );
   }
 
-  public constructor(
-    private readonly status: WireStatus = WireStatus.track(this),
-    private readonly eventBus: EventBus = inject(EventBus)
-  ) {}
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   /**
    * Restore whatever the backend already had open.
@@ -112,27 +100,7 @@ export class SpawnFileService {
   public async onProvision(provisionId: ProvisionId): Promise<void> {
     this.log.info("Provisioning:", provisionId);
 
-    try {
-      const isOpen: boolean = await spawnCommands.hasFile();
-
-      this.log.info(isOpen ? "Existing spawn file detected" : "No existing spawn file");
-
-      if (this.status.provisionId !== provisionId) {
-        return this.log.info("Discard outdated init request:", provisionId, "<", this.status.provisionId);
-      }
-
-      runInAction(() => (this.isOpen = isOpen));
-
-      if (isOpen) {
-        await Promise.all([this.loadPath(), this.loadHeader()]);
-      }
-    } catch (error: unknown) {
-      this.log.error("Failed to check for an existing spawn file:", error);
-    } finally {
-      // Always reached: leaving `isReady` false parks the editor on a spinner for the rest of the
-      // session, with no way back to the open form.
-      runInAction(() => (this.isReady = true));
-    }
+    await flowResult(this.restore());
   }
 
   @OnDeprovision()
@@ -148,6 +116,35 @@ export class SpawnFileService {
     this.log.info("Deactivating");
 
     releaseEditorProject(spawnCommands.closeFile);
+  }
+
+  /**
+   * Puts back whatever the backend already had open.
+   *
+   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
+   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
+   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   */
+  @ExclusiveFlow("header")
+  private *restore(): TFlow {
+    try {
+      const isOpen: boolean = yield* call(spawnCommands.hasFile());
+
+      this.log.info(isOpen ? "Existing spawn file detected" : "No existing spawn file");
+
+      this.isOpen = isOpen;
+
+      if (isOpen) {
+        yield* call(this.loadPath());
+        yield* this.fetchChunk("header", spawnCommands.getHeader);
+      }
+    } catch (error: unknown) {
+      this.log.error("Failed to check for an existing spawn file:", error);
+    } finally {
+      // Always reached, cancellation included: leaving `isReady` false parks the editor on a spinner for the rest of
+      // the session, with no way back to the open form.
+      this.isReady = true;
+    }
   }
 
   @LatestFlow("header")

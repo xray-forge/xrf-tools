@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { exportsCommands } from "@/core/bindings/commands/exports";
 import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
@@ -26,28 +26,37 @@ export class ExportsService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
+    await flowResult(this.restore());
+  }
+
+  @OnDeactivation()
+  public onDeactivation(): void {
+    releaseEditorProject(exportsCommands.closeProject);
+  }
+
+  /**
+   * Puts back whatever the backend already had open.
+   *
+   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
+   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
+   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   */
+  @ExclusiveFlow("project")
+  private *restore(): TFlow {
     try {
-      const project: Nullable<ExportsProject> = await exportsCommands.getProject();
+      const project: Nullable<ExportsProject> = yield* call(exportsCommands.getProject());
 
-      if (project) {
-        this.log.info("Existing exports project detected");
-      } else {
-        this.log.info("No existing exports project");
-      }
+      this.log.info(project ? "Existing exports project detected" : "No existing exports project");
 
-      runInAction(() => {
-        this.project = createLoadable(project);
-        this.isReady = true;
-      });
+      this.project = createLoadable(project);
+      this.isReady = true;
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to restore exports project:", transformed);
 
-      runInAction(() => {
-        this.project = this.project.asFailed(transformed, null);
-        this.isReady = true;
-      });
+      this.project = this.project.asFailed(transformed, null);
+      this.isReady = true;
 
       emitNotification(this.eventBus, {
         details: transformed.message,
@@ -56,12 +65,6 @@ export class ExportsService {
         title: "Could not restore the open exports project",
       });
     }
-  }
-
-  /** Releases parsed exports when the editor deactivates. */
-  @OnDeactivation()
-  public onDeactivation(): void {
-    releaseEditorProject(exportsCommands.closeProject);
   }
 
   /**

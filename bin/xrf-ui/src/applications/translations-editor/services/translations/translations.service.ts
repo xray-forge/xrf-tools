@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { translationsCommands } from "@/core/bindings/commands/translations";
 import {
@@ -14,7 +14,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -63,30 +63,32 @@ export class TranslationsService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    const response: Nullable<TranslationProjectDescriptor> = await translationsCommands.getProject();
-
-    if (response) {
-      this.log.info("Existing translations project detected");
-
-      runInAction(() => {
-        this.isReady = true;
-        this.project = createLoadable(response);
-      });
-    } else {
-      this.log.info("No existing translations project");
-
-      runInAction(() => {
-        this.isReady = true;
-      });
-    }
+    await flowResult(this.restore());
   }
 
-  /**
-   * Releases the translations project when the editor deactivates.
-   */
   @OnDeactivation()
   public onDeactivation(): void {
     releaseEditorProject(translationsCommands.closeProject);
+  }
+
+  /**
+   * Puts back whatever the backend already had open.
+   *
+   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
+   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
+   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   */
+  @ExclusiveFlow("project")
+  private *restore(): TFlow {
+    const response: Nullable<TranslationProjectDescriptor> = yield* call(translationsCommands.getProject());
+
+    this.log.info(response ? "Existing translations project detected" : "No existing translations project");
+
+    this.isReady = true;
+
+    if (response) {
+      this.project = createLoadable(response);
+    }
   }
 
   /**
