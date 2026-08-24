@@ -1,5 +1,5 @@
 use crate::commands::{
-  archive, assets, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, spawn, texture, thm, translation,
+  archive, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, spawn, texture, thm, translation,
 };
 use crate::core::generic_command::{CommandGroup, GenericCommand};
 
@@ -19,12 +19,6 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
         archive::unpack::UnpackCommand::new_box(),
         archive::verify::VerifyCommand::new_box(),
       ],
-    },
-    CommandGroup {
-      slug: "assets",
-      label: "Assets",
-      about: "Game asset listing tools",
-      commands: vec![assets::list::ListCommand::new_box()],
     },
     CommandGroup {
       slug: "dialog",
@@ -47,8 +41,11 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
     CommandGroup {
       slug: "gamedata",
       label: "Gamedata",
-      about: "Assembled gamedata verification tools",
-      commands: vec![gamedata::verify::VerifyCommand::new_box()],
+      about: "Assembled gamedata tools",
+      commands: vec![
+        gamedata::list::ListCommand::new_box(),
+        gamedata::verify::VerifyCommand::new_box(),
+      ],
     },
     CommandGroup {
       slug: "ltx",

@@ -4,7 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
-use crate::commands::assets::list::asset_lister::{AssetLister, AssetListing};
+use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
 use crate::core::generic_command::{CommandResult, GenericCommand};
 use crate::core::output::TerminalOutput;
 
