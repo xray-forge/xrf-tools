@@ -1,4 +1,4 @@
-name: Build and test windows
+name: Build and test
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks-rust:
+  check-rust-windows:
     runs-on: windows-latest
 
     steps:
@@ -31,13 +31,13 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Run formatter
+      - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run xray workspace tests and verify frontend bindings
+      - name: Run workspace tests and verify frontend bindings
         run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
-  build-cli:
+  build-cli-windows:
     runs-on: windows-latest
 
     steps:
@@ -64,14 +64,14 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
         run: cargo build -p xrf-cli --release --locked
 
-      - name: Name the CLI build as a development artifact
+      - name: Mark the CLI binary as a development build
         run: Move-Item target/release/xrf-cli.exe target/release/xrf-cli-dev.exe
 
-      - name: Upload CLI build artifacts
+      - name: Upload the CLI binary
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
-          name: xrf-cli
+          name: xrf-cli-windows
           path: target/release/xrf-cli-dev.exe
           retention-days: 1
 
@@ -130,7 +130,7 @@ jobs:
             bin/xrf-ui/target/tsconfig.node.tsbuildinfo
           key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
 
-  build-app:
+  build-app-windows:
     runs-on: windows-latest
 
     steps:
@@ -177,10 +177,10 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
         run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
 
-      - name: Name the application build as a development artifact
+      - name: Mark the application binary as a development build
         run: Move-Item target/release/xrf-app.exe target/release/xrf-app-dev.exe
 
-      - name: Upload application build artifacts
+      - name: Upload the application binary
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
@@ -188,9 +188,49 @@ jobs:
           path: target/release/xrf-app-dev.exe
           retention-days: 1
 
-  upload-nightly:
+  check-and-build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Run workspace tests on default features
+        run: cargo test --verbose --workspace --lib
+
+      - name: Run CLI tests
+        run: cargo test --verbose -p xrf-cli --bins
+
+      - name: Run derive macro diagnostics
+        run: cargo test --verbose -p xrf-error-derive --test ui
+
+      - name: Record the build timestamp
+        run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      # Relaxed for turnaround; `build_optimized.yml` builds what the committed profile describes.
+      - name: Build CLI
+        env:
+          CARGO_PROFILE_RELEASE_LTO: thin
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+        run: cargo build -p xrf-cli --release --locked
+
+      - name: Mark the CLI binary as a development build
+        run: mv target/release/xrf-cli target/release/xrf-cli-dev
+
+      - name: Upload the CLI binary
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: xrf-cli-linux
+          path: target/release/xrf-cli-dev
+          retention-days: 1
+
+  publish-nightly:
     if: ${{ github.ref_name == 'main' && github.event_name != 'pull_request' }}
-    needs: [ checks-rust, build-cli, check-typescript, build-app ]
+    needs: [ check-rust-windows, build-cli-windows, check-and-build-linux, check-typescript, build-app-windows ]
     runs-on: ubuntu-latest
 
     steps:
@@ -204,19 +244,23 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: xrf-cli
+          name: xrf-cli-windows
 
-      - name: Publish nightly cli build
+      - uses: actions/download-artifact@v8
+        with:
+          name: xrf-cli-linux
+
+      - name: Publish the nightly CLI binaries
         if: ${{ steps.update-nightly-tag.outcome == 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload --clobber nightly xrf-cli-dev.exe
+        run: gh release upload --clobber nightly xrf-cli-dev.exe xrf-cli-dev
 
       - uses: actions/download-artifact@v8
         with:
           name: xrf-app
 
-      - name: Publish nightly application build
+      - name: Publish the nightly application binary
         if: ${{ steps.update-nightly-tag.outcome == 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

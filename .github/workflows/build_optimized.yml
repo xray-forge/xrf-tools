@@ -67,7 +67,7 @@ jobs:
         working-directory: bin/xrf-app
         run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
 
-      - name: Upload optimized windows builds
+      - name: Upload the optimized Windows binaries
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
@@ -77,7 +77,7 @@ jobs:
             target/release/xrf-app.exe
           retention-days: 1
 
-  build-linux:
+  build-cli-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -98,7 +98,7 @@ jobs:
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
 
-      - name: Upload optimized linux build
+      - name: Upload the optimized Linux binary
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
@@ -106,8 +106,8 @@ jobs:
           path: target/release/xrf-cli
           retention-days: 1
 
-  publish:
-    needs: [ build-windows, build-linux ]
+  publish-nightly:
+    needs: [ build-windows, build-cli-linux ]
     runs-on: ubuntu-latest
 
     steps:
@@ -125,7 +125,7 @@ jobs:
 
       # The nightly tag is left where the routine workflow put it. These binaries carry their own commit,
       # which `xrf-cli --version` and the application's settings dialog both report.
-      - name: Publish optimized builds to the nightly release
+      - name: Publish the optimized binaries to the nightly release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload --clobber nightly xrf-cli.exe xrf-app.exe xrf-cli
