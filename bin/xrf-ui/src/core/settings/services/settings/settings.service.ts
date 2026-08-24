@@ -1,5 +1,5 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, makeObservable, Observable } from "@wirestate/mobx";
+import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { isDevelopmentBuild } from "@/lib/env";
 import { parseLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
@@ -18,10 +18,6 @@ export class SettingsService {
   @Observable()
   public isDevModeEnabled: boolean =
     (parseLocalStorageValue(SettingsService.DEV_MODE_STORAGE_KEY) ?? isDevelopmentBuild()) === true;
-
-  public constructor() {
-    makeObservable(this);
-  }
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {

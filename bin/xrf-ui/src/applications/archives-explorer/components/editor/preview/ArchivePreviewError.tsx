@@ -7,7 +7,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchivePreviewErrorProps extends BaseComponentProps {
   error: Error;
-  onRetry: () => Promise<void>;
+  onRetry: () => void;
 }
 
 export function ArchivePreviewError({ error, onRetry }: IArchivePreviewErrorProps): ReactElement {

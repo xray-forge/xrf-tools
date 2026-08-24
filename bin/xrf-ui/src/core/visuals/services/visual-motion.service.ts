@@ -7,7 +7,7 @@ import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, cancelFlows, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -97,7 +97,7 @@ export class VisualMotionService {
   }
 
   /** Lists what the open visual can play, once. */
-  @LatestFlow()
+  @ExclusiveFlow()
   public *list(): TFlow {
     if (this.motions.isLoading || this.motions.value?.length) {
       return;

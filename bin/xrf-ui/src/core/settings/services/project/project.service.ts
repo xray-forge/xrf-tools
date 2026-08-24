@@ -1,6 +1,6 @@
 import { exists } from "@tauri-apps/plugin-fs";
 import { Injectable, OnDeprovision, OnProvision, ProvisionId, WireStatus } from "@wirestate/core";
-import { BoundAction, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
 
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
@@ -13,9 +13,7 @@ export class ProjectService {
   @Observable()
   public xrfProjectPath: Nullable<string> = null;
 
-  public constructor(private readonly status: WireStatus = WireStatus.track(this)) {
-    makeObservable(this);
-  }
+  public constructor(private readonly status: WireStatus = WireStatus.track(this)) {}
 
   @OnProvision()
   public onProvision(provisionId: ProvisionId): void {

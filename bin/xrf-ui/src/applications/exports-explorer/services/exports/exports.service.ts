@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
 
 import { exportsCommands } from "@/core/bindings/commands/exports";
 import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
@@ -9,6 +9,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
@@ -21,9 +22,7 @@ export class ExportsService {
   @Observable()
   public project: Loadable<Nullable<ExportsProject>> = createLoadable(null);
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    makeObservable(this);
-  }
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -78,24 +77,21 @@ export class ExportsService {
     return exportsCommands.getSource(name);
   }
 
-  @BoundAction()
-  public async openExportsProject(path: string): Promise<void> {
-    if (this.project.isLoading) {
-      return this.log.info("Skip parsing exports while another operation is running:", path);
-    }
-
+  @ExclusiveFlow("project")
+  public *openExportsProject(path: string): TFlow {
     this.log.info("Parsing exports from project:", path);
     this.project = this.project.asLoading(null);
 
     try {
-      const result: ExportsProject = await exportsCommands.openProject(path);
+      const result: ExportsProject = yield* call(exportsCommands.openProject(path));
 
-      runInAction(() => (this.project = this.project.asReady(result)));
+      this.project = this.project.asReady(result);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to parse exports:", transformed);
-      runInAction(() => (this.project = this.project.asFailed(transformed, null)));
+
+      this.project = this.project.asFailed(transformed, null);
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformed.message}`,
@@ -106,11 +102,11 @@ export class ExportsService {
     }
   }
 
-  @BoundAction()
-  public async refreshExportsProject(): Promise<void> {
+  @ExclusiveFlow("project")
+  public *refreshExportsProject(): TFlow {
     const existing: Nullable<ExportsProject> = this.project.value;
 
-    if (!existing || this.project.isLoading) {
+    if (!existing) {
       return;
     }
 
@@ -118,14 +114,15 @@ export class ExportsService {
     this.project = this.project.asLoading(existing);
 
     try {
-      const result: ExportsProject = await exportsCommands.openProject(existing.root);
+      const result: ExportsProject = yield* call(exportsCommands.openProject(existing.root));
 
-      runInAction(() => (this.project = this.project.asReady(result)));
+      this.project = this.project.asReady(result);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to refresh exports project:", transformed);
-      runInAction(() => (this.project = this.project.asFailed(transformed, existing)));
+
+      this.project = this.project.asFailed(transformed, existing);
 
       emitNotification(this.eventBus, {
         details: `${existing.root}\n${transformed.message}`,
@@ -136,28 +133,25 @@ export class ExportsService {
     }
   }
 
-  @BoundAction()
-  public async closeExportsProject(): Promise<void> {
+  @ExclusiveFlow("project")
+  public *closeExportsProject(): TFlow {
     const existing: Nullable<ExportsProject> = this.project.value;
-
-    if (this.project.isLoading) {
-      return;
-    }
 
     this.log.info("Closing exports project");
     this.project = this.project.asLoading(existing);
 
     try {
-      await exportsCommands.closeProject();
+      yield* call(exportsCommands.closeProject());
       // Cleared on purpose: closing swaps the viewer for the application's picker in place. It used to
       // hold the project until the caller navigated away, because clearing it unmounted the editor
       // before React Router could process that navigation. Nothing navigates on close any more.
-      runInAction(() => (this.project = this.project.asReady(null)));
+      this.project = this.project.asReady(null);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to close exports project:", transformed);
-      runInAction(() => (this.project = this.project.asReady(existing)));
+
+      this.project = this.project.asReady(existing);
 
       emitNotification(this.eventBus, {
         details: transformed.message,

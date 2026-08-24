@@ -9,8 +9,10 @@ import { Nullable } from "@/lib/types/general";
 
 export interface ISpawnChunkViewProps<T> {
   chunk: Loadable<Nullable<T>>;
-  /** Asked for on mount. The service ignores a chunk it already holds. */
-  onLoad: () => Promise<void>;
+  /**
+   * Asked for on mount. The service ignores a chunk it already holds, and the outcome is state rather than a result.
+   */
+  onLoad: () => void;
   render: (value: T) => ReactNode;
 }
 

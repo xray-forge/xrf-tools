@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { archivesCommands } from "@/core/bindings/commands/archives";
@@ -129,9 +129,7 @@ export class PackerService {
       : this.config.maxVolumeSize;
   }
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    makeObservable(this);
-  }
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   /**
    * Opens the editor on the packer's own defaults.

@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { translationsCommands } from "@/core/bindings/commands/translations";
 import {
@@ -14,6 +14,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -58,9 +59,7 @@ export class TranslationsService {
     );
   }
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    makeObservable(this);
-  }
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -157,28 +156,29 @@ export class TranslationsService {
     }
   }
 
-  @BoundAction()
-  public async openProject(translationsPath: string, mode: TranslationProjectMode): Promise<void> {
+  @LatestFlow("project")
+  public *openProject(translationsPath: string, mode: TranslationProjectMode): TFlow {
     this.log.info("Opening translations project:", translationsPath, mode);
 
     try {
       this.project = createLoadable(null, true);
 
-      const response: TranslationProjectDescriptor = await translationsCommands.openProject(translationsPath, mode);
+      const response: TranslationProjectDescriptor = yield* call(
+        translationsCommands.openProject(translationsPath, mode)
+      );
 
       this.log.info("Translations project opened:", Object.keys(response.files).length, "files");
 
-      runInAction(() => {
-        this.project = createLoadable(response);
-        this.edits = {};
-      });
+      this.project = createLoadable(response);
+      this.edits = {};
     } catch (error) {
       this.log.error("Failed to open translations project:", error);
 
-      runInAction(() => (this.project = createLoadable(null, false, error as Error)));
+      this.project = createLoadable(null, false, error as Error);
 
       emitNotification(this.eventBus, {
-        details: `${translationsPath}\n${transformError(error).message}`,
+        details: `${translationsPath}
+${transformError(error).message}`,
         severity: ENotificationSeverity.ERROR,
         source: EApplicationId.TRANSLATIONS_EDITOR,
         title: "Could not open translations project",
@@ -245,15 +245,15 @@ export class TranslationsService {
     }
   }
 
-  @BoundAction()
-  public async closeProject(): Promise<void> {
+  @LatestFlow("project")
+  public *closeProject(): TFlow {
     this.log.info("Closing translations project");
 
     this.project = this.project.asLoading();
 
-    await translationsCommands.closeProject();
+    yield* call(translationsCommands.closeProject());
 
-    runInAction(() => (this.project = createLoadable(null)));
+    this.project = createLoadable(null);
 
     this.log.info("Translations project closed");
   }

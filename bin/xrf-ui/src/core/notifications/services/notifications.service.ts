@@ -1,5 +1,5 @@
 import { Injectable, OnEvent, WireEvent } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import {
   EMIT_NOTIFICATION_EVENT,
@@ -81,11 +81,6 @@ export class NotificationsService {
     }
 
     return highest;
-  }
-
-  /** Create an observable notification service. */
-  public constructor() {
-    makeObservable(this);
   }
 
   /**

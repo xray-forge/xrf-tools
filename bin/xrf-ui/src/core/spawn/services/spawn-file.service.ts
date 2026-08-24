@@ -8,7 +8,7 @@ import {
   ProvisionId,
   WireStatus,
 } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
 import {
@@ -24,6 +24,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { AnyObject, Nullable } from "@/lib/types/general";
 
 export interface ISpawnRowSelection {
@@ -33,9 +34,6 @@ export interface ISpawnRowSelection {
   row: AnyObject;
 }
 
-/**
- * The open spawn file, one chunk at a time.
- */
 @Injectable()
 export class SpawnFileService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
@@ -99,9 +97,7 @@ export class SpawnFileService {
   public constructor(
     private readonly status: WireStatus = WireStatus.track(this),
     private readonly eventBus: EventBus = inject(EventBus)
-  ) {
-    makeObservable(this);
-  }
+  ) {}
 
   /**
    * Restore whatever the backend already had open.
@@ -154,31 +150,27 @@ export class SpawnFileService {
     releaseEditorProject(spawnCommands.closeFile);
   }
 
-  @BoundAction()
-  public async openFile(path: string): Promise<void> {
+  @LatestFlow("file")
+  public *openFile(path: string): TFlow {
     this.log.info("Opening spawn file:", path);
 
     this.resetChunks();
     this.header = createLoadable(null, true);
 
     try {
-      const header: SpawnHeaderChunk = await spawnCommands.openFile(path);
+      const header: SpawnHeaderChunk = yield* call(spawnCommands.openFile(path));
 
       this.log.info("Spawn file opened");
 
-      runInAction(() => {
-        this.header = createLoadable(header);
-        this.isOpen = true;
-        this.path = path;
-      });
+      this.header = createLoadable(header);
+      this.isOpen = true;
+      this.path = path;
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", error);
 
-      runInAction(() => {
-        this.header = createLoadable(null, false, transformError(error));
-        this.isOpen = false;
-        this.path = null;
-      });
+      this.header = createLoadable(null, false, transformError(error));
+      this.isOpen = false;
+      this.path = null;
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -189,20 +181,18 @@ export class SpawnFileService {
     }
   }
 
-  @BoundAction()
-  public async closeFile(): Promise<void> {
+  @LatestFlow("file")
+  public *closeFile(): TFlow {
     this.log.info("Closing existing spawn file");
 
     try {
-      await spawnCommands.closeFile();
+      yield* call(spawnCommands.closeFile());
 
-      runInAction(() => {
-        this.isOpen = false;
-        this.path = null;
-        this.header = createLoadable(null);
-        this.operation = createLoadable(null);
-        this.resetChunks();
-      });
+      this.isOpen = false;
+      this.path = null;
+      this.header = createLoadable(null);
+      this.operation = createLoadable(null);
+      this.resetChunks();
     } catch (error: unknown) {
       this.log.error("Failed to close spawn file:", error);
 
@@ -215,16 +205,16 @@ export class SpawnFileService {
     }
   }
 
-  @BoundAction()
-  public async saveFile(path: string): Promise<void> {
+  @LatestFlow("operation")
+  public *saveFile(path: string): TFlow {
     this.log.info("Saving spawn file:", path);
 
     this.operation = createLoadable(null, true);
 
     try {
-      await spawnCommands.saveFile(path);
+      yield* call(spawnCommands.saveFile(path));
 
-      runInAction(() => (this.operation = createLoadable("save")));
+      this.operation = createLoadable("save");
 
       emitNotification(this.eventBus, {
         details: path,
@@ -235,7 +225,7 @@ export class SpawnFileService {
     } catch (error: unknown) {
       this.log.error("Failed to save spawn file:", error);
 
-      runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
+      this.operation = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -246,16 +236,16 @@ export class SpawnFileService {
     }
   }
 
-  @BoundAction()
-  public async saveUnpackedDirectory(path: string): Promise<void> {
+  @LatestFlow("operation")
+  public *saveUnpackedDirectory(path: string): TFlow {
     this.log.info("Exporting spawn file:", path);
 
     this.operation = createLoadable(null, true);
 
     try {
-      await spawnCommands.saveUnpackedDirectory(path);
+      yield* call(spawnCommands.saveUnpackedDirectory(path));
 
-      runInAction(() => (this.operation = createLoadable("export")));
+      this.operation = createLoadable("export");
 
       emitNotification(this.eventBus, {
         details: path,
@@ -266,7 +256,7 @@ export class SpawnFileService {
     } catch (error: unknown) {
       this.log.error("Failed to export spawn file:", error);
 
-      runInAction(() => (this.operation = createLoadable(null, false, transformError(error))));
+      this.operation = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -295,29 +285,29 @@ export class SpawnFileService {
     this.selectedRow = null;
   }
 
-  @BoundAction()
-  public async loadAlifeSpawn(): Promise<void> {
-    await this.loadChunk("alifeSpawn", spawnCommands.getAlifeSpawns);
+  @ExclusiveFlow()
+  public *loadAlifeSpawn(): TFlow {
+    yield* this.fetchChunk("alifeSpawn", spawnCommands.getAlifeSpawns);
   }
 
-  @BoundAction()
-  public async loadArtefactSpawn(): Promise<void> {
-    await this.loadChunk("artefactSpawn", spawnCommands.getArtefactSpawns);
+  @ExclusiveFlow()
+  public *loadArtefactSpawn(): TFlow {
+    yield* this.fetchChunk("artefactSpawn", spawnCommands.getArtefactSpawns);
   }
 
-  @BoundAction()
-  public async loadPatrols(): Promise<void> {
-    await this.loadChunk("patrols", spawnCommands.getPatrols);
+  @ExclusiveFlow()
+  public *loadPatrols(): TFlow {
+    yield* this.fetchChunk("patrols", spawnCommands.getPatrols);
   }
 
-  @BoundAction()
-  public async loadGraphs(): Promise<void> {
-    await this.loadChunk("graphs", spawnCommands.getGraphs);
+  @ExclusiveFlow()
+  public *loadGraphs(): TFlow {
+    yield* this.fetchChunk("graphs", spawnCommands.getGraphs);
   }
 
-  @BoundAction()
-  public async loadHeader(): Promise<void> {
-    await this.loadChunk("header", spawnCommands.getHeader);
+  @ExclusiveFlow()
+  public *loadHeader(): TFlow {
+    yield* this.fetchChunk("header", spawnCommands.getHeader);
   }
 
   /**
@@ -326,33 +316,37 @@ export class SpawnFileService {
    * Views ask for their chunk on mount, and moving between chunk tabs remounts them, so without the
    * already-loaded guard every tab click would refetch what it is about to render.
    *
+   * A generator rather than an async method, so a chunk abandoned by a reset is abandoned here too: cancelling the
+   * caller resumes this with a return completion, and the write below the yield never happens.
+   *
    * @param key - State field that stores the requested chunk.
    * @param request - Backend command that loads the chunk.
-   * @returns Completes after the chunk state is already available or updated.
    */
-  private async loadChunk<K extends "header" | "alifeSpawn" | "artefactSpawn" | "patrols" | "graphs">(
+  private *fetchChunk<K extends "header" | "alifeSpawn" | "artefactSpawn" | "patrols" | "graphs">(
     key: K,
     request: () => Promise<unknown>
-  ): Promise<void> {
+  ): TFlow {
     const current: Loadable<unknown> = this[key];
 
     // Deliberately not gated on `isOpen`: that is set asynchronously while provisioning, so a chunk view
     // mounting first would load nothing and never retry. The backend answers null when nothing is open,
     // which is the same empty state by a shorter route.
+    // todo: A chunk that legitimately reads as null is refetched on every remount. Telling "never asked" from "asked
+    //   and empty" needs an idle state, which the loadable rework owns.
     if (current.isLoading || current.value !== null) {
       return;
     }
 
-    runInAction(() => ((this[key] as Loadable<unknown>) = createLoadable(null, true)));
+    (this[key] as Loadable<unknown>) = createLoadable(null, true);
 
     try {
-      const chunk: unknown = await request();
+      const chunk: unknown = yield* call(request());
 
-      runInAction(() => ((this[key] as Loadable<unknown>) = createLoadable(chunk)));
+      (this[key] as Loadable<unknown>) = createLoadable(chunk);
     } catch (error: unknown) {
       this.log.error("Failed to read spawn chunk:", key, error);
 
-      runInAction(() => ((this[key] as Loadable<unknown>) = createLoadable(null, false, transformError(error))));
+      (this[key] as Loadable<unknown>) = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,
@@ -375,6 +369,11 @@ export class SpawnFileService {
   }
 
   private resetChunks(): void {
+    // Abandoned rather than merely cleared: a read already on the wire would otherwise land under the next file.
+    for (const lane of ["loadHeader", "loadAlifeSpawn", "loadArtefactSpawn", "loadPatrols", "loadGraphs"]) {
+      cancelFlow(this, lane);
+    }
+
     this.alifeSpawn = createLoadable(null);
     this.artefactSpawn = createLoadable(null);
     this.patrols = createLoadable(null);

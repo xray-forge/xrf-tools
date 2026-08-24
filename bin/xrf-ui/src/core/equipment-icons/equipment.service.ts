@@ -3,7 +3,7 @@ import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
 
 import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
@@ -19,6 +19,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 export interface IEquipmentPngDescriptor {
@@ -62,9 +63,7 @@ export class EquipmentService {
   public constructor(
     private readonly assetService: AssetService = inject(AssetService),
     private readonly eventBus: EventBus = inject(EventBus)
-  ) {
-    makeObservable(this);
-  }
+  ) {}
 
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -112,30 +111,29 @@ export class EquipmentService {
     this.gridSize = Math.round(clamp(size, 10, 100));
   }
 
-  @BoundAction()
-  public async openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string): Promise<void> {
+  @LatestFlow("sprite")
+  public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string): TFlow {
     this.log.info("Opening equipment project:", equipmentDdsPath, systemLtxPath);
 
     try {
       this.assetService.releaseKey(SPRITE_ASSET_KEY);
       this.spriteImage = createLoadable(null, true);
 
-      const response: IEquipmentSpriteMetadata = await equipmentIconsCommands.openSprite(
-        equipmentDdsPath,
-        systemLtxPath
+      const response: IEquipmentSpriteMetadata = yield* call(
+        equipmentIconsCommands.openSprite(equipmentDdsPath, systemLtxPath)
       );
 
       this.log.info("Equipment project opened:", response);
 
-      const spriteImage: IEquipmentPngDescriptor = await this.spriteFromResponse(response);
+      const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
 
-      runInAction(() => (this.spriteImage = createLoadable(spriteImage)));
+      this.spriteImage = createLoadable(spriteImage);
 
-      await this.resolveRepackSource(spriteImage.path);
+      yield* call(this.resolveRepackSource(spriteImage.path));
     } catch (error) {
       this.log.error("Failed to open equipment editor project:", error);
 
-      runInAction(() => (this.spriteImage = createLoadable(null, false, error as Error)));
+      this.spriteImage = createLoadable(null, false, error as Error);
 
       emitNotification(this.eventBus, {
         details: `${equipmentDdsPath}\n${transformError(error).message}`,
@@ -146,35 +144,45 @@ export class EquipmentService {
     }
   }
 
-  @BoundAction()
-  public async reopenEquipmentProject(): Promise<void> {
+  @LatestFlow("sprite")
+  public *reopenEquipmentProject(): TFlow {
+    yield* this.reopen();
+  }
+
+  /**
+   * Reads the sprite the backend holds and puts it back on screen.
+   *
+   * Undecorated on purpose: a repack finishes by reopening, and a decorated call would take the same lane and cancel
+   * the repack that made it. Delegating with `yield*` keeps both in one run.
+   */
+  private *reopen(): TFlow {
     this.log.info("Reopening equipment editor project");
 
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: IEquipmentSpriteMetadata = await equipmentIconsCommands.reopenSprite();
+      const response: IEquipmentSpriteMetadata = yield* call(equipmentIconsCommands.reopenSprite());
 
       this.log.info("Equipment project reopened:", response);
 
-      const spriteImage: IEquipmentPngDescriptor = await this.spriteFromResponse(response);
+      const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
 
-      runInAction(() => (this.spriteImage = createLoadable(spriteImage)));
+      this.spriteImage = createLoadable(spriteImage);
 
-      await this.resolveRepackSource(spriteImage.path);
+      yield* call(this.resolveRepackSource(spriteImage.path));
     } catch (error) {
       this.log.error("Failed to reopen equipment editor project:", error);
 
       // Left loading, this disables every command in the editor for the rest of the session, and the
       // only way out is closing the project. The previous sprite stays on screen behind the error.
-      runInAction(() => (this.spriteImage = this.spriteImage.asFailed(error as Error)));
+      this.spriteImage = this.spriteImage.asFailed(error as Error);
 
       throw error;
     }
   }
 
-  @BoundAction()
-  public async repackAndOpenProject(): Promise<void> {
+  @LatestFlow("sprite")
+  public *repackAndOpenProject(): TFlow {
     const { spriteImage, repackSourcePath } = this;
 
     if (!spriteImage.value || spriteImage.isLoading) {
@@ -190,9 +198,9 @@ export class EquipmentService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      await this.packEquipmentSprite(repackSourcePath, spriteImage.value.path, spriteImage.value.ltxPath);
+      yield* call(this.packEquipmentSprite(repackSourcePath, spriteImage.value.path, spriteImage.value.ltxPath));
 
-      runInAction(() => (this.repackedAt = Date.now()));
+      this.repackedAt = Date.now();
 
       emitNotification(this.eventBus, {
         details: `${repackSourcePath}\n${spriteImage.value.path}`,
@@ -201,13 +209,13 @@ export class EquipmentService {
         title: "Repacked equipment sprite",
       });
 
-      await this.reopenEquipmentProject();
+      yield* this.reopen();
     } catch (error) {
       this.log.error("Failed to repack equipment editor project:", error);
 
       // Kept as a failure rather than reset to ready. Discarding it here is what made a repack that
       // wrote nothing look exactly like one that succeeded.
-      runInAction(() => (this.spriteImage = this.spriteImage.asFailed(error as Error)));
+      this.spriteImage = this.spriteImage.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${spriteImage.value.path}\n${transformError(error).message}`,
@@ -247,26 +255,25 @@ export class EquipmentService {
     }
   }
 
-  @BoundAction()
-  public async closeEquipmentProject(): Promise<void> {
+  @LatestFlow("sprite")
+  public *closeEquipmentProject(): TFlow {
     this.log.info("Closing equipment project");
 
     try {
       this.spriteImage = this.spriteImage.asLoading();
       this.assetService.releaseKey(SPRITE_ASSET_KEY);
 
-      await equipmentIconsCommands.closeSprite();
+      yield* call(equipmentIconsCommands.closeSprite());
 
       this.log.info("Equipment project closed");
 
-      runInAction(() => {
-        this.spriteImage = createLoadable(null);
-        this.repackSourcePath = null;
-        this.repackedAt = null;
-      });
+      this.spriteImage = createLoadable(null);
+      this.repackSourcePath = null;
+      this.repackedAt = null;
     } catch (error) {
       this.log.error("Failed to close equipment editor project:", error);
-      runInAction(() => (this.spriteImage = this.spriteImage.asFailed(new Error(error as string))));
+
+      this.spriteImage = this.spriteImage.asFailed(new Error(error as string));
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,

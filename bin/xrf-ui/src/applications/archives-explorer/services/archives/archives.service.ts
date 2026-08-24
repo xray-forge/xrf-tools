@@ -8,7 +8,7 @@ import {
   ProvisionId,
   WireStatus,
 } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import {
   getArchivePreviewSupport,
@@ -34,13 +34,12 @@ import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class ArchivesService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  private contentRequestId: number = 0;
 
   @Observable()
   public isReady: boolean = false;
@@ -103,9 +102,7 @@ export class ArchivesService {
   public constructor(
     private readonly status: WireStatus = WireStatus.track(this),
     private readonly eventBus: EventBus = inject(EventBus)
-  ) {
-    makeObservable(this);
-  }
+  ) {}
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
@@ -170,8 +167,8 @@ export class ArchivesService {
     this.project = createLoadable(null);
   }
 
-  @BoundAction()
-  public async openProject(path: string): Promise<void> {
+  @LatestFlow("project")
+  public *openProject(path: string): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Opening archives project:", path);
@@ -180,15 +177,15 @@ export class ArchivesService {
       this.clearFileSelection();
       this.project = createLoadable(null, true);
 
-      const response: ArchiveProject = await archivesCommands.openProject(path);
+      const response: ArchiveProject = yield* call(archivesCommands.openProject(path));
 
       this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => (this.project = createLoadable(response, false)));
+      this.project = createLoadable(response, false);
     } catch (error: unknown) {
       this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
-      runInAction(() => (this.project = createLoadable(null, false, transformError(error))));
+      this.project = createLoadable(null, false, transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -199,24 +196,22 @@ export class ArchivesService {
     }
   }
 
-  @BoundAction()
-  public async closeProject(): Promise<void> {
+  @LatestFlow("project")
+  public *closeProject(): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Closing existing archives project");
 
     try {
-      await archivesCommands.closeProject();
+      yield* call(archivesCommands.closeProject());
 
       // Closing the project takes the preview off screen, so the model it parked in the backend goes with it.
       releaseEditorProject(visualsCommands.closeModel);
 
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => {
-        this.clearFileSelection();
-        this.project = createLoadable(null);
-      });
+      this.clearFileSelection();
+      this.project = createLoadable(null);
     } catch (error: unknown) {
       this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
 
@@ -224,15 +219,14 @@ export class ArchivesService {
     }
   }
 
-  @BoundAction()
-  public async selectArchiveFile(descriptor: ArchiveFileDescriptor): Promise<void> {
+  @LatestFlow("content")
+  public *selectArchiveFile(descriptor: ArchiveFileDescriptor): TFlow {
     this.log.info("Select archive file:", descriptor);
 
     this.selection = { kind: "file", descriptor };
-    this.contentRequestId += 1;
     this.content = createLoadable(null);
 
-    await this.loadSelectedContent(descriptor);
+    yield* this.loadSelectedContent(descriptor);
   }
 
   /**
@@ -242,18 +236,19 @@ export class ArchivesService {
    */
   @BoundAction()
   public selectArchiveDirectory(path: string): void {
-    this.contentRequestId += 1;
+    cancelFlow(this, "content");
+
     this.selection = { kind: "directory", path };
     this.content = createLoadable(null);
     this.operation = createLoadable(null);
   }
 
-  @BoundAction()
-  public async retrySelectedFile(): Promise<void> {
+  @LatestFlow("content")
+  public *retrySelectedFile(): TFlow {
     const descriptor: Nullable<ArchiveFileDescriptor> = this.selectedFile;
 
     if (descriptor) {
-      await this.loadSelectedContent(descriptor);
+      yield* this.loadSelectedContent(descriptor);
     }
   }
 
@@ -363,7 +358,8 @@ export class ArchivesService {
 
   @BoundAction()
   public clearFileSelection(): void {
-    this.contentRequestId += 1;
+    cancelFlow(this, "content");
+
     this.selection = { kind: "none" };
     this.content = createLoadable(null);
     this.operation = createLoadable(null);
@@ -372,26 +368,25 @@ export class ArchivesService {
   /**
    * Loads a selected file in its supported preview representation.
    *
+   * A generator so a selection moved past is abandoned here too, rather than reading on and publishing over whatever
+   * replaced it.
+   *
    * @param descriptor - Selected archive file to preview.
-   * @returns Resolves after supported content loading is started or completed.
    */
-  private async loadSelectedContent(descriptor: ArchiveFileDescriptor): Promise<void> {
+  private *loadSelectedContent(descriptor: ArchiveFileDescriptor): TFlow {
     const project: Nullable<ArchiveProject> = this.project.value;
 
     if (!project) {
       return;
     }
 
+    // todo: Switch case based on type?
     if (isArchiveAudio(descriptor, project.readPolicy)) {
-      return await this.readContent(descriptor, "audio", project);
-    }
-
-    if (isArchiveImage(descriptor, project.readPolicy)) {
-      return await this.readContent(descriptor, "image", project);
-    }
-
-    if (getArchivePreviewSupport(descriptor, project.readPolicy).kind === "supported") {
-      return await this.readContent(descriptor, "text", project);
+      return yield* this.readContent(descriptor, "audio", project);
+    } else if (isArchiveImage(descriptor, project.readPolicy)) {
+      return yield* this.readContent(descriptor, "image", project);
+    } else if (getArchivePreviewSupport(descriptor, project.readPolicy).kind === "supported") {
+      return yield* this.readContent(descriptor, "text", project);
     }
   }
 
@@ -438,50 +433,41 @@ export class ArchivesService {
   }
 
   /**
-   * Loads and publishes one file preview while ignoring stale responses.
+   * Loads and publishes one file preview.
+   *
+   * No staleness check of its own: a selection moved past cancels this where it stands, so the publish below the yield
+   * cannot run for a file the explorer no longer points at.
    *
    * @param descriptor - Archive file to read.
    * @param kind - Preview representation to request from the backend.
    * @param project - Target project to read from.
-   * @returns Resolves after the current request publishes content or an error.
    */
-  private async readContent(
+  private *readContent(
     descriptor: ArchiveFileDescriptor,
     kind: TArchiveContent["kind"],
     project: ArchiveProject
-  ): Promise<void> {
-    const requestId: number = ++this.contentRequestId;
+  ): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Reading archive content:", kind, descriptor.name);
     this.content = createLoadable(null, true);
 
     try {
-      const content: TArchiveContent =
+      const content: TArchiveContent = yield* call(
         kind === "audio"
-          ? await this.readAudioContent(descriptor, project)
+          ? this.readAudioContent(descriptor, project)
           : kind === "image"
-            ? await this.readImageContent(descriptor, project)
-            : {
-                kind: "text",
-                result: await archivesCommands.readFile(descriptor.name),
-              };
-
-      if (requestId !== this.contentRequestId) {
-        return;
-      }
+            ? this.readImageContent(descriptor, project)
+            : archivesCommands.readFile(descriptor.name).then((result): TArchiveContent => ({ kind: "text", result }))
+      );
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 
-      runInAction(() => (this.content = createLoadable(content)));
+      this.content = createLoadable(content);
     } catch (error: unknown) {
-      if (requestId !== this.contentRequestId) {
-        return;
-      }
-
       this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), descriptor.name, error);
 
-      runInAction(() => (this.content = createLoadable(null, false, transformError(error))));
+      this.content = createLoadable(null, false, transformError(error));
     }
   }
 }

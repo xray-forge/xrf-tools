@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/bindings/commands/assets";
@@ -9,6 +9,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -52,10 +53,6 @@ export class VisualsBrowseService {
     return this.browsed?.roots.map((root: XrayRoot) => root.path) ?? [];
   }
 
-  public constructor() {
-    makeObservable(this);
-  }
-
   /**
    * Restore whatever roots the backend is still browsing.
    *
@@ -70,7 +67,8 @@ export class VisualsBrowseService {
       if (roots) {
         this.log.info("Restoring browsed roots:", describeRoots(roots));
 
-        await this.list(roots);
+        // Through the lane rather than around it, so a root the user picks while this is still restoring wins.
+        await flowResult(this.restore(roots));
       }
     } catch (error) {
       this.log.error("Failed to restore browsed roots:", error);
@@ -97,48 +95,55 @@ export class VisualsBrowseService {
    *
    * @param root - Filesystem path of the directory or installation to browse.
    */
-  @BoundAction()
-  public async openRoot(root: string): Promise<void> {
+  @LatestFlow("visuals")
+  public *openRoot(root: string): TFlow {
     const roots: XrayRoots = createRoots([root]);
 
     this.log.info("Browsing root:", root);
 
-    await visualsCommands.openBrowse(roots);
-    await this.list(roots);
+    yield* call(visualsCommands.openBrowse(roots));
+    yield* this.list(roots);
   }
 
   /** Stop browsing, leaving whatever model is open on screen. */
-  @BoundAction()
-  public async close(): Promise<void> {
-    runInAction(() => {
-      this.browsed = null;
-      this.visuals = createLoadable([]);
-    });
+  @LatestFlow("visuals")
+  public *close(): TFlow {
+    this.browsed = null;
+    this.visuals = createLoadable([]);
 
     try {
-      await visualsCommands.closeBrowse();
+      yield* call(visualsCommands.closeBrowse());
     } catch (error) {
       this.log.error("Failed to close browsed roots:", error);
     }
   }
 
   /**
+   * Puts an already browsed roots back on screen, for a session the backend still holds.
+   *
+   * @param roots - Roots the backend reported as browsed.
+   */
+  @LatestFlow("visuals")
+  private *restore(roots: XrayRoots): TFlow {
+    yield* this.list(roots);
+  }
+
+  /**
    * Lists roots and puts the result on screen.
+   *
+   * A generator so a listing the user has moved past is abandoned rather than published: the write below the yield
+   * cannot run once another root has taken the lane.
    *
    * @param roots - Roots to list, already recorded as the browsed one.
    */
-  private async list(roots: XrayRoots): Promise<void> {
-    runInAction(() => {
-      this.browsed = roots;
-      this.visuals = this.visuals.asLoading();
-    });
+  private *list(roots: XrayRoots): TFlow {
+    this.browsed = roots;
+    this.visuals = this.visuals.asLoading();
 
     try {
-      const visuals: Array<XrayAsset> = await assetsCommands.listAssets(roots, "ogf");
+      const visuals: Array<XrayAsset> = yield* call(assetsCommands.listAssets(roots, "ogf"));
 
-      runInAction(() => {
-        this.visuals = this.visuals.asReady(visuals);
-      });
+      this.visuals = this.visuals.asReady(visuals);
 
       this.log.info(`Listed ${visuals.length} visuals in:`, describeRoots(roots));
     } catch (error: unknown) {
@@ -146,9 +151,7 @@ export class VisualsBrowseService {
 
       this.log.error("Failed to list visuals:", transformed);
 
-      runInAction(() => {
-        this.visuals = this.visuals.asFailed(transformed, []);
-      });
+      this.visuals = this.visuals.asFailed(transformed, []);
     }
   }
 }

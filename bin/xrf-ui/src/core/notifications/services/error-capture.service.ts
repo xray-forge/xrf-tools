@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, makeObservable } from "@wirestate/mobx";
+import { BoundAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -22,9 +22,7 @@ export class ErrorCaptureService {
    *
    * @param eventBus - Event bus that delivers captured failures to the notification service.
    */
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    makeObservable(this);
-  }
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   /**
    * Register global error and rejection listeners when the service is provisioned.

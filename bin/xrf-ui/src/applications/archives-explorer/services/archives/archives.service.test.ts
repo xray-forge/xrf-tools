@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { isComputedProp } from "@wirestate/mobx";
+import { flowResult, isComputedProp } from "@wirestate/mobx";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
@@ -88,8 +88,8 @@ describe("ArchivesService file selection", () => {
     });
 
     const service: ArchivesService = mockArchivesService([first, second]);
-    const firstRead: Promise<void> = service.selectArchiveFile(first);
-    const secondRead: Promise<void> = service.selectArchiveFile(second);
+    const firstRead: Promise<void> = flowResult(service.selectArchiveFile(first));
+    const secondRead: Promise<void> = flowResult(service.selectArchiveFile(second));
 
     resolveSecond({ name: second.name, content: "second", size: 6 });
     await secondRead;

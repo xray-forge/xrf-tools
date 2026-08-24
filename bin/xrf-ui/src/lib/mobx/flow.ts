@@ -1,5 +1,7 @@
 import { flow, isFlowCancellationError } from "@wirestate/mobx";
 
+import { Nullable } from "@/lib/types/general";
+
 /**
  * A flow's promise, which can be told the answer is no longer wanted.
  */
@@ -49,6 +51,40 @@ export function isCancellation(error: unknown): boolean {
 }
 
 /**
+ * Lets a cancellation settle quietly while a real failure still reaches the caller.
+ *
+ * @param error - Rejection the flow produced.
+ */
+function swallowCancellation(error: unknown): void {
+  if (!isFlowCancellationError(error as Error)) {
+    throw error;
+  }
+}
+
+/**
+ * Publishes a wrapped flow as a method bound to its instance on first read.
+ *
+ * Bound the way `action.bound` binds, because these are handed to React as callbacks: a component passing
+ * `onLoad={service.loadPatrols}` detaches the method from its instance, and an unbound one would run with no `this`.
+ *
+ * @param key - Method name being replaced.
+ * @param run - Wrapped implementation to bind.
+ * @returns A property descriptor that binds on first access.
+ */
+function toBoundDescriptor(key: PropertyKey, run: (...args: Array<any>) => Promise<any>): TypedPropertyDescriptor<any> {
+  return {
+    configurable: true,
+    get(this: object): (...args: Array<any>) => Promise<any> {
+      const bound: (...args: Array<any>) => Promise<any> = run.bind(this);
+
+      Object.defineProperty(this, key, { configurable: true, value: bound, writable: false });
+
+      return bound;
+    },
+  };
+}
+
+/**
  * Runs a generator method as a flow, cancelling whatever the previous call left running.
  *
  * Cancelling resumes the generator with a return completion, so the lines after the `yield` in flight never execute -
@@ -69,7 +105,7 @@ export function LatestFlow(lane?: PropertyKey): MethodDecorator {
     const slot: PropertyKey = lane ?? key;
     const runner: (...args: Array<any>) => TCancellablePromise<any> = flow(descriptor.value as TFlowGenerator);
 
-    descriptor.value = function runLatest(this: object, ...args: Array<any>): Promise<any> {
+    function runLatest(this: object, ...args: Array<any>): Promise<any> {
       cancelFlow(this, slot);
 
       const promise: TCancellablePromise<any> = runner.apply(this, args);
@@ -78,14 +114,62 @@ export function LatestFlow(lane?: PropertyKey): MethodDecorator {
       slots.set(slot, promise);
       RUNNING.set(this, slots);
 
-      return promise.catch((error: unknown) => {
-        if (!isFlowCancellationError(error as Error)) {
-          throw error;
-        }
-      });
-    };
+      return promise.catch(swallowCancellation);
+    }
 
-    return descriptor;
+    return toBoundDescriptor(key, runLatest);
+  };
+}
+
+/**
+ * Runs a generator method as a flow, ignoring the call entirely while one is already running.
+ *
+ * The other half of {@link LatestFlow}, and not interchangeable with it. Supersede is right when a newer request
+ * replaces an older one - a different file, a different motion. Ignore is right when every call asks for the same
+ * thing, which is what a view asking for its chunk on mount does: superseding there would cancel a run that had
+ * already published a loading state, leaving the lane loading with nothing left to finish it.
+ *
+ * @param lane - Name shared by every method feeding one lane. Defaults to the method's own name.
+ * @returns The method decorator that wraps the generator.
+ */
+export function ExclusiveFlow(lane?: PropertyKey): MethodDecorator {
+  return function decorateExclusiveFlow(
+    _target: object,
+    key: PropertyKey,
+    descriptor: TypedPropertyDescriptor<any>
+  ): TypedPropertyDescriptor<any> {
+    const slot: PropertyKey = lane ?? key;
+    const runner: (...args: Array<any>) => TCancellablePromise<any> = flow(descriptor.value as TFlowGenerator);
+
+    function runExclusive(this: object, ...args: Array<any>): Promise<any> {
+      const running: Nullable<TCancellablePromise<any>> = RUNNING.get(this)?.get(slot) ?? null;
+
+      if (running) {
+        return running.catch(swallowCancellation);
+      }
+
+      const promise: TCancellablePromise<any> = runner.apply(this, args);
+      const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(this) ?? new Map();
+
+      slots.set(slot, promise);
+      RUNNING.set(this, slots);
+
+      // Cleared when it settles, so the lane is askable again. `LatestFlow` has no equivalent because its next call
+      // replaces the entry outright.
+      const forget: () => void = () => {
+        if (RUNNING.get(this)?.get(slot) === promise) {
+          RUNNING.get(this)?.delete(slot);
+        }
+      };
+
+      return promise.then(forget, (error: unknown) => {
+        forget();
+
+        return swallowCancellation(error);
+      });
+    }
+
+    return toBoundDescriptor(key, runExclusive);
   };
 }
 

@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, makeObservable, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
@@ -115,9 +115,7 @@ export class VisualsService {
     private readonly projectService: ProjectService = inject(ProjectService),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly motionService: VisualMotionService = inject(VisualMotionService)
-  ) {
-    makeObservable(this);
-  }
+  ) {}
 
   /**
    * Restore whatever the backend still has selected.
@@ -126,14 +124,14 @@ export class VisualsService {
    * comes back showing the same model rather than an empty picker.
    */
   @OnProvision()
-  public async onProvision(/* todo: Respect strict mode and races here. */): Promise<void> {
+  public async onProvision(): Promise<void> {
     try {
       const selected: Nullable<SelectedVisualDescription> = await visualsCommands.getModel();
 
       if (selected) {
         this.log.info("Restoring selected visual:", describeVisualSource(selected.source));
 
-        await this.loadService.restore(selected);
+        await flowResult(this.loadService.restore(selected));
       }
     } catch (error) {
       this.log.error("Failed to restore selected visual:", error);
