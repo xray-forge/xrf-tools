@@ -1,0 +1,5 @@
+# Keep every text file LF on all platforms so byte-sensitive consumers.
+* text=auto eol=lf
+
+# Test fixtures are byte-exact test data: line endings are part of the test semantics.
+crates/xrf-test-utils/resources/** -text

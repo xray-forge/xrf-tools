@@ -16,11 +16,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Configure Git line endings
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       # Pinned to main rather than the dispatch ref: a dispatch can name any branch, and these artifacts
       # go to the nightly release, which tracks main.
       - uses: actions/checkout@v6
@@ -79,6 +74,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Kept although nothing here runs clippy: rustup installs every component rust-toolchain.toml lists
+      # on the first cargo call regardless of use, measured at ~15s, so removing this costs more.
       - uses: dtolnay/rust-toolchain@1.97.1
 
       - uses: actions/checkout@v6

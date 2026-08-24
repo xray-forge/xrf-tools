@@ -19,11 +19,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Configure Git line endings
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
         with:
@@ -47,11 +42,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Configure Git line endings
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
         with:
@@ -140,11 +130,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Configure Git line endings
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
@@ -198,6 +183,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Kept although nothing here runs clippy: rustup installs every component rust-toolchain.toml lists
+      # on the first cargo call regardless of use, measured at ~15s, so removing this costs more.
       - uses: dtolnay/rust-toolchain@1.97.1
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
