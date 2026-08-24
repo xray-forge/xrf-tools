@@ -4,8 +4,7 @@
 [![language-rust](https://img.shields.io/badge/language-rust-orange.svg?style=flat)](https://github.com/xray-forge/xrf-tools/search?l=rust)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/Neloreck/dreamstate/blob/master/LICENSE)
 <br/>
-![status](https://github.com/xray-forge/xrf-tools/actions/workflows/build_and_test_windows.yml/badge.svg)
-![status](https://github.com/xray-forge/xrf-tools/actions/workflows/build_and_test_ubuntu.yml/badge.svg)
+[![build and test](https://github.com/xray-forge/xrf-tools/actions/workflows/build_and_test.yml/badge.svg?branch=main)](https://github.com/xray-forge/xrf-tools/actions/workflows/build_and_test.yml)
 
 Set of [utility tools](https://xray-forge.github.io/xrf-book/tools/tools.html) to assist with xray engine mods
 development and debugging. <br/>
