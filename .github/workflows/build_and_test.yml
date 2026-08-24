@@ -207,6 +207,9 @@ jobs:
       - name: Run derive macro diagnostics
         run: cargo test --verbose -p xrf-error-derive --test ui
 
+      - name: Discard trybuild scratch crates
+        run: rm -rf target/tests
+
       - name: Record the build timestamp
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
