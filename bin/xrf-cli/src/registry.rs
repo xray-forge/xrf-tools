@@ -11,8 +11,13 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       label: "Archive",
       about: "X-Ray archive tools",
       commands: vec![
+        archive::extract::ExtractCommand::new_box(),
+        archive::find::FindCommand::new_box(),
+        archive::info::InfoCommand::new_box(),
+        archive::list::ListCommand::new_box(),
         archive::pack::PackCommand::new_box(),
         archive::unpack::UnpackCommand::new_box(),
+        archive::verify::VerifyCommand::new_box(),
       ],
     },
     CommandGroup {

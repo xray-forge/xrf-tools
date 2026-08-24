@@ -167,9 +167,9 @@ impl GenericCommand for PackCommand {
       xrf_output::info!(output, "Wrote {}", volume.display());
     }
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
-      "Packed {} file(s) into {} volume(s), took {}",
+      "Packed {} file(s) into {} volume(s) in {}",
       result.files_total,
       result.volumes.len(),
       xrf_utils::format_duration(result.duration),

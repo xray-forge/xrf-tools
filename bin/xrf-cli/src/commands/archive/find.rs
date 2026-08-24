@@ -1,0 +1,112 @@
+use std::path::PathBuf;
+use std::time::Instant;
+
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
+use xrf_archive::ArchiveProject;
+use xrf_output::OutputOptions;
+
+use crate::commands::archive::list::ListCommand;
+use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::output::TerminalOutput;
+
+#[derive(Default)]
+pub struct FindCommand;
+
+impl GenericCommand for FindCommand {
+  fn operation(&self) -> &'static str {
+    "find"
+  }
+
+  fn init(&self) -> Command {
+    Command::new(self.operation())
+      .about("Find archive entries whose logical path contains text")
+      .arg(
+        Arg::new("path")
+          .help("Path to an archive volume or a directory containing volumes")
+          .short('p')
+          .long("path")
+          .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("query")
+          .help("Case-insensitive text to find in an entry's logical path")
+          .short('q')
+          .long("query")
+          .required(true)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("files")
+          .help("Search files only, excluding directory records")
+          .long("files")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("directories")
+          .help("Search directory records only, excluding files")
+          .long("directories")
+          .action(ArgAction::SetTrue),
+      )
+      .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
+      .arg(
+        Arg::new("silent")
+          .help("Disable any logging")
+          .short('s')
+          .long("silent")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("verbose")
+          .help("Include stored size, unpacked size, and source volume")
+          .short('v')
+          .long("verbose")
+          .action(ArgAction::SetTrue),
+      )
+  }
+
+  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+    let started_at: Instant = Instant::now();
+    let path: &PathBuf = matches
+      .get_one("path")
+      .expect("Expected an archive path to be provided");
+    let query: &String = matches.get_one("query").expect("Expected a query to be provided");
+    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+
+    let project: ArchiveProject = ArchiveProject::new(path)?;
+    let query: String = query.to_ascii_lowercase();
+    let entries = ListCommand::entries(&project, ListCommand::selection(matches));
+    let entries: Vec<_> = entries
+      .into_iter()
+      .filter(|entry| entry.name.to_ascii_lowercase().contains(&query))
+      .collect();
+
+    for entry in &entries {
+      let size: String = xrf_utils::format_bytes(u64::from(entry.size_real));
+
+      if matches.get_flag("verbose") {
+        let (compressed, unpacked): (String, String) =
+          xrf_utils::format_bytes_pair(u64::from(entry.size_compressed), u64::from(entry.size_real));
+
+        xrf_output::info!(
+          output,
+          "{} [{size}, {compressed} stored, {unpacked} unpacked, {}]",
+          entry.name,
+          entry.source.display(),
+        );
+      } else {
+        xrf_output::info!(output, "{} [{size}]", entry.name);
+      }
+    }
+
+    xrf_output::success!(
+      output,
+      "Found {} match{} in {}",
+      entries.len(),
+      if entries.len() == 1 { "" } else { "es" },
+      xrf_utils::format_duration(started_at.elapsed())
+    );
+
+    Ok(())
+  }
+}

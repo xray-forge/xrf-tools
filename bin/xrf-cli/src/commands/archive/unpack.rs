@@ -124,9 +124,9 @@ impl GenericCommand for UnpackCommand {
         parallel,
       ))?;
 
-      xrf_output::info!(
+      xrf_output::success!(
         output,
-        "Unpacked archive, took {} (preparation {}, unpack {})",
+        "Unpacked archive in {} (preparation {}, unpack {})",
         xrf_utils::format_duration(result.duration),
         xrf_utils::format_duration(result.prepare_duration),
         xrf_utils::format_duration(result.unpack_duration),

@@ -175,6 +175,14 @@ fn extract_file_writes_to_the_exact_path_it_is_given() {
 }
 
 #[test]
+fn extract_file_refuses_a_directory_record() {
+  let directory: PathBuf = create_temporary_directory("directory-record");
+  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs", b"")]);
+
+  assert!(ArchiveUnpacker::extract_file(&project, "configs", directory.join("out")).is_err());
+}
+
+#[test]
 fn read_file_bytes_returns_the_stored_contents() {
   let directory: PathBuf = create_temporary_directory("bytes");
   let project: ArchiveProject = create_project(

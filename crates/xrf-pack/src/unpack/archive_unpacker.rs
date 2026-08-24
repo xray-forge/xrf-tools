@@ -116,7 +116,7 @@ impl ArchiveUnpacker {
         continue;
       };
 
-      let target_path: PathBuf = destination.as_ref().join(relative.replace('\\', "/"));
+      let target_path: PathBuf = destination.as_ref().join(to_host_relative(relative)?);
 
       if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent)?;
@@ -151,6 +151,13 @@ impl ArchiveUnpacker {
     let descriptor: &ArchiveFileDescriptor = project.files.get(name).ok_or_else(|| {
       XrfError::new_not_found_error(format!("Cannot extract '{name}' - no such file in the archive."))
     })?;
+
+    if descriptor.is_directory {
+      return Err(XrfError::new_invalid_error(format!(
+        "Cannot extract '{}' as a file - it is a directory record.",
+        descriptor.name
+      )));
+    }
 
     if let Some(parent) = destination.as_ref().parent() {
       fs::create_dir_all(parent)?;
@@ -198,7 +205,7 @@ impl ArchiveUnpacker {
 
   fn unpack_file<P: AsRef<Path>>(destination: P, descriptor: &ArchiveFileDescriptor) -> XrfResult {
     write_descriptor_contents(
-      &mut Self::create_target(&Self::build_target_path(destination.as_ref(), descriptor))?,
+      &mut Self::create_target(&Self::build_target_path(destination.as_ref(), descriptor)?)?,
       descriptor,
     )
   }
@@ -207,7 +214,7 @@ impl ArchiveUnpacker {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
     for descriptor in project.files.values() {
-      if let Some(parent) = Self::build_target_path(destination.as_ref(), descriptor).parent() {
+      if let Some(parent) = Self::build_target_path(destination.as_ref(), descriptor)?.parent() {
         set.insert(parent.into());
       }
     }
@@ -228,13 +235,13 @@ impl ArchiveUnpacker {
   /// Both halves are engine paths, so both are crossed into host components rather than pushed whole: an entry named
   /// `configs\system.ltx` is a single component to `std::path` on Linux, which unpacks the tree as a flat directory of
   /// files with backslashes in their names.
-  fn build_target_path(destination: &Path, descriptor: &ArchiveFileDescriptor) -> PathBuf {
+  fn build_target_path(destination: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
     let mut path: PathBuf = destination.into();
 
-    path.push(to_host_relative(&descriptor.destination.to_string_lossy()));
-    path.push(to_host_relative(&descriptor.name));
+    path.push(to_host_relative(&descriptor.destination.to_string_lossy())?);
+    path.push(to_host_relative(&descriptor.name)?);
 
-    path
+    Ok(path)
   }
 }
 
@@ -252,7 +259,7 @@ mod tests {
       .with_archive_paths(Path::new("textures.db0"), Path::new("gamedata\\"));
 
     assert_eq!(
-      ArchiveUnpacker::build_target_path(Path::new("out"), &descriptor),
+      ArchiveUnpacker::build_target_path(Path::new("out"), &descriptor).expect("safe archive path"),
       PathBuf::from("out").join("gamedata").join("configs").join("system.ltx")
     );
   }

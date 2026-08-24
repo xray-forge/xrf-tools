@@ -2,14 +2,28 @@
 
 use std::path::PathBuf;
 
+use xrf_error::{XrfError, XrfResult};
+
 /// Converts an engine name into host path components.
 ///
 /// Built from components so the platform inserts its own separator: pushed whole, `configs\system.ltx` is a single
 /// component to `std::path` on Linux, which unpacks a tree as flat files with backslashes in their names.
 ///
 /// Empty components are dropped, because a volume's entry point carries a trailing separator (`gamedata\`).
-pub(crate) fn to_host_relative(name: &str) -> PathBuf {
-  name.split(['\\', '/']).filter(|part| !part.is_empty()).collect()
+pub(crate) fn to_host_relative(name: &str) -> XrfResult<PathBuf> {
+  let mut path: PathBuf = PathBuf::new();
+
+  for component in name.split(['\\', '/']).filter(|part| !part.is_empty()) {
+    if matches!(component, "." | "..") || component.contains(':') {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive entry path '{name}' contains unsafe component '{component}'"
+      )));
+    }
+
+    path.push(component);
+  }
+
+  Ok(path)
 }
 
 /// The part of an engine name below a directory prefix, or `None` when it lies outside it.
@@ -43,16 +57,29 @@ mod tests {
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
     assert_eq!(
-      to_host_relative("configs\\system.ltx"),
+      to_host_relative("configs\\system.ltx").expect("safe archive path"),
       Path::new("configs").join("system.ltx")
     );
     assert_eq!(
-      to_host_relative("configs/system.ltx"),
+      to_host_relative("configs/system.ltx").expect("safe archive path"),
       Path::new("configs").join("system.ltx")
     );
-    assert_eq!(to_host_relative("system.ltx"), Path::new("system.ltx"));
+    assert_eq!(
+      to_host_relative("system.ltx").expect("safe archive path"),
+      Path::new("system.ltx")
+    );
     // A volume's entry point carries a trailing separator, which must not become an empty component.
-    assert_eq!(to_host_relative("gamedata\\"), Path::new("gamedata"));
+    assert_eq!(
+      to_host_relative("gamedata\\").expect("safe archive path"),
+      Path::new("gamedata")
+    );
+  }
+
+  #[test]
+  fn rejects_archive_path_components_that_could_escape_the_destination() {
+    for path in ["..\\system.ltx", "configs/./system.ltx", "C:/system.ltx"] {
+      assert!(to_host_relative(path).is_err(), "'{path}' must not become a host path");
+    }
   }
 
   #[test]
