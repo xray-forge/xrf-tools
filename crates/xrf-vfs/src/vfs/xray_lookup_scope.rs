@@ -4,7 +4,7 @@ use crate::path::normalize;
 use crate::{XrayMount, XrayMountId, XraySourceKind};
 
 /// Which mounts a lookup scope admits.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub(crate) enum XrayMountSelection {
   /// Every mount, in mount order.
   #[default]
@@ -22,7 +22,7 @@ pub(crate) enum XrayMountSelection {
 /// Both halves narrow the same search. `all()` is every mount and the whole tree; `with_prefix("configs")` keeps the mounts
 /// and restricts the paths; `writable()` keeps the tree and restricts the mounts. Passing one of these instead of
 /// hand-filtering results is what lets a config project and an asset lookup share one VFS — they differ only in scope.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct XrayLookupScope {
   selection: XrayMountSelection,
   prefix: Option<String>,

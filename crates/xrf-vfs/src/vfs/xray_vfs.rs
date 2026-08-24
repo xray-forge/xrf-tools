@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
 use crate::source::XrayDirectorySource;
 use crate::vfs::XrayDirectoryListing;
@@ -25,6 +26,8 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct XrayVfs {
   mounts: Vec<XrayMount>,
+  /// Parsed assets this world retains, governed by its own policy and empty unless a caller sets one.
+  cache: XrayAssetCache,
   skipped: Vec<XraySkippedMount>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   ///
@@ -37,6 +40,21 @@ impl XrayVfs {
   /// Creates an empty VFS with no searchable mounts.
   pub fn new() -> Self {
     Self::default()
+  }
+
+  /// Sets what this world may retain after parsing an asset.
+  ///
+  /// Named at construction because retention is a property of the session, not of a call site: a verification sweep and
+  /// an editing session want opposite answers, and neither should be inferred from whichever consumer reads first.
+  pub fn with_cache_policy(mut self, policy: XrayCachePolicy) -> Self {
+    self.cache = XrayAssetCache::new(policy);
+
+    self
+  }
+
+  /// The parsed assets this world is holding.
+  pub fn get_cache(&self) -> &XrayAssetCache {
+    &self.cache
   }
 
   /// Sources a plan named that could not be opened.

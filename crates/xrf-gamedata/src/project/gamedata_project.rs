@@ -1,11 +1,15 @@
 use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMountMode, XrayPathCollision, XraySkippedMount, XrayVfs};
+use xrf_vfs::{
+  XrayAsset, XrayAssetType, XrayCachePolicy, XrayLookupScope, XrayMountMode, XrayPathCollision, XraySkippedMount,
+  XrayVfs,
+};
 
 use crate::project::gamedata_project_options::GamedataProjectReadOptions;
 
@@ -77,7 +81,9 @@ impl GamedataProject {
     }
 
     // Checks enumerate and read only what the caller left in scope.
-    let vfs: XrayVfs = XrayVfs::from_plan(&plan.ignoring(&options.ignored)?)?;
+    // Retaining motions is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
+    let vfs: XrayVfs =
+      XrayVfs::from_plan(&plan.ignoring(&options.ignored)?)?.with_cache_policy(XrayCachePolicy::verification());
     let ltx_project: LtxProject = LtxProject::open_at_scope_opt(
       // The configs directory, not the game root: this project *is* the config tree, and callers join onto its root.
       options.root.join(CONFIGS_DIRECTORY),
@@ -131,6 +137,28 @@ impl GamedataProject {
   /// Returns an error when the asset cannot be read or holds no chunk.
   pub(crate) fn read_asset_chunks(&self, logical_path: &str) -> XrfResult<ChunkReader<InMemoryChunkDataSource>> {
     ChunkReader::from_vec(self.read_asset(logical_path)?)
+  }
+
+  /// Reads and parses a chunked asset, serving what this project is already holding.
+  ///
+  /// The parse runs only when nothing is retained, so a second reader of a shared asset performs no I/O at all — which
+  /// for an archived entry is a whole-entry decompression avoided rather than just a file open. Retention is the
+  /// project policy's business, not this call site's: a kind the policy excludes reads and parses exactly as it would
+  /// have without a cache, so enabling it later changes no code here.
+  ///
+  /// # Errors
+  ///
+  /// Returns whatever reading the asset or parsing it answers with. A failure is not retained, so each caller of a
+  /// broken asset reports the real error rather than a copy of the first one.
+  pub(crate) fn read_cached_asset<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(&mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<T>,
+  {
+    self
+      .vfs()
+      .scoped(&self.scope)
+      .read_cached(kind, logical_path, |bytes| parse(&mut ChunkReader::from_vec(bytes)?))
   }
 
   /// Files any mount holds but cannot reach, because another file in the same mount claims their engine identity.

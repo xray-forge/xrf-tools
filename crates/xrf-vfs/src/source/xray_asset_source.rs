@@ -10,7 +10,7 @@ use crate::{XrayAssetContainer, XrayPathCollision};
 ///
 /// It distinguishes loose filesystem entries from entries inside archive volumes.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum XraySourceKind {
   /// Loose files under a directory.

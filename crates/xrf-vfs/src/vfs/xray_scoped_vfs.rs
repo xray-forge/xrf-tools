@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_error::XrfResult;
 
 use crate::vfs::XrayDirectoryListing;
@@ -47,6 +49,37 @@ impl XrayScopedVfs<'_> {
   /// Like [`XrayVfs::read`], within this view's scope.
   pub fn read(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
     self.vfs.read_in(self.scope, logical_path)
+  }
+
+  /// Reads and parses an asset, serving a retained value when this world is already holding one.
+  ///
+  /// The parse closure runs only on a miss, so a hit performs no I/O at all — the whole point, since an archived read is
+  /// whole-entry decompression before the parse even begins. Whether the result is retained is the policy's business,
+  /// not this call site's: an excluded kind reads, parses and returns exactly as it would have without a cache.
+  ///
+  /// # Errors
+  ///
+  /// Returns whatever reading the asset or parsing it answers with. Failures are not retained, so a broken asset is
+  /// re-read by each caller and each reports the real error rather than a copy of the first one.
+  pub fn read_cached<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(Vec<u8>) -> XrfResult<T>,
+  {
+    if let Some(retained) = self.vfs.get_cache().get::<T>(self.scope, logical_path) {
+      return Ok(retained);
+    }
+
+    let bytes: Vec<u8> = self.read(logical_path)?;
+    let length: u64 = bytes.len() as u64;
+    let value: Arc<T> = Arc::new(parse(bytes)?);
+
+    self
+      .vfs
+      .get_cache()
+      .insert(self.scope, logical_path, kind, length, Arc::clone(&value));
+
+    Ok(value)
   }
 
   /// Like [`XrayVfs::read_size`], within this view's scope.

@@ -151,11 +151,11 @@ impl<'a> MeshAssetsVerifier<'a> {
           ));
         } else {
           for motion_path in motion_paths {
-            match self
-              .project
-              .read_asset_chunks(&motion_path)
-              .and_then(|mut chunks| OmfFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks))
-            {
+            // Retained per path, because a shared animation bank is referenced by hundreds of visuals and each read is
+            // a whole-entry decompression: four Anomaly banks account for 47GB of a sweep's 77GB without this.
+            match self.project.read_cached_asset(AssetType::Omf, &motion_path, |chunks| {
+              OmfFile::read_from_chunk::<XRayByteOrder, _>(chunks)
+            }) {
               Ok(omf) => match self.verify_mesh_motion_findings(options, ogf, &omf, Some(&motion_path)) {
                 Ok(motion_findings) => findings.extend(motion_findings),
                 Err(error) => {
