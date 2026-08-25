@@ -3,16 +3,83 @@
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /**
- * One dialog, as the project index lists it.
+ * One whole dialog: its own elements and every phrase it declares.
  *
- * Enough to draw a tree and pick something to open, and deliberately not the phrases: 502 dialogs
- * of those is a payload nobody reads, so a dialog is fetched when it is selected.
+ * What a selection fetches, against the summary the project index already gave. Both names it was
+ * addressed by are echoed back, so a response arriving late cannot be read as another dialog's — the
+ * same rule the asset commands follow.
  */
 export type DialogDescriptor = {
+  /** Logical path of the file holding it, as the project keys that file. */
+  logicalPath: string;
   id: string;
-  phrases: number;
+  /** Selection priority, negative for a dialog meant to sort last. */
   priority: number | null;
+  /** Dialog-level elements — preconditions, info gates, `init_func` — excluding the phrases. */
+  elements: Array<DialogElementDescriptor>;
+  /**
+   * Phrases in document order.
+   *
+   * Empty is legitimate: `dm_traveler_dialog` carries only a precondition and an init function and
+   * builds its phrases from script at runtime.
+   */
+  phrases: Array<DialogPhraseDescriptor>;
 };
+
+/**
+ * One child element of a dialog or a phrase, as written.
+ *
+ * Carries the name *and* the classification, because they answer different questions: the name is
+ * what the file says and what a rewrite reproduces, the kind is what the engine does with it. A mod
+ * element the schema does not define keeps its name and classifies as `unknown`.
+ *
+ * No source range. Ranges exist so an edit can splice the original document, and splicing happens
+ * where the document is — in the project this was described from. Shipping them to a read-only
+ * surface would hand out offsets into a string the caller does not have.
+ */
+export type DialogElementDescriptor = {
+  /** The element name as written, such as `give_info`. */
+  name: string;
+  /** What that name means to the engine. */
+  kind: DialogElementKind;
+  /** Text content, with entity references already resolved. */
+  value: string;
+};
+
+/**
+ * What a dialog or phrase child element means to the engine.
+ *
+ * Classification only. The element keeps the name it was written with, so an element this does not
+ * recognise still survives a round trip; mods add their own, and one shipped project uses a
+ * `go_back` phrase element the engine never defined.
+ */
+export type DialogElementKind =
+  /** Translation key of the line, not the line itself. */
+  | "text"
+  /** Script call producing the line at runtime, in place of a translation key. */
+  | "scriptText"
+  /** Script call run when the phrase is selected. */
+  | "action"
+  /** Script predicate gating visibility. */
+  | "precondition"
+  /** Id of a phrase that may follow this one. */
+  | "next"
+  /** Info portion granted. */
+  | "giveInfo"
+  /** Info portion revoked. */
+  | "disableInfo"
+  /** Info portion required. */
+  | "hasInfo"
+  /** Info portion that must be absent. */
+  | "dontHasInfo"
+  /** Whether selecting the phrase ends the conversation. */
+  | "isFinal"
+  /** Script call run when the dialog is initialised. */
+  | "initFunc"
+  /** Recognised container rather than a value: `phrase_list` or `phrase`. */
+  | "container"
+  /** Not part of the schema. Preserved and reported. */
+  | "unknown";
 
 /**
  * One dialog file the project holds.
@@ -27,7 +94,7 @@ export type DialogFileDescriptor = {
   isEditable: boolean;
   /** The code page the file was decoded with, and the one a rewrite has to use. */
   encoding: string;
-  dialogs: Array<DialogDescriptor>;
+  dialogs: Array<DialogSummaryDescriptor>;
 };
 
 /**
@@ -41,6 +108,38 @@ export type DialogFinding = {
   rule: string;
   subject: string | null;
   message: string;
+};
+
+/**
+ * One line of a conversation, as a canvas draws it.
+ *
+ * `text`, `isFinal` and `next` are projections of `elements`, not a second source of truth. They are
+ * lifted out because they are what the graph is built from — `next` is its edge set, `text` its
+ * label, `isFinal` its terminal marker — and a consumer re-deriving them would have to rediscover
+ * that `next` order is runtime behaviour rather than file trivia.
+ */
+export type DialogPhraseDescriptor = {
+  /** Unique within its dialog, and what `next` references. The entry phrase is `0`. */
+  id: string;
+  /**
+   * Translation key of the line, not the line itself.
+   *
+   * Absent for a phrase whose line comes from `script_text`, which is a state and not a defect:
+   * Anomaly does it 107 times.
+   */
+  text: string | null;
+  /** Whether selecting this phrase ends the conversation. */
+  isFinal: boolean;
+  /**
+   * Whether the phrase sits inside a `phrase_list` rather than directly under its dialog.
+   *
+   * Both forms occur, and a later insertion has to reproduce the one the file already uses.
+   */
+  isInPhraseList: boolean;
+  /** Ids that may follow this one, **in the order the player is offered them**. */
+  next: Array<string>;
+  /** Every child element in document order, including the ones projected above. */
+  elements: Array<DialogElementDescriptor>;
 };
 
 /**
@@ -79,3 +178,18 @@ export type DialogProjectMode =
   | "gamedata"
   /** XRF sources: dialog text sits in `translations`, one JSON file carrying every language. */
   | "source";
+
+/**
+ * One dialog, as the project index lists it.
+ *
+ * Enough to draw a tree and pick something to open, and deliberately not the phrases: 502 dialogs
+ * of those is a payload nobody reads, so a dialog is fetched when it is selected.
+ *
+ * Named for the reduction it is. A descriptor carrying a domain type's own name mirrors that type —
+ * [`DialogDescriptor`] mirrors `Dialog` — so a summary of one has to say so.
+ */
+export type DialogSummaryDescriptor = {
+  id: string;
+  phrases: number;
+  priority: number | null;
+};

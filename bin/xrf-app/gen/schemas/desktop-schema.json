@@ -4551,10 +4551,10 @@
           "markdownDescription": "Denies the save command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-dialog`\n- `allow-get-project`\n- `allow-open-project`",
           "type": "string",
           "const": "dialogs:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-dialog`\n- `allow-get-project`\n- `allow-open-project`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -4567,6 +4567,12 @@
           "type": "string",
           "const": "dialogs:allow-detect-mode",
           "markdownDescription": "Enables the detect_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialogs:allow-get-dialog",
+          "markdownDescription": "Enables the get_dialog command without any pre-configured scope."
         },
         {
           "description": "Enables the get_project command without any pre-configured scope.",
@@ -4591,6 +4597,12 @@
           "type": "string",
           "const": "dialogs:deny-detect-mode",
           "markdownDescription": "Denies the detect_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialogs:deny-get-dialog",
+          "markdownDescription": "Denies the get_dialog command without any pre-configured scope."
         },
         {
           "description": "Denies the get_project command without any pre-configured scope.",

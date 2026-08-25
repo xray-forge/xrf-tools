@@ -20,6 +20,7 @@ xrf-xml = { workspace = true }
 typescript-bindings = ["specta", "xrf-vfs/typescript-bindings"]
 
 [dev-dependencies]
+serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [lints]

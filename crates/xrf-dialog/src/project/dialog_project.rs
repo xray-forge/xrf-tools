@@ -5,8 +5,11 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
+use crate::dialog::Dialog;
 use crate::file::DialogFile;
-use crate::project::descriptor::{DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor};
+use crate::project::descriptor::{
+  DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor, DialogSummaryDescriptor,
+};
 use crate::project::layout::DialogProjectLayout;
 use crate::project::mode::DialogProjectMode;
 
@@ -208,6 +211,29 @@ impl DialogProject {
       .find(|file| file.get_logical_path().eq_ignore_ascii_case(logical_path))
   }
 
+  /// One dialog, addressed the way the project index lists it: by file, then by id.
+  ///
+  /// Both names are required rather than searching every file for the id, because ids are not unique
+  /// across a tree — a mod overlaying a dialog keeps the original's id on purpose — and answering
+  /// with whichever copy was read first would silently pick one.
+  pub fn find_dialog(&self, logical_path: &str, id: &str) -> Option<&Dialog> {
+    self.find_file(logical_path)?.get_file().find_dialog(id)
+  }
+
+  /// Describe one dialog with every phrase it declares.
+  ///
+  /// The counterpart to [`Self::describe`], which lists 502 dialogs as summaries: this is what a
+  /// selection fetches. Answers `None` for a file or an id the project does not hold, leaving the
+  /// caller to say which of the two was wrong.
+  pub fn describe_dialog(&self, logical_path: &str, id: &str) -> Option<DialogDescriptor> {
+    let file: &DialogProjectFile = self.find_file(logical_path)?;
+    let dialog: &Dialog = file.get_file().find_dialog(id)?;
+
+    // Keyed by the path the project holds, not the one the caller typed: lookup is case-insensitive,
+    // and echoing the caller's spelling back would hand out a key that does not match the index.
+    Some(DialogDescriptor::new(file.get_logical_path(), dialog))
+  }
+
   /// Total dialogs across every file the project read.
   pub fn sum_dialogs(&self) -> usize {
     self.files.iter().map(|file| file.get_file().get_dialogs().len()).sum()
@@ -236,7 +262,7 @@ impl DialogProject {
             .get_file()
             .get_dialogs()
             .iter()
-            .map(|dialog| DialogDescriptor {
+            .map(|dialog| DialogSummaryDescriptor {
               id: dialog.get_id().to_owned(),
               phrases: dialog.get_phrases().len(),
               priority: dialog.get_priority(),

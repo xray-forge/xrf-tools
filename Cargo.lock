@@ -7028,6 +7028,7 @@ dependencies = [
  "indexmap 2.14.0",
  "log",
  "serde",
+ "serde_json",
  "specta",
  "xrf-error",
  "xrf-test-utils",

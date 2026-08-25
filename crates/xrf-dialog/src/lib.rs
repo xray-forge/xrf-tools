@@ -18,7 +18,10 @@ pub use crate::element::{DialogElement, DialogElementKind};
 pub use crate::file::DialogFile;
 pub use crate::issue::{DialogParseIssue, DialogParseIssueKind};
 pub use crate::phrase::DialogPhrase;
-pub use crate::project::descriptor::{DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor};
+pub use crate::project::descriptor::{
+  DialogDescriptor, DialogElementDescriptor, DialogFileDescriptor, DialogFinding, DialogPhraseDescriptor,
+  DialogProjectDescriptor, DialogSummaryDescriptor,
+};
 pub use crate::project::dialog_project::{DialogProject, DialogProjectFile};
 pub use crate::project::layout::{DialogProjectLayout, detect_mode, detect_mode_in};
 pub use crate::project::mode::DialogProjectMode;

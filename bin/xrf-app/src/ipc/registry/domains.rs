@@ -40,6 +40,7 @@ macro_rules! for_each_tauri_command_domain {
       dialogs => "dialogs" {
         close_project => crate::plugins::dialogs::commands::close_project::dialogs_close_project,
         detect_mode => crate::plugins::dialogs::commands::detect_mode::dialogs_detect_mode,
+        get_dialog => crate::plugins::dialogs::commands::get_dialog::dialogs_get_dialog,
         get_project => crate::plugins::dialogs::commands::get_project::dialogs_get_project,
         open_project => crate::plugins::dialogs::commands::open_project::dialogs_open_project,
       }

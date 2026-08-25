@@ -1,11 +1,15 @@
 use std::ops::Range;
 
+use serde::{Deserialize, Serialize};
+
 /// What a dialog or phrase child element means to the engine.
 ///
 /// Classification only. The element keeps the name it was written with, so an element this does not
 /// recognise still survives a round trip; mods add their own, and one shipped project uses a
 /// `go_back` phrase element the engine never defined.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
 pub enum DialogElementKind {
   /// Translation key of the line, not the line itself.
   Text,

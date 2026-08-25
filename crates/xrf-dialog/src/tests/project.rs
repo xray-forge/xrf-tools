@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::project::descriptor::DialogProjectDescriptor;
+use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
 use crate::project::dialog_project::DialogProject;
 use crate::project::layout::{DialogProjectLayout, detect_mode};
 use crate::project::mode::DialogProjectMode;
@@ -279,6 +279,62 @@ fn finds_a_file_by_logical_path_regardless_of_case() -> XrfResult {
   assert!(project.find_file(r"configs\gameplay\dialogs.xml").is_some());
   assert!(project.find_file(r"CONFIGS\GAMEPLAY\DIALOGS.XML").is_some());
   assert!(project.find_file(r"configs\gameplay\nothing.xml").is_none());
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn describes_one_dialog_addressed_by_file_and_id() -> XrfResult {
+  let root: PathBuf = create_gamedata("describe-dialog")?;
+  let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
+
+  let descriptor: DialogDescriptor = project
+    .describe_dialog(r"configs\gameplay\dialogs.xml", "d")
+    .expect("the fixture declares it");
+
+  assert_eq!(descriptor.id, "d");
+  assert_eq!(descriptor.priority, Some(-5));
+  assert_eq!(descriptor.phrases.len(), 1);
+  assert_eq!(descriptor.phrases[0].text.as_deref(), Some("key"));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn echoes_the_projects_own_spelling_of_the_path_not_the_callers() -> XrfResult {
+  // Lookup is case-insensitive, so a caller echoing a user's typing still resolves — but answering
+  // with that spelling would hand back a key that does not match the index it came from.
+  let root: PathBuf = create_gamedata("describe-dialog-case")?;
+  let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
+
+  let descriptor: DialogDescriptor = project
+    .describe_dialog(r"CONFIGS\GAMEPLAY\DIALOGS.XML", "d")
+    .expect("the lookup ignores case");
+
+  assert_eq!(descriptor.logical_path, r"configs\gameplay\dialogs.xml");
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn answers_nothing_for_an_unknown_file_or_an_unknown_dialog() -> XrfResult {
+  let root: PathBuf = create_gamedata("describe-dialog-missing")?;
+  let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
+
+  assert!(project.describe_dialog(r"configs\gameplay\nothing.xml", "d").is_none());
+  assert!(
+    project
+      .describe_dialog(r"configs\gameplay\dialogs.xml", "nothing")
+      .is_none()
+  );
+  // Right id, wrong file: the pair addresses it, not the id alone.
+  assert!(project.describe_dialog("", "d").is_none());
 
   fs::remove_dir_all(root)?;
 

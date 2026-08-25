@@ -1,3 +1,4 @@
+mod descriptor;
 mod element;
 mod encoding;
 mod file;

@@ -3,6 +3,7 @@
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 import {
+  DialogDescriptor,
   DialogFileDescriptor,
   DialogFinding,
   DialogProjectDescriptor,
@@ -21,6 +22,23 @@ export const dialogsCommands = {
    * answer, so it names one the same way the open does.
    */
   detectMode: (roots: XrayRoots) => __TAURI_INVOKE<DialogProjectMode>("plugin:dialogs|detect_mode", { roots }),
+  /**
+   * One dialog, with every phrase it declares.
+   *
+   * The project response carries only summaries — 502 dialogs' worth of phrases is a payload nobody
+   * reads — so this is what a selection fetches. Served from the parsed project already in state, so
+   * it costs a lookup rather than a read.
+   *
+   * Addressed by file and id together, because ids are not unique across a tree: a mod overlaying a
+   * dialog keeps the original's id, and searching every file would silently answer with whichever copy
+   * was read first.
+   *
+   * Refuses rather than answering `null`, and names which of the two lookups failed. A null would
+   * collapse three different situations — nothing open, wrong file, wrong id — into one empty canvas
+   * with nothing to say about why.
+   */
+  getDialog: (logicalPath: string, id: string) =>
+    __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { logicalPath, id }),
   /**
    * The open project, described again rather than cached.
    *
