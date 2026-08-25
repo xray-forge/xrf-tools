@@ -5,6 +5,7 @@ use rayon::prelude::*;
 use xrf_db::{ThmFile, XRayByteOrder};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -29,17 +30,25 @@ impl GamedataProject {
     let checked_textures_count: u32 = u32::try_from(texture_paths.len())
       .map_err(|_| XrfError::new_verify_error("Texture count exceeds the supported result range"))?;
 
+    // Textures are read in parallel, so each one logs into its listed position and the sequence
+    // releases them in path order rather than in the order the workers finished.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, texture_paths.len());
+
     let mut findings: Vec<Finding> = texture_paths
       .par_iter()
-      .filter_map(|relative_path| {
-        xrf_output::verbose!(options.output, "Verify texture: {relative_path}");
+      .enumerate()
+      .filter_map(|(index, relative_path)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify texture: {relative_path}");
 
         let path: &String = relative_path;
 
-        match self.verify_texture_by_path(options, path) {
+        match self.verify_texture_by_path(path) {
           Ok(true) => None,
           Ok(false) => {
-            xrf_output::info!(options.output, "Texture is not valid: {}", path);
+            xrf_output::info!(output, "Texture is not valid: {}", path);
 
             Some(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::TexturesValidation,
@@ -48,7 +57,7 @@ impl GamedataProject {
             ))
           }
           Err(error) => {
-            xrf_output::info!(options.output, "Texture verification failed: {} - {}", path, error);
+            xrf_output::info!(output, "Texture verification failed: {} - {}", path, error);
 
             Some(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::TexturesRead,
@@ -110,9 +119,16 @@ impl GamedataProject {
       .map(|location| location.get_logical_path().to_string())
       .collect();
 
+    // Descriptors are read in parallel; the sequence releases what each one says in path order.
+    let descriptor_sequence: OutputSequence = OutputSequence::new(&options.output, descriptor_paths.len());
+
     let declarations: Vec<(String, String)> = descriptor_paths
       .par_iter()
-      .filter_map(|relative_path| {
+      .enumerate()
+      .filter_map(|(index, relative_path)| {
+        let slot: OutputSlot = descriptor_sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
         match self.read_parsed(AssetType::Thm, relative_path, |chunk| {
           ThmFile::read_from_chunk::<XRayByteOrder, _>(chunk)
         }) {
@@ -122,10 +138,7 @@ impl GamedataProject {
           Err(error) => {
             // A descriptor that cannot be parsed is reported by its own texture, not silently
             // treated as declaring no bump.
-            xrf_output::verbose!(
-              options.output,
-              "Texture descriptor is not readable: {relative_path} - {error}"
-            );
+            xrf_output::verbose!(output, "Texture descriptor is not readable: {relative_path} - {error}");
 
             None
           }
@@ -136,15 +149,21 @@ impl GamedataProject {
     let checked_bumps_count: u32 = u32::try_from(declarations.len())
       .map_err(|_| XrfError::new_verify_error("Declared bump count exceeds the supported result range"))?;
 
+    let declaration_sequence: OutputSequence = OutputSequence::new(&options.output, declarations.len());
+
     let findings: Vec<Finding> = declarations
       .par_iter()
-      .filter_map(|(relative_path, bump_name)| {
+      .enumerate()
+      .filter_map(|(index, (relative_path, bump_name))| {
+        let slot: OutputSlot = declaration_sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
         if self.dds_texture(bump_name).ok().flatten().is_some() {
           return None;
         }
 
         xrf_output::info!(
-          options.output,
+          output,
           "Texture descriptor declares missing bump: {relative_path} -> {bump_name}"
         );
 
@@ -162,11 +181,7 @@ impl GamedataProject {
   /// Whether one texture reads as an X-Ray compatible DDS, addressed by its logical path.
   ///
   /// Reads through the VFS, so an archived texture is inspected rather than skipped.
-  pub(crate) fn verify_texture_by_path(
-    &self,
-    _options: &GamedataProjectVerifyOptions,
-    logical_path: &str,
-  ) -> XrfResult<bool> {
+  pub(crate) fn verify_texture_by_path(&self, logical_path: &str) -> XrfResult<bool> {
     Ok(DdsFile::read_from_bytes(&self.read_bytes(logical_path)?)?.is_xray_compatible())
   }
 }

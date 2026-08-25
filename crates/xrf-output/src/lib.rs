@@ -1,10 +1,16 @@
 //! Caller-controlled live output for XRF workflows.
 
+mod channel;
 mod options;
 mod output;
+mod record;
+mod sequence;
 
+pub use channel::OutputChannel;
 pub use options::{OutputOptions, OutputVerbosity};
-pub use output::{NoopOutput, Output};
+pub use output::{NoopOutput, Output, RecordingOutput};
+pub use record::OutputRecord;
+pub use sequence::{OutputSequence, OutputSlot};
 
 /// Sends a section-heading message through workflow output options.
 #[macro_export]

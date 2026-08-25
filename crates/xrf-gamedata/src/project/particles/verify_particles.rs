@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -27,25 +28,33 @@ impl GamedataProject {
     let checked_particle_files_count: u32 = u32::try_from(particle_paths.len())
       .map_err(|_| XrfError::new_verify_error("Particle library count exceeds the supported result range"))?;
 
+    // Libraries are read in parallel, so each one logs into its listed position and the sequence
+    // releases them in path order rather than in the order the workers finished.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, particle_paths.len());
+
     let particle_findings: Vec<Vec<Finding>> = particle_paths
       .par_iter()
-      .map(|path| {
-        xrf_output::verbose!(options.output, "Verify particles file: {}", path);
+      .enumerate()
+      .map(|(index, path)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify particles file: {}", path);
 
         match self.read_parsed(AssetType::XrPack, path, |chunk| {
           ParticlesFile::read_from_chunk::<XRayByteOrder, _>(chunk)
         }) {
           Ok(particles_file) => {
-            let particle_findings: Vec<Finding> = self.verify_particle(options, &particles_file, path);
+            let particle_findings: Vec<Finding> = self.verify_particle(output, &particles_file, path);
 
             if !particle_findings.is_empty() {
-              xrf_output::info!(options.output, "Particle library is invalid: {}", path);
+              xrf_output::info!(output, "Particle library is invalid: {}", path);
             }
 
             particle_findings
           }
           Err(error) => {
-            xrf_output::info!(options.output, "Failed to read particle library '{}': {}", path, error);
+            xrf_output::info!(output, "Failed to read particle library '{}': {}", path, error);
 
             vec![GamedataFindingFactory::for_asset(
               GamedataVerificationRule::ParticlesLibrary,
@@ -84,14 +93,14 @@ impl GamedataProject {
 
   pub fn verify_particle(
     &self,
-    options: &GamedataProjectVerifyOptions,
+    output: &OutputOptions,
     particles_file: &ParticlesFile,
     particle_library_path: &str,
   ) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
 
     for particle in &particles_file.effects.effects {
-      xrf_output::verbose!(options.output, "Verify particle: {}", particle.name);
+      xrf_output::verbose!(output, "Verify particle: {}", particle.name);
 
       for texture_relative_path in particle.sprite.texture_name.split(",") {
         if let Some(texture) = self
@@ -100,7 +109,7 @@ impl GamedataProject {
           .flatten()
           .map(|asset| asset.get_logical_path().to_string())
         {
-          match self.verify_texture_by_path(options, &texture) {
+          match self.verify_texture_by_path(&texture) {
             Ok(result) => {
               if !result {
                 findings.push(GamedataFindingFactory::for_asset(

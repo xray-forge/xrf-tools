@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
 use xrf_db::{OgfFile, OmfFile, ShaderLibraryFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -44,10 +45,18 @@ impl<'a> MeshAssetsVerifier<'a> {
     let checked_meshes_count: u32 = u32::try_from(mesh_paths.len())
       .map_err(|_| XrfError::new_verify_error("Mesh count exceeds the supported result range"))?;
 
+    // Meshes are read in parallel and finish in whatever order their sizes and the scheduler decide,
+    // so each one logs into its listed position and the sequence releases them in path order.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, mesh_paths.len());
+
     let mesh_findings: Vec<Vec<Finding>> = mesh_paths
       .par_iter()
-      .map(|relative_path| {
-        xrf_output::verbose!(options.output, "Verify mesh: {relative_path}");
+      .enumerate()
+      .map(|(index, relative_path)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify mesh: {relative_path}");
 
         // Read through the VFS, so a mesh inside an archive volume is verified rather than reported missing.
         let path: &str = relative_path;
@@ -55,15 +64,15 @@ impl<'a> MeshAssetsVerifier<'a> {
         match self.project.read_parsed(AssetType::Ogf, path, |chunk| {
           OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
         }) {
-          Ok(ogf) => match self.verify_mesh_findings(options, shader_library, &ogf, Some(path), None) {
+          Ok(ogf) => match self.verify_mesh_findings(output, shader_library, &ogf, Some(path), None) {
             Ok(findings) if findings.is_empty() => Vec::new(),
             Ok(findings) => {
-              xrf_output::error!(options.output, "Mesh is not valid: {}", path);
+              xrf_output::error!(output, "Mesh is not valid: {}", path);
 
               findings
             }
             Err(error) => {
-              xrf_output::error!(options.output, "Mesh verification failed: {} - {}", path, error);
+              xrf_output::error!(output, "Mesh verification failed: {} - {}", path, error);
 
               vec![GamedataFindingFactory::for_asset(
                 GamedataVerificationRule::MeshesValidation,
@@ -73,7 +82,7 @@ impl<'a> MeshAssetsVerifier<'a> {
             }
           },
           Err(error) => {
-            xrf_output::error!(options.output, "Mesh verification failed: {} - {}", path, error);
+            xrf_output::error!(output, "Mesh verification failed: {} - {}", path, error);
 
             vec![GamedataFindingFactory::for_asset(
               GamedataVerificationRule::MeshesRead,
@@ -102,7 +111,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
   fn verify_mesh_findings(
     &self,
-    options: &GamedataProjectVerifyOptions,
+    output: &OutputOptions,
     shader_library: &ShaderLibraryFile,
     ogf: &OgfFile,
     mesh_path: Option<&str>,
@@ -114,16 +123,16 @@ impl<'a> MeshAssetsVerifier<'a> {
       .map(|bones| bones.bones.len())
       .or(inherited_bones_count);
 
-    let mut findings: Vec<Finding> = self.verify_mesh_texture_findings(options, ogf, mesh_path);
+    let mut findings: Vec<Finding> = self.verify_mesh_texture_findings(output, ogf, mesh_path);
 
-    findings.extend(self.verify_mesh_shader_findings(options, shader_library, ogf, mesh_path));
+    findings.extend(self.verify_mesh_shader_findings(output, shader_library, ogf, mesh_path));
     findings.extend(self.verify_mesh_skeleton_findings(ogf, mesh_path));
     findings.extend(self.verify_mesh_geometry_findings(ogf, mesh_path, bones_count));
 
     // Verify all nested children in mesh object.
     if let Some(children) = &ogf.children {
       for child in &children.nested {
-        findings.extend(self.verify_mesh_findings(options, shader_library, child, mesh_path, bones_count)?);
+        findings.extend(self.verify_mesh_findings(output, shader_library, child, mesh_path, bones_count)?);
       }
     }
 
@@ -140,7 +149,7 @@ impl<'a> MeshAssetsVerifier<'a> {
           .collect();
 
         if motion_paths.is_empty() {
-          xrf_output::error!(options.output, "Mesh motion refs not found by path: {motion_ref}");
+          xrf_output::error!(output, "Mesh motion refs not found by path: {motion_ref}");
 
           findings.push(Self::new_mesh_finding(
             GamedataVerificationRule::MeshesMotionValidation,
@@ -154,11 +163,11 @@ impl<'a> MeshAssetsVerifier<'a> {
             match self.project.read_parsed(AssetType::Omf, &motion_path, |chunk| {
               OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
             }) {
-              Ok(omf) => match self.verify_mesh_motion_findings(options, ogf, &omf, Some(&motion_path)) {
+              Ok(omf) => match self.verify_mesh_motion_findings(output, ogf, &omf, Some(&motion_path)) {
                 Ok(motion_findings) => findings.extend(motion_findings),
                 Err(error) => {
                   xrf_output::error!(
-                    options.output,
+                    output,
                     "Mesh motion verification failed: {}, error: {}",
                     motion_path,
                     error
@@ -173,7 +182,7 @@ impl<'a> MeshAssetsVerifier<'a> {
               },
               Err(error) => {
                 xrf_output::error!(
-                  options.output,
+                  output,
                   "Mesh motion file failed to read: {}, error: {}",
                   motion_path,
                   error
@@ -198,7 +207,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
   fn verify_mesh_texture_findings(
     &self,
-    options: &GamedataProjectVerifyOptions,
+    output: &OutputOptions,
     ogf: &OgfFile,
     mesh_path: Option<&str>,
   ) -> Vec<Finding> {
@@ -214,7 +223,7 @@ impl<'a> MeshAssetsVerifier<'a> {
         .flatten()
         .is_none()
     {
-      xrf_output::error!(options.output, "Cannot read OGF texture: {}", texture.texture_name);
+      xrf_output::error!(output, "Cannot read OGF texture: {}", texture.texture_name);
 
       findings.push(Self::new_mesh_finding(
         GamedataVerificationRule::MeshesValidation,
@@ -228,7 +237,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
   fn verify_mesh_shader_findings(
     &self,
-    options: &GamedataProjectVerifyOptions,
+    output: &OutputOptions,
     shader_library: &ShaderLibraryFile,
     ogf: &OgfFile,
     mesh_path: Option<&str>,
@@ -242,7 +251,7 @@ impl<'a> MeshAssetsVerifier<'a> {
     }
 
     xrf_output::error!(
-      options.output,
+      output,
       "Cannot resolve OGF shader '{}' in shaders.xr",
       texture.shader_name
     );
@@ -418,7 +427,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
   fn verify_mesh_motion_findings(
     &self,
-    options: &GamedataProjectVerifyOptions,
+    output: &OutputOptions,
     ogf: &OgfFile,
     omf: &OmfFile,
     motion_path: Option<&str>,
@@ -430,7 +439,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
       if bones.bones.len() != omf_bones.len() {
         xrf_output::error!(
-          options.output,
+          output,
           "Not matching bones count in ogf and reference omf: {} <-> {} : {} <-> {}",
           bones.bones.len(),
           omf_bones.len(),
@@ -454,7 +463,7 @@ impl<'a> MeshAssetsVerifier<'a> {
         ));
       } else if bones.bones.iter().any(|it| !omf_bones.contains(&it.name.as_str())) {
         xrf_output::error!(
-          options.output,
+          output,
           "Missing bones in OMF file for OGF mesh: {} <-> {}",
           bones
             .bones

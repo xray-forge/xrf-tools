@@ -6,6 +6,7 @@ use image::{GenericImageView, RgbaImage};
 use rayon::prelude::*;
 use xrf_dds::{DdsFile, Mipmaps};
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 
 use crate::constants::DDS_EXTENSION;
 use crate::data::TextureFileDescriptor;
@@ -23,8 +24,15 @@ impl UnpackDescriptionProcessor {
     xrf_output::info!(options.output, "Unpacking for {} files", selected.len());
 
     if options.is_parallel {
-      selected.par_iter().try_for_each(|file| {
-        if Self::unpack_xml_description(&options, file)? {
+      // Files are unpacked in parallel, so each one logs into its listed position and the sequence
+      // releases them in selection order rather than in the order the workers finished. A file that
+      // fails still takes its turn, because the slot commits as the error unwinds past it.
+      let sequence: OutputSequence = OutputSequence::new(&options.output, selected.len());
+
+      selected.par_iter().enumerate().try_for_each(|(index, file)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+
+        if Self::unpack_xml_description(&options, slot.get_output(), file)? {
           count.fetch_add(1, Ordering::Relaxed);
         }
 
@@ -32,7 +40,7 @@ impl UnpackDescriptionProcessor {
       })?;
     } else {
       for file in selected {
-        if Self::unpack_xml_description(&options, file)? {
+        if Self::unpack_xml_description(&options, &options.output, file)? {
           count.fetch_add(1, Ordering::Relaxed);
         }
       }
@@ -43,12 +51,16 @@ impl UnpackDescriptionProcessor {
     Ok(())
   }
 
-  pub fn unpack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
+  pub fn unpack_xml_description(
+    options: &PackDescriptionOptions,
+    output: &OutputOptions,
+    file: &TextureFileDescriptor,
+  ) -> XrfResult<bool> {
     let relative_path: PathBuf = file.to_host_relative_path()?;
     let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION));
     let destination: PathBuf = options.output_path.join(relative_path);
 
-    xrf_output::verbose!(options.output, "Unpacking {}", full_name.display());
+    xrf_output::verbose!(output, "Unpacking {}", full_name.display());
 
     let dds: RgbaImage = match DdsFile::read_from_path(&full_name).and_then(|dds| dds.decode_rgba(0)) {
       Ok(dds) => dds,
@@ -59,12 +71,7 @@ impl UnpackDescriptionProcessor {
         )));
       }
       Err(error) => {
-        xrf_output::warning!(
-          options.output,
-          "Skip file {}, not able to read: {}",
-          full_name.display(),
-          error
-        );
+        xrf_output::warning!(output, "Skip file {}, not able to read: {}", full_name.display(), error);
 
         return Ok(false);
       }
@@ -75,7 +82,7 @@ impl UnpackDescriptionProcessor {
     }
 
     for sprite in &file.sprites {
-      xrf_output::verbose!(options.output, "Unpacking {} -> {}", full_name.display(), sprite.id);
+      xrf_output::verbose!(output, "Unpacking {} -> {}", full_name.display(), sprite.id);
 
       let (max_x, max_y) = sprite.get_dimension_boundaries();
 
@@ -93,7 +100,7 @@ impl UnpackDescriptionProcessor {
         }
 
         xrf_output::warning!(
-          options.output,
+          output,
           "[WARN] - exceeding sprite size '{}' (x:{}, y:{}) ({}x{} - {})",
           sprite.id,
           max_x,
@@ -156,7 +163,7 @@ mod tests {
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
     assert!(
-      !UnpackDescriptionProcessor::unpack_xml_description(&options, &file)
+      !UnpackDescriptionProcessor::unpack_xml_description(&options, &options.output, &file)
         .expect("non-strict unpacking to skip an unreadable sheet")
     );
     assert!(
@@ -172,7 +179,7 @@ mod tests {
     let options: PackDescriptionOptions = options_for_missing_source(true);
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
-    assert!(UnpackDescriptionProcessor::unpack_xml_description(&options, &file).is_err());
+    assert!(UnpackDescriptionProcessor::unpack_xml_description(&options, &options.output, &file).is_err());
     assert!(
       !options
         .output_path

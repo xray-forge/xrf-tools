@@ -6,6 +6,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -37,19 +38,27 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     let checked_huds_count: u32 = u32::try_from(player_hud_sections.len())
       .map_err(|_| XrfError::new_verify_error("Player HUD count exceeds the supported result range"))?;
 
+    // Sections are verified in parallel, so each one logs into its listed position and the sequence
+    // releases them in section order rather than in the order the workers finished.
+    let sequence: OutputSequence = OutputSequence::new(&self.options.output, player_hud_sections.len());
+
     let mut findings: Vec<Finding> = player_hud_sections
       .par_iter()
-      .filter_map(|(section_name, section)| {
-        xrf_output::verbose!(self.options.output, "Verify player hud config [{section_name}]");
+      .enumerate()
+      .filter_map(|(index, (section_name, section))| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify player hud config [{section_name}]");
 
         if self
-          .verify_player_hud_animation(&system_ltx, section_name, section)
+          .verify_player_hud_animation(output, &system_ltx, section_name, section)
           .is_ok_and(|it| it)
         {
           return None;
         }
 
-        xrf_output::info!(self.options.output, "Player hud config [{section_name}] is invalid");
+        xrf_output::info!(output, "Player hud config [{section_name}] is invalid");
 
         Some(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::AnimationsPlayerHud,
@@ -78,7 +87,13 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     })
   }
 
-  fn verify_player_hud_animation(&self, system_ltx: &Ltx, section_name: &str, section: &Section) -> XrfResult<bool> {
+  fn verify_player_hud_animation(
+    &self,
+    output: &OutputOptions,
+    system_ltx: &Ltx,
+    section_name: &str,
+    section: &Section,
+  ) -> XrfResult<bool> {
     let mut is_valid: bool = true;
     let mut hud_motions: HashSet<String> = HashSet::new();
 
@@ -94,7 +109,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
         .map(|location| location.get_logical_path().to_string())
     }) {
       xrf_output::verbose!(
-        self.options.output,
+        output,
         "Read player hud motion refs - [{}] {}",
         section_name,
         visual_path
@@ -103,7 +118,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       match self.read_motion_refs(visual_path) {
         Ok(linked_visuals) => {
           xrf_output::verbose!(
-            self.options.output,
+            output,
             "Player hud ogf [{} contains {} linked omf files to check",
             visual_path,
             linked_visuals.len()
@@ -124,12 +139,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
               }) {
               Ok(motions) => {
                 if motions.is_empty() {
-                  xrf_output::error!(
-                    self.options.output,
-                    "No motions in visual: [{}] - {}",
-                    section_name,
-                    linked_visual
-                  );
+                  xrf_output::error!(output, "No motions in visual: [{}] - {}", section_name, linked_visual);
 
                   is_valid = false;
                 }
@@ -140,7 +150,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
               }
               Err(error) => {
                 xrf_output::error!(
-                  self.options.output,
+                  output,
                   "Failed to read linked visual: [{}] - {} - {}",
                   section_name,
                   linked_visual,
@@ -154,7 +164,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
         }
         Err(error) => {
           xrf_output::error!(
-            self.options.output,
+            output,
             "Failed to read linked visuals: [{}] - {} - {}",
             section_name,
             visual_path,
@@ -166,7 +176,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       }
     } else {
       xrf_output::error!(
-        self.options.output,
+        output,
         "Not found hud visual: [{}] - {:?}",
         section_name,
         section.get("visual")
@@ -176,14 +186,14 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     }
 
     if hud_motions.is_empty() {
-      xrf_output::error!(self.options.output, "Hud [{section_name}] contains no animations");
+      xrf_output::error!(output, "Hud [{section_name}] contains no animations");
 
       is_valid = false;
     } else if !self
-      .verify_weapon_animations(system_ltx, section_name, &hud_motions)
+      .verify_weapon_animations(output, system_ltx, section_name, &hud_motions)
       .is_ok_and(|it| it)
     {
-      xrf_output::error!(self.options.output, "Hud [{section_name}] failed weapons check");
+      xrf_output::error!(output, "Hud [{section_name}] failed weapons check");
 
       is_valid = false;
     }
@@ -193,11 +203,12 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
   fn verify_weapon_animations(
     &self,
+    output: &OutputOptions,
     system_ltx: &Ltx,
     section_name: &str,
     motions: &HashSet<String>,
   ) -> XrfResult<bool> {
-    xrf_output::verbose!(self.options.output, "Verify weapons animations for [{section_name}]");
+    xrf_output::verbose!(output, "Verify weapons animations for [{section_name}]");
 
     let mut is_valid: bool = true;
 
@@ -217,7 +228,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
             if !motions.contains(&weapon_motion_name) {
               xrf_output::error!(
-                self.options.output,
+                output,
                 "Hud [{section_name}] weapon [{weapon_section_name}] {field_name}={weapon_motion_name} -> animation motion is not found"
               );
 
@@ -226,13 +237,13 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
           }
         } else {
           xrf_output::verbose!(
-            self.options.output,
+            output,
             "Not able to check weapon hud section [{section_name}] -> [{weapon_section_name}] [{hud_section_name}]"
           );
         }
       } else {
         xrf_output::verbose!(
-          self.options.output,
+          output,
           "Not able to check weapon hud [{section_name}] -> [{weapon_section_name}] hud"
         );
       }

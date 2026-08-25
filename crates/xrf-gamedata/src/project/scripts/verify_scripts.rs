@@ -6,6 +6,7 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_lua::verify_luajit_script;
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::read_as_string_from_w1251_encoded;
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -29,10 +30,18 @@ impl GamedataProject {
     let checked_scripts_count: u32 = u32::try_from(script_paths.len())
       .map_err(|_| XrfError::new_verify_error("Script count exceeds the supported result range"))?;
 
+    // Scripts are parsed in parallel, so each one logs into its listed position and the sequence
+    // releases them in path order rather than in the order the workers finished.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, script_paths.len());
+
     let mut findings: Vec<Finding> = script_paths
       .par_iter()
-      .filter_map(|relative_path| {
-        xrf_output::verbose!(options.output, "Verify script: {relative_path}");
+      .enumerate()
+      .filter_map(|(index, relative_path)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify script: {relative_path}");
 
         let Some(path) = self
           .find(relative_path)
@@ -40,7 +49,7 @@ impl GamedataProject {
           .flatten()
           .map(|location| location.get_logical_path().to_string())
         else {
-          xrf_output::info!(options.output, "Script path not found: {relative_path}");
+          xrf_output::info!(output, "Script path not found: {relative_path}");
 
           return Some(GamedataFindingFactory::for_asset(
             GamedataVerificationRule::ScriptsPath,
@@ -52,7 +61,7 @@ impl GamedataProject {
         match self.verify_script(options, &path) {
           Ok(true) => None,
           Ok(false) => {
-            xrf_output::info!(options.output, "Script is not valid: {}", path);
+            xrf_output::info!(output, "Script is not valid: {}", path);
 
             Some(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::ScriptsSyntax,
@@ -61,7 +70,7 @@ impl GamedataProject {
             ))
           }
           Err(error) => {
-            xrf_output::error!(options.output, "Script verification failed: {error}");
+            xrf_output::error!(output, "Script verification failed: {error}");
 
             Some(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::ScriptsRead,

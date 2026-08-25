@@ -2,6 +2,7 @@ use std::path::Path;
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_sound::SoundFile;
 
 use crate::GamedataFindingFactory;
@@ -31,11 +32,19 @@ impl<'a> SoundFilesVerifier<'a> {
     let checked_sounds_count: u32 = u32::try_from(self.sound_paths.len())
       .map_err(|_| XrfError::new_verify_error("Sound count exceeds the supported result range"))?;
 
+    // Sounds are decoded in parallel, so each one logs into its listed position and the sequence
+    // releases them in path order rather than in the order the workers finished.
+    let sequence: OutputSequence = OutputSequence::new(&self.options.output, self.sound_paths.len());
+
     let mut findings: Vec<Finding> = self
       .sound_paths
       .par_iter()
-      .filter_map(|relative_path| {
-        xrf_output::verbose!(self.options.output, "Verify sound: {relative_path}");
+      .enumerate()
+      .filter_map(|(index, relative_path)| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let output: &OutputOptions = slot.get_output();
+
+        xrf_output::verbose!(output, "Verify sound: {relative_path}");
 
         // Read through the VFS, so an archived sound is decoded rather than reported missing.
         let bytes: Vec<u8> = match self.project.read_bytes(relative_path) {
@@ -56,7 +65,7 @@ impl<'a> SoundFilesVerifier<'a> {
         };
 
         sound.err().map(|error| {
-          xrf_output::error!(self.options.output, "Sound is not valid: {relative_path} - {error}");
+          xrf_output::error!(output, "Sound is not valid: {relative_path} - {error}");
 
           GamedataFindingFactory::for_asset(
             GamedataVerificationRule::SoundsFiles,
