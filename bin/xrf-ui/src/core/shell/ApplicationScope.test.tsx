@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { Injectable } from "@wirestate/core";
 import { registerHotModule, requestHotSwap } from "@wirestate/core/hot";
@@ -20,6 +20,7 @@ import {
   useEditorPanelsRegistry,
 } from "@/core/shell/panel/context";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { noop } from "@/lib/callbacks/noop";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
@@ -127,10 +128,16 @@ describe("ApplicationScope", () => {
 
     expect(getByText("scoped service")).toBeInTheDocument();
 
+    // A completed swap announces itself to the console exactly as it does during a dev session. That line is
+    // wirestate reporting what it was asked to do, not anything failing here, so the run is not told about it.
+    const reported: jest.SpiedFunction<Console["info"]> = jest.spyOn(console, "info").mockImplementation(noop);
+
     await act(async () => {
       registerHotModule("ApplicationScope.test/ScopedService", { ScopedService: ReloadedScopedService });
       requestHotSwap();
     });
+
+    reported.mockRestore();
 
     rerender(
       <>

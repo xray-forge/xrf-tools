@@ -12,6 +12,7 @@ import {
 } from "@/core/visuals/lib/visual-texture";
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
+import { muteConsole } from "@/fixtures/utils/console";
 import { Nullable } from "@/lib/types/general";
 
 const DUMMY: XrayAsset = {
@@ -68,6 +69,9 @@ describe("toInitialTextureState", () => {
 });
 
 describe("createDdsTexture", () => {
+  // Two of these hand the loader a format it has no branch for, and it reports each refusal itself.
+  muteConsole("error");
+
   it("uploads a dxt1 file with its mip chain", () => {
     const texture: Nullable<CompressedTexture> = createDdsTexture(
       mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 3, width: 4 })

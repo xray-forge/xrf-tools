@@ -10,7 +10,8 @@ const SRC: string = "blob:mock/sound";
 /**
  * jsdom implements neither playback nor a canvas, which is also the environment the component has to
  * survive in a webview that refuses to decode a sound. Playback is stubbed so the transport can be
- * driven; the canvas is left unimplemented on purpose so these tests cover the degraded path.
+ * driven; the canvas is left unimplemented by the environment on purpose, so these tests cover the
+ * degraded path.
  */
 beforeEach(() => {
   // `paused` is tracked because the component asks the element what it is doing rather than keeping its
@@ -30,8 +31,6 @@ beforeEach(() => {
     isPaused = true;
     this.dispatchEvent(new Event("pause"));
   });
-
-  jest.spyOn(window.HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 });
 
 afterEach(() => {

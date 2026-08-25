@@ -15,6 +15,7 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
 } from "@/fixtures/mocks/visual.mocks";
+import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
@@ -314,6 +315,9 @@ describe("VisualLoadService", () => {
 
 describe("VisualLoadService texture decoding", () => {
   const decoder: jest.Mock = jest.fn(async () => ({ close: () => {}, height: 4, width: 4 }) as unknown as ImageBitmap);
+
+  // Reaching the backend at all means `DDSLoader` refused the file first, and it reports every refusal itself.
+  muteConsole("error");
 
   beforeEach(() => {
     resetMockInvoke();

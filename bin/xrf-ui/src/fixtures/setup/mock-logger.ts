@@ -1,5 +1,3 @@
-import { jest } from "@jest/globals";
-
 import { noop } from "@/lib/callbacks/noop";
 import { Logger } from "@/lib/logging";
 
@@ -10,10 +8,7 @@ import { Logger } from "@/lib/logging";
 export function mockLogger(): void {
   Logger.IS_GLOBAL_LOGGING_ENABLED = false;
 
-  // The static logger binds console methods while the module loads, before test setup can flip the flag.
-  jest.spyOn(Logger, "log").mockImplementation(noop);
-  jest.spyOn(Logger, "info").mockImplementation(noop);
-  jest.spyOn(Logger, "warn").mockImplementation(noop);
-  jest.spyOn(Logger, "error").mockImplementation(noop);
-  jest.spyOn(Logger, "debug").mockImplementation(noop);
+  // The static logger binds console methods while the module loads, before the flag above can be flipped. Assigned
+  // rather than spied on, because `jest.restoreAllMocks()` in a test's own cleanup would hand the console back.
+  Object.assign(Logger, { debug: noop, error: noop, info: noop, log: noop, warn: noop });
 }

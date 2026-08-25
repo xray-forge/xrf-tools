@@ -49,3 +49,10 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     dispatchEvent: () => false,
   });
 }
+
+// jsdom carries the canvas element but implements no drawing context, and it reports that by writing a
+// "Not implemented" error through its virtual console rather than by answering the call - once per render, with a
+// full React stack under it. Answered from here rather than from a spy, which a test's `restoreAllMocks` undoes.
+if (typeof HTMLCanvasElement !== "undefined") {
+  HTMLCanvasElement.prototype.getContext = () => null;
+}
