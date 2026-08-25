@@ -17,8 +17,8 @@ use crate::{FsgameFile, XrayMountPlan};
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum XrayMountMode {
-  /// Treat the path as an installation when it declares one, as a volume set when it holds volumes, and as a complete
-  /// root otherwise.
+  /// Treat the path as an installation when it declares one, as one volume when it is one, as a volume set when it
+  /// holds volumes, and as a complete root otherwise.
   #[default]
   Auto,
   /// Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it.
@@ -46,7 +46,7 @@ impl XrayMountMode {
       Self::Auto => {
         if Self::declares_installation(path) {
           XrayMountPlan::from_fsgame(path)
-        } else if XrayMountPlan::holds_volumes(path) {
+        } else if XrayMountPlan::is_volume(path) || XrayMountPlan::holds_volumes(path) {
           XrayMountPlan::volumes(path)
         } else {
           XrayMountPlan::root(path)
@@ -133,6 +133,20 @@ mod tests {
     root
   }
 
+  fn volumes(name: &str, names: &[&str]) -> PathBuf {
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_mode/{name}"));
+
+    let _ = fs::remove_dir_all(&root);
+
+    fs::create_dir_all(&root).expect("volumes root");
+
+    for name in names {
+      fs::write(root.join(name), []).expect("volume");
+    }
+
+    root
+  }
+
   #[test]
   fn auto_reads_an_installation_it_is_pointed_at() {
     let root: PathBuf = install("auto_install");
@@ -151,6 +165,31 @@ mod tests {
 
     assert_eq!(plan.len(), 1, "only the named directory is planned");
     assert!(plan.get_mounts()[0].path.ends_with("configs"));
+  }
+
+  #[test]
+  fn auto_mounts_a_named_volume_as_itself() {
+    // Planning never reads the volume, so an empty file is enough to reach the branch - and reaching it is the point:
+    // planned through its directory instead, the mount would also carry every sibling volume the caller did not name.
+    let root: PathBuf = volumes("auto_volume", &["gamedata.db0", "textures.db1"]);
+    let volume: PathBuf = root.join("gamedata.db0");
+
+    let plan = XrayMountMode::Auto.plan(&volume).expect("plan");
+
+    assert_eq!(plan.len(), 1);
+    assert_eq!(plan.get_mounts()[0].origin, "volumes");
+    assert_eq!(plan.get_mounts()[0].path, volume);
+  }
+
+  #[test]
+  fn auto_still_mounts_a_directory_of_volumes() {
+    let root: PathBuf = volumes("auto_volume_set", &["gamedata.db0", "textures.db1"]);
+
+    let plan = XrayMountMode::Auto.plan(&root).expect("plan");
+
+    assert_eq!(plan.len(), 1);
+    assert_eq!(plan.get_mounts()[0].origin, "volumes");
+    assert_eq!(plan.get_mounts()[0].path, root);
   }
 
   #[test]

@@ -267,11 +267,13 @@ impl XrayMountPlan {
   }
 
   fn holds_volumes_at(path: &Path) -> bool {
-    fs::read_dir(path).is_ok_and(|entries| entries.flatten().any(|entry| Self::is_volume(&entry.path())))
+    fs::read_dir(path).is_ok_and(|entries| entries.flatten().any(|entry| Self::is_volume(entry.path())))
   }
 
   /// Whether a file is an archive volume, asked of the crate that owns the format.
-  fn is_volume(path: &Path) -> bool {
+  pub fn is_volume(path: impl AsRef<Path>) -> bool {
+    let path: &Path = path.as_ref();
+
     path.is_file() && ArchiveDescriptor::is_valid_db_path(path)
   }
 

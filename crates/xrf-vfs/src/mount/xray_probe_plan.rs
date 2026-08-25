@@ -65,8 +65,8 @@ impl XrayProbePlan {
   /// with its volumes, a bare volume set, or a loose tree. A viewer pointed at `<install>\db` otherwise mounts the
   /// volumes as files and finds no assets at all.
   ///
-  /// A path that is not a directory plans nothing rather than failing: an unconfigured project root is an ordinary state
-  /// of a viewer, not an error to report.
+  /// A path that is neither a directory nor an archive volume plans nothing rather than failing: an unconfigured
+  /// project root is an ordinary state of a viewer, not an error to report.
   ///
   /// # Errors
   ///
@@ -81,8 +81,8 @@ impl XrayProbePlan {
   /// one each, so a loose gamedata tree and the installation behind it can be read differently within
   /// one search.
   ///
-  /// A path that is not a directory plans nothing rather than failing, for the reason above: an
-  /// unconfigured project root is an ordinary state of a viewer, not an error to report.
+  /// A path that is neither a directory nor an archive volume plans nothing rather than failing, for the
+  /// reason above: an unconfigured project root is an ordinary state of a viewer, not an error to report.
   ///
   /// # Errors
   ///
@@ -97,7 +97,9 @@ impl XrayProbePlan {
 
     self.steps.push(PlannedProbeStep {
       label: label.into(),
-      plan: if root.is_dir() {
+      // A volume named as a root is a root: dropping it for not being a directory would silently search nothing,
+      // which reads exactly like an archive whose entries have all gone missing.
+      plan: if root.is_dir() || XrayMountPlan::is_volume(&root) {
         mode.plan(&root)?
       } else {
         XrayMountPlan::new()

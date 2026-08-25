@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_vfs::{XrayMountMode, XrayProbeStep, XrayRoots, XrayVfs};
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackMode};
 use crate::pack::archive_pack_result::ArchivePackResult;
@@ -69,6 +70,93 @@ fn read(project: &ArchiveProject, name: &str) -> Vec<u8> {
   project
     .read_file_bytes(name)
     .unwrap_or_else(|error| panic!("archive holds '{name}': {error}"))
+}
+
+/// Pack one source tree into a destination shared with other volumes, under its own volume name.
+fn pack_volume(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
+  let source: PathBuf = create_source(&format!("{scope}/{name}"), files);
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+
+  let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, name);
+
+  config.include_directories = vec![ArchivePackDirectory {
+    path: String::new(),
+    is_recursive: true,
+  }];
+
+  let result: ArchivePackResult = ArchivePacker::pack(&config).expect("source tree packs");
+
+  result.volumes.first().expect("one volume written").clone()
+}
+
+#[test]
+fn opening_one_volume_opens_only_that_volume() {
+  // What the explorer's archive mode asks for: the volume the user named, not the directory it happens to sit in.
+  let scope: &str = "opening_one_volume_opens_only_that_volume";
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)]);
+  let second: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)]);
+
+  assert_ne!(first, second, "the two volumes share a directory");
+  assert_eq!(open(&destination).archives.len(), 2, "the directory holds both");
+
+  let project: ArchiveProject = open(&first);
+
+  assert_eq!(project.archives.len(), 1);
+  assert_eq!(project.archives[0].path, first);
+
+  // The root is what a caller mounts to read an entry back out. Left as the parent directory it would reach the
+  // sibling volume too, and an entry both hold would answer out of whichever one sorted last.
+  assert_eq!(project.root, first);
+
+  assert_eq!(read(&project, "configs\\first.ltx"), CONFIG);
+  assert!(
+    !project.files.contains_key("configs\\second.ltx"),
+    "the sibling volume's entries stay out of a project opened from one file"
+  );
+}
+
+#[test]
+fn a_named_volume_is_searched_as_a_root() {
+  // The explorer mounts a project's root to read an entry's bytes back, and for a single-volume project that root is
+  // the volume. A root planner that only recognised directories would search nothing and report every entry missing.
+  let scope: &str = "a_named_volume_is_searched_as_a_root";
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)]);
+  let sibling: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)]);
+
+  // Searched the way the asset commands search: a probe plan over the roots, not a plain mount.
+  fn find(root: &Path, logical_path: &str) -> bool {
+    let mut vfs: XrayVfs = XrayVfs::new();
+    let steps: Vec<XrayProbeStep> = XrayRoots::one(root.display().to_string(), XrayMountMode::Auto)
+      .to_probe_plan()
+      .expect("roots plan")
+      .mount_into(&mut vfs)
+      .expect("plan mounts");
+
+    vfs
+      .probe()
+      .with_steps(steps)
+      .find(logical_path)
+      .expect("lookup succeeds")
+      .get_asset()
+      .is_some()
+  }
+
+  assert!(find(&first, "configs\\first.ltx"), "its own entry is found");
+  assert!(
+    !find(&first, "configs\\second.ltx"),
+    "the volume beside it is not searched"
+  );
+
+  // The directory holding both is a wider root on purpose, and is what a directory-opened project still mounts.
+  assert!(find(sibling.parent().expect("volume parent"), "configs\\second.ltx"));
 }
 
 #[test]

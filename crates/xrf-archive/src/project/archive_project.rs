@@ -25,6 +25,9 @@ pub struct ArchiveProject {
   pub archives: Vec<ArchiveDescriptor>,
   pub files: HashMap<String, ArchiveFileDescriptor>,
   pub read_policy: ArchiveProjectReadPolicy,
+  /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
+  /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
+  /// caller reading an entry's bytes back out of the filesystem needs.
   pub root: PathBuf,
   pub size_real: u64,
 }
@@ -54,8 +57,9 @@ impl ArchiveProject {
   fn read_to_depth(path: &Path, depth: usize) -> XrfResult<Self> {
     let mut archives: Vec<ArchiveDescriptor> = Vec::new();
     let mut files: HashMap<String, ArchiveFileDescriptor> = HashMap::new();
+    let is_single_volume: bool = path.is_file();
 
-    if path.is_file() {
+    if is_single_volume {
       log::info!("Reading archive file: {}", path.display());
 
       archives.push(ArchiveReader::from_path(path)?.read_archive()?);
@@ -88,7 +92,13 @@ impl ArchiveProject {
       }
     }
 
-    let root: PathBuf = Self::root_from_archives(&archives);
+    // A named volume is its own root. Its parent would be a wider path than the project, and mounting that to read an
+    // entry back would answer out of whichever sibling volume shadows the name.
+    let root: PathBuf = if is_single_volume {
+      path.to_path_buf()
+    } else {
+      Self::root_from_archives(&archives)
+    };
     let size_real: u64 = files.values().map(|file| u64::from(file.size_real)).sum();
 
     Ok(Self {
