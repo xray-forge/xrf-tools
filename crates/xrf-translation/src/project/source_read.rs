@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use crate::json;
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
 use crate::project::constants::{LANGUAGE_NEUTRAL, MULTILANGUAGE};
@@ -8,8 +7,8 @@ use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode,
 };
 use crate::project::layout::relative;
+use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
-use crate::xml;
 use crate::xml::read::read_string_table;
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
@@ -45,9 +44,11 @@ pub fn read_source<P: AsRef<Path>>(root: P) -> XrfResult<TranslationProjectDescr
       continue;
     }
 
-    match path.extension().and_then(|extension| extension.to_str()) {
-      Some(json::FILE_EXTENSION) => merge_json(root, path, &mut descriptor),
-      Some(xml::FILE_EXTENSION) => merge_xml(root, path, &mut descriptor),
+    match path.file_name().and_then(TranslationSourceFileName::parse) {
+      Some(source_name) => match source_name.get_kind() {
+        TranslationSourceFileKind::Json => merge_json(root, path, &mut descriptor),
+        TranslationSourceFileKind::Xml => merge_xml(root, path, &mut descriptor),
+      },
       _ => {}
     }
   }
@@ -107,11 +108,14 @@ fn merge_xml(root: &Path, path: &Path, descriptor: &mut TranslationProjectDescri
 
   // No language suffix means the build copies this file to every language, so presenting it as
   // English - which a filename fallback would do - would show a change to all of them as one.
-  let language: String = path
-    .file_name()
-    .and_then(|it| it.to_str())
-    .and_then(TranslationLanguage::from_file_name)
-    .map_or_else(|| LANGUAGE_NEUTRAL.to_owned(), |locale| locale.to_string());
+  let language: String = path.file_name().and_then(TranslationSourceFileName::parse).map_or_else(
+    || LANGUAGE_NEUTRAL.to_owned(),
+    |source_name| {
+      source_name
+        .get_xml_language()
+        .map_or_else(|| LANGUAGE_NEUTRAL.to_owned(), |language| language.to_string())
+    },
+  );
 
   let entries: Vec<(String, String)> = match read_string_table(path) {
     Ok(entries) => entries,

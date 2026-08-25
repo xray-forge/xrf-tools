@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{Write, copy};
 use std::path::{Display, Path, PathBuf};
@@ -8,15 +7,14 @@ use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::encode_string_to_bytes;
 
-use crate::json;
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
 use crate::project::build::compile::compile_by_language;
 use crate::project::build::options::ProjectBuildOptions;
 use crate::project::build::result::ProjectBuildResult;
 use crate::project::build::targets::{ensure_output_outside_source, prepare_target_file, validate_targets};
+use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
 use crate::types::TranslationJson;
-use crate::xml;
 
 /// Build every translation source in a directory.
 ///
@@ -73,17 +71,16 @@ pub fn build_dir(dir: &Path, options: &ProjectBuildOptions) -> XrfResult<Project
 ///
 /// Returns whatever building the XML or JSON source returns.
 pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult<ProjectBuildResult> {
-  let extension: Option<&OsStr> = path.as_ref().extension();
   let started_at: Instant = Instant::now();
 
   let mut result: ProjectBuildResult = ProjectBuildResult::new();
 
-  if let Some(extension) = extension {
-    if extension == xml::FILE_EXTENSION {
-      build_xml_file(path, options)?;
-    } else if extension == json::FILE_EXTENSION {
-      build_json_file(path, options)?;
-    } else {
+  match path.as_ref().file_name().and_then(TranslationSourceFileName::parse) {
+    Some(source_name) => match source_name.get_kind() {
+      TranslationSourceFileKind::Json => build_json_file(path, options)?,
+      TranslationSourceFileKind::Xml => build_xml_file(path, options)?,
+    },
+    None => {
       log::info!("Skip file {}", path.as_ref().display());
       xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
     }
@@ -113,8 +110,8 @@ pub fn build_xml_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -
   let locale: Option<TranslationLanguage> = path
     .as_ref()
     .file_name()
-    .and_then(|it| it.to_str())
-    .and_then(TranslationLanguage::from_file_name);
+    .and_then(TranslationSourceFileName::parse)
+    .and_then(|source_name| source_name.get_xml_language());
 
   if let Some(locale) = locale {
     xrf_output::info!(options.output, "Building XML based translations {path_display}");

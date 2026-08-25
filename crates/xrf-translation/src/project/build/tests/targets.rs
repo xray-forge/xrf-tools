@@ -7,6 +7,7 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_g
 use crate::language::TranslationLanguage;
 use crate::project::build::options::ProjectBuildOptions;
 use crate::project::build::run::build_dir;
+use crate::project::build::targets::target_path;
 
 /// The one source every target test builds from; what it contains is never the point.
 const SOURCE_JSON: &str = r#"{"st_test":{"eng":"text"}}"#;
@@ -19,6 +20,33 @@ fn options(path: PathBuf, output_dir: PathBuf) -> ProjectBuildOptions {
     path,
     output_dir,
   }
+}
+
+#[test]
+fn language_suffixed_xml_uses_the_gamedata_file_name() -> XrfResult {
+  let source_root = PathBuf::from("translations");
+  let output_root = PathBuf::from("output");
+  let options = options(source_root.clone(), output_root.clone());
+
+  let target = target_path(
+    &source_root.join("ui").join("st_ui.eng.xml"),
+    &output_root,
+    &TranslationLanguage::English,
+    &options,
+  )?;
+
+  assert_eq!(target, output_root.join("eng").join("ui").join("st_ui.xml"));
+
+  let json_target = target_path(
+    &source_root.join("ui").join("st_items.eng.json"),
+    &output_root,
+    &TranslationLanguage::English,
+    &options,
+  )?;
+
+  assert_eq!(json_target, output_root.join("eng").join("ui").join("st_items.eng.xml"));
+
+  Ok(())
 }
 
 #[test]

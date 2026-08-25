@@ -88,19 +88,6 @@ impl TranslationLanguage {
     }
   }
 
-  /// Read the language off a `name.eng.xml` style filename, which is how sources carry it.
-  ///
-  /// Takes the name rather than a path, because the two path domains spell a path differently and the
-  /// rule is about neither: an engine identity is `\`-separated where a host path is not, so
-  /// `Path::file_name` on an engine path answers the whole path on Linux.
-  pub(crate) fn from_file_name(file_name: &str) -> Option<Self> {
-    let mut parts = file_name.rsplit('.');
-
-    parts.next()?;
-
-    Self::from_str_single(parts.next()?).ok()
-  }
-
   /// Read the language off the `rus` of a `text/rus/st_dialogs.xml`, which is how gamedata carries it.
   pub(crate) fn from_directory_name(directory_name: &str) -> Option<Self> {
     Self::from_str_single(directory_name).ok()

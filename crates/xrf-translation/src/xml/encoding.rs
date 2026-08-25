@@ -6,6 +6,7 @@ use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, new_u
 use xrf_xml::declared_xml_encoding;
 
 use crate::language::TranslationLanguage;
+use crate::source_file_name::TranslationSourceFileName;
 
 /// Where a string table says which language it holds.
 ///
@@ -34,7 +35,8 @@ impl<'a> TranslationIdentity<'a> {
 
   /// The language these names imply, if any.
   fn get_language(&self) -> Option<TranslationLanguage> {
-    TranslationLanguage::from_file_name(self.file_name)
+    TranslationSourceFileName::parse(self.file_name)
+      .and_then(|source_name| source_name.get_xml_language())
       .or_else(|| self.directory_name.and_then(TranslationLanguage::from_directory_name))
   }
 }

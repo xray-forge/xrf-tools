@@ -1,13 +1,12 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::json;
 use crate::language::TranslationLanguage;
 use crate::project::build::options::ProjectBuildOptions;
+use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
 use crate::xml;
 
 /// Open the file a source builds to, creating the directories above it.
@@ -37,6 +36,9 @@ pub(crate) fn prepare_target_file<P1: AsRef<Path>, P2: AsRef<Path>>(
 
 /// Where one source lands, which is `<output>/<language>/<path relative to the root>.xml`.
 ///
+/// A language-suffixed XML source drops that suffix because its destination directory already
+/// identifies the language.
+///
 /// # Errors
 ///
 /// Returns an invalid error when the source is outside the project root or has no file name.
@@ -46,7 +48,7 @@ pub(crate) fn target_path(
   language: &TranslationLanguage,
   options: &ProjectBuildOptions,
 ) -> XrfResult<PathBuf> {
-  let relative_source: PathBuf = if source == options.path {
+  let mut relative_source: PathBuf = if source == options.path {
     PathBuf::from(source.file_name().ok_or_else(|| {
       XrfError::new_invalid_error(format!("Translation source has no file name: {}", source.display()))
     })?)
@@ -59,6 +61,10 @@ pub(crate) fn target_path(
       ))
     })?
   };
+
+  if let Some(source_name) = relative_source.file_name().and_then(TranslationSourceFileName::parse) {
+    relative_source.set_file_name(format!("{}.{}", source_name.get_stem(), xml::FILE_EXTENSION));
+  }
 
   Ok(
     destination
@@ -98,23 +104,23 @@ pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildO
 }
 
 pub(crate) fn target_languages_for_source(path: &Path, options: &ProjectBuildOptions) -> Vec<TranslationLanguage> {
-  match path.extension().and_then(OsStr::to_str) {
-    Some(json::FILE_EXTENSION) => {
-      if options.language == TranslationLanguage::All {
-        TranslationLanguage::get_all()
-      } else {
-        vec![options.language]
+  match path.file_name().and_then(TranslationSourceFileName::parse) {
+    Some(source_name) => match source_name.get_kind() {
+      TranslationSourceFileKind::Json => {
+        if options.language == TranslationLanguage::All {
+          TranslationLanguage::get_all()
+        } else {
+          vec![options.language]
+        }
       }
-    }
-    Some(xml::FILE_EXTENSION) => match path
-      .file_name()
-      .and_then(|it| it.to_str())
-      .and_then(TranslationLanguage::from_file_name)
-    {
-      Some(locale) if options.language == TranslationLanguage::All || options.language == locale => vec![locale],
-      Some(_) => Vec::new(),
-      None if options.language == TranslationLanguage::All => TranslationLanguage::get_all(),
-      None => vec![options.language],
+      TranslationSourceFileKind::Xml => match source_name.get_xml_language() {
+        Some(language) if options.language == TranslationLanguage::All || options.language == language => {
+          vec![language]
+        }
+        Some(_) => Vec::new(),
+        None if options.language == TranslationLanguage::All => TranslationLanguage::get_all(),
+        None => vec![options.language],
+      },
     },
     _ => Vec::new(),
   }

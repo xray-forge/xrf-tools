@@ -8,6 +8,7 @@ pub(crate) mod edit;
 pub(crate) mod json;
 pub(crate) mod language;
 pub(crate) mod project;
+pub(crate) mod source_file_name;
 pub(crate) mod staged_write;
 pub(crate) mod types;
 pub(crate) mod xml;
