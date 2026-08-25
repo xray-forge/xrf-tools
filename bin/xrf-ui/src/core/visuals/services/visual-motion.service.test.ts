@@ -4,39 +4,18 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockVisualMotionBake, mockVisualMotionTransforms } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
-const FRAMES: number = 3;
-const BONES: number = 2;
+const BAKE: VisualMotionBake = mockVisualMotionBake();
 
-/** Floats one bone occupies, matching the backend layout: a basis and a translation. */
-const FLOATS: number = 12;
-
-function mockBake(overrides: Partial<VisualMotionBake> = {}): VisualMotionBake {
-  return {
-    name: "norm_walk_fwd_1",
-    frameCount: FRAMES,
-    boneCount: BONES,
-    duration: FRAMES / 30,
-    animatedBoneCount: BONES,
-    floatsPerBone: FLOATS,
-    ...overrides,
-  };
+/** How many floats a bake's whole buffer holds. */
+function mockFloatCount(bake: VisualMotionBake): number {
+  return bake.frameCount * bake.boneCount * bake.floatsPerBone;
 }
 
-/** Bone transforms matching `mockBake`, each frame filled with its own index so a pose is identifiable. */
-function mockTransforms(): ArrayBuffer {
-  const transforms: Float32Array = new Float32Array(FRAMES * BONES * FLOATS);
-
-  for (let frame: number = 0; frame < FRAMES; frame += 1) {
-    transforms.fill(frame, frame * BONES * FLOATS, (frame + 1) * BONES * FLOATS);
-  }
-
-  return transforms.buffer as ArrayBuffer;
-}
-
-function mockMotion(bake: VisualMotionBake = mockBake(), transforms: ArrayBuffer = mockTransforms()): void {
+function mockMotion(bake: VisualMotionBake = BAKE, transforms: ArrayBuffer = mockVisualMotionTransforms(bake)): void {
   setMockInvokeResponses({
     ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
     ["plugin:visuals|open_motion"]: bake,
@@ -118,16 +97,16 @@ describe("VisualMotionService", () => {
     await service.open("norm_walk_fwd_1");
 
     expect(service.posed.value?.bake.name).toBe("norm_walk_fwd_1");
-    expect(service.posed.value?.transforms).toHaveLength(FRAMES * BONES * FLOATS);
-    expect(service.frameCount).toBe(FRAMES);
-    expect(service.floatsPerBone).toBe(FLOATS);
+    expect(service.posed.value?.transforms).toHaveLength(mockFloatCount(BAKE));
+    expect(service.frameCount).toBe(BAKE.frameCount);
+    expect(service.floatsPerBone).toBe(BAKE.floatsPerBone);
     expect(service.isPlaying).toBe(true);
   });
 
   it("refuses bytes that do not match the pose they came with", async () => {
     // Two reads, so the buffer can describe a different motion than the bake does - and a stride read off the bake
     // would then index into the wrong frames rather than failing.
-    mockMotion(mockBake(), new Float32Array(FRAMES * BONES * FLOATS - FLOATS).buffer as ArrayBuffer);
+    mockMotion(BAKE, new Float32Array(mockFloatCount(BAKE) - BAKE.floatsPerBone).buffer as ArrayBuffer);
 
     const { service } = mockInjectedService(VisualMotionService);
 
@@ -165,7 +144,7 @@ describe("VisualMotionService", () => {
 
     jest.advanceTimersByTime((1000 / 30) * 10);
 
-    expect(service.frame).toBe(FRAMES - 1);
+    expect(service.frame).toBe(BAKE.frameCount - 1);
     expect(service.isPlaying).toBe(false);
   });
 
@@ -179,7 +158,7 @@ describe("VisualMotionService", () => {
     service.toggleLoop();
 
     jest.advanceTimersByTime((1000 / 30) * 10);
-    expect(service.frame).toBe(FRAMES - 1);
+    expect(service.frame).toBe(BAKE.frameCount - 1);
 
     service.play();
     expect(service.frame).toBe(0);
@@ -211,7 +190,7 @@ describe("VisualMotionService", () => {
     await service.open("norm_walk_fwd_1");
 
     service.seek(99);
-    expect(service.frame).toBe(FRAMES - 1);
+    expect(service.frame).toBe(BAKE.frameCount - 1);
 
     service.seek(-4);
     expect(service.frame).toBe(0);
@@ -292,7 +271,7 @@ describe("VisualMotionService playback state", () => {
   });
 
   it("advances at the rate it is set to", async () => {
-    mockMotion(mockBake({ frameCount: 100 }), new Float32Array(100 * BONES * FLOATS).buffer as ArrayBuffer);
+    mockMotion(mockVisualMotionBake({ frameCount: 100 }));
 
     const { service } = mockInjectedService(VisualMotionService);
 

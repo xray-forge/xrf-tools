@@ -32,6 +32,7 @@ import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-bu
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
 import { TRANSLATIONS_VERIFIER_APPLICATION } from "@/applications/translations-verifier";
 import { VISUALS_EXPLORER_APPLICATION } from "@/applications/visuals-explorer";
+import { VISUALS_SEQUENCER_APPLICATION } from "@/applications/visuals-sequencer";
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 
@@ -69,6 +70,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     TRANSLATIONS_BUILDER_APPLICATION,
     TRANSLATIONS_VERIFIER_APPLICATION,
     VISUALS_EXPLORER_APPLICATION,
+    VISUALS_SEQUENCER_APPLICATION,
   ],
   groups: [
     {

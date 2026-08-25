@@ -3,11 +3,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, SyntheticEvent, useCallback, useMemo } from "react";
 
 import { toBoneTree } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
-import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/applications/visuals-explorer/components/panels/VisualPanelEmpty";
-import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
+import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
+import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

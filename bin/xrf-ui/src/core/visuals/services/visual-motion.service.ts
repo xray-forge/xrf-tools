@@ -5,19 +5,11 @@ import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * Rates playback is allowed to run at.
- *
- * A floor of one frame a second because zero is what pause is for, and a ceiling of a hundred and twenty because a
- * `setInterval` cannot keep a shorter period and a viewer has nothing to learn from frames it cannot see.
- */
-const MIN_FPS: number = 1;
-const MAX_FPS: number = 120;
 
 /** A posed motion: what the backend said it is, and every frame's bone transforms. */
 export interface IPosedMotion {
@@ -34,9 +26,6 @@ export interface IPosedMotion {
  */
 @Injectable()
 export class VisualMotionService {
-  /** Frames a second an X-Ray motion samples at, which is what playback has to run at to look right. */
-  public static readonly SAMPLE_FPS: number = 30;
-
   public readonly log: Logger = new Logger(this.constructor.name);
 
   private ticker: Nullable<ReturnType<typeof setInterval>> = null;
@@ -70,7 +59,7 @@ export class VisualMotionService {
    * see what a foot does in three frames.
    */
   @Observable()
-  public fps: number = VisualMotionService.SAMPLE_FPS;
+  public fps: number = MOTION_SAMPLE_FPS;
 
   /**
    * @returns Frames the posed motion holds, or zero when nothing is posed.
@@ -197,7 +186,7 @@ export class VisualMotionService {
    */
   @BoundAction()
   public setFps(fps: number): void {
-    this.fps = Math.max(MIN_FPS, Math.min(fps, MAX_FPS));
+    this.fps = clampMotionFps(fps);
 
     if (this.isPlaying) {
       this.startTicker();

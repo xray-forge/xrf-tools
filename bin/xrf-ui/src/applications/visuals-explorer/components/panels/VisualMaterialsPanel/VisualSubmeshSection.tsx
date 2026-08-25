@@ -2,10 +2,10 @@ import { Box, Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { VisualSubmeshTexture } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
-import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
+import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";

@@ -10,6 +10,7 @@ import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import {
+  IVisualPreviewViewportProps,
   VisualPreviewAnimationBar,
   VisualPreviewMotionViewport,
   VisualPreviewToolbar,
@@ -39,6 +40,19 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
   hasMotions?: boolean;
   /** Joint to mark in the viewport, named elsewhere - the bones panel - and resolved to a position by its owner. */
   highlightedJoint?: Nullable<[number, number, number]>;
+  /**
+   * Draws the viewport, for a surface that poses the model from something other than a single picked motion.
+   *
+   * A render prop rather than a node, because the model, the view toggles, the detail level and the camera reset token
+   * are this layout's to own: a caller passing a finished element would have to be handed all four back.
+   */
+  renderViewport?: (props: IVisualPreviewViewportProps) => ReactNode;
+  /**
+   * Replaces the playback bar under the viewport.
+   *
+   * The bar plays one picked motion, which is one workflow rather than the only one.
+   */
+  footer?: ReactNode;
   /** Whether a model is on its way, reported over the viewport rather than by replacing the screen. */
   isLoading?: boolean;
   /** Why the last open failed, shown in place of a model rather than dismissing the session. */
@@ -67,6 +81,8 @@ export function VisualPreviewLayout({
   textures,
   hasMotions = false,
   highlightedJoint = null,
+  renderViewport,
+  footer,
   isLoading = false,
   error,
   onOpen,
@@ -134,7 +150,7 @@ export function VisualPreviewLayout({
           onBrowse={onBrowse}
         />
       }
-      footer={hasMotions ? <VisualPreviewAnimationBar model={model} /> : undefined}
+      footer={footer ?? (hasMotions ? <VisualPreviewAnimationBar model={model} /> : undefined)}
     >
       <Box
         data-testid={dataTestId}
@@ -142,14 +158,18 @@ export function VisualPreviewLayout({
         className={className}
         sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
       >
-        <VisualPreviewMotionViewport
-          model={model}
-          options={options}
-          cameraResetToken={cameraResetToken}
-          detail={detail}
-          highlightedJoint={highlightedJoint}
-          textures={textures}
-        />
+        {renderViewport ? (
+          renderViewport({ cameraResetToken, detail, highlightedJoint, model, options, textures })
+        ) : (
+          <VisualPreviewMotionViewport
+            model={model}
+            options={options}
+            cameraResetToken={cameraResetToken}
+            detail={detail}
+            highlightedJoint={highlightedJoint}
+            textures={textures}
+          />
+        )}
 
         {!model && !isLoading ? (
           <Box sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}>

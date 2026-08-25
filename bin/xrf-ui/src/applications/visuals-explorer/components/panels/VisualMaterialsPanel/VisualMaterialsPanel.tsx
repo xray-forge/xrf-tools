@@ -3,11 +3,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
 import { VisualSubmeshSection } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshSection";
-import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/applications/visuals-explorer/components/panels/VisualPanelEmpty";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
+import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import {
   describeVisualTextureSummary,
   IVisualTextureSummary,

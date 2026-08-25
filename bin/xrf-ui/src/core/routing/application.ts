@@ -27,6 +27,7 @@ export enum EApplicationId {
   TRANSLATIONS_EDITOR = "translations-editor",
   TRANSLATIONS_VERIFIER = "translations-verifier",
   VISUALS_EXPLORER = "visuals-explorer",
+  VISUALS_SEQUENCER = "visuals-sequencer",
 }
 
 /**

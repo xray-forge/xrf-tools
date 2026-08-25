@@ -6,11 +6,14 @@ import {
   VisualBounds,
   VisualDescription,
   VisualGeometry,
+  VisualMotionBake,
   VisualSection,
   VisualSubmesh,
   VisualTextureDependency,
   VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
+import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { FLOATS_PER_BONE } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
 
@@ -261,4 +264,53 @@ export function mockTextureDependency(overrides: Partial<VisualTextureDependency
     submeshIndex: 0,
     ...overrides,
   };
+}
+
+/**
+ * Creates a baked motion fixture.
+ *
+ * The duration follows the frame count unless it is overridden, so a test asking for a longer motion does not have to
+ * restate how long that makes it.
+ *
+ * @param overrides - Field values to override.
+ * @returns A bake fixture.
+ */
+export function mockVisualMotionBake(overrides: Partial<VisualMotionBake> = {}): VisualMotionBake {
+  const bake: VisualMotionBake = {
+    name: "norm_walk_fwd_1",
+    frameCount: 3,
+    boneCount: 2,
+    animatedBoneCount: 2,
+    floatsPerBone: FLOATS_PER_BONE,
+    duration: 0,
+    ...overrides,
+  };
+
+  return { ...bake, duration: overrides.duration ?? bake.frameCount / MOTION_SAMPLE_FPS };
+}
+
+/**
+ * Creates the bone transforms one bake describes.
+ *
+ * Built from the bake rather than from counts of its own, because every consumer refuses bytes whose length disagrees
+ * with the frame, bone and float counts it was told: a test producing the two separately could pin that guard against
+ * a buffer it made up.
+ *
+ * @param bake - Bake the buffer has to match.
+ * @param fill - Value written into every float of one frame, by default the frame's own index so a pose is
+ *   identifiable.
+ * @returns Frame major transforms of the length the bake reports.
+ */
+export function mockVisualMotionTransforms(
+  bake: VisualMotionBake,
+  fill: (frame: number) => number = (frame: number) => frame
+): ArrayBuffer {
+  const stride: number = bake.boneCount * bake.floatsPerBone;
+  const transforms: Float32Array = new Float32Array(bake.frameCount * stride);
+
+  for (let frame: number = 0; frame < bake.frameCount; frame += 1) {
+    transforms.fill(fill(frame), frame * stride, (frame + 1) * stride);
+  }
+
+  return transforms.buffer as ArrayBuffer;
 }

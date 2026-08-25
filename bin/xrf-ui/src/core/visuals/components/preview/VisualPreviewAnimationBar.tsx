@@ -7,6 +7,7 @@ import { useInjection } from "@wirestate/react";
 import { MouseEvent, ReactElement, SyntheticEvent, useCallback, useEffect, useState } from "react";
 
 import { LAYOUT } from "@/core/theme/tokens";
+import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { formatDuration } from "@/lib/format/duration";
@@ -39,7 +40,7 @@ export function VisualPreviewAnimationBar({ model }: IVisualPreviewAnimationBarP
   const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
   const frames: number = service.frameCount;
   const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
-  const isSampleRate: boolean = service.fps === VisualMotionService.SAMPLE_FPS;
+  const isSampleRate: boolean = service.fps === MOTION_SAMPLE_FPS;
 
   const onPick = useCallback(
     (_: SyntheticEvent, name: Nullable<string>) => {
@@ -168,7 +169,7 @@ export function VisualPreviewAnimationBar({ model }: IVisualPreviewAnimationBarP
             valueLabelDisplay={"auto"}
             valueLabelFormat={(value: number) => `${value} fps`}
             // The rate the format samples at, marked so the honest speed is one click away from any other.
-            marks={[{ value: VisualMotionService.SAMPLE_FPS, label: "30" }]}
+            marks={[{ value: MOTION_SAMPLE_FPS, label: "30" }]}
             aria-label={"Frames a second"}
             onChange={onChangeFps}
           />

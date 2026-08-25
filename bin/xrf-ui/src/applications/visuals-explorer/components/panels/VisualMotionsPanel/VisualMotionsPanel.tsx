@@ -3,11 +3,11 @@ import { ReactElement } from "react";
 
 import { VisualMotionNames } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionNames";
 import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
-import { VisualPanel } from "@/applications/visuals-explorer/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/applications/visuals-explorer/components/panels/VisualPanelEmpty";
-import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualDescription, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
+import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
+import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

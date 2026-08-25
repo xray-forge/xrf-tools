@@ -7,10 +7,10 @@ import {
   IVisualTextureStateDescriptor,
 } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTexture.utils";
 import { VisualSubmeshTextureSource } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTextureSource";
-import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { EVisualTextureState, getLocatedAsset, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

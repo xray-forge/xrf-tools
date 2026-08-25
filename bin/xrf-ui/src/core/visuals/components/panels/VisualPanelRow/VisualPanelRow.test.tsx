@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { Chip } from "@mui/material";
 
-import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow/VisualPanelRow";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow/VisualPanelRow";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("VisualPanelRow", () => {

@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
-import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
 import { AssetTextureDescriptor, AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";

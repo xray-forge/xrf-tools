@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
-import { VisualPanelRow } from "@/applications/visuals-explorer/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/applications/visuals-explorer/components/panels/VisualPanelSection";
 import { VisualBounds } from "@/core/bindings/types/xrf-visual";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
+import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { formatCoordinate, formatVector } from "@/core/visuals/lib/visual-format";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
