@@ -44,12 +44,11 @@ pub fn read_source<P: AsRef<Path>>(root: P) -> XrfResult<TranslationProjectDescr
       continue;
     }
 
-    match path.file_name().and_then(TranslationSourceFileName::parse) {
-      Some(source_name) => match source_name.get_kind() {
+    if let Some(source_name) = path.file_name().and_then(TranslationSourceFileName::parse) {
+      match source_name.get_kind() {
         TranslationSourceFileKind::Json => merge_json(root, path, &mut descriptor),
         TranslationSourceFileKind::Xml => merge_xml(root, path, &mut descriptor),
-      },
-      _ => {}
+      }
     }
   }
 
