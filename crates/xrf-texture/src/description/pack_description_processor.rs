@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
@@ -109,6 +110,10 @@ impl PackDescriptionProcessor {
     xrf_output::verbose!(options.output, "Saving file: {}", destination.display());
 
     warn_on_reshaped_ui_dds(&options.output, &destination, width, height, UI_MIPMAP_LEVELS);
+
+    if let Some(parent) = destination.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+      fs::create_dir_all(parent)?;
+    }
 
     save_image_as_ui_dds(&destination, &result, options.dds_compression_format, UI_MIPMAPS)?;
 
