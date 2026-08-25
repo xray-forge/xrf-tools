@@ -107,13 +107,13 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use uuid::{Uuid, uuid};
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
     build_absolute_generated_test_resource_path, build_relative_test_sample_file_directory,
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice, open_test_resource_as_slice,
+    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
     overwrite_generated_test_resource_as_file,
   };
 
@@ -122,10 +122,9 @@ mod tests {
 
   #[test]
   fn test_read_empty() -> XrfResult {
-    let mut reader: ChunkReader = ChunkReader::from_slice(open_test_resource_as_slice(
-      &build_relative_test_sample_file_path(file!(), "read_empty.chunk"),
-    )?)?
-    .read_child_by_index(0)?;
+    // A container holding one child that declares no payload: id 0, size 0. Reading a spawn header out of that must
+    // fail rather than hand back a default-shaped one.
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     let original: XrfResult<SpawnHeaderChunk> = SpawnHeaderChunk::read::<XRayByteOrder, _>(&mut reader);
 

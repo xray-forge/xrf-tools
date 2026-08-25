@@ -182,13 +182,33 @@ impl fmt::Debug for ChunkReader {
 mod tests {
   use fileslice::FileSlice;
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::{build_relative_test_sample_sub_dir, open_test_resource_as_slice};
+  use xrf_test_utils::utils::{
+    build_relative_test_sample_file_path, open_generated_test_resource_as_slice, write_generated_test_resource,
+  };
 
   use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_memory_source::InMemoryChunkDataSource;
+
+  /// Lay out one chunk the way the format does: id, payload length, then the payload.
+  fn new_chunk_bytes(id: u32, payload: &[u8]) -> Vec<u8> {
+    let mut bytes: Vec<u8> = Vec::with_capacity(8 + payload.len());
+
+    bytes.extend_from_slice(&id.to_le_bytes());
+    bytes.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(payload);
+
+    bytes
+  }
 
   #[test]
-  fn test_read_empty_file() -> XrfResult {
-    let file: FileSlice = open_test_resource_as_slice("empty")?;
+  fn rejects_an_empty_source() -> XrfResult {
+    // Only `from_slice` and `from_file` refuse an empty source - `from_bytes` hands back a zero-size reader - so this
+    // case is the guard's sole coverage and has to keep a real file behind it.
+    let path: String = build_relative_test_sample_file_path(file!(), "rejects_an_empty_source");
+
+    write_generated_test_resource(&path, b"")?;
+
+    let file: FileSlice = open_generated_test_resource_as_slice(&path)?;
 
     assert_eq!(file.start_pos(), 0);
     assert_eq!(file.end_pos(), 0);
@@ -206,9 +226,13 @@ mod tests {
   }
 
   #[test]
-  fn test_read_empty_chunk() -> XrfResult {
-    let filename: String = build_relative_test_sample_sub_dir("empty_nested_single.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
+  fn reads_a_single_empty_child() -> XrfResult {
+    // Kept file-backed so reading through a `FileSlice`, not just constructing over one, stays covered here.
+    let path: String = build_relative_test_sample_file_path(file!(), "reads_a_single_empty_child.chunk");
+
+    write_generated_test_resource(&path, new_chunk_bytes(0, &[]))?;
+
+    let file: FileSlice = open_generated_test_resource_as_slice(&path)?;
 
     assert_eq!(file.start_pos(), 0);
     assert_eq!(file.end_pos(), 8);
@@ -221,68 +245,57 @@ mod tests {
   }
 
   #[test]
-  fn test_read_empty_children() -> XrfResult {
-    let filename: String = build_relative_test_sample_sub_dir("empty_nested_single.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
-    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.get_children_cloned()?;
+  fn reads_five_empty_children() -> XrfResult {
+    let bytes: Vec<u8> = (0..5).map(|id| new_chunk_bytes(id, &[])).collect::<Vec<_>>().concat();
+    let children: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&bytes)?.get_children_cloned()?;
 
-    assert_eq!(chunks.len(), 1, "Expect single chunk");
-    assert_eq!(chunks.first().unwrap().size, 0);
-
-    let filename: String = build_relative_test_sample_sub_dir("empty_nested_five.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
-    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.get_children_cloned()?;
-
-    assert_eq!(chunks.len(), 5, "Expect five chunks");
-    assert_eq!(chunks[0].size, 0);
-    assert_eq!(chunks[1].size, 0);
-    assert_eq!(chunks[2].size, 0);
-    assert_eq!(chunks[3].size, 0);
-    assert_eq!(chunks[4].size, 0);
+    assert_eq!(children.len(), 5, "Expect five chunks");
+    assert!(children.iter().all(|child| child.size == 0));
 
     Ok(())
   }
 
   #[test]
-  fn test_read_empty_unordered_children() -> XrfResult {
-    let filename: String = build_relative_test_sample_sub_dir("empty_nested_five_unordered.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
-    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.get_children_cloned()?;
+  fn reads_children_in_declaration_order() -> XrfResult {
+    // Ids descend, so a reader that sorted them or assumed they ascend would report a different order.
+    let bytes: Vec<u8> = [4, 3, 2, 1, 0].map(|id| new_chunk_bytes(id, &[])).concat();
+    let children: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&bytes)?.get_children_cloned()?;
 
-    assert_eq!(chunks.len(), 5, "Expect five chunks");
-    assert_eq!(chunks[0].size, 0);
-    assert_eq!(chunks[0].id, 4);
-    assert_eq!(chunks[1].size, 0);
-    assert_eq!(chunks[1].id, 3);
-    assert_eq!(chunks[2].size, 0);
-    assert_eq!(chunks[2].id, 2);
-    assert_eq!(chunks[3].size, 0);
-    assert_eq!(chunks[3].id, 1);
-    assert_eq!(chunks[4].size, 0);
-    assert_eq!(chunks[4].id, 0);
+    assert_eq!(children.len(), 5, "Expect five chunks");
+    assert_eq!(
+      children.iter().map(|child| child.id).collect::<Vec<u32>>(),
+      vec![4, 3, 2, 1, 0]
+    );
+    assert!(children.iter().all(|child| child.size == 0));
 
     Ok(())
   }
 
   #[test]
-  fn test_read_dummy_children() -> XrfResult {
-    let filename: String = build_relative_test_sample_sub_dir("dummy_nested_single.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
-    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.get_children_cloned()?;
+  fn reads_children_with_payloads() -> XrfResult {
+    let single: Vec<u8> = new_chunk_bytes(0, &[0xFF; 8]);
+    let children: Vec<ChunkReader<InMemoryChunkDataSource>> =
+      ChunkReader::from_bytes(&single)?.get_children_cloned()?;
 
-    assert_eq!(chunks.len(), 1, "Expect single chunk");
-    assert_eq!(chunks.first().unwrap().size, 8);
+    assert_eq!(children.len(), 1, "Expect single chunk");
+    assert_eq!(children.first().unwrap().size, 8);
 
-    let filename: String = build_relative_test_sample_sub_dir("dummy_nested_five.chunk");
-    let file: FileSlice = open_test_resource_as_slice(&filename)?;
-    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.get_children_cloned()?;
+    // Sizes differ per child, including an empty one in the middle, so a reader that reused the previous size or
+    // skipped a fixed stride would land off the next header.
+    let sizes: [usize; 5] = [8, 24, 16, 0, 40];
+    let five: Vec<u8> = sizes
+      .iter()
+      .enumerate()
+      .map(|(id, size)| new_chunk_bytes(id as u32, &vec![0xFF; *size]))
+      .collect::<Vec<_>>()
+      .concat();
+    let children: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&five)?.get_children_cloned()?;
 
-    assert_eq!(chunks.len(), 5, "Expect five chunks");
-    assert_eq!(chunks[0].size, 8);
-    assert_eq!(chunks[1].size, 24);
-    assert_eq!(chunks[2].size, 16);
-    assert_eq!(chunks[3].size, 0);
-    assert_eq!(chunks[4].size, 40);
+    assert_eq!(children.len(), 5, "Expect five chunks");
+    assert_eq!(
+      children.iter().map(|child| child.size).collect::<Vec<u64>>(),
+      sizes.iter().map(|size| *size as u64).collect::<Vec<u64>>()
+    );
 
     Ok(())
   }

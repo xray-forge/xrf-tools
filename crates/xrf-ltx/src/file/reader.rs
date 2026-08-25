@@ -141,8 +141,7 @@ mod test {
   use std::io::Write;
   use std::path::PathBuf;
 
-  use xrf_test_utils::file::read_file_as_normalized_win_endl_string;
-  use xrf_test_utils::utils::{build_absolute_test_file_path, build_absolute_test_resource_as_file};
+  use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
 
   use crate::Ltx;
   use crate::file::types::LtxIncluded;
@@ -161,56 +160,203 @@ mod test {
     assert_eq!(ltx.get_from("test", "Key"), Some("Value"));
   }
 
-  #[test]
-  fn format_from_file_one() {
-    let formatted: String =
-      Ltx::format_from_file(build_absolute_test_file_path(file!(), "not_formatted_1.ltx")).unwrap();
-
-    let expected: String = read_file_as_normalized_win_endl_string(
-      &mut build_absolute_test_resource_as_file(file!(), "formatted_1.ltx").unwrap(),
+  /// Format `input` through a file on disk and compare the result to `expected`, line by line.
+  fn assert_formats(case: &str, input: &str, expected: &str) {
+    let path: PathBuf = write_generated_test_resource(
+      &build_relative_test_sample_file_path(file!(), &format!("{case}.ltx")),
+      input,
     )
-    .unwrap();
+    .expect("generated LTX input to be written");
 
-    assert_eq!(formatted, expected);
+    assert_eq!(
+      Ltx::format_from_file(path)
+        .expect("input to format")
+        .split("\r\n")
+        .collect::<Vec<&str>>(),
+      expected.split('\n').collect::<Vec<&str>>()
+    );
   }
 
+  const NOT_FORMATTED_INCLUDES_INHERITANCE_AND_BLANK_RUNS: &str = r#"
+; comment1
+
+#include "included1.ltx"
+; comment1
+
+#include "base\included2.ltx"
+#include "base\included3.ltx"
+
+[base_1]:  inherited1,    inherited2
+
+
+
+  ; This is a comment
+
+Key =    'Value'
+Stuff= Other
+
+;   This is a comment
+
+[base_2]:   inherited1
+"#;
+
+  const FORMATTED_INCLUDES_INHERITANCE_AND_BLANK_RUNS: &str = r#"; comment1
+#include "included1.ltx"
+; comment1
+#include "base\included2.ltx"
+#include "base\included3.ltx"
+
+[base_1]:inherited1,inherited2
+; This is a comment
+Key = 'Value'
+Stuff = Other
+; This is a comment
+
+[base_2]:inherited1
+"#;
+
   #[test]
-  fn format_from_file_two() {
-    let formatted: String =
-      Ltx::format_from_file(build_absolute_test_file_path(file!(), "not_formatted_2.ltx")).unwrap();
-
-    let expected: String = read_file_as_normalized_win_endl_string(
-      &mut build_absolute_test_resource_as_file(file!(), "formatted_2.ltx").unwrap(),
-    )
-    .unwrap();
-
-    assert_eq!(formatted, expected);
+  fn formats_includes_inheritance_and_blank_runs() {
+    assert_formats(
+      "formats_includes_inheritance_and_blank_runs",
+      NOT_FORMATTED_INCLUDES_INHERITANCE_AND_BLANK_RUNS,
+      FORMATTED_INCLUDES_INHERITANCE_AND_BLANK_RUNS,
+    );
   }
 
+  const NOT_FORMATTED_TRAILING_COMMENTS_AND_EMPTY_SECTIONS: &str = r#"#include "included1.ltx"
+; comment1
+
+#include "base\included2.ltx"
+#include "base\included3.ltx"
+
+[base_1]:  inherited1,  inherited2
+
+
+
+  ; This is a comment
+
+Key =    'Value'   ;    with comment
+Stuff= Other;with comment
+
+;   This is a comment
+;   This is a comment
+[base_2]:   inherited1
+[base_3]
+[base_4]
+"#;
+
+  const FORMATTED_TRAILING_COMMENTS_AND_EMPTY_SECTIONS: &str = r#"#include "included1.ltx"
+; comment1
+#include "base\included2.ltx"
+#include "base\included3.ltx"
+
+[base_1]:inherited1,inherited2
+; This is a comment
+Key = 'Value' ; with comment
+Stuff = Other ; with comment
+; This is a comment
+; This is a comment
+
+[base_2]:inherited1
+
+[base_3]
+
+[base_4]
+"#;
+
   #[test]
-  fn format_from_file_three() {
-    let formatted: String =
-      Ltx::format_from_file(build_absolute_test_file_path(file!(), "not_formatted_3.ltx")).unwrap();
-
-    let expected: String = read_file_as_normalized_win_endl_string(
-      &mut build_absolute_test_resource_as_file(file!(), "formatted_3.ltx").unwrap(),
-    )
-    .unwrap();
-
-    assert_eq!(formatted, expected);
+  fn formats_trailing_comments_and_empty_sections() {
+    assert_formats(
+      "formats_trailing_comments_and_empty_sections",
+      NOT_FORMATTED_TRAILING_COMMENTS_AND_EMPTY_SECTIONS,
+      FORMATTED_TRAILING_COMMENTS_AND_EMPTY_SECTIONS,
+    );
   }
 
+  const NOT_FORMATTED_SECTION_HEADER_COMMENTS_AND_PATHS: &str = r#"#include "included1.ltx"
+#include "included2.ltx"
+
+; comment before section
+[base_1]:  inherited1,  inherited2      ;  comment for section  ;  nested
+Key = value ; with comment
+
+;   This is a comment 1 ; nested comment
+;   This is a comment 2 ; nested
+[base_2]:   inherited1;   comment for base 2
+field1 = 1
+field2 = 2
+[base_3];comment for base 3
+field1 =   some\path\inside.ltx
+
+[base_4]   ; comment for base 4
+field1 = true
+[base_5]:   ;;;; comment for base 5
+field1 =
+"#;
+
+  const FORMATTED_SECTION_HEADER_COMMENTS_AND_PATHS: &str = r#"#include "included1.ltx"
+#include "included2.ltx"
+; comment before section
+
+[base_1]:inherited1,inherited2 ; comment for section  ;  nested
+Key = value ; with comment
+; This is a comment 1 ; nested comment
+; This is a comment 2 ; nested
+
+[base_2]:inherited1 ; comment for base 2
+field1 = 1
+field2 = 2
+
+[base_3] ; comment for base 3
+field1 = some\path\inside.ltx
+
+[base_4] ; comment for base 4
+field1 = true
+
+[base_5] ; ;;; comment for base 5
+field1 =
+"#;
+
   #[test]
-  fn format_from_file_four() {
-    let formatted: String =
-      Ltx::format_from_file(build_absolute_test_file_path(file!(), "not_formatted_4.ltx")).unwrap();
+  fn formats_section_header_comments_and_paths() {
+    assert_formats(
+      "formats_section_header_comments_and_paths",
+      NOT_FORMATTED_SECTION_HEADER_COMMENTS_AND_PATHS,
+      FORMATTED_SECTION_HEADER_COMMENTS_AND_PATHS,
+    );
+  }
 
-    let expected: String = read_file_as_normalized_win_endl_string(
-      &mut build_absolute_test_resource_as_file(file!(), "formatted_4.ltx").unwrap(),
-    )
-    .unwrap();
+  const NOT_FORMATTED_INCLUDE_COMMENTS_AND_BARE_VALUES: &str = r#"#include "included1.ltx"   ;      comment include 1
+#include "included2.ltx";comment include 2
 
-    assert_eq!(formatted, expected);
+; comment before section
+[base_1]:  inherited1,  inherited2      ;  comment for section
+key = value ; with comment
+value1
+value2 ; comment
+value3    ;   another comment
+
+"#;
+
+  const FORMATTED_INCLUDE_COMMENTS_AND_BARE_VALUES: &str = r#"#include "included1.ltx" ; comment include 1
+#include "included2.ltx" ; comment include 2
+; comment before section
+
+[base_1]:inherited1,inherited2 ; comment for section
+key = value ; with comment
+value1
+value2 ; comment
+value3 ; another comment
+"#;
+
+  #[test]
+  fn formats_include_comments_and_bare_values() {
+    assert_formats(
+      "formats_include_comments_and_bare_values",
+      NOT_FORMATTED_INCLUDE_COMMENTS_AND_BARE_VALUES,
+      FORMATTED_INCLUDE_COMMENTS_AND_BARE_VALUES,
+    );
   }
 
   #[test]
