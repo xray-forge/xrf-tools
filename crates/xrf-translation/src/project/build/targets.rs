@@ -3,6 +3,7 @@ use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_portable_path_string;
 
 use crate::language::TranslationLanguage;
 use crate::project::build::options::ProjectBuildOptions;
@@ -62,16 +63,19 @@ pub(crate) fn target_path(
     })?
   };
 
-  if let Some(source_name) = relative_source.file_name().and_then(TranslationSourceFileName::parse) {
-    relative_source.set_file_name(format!("{}.{}", source_name.get_stem(), xml::FILE_EXTENSION));
-  }
+  let source_name: TranslationSourceFileName = relative_source
+    .file_name()
+    .and_then(TranslationSourceFileName::parse)
+    .ok_or_else(|| {
+    XrfError::new_invalid_error(format!(
+      "Translation source '{}' is not a name this builds from",
+      source.display()
+    ))
+  })?;
 
-  Ok(
-    destination
-      .join(language.to_string())
-      .join(relative_source)
-      .with_extension(xml::FILE_EXTENSION),
-  )
+  relative_source.set_file_name(format!("{}.{}", source_name.get_stem(), xml::FILE_EXTENSION));
+
+  Ok(destination.join(language.to_string()).join(relative_source))
 }
 
 /// Refuse a build where two sources would write the same file.
@@ -85,7 +89,7 @@ pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildO
   for source in source_files {
     for language in target_languages_for_source(source, options) {
       let target: PathBuf = target_path(source, &options.output_dir, &language, options)?;
-      let target_key: String = target.to_string_lossy().replace('\\', "/").to_lowercase();
+      let target_key: String = to_portable_path_string(&target).to_lowercase();
 
       if let Some(existing_source) = target_sources.insert(target_key, source)
         && existing_source != source
@@ -172,6 +176,13 @@ fn normalize_absolute_path(path: &Path) -> XrfResult<PathBuf> {
   Ok(normalized)
 }
 
+/// Whether `path` sits at or below `parent`, compared component by component.
+///
+/// Case-folded for the same reason as the collision key: the only caller refuses on a match, so
+/// answering yes when a case-sensitive host would have said no costs a build that has to be re-pointed,
+/// while answering no where Windows would resolve them to the same directory lets a build overwrite the
+/// sources it was built from. Components rather than string prefixes, so `src_backup` is not inside
+/// `src`.
 fn path_is_within(path: &Path, parent: &Path) -> bool {
   let path_components: Vec<String> = path
     .components()

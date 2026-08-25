@@ -1,15 +1,14 @@
-use std::ffi::OsStr;
 use std::path::{Display, Path};
 use std::time::Instant;
 
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::json;
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
 use crate::project::initialize::options::ProjectInitializeOptions;
 use crate::project::initialize::result::ProjectInitializeResult;
+use crate::source_file_name::is_json_source;
 use crate::staged_write::write_file_staged;
 use crate::types::TranslationJson;
 
@@ -60,16 +59,13 @@ pub fn initialize_file<P: AsRef<Path>>(
   path: &P,
   options: &ProjectInitializeOptions,
 ) -> XrfResult<ProjectInitializeResult> {
-  let extension: Option<&OsStr> = path.as_ref().extension();
-
-  if let Some(extension) = extension {
-    if extension == json::FILE_EXTENSION {
-      return initialize_json_file(path, options);
-    } else {
-      log::info!("Skip file {}", path.as_ref().display());
-      xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
-    }
+  // Through the shared parser rather than comparing an extension; see `verify_file` for why.
+  if is_json_source(path.as_ref()) {
+    return initialize_json_file(path, options);
   }
+
+  log::info!("Skip file {}", path.as_ref().display());
+  xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
 
   Ok(ProjectInitializeResult::new())
 }

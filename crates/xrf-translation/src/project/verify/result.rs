@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_utils::to_portable_path_string;
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +53,7 @@ impl ProjectVerifyResult {
     self.missing_translations_count += 1;
     self.findings.push(Finding::new(
       RuleId::new("translations.missing").expect("Expected a non-empty translation rule ID"),
-      Some(path.to_string_lossy().replace('\\', "/")),
+      Some(to_portable_path_string(path)),
       format!("Missing translation for key '{key}' in language '{language}'"),
     ));
   }

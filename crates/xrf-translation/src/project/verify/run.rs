@@ -1,15 +1,14 @@
-use std::ffi::OsStr;
 use std::path::{Display, Path};
 use std::time::Instant;
 
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::json;
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
 use crate::project::verify::options::ProjectVerifyOptions;
 use crate::project::verify::result::ProjectVerifyResult;
+use crate::source_file_name::is_json_source;
 use crate::types::TranslationJson;
 
 /// Verify every translation source in a directory.
@@ -56,16 +55,15 @@ pub fn verify_dir(dir: &Path, options: &ProjectVerifyOptions) -> XrfResult<Proje
 ///
 /// Returns a parsing error for an unreadable source.
 pub fn verify_file<P: AsRef<Path>>(path: &P, options: &ProjectVerifyOptions) -> XrfResult<ProjectVerifyResult> {
-  let extension: Option<&OsStr> = path.as_ref().extension();
-
-  if let Some(extension) = extension {
-    if extension == json::FILE_EXTENSION {
-      return verify_json_file(path, options);
-    } else {
-      log::info!("Skip file {}", path.as_ref().display());
-      xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
-    }
+  // Through the shared parser rather than comparing an extension, so this recognises the same names
+  // the reader does. An exact compare skipped `ST_A.JSON` with only an info line, while the editor
+  // opened it — the VFS lower-cases logical paths and the host walk does not.
+  if is_json_source(path.as_ref()) {
+    return verify_json_file(path, options);
   }
+
+  log::info!("Skip file {}", path.as_ref().display());
+  xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
 
   Ok(ProjectVerifyResult::new())
 }
