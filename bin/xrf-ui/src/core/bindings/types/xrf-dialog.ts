@@ -26,17 +26,7 @@ export type DialogDescriptor = {
   phrases: Array<DialogPhraseDescriptor>;
 };
 
-/**
- * One child element of a dialog or a phrase, as written.
- *
- * Carries the name *and* the classification, because they answer different questions: the name is
- * what the file says and what a rewrite reproduces, the kind is what the engine does with it. A mod
- * element the schema does not define keeps its name and classifies as `unknown`.
- *
- * No source range. Ranges exist so an edit can splice the original document, and splicing happens
- * where the document is — in the project this was described from. Shipping them to a read-only
- * surface would hand out offsets into a string the caller does not have.
- */
+/** One child element of a dialog or a phrase, as written. */
 export type DialogElementDescriptor = {
   /** The element name as written, such as `give_info`. */
   name: string;
@@ -110,14 +100,7 @@ export type DialogFinding = {
   message: string;
 };
 
-/**
- * One line of a conversation, as a canvas draws it.
- *
- * `text`, `isFinal` and `next` are projections of `elements`, not a second source of truth. They are
- * lifted out because they are what the graph is built from — `next` is its edge set, `text` its
- * label, `isFinal` its terminal marker — and a consumer re-deriving them would have to rediscover
- * that `next` order is runtime behaviour rather than file trivia.
- */
+/** One line of a conversation, as a canvas draws it. */
 export type DialogPhraseDescriptor = {
   /** Unique within its dialog, and what `next` references. The entry phrase is `0`. */
   id: string;

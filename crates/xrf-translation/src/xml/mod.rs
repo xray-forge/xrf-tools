@@ -10,7 +10,7 @@ pub(crate) mod layout;
 pub(crate) mod read;
 pub(crate) mod write;
 
-pub(crate) use constants::FILE_EXTENSION;
+pub(crate) use constants::{FILE_EXTENSION, FILE_EXTENSION_DOT};
 
 #[cfg(test)]
 mod tests;

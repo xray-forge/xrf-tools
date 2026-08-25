@@ -51,6 +51,20 @@ impl XrayScopedVfs<'_> {
     self.vfs.read_in(self.scope, logical_path)
   }
 
+  /// Reads an asset this view already listed, without resolving its path a second time.
+  ///
+  /// What a caller that enumerated and is now reading wants: the bytes of *that* entry, rather than
+  /// whatever the same logical path resolves to now. Scope-independent for the same reason — an asset
+  /// names its own container — so this is here only to spare such a caller reaching past the view it
+  /// was handed.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the asset's container cannot be read.
+  pub fn read_asset_bytes(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
+    self.vfs.read_asset_bytes(asset)
+  }
+
   /// Reads and parses an asset, serving a retained value when this world is already holding one.
   ///
   /// The parse closure runs only on a miss, so a hit performs no I/O at all — the whole point, since an archived read is

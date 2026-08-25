@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayMountMode, XrayRoots};
+use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
 use crate::project::dialog_project::DialogProject;
@@ -88,23 +88,24 @@ fn takes_a_prefix_override() {
 }
 
 #[test]
-fn recognises_a_dialog_logical_path_by_its_file_name() {
-  assert!(DialogProject::is_dialog_logical_path(r"configs\gameplay\dialogs.xml"));
-  assert!(DialogProject::is_dialog_logical_path(
-    r"configs\gameplay\dialogs_zaton.xml"
-  ));
-  assert!(DialogProject::is_dialog_logical_path("dialogs.xml"));
+fn recognises_a_dialog_logical_path_by_its_file_name() -> XrfResult {
+  let is_dialog =
+    |path: &str| -> XrfResult<bool> { Ok(DialogProject::is_dialog_logical_path(&XrayLogicalPath::new(path)?)) };
+
+  assert!(is_dialog(r"configs\gameplay\dialogs.xml")?);
+  assert!(is_dialog(r"configs\gameplay\dialogs_zaton.xml")?);
+  assert!(is_dialog("dialogs.xml")?);
+  // The path type lower-cases on the way in, so a caller echoing a user's typing still matches.
+  assert!(is_dialog(r"CONFIGS\GAMEPLAY\DIALOGS.XML")?);
 
   // Everything a gameplay directory holds beside the dialogs.
-  assert!(!DialogProject::is_dialog_logical_path(
-    r"configs\gameplay\info_zaton.xml"
-  ));
-  assert!(!DialogProject::is_dialog_logical_path(
-    r"configs\gameplay\npc_profile.xml"
-  ));
-  assert!(!DialogProject::is_dialog_logical_path(r"configs\gameplay\dialogs.ltx"));
+  assert!(!is_dialog(r"configs\gameplay\info_zaton.xml")?);
+  assert!(!is_dialog(r"configs\gameplay\npc_profile.xml")?);
+  assert!(!is_dialog(r"configs\gameplay\dialogs.ltx")?);
   // Not a directory whose name merely starts the same way.
-  assert!(!DialogProject::is_dialog_logical_path(r"dialogs\something.ltx"));
+  assert!(!is_dialog(r"dialogs\something.ltx")?);
+
+  Ok(())
 }
 
 #[test]

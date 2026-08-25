@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::XrayAssetType;
 use crate::path::XrayLogicalPath;
@@ -87,6 +88,15 @@ impl XrayAsset {
     }
   }
 
+  /// Returns the path an in-place edit would write to, refusing an archived winner by name.
+  ///
+  /// # Errors
+  ///
+  /// Returns an asset error when this asset is served out of an archive.
+  pub fn to_writable_path(&self) -> XrfResult<PathBuf> {
+    require_writable_path(self.logical_path.as_str(), self.to_physical_path())
+  }
+
   /// Describes the containing tree or archive volume set for display.
   pub fn format_container(&self) -> String {
     match &self.container {
@@ -94,6 +104,27 @@ impl XrayAsset {
       XrayAssetContainer::Archive { path } => format!("{} (archive)", path.display()),
     }
   }
+}
+
+/// The host path an in-place edit would write to, or one refusal for the case there is none.
+///
+/// Every editing domain reaches this same wall — an asset whose winner is packed has no file to
+/// replace — and each was inventing its own wording and its own error kind for it. A surface deciding
+/// whether a save failed *because the source is archived* would otherwise have to match three strings
+/// that nothing keeps in step.
+///
+/// Takes the two parts rather than an [`XrayAsset`] because the refusal usually happens later than the
+/// listing: a project holds the logical path and what it resolved to, and the asset itself is gone.
+///
+/// # Errors
+///
+/// Returns an asset error naming the file when `physical_path` is absent.
+pub fn require_writable_path(logical_path: &str, physical_path: Option<PathBuf>) -> XrfResult<PathBuf> {
+  physical_path.ok_or_else(|| {
+    XrfError::new_asset_error(format!(
+      "Cannot write '{logical_path}': it has no file on disk, being read out of an archive"
+    ))
+  })
 }
 
 #[cfg(test)]

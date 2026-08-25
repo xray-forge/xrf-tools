@@ -90,6 +90,29 @@ impl XrayLogicalPath {
     Ok(is_component_prefix(&self.0, &normalize(prefix)?))
   }
 
+  /// This path relative to `prefix`, or `None` when it does not sit under it.
+  ///
+  /// The counterpart to [`Self::is_under`] and matched the same way, on component boundaries. A plain
+  /// `str::strip_prefix` is the trap this exists to close: `translations` strips off
+  /// `translations_old\st.json` and leaves `_old\st.json`, a key that names a file nobody has.
+  ///
+  /// Answers `None` rather than the whole path for a non-match, so a caller cannot silently key an
+  /// unrelated file by its full path.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `prefix` is not a valid X-Ray logical path.
+  pub fn strip_prefix(&self, prefix: &str) -> XrfResult<Option<&str>> {
+    let prefix: Cow<'_, str> = normalize(prefix)?;
+
+    if !is_component_prefix(&self.0, &prefix) {
+      return Ok(None);
+    }
+
+    // Equal paths leave nothing, which is a directory naming itself rather than a file under one.
+    Ok(Some(self.0[prefix.len()..].trim_start_matches('\\')))
+  }
+
   /// Normalizes a path into the canonical X-Ray logical form: lower case, backslash separated, no leading or trailing
   /// separator.
   ///
@@ -332,6 +355,36 @@ mod tests {
     assert!(path.has_extension(".LTX"));
     assert!(path.is_under("configs").expect("valid prefix"));
     assert!(!path.is_under("configs_backup").expect("valid prefix"));
+  }
+
+  #[test]
+  fn strips_a_prefix_only_on_a_component_boundary() {
+    let path: XrayLogicalPath = XrayLogicalPath::new("translations\\st_dialogs.json").expect("valid");
+
+    assert_eq!(
+      path.strip_prefix("translations").expect("valid prefix"),
+      Some("st_dialogs.json")
+    );
+
+    // The trap this closes. `str::strip_prefix` succeeds on a sibling directory whose name merely
+    // starts the same way and leaves `_old\st_dialogs.json`, which names nothing.
+    let sibling: XrayLogicalPath = XrayLogicalPath::new("translations_old\\st_dialogs.json").expect("valid");
+
+    assert_eq!(sibling.strip_prefix("translations").expect("valid prefix"), None);
+    assert_eq!(
+      sibling.as_str().strip_prefix("translations"),
+      Some("_old\\st_dialogs.json"),
+      "documents what the plain string operation answers, which is why this method exists"
+    );
+  }
+
+  #[test]
+  fn strips_a_prefix_naming_the_path_itself_to_nothing() {
+    let path: XrayLogicalPath = XrayLogicalPath::new("configs\\text").expect("valid");
+
+    assert_eq!(path.strip_prefix("configs\\text").expect("valid prefix"), Some(""));
+    assert_eq!(path.strip_prefix("configs").expect("valid prefix"), Some("text"));
+    assert_eq!(path.strip_prefix("textures").expect("valid prefix"), None);
   }
 
   #[test]

@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+
 /**
  * One change to a translation entry, in whichever kind of file holds it.
  *
@@ -17,10 +19,13 @@ export type TranslationEdit =
 /** One logical translation file, and where each language's copy of it lives. */
 export type TranslationFile = {
   /**
-   * Language to the file on disk that holds it, which is what an edit has to be written back to.
-   * A JSON source lists every language it carries against the same path.
+   * Language to the source holding it. A JSON source lists every language it carries against the
+   * same one.
+   *
+   * Editability is per language rather than per file: an installation layered under a loose tree can
+   * serve one language from a `.db` volume and the next from disk.
    */
-  sources: { [key in string]: string };
+  sources: { [key in string]: TranslationSource };
   entries: { [key in string]: { [key in string]: TranslationVariant | null } };
 };
 
@@ -39,7 +44,10 @@ export type TranslationFinding = {
 /** An opened translations root, whichever layout it turned out to have. */
 export type TranslationProjectDescriptor = {
   mode: TranslationProjectMode;
-  root: string;
+  /** The roots this project was opened over, echoed back so a follow-up read addresses the same trees. */
+  roots: XrayRoots;
+  /** Logical prefix the string tables were read from. */
+  prefix: string;
   /** Every language the root offers, in discovery order. */
   languages: Array<string>;
   /**
@@ -49,6 +57,15 @@ export type TranslationProjectDescriptor = {
    * reports the encoding its own declaration claims.
    */
   encodings: { [key in string]: string };
+  /**
+   * Whether every file this project holds is loose, so an editing session could save all of it.
+   *
+   * One flag rather than a tree of them, so a surface can say up front that a project opened over an
+   * installation is read-only. Which particular file refuses is answered by its source's absent
+   * physical path.
+   */
+  isEditable: boolean;
+  /** Files keyed by the logical name the layout groups them under. */
   files: { [key in string]: TranslationFile };
   findings: Array<TranslationFinding>;
 };
@@ -57,8 +74,26 @@ export type TranslationProjectDescriptor = {
 export type TranslationProjectMode =
   /** XRF sources: multi-language JSON and language-suffixed XML side by side in one tree. */
   | "source"
-  /** Shipped gamedata: `text/<language>/*.xml`, where the directory carries the language. */
+  /** Shipped gamedata: `text\<language>\*.xml`, where the directory carries the language. */
   | "gamedata";
+
+/**
+ * Where one language's copy of a file was actually found.
+ *
+ * Two paths because they answer different questions. The logical path is the engine identity, which
+ * is what the file is; the physical path is where it happens to sit on this machine, which exists
+ * only when the winning mount is a loose directory. An archived winner has none, and that absence is
+ * the write guard — bytes inside a `.db` volume cannot be edited in place.
+ *
+ * **The physical path is for showing, never for addressing.** It is portable-formatted, so it has
+ * already lost any name that is not valid Unicode and any `\` a host treats as an ordinary character.
+ * A write resolves the logical path through the VFS instead and asks the asset, which still holds the
+ * real one — see `apply_edits_to_asset`.
+ */
+export type TranslationSource = {
+  logicalPath: string;
+  physicalPath: string | null;
+};
 
 /** One translation's text, which is a single line or a run of them joined on build. */
 export type TranslationVariant = string | Array<string>;

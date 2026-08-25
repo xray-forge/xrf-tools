@@ -84,8 +84,8 @@ export type XrayLogicalPath = string;
  */
 export type XrayMountMode =
   /**
-   * Treat the path as an installation when it declares one, as a volume set when it holds volumes, and as a complete
-   * root otherwise.
+   * Treat the path as an installation when it declares one, as one volume when it is one, as a volume set when it
+   * holds volumes, and as a complete root otherwise.
    */
   | "auto"
   /** Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it. */

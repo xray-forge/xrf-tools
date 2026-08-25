@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
+use xrf_vfs::require_writable_path;
 
 use crate::project::ltx_files_formatter::LtxFilesFormatter;
 use crate::project::ltx_project_format_result::LtxProjectFormatResult;
@@ -52,15 +53,10 @@ impl LtxProject {
     let mut writable: Vec<PathBuf> = Vec::with_capacity(self.ltx_files.len());
 
     for logical_path in &self.ltx_files {
-      match self.physical_path_of(logical_path) {
-        Some(physical) => writable.push(physical),
-        None => {
-          return Err(XrfError::new_asset_error(format!(
-            "Cannot format '{}': it has no file on disk, being read out of an archive",
-            logical_path
-          )));
-        }
-      }
+      writable.push(require_writable_path(
+        logical_path.as_str(),
+        self.physical_path_of(logical_path),
+      )?);
     }
 
     Ok(writable)

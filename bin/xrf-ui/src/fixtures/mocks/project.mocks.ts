@@ -1,6 +1,6 @@
 import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
-import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { TranslationProjectDescriptor, TranslationSource } from "@/core/bindings/types/xrf-translation";
 import { IEquipmentSectionDescriptor } from "@/core/equipment-icons";
 import { TCallableExportDescriptor } from "@/core/exports";
 
@@ -132,22 +132,31 @@ export function mockExportsProject(overrides: Partial<ExportsProject> = {}): Exp
 export function mockTranslationsProject(
   overrides: Partial<TranslationProjectDescriptor> = {}
 ): TranslationProjectDescriptor {
-  const root: string = "C:\\projects\\xrf\\src\\engine\\translations";
+  const root: string = "C:\\projects\\xrf\\src\\engine";
+
+  function source(name: string): TranslationSource {
+    return {
+      logicalPath: `translations\\${name}`,
+      physicalPath: `${root}/translations/${name}`,
+    };
+  }
 
   return {
     mode: "source",
-    root,
+    roots: { asset: null, roots: [{ mode: "auto", path: root }] },
+    prefix: "translations",
     languages: ["eng", "ukr"],
     encodings: { eng: "windows-1252", ukr: "windows-1251" },
+    isEditable: true,
     files: {
       "st_dialogs.json": {
-        sources: { eng: `${root}/st_dialogs.json`, ukr: `${root}/st_dialogs.json` },
+        sources: { eng: source("st_dialogs.json"), ukr: source("st_dialogs.json") },
         entries: {
           dialog_greeting: { eng: "Hello, stalker", ukr: "Pryvit, stalker" },
         },
       },
       "st_items.json": {
-        sources: { eng: `${root}/st_items.json`, ukr: `${root}/st_items.json` },
+        sources: { eng: source("st_items.json"), ukr: source("st_items.json") },
         entries: {
           wpn_ak74: { eng: "AK-74", ukr: "AK-74" },
           wpn_ak74_descr: { eng: "Assault rifle", ukr: null },

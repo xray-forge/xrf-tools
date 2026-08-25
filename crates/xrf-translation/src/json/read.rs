@@ -9,10 +9,10 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::types::{TranslationEntry, TranslationJson};
 
-/// Read a multi-language translation source.
+/// Read a multi-language translation source off disk.
 ///
-/// Strict about duplicates, unlike the XML reader: this is a file the project authors and the build
-/// consumes, so a repeated id or language is a mistake to report rather than shipped data to tolerate.
+/// For a caller holding one file and no mounted roots; everything reading a tree goes through the VFS
+/// and calls [`parse_json`] with the bytes it already has.
 ///
 /// # Errors
 ///
@@ -23,14 +23,23 @@ pub(crate) fn read_json(path: &Path) -> XrfResult<TranslationJson> {
 
   File::open(path)?.read_to_end(&mut data)?;
 
-  serde_json::from_slice::<UniqueTranslationJson>(&data)
+  parse_json(&path.display().to_string(), &data)
+}
+
+/// Parse a multi-language translation source already in hand.
+///
+/// Strict about duplicates, unlike the XML reader: this is a file the project authors and the build
+/// consumes, so a repeated id or language is a mistake to report rather than shipped data to tolerate.
+///
+/// `subject` names the file only so a refusal can say which one it was; it is never resolved.
+///
+/// # Errors
+///
+/// Returns a parsing error when the bytes are not valid JSON or repeat an id or a language.
+pub(crate) fn parse_json(subject: &str, data: &[u8]) -> XrfResult<TranslationJson> {
+  serde_json::from_slice::<UniqueTranslationJson>(data)
     .map(|json| json.0)
-    .map_err(|error| {
-      XrfError::new_parsing_error(format!(
-        "Failed to parse translation JSON '{}': {error}",
-        path.display()
-      ))
-    })
+    .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse translation JSON '{subject}': {error}")))
 }
 
 struct UniqueTranslationJson(TranslationJson);

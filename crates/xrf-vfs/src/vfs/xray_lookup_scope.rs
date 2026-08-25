@@ -69,6 +69,23 @@ impl XrayLookupScope {
     Ok(self)
   }
 
+  /// Restricts this scope to a subtree only when there is one to restrict to.
+  ///
+  /// Absence is a state this scope already holds, but [`Self::with_prefix`] cannot express it: an
+  /// empty string is not a logical path and is refused. Callers whose prefix is configurable —
+  /// a layout that may name none, a command flag left unset — would otherwise each invent their own
+  /// spelling of "no prefix means the whole root", and three of them did.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a prefix is given and is not a valid X-Ray logical path.
+  pub fn with_optional_prefix(self, prefix: Option<&str>) -> XrfResult<Self> {
+    match prefix.filter(|prefix| !prefix.is_empty()) {
+      Some(prefix) => self.with_prefix(prefix),
+      None => Ok(self),
+    }
+  }
+
   pub(crate) fn get_selection(&self) -> &XrayMountSelection {
     &self.selection
   }

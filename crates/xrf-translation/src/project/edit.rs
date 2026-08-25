@@ -2,6 +2,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::XRayEncoding;
+use xrf_vfs::XrayAsset;
 use xrf_xml::encoding_from_label;
 
 use crate::edit::TranslationEdit;
@@ -30,6 +31,28 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
       path.display()
     ))),
   }
+}
+
+/// Apply edits to one language's copy of a file, addressed by the asset the VFS resolved.
+///
+/// Takes the asset rather than the path the descriptor recorded, because that one is *portable* — a
+/// form built for showing, and lossy by construction. `to_string_lossy` turns a name that is not valid
+/// Unicode into replacement characters, and rewriting `\` as `/` changes what a name means on a host
+/// where `\` is an ordinary filename character. Either sends a write to a path that is not the file,
+/// with nothing to signal it. The asset still carries the real one.
+///
+/// Re-resolving also re-checks: a file shadowed since the project opened is written where the engine
+/// would now read it, rather than to a copy that no longer wins.
+///
+/// The guard is the absence of a physical path, not a test of what kind of mount won. The refusal
+/// itself belongs to `xrf-vfs`, so every editing domain answers this with one message and one kind.
+///
+/// # Errors
+///
+/// Returns an asset error naming the file when its winner is archived, and otherwise whatever
+/// [`apply_edits`] answers with.
+pub fn apply_edits_to_asset(asset: &XrayAsset, language: &str, edits: &[TranslationEdit]) -> XrfResult {
+  apply_edits(&asset.to_writable_path()?, language, edits)
 }
 
 /// Report the first character a language cannot hold, or nothing when the value is writable.

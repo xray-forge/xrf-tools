@@ -32,10 +32,6 @@ export const dialogsCommands = {
    * Addressed by file and id together, because ids are not unique across a tree: a mod overlaying a
    * dialog keeps the original's id, and searching every file would silently answer with whichever copy
    * was read first.
-   *
-   * Refuses rather than answering `null`, and names which of the two lookups failed. A null would
-   * collapse three different situations — nothing open, wrong file, wrong id — into one empty canvas
-   * with nothing to say about why.
    */
   getDialog: (logicalPath: string, id: string) =>
     __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { logicalPath, id }),

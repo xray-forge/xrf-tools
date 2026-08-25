@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::dialog::Dialog;
 use crate::file::DialogFile;
@@ -158,7 +158,7 @@ impl DialogProject {
     let mut assets: Vec<XrayAsset> = scoped
       .list_entries()
       .into_iter()
-      .filter(|asset| Self::is_dialog_logical_path(asset.get_logical_path().as_str()))
+      .filter(|asset| Self::is_dialog_logical_path(asset.get_logical_path()))
       .collect();
 
     assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
@@ -167,10 +167,11 @@ impl DialogProject {
   }
 
   /// Whether a logical path names dialog data, by its file name.
-  pub fn is_dialog_logical_path(logical_path: &str) -> bool {
-    let name: &str = logical_path.rsplit('\\').next().unwrap_or(logical_path);
-
-    name.ends_with(XML_SUFFIX) && name.starts_with(DIALOG_FILE_PREFIX)
+  ///
+  /// Takes the path type rather than a string so the last-component rule is the one `xrf-vfs` owns:
+  /// a `\`-separated identity split with `std::path` answers the whole path on Linux.
+  pub fn is_dialog_logical_path(logical_path: &XrayLogicalPath) -> bool {
+    logical_path.has_extension(XML_SUFFIX) && logical_path.file_name().starts_with(DIALOG_FILE_PREFIX)
   }
 
   pub fn get_mode(&self) -> DialogProjectMode {
@@ -243,8 +244,13 @@ impl DialogProject {
   ///
   /// False as soon as one winner is archived, which is what stops an editing session that could only
   /// half succeed. `xrf-ltx` draws the same line between its rewrite and its read-only check.
+  ///
+  /// Also false for a project holding nothing, matching `TranslationProjectDescriptor`. `all` over an
+  /// empty set is vacuously true, and a surface that enables saving on that offers a save which can do
+  /// nothing. Opening already refuses an empty project, so this is unreachable today — stated anyway,
+  /// because the two crates answering one question differently is how it stops being unreachable.
   pub fn is_editable(&self) -> bool {
-    self.files.iter().all(DialogProjectFile::is_editable)
+    !self.files.is_empty() && self.files.iter().all(DialogProjectFile::is_editable)
   }
 
   /// The project as it crosses the wire: the index, not the phrases.

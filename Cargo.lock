@@ -7220,6 +7220,7 @@ dependencies = [
  "xrf-report",
  "xrf-test-utils",
  "xrf-utils",
+ "xrf-vfs",
  "xrf-xml",
 ]
 

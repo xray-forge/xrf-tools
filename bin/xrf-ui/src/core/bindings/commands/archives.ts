@@ -81,6 +81,11 @@ export const archivesCommands = {
       archives: Array<ArchiveDescriptor>;
       files: { [key in string]: ArchiveFileDescriptor };
       readPolicy: ArchiveProjectReadPolicy;
+      /**
+       * The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
+       * parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
+       * caller reading an entry's bytes back out of the filesystem needs.
+       */
       root: string;
       sizeReal: number;
     } | null>("plugin:archives|get_project"),

@@ -22,7 +22,7 @@ pub mod path;
 pub mod source;
 pub mod vfs;
 
-pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType};
+pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
 pub use cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
 pub use mount::{

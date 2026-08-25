@@ -3,9 +3,10 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { createRoots } from "@/core/assets/lib/roots";
 import { TranslationProjectMode } from "@/core/bindings/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
-import { getPathIfExists, getProjectTranslationsPath } from "@/core/settings/lib/path";
+import { getPathIfExists, getProjectEnginePath } from "@/core/settings/lib/path";
 import { ProjectService } from "@/core/settings/services/project";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { FormRow } from "@/core/ui/form/FormRow";
@@ -37,18 +38,18 @@ export function TranslationsEditorOpenForm(): ReactElement {
   const translations: IPathField = usePathField({
     application: EApplicationId.TRANSLATIONS_EDITOR,
     id: "directory",
-    title: "Select translations directory",
+    title: "Select root to read translations from",
     isDirectory: true,
     isDisabled: isLoading,
     seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectTranslationsPath(projectService.xrfProjectPath)) : null,
+      projectService.xrfProjectPath ? getPathIfExists(getProjectEnginePath(projectService.xrfProjectPath)) : null,
   });
 
   const path: Nullable<string> = translations.value;
 
   const onOpen = useCallback(() => {
     if (translations.value) {
-      void translationsService.openProject(translations.value, mode);
+      void translationsService.openProject(createRoots([translations.value]), mode);
     } else {
       log.info("Cannot open translations without a path");
     }
@@ -60,7 +61,7 @@ export function TranslationsEditorOpenForm(): ReactElement {
     let isCurrent: boolean = true;
 
     if (path) {
-      void translationsService.detectMode(path).then((detected: Nullable<TranslationProjectMode>) => {
+      void translationsService.detectMode(createRoots([path])).then((detected: Nullable<TranslationProjectMode>) => {
         if (isCurrent && detected) {
           setMode(detected);
         }
@@ -84,8 +85,8 @@ export function TranslationsEditorOpenForm(): ReactElement {
     >
       <PathFormRow
         isDisabled={isLoading}
-        label={"Translations directory"}
-        description={"Directory holding the localization tables"}
+        label={"Root directory"}
+        description={"Gamedata tree, installation, or project sources holding the localization tables"}
         field={translations}
       />
 

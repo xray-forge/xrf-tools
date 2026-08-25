@@ -1,6 +1,7 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
+import { describeRoots } from "@/core/assets/lib/roots";
 import { translationsCommands } from "@/core/bindings/commands/translations";
 import {
   TranslationEdit,
@@ -8,6 +9,7 @@ import {
   TranslationProjectMode,
   TranslationVariant,
 } from "@/core/bindings/types/xrf-translation";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -94,9 +96,9 @@ export class TranslationsService {
   /**
    * Reports the layout a directory looks like, so the open form can preselect it.
    */
-  public async detectMode(path: string): Promise<Nullable<TranslationProjectMode>> {
+  public async detectMode(roots: XrayRoots): Promise<Nullable<TranslationProjectMode>> {
     try {
-      return await translationsCommands.detectMode(path);
+      return await translationsCommands.detectMode(roots);
     } catch (error) {
       this.log.warn("Could not detect translations layout:", error);
 
@@ -159,15 +161,13 @@ export class TranslationsService {
   }
 
   @LatestFlow("project")
-  public *openProject(translationsPath: string, mode: TranslationProjectMode): TFlow {
-    this.log.info("Opening translations project:", translationsPath, mode);
+  public *openProject(roots: XrayRoots, mode: TranslationProjectMode, prefix: Nullable<string> = null): TFlow {
+    this.log.info("Opening translations project:", describeRoots(roots), mode, prefix);
 
     try {
       this.project = createLoadable(null, true);
 
-      const response: TranslationProjectDescriptor = yield* call(
-        translationsCommands.openProject(translationsPath, mode)
-      );
+      const response: TranslationProjectDescriptor = yield* call(translationsCommands.openProject(roots, mode, prefix));
 
       this.log.info("Translations project opened:", Object.keys(response.files).length, "files");
 
@@ -179,7 +179,7 @@ export class TranslationsService {
       this.project = createLoadable(null, false, error as Error);
 
       emitNotification(this.eventBus, {
-        details: `${translationsPath}
+        details: `${describeRoots(roots)}
 ${transformError(error).message}`,
         severity: ENotificationSeverity.ERROR,
         source: EApplicationId.TRANSLATIONS_EDITOR,

@@ -20,15 +20,15 @@ pub use crate::project::build::result::ProjectBuildResult;
 pub use crate::project::build::run::{build_dir, build_file};
 pub use crate::project::constants::{LANGUAGE_NEUTRAL, MULTILANGUAGE};
 pub use crate::project::descriptor::{
-  TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode,
+  TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };
-pub use crate::project::edit::{apply_edits, find_unwritable_character};
-pub use crate::project::gamedata_read::read_gamedata;
+pub use crate::project::edit::{apply_edits, apply_edits_to_asset, find_unwritable_character};
+pub use crate::project::gamedata_read::{read_gamedata, read_gamedata_in};
 pub use crate::project::initialize::options::ProjectInitializeOptions;
 pub use crate::project::initialize::result::ProjectInitializeResult;
 pub use crate::project::initialize::run::{initialize_dir, initialize_file};
-pub use crate::project::layout::detect_mode;
-pub use crate::project::source_read::read_source;
+pub use crate::project::layout::{detect_mode, detect_mode_in};
+pub use crate::project::source_read::{read_source, read_source_in};
 pub use crate::project::verify::options::ProjectVerifyOptions;
 pub use crate::project::verify::result::ProjectVerifyResult;
 pub use crate::project::verify::run::{verify_dir, verify_file};

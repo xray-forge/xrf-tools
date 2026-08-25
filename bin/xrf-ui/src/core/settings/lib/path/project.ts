@@ -47,6 +47,16 @@ export function getProjectTranslationsPath(projectPath: string): Promise<string>
   return path.resolve(projectPath, "src", "engine", "translations");
 }
 
+/**
+ * The engine source root, which holds `configs` and `translations` as siblings.
+ *
+ * What a tool mounts, rather than what it reads: a logical prefix narrows to the data from here, so
+ * the same root serves dialogs and their text.
+ */
+export function getProjectEnginePath(projectPath: string): Promise<string> {
+  return path.resolve(projectPath, "src", "engine");
+}
+
 export async function getProjectSystemLtxPath(projectPath: string): Promise<string> {
   return path.resolve(await getProjectConfigsPath(projectPath), "system.ltx");
 }
