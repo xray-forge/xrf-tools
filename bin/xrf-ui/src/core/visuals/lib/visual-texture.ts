@@ -16,9 +16,16 @@ export enum EVisualTextureState {
   ABSENT = "absent",
   /** Bytes are still on the way. */
   LOADING = "loading",
-  /** Uploaded and applied. */
+  /** Uploaded and applied, in the layout the file stores. */
   APPLIED = "applied",
-  /** Located, but stored in a format three.js cannot upload. */
+  /**
+   * Applied, but expanded by the backend first because the renderer cannot upload this layout.
+   *
+   * Distinct from `APPLIED` because the upload is not the file: it arrives as one png, so it carries no mip chain
+   * whatever the file's header says, and costs the memory of raw pixels rather than of blocks.
+   */
+  DECODED = "decoded",
+  /** Located, but stored in a format neither the renderer nor the backend can read. */
   UNSUPPORTED_FORMAT = "unsupportedFormat",
   /** Nothing to load: no source was searchable, or neither the reference nor the engine's dummy resolved. */
   UNRESOLVED = "unresolved",

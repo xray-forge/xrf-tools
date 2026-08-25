@@ -315,7 +315,8 @@ describe("VisualLoadService texture decoding", () => {
 
     expect(decodedPath).toBe(TEXTURE_PATH);
     expect(service.textures.size).toBe(1);
-    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
+    // Not `APPLIED`: the upload is a png rather than the file, so it carries no mip chain whatever the header says.
+    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.DECODED);
   });
 
   it("uploads a texture it can read without asking the backend for anything", async () => {

@@ -305,7 +305,7 @@ export class VisualLoadService {
           loaded.textures.set(submeshIndex, await createDecodedTexture(png));
           loaded.statuses.set(submeshIndex, {
             reason: null,
-            state: EVisualTextureState.APPLIED,
+            state: EVisualTextureState.DECODED,
             submeshIndex,
           });
         } catch (error: unknown) {
