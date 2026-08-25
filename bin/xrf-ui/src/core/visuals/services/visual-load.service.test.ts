@@ -196,8 +196,9 @@ describe("VisualLoadService", () => {
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
   });
 
-  it("keeps the model on screen while the next one loads its textures", async () => {
-    // The hold is what makes the swap look like one step: the previous model stays until the replacement is dressed.
+  it("takes the previous model off screen as soon as another is asked for", async () => {
+    // An empty viewport under a progress indicator is one honest state. A model that is no longer the one being opened
+    // is a screen disagreeing with the toolbar above it, which is what showing it until the replacement lands would be.
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
 
@@ -235,8 +236,41 @@ describe("VisualLoadService", () => {
 
     await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" }, ROOTS);
 
-    expect(shownWhileReading).toBe(ENTRY);
+    expect(shownWhileReading).toBeNull();
     expect(service.sourceLabel).toBe("C:\\gamedata\\meshes\\second.ogf");
+  });
+
+  it("releases the textures of the model it takes off screen", async () => {
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(service.textures.size).toBe(1);
+
+    let texturesWhileLoading: number = -1;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: () => {
+        texturesWhileLoading = service.textures.size;
+
+        return { ...selected, dependencies: { motions: [], textures: [] } };
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(texturesWhileLoading).toBe(0);
   });
 
   it("restores a selection the backend still holds without opening it again", async () => {

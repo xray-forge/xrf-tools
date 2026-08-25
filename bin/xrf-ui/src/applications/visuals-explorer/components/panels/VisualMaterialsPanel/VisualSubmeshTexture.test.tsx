@@ -116,3 +116,40 @@ describe("VisualSubmeshTexture", () => {
     expect(render_.queryByText("Path")).not.toBeInTheDocument();
   });
 });
+
+describe("VisualSubmeshTexture decoded textures", () => {
+  const TEXTURE: VisualTextureDependency = {
+    submeshIndex: 0,
+    reference: LOOSE.logicalPath,
+    resolution: { kind: "resolved", step: "asset", assets: [LOOSE] },
+  };
+
+  function renderWithState(state: EVisualTextureState): RenderResult {
+    return renderWithProviders(
+      <VisualSubmeshTexture
+        texture={TEXTURE}
+        status={{ submeshIndex: 0, state, reason: null }}
+        textures={{
+          [LOOSE.logicalPath]: mockTextureDescriptor({ shape: { ...SHAPE_WITHOUT_MIPS, mipmapLevels: 12 } }),
+        }}
+      />
+    );
+  }
+
+  it("says a texture was decoded rather than uploaded, and what that costs", () => {
+    // The file's own mip count is still reported beside it, and for a decoded texture the two disagree on purpose: the
+    // upload is one png. Without this line the panel would claim twelve mips for a texture that has none.
+    const render_: RenderResult = renderWithState(EVisualTextureState.DECODED);
+
+    expect(render_.getByText("Decoded")).toBeInTheDocument();
+    expect(render_.getByText(/uploaded without a mip chain/)).toBeInTheDocument();
+    expect(render_.getByText(/12 mips/)).toBeInTheDocument();
+  });
+
+  it("says nothing of the sort for a texture uploaded as it is stored", () => {
+    const render_: RenderResult = renderWithState(EVisualTextureState.APPLIED);
+
+    expect(render_.getByText("Applied")).toBeInTheDocument();
+    expect(render_.queryByText(/uploaded without a mip chain/)).not.toBeInTheDocument();
+  });
+});

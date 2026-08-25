@@ -53,6 +53,13 @@ export function VisualSubmeshTexture({ texture, status, textures }: IVisualSubme
 
       {resolution.kind === "rejected" ? <VisualPanelRow label={"Rejected"} value={resolution.reason} /> : null}
 
+      {state === EVisualTextureState.DECODED ? (
+        <VisualPanelRow
+          label={"Upload"}
+          value={"Expanded from a layout the renderer cannot read, so it is uploaded without a mip chain"}
+        />
+      ) : null}
+
       {status?.reason ? <VisualPanelRow label={"Texture error"} value={status.reason} /> : null}
     </>
   );

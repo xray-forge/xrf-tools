@@ -19,6 +19,9 @@ export function describeTextureState(state: EVisualTextureState): IVisualTexture
     case EVisualTextureState.APPLIED:
       return { color: "success", label: "Applied" };
 
+    case EVisualTextureState.DECODED:
+      return { color: "success", label: "Decoded" };
+
     case EVisualTextureState.LOADING:
       return { color: "default", label: "Loading" };
 

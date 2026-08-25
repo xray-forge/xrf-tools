@@ -105,7 +105,9 @@ export class VisualLoadService {
     this.log.info("Loading visual:", describeVisualSource(source));
 
     try {
-      this.visual = this.visual.asLoading();
+      this.visual = this.visual.asLoading(null);
+      this.releaseTextures();
+      this.textureStatuses = new Map();
 
       const selected: SelectedVisualDescription = yield* call(visualsCommands.openModel(source, roots));
 

@@ -137,6 +137,10 @@ export class VisualPreviewScene {
    * leaving the toolbar saying otherwise.
    */
   private detail: number = 0;
+  /**
+   * Whether the camera has ever been fitted to anything in this scene.
+   */
+  private hasFramed: boolean = false;
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
   private isResizePending: boolean = false;
@@ -182,16 +186,15 @@ export class VisualPreviewScene {
   /**
    * Replace whatever is on screen with a different model, or with nothing.
    *
-   * Geometry is rebuilt while the renderer and controls survive. The camera is fitted only when there was nothing on
-   * screen to have framed: stepping through a tree is comparing models, and a refit per model throws away the angle and
-   * the distance the comparison is being made from. A model of a very different size can land off frame that way, which
-   * is what the toolbar's reset is for.
+   * Geometry is rebuilt while the renderer and controls survive. The camera is fitted for the first model this scene
+   * shows and held for every one after it: stepping through a tree is comparing models, and a refit per model throws
+   * away the angle and the distance the comparison is being made from. Held across the empty viewport between two
+   * models as well, since a load clears the screen before the replacement lands. A model of a very different size can
+   * end up out of frame that way, which is what the toolbar's reset is for.
    *
    * @param model - Model views to display, or `null` to clear the scene.
    */
   public setModel(model: Nullable<IVisualModelViews>): void {
-    const hadModel: boolean = Boolean(this.model);
-
     this.clearModel();
 
     this.model = model;
@@ -235,7 +238,7 @@ export class VisualPreviewScene {
 
     this.applyScale();
 
-    if (!hadModel) {
+    if (!this.hasFramed && model) {
       this.resetCamera();
     }
   }
@@ -423,6 +426,8 @@ export class VisualPreviewScene {
    */
   public resetCamera(): void {
     const { cameraFieldOfView, cameraFitMargin, cameraDirection } = this.config;
+
+    this.hasFramed = true;
 
     const radius: number = this.model?.fit.radius ?? FALLBACK_RADIUS;
     const [x, y, z] = this.model?.fit.center ?? [0, 0, 0];
