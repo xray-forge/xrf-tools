@@ -19,8 +19,8 @@ pub struct ArchiveFileDescriptor {
   pub extension: String,
   /// Whether the entry names a directory rather than a file with bytes.
   ///
-  /// A volume records the directories it contains so an unpacker can recreate them, and the engine writes those
-  /// entries with no payload — usually under the bare directory path, sometimes with a trailing separator.
+  /// A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
+  /// trailing separator; a zero-length entry without one is an empty file.
   pub is_directory: bool,
   /// Entry name as authored, which the engine registers verbatim.
   pub name: String,
@@ -41,7 +41,7 @@ impl ArchiveFileDescriptor {
       source: PathBuf::new(),
       destination: PathBuf::new(),
       extension: Self::extension_from_path(&name),
-      is_directory: size_real == 0 || name.ends_with(['\\', '/']),
+      is_directory: name.ends_with(['\\', '/']),
       name,
       offset,
       size_compressed,
@@ -89,15 +89,15 @@ mod tests {
   }
 
   #[test]
-  fn an_entry_without_payload_is_marked_a_directory() {
-    // Both spellings occur: the engine writes the bare directory path, some packers add the separator.
-    for name in ["meshes", "meshes\\actors", "meshes\\actors\\", "meshes/actors/"] {
+  fn an_entry_with_a_trailing_separator_is_marked_a_directory() {
+    for name in ["meshes\\", "meshes\\actors\\", "meshes/actors/"] {
       assert!(
         ArchiveFileDescriptor::new(0, name.into(), 0, 0, 0).is_directory,
         "'{name}' names a directory"
       );
     }
 
+    assert!(!ArchiveFileDescriptor::new(0, "meshes\\empty.ltx".into(), 0, 0, 0).is_directory);
     assert!(!ArchiveFileDescriptor::new(0, "meshes\\actors\\stalker.ogf".into(), 0, 512, 512).is_directory);
   }
 }

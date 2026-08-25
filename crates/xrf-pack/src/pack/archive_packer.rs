@@ -135,7 +135,10 @@ impl PackState {
     let mut directory_rows: Vec<u8> = Vec::new();
 
     for directory in &directories {
-      Self::push_descriptor_row(&mut directory_rows, directory, 0, 0, 0, 0)?;
+      // `CLocatorAPI` recognizes archive directories by this delimiter, not by their zero payload.
+      let name: String = format!("{directory}\\");
+
+      Self::push_descriptor_row(&mut directory_rows, &name, 0, 0, 0, 0)?;
     }
 
     let mut state: Self = Self {

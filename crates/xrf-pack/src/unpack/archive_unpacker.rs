@@ -28,7 +28,7 @@ impl ArchiveUnpacker {
     progress.record_prepared();
 
     for descriptor in project.files.values() {
-      if descriptor.size_real > 0 {
+      if !descriptor.is_directory {
         Self::unpack_file(destination, descriptor)?;
       }
 
@@ -61,8 +61,7 @@ impl ArchiveUnpacker {
     let mut tasks: bounded_join_set::JoinSet<XrfResult> = bounded_join_set::JoinSet::new(concurrency);
 
     for descriptor in project.files.values() {
-      // An entry with no bytes has nothing to write, and the tree it sits in is already there.
-      if descriptor.size_real == 0 {
+      if descriptor.is_directory {
         progress.record_unpacked();
 
         continue;
@@ -103,20 +102,23 @@ impl ArchiveUnpacker {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
 
     let mut extracted_count: usize = 0;
+    let mut found: bool = false;
     let mut size: u64 = 0;
 
     for descriptor in project.files.values() {
-      // Archives carry entries that name a directory rather than a file, and entries with no bytes at
-      // all. `unpack` skips them; opening one as a file is an operating system error, not a file.
-      if descriptor.is_directory {
-        continue;
-      }
-
       let Some(relative) = relative_to_prefix(&descriptor.name, &normalized) else {
         continue;
       };
 
       let target_path: PathBuf = destination.as_ref().join(to_host_relative(relative)?);
+
+      found = true;
+
+      if descriptor.is_directory {
+        fs::create_dir_all(&target_path)?;
+
+        continue;
+      }
 
       if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent)?;
@@ -128,7 +130,7 @@ impl ArchiveUnpacker {
       size += descriptor.size_real as u64;
     }
 
-    if extracted_count == 0 {
+    if !found {
       return Err(XrfError::new_not_found_error(format!(
         "Cannot extract '{normalized}' - no files in the archive are under it."
       )));
@@ -214,8 +216,16 @@ impl ArchiveUnpacker {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
     for descriptor in project.files.values() {
-      if let Some(parent) = Self::build_target_path(destination.as_ref(), descriptor)?.parent() {
-        set.insert(parent.into());
+      let target: PathBuf = Self::build_target_path(destination.as_ref(), descriptor)?;
+
+      let directory: Option<PathBuf> = if descriptor.is_directory {
+        Some(target)
+      } else {
+        target.parent().map(Into::into)
+      };
+
+      if let Some(directory) = directory {
+        set.insert(directory);
       }
     }
 

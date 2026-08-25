@@ -84,14 +84,17 @@ fn enumerates_entries_and_narrows_by_prefix() {
       ("textures\\wpn\\wpn_ak74.dds", TEXTURE),
       ("configs\\system.ltx", CONFIG),
       ("configs\\weapons\\ak74.ltx", CONFIG),
+      ("configs\\empty.ltx", b""),
     ],
   );
 
   // Only files. A volume also records the directories it contains, and those must not surface as assets.
-  assert_eq!(source.list_entries(None).count(), 3);
-  assert_eq!(source.list_entries(Some("configs")).count(), 2);
+  assert_eq!(source.list_entries(None).count(), 4);
+  assert_eq!(source.list_entries(Some("configs")).count(), 3);
   assert!(!source.contains("configs"), "a directory entry is not an asset");
   assert!(!source.contains("textures\\wpn"));
+  assert!(source.contains("configs\\empty.ltx"), "a zero-byte file is an asset");
+  assert_eq!(source.read("configs\\empty.ltx").expect("empty file reads"), b"");
 }
 
 #[test]

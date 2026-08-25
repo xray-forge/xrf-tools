@@ -122,15 +122,14 @@ fn extract_directory_writes_every_file_under_the_prefix() {
 }
 
 #[test]
-fn extract_directory_skips_entries_that_carry_no_bytes() {
+fn extract_directory_preserves_empty_files_and_skips_directory_records() {
   let directory: PathBuf = create_temporary_directory("empty");
   let project: ArchiveProject = create_project(
     &directory,
     &[
-      // Archives contain zero length entries, and some of them name a directory. Opening one as a
-      // file is what produced "the system cannot find the path specified".
       Entry::stored("configs\\gameplay\\", b""),
       Entry::stored("configs\\gameplay\\dialogs.xml", b"<game_dialogs/>"),
+      Entry::stored("configs\\empty.ltx", b""),
     ],
   );
 
@@ -138,8 +137,32 @@ fn extract_directory_skips_entries_that_carry_no_bytes() {
   let result: ArchiveExtractDirectoryResult =
     ArchiveUnpacker::extract_directory(&project, "configs", &out).expect("extraction");
 
-  assert_eq!(result.extracted_count, 1);
+  assert_eq!(result.extracted_count, 2);
   assert!(out.join("gameplay").join("dialogs.xml").exists());
+  assert_eq!(fs::metadata(out.join("empty.ltx")).expect("empty file").len(), 0);
+}
+
+#[test]
+fn unpack_preserves_empty_files_and_directories() {
+  let directory: PathBuf = create_temporary_directory("empty-tree");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\empty\\", b""),
+      Entry::stored("configs\\empty.ltx", b""),
+    ],
+  );
+  let out: PathBuf = directory.join("out");
+
+  ArchiveUnpacker::unpack(&project, &out).expect("unpack");
+
+  assert!(out.join("configs").join("empty").is_dir());
+  assert_eq!(
+    fs::metadata(out.join("configs").join("empty.ltx"))
+      .expect("empty file")
+      .len(),
+    0
+  );
 }
 
 #[test]
@@ -177,9 +200,9 @@ fn extract_file_writes_to_the_exact_path_it_is_given() {
 #[test]
 fn extract_file_refuses_a_directory_record() {
   let directory: PathBuf = create_temporary_directory("directory-record");
-  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs", b"")]);
+  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\", b"")]);
 
-  assert!(ArchiveUnpacker::extract_file(&project, "configs", directory.join("out")).is_err());
+  assert!(ArchiveUnpacker::extract_file(&project, "configs\\", directory.join("out")).is_err());
 }
 
 #[test]

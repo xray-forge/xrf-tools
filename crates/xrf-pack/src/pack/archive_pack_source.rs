@@ -18,7 +18,7 @@ pub(crate) struct ArchivePackEntry {
 #[derive(Debug, Default)]
 pub(crate) struct ArchivePackSource {
   pub(crate) entries: Vec<ArchivePackEntry>,
-  /// Directory names, which the archive carries as zero-size rows so the engine can list them.
+  /// Directory names, which the writer encodes as zero-size rows with a trailing separator so the engine can list them.
   pub(crate) directories: Vec<String>,
   /// Files the rules rejected, reported so a surprising omission is visible rather than silent.
   pub(crate) skipped: usize,

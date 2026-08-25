@@ -148,6 +148,8 @@ fn writes_an_empty_file_as_a_zero_length_entry() {
 
   assert_eq!(empty.size_real, 0);
   assert_eq!(empty.size_compressed, 0);
+  assert!(!empty.is_directory, "a zero-byte file stays a file");
+  assert!(project.files.get("configs\\").expect("directory entry").is_directory);
   // The neighbour must still be intact: an empty entry shares its offset with whatever follows.
   assert_eq!(read(&project, "configs\\system.ltx"), CONFIG);
 }
