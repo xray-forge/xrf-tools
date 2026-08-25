@@ -55,6 +55,8 @@ impl ArchivePacker {
   /// Produces the exact layout the engine mounts: an optional header chunk, one data chunk holding every
   /// payload, and a compressed descriptor table whose offsets are absolute positions in the volume.
   pub fn pack(config: &ArchivePackConfig) -> XrfResult<ArchivePackResult> {
+    config.validate_for_packing()?;
+
     let started_at: Instant = Instant::now();
     let source: ArchivePackSource = ArchivePackSource::collect(config)?;
 

@@ -174,6 +174,23 @@ impl ArchivePackConfig {
     Ok(self)
   }
 
+  /// Reject volume sizes that cannot produce an engine-mountable archive.
+  pub(crate) fn validate_for_packing(&self) -> XrfResult {
+    if self.max_volume_size == 0 {
+      return Err(XrfError::new_invalid_error(
+        "Archive volume size must be greater than zero".to_string(),
+      ));
+    }
+
+    if self.max_volume_size > VOLUME_SIZE_MAX {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes"
+      )));
+    }
+
+    Ok(())
+  }
+
   /// Name of one volume of a set, as `<base>.db<index>`.
   pub fn volume_name(&self, index: usize) -> String {
     format!("{}.{}{index}", self.name, self.volume_extension.as_str())

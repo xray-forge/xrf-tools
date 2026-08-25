@@ -7,10 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
+use xrf_error::XrfError;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayProbeStep, XrayRoots, XrayVfs};
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackMode};
+use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, VOLUME_SIZE_MAX};
 use crate::pack::archive_pack_result::ArchivePackResult;
 use crate::pack::archive_packer::ArchivePacker;
 
@@ -70,6 +71,23 @@ fn read(project: &ArchiveProject, name: &str) -> Vec<u8> {
   project
     .read_file_bytes(name)
     .unwrap_or_else(|error| panic!("archive holds '{name}': {error}"))
+}
+
+fn assert_pack_rejects_invalid_volume_size(scope: &str, max_volume_size: u64) {
+  let source: PathBuf = create_source(scope, &[("configs\\system.ltx", CONFIG)]);
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, "packed");
+
+  let _ = fs::remove_dir_all(&destination);
+
+  config.include_directories = vec![ArchivePackDirectory {
+    path: String::new(),
+    is_recursive: true,
+  }];
+  config.max_volume_size = max_volume_size;
+
+  assert!(matches!(ArchivePacker::pack(&config), Err(XrfError::Invalid { .. })));
+  assert!(!destination.exists(), "an invalid configuration creates no destination");
 }
 
 /// Pack one source tree into a destination shared with other volumes, under its own volume name.
@@ -285,6 +303,16 @@ fn refuses_a_name_it_cannot_encode() {
 
   // Silently mangling a name would produce an archive the engine cannot resolve by that name.
   assert!(ArchivePacker::pack(&config).is_err());
+}
+
+#[test]
+fn rejects_a_zero_volume_size_before_writing() {
+  assert_pack_rejects_invalid_volume_size("rejects_a_zero_volume_size_before_writing", 0);
+}
+
+#[test]
+fn rejects_an_oversized_volume_before_writing() {
+  assert_pack_rejects_invalid_volume_size("rejects_an_oversized_volume_before_writing", VOLUME_SIZE_MAX + 1);
 }
 
 #[test]
