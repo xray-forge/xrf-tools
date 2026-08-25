@@ -1,6 +1,7 @@
 mod dds_file;
 mod metadata;
 mod png;
+mod uncompressed;
 
 pub use ddsfile::{D3DFormat, DxgiFormat};
 pub use image::RgbaImage;

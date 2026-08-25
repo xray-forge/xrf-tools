@@ -149,8 +149,13 @@ export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture
 /**
  * Turn decoded png bytes into an uploadable texture, for a file three.js would not read itself.
  *
- * The fallback path, reached only when {@link createDdsTexture} refuses: the backend decodes the formats its loader
- * declines - BC7, RGBA-ordered `A8B8G8R8`, BC5 - and hands back a png the webview can decode natively.
+ * The fallback path, reached only when {@link createDdsTexture} refuses: the backend decodes what that loader declines
+ * and hands back a png the webview reads natively. Between `image_dds` and its own mask expansion, that covers every
+ * layout in the reference trees - `BC7_UNorm`, RGBA-ordered `A8B8G8R8`, `ATI2`, `A8` alpha-only, `R5G6B5`,
+ * alpha-luminance and `X8R8G8B8` - so a submesh is left plain only when the file itself cannot be read.
+ *
+ * A decoded texture carries **no mip chain**, since a png is one image: it is sampled with a linear filter below, and
+ * it will shimmer at distance where its compressed neighbours do not.
  *
  * `flipY` is set false to match the compressed path, which never flips: X-Ray stores rows top first, and a texture that
  * disagreed with the rest would be the only one on the model rendered upside down.

@@ -8,6 +8,7 @@ use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use image_dds::{ImageFormat, Mipmaps, Quality, dds_from_image};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::uncompressed::decode_uncompressed;
 use crate::{DdsMetadata, DdsPng};
 
 /// Bytes a DDS header occupies, with and without the DX10 extension.
@@ -148,30 +149,37 @@ impl DdsFile {
 
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
-  /// What decodes is `image_dds`'s answer, and it is not every layout X-Ray ships. Measured over 28,606 DDS files in
-  /// `gamedata`, `gamedata-anomaly`, `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and
-  /// `gamedata-openxray-gunslinger`:
+  /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for; what it
+  /// refuses goes to [`decode_uncompressed`], which expands a packing from the channel masks its header declares.
+  /// Between them they cover every layout in the reference trees - 28,606 files across `gamedata`, `gamedata-anomaly`,
+  /// `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and `gamedata-openxray-gunslinger`:
   ///
-  /// | Layout | Files | Decodes |
+  /// | Layout | Files | Decoded by |
   /// | --- | --- | --- |
-  /// | `DXT1`, `DXT3`, `DXT5` (BC1-BC3) | 27,314 | yes |
-  /// | `A8R8G8B8`, `R8G8B8` | 889 | yes |
-  /// | `A8B8G8R8` | 62 | yes |
-  /// | `BC7_UNorm`, `R8G8B8A8_UNorm_sRGB` (DX10) | 31 | yes |
-  /// | `ATI2` (BC5) | 5 | yes |
-  /// | `A8`, alpha only | 274 | **no** |
-  /// | `R5G6B5` | 15 | **no** |
-  /// | 16bpp alpha-luminance | 9 | **no** |
-  /// | `X8R8G8B8`, no alpha mask | 4 | **no** |
-  /// | `L8`, luminance | 3 | **no** |
+  /// | `DXT1`, `DXT3`, `DXT5` (BC1-BC3) | 27,314 | `image_dds` |
+  /// | `A8R8G8B8`, `R8G8B8` | 889 | `image_dds` |
+  /// | `A8B8G8R8` | 62 | `image_dds` |
+  /// | `BC7_UNorm`, `R8G8B8A8_UNorm_sRGB` (DX10) | 31 | `image_dds` |
+  /// | `ATI2` (BC5) | 5 | `image_dds` |
+  /// | `A8`, alpha only | 274 | mask expansion |
+  /// | `R5G6B5` | 15 | mask expansion |
+  /// | 16bpp alpha-luminance | 9 | mask expansion |
+  /// | `X8R8G8B8`, no alpha mask | 4 | mask expansion |
+  /// | `L8`, luminance | 3 | mask expansion |
   ///
   /// # Errors
   ///
-  /// Returns an error when the layout is one of those, or when the requested level is not in the file.
+  /// Returns an error when neither decoder reads the layout, when the file is a cubemap or volume, or when the
+  /// requested level is not in the file.
   pub fn decode_rgba(&self, mipmap_level: u32) -> XrfResult<RgbaImage> {
-    image_dds::image_from_dds(&self.dds, mipmap_level).map_err(|error| {
-      XrfError::new_texture_processing_error(format!("Failed to convert DDS to RGBA image: {}'", error,))
-    })
+    match image_dds::image_from_dds(&self.dds, mipmap_level) {
+      Ok(image) => Ok(image),
+      Err(error) => decode_uncompressed(&self.dds, mipmap_level).map_err(|fallback| {
+        XrfError::new_texture_processing_error(format!(
+          "Failed to convert DDS to RGBA image: {error}, and it is no expandable packing either: {fallback}"
+        ))
+      }),
+    }
   }
 
   pub fn to_png(&self) -> XrfResult<DdsPng> {
