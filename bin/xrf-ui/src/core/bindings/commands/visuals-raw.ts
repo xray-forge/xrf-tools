@@ -9,4 +9,6 @@ export const visualsRawCommands = {
   readGeometry: (source: VisualSource, roots: XrayRoots): Promise<ArrayBuffer> =>
     invokeRaw("plugin:visuals|read_geometry", { source, roots }),
   readMotion: (name: string): Promise<ArrayBuffer> => invokeRaw("plugin:visuals|read_motion", { name }),
+  readTexture: (roots: XrayRoots, logicalPath: string): Promise<ArrayBuffer> =>
+    invokeRaw("plugin:visuals|read_texture", { roots, logicalPath }),
 };

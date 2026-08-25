@@ -8,3 +8,4 @@ pub(crate) mod open_model;
 pub(crate) mod open_motion;
 pub(crate) mod read_geometry;
 pub(crate) mod read_motion;
+pub(crate) mod read_texture;

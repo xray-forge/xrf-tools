@@ -31,6 +31,13 @@ impl GenericCommand for VerifyCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
+        Arg::new("root")
+          .help("Additional root searched for textures after the visual's own tree, repeatable")
+          .long("root")
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
         Arg::new("report")
           .help("Path to write the verification report as json")
           .short('r')
@@ -59,12 +66,20 @@ impl GenericCommand for VerifyCommand {
       .get_one::<_>("path")
       .expect("Expected valid path to be provided");
     let report_path: Option<&PathBuf> = matches.get_one::<_>("report");
+    let roots: Vec<PathBuf> = matches
+      .get_many::<PathBuf>("root")
+      .map(|values| values.cloned().collect())
+      .unwrap_or_default();
 
     let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
 
     xrf_output::info!(output, "Verifying ogf visuals in {}", path.display());
 
-    let result: OgfVerificationResult = OgfVerifier::new(path).run();
+    for root in &roots {
+      xrf_output::info!(output, "Searching textures in {} as well", root.display());
+    }
+
+    let result: OgfVerificationResult = OgfVerifier::new(path, roots.clone()).run();
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
@@ -158,9 +173,10 @@ impl VerifyCommand {
     );
     xrf_output::info!(
       output,
-      "Distinct textures: {}, of which {} carry no mip chain",
+      "Distinct textures: {}, of which {} carry no mip chain; {} references resolved inside archives and were not read",
       census.distinct_textures,
-      census.textures_without_mipmaps
+      census.textures_without_mipmaps,
+      census.located_texture_references
     );
 
     Self::print_distribution(output, "Header versions", &census.versions);
@@ -168,10 +184,19 @@ impl VerifyCommand {
     Self::print_distribution(output, "Submesh model types", &census.submesh_model_types);
     Self::print_distribution(output, "Vertex formats", &census.vertex_formats);
     Self::print_distribution(output, "Texture formats", &census.texture_formats);
+    Self::print_distribution(output, "Textures resolved by", &census.texture_steps);
     Self::print_distribution(output, "Texture sizes", &census.texture_sizes);
   }
 
+  /// Prints one distribution, or nothing when it counted nothing.
+  ///
+  /// A sweep that resolved no texture has no formats and no answering steps to report, and a label followed by an empty
+  /// line reads as a distribution that came back empty rather than a question that was never answered.
   fn print_distribution<K: std::fmt::Display>(output: &OutputOptions, label: &str, counts: &BTreeMap<K, usize>) {
+    if counts.is_empty() {
+      return;
+    }
+
     let rendered: Vec<String> = counts.iter().map(|(key, count)| format!("{key}: {count}")).collect();
 
     xrf_output::info!(output, "{}: {}", label, rendered.join(", "));
@@ -203,5 +228,37 @@ impl VerifyCommand {
         );
       }
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::path::PathBuf;
+
+  use super::VerifyCommand;
+  use crate::core::generic_command::GenericCommand;
+
+  fn roots(arguments: &[&str]) -> Option<Vec<PathBuf>> {
+    VerifyCommand
+      .init()
+      .try_get_matches_from(arguments)
+      .expect("expect the arguments to parse")
+      .get_many::<PathBuf>("root")
+      .map(|values| values.cloned().collect())
+  }
+
+  #[test]
+  fn takes_every_root_it_is_given_in_order() {
+    // Repeatable and ordered: an overlay is layered over a base, and sometimes over a base and the installation
+    // behind it, which is the order the engine reads them in.
+    assert_eq!(
+      roots(&["verify", "--path", "meshes", "--root", "base", "--root", "install"]),
+      Some(vec![PathBuf::from("base"), PathBuf::from("install")])
+    );
+  }
+
+  #[test]
+  fn sweeps_one_tree_when_no_root_is_named() {
+    assert_eq!(roots(&["verify", "--path", "meshes"]), None);
   }
 }

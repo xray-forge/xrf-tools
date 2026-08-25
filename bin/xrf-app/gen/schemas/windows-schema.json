@@ -6837,10 +6837,10 @@
           "markdownDescription": "Denies the validate_text command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`\n- `allow-read-texture`",
           "type": "string",
           "const": "visuals:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`\n- `allow-read-texture`"
         },
         {
           "description": "Enables the close_browse command without any pre-configured scope.",
@@ -6903,6 +6903,12 @@
           "markdownDescription": "Enables the read_motion command without any pre-configured scope."
         },
         {
+          "description": "Enables the read_texture command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:allow-read-texture",
+          "markdownDescription": "Enables the read_texture command without any pre-configured scope."
+        },
+        {
           "description": "Denies the close_browse command without any pre-configured scope.",
           "type": "string",
           "const": "visuals:deny-close-browse",
@@ -6961,6 +6967,12 @@
           "type": "string",
           "const": "visuals:deny-read-motion",
           "markdownDescription": "Denies the read_motion command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_texture command without any pre-configured scope.",
+          "type": "string",
+          "const": "visuals:deny-read-texture",
+          "markdownDescription": "Denies the read_texture command without any pre-configured scope."
         }
       ]
     },

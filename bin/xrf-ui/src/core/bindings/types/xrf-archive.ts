@@ -31,8 +31,8 @@ export type ArchiveFileDescriptor = {
   /**
    * Whether the entry names a directory rather than a file with bytes.
    *
-   * A volume records the directories it contains so an unpacker can recreate them, and the engine writes those
-   * entries with no payload — usually under the bare directory path, sometimes with a trailing separator.
+   * A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
+   * trailing separator; a zero-length entry without one is an empty file.
    */
   isDirectory: boolean;
   /** Entry name as authored, which the engine registers verbatim. */

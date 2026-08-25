@@ -1,4 +1,4 @@
-import { CompressedPixelFormat, CompressedTexture, LinearFilter, RepeatWrapping } from "three";
+import { CompressedPixelFormat, CompressedTexture, LinearFilter, RepeatWrapping, Texture } from "three";
 import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
 import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
@@ -141,6 +141,32 @@ export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture
     texture.minFilter = LinearFilter;
   }
 
+  texture.needsUpdate = true;
+
+  return texture;
+}
+
+/**
+ * Turn decoded png bytes into an uploadable texture, for a file three.js would not read itself.
+ *
+ * The fallback path, reached only when {@link createDdsTexture} refuses: the backend decodes the formats its loader
+ * declines - BC7, RGBA-ordered `A8B8G8R8`, BC5 - and hands back a png the webview can decode natively.
+ *
+ * `flipY` is set false to match the compressed path, which never flips: X-Ray stores rows top first, and a texture that
+ * disagreed with the rest would be the only one on the model rendered upside down.
+ *
+ * @param bytes - Png bytes as the backend decoded them.
+ * @returns An uploadable texture.
+ */
+export async function createDecodedTexture(bytes: ArrayBuffer): Promise<Texture> {
+  const bitmap: ImageBitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+  const texture: Texture = new Texture(bitmap);
+
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.flipY = false;
+  // A decoded png carries no mip chain, and an incomplete texture samples black without this.
+  texture.minFilter = LinearFilter;
   texture.needsUpdate = true;
 
   return texture;

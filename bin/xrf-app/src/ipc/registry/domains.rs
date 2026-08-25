@@ -92,6 +92,7 @@ macro_rules! for_each_tauri_command_domain {
       @raw {
         read_geometry(source: "VisualSource", roots: "XrayRoots") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
         read_motion(name: "string") => crate::plugins::visuals::commands::read_motion::visuals_read_motion,
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::commands::read_texture::visuals_read_texture,
       }
       translations => "translations" {
         close_project => crate::plugins::translations::commands::close_project::translations_close_project,

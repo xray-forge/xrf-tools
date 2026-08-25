@@ -50,6 +50,10 @@ pub struct OgfVerificationCensus {
   pub visuals_without_root: usize,
   pub texture_references: usize,
   pub resolved_texture_references: usize,
+  /// References that resolved inside an archive, which the sweep locates without reading a header.
+  pub located_texture_references: usize,
+  /// Which probe step answered each resolved reference, so an overlay shows what it still takes from its base.
+  pub texture_steps: BTreeMap<String, usize>,
   pub missing_texture_references: usize,
   pub unreadable_textures: usize,
   pub distinct_textures: usize,
@@ -74,6 +78,8 @@ pub struct OgfVerificationResult {
 
 pub struct OgfVerifier<'a> {
   root: &'a Path,
+  /// Roots layered behind each visual's own tree, so an overlay is measured the way the engine reads it.
+  roots: Vec<PathBuf>,
 }
 
 impl<'a> OgfVerifier<'a> {
@@ -81,8 +87,8 @@ impl<'a> OgfVerifier<'a> {
   /// judgement about the file.
   const SKIN_WEIGHT_TOLERANCE: f32 = 1e-3;
 
-  pub fn new(root: &'a Path) -> Self {
-    Self { root }
+  pub fn new(root: &'a Path, roots: Vec<PathBuf>) -> Self {
+    Self { root, roots }
   }
 
   pub fn run(&self) -> OgfVerificationResult {
@@ -93,7 +99,7 @@ impl<'a> OgfVerifier<'a> {
     let mut geometry_findings: Vec<Finding> = Vec::new();
     let mut bounds_findings: Vec<Finding> = Vec::new();
     let mut texture_findings: Vec<Finding> = Vec::new();
-    let mut textures: OgfTextureResolver = OgfTextureResolver::default();
+    let mut textures: OgfTextureResolver = OgfTextureResolver::new(self.roots.clone());
 
     for path in self.visual_paths() {
       census.files += 1;
@@ -312,13 +318,19 @@ impl<'a> OgfVerifier<'a> {
             format!("No directory above the visual holds both meshes and textures, so '{reference}' cannot resolve"),
           ));
         }
-        TextureResolution::Missing { root } => {
+        TextureResolution::Missing { sources } => {
           census.missing_texture_references += 1;
           findings.push(Finding::new(
             Self::rule("visuals.textures.missing"),
             Some(subject),
-            format!("'{reference}' does not resolve under {}", root.display()),
+            format!("'{reference}' does not resolve under {}", sources.join(", ")),
           ));
+        }
+        // Counted as resolved, and left out of the format census: it is present, and what it is stays unread.
+        TextureResolution::Located { step, .. } => {
+          census.resolved_texture_references += 1;
+          census.located_texture_references += 1;
+          OgfVerificationCensus::count(&mut census.texture_steps, step);
         }
         TextureResolution::Unreadable { path: texture, reason } => {
           census.unreadable_textures += 1;
@@ -328,8 +340,11 @@ impl<'a> OgfVerifier<'a> {
             format!("'{}' would not parse: {reason}", texture.display()),
           ));
         }
-        TextureResolution::Resolved { format, metadata, .. } => {
+        TextureResolution::Resolved {
+          step, format, metadata, ..
+        } => {
           census.resolved_texture_references += 1;
+          OgfVerificationCensus::count(&mut census.texture_steps, step);
           OgfVerificationCensus::count(&mut census.texture_formats, format);
           OgfVerificationCensus::count(
             &mut census.texture_sizes,

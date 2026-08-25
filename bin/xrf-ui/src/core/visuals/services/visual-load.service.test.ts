@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
@@ -6,7 +6,7 @@ import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -20,6 +20,8 @@ import { Nullable } from "@/lib/types/general";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const ENTRY: string = "meshes\\actors\\stalker.ogf";
+/** The logical path `mockTextureDependency` resolves to, which every read of that texture must ask for verbatim. */
+const TEXTURE_PATH: string = "textures\\wpn\\wpn_ak74.dds";
 
 /** A loadable visual whose description matches the buffer returned beside it. */
 function mockLoadable(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
@@ -164,7 +166,7 @@ describe("VisualLoadService", () => {
 
     // No waiting: the texture is published with the model rather than after it.
     expect(service.textures.size).toBe(1);
-    expect(readParameters).toEqual({ logicalPath: "textures\\wpn\\wpn_ak74.dds", roots: ROOTS });
+    expect(readParameters).toEqual({ logicalPath: TEXTURE_PATH, roots: ROOTS });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });
 
@@ -273,5 +275,95 @@ describe("VisualLoadService", () => {
     expect(service.visual.value).toBeNull();
     expect(service.textures.size).toBe(0);
     expect(service.textureStatuses.size).toBe(0);
+  });
+});
+
+describe("VisualLoadService texture decoding", () => {
+  const decoder: jest.Mock = jest.fn(async () => ({ close: () => {}, height: 4, width: 4 }) as unknown as ImageBitmap);
+
+  beforeEach(() => {
+    resetMockInvoke();
+    decoder.mockClear();
+
+    // jsdom has no image decoder, and what this asserts is which path was taken rather than what came out of it.
+    (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = decoder;
+  });
+
+  it("asks the backend to decode a texture three.js declines", async () => {
+    // A channel order `DDSLoader` has no branch for, which is 62 files across the reference trees and 24 of Anomaly's
+    // model texture references.
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    let decodedPath: Nullable<string> = null;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: (parameters?: Record<string, unknown>) => {
+        decodedPath = (parameters?.logicalPath as string) ?? null;
+
+        return new ArrayBuffer(8);
+      },
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(decodedPath).toBe(TEXTURE_PATH);
+    expect(service.textures.size).toBe(1);
+    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
+  });
+
+  it("uploads a texture it can read without asking the backend for anything", async () => {
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    let decoded: number = 0;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
+      ["plugin:visuals|read_texture"]: () => {
+        decoded += 1;
+
+        return new ArrayBuffer(8);
+      },
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(decoded).toBe(0);
+    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
+  });
+
+  it("leaves a format that decodes nowhere reported as unsupported", async () => {
+    // Eight bit luminance and `R5G6B5` come back refused from the backend too; the panel keeps saying so.
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: {
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: () => {
+        throw new Error("DDS image format is not supported");
+      },
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(service.textures.size).toBe(0);
+    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.UNSUPPORTED_FORMAT);
   });
 });

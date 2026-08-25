@@ -1,6 +1,9 @@
 use serde::Serialize;
 use xrf_dds::{DdsFile, DdsMetadata};
+use xrf_error::XrfResult;
 use xrf_vfs::{XrayAsset, XrayProbe};
+
+use crate::core::assets::asset_read::read_located_asset;
 
 /// What a texture file is, once it has been located.
 ///
@@ -72,6 +75,25 @@ impl AssetTextureDescriptor {
       }
     }
   }
+}
+
+/// Decode a located texture into the PNG bytes a webview can display.
+///
+/// The one transcode in the application, because the answer has to be the same wherever it is asked: the archives
+/// preview shows a DDS this way, and the model viewer falls back to it for the layouts its own loader refuses.
+///
+/// PNG rather than raw pixels because the webview decodes it natively and the payload stays a fraction of the size,
+/// which matters for the 2048 square terrain textures this is reached for.
+///
+/// # Errors
+///
+/// Returns an error when the asset cannot be read, or when its layout is one [`DdsFile::decode_rgba`] does not decode:
+/// `A8` alpha-only, `R5G6B5`, 16bpp alpha-luminance, `X8R8G8B8` and `L8`, which is 305 of the 28,606 files measured
+/// across the reference trees. That table is the one place the list lives.
+pub fn read_texture_png(probe: &XrayProbe, logical_path: &str) -> XrfResult<Vec<u8>> {
+  let bytes: Vec<u8> = read_located_asset(probe, logical_path)?;
+
+  Ok(DdsFile::read_from_bytes(&bytes).and_then(|dds| dds.to_png())?.bytes)
 }
 
 impl AssetTextureShape {

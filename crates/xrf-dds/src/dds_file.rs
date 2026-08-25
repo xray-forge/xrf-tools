@@ -146,6 +146,28 @@ impl DdsFile {
     DdsMetadata::from_dds(&self.dds, self.file_size, self.metadata_size)
   }
 
+  /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
+  ///
+  /// What decodes is `image_dds`'s answer, and it is not every layout X-Ray ships. Measured over 28,606 DDS files in
+  /// `gamedata`, `gamedata-anomaly`, `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and
+  /// `gamedata-openxray-gunslinger`:
+  ///
+  /// | Layout | Files | Decodes |
+  /// | --- | --- | --- |
+  /// | `DXT1`, `DXT3`, `DXT5` (BC1-BC3) | 27,314 | yes |
+  /// | `A8R8G8B8`, `R8G8B8` | 889 | yes |
+  /// | `A8B8G8R8` | 62 | yes |
+  /// | `BC7_UNorm`, `R8G8B8A8_UNorm_sRGB` (DX10) | 31 | yes |
+  /// | `ATI2` (BC5) | 5 | yes |
+  /// | `A8`, alpha only | 274 | **no** |
+  /// | `R5G6B5` | 15 | **no** |
+  /// | 16bpp alpha-luminance | 9 | **no** |
+  /// | `X8R8G8B8`, no alpha mask | 4 | **no** |
+  /// | `L8`, luminance | 3 | **no** |
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the layout is one of those, or when the requested level is not in the file.
   pub fn decode_rgba(&self, mipmap_level: u32) -> XrfResult<RgbaImage> {
     image_dds::image_from_dds(&self.dds, mipmap_level).map_err(|error| {
       XrfError::new_texture_processing_error(format!("Failed to convert DDS to RGBA image: {}'", error,))

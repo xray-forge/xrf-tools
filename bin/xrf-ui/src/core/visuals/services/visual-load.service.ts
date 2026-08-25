@@ -11,6 +11,7 @@ import { transformError } from "@/core/error/lib";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import {
   createDdsTexture,
+  createDecodedTexture,
   EVisualTextureState,
   ILoadableTexture,
   IVisualTextureStatus,
@@ -22,7 +23,7 @@ import { formatDuration } from "@/lib/format/duration";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 /** A visual that is loaded: what it is, where it came from, and the views the scene draws. */
 export interface IOpenVisual {
@@ -167,6 +168,18 @@ export class VisualLoadService {
 
     this.log.info(`Loaded ${reads.length} textures in:`, formatDuration(timer.lap()));
 
+    // A second pass, and only for what the renderer's loader declined: those files come back decoded by the backend.
+    // Kept apart from the pass above so the common path stays one read and one synchronous upload.
+    const declined: Array<number> = [...loaded.statuses.values()]
+      .filter((status) => status.state === EVisualTextureState.UNSUPPORTED_FORMAT)
+      .map((status) => status.submeshIndex);
+
+    if (declined.length) {
+      yield* call(this.decodeTextures(selected, declined, loaded));
+
+      this.log.info(`Decoded ${declined.length} textures in:`, formatDuration(timer.lap()));
+    }
+
     // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
     // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief, and
     // exactly long enough to read as grey plastic.
@@ -256,6 +269,51 @@ export class VisualLoadService {
     }
 
     return { statuses, textures };
+  }
+
+  /**
+   * Ask the backend to decode the textures three.js declined, and fold them into what will be published.
+   *
+   * Reached for `BC7`, RGBA-ordered `A8B8G8R8` and `BC5`, which `DDSLoader` has no branch for - 97 files of the 26,145
+   * measured across the reference trees. Eight bit luminance and `R5G6B5` decode nowhere, so those keep the status they
+   * already have and the materials panel goes on saying the format is unsupported.
+   *
+   * @param selected - Visual the textures belong to, whose roots address the read.
+   * @param declined - Submesh indices whose texture the renderer's own loader refused.
+   * @param loaded - Textures and statuses to fold the decoded ones into.
+   */
+  private async decodeTextures(
+    selected: SelectedVisualDescription,
+    declined: Array<number>,
+    loaded: IVisualTextureLoad
+  ): Promise<void> {
+    const references: Map<number, string> = new Map(
+      toLoadableTextures(selected.dependencies.textures).map((texture) => [texture.submeshIndex, texture.logicalPath])
+    );
+
+    await Promise.all(
+      declined.map(async (submeshIndex) => {
+        const logicalPath: Optional<string> = references.get(submeshIndex);
+
+        if (!logicalPath) {
+          return;
+        }
+
+        try {
+          const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
+
+          loaded.textures.set(submeshIndex, await createDecodedTexture(png));
+          loaded.statuses.set(submeshIndex, {
+            reason: null,
+            state: EVisualTextureState.APPLIED,
+            submeshIndex,
+          });
+        } catch (error: unknown) {
+          // Left as unsupported rather than failed: nothing broke, the format simply decodes nowhere.
+          this.log.info(`Texture '${logicalPath}' decodes nowhere:`, transformError(error).message);
+        }
+      })
+    );
   }
 
   /**
