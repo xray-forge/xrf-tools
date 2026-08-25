@@ -25,11 +25,51 @@ args = [
   "clippy",
   "--workspace",
   "--all-targets",
+  "--locked",
   "--features",
   "xrf-app/typescript-bindings",
   "--",
   "-D",
   "warnings",
+]
+
+[tasks.test-workspace]
+description = "Run workspace tests and verify the generated frontend bindings."
+workspace = false
+command = "cargo"
+args = [
+  "test",
+  "--workspace",
+  "--lib",
+  "--bins",
+  "--locked",
+  "--features",
+  "xrf-app/typescript-bindings",
+]
+
+[tasks.test-error-derive]
+description = "Run the derive macro diagnostics snapshots."
+workspace = false
+command = "cargo"
+args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
+
+[tasks.verify-ui]
+description = "Install frontend dependencies, then typecheck, test and lint the UI."
+workspace = false
+cwd = "bin/xrf-ui"
+script_runner = "@shell"
+script = 'pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test && pnpm run lint'
+
+# Pre-push gate: every check .github/workflows/build_and_test.yml gates on.
+[tasks.verify]
+description = "Run every check CI gates on."
+workspace = false
+dependencies = [
+  "format-check",
+  "lint",
+  "test-workspace",
+  "test-error-derive",
+  "verify-ui",
 ]
 
 [tasks.build-cli]
