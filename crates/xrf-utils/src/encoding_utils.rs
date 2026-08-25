@@ -147,13 +147,35 @@ pub fn decode_bytes_from_base64(string: &str) -> XrfResult<Vec<u8>> {
 /// Decode b64 as string.
 #[inline]
 pub fn decode_string_from_base64(string: &str) -> XrfResult<String> {
-  Ok(match CUSTOM_B64_ENGINE.decode(string) {
-    Ok(value) => String::from_utf8_lossy(&value).into_owned(),
-    Err(error) => {
-      return Err(XrfError::new_parsing_error(format!(
-        "Failed to decode string value from base 64: {}",
-        error
-      )));
-    }
-  })
+  let bytes: Vec<u8> = CUSTOM_B64_ENGINE
+    .decode(string)
+    .map_err(|error| XrfError::new_parsing_error(format!("Failed to decode string value from base 64: {error}")))?;
+
+  String::from_utf8(bytes)
+    .map_err(|error| XrfError::new_parsing_error(format!("Decoded base 64 string value is not valid UTF-8: {error}")))
+}
+
+#[cfg(test)]
+mod tests {
+  use xrf_error::XrfError;
+
+  use super::{decode_string_from_base64, encode_string_to_base64};
+
+  #[test]
+  fn decode_string_from_base64_rejects_invalid_utf8() {
+    assert!(matches!(
+      decode_string_from_base64("_w"),
+      Err(XrfError::Parsing { message }) if message.contains("not valid UTF-8")
+    ));
+  }
+
+  #[test]
+  fn decode_string_from_base64_round_trips_valid_utf8() {
+    let original: &str = "\u{041f}\u{0440}\u{0438}\u{0432}\u{0456}\u{0442}";
+
+    assert!(matches!(
+      decode_string_from_base64(&encode_string_to_base64(original)),
+      Ok(value) if value == original
+    ));
+  }
 }

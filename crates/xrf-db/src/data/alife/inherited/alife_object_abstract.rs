@@ -100,7 +100,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{XrfError, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
@@ -184,6 +184,31 @@ mod tests {
 
     assert_eq!(AlifeObjectAbstract::import("first", &source)?, first);
     assert_eq!(AlifeObjectAbstract::import("second", &source)?, second);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_import_rejects_non_utf8_custom_data() -> XrfResult {
+    let original: AlifeObjectAbstract = AlifeObjectAbstract {
+      game_vertex_id: 1001,
+      distance: 65.25,
+      direct_control: 412421,
+      level_vertex_id: 66231,
+      flags: 33,
+      custom_data: String::from("custom_data"),
+      story_id: 400,
+      spawn_story_id: 25,
+    };
+    let mut ltx: Ltx = Ltx::new();
+
+    original.export("object", &mut ltx)?;
+    ltx.with_section("object").set("abstract.custom_data", "_w");
+
+    assert!(matches!(
+      AlifeObjectAbstract::import("object", &ltx),
+      Err(XrfError::Parsing { message }) if message.contains("not valid UTF-8")
+    ));
 
     Ok(())
   }
