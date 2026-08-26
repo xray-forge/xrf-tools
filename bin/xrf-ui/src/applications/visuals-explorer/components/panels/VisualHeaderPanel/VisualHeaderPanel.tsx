@@ -27,7 +27,7 @@ export function VisualHeaderPanel({
   className,
 }: IVisualHeaderPanelProps = {}): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
-  const description: Nullable<VisualDescription> = visualsService.visual.value?.selected.description ?? null;
+  const description: Nullable<VisualDescription> = visualsService.selected?.description ?? null;
 
   if (!description) {
     return (

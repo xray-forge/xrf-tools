@@ -88,6 +88,21 @@ interface IVisualSubmeshMesh {
 }
 
 /**
+ * Where one frame's bone transforms are read from.
+ *
+ * Which buffer and how far apart its bones sit is one decision, not two: a motion too short for the frame asked for
+ * falls back to the bind pose, and the bind pose has a stride and an origin of its own. Resolved once so the mesh and
+ * the overlay index the same way instead of each re-deriving it.
+ */
+interface IPosedFrame {
+  source: Float32Array;
+  /** Floats one bone occupies in `source`. */
+  stride: number;
+  /** Where this frame's first bone starts in `source`. */
+  base: number;
+}
+
+/**
  * Owns the three.js scene imperatively, outside of react state.
  *
  * An editor scene graph is long lived and mutated by direct manipulation, so it is deliberately not expressed as react
@@ -141,6 +156,16 @@ export class VisualPreviewScene {
    * Whether the camera has ever been fitted to anything in this scene.
    */
   private hasFramed: boolean = false;
+  /**
+   * The pose last asked for, so hiding a bone or opening another model can re-apply it without it being sent again.
+   */
+  private pose: { transforms: Nullable<Float32Array>; frame: number; floatsPerBone: number } = {
+    floatsPerBone: 0,
+    frame: 0,
+    transforms: null,
+  };
+  /** Bones collapsed to nothing, by index, already including the descendants of each. */
+  private hiddenBones: ReadonlySet<number> = new Set();
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
   private isResizePending: boolean = false;
@@ -238,6 +263,11 @@ export class VisualPreviewScene {
 
     this.applyScale();
 
+    // The pose and the hidden bones are the scene's to keep: both are expressed against the skeleton rather than
+    // against one model's geometry, so a replacement wears them straight away instead of flashing its bind pose with
+    // every part attached until the owner sends the same state again.
+    this.applyPose();
+
     if (!this.hasFramed && model) {
       this.resetCamera();
     }
@@ -275,34 +305,25 @@ export class VisualPreviewScene {
    * therefore a scatter of writes into matrices already allocated and one attribute update - no geometry rebuilt, no
    * buffer allocated - which is what keeps thirty frames a second from becoming thirty uploads.
    *
-   * Passing `null`, or a buffer too short for the frame asked for, restores the bind pose rather than posing a
-   * skeleton from whatever happens to be at that offset.
-   *
    * @param transforms - Every frame's bone transforms, frame major, or null to show the bind pose again.
    * @param frame - Which frame of that buffer to show.
    * @param floatsPerBone - Floats one bone occupies, as the bake reported it.
    */
   public setPose(transforms: Nullable<Float32Array>, frame: number, floatsPerBone: number): void {
-    const binds: Nullable<Float32Array> = this.model?.skeletonBinds ?? null;
+    this.pose = { floatsPerBone, frame, transforms };
 
-    if (!binds) {
-      return;
-    }
+    this.applyPose();
+  }
 
-    const boneCount: number = binds.length / FLOATS_PER_BONE;
-    const stride: number = boneCount * floatsPerBone;
-    const base: number = frame * stride;
-    const posed: Nullable<Float32Array> =
-      transforms && floatsPerBone > 0 && transforms.length >= base + stride ? transforms : null;
+  /**
+   * Collapses some of the model's bones, the way the engine hides a part that is not attached.
+   *
+   * @param bones - Indices of bones to collapse, already including their descendants.
+   */
+  public setHiddenBones(bones: ReadonlySet<number>): void {
+    this.hiddenBones = bones;
 
-    for (let bone: number = 0; bone < boneCount; bone += 1) {
-      const source: Float32Array = posed ?? binds;
-      const offset: number = posed ? base + bone * floatsPerBone : bone * FLOATS_PER_BONE;
-
-      this.poseBone(bone, source, offset);
-    }
-
-    this.poseOverlay(posed, base, floatsPerBone);
+    this.applyPose();
   }
 
   /**
@@ -522,23 +543,91 @@ export class VisualPreviewScene {
   }
 
   /**
-   * Writes one bone's transform out of a flat buffer into its matrix.
+   * Writes the current pose into the bones, then collapses the hidden ones.
    *
-   * The twelve floats are already a column-major 4x4's three basis columns and its translation, so they are written
-   * straight into `elements` rather than through `Matrix4.set`, which takes its arguments row major and would silently
-   * transpose them. `matrixWorldNeedsUpdate` because these bones do not derive their matrices.
-   *
-   * @param bone - Bone index, which is also its index in the buffer.
-   * @param source - Buffer holding transforms twelve floats apart.
-   * @param offset - Where this bone's twelve floats start.
+   * Hiding happens after posing rather than instead of it, because a hidden bone still has to be written before it is
+   * zeroed: nothing else clears the frame it was showing when it was visible.
    */
-  private poseBone(bone: number, source: Float32Array, offset: number): void {
+  private applyPose(): void {
+    const binds: Nullable<Float32Array> = this.model?.skeletonBinds ?? null;
+
+    if (!binds) {
+      return;
+    }
+
+    const boneCount: number = binds.length / FLOATS_PER_BONE;
+    const frame: IPosedFrame = this.resolveFrame(binds, boneCount);
+
+    for (let bone: number = 0; bone < boneCount; bone += 1) {
+      this.poseBone(bone, frame);
+    }
+
+    for (const bone of this.hiddenBones) {
+      this.hideBone(bone);
+    }
+
+    // The overlay keeps drawing the whole skeleton, hidden bones included. It is the only thing left that says where a
+    // hidden part sits, and an author turning a scope off is usually asking where the scope was.
+    this.poseOverlay(frame);
+  }
+
+  /**
+   * Decides which buffer this pose reads from.
+   *
+   * A motion buffer too short for the frame asked for is refused rather than indexed: the frame the owner named may
+   * belong to a motion baked against another skeleton, and posing from whatever happens to sit at that offset would
+   * show a mangled model instead of an honest bind pose.
+   *
+   * @param binds - Bind transforms of the current model, which is what a refused motion falls back to.
+   * @param boneCount - Bones the model carries, which is what makes a motion frame's stride.
+   * @returns The buffer to pose from and how to index it.
+   */
+  private resolveFrame(binds: Float32Array, boneCount: number): IPosedFrame {
+    const { transforms, frame, floatsPerBone } = this.pose;
+    const stride: number = boneCount * floatsPerBone;
+    const base: number = frame * stride;
+
+    return transforms && floatsPerBone > 0 && transforms.length >= base + stride
+      ? { base, source: transforms, stride: floatsPerBone }
+      : { base: 0, source: binds, stride: FLOATS_PER_BONE };
+  }
+
+  /**
+   * Collapses one bone to nothing.
+   *
+   * @param bone - Bone index to collapse.
+   */
+  private hideBone(bone: number): void {
     const target: Optional<Bone> = this.bones[bone];
 
     if (!target) {
       return;
     }
 
+    target.matrix.elements.fill(0);
+    target.matrix.elements[15] = 1;
+    target.matrixWorldNeedsUpdate = true;
+  }
+
+  /**
+   * Writes one bone's transform out of a flat buffer into its matrix.
+   *
+   * The twelve floats are already a column-major 4x4's three basis columns and its translation, so they are written
+   * straight into `elements` rather than through `Matrix4.set`, which takes its arguments row major and would silently
+   * transpose them. `matrixWorldNeedsUpdate` because these bones do not derive their matrices.
+   *
+   * @param bone - Bone index, which is also its index in the frame.
+   * @param frame - Frame to read this bone's transform out of.
+   */
+  private poseBone(bone: number, frame: IPosedFrame): void {
+    const target: Optional<Bone> = this.bones[bone];
+
+    if (!target) {
+      return;
+    }
+
+    const { source } = frame;
+    const offset: number = frame.base + bone * frame.stride;
     const elements: Array<number> = target.matrix.elements;
 
     elements[0] = source[offset];
@@ -563,26 +652,21 @@ export class VisualPreviewScene {
    * The pairs say which two bones each drawn segment joins, and a bone's translation is the last three of its twelve
    * floats, so this reads the same buffer the matrices came from rather than being sent positions of its own.
    *
-   * @param posed - Motion buffer to read, or null to fall back to the bind transforms.
-   * @param base - Where the current frame starts in that buffer.
-   * @param floatsPerBone - Floats one bone occupies in it.
+   * @param frame - Frame the bones were posed from, read again here for their translations.
    */
-  private poseOverlay(posed: Nullable<Float32Array>, base: number, floatsPerBone: number): void {
+  private poseOverlay(frame: IPosedFrame): void {
     const pairs: Nullable<Uint16Array> = this.model?.skeletonPairs ?? null;
-    const binds: Nullable<Float32Array> = this.model?.skeletonBinds ?? null;
 
-    if (!this.skeleton || !pairs || !binds) {
+    if (!this.skeleton || !pairs) {
       return;
     }
 
+    const { source } = frame;
     const attribute: BufferAttribute = this.skeleton.geometry.getAttribute("position") as BufferAttribute;
-    const stride: number = posed ? floatsPerBone : FLOATS_PER_BONE;
-    const start: number = posed ? base : 0;
 
     for (let segment: number = 0; segment < pairs.length / 2; segment += 1) {
-      const source: Float32Array = posed ?? binds;
-      const child: number = start + pairs[segment * 2] * stride + TRANSLATION_OFFSET;
-      const parent: number = start + pairs[segment * 2 + 1] * stride + TRANSLATION_OFFSET;
+      const child: number = frame.base + pairs[segment * 2] * frame.stride + TRANSLATION_OFFSET;
+      const parent: number = frame.base + pairs[segment * 2 + 1] * frame.stride + TRANSLATION_OFFSET;
 
       attribute.array.set(source.subarray(child, child + 3), segment * 6);
       attribute.array.set(source.subarray(parent, parent + 3), segment * 6 + 3);
@@ -608,6 +692,9 @@ export class VisualPreviewScene {
     }
 
     const inverses: Array<Matrix4> = [];
+    // The bind pose itself, never the motion or the hidden set: an inverse taken from a collapsed bone would be the
+    // inverse of a zero matrix, and every vertex weighted to it would pose to nothing for as long as the model is open.
+    const bindFrame: IPosedFrame = { base: 0, source: binds, stride: FLOATS_PER_BONE };
 
     for (let bone: number = 0; bone < binds.length / FLOATS_PER_BONE; bone += 1) {
       const joint: Bone = new Bone();
@@ -616,7 +703,7 @@ export class VisualPreviewScene {
 
       this.bones.push(joint);
       this.scene.add(joint);
-      this.poseBone(bone, binds, bone * FLOATS_PER_BONE);
+      this.poseBone(bone, bindFrame);
 
       inverses.push(joint.matrix.clone().invert());
     }

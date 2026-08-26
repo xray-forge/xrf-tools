@@ -52,8 +52,13 @@ describe("VisualsService observability", () => {
     expect(isObservableProp(service, "visual")).toBe(true);
     expect(isObservableProp(service, "isReady")).toBe(true);
     expect(isObservableProp(service, "highlightedBone")).toBe(true);
+    expect(isObservableProp(service, "hiddenBones")).toBe(true);
+    expect(isComputedProp(service, "selected")).toBe(true);
+    expect(isComputedProp(service, "bones")).toBe(true);
     expect(isComputedProp(service, "sourceLabel")).toBe(true);
     expect(isComputedProp(service, "highlightedJoint")).toBe(true);
+    expect(isComputedProp(service, "hiddenBoneIndices")).toBe(true);
+    expect(isComputedProp(service, "addonBones")).toBe(true);
   });
 });
 
@@ -126,6 +131,99 @@ describe("VisualsService bone highlight", () => {
 
     expect(service.highlightedBone).toBe("wpn_body");
     expect(service.highlightedJoint).toBeNull();
+  });
+});
+
+describe("VisualsService bone visibility", () => {
+  /** A weapon skeleton wearing every addon at once, which is how a weapon file always stores them. */
+  function mockWeaponVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const submesh = mockPackedSubmesh(buffer);
+
+    return {
+      selected: mockSelectedVisual({
+        description: mockVisualDescription({
+          submeshes: [submesh],
+          bufferLength: buffer.byteLength,
+          bones: [
+            mockVisualBone({ name: "wpn_body" }),
+            mockVisualBone({ name: "wpn_scope", parent: "wpn_body", parentIndex: 0 }),
+            mockVisualBone({ name: "wpn_scope_lens", parent: "wpn_scope", parentIndex: 1 }),
+            mockVisualBone({ name: "wpn_silencer", parent: "wpn_body", parentIndex: 0 }),
+          ],
+        }),
+      }),
+      buffer: buffer.toArrayBuffer(),
+    };
+  }
+
+  async function openWeapon(service: VisualsService): Promise<void> {
+    const { selected, buffer } = mockWeaponVisual();
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
+  }
+
+  it("names the addon bones the open visual carries", async () => {
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    await openWeapon(service);
+
+    expect(service.addonBones).toEqual(["wpn_scope", "wpn_silencer"]);
+  });
+
+  it("hides a bone and everything parented to it, then brings it back", async () => {
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    await openWeapon(service);
+    service.toggleBoneVisibility("wpn_scope");
+
+    // The lens hangs off the scope, and the engine hides recursively.
+    expect(service.hiddenBoneIndices).toEqual(new Set([1, 2]));
+
+    service.toggleBoneVisibility("wpn_scope");
+
+    expect(service.hiddenBones.size).toBe(0);
+    expect(service.hiddenBoneIndices).toEqual(new Set());
+  });
+
+  it("shows every bone again at once", async () => {
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    await openWeapon(service);
+    service.toggleBoneVisibility("wpn_scope");
+    service.toggleBoneVisibility("wpn_silencer");
+
+    expect(service.hiddenBoneIndices).toEqual(new Set([1, 2, 3]));
+
+    service.showAllBones();
+
+    expect(service.hiddenBoneIndices).toEqual(new Set());
+  });
+
+  it("keeps a hidden name the next model does not have, and hides nothing with it", async () => {
+    // The same rule the mark follows: a name is resolved against the open model, so stepping from a scoped weapon to
+    // one without a scope leaves the selection standing and harmless.
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    await openWeapon(service);
+    service.toggleBoneVisibility("wpn_scope");
+
+    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.openFile("C:\\gamedata\\other.ogf");
+
+    expect(service.hiddenBones.has("wpn_scope")).toBe(true);
+    expect(service.hiddenBoneIndices).toEqual(new Set());
   });
 });
 

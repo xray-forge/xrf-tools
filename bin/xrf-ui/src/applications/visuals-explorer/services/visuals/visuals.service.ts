@@ -14,6 +14,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { getProjectGamedataPath } from "@/core/settings/lib/path/project";
 import { ProjectService } from "@/core/settings/services/project/project.service";
+import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -41,6 +42,12 @@ export class VisualsService {
    */
   @Observable()
   public highlightedBone: Nullable<string> = null;
+
+  /**
+   * Bones the viewport collapses, by name.
+   */
+  @Observable()
+  public hiddenBones: ReadonlySet<string> = new Set();
 
   /**
    * @returns The visual being shown, straight from the loader.
@@ -73,6 +80,25 @@ export class VisualsService {
   }
 
   /**
+   * @returns What the backend reported about the open visual, or null when nothing is open.
+   *
+   * The one place the loadable is unwrapped for its contents, so a panel asking what the model contains does not also
+   * acquire an opinion about whether it is still arriving.
+   */
+  @Computed()
+  public get selected(): Nullable<SelectedVisualDescription> {
+    return this.visual.value?.selected ?? null;
+  }
+
+  /**
+   * @returns The open model's skeleton, or no bones at all when nothing is open.
+   */
+  @Computed()
+  public get bones(): Array<VisualBone> {
+    return this.selected?.description.bones ?? [];
+  }
+
+  /**
    * @returns Where the highlighted bone sits, or null when none is selected or the open model has no such bone.
    *
    * Resolved against the open model rather than remembered, which is what makes a selection left over from the
@@ -80,8 +106,7 @@ export class VisualsService {
    */
   @Computed()
   public get highlightedJoint(): Nullable<[number, number, number]> {
-    const bones: Array<VisualBone> = this.visual.value?.selected.description.bones ?? [];
-    const bone: Optional<VisualBone> = bones.find((it: VisualBone) => it.name === this.highlightedBone);
+    const bone: Optional<VisualBone> = this.bones.find((it: VisualBone) => it.name === this.highlightedBone);
     const position: Nullable<Vector3d> = bone?.bindTransform?.c ?? null;
 
     if (position === null || position.x === null || position.y === null || position.z === null) {
@@ -92,6 +117,22 @@ export class VisualsService {
   }
 
   /**
+   * @returns Every bone the viewport should collapse, by index, descendants included.
+   */
+  @Computed()
+  public get hiddenBoneIndices(): ReadonlySet<number> {
+    return selectHiddenBoneIndices(this.bones, this.hiddenBones);
+  }
+
+  /**
+   * @returns The addon bones this visual carries, which are the ones worth a control of their own.
+   */
+  @Computed()
+  public get addonBones(): Array<string> {
+    return selectAddonBones(this.bones);
+  }
+
+  /**
    * @returns The directory the open model sits in, or null when there is nothing to browse from.
    *
    * Only a loose file has one: an asset is already being browsed, and its bytes may sit inside a volume that no
@@ -99,7 +140,7 @@ export class VisualsService {
    */
   @Computed()
   public get containingRoot(): Nullable<string> {
-    const source: Nullable<VisualSource> = this.visual.value?.selected.source ?? null;
+    const source: Nullable<VisualSource> = this.selected?.source ?? null;
 
     if (source?.kind !== "file") {
       return null;
@@ -158,6 +199,28 @@ export class VisualsService {
   @BoundAction()
   public highlightBone(name: Nullable<string>): void {
     this.highlightedBone = name;
+  }
+
+  /**
+   * Collapses one bone in the viewport, or brings it back.
+   *
+   * @param name - Bone name to toggle.
+   */
+  @BoundAction()
+  public toggleBoneVisibility(name: string): void {
+    const hidden: Set<string> = new Set(this.hiddenBones);
+
+    if (!hidden.delete(name)) {
+      hidden.add(name);
+    }
+
+    this.hiddenBones = hidden;
+  }
+
+  /** Brings every collapsed bone back, which is what a model looks like before anything is turned off. */
+  @BoundAction()
+  public showAllBones(): void {
+    this.hiddenBones = new Set();
   }
 
   /**

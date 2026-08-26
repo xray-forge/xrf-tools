@@ -40,6 +40,8 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
   hasMotions?: boolean;
   /** Joint to mark in the viewport, named elsewhere - the bones panel - and resolved to a position by its owner. */
   highlightedJoint?: Nullable<[number, number, number]>;
+  /** Bones the viewport collapses, by index, as the engine collapses an addon that is not attached. */
+  hiddenBones?: ReadonlySet<number>;
   /**
    * Draws the viewport, for a surface that poses the model from something other than a single picked motion.
    *
@@ -81,6 +83,7 @@ export function VisualPreviewLayout({
   textures,
   hasMotions = false,
   highlightedJoint = null,
+  hiddenBones,
   renderViewport,
   footer,
   isLoading = false,
@@ -159,7 +162,7 @@ export function VisualPreviewLayout({
         sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
       >
         {renderViewport ? (
-          renderViewport({ cameraResetToken, detail, highlightedJoint, model, options, textures })
+          renderViewport({ cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
         ) : (
           <VisualPreviewMotionViewport
             model={model}
@@ -167,6 +170,7 @@ export function VisualPreviewLayout({
             cameraResetToken={cameraResetToken}
             detail={detail}
             highlightedJoint={highlightedJoint}
+            hiddenBones={hiddenBones}
             textures={textures}
           />
         )}

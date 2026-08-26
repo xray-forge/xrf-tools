@@ -3,6 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, SyntheticEvent, useCallback, useMemo } from "react";
 
 import { toBoneTree } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
+import { VisualBoneVisibility } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBoneVisibility";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
@@ -20,16 +21,16 @@ export function VisualBonesPanel({
   className,
 }: IVisualBonesPanelProps = {}): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
-  const bones: Nullable<Array<VisualBone>> = visualsService.visual.value?.selected.description.bones ?? null;
+  const bones: Array<VisualBone> = visualsService.bones;
 
-  const items: Array<TreeViewDefaultItemModelProperties> = useMemo(() => toBoneTree(bones ?? []), [bones]);
+  const items: Array<TreeViewDefaultItemModelProperties> = useMemo(() => toBoneTree(bones), [bones]);
 
   const onSelectBone = useCallback(
     (_: Nullable<SyntheticEvent>, name: Nullable<string>) => visualsService.highlightBone(name),
     [visualsService]
   );
 
-  if (!bones || bones.length === 0) {
+  if (!bones.length) {
     return (
       <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Bones"}>
         <VisualPanelEmpty label={"No skeleton. Ogf bone and ik chunks land here."} />
@@ -51,6 +52,8 @@ export function VisualBonesPanel({
           onSelectedItemsChange={onSelectBone}
         />
       </VisualPanelSection>
+
+      <VisualBoneVisibility />
     </VisualPanel>
   );
 }

@@ -25,9 +25,8 @@ export function VisualMotionsPanel({
   className,
 }: IVisualMotionsPanelProps = {}): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
-  const description: Nullable<VisualDescription> = visualsService.visual.value?.selected.description ?? null;
-
-  const refs: Array<VisualMotionDependency> = visualsService.visual.value?.selected.dependencies.motions ?? [];
+  const description: Nullable<VisualDescription> = visualsService.selected?.description ?? null;
+  const refs: Array<VisualMotionDependency> = visualsService.selected?.dependencies.motions ?? [];
   const embedded: Array<string> = description?.embeddedMotions ?? [];
 
   if (refs.length === 0 && embedded.length === 0) {

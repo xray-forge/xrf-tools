@@ -6,6 +6,9 @@ import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/co
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
+/** Stable, so a viewport given no hidden bones does not re-apply an empty set on every render. */
+const EMPTY_BONES: ReadonlySet<number> = new Set();
+
 export interface IVisualPreviewViewportProps {
   model: Nullable<IVisualModelViews>;
   options: IVisualPreviewViewOptions;
@@ -19,6 +22,8 @@ export interface IVisualPreviewViewportProps {
   motionFloatsPerBone?: number;
   /** Joint to mark, already resolved to a position, or null when nothing is selected. */
   highlightedJoint?: Nullable<[number, number, number]>;
+  /** Bones to collapse, by index, already including the descendants each one hides. */
+  hiddenBones?: ReadonlySet<number>;
   /** Loaded textures by submesh index, applied as they arrive. */
   textures?: ReadonlyMap<number, Texture>;
 }
@@ -39,6 +44,7 @@ export function VisualPreviewViewport({
   cameraResetToken,
   detail,
   highlightedJoint = null,
+  hiddenBones,
   motionTransforms = null,
   motionFrame = 0,
   motionFloatsPerBone = 0,
@@ -87,20 +93,22 @@ export function VisualPreviewViewport({
     sceneRef.current?.setDetailLevel(detail);
   }, [detail]);
 
-  // Depends on `model` as well, because a model change clears the mark and a selection that survived it must return.
+  /**
+   * Marks the selected joint, and marks it again whenever the model changes.
+   */
   useEffect(() => {
     sceneRef.current?.setHighlightedJoint(highlightedJoint);
   }, [highlightedJoint, model]);
 
-  /**
-   * Poses the mesh and the skeleton overlay, or returns both to the bind pose when nothing is playing.
-   *
-   * Depends on `model` for the same reason the mark does: a replaced model builds new bones and a new overlay, and a
-   * motion that survived the replacement has to be written into them.
-   */
+  /** Poses the mesh and the skeleton overlay, or returns both to the bind pose when nothing is playing. */
   useEffect(() => {
     sceneRef.current?.setPose(motionTransforms, motionFrame, motionFloatsPerBone);
-  }, [motionTransforms, motionFrame, motionFloatsPerBone, model]);
+  }, [motionTransforms, motionFrame, motionFloatsPerBone]);
+
+  /** Collapses the hidden bones, the way the engine collapses a part that is not attached. */
+  useEffect(() => {
+    sceneRef.current?.setHiddenBones(hiddenBones ?? EMPTY_BONES);
+  }, [hiddenBones]);
 
   /**
    * Offers every loaded texture on each change rather than only the newest one.

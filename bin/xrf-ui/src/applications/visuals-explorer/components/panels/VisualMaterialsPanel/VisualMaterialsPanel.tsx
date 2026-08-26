@@ -25,7 +25,7 @@ export function VisualMaterialsPanel({
   className,
 }: IVisualMaterialsPanelProps = {}): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
-  const selected: Nullable<SelectedVisualDescription> = visualsService.visual.value?.selected ?? null;
+  const selected: Nullable<SelectedVisualDescription> = visualsService.selected;
   const description: Nullable<VisualDescription> = selected?.description ?? null;
   const described: Record<string, AssetTextureDescriptor> = selected?.textures ?? {};
 
@@ -43,11 +43,9 @@ export function VisualMaterialsPanel({
   const textures: ReadonlyMap<number, VisualTextureDependency> = useMemo(
     () =>
       new Map(
-        (visualsService.visual.value?.selected.dependencies.textures ?? []).map(
-          (it: VisualTextureDependency) => [it.submeshIndex, it] as const
-        )
+        (selected?.dependencies.textures ?? []).map((it: VisualTextureDependency) => [it.submeshIndex, it] as const)
       ),
-    [visualsService.visual.value]
+    [selected]
   );
 
   if (!description || description.submeshes.length === 0) {

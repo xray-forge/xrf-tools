@@ -38,7 +38,7 @@ export function VisualPanelSection({
       </Typography>
 
       {caption ? (
-        <Typography variant={"caption"} sx={{ display: "block", color: "text.disabled", wordBreak: "break-all" }}>
+        <Typography variant={"caption"} sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}>
           {caption}
         </Typography>
       ) : null}
