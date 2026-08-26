@@ -11,6 +11,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject } from "react";
 
@@ -23,7 +24,7 @@ export interface IApplicationLauncherGroupFilter {
   count: number;
 }
 
-export interface IApplicationLauncherFiltersProps {
+export interface IApplicationLauncherHeaderProps {
   filters: ReadonlyArray<IApplicationLauncherGroupFilter>;
   /** Lets the launcher's keyboard shortcut reach the field it does not own. */
   inputRef: RefObject<Nullable<HTMLInputElement>>;
@@ -31,6 +32,8 @@ export interface IApplicationLauncherFiltersProps {
   /** `null` is every group rather than none. */
   selectedGroupId: Nullable<EApplicationGroupId>;
   totalCount: number;
+  /** Counts the catalog below in a line, narrowed the same way the chips narrow it. */
+  summary: string;
   /** How the body below draws its tools; the filters themselves are the same either way. */
   view: TCatalogView;
   onClear: () => void;
@@ -41,29 +44,55 @@ export interface IApplicationLauncherFiltersProps {
 }
 
 /**
- * Narrowing controls for the catalog: one text query and one group at a time.
+ * Everything above the catalog: what it is, how much of it there is, and the two ways to narrow it.
  */
-export function ApplicationLauncherFilters({
+export function ApplicationLauncherHeader({
   filters,
   inputRef,
   query,
   selectedGroupId,
   totalCount,
+  summary,
   view,
   onClear,
   onKeyDown,
   onQueryChange,
   onSelectGroup,
   onSelectView,
-}: IApplicationLauncherFiltersProps): ReactElement {
+}: IApplicationLauncherHeaderProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+        gap: 1,
+        paddingBottom: 1.5,
+        borderBottom: 1,
+        borderColor: "divider",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+          <Typography component={"h1"} variant={"h5"}>
+            Tools
+          </Typography>
+
+          <Typography
+            variant={"body2"}
+            sx={{ color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {summary}
+          </Typography>
+        </Box>
+
+        <Box sx={{ flexGrow: 1 }} />
+
         <TextField
           value={query}
           placeholder={"Search tools"}
           inputRef={inputRef}
-          sx={{ width: "100%", maxWidth: 320 }}
+          sx={{ width: 320, flexShrink: 1, minWidth: 180 }}
           slotProps={{
             htmlInput: {
               "aria-label": "Search tools",

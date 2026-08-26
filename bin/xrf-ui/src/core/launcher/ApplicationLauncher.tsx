@@ -5,10 +5,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from 
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { ApplicationLauncherCard } from "@/core/launcher/ApplicationLauncherCard";
-import {
-  ApplicationLauncherFilters,
-  IApplicationLauncherGroupFilter,
-} from "@/core/launcher/ApplicationLauncherFilters";
+import { ApplicationLauncherHeader, IApplicationLauncherGroupFilter } from "@/core/launcher/ApplicationLauncherHeader";
 import { ApplicationLauncherRow } from "@/core/launcher/ApplicationLauncherRow";
 import { ApplicationLauncherSection } from "@/core/launcher/ApplicationLauncherSection";
 import {
@@ -210,24 +207,15 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
 
   return (
     <EditorLayout toolbar={<EditorToolbar />}>
-      <Box sx={{ width: "100%", height: "100%", overflowY: "auto", padding: 3 }}>
-        <Box sx={{ width: "100%", maxWidth: 1880 }}>
-          <Box sx={{ marginBottom: 2 }}>
-            <Typography component={"h1"} variant={"h5"}>
-              Tools
-            </Typography>
-
-            <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.25 }}>
-              {summary}
-            </Typography>
-          </Box>
-
-          <Box sx={{ marginBottom: 2.5 }}>
-            <ApplicationLauncherFilters
+      <Box sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }}>
+        <Box sx={{ flexShrink: 0, paddingX: 3, paddingTop: 3 }}>
+          <Box>
+            <ApplicationLauncherHeader
               filters={filters}
               inputRef={searchInputRef}
               query={search.query}
               selectedGroupId={selectedGroupId}
+              summary={summary}
               totalCount={applications.length}
               view={view}
               onClear={search.clear}
@@ -237,8 +225,20 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
               onSelectView={onSelectView}
             />
           </Box>
+        </Box>
 
-          <Box data-testid={"launcher-catalog"}>
+        <Box
+          data-testid={"launcher-catalog"}
+          sx={{
+            flexGrow: 1,
+            minHeight: 0,
+            scrollbarGutter: "stable",
+            overflowY: "auto",
+            paddingX: 3,
+            paddingY: 2.5,
+          }}
+        >
+          <Box>
             {search.isSearching ? (
               search.results.length ? (
                 // Dimmed while a newer keystroke is still being filtered, so stale rows do not read as final.
