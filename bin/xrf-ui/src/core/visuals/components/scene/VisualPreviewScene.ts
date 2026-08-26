@@ -7,14 +7,10 @@ import {
   DataTexture,
   DirectionalLight,
   GridHelper,
-  Matrix4,
-  Mesh,
-  MeshStandardMaterial,
   PerspectiveCamera,
   Points,
   PointsMaterial,
   Scene,
-  SkinnedMesh,
   Texture,
   WebGLRenderer,
 } from "three";
@@ -24,9 +20,10 @@ import {
   DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
   IVisualPreviewSceneConfig,
 } from "@/core/visuals/components/scene/scene-config";
-import { createCheckerTexture, createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
+import { VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
+import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import { VisualPreviewSkeleton } from "@/core/visuals/components/scene/VisualPreviewSkeleton";
-import { getVisualSubmeshLevel, IVisualModelViews, IVisualSubmeshLevel } from "@/core/visuals/lib/visual-views";
+import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -71,14 +68,6 @@ export interface IVisualPreviewViewOptions {
 }
 
 /**
- * One drawn submesh: its mesh, its own material, and the texture applied to it.
- */
-interface IVisualSubmeshMesh {
-  mesh: Mesh<BufferGeometry, MeshStandardMaterial>;
-  texture: Nullable<Texture>;
-}
-
-/**
  * Owns the three.js scene imperatively, outside of react state.
  *
  * An editor scene graph is long lived and mutated by direct manipulation, so it is deliberately not expressed as react
@@ -96,13 +85,8 @@ export class VisualPreviewScene {
   private readonly axes: AxesHelper;
   private readonly resizeObserver: ResizeObserver;
 
-  /**
-   * Meshes keyed by the submesh index they were built from.
-   *
-   * Keyed rather than ordered because textures arrive addressed by that index, out of order and after the fact, so a
-   * position in an array would be the wrong thing to trust.
-   */
-  private meshes: Map<number, IVisualSubmeshMesh> = new Map();
+  /** Everything the current model draws, or null when nothing is open. */
+  private meshes: Nullable<VisualPreviewMeshes> = null;
   /** The current model's bones, the skin they drive and the overlay drawing them, or null when it carries none. */
   private skeleton: Nullable<VisualPreviewSkeleton> = null;
   /** The marker for a joint named elsewhere, kept across models rather than rebuilt. */
@@ -197,34 +181,15 @@ export class VisualPreviewScene {
       ? VisualPreviewSkeleton.create(model, this.scene, { skeletonColor: this.config.skeletonColor })
       : null;
 
-    for (const submesh of model?.submeshes ?? []) {
-      const geometry: BufferGeometry = createSubmeshGeometry(submesh, this.detail);
-      const material: MeshStandardMaterial = new MeshStandardMaterial({
-        color: this.config.meshColor,
-        metalness: 0.05,
-        roughness: 0.75,
-      });
-
-      // Skinned only when this submesh carries links and the model carries bones to bind them to. A skinned mesh is
-      // never frustum culled, because three.js measures it against its bind pose and a motion reaches outside that.
-      const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && this.skeleton);
-      const mesh: Mesh<BufferGeometry, MeshStandardMaterial> = isSkinned
-        ? new SkinnedMesh(geometry, material)
-        : new Mesh(geometry, material);
-
-      mesh.name = submesh.label;
-
-      if (mesh instanceof SkinnedMesh && this.skeleton) {
-        mesh.frustumCulled = false;
-        // An identity bind matrix, because the vertices and the bone transforms are already in the same space: the
-        // backend composed both into model space. Letting three.js take the mesh's own world matrix instead would work
-        // only as long as nothing ever moved the mesh.
-        mesh.bind(this.skeleton.getSkin(), new Matrix4());
-      }
-
-      this.meshes.set(submesh.index, { mesh, texture: null });
-      this.scene.add(mesh);
-    }
+    // The skeleton first, because a skinned mesh binds to it as it is built.
+    this.meshes = model
+      ? VisualPreviewMeshes.create(model, this.scene, {
+          checker: this.checker,
+          detail: this.detail,
+          meshColor: this.config.meshColor,
+          skin: this.skeleton?.getSkin() ?? null,
+        })
+      : null;
 
     if (this.viewOptions) {
       this.applyViewOptions(this.viewOptions);
@@ -251,15 +216,7 @@ export class VisualPreviewScene {
   public setDetailLevel(detail: number): void {
     this.detail = detail;
 
-    for (const submesh of this.model?.submeshes ?? []) {
-      const drawn: Nullable<IVisualSubmeshMesh> = this.meshes.get(submesh.index) ?? null;
-
-      if (drawn) {
-        const level: IVisualSubmeshLevel = getVisualSubmeshLevel(submesh, detail);
-
-        drawn.mesh.geometry.setDrawRange(level.start, level.count);
-      }
-    }
+    this.meshes?.setDetailLevel(detail);
   }
 
   /**
@@ -345,38 +302,16 @@ export class VisualPreviewScene {
   }
 
   /**
-   * Put a loaded texture on one submesh.
-   *
-   * Applied per submesh rather than per model because a visual's children each declare their own reference and they
-   * arrive one at a time, so a model shows its first texture without waiting for its last.
-   *
-   * A texture for a submesh this model does not have is disposed rather than kept: it belongs to a model the user has
-   * already moved past, and holding it would leak the upload.
+   * Puts a loaded texture on one submesh, or disposes it when no such submesh is drawn.
    *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
    * @param texture - Uploaded texture the scene takes ownership of.
    */
   public applyTexture(submeshIndex: number, texture: Texture): void {
-    const drawn: Nullable<IVisualSubmeshMesh> = this.meshes.get(submeshIndex) ?? null;
-
-    if (!drawn) {
+    if (this.meshes) {
+      this.meshes.applyTexture(submeshIndex, texture);
+    } else {
       texture.dispose();
-
-      return;
-    }
-
-    // Idempotent because the caller is a react effect that re-runs whenever any texture lands, so it re-offers the ones
-    // already applied. Without this the previous line would dispose the texture still in use.
-    if (drawn.texture === texture) {
-      return;
-    }
-
-    drawn.texture?.dispose();
-    drawn.texture = texture;
-
-    if (!this.viewOptions?.isCheckerVisible) {
-      drawn.mesh.material.map = texture;
-      drawn.mesh.material.needsUpdate = true;
     }
   }
 
@@ -388,11 +323,7 @@ export class VisualPreviewScene {
   public applyViewOptions(options: IVisualPreviewViewOptions): void {
     this.viewOptions = options;
 
-    for (const { mesh, texture } of this.meshes.values()) {
-      mesh.material.wireframe = options.isWireframe;
-      mesh.material.map = options.isCheckerVisible ? this.checker : texture;
-      mesh.material.needsUpdate = true;
-    }
+    this.meshes?.applyMaterialOptions(options);
 
     this.grid.visible = options.isGridVisible;
     this.axes.visible = options.isAxesVisible;
@@ -474,14 +405,8 @@ export class VisualPreviewScene {
    * behind would leak one upload per submesh every time the user opens another visual.
    */
   private clearModel(): void {
-    for (const { mesh, texture } of this.meshes.values()) {
-      this.scene.remove(mesh);
-      mesh.geometry.dispose();
-      mesh.material.dispose();
-      texture?.dispose();
-    }
-
-    this.meshes = new Map();
+    this.meshes?.dispose();
+    this.meshes = null;
 
     this.skeleton?.dispose();
     this.skeleton = null;
