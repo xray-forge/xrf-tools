@@ -1,5 +1,5 @@
 import { default as SearchOffIcon } from "@mui/icons-material/SearchOff";
-import { Box, Typography } from "@mui/material";
+import { Box, Button, List, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import {
   ApplicationLauncherFilters,
   IApplicationLauncherGroupFilter,
 } from "@/core/launcher/ApplicationLauncherFilters";
+import { ApplicationLauncherRow } from "@/core/launcher/ApplicationLauncherRow";
 import { ApplicationLauncherSection } from "@/core/launcher/ApplicationLauncherSection";
 import {
   EApplicationGroupId,
@@ -17,22 +18,12 @@ import {
   IApplicationGroup,
 } from "@/core/routing/application";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
+import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * Column counts at chosen widths rather than wherever a `minmax` happens to divide.
- */
-const GRID_COLUMNS = {
-  xs: "repeat(1, minmax(0, 1fr))",
-  sm: "repeat(2, minmax(0, 1fr))",
-  md: "repeat(3, minmax(0, 1fr))",
-  lg: "repeat(3, minmax(0, 1fr))",
-  xl: "repeat(4, minmax(0, 1fr))",
-} as const;
 
 /** One application together with the group it was found under, which search results no longer imply. */
 type TCatalogEntry = [IApplicationDescriptor, IApplicationGroup];
@@ -58,6 +49,7 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
   const searchInputRef = useRef<Nullable<HTMLInputElement>>(null);
 
   const [selectedGroupId, setSelectedGroupId] = useState<Nullable<EApplicationGroupId>>(null);
+  const [view, setView] = useState<TCatalogView>(settingsService.catalogView);
 
   const sections: Array<ILauncherSection> = useMemo(
     () =>
@@ -91,6 +83,24 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     [sections]
   );
 
+  const summary: string = useMemo(() => {
+    const readyCount: number = searchable.filter(
+      ([application]: TCatalogEntry) => application.status === EApplicationStatus.READY
+    ).length;
+
+    const parts: Array<string> = [
+      `${searchable.length} ${searchable.length === 1 ? "tool" : "tools"}`,
+      `${readyCount} ready`,
+    ];
+
+    // While one group is chosen this could only ever read "1 group", which its own chip already says.
+    if (!selectedGroupId) {
+      parts.push(`${sections.length} ${sections.length === 1 ? "group" : "groups"}`);
+    }
+
+    return parts.join(" · ");
+  }, [searchable, sections.length, selectedGroupId]);
+
   const isEnabled = useCallback(
     (application: IApplicationDescriptor): boolean =>
       application.status === EApplicationStatus.READY || settingsService.isDevModeEnabled,
@@ -113,6 +123,14 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     [isEnabled, onOpen]
   );
 
+  const onSelectView = useCallback(
+    (next: TCatalogView) => {
+      setView(next);
+      settingsService.setCatalogView(next);
+    },
+    [settingsService]
+  );
+
   const search: IUseRankedSearch<TCatalogEntry> = useRankedSearch({
     items: searchable,
     toSearchText: ([application]: TCatalogEntry) => application.label,
@@ -120,6 +138,58 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     toSecondaryText: ([application, group]: TCatalogEntry) => `${application.description} ${group.label}`,
     onSelect: onSelectResult,
   });
+
+  /** Section headings survive only in the card grid, and only while it is showing the whole catalog. */
+  const isGrouped: boolean = view === "grid" && !search.isSearching;
+
+  const entries: Array<TCatalogEntry> = search.isSearching
+    ? search.results.map(({ item }: ISearchResult<TCatalogEntry>) => item)
+    : searchable;
+
+  /** The one place that knows how a run of tools is drawn; everything above only chooses the run. */
+  const renderTools = useCallback(
+    (tools: Array<TCatalogEntry>): ReactElement =>
+      view === "rows" ? (
+        <List aria-label={"Tools"} disablePadding={true}>
+          {tools.map(([application, group]: TCatalogEntry) => (
+            <ApplicationLauncherRow
+              key={application.id}
+              application={application}
+              group={group}
+              isEnabled={isEnabled(application)}
+              onOpen={onOpen}
+            />
+          ))}
+        </List>
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(1, minmax(0, 1fr))",
+              sm: "repeat(2, minmax(0, 1fr))",
+              md: "repeat(3, minmax(0, 1fr))",
+              lg: "repeat(3, minmax(0, 1fr))",
+              xl: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 1.5,
+          }}
+        >
+          {tools.map(([application, group]: TCatalogEntry) => (
+            <ApplicationLauncherCard
+              key={application.id}
+              application={application}
+              group={group}
+              isEnabled={isEnabled(application)}
+              // A card names its group exactly where no heading above it does.
+              isGroupNamed={!isGrouped}
+              onOpen={onOpen}
+            />
+          ))}
+        </Box>
+      ),
+    [isEnabled, isGrouped, onOpen, view]
+  );
 
   useEffect(() => {
     function onWindowKeyDown(event: KeyboardEvent): void {
@@ -144,11 +214,11 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
         <Box sx={{ width: "100%", maxWidth: 1880 }}>
           <Box sx={{ marginBottom: 2 }}>
             <Typography component={"h1"} variant={"h5"}>
-              Applications
+              Tools
             </Typography>
 
             <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.25 }}>
-              {applications.length} tools across {groups.length} groups
+              {summary}
             </Typography>
           </Box>
 
@@ -159,61 +229,55 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
               query={search.query}
               selectedGroupId={selectedGroupId}
               totalCount={applications.length}
+              view={view}
               onClear={search.clear}
               onKeyDown={search.onInputKeyDown}
               onQueryChange={search.setQuery}
               onSelectGroup={setSelectedGroupId}
+              onSelectView={onSelectView}
             />
           </Box>
 
-          {search.isSearching ? (
-            search.results.length ? (
-              // Dimmed while a newer keystroke is still being filtered, so stale rows do not read as final.
-              <Box sx={{ opacity: search.isStale ? 0.6 : 1, transition: "opacity 120ms ease" }}>
-                <Typography variant={"caption"} sx={{ display: "block", marginBottom: 1, color: "text.secondary" }}>
-                  {search.total} {search.total === 1 ? "match" : "matches"}
-                </Typography>
+          <Box data-testid={"launcher-catalog"}>
+            {search.isSearching ? (
+              search.results.length ? (
+                // Dimmed while a newer keystroke is still being filtered, so stale rows do not read as final.
+                <Box sx={{ opacity: search.isStale ? 0.6 : 1, transition: "opacity 120ms ease" }}>
+                  <Typography variant={"caption"} sx={{ display: "block", marginBottom: 1, color: "text.secondary" }}>
+                    {search.total} {search.total === 1 ? "match" : "matches"}
+                  </Typography>
 
-                <Box sx={{ display: "grid", gridTemplateColumns: GRID_COLUMNS, gap: 1.5 }}>
-                  {search.results.map(({ item: [application, group] }: ISearchResult<TCatalogEntry>) => (
-                    <ApplicationLauncherCard
-                      key={application.id}
-                      application={application}
-                      group={group}
-                      isEnabled={isEnabled(application)}
-                      onOpen={onOpen}
-                    />
-                  ))}
+                  {renderTools(entries)}
                 </Box>
+              ) : (
+                <EmptyState
+                  icon={<SearchOffIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
+                  title={"No tools match"}
+                  // Quoted, because an unquoted query reads as part of the sentence carrying it.
+                  description={`Nothing in the catalog matches "${search.query.trim()}".`}
+                  action={
+                    <Button size={"small"} onClick={search.clear}>
+                      Clear search
+                    </Button>
+                  }
+                />
+              )
+            ) : isGrouped ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                {visibleSections.map(({ group, applications: grouped }: ILauncherSection) => (
+                  <Box key={group.id} sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                    <ApplicationLauncherSection group={group} count={grouped.length} />
+
+                    {renderTools(
+                      grouped.map((application: IApplicationDescriptor): TCatalogEntry => [application, group])
+                    )}
+                  </Box>
+                ))}
               </Box>
             ) : (
-              <EmptyState
-                icon={<SearchOffIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
-                title={"No tools match"}
-                description={`Nothing in the catalog matches ${search.query.trim()}.`}
-              />
-            )
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-              {visibleSections.map(({ group, applications: grouped }: ILauncherSection) => (
-                <Box key={group.id} sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-                  <ApplicationLauncherSection group={group} count={grouped.length} />
-
-                  <Box sx={{ display: "grid", gridTemplateColumns: GRID_COLUMNS, gap: 1.5 }}>
-                    {grouped.map((application: IApplicationDescriptor) => (
-                      <ApplicationLauncherCard
-                        key={application.id}
-                        application={application}
-                        group={group}
-                        isEnabled={isEnabled(application)}
-                        onOpen={onOpen}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          )}
+              renderTools(entries)
+            )}
+          </Box>
         </Box>
       </Box>
     </EditorLayout>

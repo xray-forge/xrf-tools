@@ -102,4 +102,26 @@ describe("ApplicationLauncherCard", () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
+
+  it("says nothing about the group while a section heading above it does", () => {
+    const { queryByText } = renderWithProviders(
+      <ApplicationLauncherCard application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+    );
+
+    expect(queryByText("Spawns")).not.toBeInTheDocument();
+  });
+
+  it("names its group where the heading is gone, which is every search result", () => {
+    const { getByText } = renderWithProviders(
+      <ApplicationLauncherCard
+        application={mockApplication()}
+        group={GROUP}
+        isEnabled
+        isGroupNamed
+        onOpen={jest.fn()}
+      />
+    );
+
+    expect(getByText("Spawns")).toBeInTheDocument();
+  });
 });

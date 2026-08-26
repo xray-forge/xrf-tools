@@ -1,4 +1,5 @@
-import { describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
+import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { ApplicationLauncher } from "@/core/launcher/ApplicationLauncher";
@@ -32,6 +33,16 @@ const APPLICATIONS: ReadonlyArray<IApplicationDescriptor> = [
     path: "/archives-explorer",
     status: EApplicationStatus.READY,
   },
+  {
+    Component: () => null,
+    description: "Pack a directory into game archives",
+    group: EApplicationGroupId.ARCHIVES,
+    icon: <span />,
+    id: EApplicationId.ARCHIVES_PACKER,
+    label: "Archives packer",
+    path: "/archives-packer",
+    status: EApplicationStatus.PLANNED,
+  },
 ];
 
 const GROUPS: ReadonlyArray<IApplicationGroup> = [
@@ -53,18 +64,50 @@ function renderLauncher() {
   return renderWithProviders(<ApplicationLauncher applications={APPLICATIONS} groups={GROUPS} />);
 }
 
-describe("ApplicationLauncher", () => {
-  it("packs the caller's catalog in stable group order", () => {
-    const { getAllByRole, getByText } = renderLauncher();
+/** Tool names in the order the catalog body lists them, ignoring the page's own controls. */
+function getToolNames(catalog: HTMLElement): Array<string> {
+  return within(catalog)
+    .getAllByRole("button")
+    .map((button: HTMLElement) => button.getAttribute("aria-label"))
+    .filter((label: string | null): label is string => label !== null);
+}
 
-    expect(getByText("2 tools across 2 groups")).toBeInTheDocument();
+describe("ApplicationLauncher", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("packs the caller's catalog in stable group order", () => {
+    const { getByTestId, getByText } = renderLauncher();
+
     expect(getByText("Archives editor")).toBeInTheDocument();
     expect(getByText("Spawn editor")).toBeInTheDocument();
-    expect(
-      getAllByRole("button")
-        .map((button: HTMLElement) => button.getAttribute("aria-label"))
-        .filter((label: string | null): label is string => label !== null)
-    ).toEqual(["Archives editor", "Spawn editor"]);
+    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
+      "Archives editor",
+      "Archives packer",
+      "Spawn editor",
+    ]);
+  });
+
+  it("calls the listed capabilities tools, which is what the rest of the page has always called them", () => {
+    const { getByRole } = renderLauncher();
+
+    expect(getByRole("heading", { level: 1 })).toHaveTextContent("Tools");
+  });
+
+  it("counts what is ready separately, since almost half the roster is not", () => {
+    const { getByText } = renderLauncher();
+
+    expect(getByText("3 tools · 2 ready · 2 groups")).toBeInTheDocument();
+  });
+
+  it("counts the group it was narrowed to rather than the catalog it came from", async () => {
+    const { getByRole, getByText } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Archives 2" }));
+
+    // No group count: with one chosen it could only say "1 group", which the chip already says.
+    expect(getByText("2 tools · 1 ready")).toBeInTheDocument();
   });
 
   it("heads each group's run of cards, so the taxonomy is visible without reading colours", () => {
@@ -87,6 +130,14 @@ describe("ApplicationLauncher", () => {
     expect(queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
   });
 
+  it("names the group on a result card, which no heading is left to say", async () => {
+    const { getByLabelText, getByTestId } = renderLauncher();
+
+    await userEvent.type(getByLabelText("Search tools"), "spawn");
+
+    expect(within(getByTestId("launcher-catalog")).getByText("Spawns")).toBeInTheDocument();
+  });
+
   it("matches a group name that no label of its own mentions", async () => {
     const { getByLabelText, getByText, queryByText } = renderLauncher();
 
@@ -102,17 +153,29 @@ describe("ApplicationLauncher", () => {
     await userEvent.type(getByLabelText("Search tools"), "nothing-here");
 
     expect(getByText("No tools match")).toBeInTheDocument();
+    // Quoted: unquoted, a query like "nothing here" reads as part of the sentence carrying it.
+    expect(getByText('Nothing in the catalog matches "nothing-here".')).toBeInTheDocument();
+  });
+
+  it("offers a way out of a search that found nothing", async () => {
+    const { getByLabelText, getByRole, getByText } = renderLauncher();
+
+    await userEvent.type(getByLabelText("Search tools"), "nothing-here");
+    await userEvent.click(getByRole("button", { name: "Clear search" }));
+
+    expect(getByText("Spawn editor")).toBeInTheDocument();
+    expect(getByLabelText("Search tools")).toHaveValue("");
   });
 
   it("narrows to one group by chip, and the same chip lets go again", async () => {
     const { getByRole, getByText, queryByText } = renderLauncher();
 
-    await userEvent.click(getByRole("button", { name: "Archives 1" }));
+    await userEvent.click(getByRole("button", { name: "Archives 2" }));
 
     expect(getByText("Archives editor")).toBeInTheDocument();
     expect(queryByText("Spawn editor")).not.toBeInTheDocument();
 
-    await userEvent.click(getByRole("button", { name: "Archives 1" }));
+    await userEvent.click(getByRole("button", { name: "Archives 2" }));
 
     expect(getByText("Spawn editor")).toBeInTheDocument();
   });
@@ -120,7 +183,7 @@ describe("ApplicationLauncher", () => {
   it("scopes a search to the chosen group rather than replacing it", async () => {
     const { getByLabelText, getByRole, getByText, queryByText } = renderLauncher();
 
-    await userEvent.click(getByRole("button", { name: "Archives 1" }));
+    await userEvent.click(getByRole("button", { name: "Archives 2" }));
     await userEvent.type(getByLabelText("Search tools"), "editor");
 
     expect(getByText("Archives editor")).toBeInTheDocument();
@@ -133,5 +196,70 @@ describe("ApplicationLauncher", () => {
     await userEvent.keyboard("{Control>}k{/Control}");
 
     expect(getByLabelText("Search tools")).toHaveFocus();
+  });
+
+  it("opens on the card grid, so a first run looks like it always has", () => {
+    const { queryByRole } = renderLauncher();
+
+    expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
+  });
+
+  it("takes the view it was left in", () => {
+    window.localStorage.setItem("xrf-catalog-view", "rows");
+
+    const { getByRole } = renderLauncher();
+
+    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
+  });
+
+  it("falls back to the card grid for a view it does not recognise", () => {
+    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
+
+    const { queryByRole } = renderLauncher();
+
+    expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
+  });
+
+  it("swaps the body for a dense list, and remembers being asked", async () => {
+    const { getByRole, getByTestId } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+
+    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
+    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
+    // Flat, in catalog order: the nine section headings do not survive into rows.
+    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
+      "Archives editor",
+      "Archives packer",
+      "Spawn editor",
+    ]);
+  });
+
+  it("drops the section headings in rows, where the group is a column instead", async () => {
+    const { getByRole, queryByRole } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+
+    expect(queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+  });
+
+  it("keeps drawing rows once a search narrows them", async () => {
+    const { getByLabelText, getByRole, getByTestId } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+    await userEvent.type(getByLabelText("Search tools"), "spawn");
+
+    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
+    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual(["Spawn editor"]);
+  });
+
+  it("goes back to the grid, leaving nothing of the list behind", async () => {
+    const { getByRole, queryByRole } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+    await userEvent.click(getByRole("button", { name: "Grid view" }));
+
+    expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
   });
 });

@@ -1,33 +1,32 @@
 import { Box, Card, CardActionArea, Theme, Tooltip, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
+import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLauncherGroupLabel";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 
 export interface IApplicationLauncherCardProps {
   application: IApplicationDescriptor;
   group: IApplicationGroup;
   isEnabled: boolean;
+  /** Names the group on the card itself, for a body with no section heading above it to say so. */
+  isGroupNamed?: boolean;
   onOpen: (application: IApplicationDescriptor) => void;
 }
 
 /**
  * One application on the root catalog grid.
- *
- * Pointing at a card warms whatever chunk opening it would need. Intent runs a few hundred milliseconds
- * ahead of the click, which is longer than the load takes, so the split applications open as if they
- * were not split. Statically imported ones have no `preload` and nothing to do here.
  */
 export function ApplicationLauncherCard({
   application,
   group,
   isEnabled,
+  isGroupNamed,
   onOpen,
 }: IApplicationLauncherCardProps): ReactElement {
   const isPlanned: boolean = application.status === EApplicationStatus.PLANNED;
 
   const onWarm = useCallback(() => {
     if (isEnabled) {
-      // Nothing awaits this: the point is only that the fetch has started before the click.
       void application.preload?.();
     }
   }, [application, isEnabled]);
@@ -98,7 +97,6 @@ export function ApplicationLauncherCard({
         variant={"body2"}
         sx={{
           display: "-webkit-box",
-          // Two lines whether or not this one needs them, so cards keep a shared baseline across sections.
           minHeight: 32,
           color: "text.secondary",
           WebkitBoxOrient: "vertical",
@@ -109,6 +107,8 @@ export function ApplicationLauncherCard({
       >
         {application.description}
       </Typography>
+
+      {isGroupNamed ? <ApplicationLauncherGroupLabel group={group} /> : null}
     </Box>
   );
 
@@ -125,7 +125,10 @@ export function ApplicationLauncherCard({
                 borderColor: "primary.main",
               },
             }
-          : { opacity: 0.6 }),
+          : {
+              backgroundColor: "transparent",
+              borderStyle: "dashed",
+            }),
       }}
     >
       {isEnabled ? (

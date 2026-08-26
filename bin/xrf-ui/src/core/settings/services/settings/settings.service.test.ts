@@ -33,4 +33,30 @@ describe("SettingsService", () => {
     expect(window.localStorage.getItem("xrf-dev-mode")).toBe("false");
     expect(service.isDevModeEnabled).toBe(false);
   });
+
+  it("falls back to the card grid when nothing has chosen a catalog view", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.catalogView).toBe("grid");
+  });
+
+  it("refuses a catalog view this build does not know, rather than handing it to the launcher", () => {
+    // Written by an older build, a hand edit, or a half-finished rename. `JSON.parse` would have
+    // thrown on it here, taking the whole service down while it was being constructed.
+    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
+
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.catalogView).toBe("grid");
+  });
+
+  it("gives back the catalog view it was told to keep", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    service.setCatalogView("rows");
+
+    expect(service.catalogView).toBe("rows");
+    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
+    expect(mockInjectedService(SettingsService).service.catalogView).toBe("rows");
+  });
 });

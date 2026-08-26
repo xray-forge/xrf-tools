@@ -54,7 +54,7 @@ export function EditorToolbar({
       className={className}
       sx={{ display: "flex", alignItems: "center", gap: 0.75, width: "100%", height: "100%", minWidth: 0 }}
     >
-      <EditorToolbarCrumb label={"XRF"} isDisabled={isBusy} hint={"Back to all applications"} onClick={onGoHome} />
+      <EditorToolbarCrumb label={"XRF"} isDisabled={isBusy} hint={"Back to all tools"} onClick={onGoHome} />
 
       {label ? (
         <>

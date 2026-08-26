@@ -10,12 +10,14 @@ export interface IEmptyStateProps extends BaseComponentProps {
   description: string;
   /** Overrides the default document glyph where a surface has a better one. */
   icon?: ReactNode;
+  /** The way out, for a dead end the surface can undo. Omit where there is nothing to offer. */
+  action?: ReactNode;
 }
 
 /**
  * What a surface shows when it has nothing to show.
  */
-export function EmptyState({ description, icon, title }: IEmptyStateProps): ReactElement {
+export function EmptyState({ action, description, icon, title }: IEmptyStateProps): ReactElement {
   return (
     <CenteredColumn sx={{ padding: 3, textAlign: "center" }}>
       {icon ?? <DescriptionOutlinedIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
@@ -25,6 +27,8 @@ export function EmptyState({ description, icon, title }: IEmptyStateProps): Reac
       <Typography variant={"body2"} sx={{ maxWidth: 440, color: "text.secondary" }}>
         {description}
       </Typography>
+
+      {action}
     </CenteredColumn>
   );
 }
