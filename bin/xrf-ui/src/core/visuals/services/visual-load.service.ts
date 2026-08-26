@@ -31,14 +31,18 @@ export interface IOpenVisual {
   views: IVisualModelViews;
 }
 
-/** One texture's bytes as read, or the reason there are none. Decoding happens later, and only if still wanted. */
+/** One file's bytes as read, or the reason there are none. Decoding happens later, and only if still wanted. */
 interface IVisualTextureRead {
-  texture: ILoadableTexture;
   bytes: Nullable<ArrayBuffer>;
   reason: Nullable<string>;
 }
 
-/** Every texture of one visual, ready to publish beside its geometry. */
+/**
+ * Every texture of one visual, ready to publish beside its geometry.
+ *
+ * Submeshes sharing a file share the one `Texture`: `textures` maps several indices onto the same upload, which is why
+ * anything freeing them has to go through the distinct values rather than the entries.
+ */
 interface IVisualTextureLoad {
   textures: Map<number, Texture>;
   statuses: Map<number, IVisualTextureStatus>;
@@ -165,10 +169,10 @@ export class VisualLoadService {
 
     this.log.info("Visual views built in:", formatDuration(timer.lap()));
 
-    const reads: Array<IVisualTextureRead> = yield* call(this.readTextures(selected));
+    const reads: Map<string, IVisualTextureRead> = yield* call(this.readTextures(selected));
     const loaded: IVisualTextureLoad = this.uploadTextures(selected, reads);
 
-    this.log.info(`Loaded ${reads.length} textures in:`, formatDuration(timer.lap()));
+    this.log.info(`Loaded ${reads.size} texture files in:`, formatDuration(timer.lap()));
 
     // A second pass, and only for what the renderer's loader declined: those files come back decoded by the backend.
     // Kept apart from the pass above so the common path stays one read and one synchronous upload.
@@ -193,40 +197,47 @@ export class VisualLoadService {
   }
 
   /**
-   * Read every located texture of a visual, in parallel, without decoding any of them.
+   * Read every located texture file of a visual, in parallel, without decoding any of them.
+   *
+   * Once per **file** rather than once per submesh that names it: a model whose submeshes share a texture used to read
+   * and upload it once each, which costs an archive read and a gpu upload for a file already in hand.
    *
    * A failure is a returned reason rather than a throw: one texture that cannot be read is a submesh drawn plain, not
    * a model that fails to open.
    *
    * @param selected - Visual whose textures should be read.
-   * @returns Each texture's bytes, or the reason there are none.
+   * @returns Each distinct file's bytes, or the reason there are none, by logical path.
    */
-  private async readTextures(selected: SelectedVisualDescription): Promise<Array<IVisualTextureRead>> {
-    const loadable: Array<ILoadableTexture> = toLoadableTextures(selected.dependencies.textures);
+  private async readTextures(selected: SelectedVisualDescription): Promise<Map<string, IVisualTextureRead>> {
+    const paths: Array<string> = [
+      ...new Set(toLoadableTextures(selected.dependencies.textures).map((it: ILoadableTexture) => it.logicalPath)),
+    ];
 
-    if (!loadable.length) {
-      return [];
+    if (!paths.length) {
+      return new Map();
     }
 
-    this.log.info(`Reading ${loadable.length} textures for:`, describeVisualSource(selected.source));
+    this.log.info(`Reading ${paths.length} textures for:`, describeVisualSource(selected.source));
 
-    return await Promise.all(
-      loadable.map(async (texture) => {
+    const reads: Array<[string, IVisualTextureRead]> = await Promise.all(
+      paths.map(async (logicalPath: string): Promise<[string, IVisualTextureRead]> => {
         try {
           // Read by the logical path the open already resolved, so the bytes come from the file the description named
           // - a substituted dummy included - rather than from a second lookup that could answer differently.
-          const bytes: ArrayBuffer = await assetsRawCommands.readAsset(selected.roots, texture.logicalPath);
+          const bytes: ArrayBuffer = await assetsRawCommands.readAsset(selected.roots, logicalPath);
 
-          return { texture, bytes, reason: null };
+          return [logicalPath, { bytes, reason: null }];
         } catch (error: unknown) {
           const transformed: Error = transformError(error);
 
-          this.log.error(`Failed to load texture '${texture.logicalPath}':`, transformed);
+          this.log.error(`Failed to load texture '${logicalPath}':`, transformed);
 
-          return { texture, bytes: null, reason: transformed.message };
+          return [logicalPath, { bytes: null, reason: transformed.message }];
         }
       })
     );
+
+    return new Map(reads);
   }
 
   /**
@@ -239,7 +250,10 @@ export class VisualLoadService {
    * @param reads - What each texture read produced.
    * @returns Uploaded textures by submesh index, and every submesh's outcome.
    */
-  private uploadTextures(selected: SelectedVisualDescription, reads: Array<IVisualTextureRead>): IVisualTextureLoad {
+  private uploadTextures(
+    selected: SelectedVisualDescription,
+    reads: Map<string, IVisualTextureRead>
+  ): IVisualTextureLoad {
     const statuses: Map<number, IVisualTextureStatus> = new Map(
       selected.dependencies.textures.map((texture) => [
         texture.submeshIndex,
@@ -247,17 +261,23 @@ export class VisualLoadService {
       ])
     );
     const textures: Map<number, Texture> = new Map();
+    // One upload per file, shared by every submesh naming it.
+    const uploads: Map<string, Nullable<Texture>> = new Map();
 
-    for (const read of reads) {
-      const submeshIndex: number = read.texture.submeshIndex;
+    for (const { submeshIndex, logicalPath } of toLoadableTextures(selected.dependencies.textures)) {
+      const read: Optional<IVisualTextureRead> = reads.get(logicalPath);
 
-      if (read.bytes === null) {
-        statuses.set(submeshIndex, { reason: read.reason, state: EVisualTextureState.FAILED, submeshIndex });
+      if (!read || read.bytes === null) {
+        statuses.set(submeshIndex, { reason: read?.reason ?? null, state: EVisualTextureState.FAILED, submeshIndex });
 
         continue;
       }
 
-      const uploaded: Nullable<Texture> = createDdsTexture(read.bytes);
+      if (!uploads.has(logicalPath)) {
+        uploads.set(logicalPath, createDdsTexture(read.bytes));
+      }
+
+      const uploaded: Nullable<Texture> = uploads.get(logicalPath) ?? null;
 
       if (uploaded) {
         textures.set(submeshIndex, uploaded);
@@ -321,11 +341,13 @@ export class VisualLoadService {
   /**
    * Free the uploaded textures of a visual being replaced.
    *
-   * The scene disposes what it was handed when its model changes, and this disposes what the service still holds, so a
-   * texture is freed by whichever side outlives the other.
+   * The one owner: a scene borrows what it is handed and never frees it, because one upload can be drawn by several
+   * submeshes and, once a level places several models, by several models.
    */
   private releaseTextures(): void {
-    for (const texture of this.textures.values()) {
+    // Through the distinct values: submeshes sharing a file share one upload, and disposing per entry would free it
+    // once per submesh that named it.
+    for (const texture of new Set(this.textures.values())) {
       texture.dispose();
     }
 

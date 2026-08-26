@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
@@ -7,7 +8,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
@@ -310,6 +311,95 @@ describe("VisualLoadService", () => {
     expect(service.visual.value).toBeNull();
     expect(service.textures.size).toBe(0);
     expect(service.textureStatuses.size).toBe(0);
+  });
+});
+
+describe("VisualLoadService shared textures", () => {
+  beforeEach(() => resetMockInvoke());
+
+  /** Two submeshes naming one file, which is what a shared texture looks like in a description. */
+  function mockSharedVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+
+    return {
+      selected: mockSelectedVisual({
+        source: { kind: "asset", logicalPath: ENTRY },
+        roots: ROOTS,
+        description: mockVisualDescription({
+          submeshes: [mockPackedSubmesh(buffer), mockPackedSubmesh(buffer, { index: 1 })],
+          bufferLength: buffer.byteLength,
+        }),
+        dependencies: {
+          motions: [],
+          textures: [mockTextureDependency({ submeshIndex: 0 }), mockTextureDependency({ submeshIndex: 1 })],
+        },
+      }),
+      buffer: buffer.toArrayBuffer(),
+    };
+  }
+
+  it("reads a file once however many submeshes name it", async () => {
+    const { selected, buffer } = mockSharedVisual();
+    const reads: Array<string> = [];
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: ((args) => {
+        reads.push(String(args?.logicalPath));
+
+        return mockDdsFile();
+      }) as InvokeHandler,
+    });
+
+    const { service } = mockInjectedService(VisualLoadService);
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(reads).toEqual([TEXTURE_PATH]);
+  });
+
+  it("uploads it once, and gives both submeshes the same upload", async () => {
+    // Two uploads of one file is two copies of it on the gpu, and a level sharing a wall texture is hundreds.
+    const { selected, buffer } = mockSharedVisual();
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+    });
+
+    const { service } = mockInjectedService(VisualLoadService);
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(service.textures.size).toBe(2);
+    expect(service.textures.get(0)).toBe(service.textures.get(1));
+    expect(new Set(service.textures.values()).size).toBe(1);
+  });
+
+  it("frees a shared upload once when the model is replaced", async () => {
+    const { selected, buffer } = mockSharedVisual();
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+    });
+
+    const { service } = mockInjectedService(VisualLoadService);
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    let disposals: number = 0;
+
+    (service.textures.get(0) as Texture).addEventListener("dispose", () => {
+      disposals += 1;
+    });
+
+    service.clear();
+
+    expect(disposals).toBe(1);
   });
 });
 

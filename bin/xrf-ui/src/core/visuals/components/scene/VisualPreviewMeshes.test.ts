@@ -100,25 +100,9 @@ describe("VisualPreviewMeshes", () => {
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
 
-  it("disposes a texture addressed to a submesh this model does not draw", () => {
-    // It belongs to a model the user has already moved past, and holding it would leak the upload.
+  it("ignores a texture addressed to a submesh this model does not draw", () => {
+    // Borrowed, so there is nothing to clean up: the loader that uploaded it frees it with the rest.
     const { meshes } = mockMeshes();
-    const texture: Texture = new Texture();
-
-    let disposed: boolean = false;
-
-    texture.addEventListener("dispose", () => {
-      disposed = true;
-    });
-
-    meshes.applyTexture(9, texture);
-
-    expect(disposed).toBe(true);
-  });
-
-  it("keeps the texture it is offered twice, rather than disposing the one in use", () => {
-    // The caller is a react effect that re-offers every texture whenever any of them lands.
-    const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
 
     let disposals: number = 0;
@@ -127,28 +111,39 @@ describe("VisualPreviewMeshes", () => {
       disposals += 1;
     });
 
-    meshes.applyTexture(0, texture);
-    meshes.applyTexture(0, texture);
+    meshes.applyTexture(9, texture);
 
     expect(disposals).toBe(0);
-    expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
 
-  it("replaces a texture, freeing the one it replaced", () => {
+  it("takes the same texture on two submeshes, as a shared file is drawn twice", () => {
+    const { meshes, parent } = mockMeshes(
+      mockVisualModelViews({ submeshes: [mockSubmesh(0), mockSubmesh(1)] })
+    );
+    const texture: Texture = new Texture();
+
+    meshes.applyTexture(0, texture);
+    meshes.applyTexture(1, texture);
+
+    expect(attachedMeshes(parent).map((it) => it.material.map)).toEqual([texture, texture]);
+  });
+
+  it("replaces a texture without freeing the one it replaced", () => {
+    // One upload is drawn by every submesh naming that file, so freeing on replacement would blank another submesh.
     const { meshes, parent } = mockMeshes();
     const first: Texture = new Texture();
     const second: Texture = new Texture();
 
-    let disposed: boolean = false;
+    let disposals: number = 0;
 
     first.addEventListener("dispose", () => {
-      disposed = true;
+      disposals += 1;
     });
 
     meshes.applyTexture(0, first);
     meshes.applyTexture(0, second);
 
-    expect(disposed).toBe(true);
+    expect(disposals).toBe(0);
     expect(attachedMeshes(parent)[0].material.map).toBe(second);
   });
 
@@ -206,21 +201,22 @@ describe("VisualPreviewMeshes", () => {
     expect(attachedMeshes(parent)[0].geometry.drawRange).toEqual({ start: 0, count: 0 });
   });
 
-  it("detaches every mesh and frees what it uploaded", () => {
+  it("detaches every mesh and frees its geometry and material, leaving the borrowed texture alone", () => {
     const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
+    const mesh: Mesh<BufferGeometry, MeshStandardMaterial> = attachedMeshes(parent)[0];
 
-    let disposed: boolean = false;
+    const freed: Array<string> = [];
 
-    texture.addEventListener("dispose", () => {
-      disposed = true;
-    });
+    mesh.geometry.addEventListener("dispose", () => freed.push("geometry"));
+    mesh.material.addEventListener("dispose", () => freed.push("material"));
+    texture.addEventListener("dispose", () => freed.push("texture"));
 
     meshes.applyTexture(0, texture);
     meshes.dispose();
 
     expect(parent.children).toHaveLength(0);
-    expect(disposed).toBe(true);
+    expect(freed).toEqual(["geometry", "material"]);
   });
 
   it("draws nothing for a model that packed no geometry", () => {

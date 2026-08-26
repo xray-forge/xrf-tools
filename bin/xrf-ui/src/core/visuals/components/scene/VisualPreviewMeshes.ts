@@ -103,30 +103,25 @@ export class VisualPreviewMeshes {
   }
 
   /**
-   * Puts a loaded texture on one submesh, taking ownership of it.
+   * Draws one submesh with a texture, borrowing it.
    *
    * Applied per submesh rather than per model because a visual's children each declare their own reference and they
    * arrive one at a time, so a model shows its first texture without waiting for its last.
    *
+   * Never freed here, on replacement or on disposal: one upload is drawn by every submesh naming that file, and a
+   * scene placing several models would share it further still. Whoever loaded it frees it.
+   *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
-   * @param texture - Uploaded texture to take ownership of.
+   * @param texture - Uploaded texture to draw with, owned by whoever loaded it.
    */
   public applyTexture(submeshIndex: number, texture: Texture): void {
     const drawn: Optional<IVisualSubmeshMesh> = this.meshes.get(submeshIndex);
 
+    // Not this model's to free, so a texture for a submesh it does not draw is simply left alone.
     if (!drawn) {
-      texture.dispose();
-
       return;
     }
 
-    // Idempotent because the caller is a react effect that re-runs whenever any texture lands, so it re-offers the
-    // ones already applied. Without this the line below would dispose the texture still in use.
-    if (drawn.texture === texture) {
-      return;
-    }
-
-    drawn.texture?.dispose();
     drawn.texture = texture;
 
     if (!this.materialOptions?.isCheckerVisible) {
@@ -154,17 +149,16 @@ export class VisualPreviewMeshes {
   }
 
   /**
-   * Detaches every mesh and frees what the renderer uploaded for it.
+   * Detaches every mesh and frees the geometry and materials it built.
    *
-   * Materials and textures are per submesh, so they are this model's to free: leaving them behind would leak one
-   * upload per submesh every time the user opens another visual.
+   * Textures are left alone: they are borrowed, and a level placing the same visual twice would free the second copy's
+   * uploads out from under the first.
    */
   public dispose(): void {
-    for (const { mesh, texture } of this.meshes.values()) {
+    for (const { mesh } of this.meshes.values()) {
       this.parent.remove(mesh);
       mesh.geometry.dispose();
       mesh.material.dispose();
-      texture?.dispose();
     }
 
     this.meshes.clear();

@@ -20,9 +20,8 @@ import {
   DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
   IVisualPreviewSceneConfig,
 } from "@/core/visuals/components/scene/scene-config";
-import { VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
+import { VisualPreviewModel } from "@/core/visuals/components/scene/VisualPreviewModel";
 import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
-import { VisualPreviewSkeleton } from "@/core/visuals/components/scene/VisualPreviewSkeleton";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
@@ -85,17 +84,16 @@ export class VisualPreviewScene {
   private readonly axes: AxesHelper;
   private readonly resizeObserver: ResizeObserver;
 
-  /** Everything the current model draws, or null when nothing is open. */
-  private meshes: Nullable<VisualPreviewMeshes> = null;
-  /** The current model's bones, the skin they drive and the overlay drawing them, or null when it carries none. */
-  private skeleton: Nullable<VisualPreviewSkeleton> = null;
+  /** The model on screen, or null when nothing is open. */
+  private model: Nullable<VisualPreviewModel> = null;
   /** The marker for a joint named elsewhere, kept across models rather than rebuilt. */
   private highlight: Nullable<Points<BufferGeometry, PointsMaterial>> = null;
   /** Where the marker points, kept so a toggle can show it again without the selection being sent a second time. */
   private highlightedJoint: Nullable<[number, number, number]> = null;
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
-  private model: Nullable<IVisualModelViews> = null;
+  /** What the backend packed, kept for the extent the camera and the helpers are sized against. */
+  private views: Nullable<IVisualModelViews> = null;
   /**
    * How far down its collapse chain every mesh is currently drawing, 0 being full detail.
    *
@@ -170,24 +168,19 @@ export class VisualPreviewScene {
    * models as well, since a load clears the screen before the replacement lands. A model of a very different size can
    * end up out of frame that way, which is what the toolbar's reset is for.
    *
-   * @param model - Model views to display, or `null` to clear the scene.
+   * @param views - Model views to display, or `null` to clear the scene.
    */
-  public setModel(model: Nullable<IVisualModelViews>): void {
+  public setModel(views: Nullable<IVisualModelViews>): void {
     this.clearModel();
 
-    this.model = model;
+    this.views = views;
 
-    this.skeleton = model
-      ? VisualPreviewSkeleton.create(model, this.scene, { skeletonColor: this.config.skeletonColor })
-      : null;
-
-    // The skeleton first, because a skinned mesh binds to it as it is built.
-    this.meshes = model
-      ? VisualPreviewMeshes.create(model, this.scene, {
+    this.model = views
+      ? VisualPreviewModel.create(views, this.scene, {
           checker: this.checker,
           detail: this.detail,
           meshColor: this.config.meshColor,
-          skin: this.skeleton?.getSkin() ?? null,
+          skeletonColor: this.config.skeletonColor,
         })
       : null;
 
@@ -198,7 +191,7 @@ export class VisualPreviewScene {
     this.applyScale();
     this.applySkeletonState();
 
-    if (!this.hasFramed && model) {
+    if (!this.hasFramed && views) {
       this.resetCamera();
     }
   }
@@ -216,7 +209,7 @@ export class VisualPreviewScene {
   public setDetailLevel(detail: number): void {
     this.detail = detail;
 
-    this.meshes?.setDetailLevel(detail);
+    this.model?.setDetailLevel(detail);
   }
 
   /**
@@ -232,7 +225,7 @@ export class VisualPreviewScene {
   public setPose(transforms: Nullable<Float32Array>, frame: number, floatsPerBone: number): void {
     this.pose = { floatsPerBone, frame, transforms };
 
-    this.skeleton?.setPose(transforms, frame, floatsPerBone);
+    this.model?.setPose(transforms, frame, floatsPerBone);
   }
 
   /**
@@ -245,7 +238,7 @@ export class VisualPreviewScene {
   public setHiddenBones(bones: ReadonlySet<number>): void {
     this.hiddenBones = bones;
 
-    this.skeleton?.setHiddenBones(bones);
+    this.model?.setHiddenBones(bones);
   }
 
   /**
@@ -302,17 +295,13 @@ export class VisualPreviewScene {
   }
 
   /**
-   * Puts a loaded texture on one submesh, or disposes it when no such submesh is drawn.
+   * Draws one of the model's submeshes with a texture, borrowing it from whoever loaded it.
    *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
-   * @param texture - Uploaded texture the scene takes ownership of.
+   * @param texture - Uploaded texture to draw with.
    */
   public applyTexture(submeshIndex: number, texture: Texture): void {
-    if (this.meshes) {
-      this.meshes.applyTexture(submeshIndex, texture);
-    } else {
-      texture.dispose();
-    }
+    this.model?.applyTexture(submeshIndex, texture);
   }
 
   /**
@@ -323,12 +312,10 @@ export class VisualPreviewScene {
   public applyViewOptions(options: IVisualPreviewViewOptions): void {
     this.viewOptions = options;
 
-    this.meshes?.applyMaterialOptions(options);
+    this.model?.applyViewOptions(options);
 
     this.grid.visible = options.isGridVisible;
     this.axes.visible = options.isAxesVisible;
-
-    this.skeleton?.setOverlayVisible(options.isSkeletonVisible);
 
     this.applyHighlightVisibility();
   }
@@ -344,8 +331,8 @@ export class VisualPreviewScene {
 
     this.hasFramed = true;
 
-    const radius: number = this.model?.fit.radius ?? FALLBACK_RADIUS;
-    const [x, y, z] = this.model?.fit.center ?? [0, 0, 0];
+    const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
+    const [x, y, z] = this.views?.fit.center ?? [0, 0, 0];
     const distance: number = (radius / Math.sin((cameraFieldOfView * Math.PI) / 360)) * cameraFitMargin;
     const length: number = Math.hypot(cameraDirection[0], cameraDirection[1], cameraDirection[2]);
 
@@ -405,11 +392,9 @@ export class VisualPreviewScene {
    * behind would leak one upload per submesh every time the user opens another visual.
    */
   private clearModel(): void {
-    this.meshes?.dispose();
-    this.meshes = null;
-
-    this.skeleton?.dispose();
-    this.skeleton = null;
+    this.model?.dispose();
+    this.model = null;
+    this.views = null;
 
     // The marker itself survives a model change, but what it was pointing at does not. The owner re-sends the
     // selection against the replacement model, which resolves to nothing when that model has no such bone.
@@ -419,7 +404,7 @@ export class VisualPreviewScene {
 
   /** Size the helpers to the model, so the grid reads as ground rather than as a backdrop. */
   private applyScale(): void {
-    const radius: number = this.model?.fit.radius ?? FALLBACK_RADIUS;
+    const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
 
     this.grid.scale.setScalar(radius / 2);
     this.axes.scale.setScalar(radius);
@@ -469,8 +454,8 @@ export class VisualPreviewScene {
    * it: both are stated against bones rather than against one model's geometry.
    */
   private applySkeletonState(): void {
-    this.skeleton?.setPose(this.pose.transforms, this.pose.frame, this.pose.floatsPerBone);
-    this.skeleton?.setHiddenBones(this.hiddenBones);
+    this.model?.setPose(this.pose.transforms, this.pose.frame, this.pose.floatsPerBone);
+    this.model?.setHiddenBones(this.hiddenBones);
   }
 
   private renderFrame(): void {
