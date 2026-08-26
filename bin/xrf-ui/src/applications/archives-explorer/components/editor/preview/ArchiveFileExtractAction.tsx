@@ -6,6 +6,7 @@ import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -24,9 +25,8 @@ export function ArchiveFileExtractAction({ descriptor }: IArchiveFileExtractActi
   const isExtracting: boolean = archivesService.operation.isLoading;
 
   const onExtract = useCallback(async () => {
-    // The archived name is a full path with windows separators; only its leaf is a file name.
-    const separatorAt: number = descriptor.name.lastIndexOf("\\");
-    const suggested: string = separatorAt === -1 ? descriptor.name : descriptor.name.slice(separatorAt + 1);
+    // The archived name is a full logical path; only its leaf is a file name.
+    const suggested: string = splitLogicalPath(descriptor.name).name;
 
     const destination: Nullable<string> = await dialog.save({
       title: "Extract file",

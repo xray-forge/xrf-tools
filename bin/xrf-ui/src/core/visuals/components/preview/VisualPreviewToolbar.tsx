@@ -12,6 +12,7 @@ import { MouseEvent, ReactElement, useCallback, useState } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { LAYOUT } from "@/core/theme/tokens";
+import { VisualPreviewViewToggle } from "@/core/visuals/components/preview/VisualPreviewViewToggle";
 import { IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -73,25 +74,18 @@ export function VisualPreviewToolbar({
     [onChangeDetail]
   );
 
-  const onToggleWireframe = useCallback(() => {
-    onChangeOptions({ ...options, isWireframe: !options.isWireframe });
-  }, [options, onChangeOptions]);
-
-  const onToggleGrid = useCallback(() => {
-    onChangeOptions({ ...options, isGridVisible: !options.isGridVisible });
-  }, [options, onChangeOptions]);
-
-  const onToggleAxes = useCallback(() => {
-    onChangeOptions({ ...options, isAxesVisible: !options.isAxesVisible });
-  }, [options, onChangeOptions]);
-
-  const onToggleChecker = useCallback(() => {
-    onChangeOptions({ ...options, isCheckerVisible: !options.isCheckerVisible });
-  }, [options, onChangeOptions]);
-
-  const onToggleSkeleton = useCallback(() => {
-    onChangeOptions({ ...options, isSkeletonVisible: !options.isSkeletonVisible });
-  }, [options, onChangeOptions]);
+  /**
+   * Flips one view option, which is the only thing any of these toggles does.
+   *
+   * Keyed rather than one callback per option, because every option in this set is a boolean the toolbar owns: a
+   * callback each restated the same line five times and was five places to forget a new one.
+   */
+  const onToggle = useCallback(
+    (option: keyof IVisualPreviewViewOptions) => {
+      onChangeOptions({ ...options, [option]: !options[option] });
+    },
+    [options, onChangeOptions]
+  );
 
   return (
     <EditorToolbar
@@ -158,63 +152,42 @@ export function VisualPreviewToolbar({
 
           <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
-          <Tooltip title={"Wireframe"}>
-            <IconButton
-              aria-label={"Wireframe"}
-              color={"inherit"}
-              sx={{ opacity: options.isWireframe ? 1 : 0.45 }}
-              onClick={onToggleWireframe}
-            >
-              <HexagonIcon />
-            </IconButton>
-          </Tooltip>
+          <VisualPreviewViewToggle
+            label={"Wireframe"}
+            icon={<HexagonIcon />}
+            isOn={options.isWireframe}
+            onToggle={() => onToggle("isWireframe")}
+          />
 
-          <Tooltip title={"Uv checkerboard"}>
-            <IconButton
-              aria-label={"Uv checkerboard"}
-              color={"inherit"}
-              sx={{ opacity: options.isCheckerVisible ? 1 : 0.45 }}
-              onClick={onToggleChecker}
-            >
-              <TextureIcon />
-            </IconButton>
-          </Tooltip>
+          <VisualPreviewViewToggle
+            label={"Uv checkerboard"}
+            icon={<TextureIcon />}
+            isOn={options.isCheckerVisible}
+            onToggle={() => onToggle("isCheckerVisible")}
+          />
 
-          <Tooltip title={hasSkeleton ? "Skeleton" : "No skeleton in this model"} describeChild>
-            <span>
-              <IconButton
-                aria-label={"Skeleton"}
-                color={"inherit"}
-                sx={{ opacity: options.isSkeletonVisible ? 1 : 0.45 }}
-                disabled={!hasSkeleton}
-                onClick={onToggleSkeleton}
-              >
-                <PolylineIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
+          <VisualPreviewViewToggle
+            label={"Skeleton"}
+            icon={<PolylineIcon />}
+            isOn={options.isSkeletonVisible}
+            isDisabled={!hasSkeleton}
+            unavailableTitle={"No skeleton in this model"}
+            onToggle={() => onToggle("isSkeletonVisible")}
+          />
 
-          <Tooltip title={"Grid"}>
-            <IconButton
-              aria-label={"Grid"}
-              sx={{ opacity: options.isGridVisible ? 1 : 0.45 }}
-              color={"inherit"}
-              onClick={onToggleGrid}
-            >
-              <GridOnIcon />
-            </IconButton>
-          </Tooltip>
+          <VisualPreviewViewToggle
+            label={"Grid"}
+            icon={<GridOnIcon />}
+            isOn={options.isGridVisible}
+            onToggle={() => onToggle("isGridVisible")}
+          />
 
-          <Tooltip title={"Axes"}>
-            <IconButton
-              aria-label={"Axes"}
-              sx={{ opacity: options.isAxesVisible ? 1 : 0.45 }}
-              color={"inherit"}
-              onClick={onToggleAxes}
-            >
-              <ThreeDRotationIcon />
-            </IconButton>
-          </Tooltip>
+          <VisualPreviewViewToggle
+            label={"Axes"}
+            icon={<ThreeDRotationIcon />}
+            isOn={options.isAxesVisible}
+            onToggle={() => onToggle("isAxesVisible")}
+          />
 
           <Tooltip title={"Reset camera"}>
             <IconButton aria-label={"Reset camera"} color={"inherit"} onClick={onResetCamera}>

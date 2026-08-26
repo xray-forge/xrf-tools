@@ -17,10 +17,10 @@ import {
   IPathTreeItem,
   LOGICAL_PATH_SEPARATOR,
   parsePathTree,
+  splitLogicalPath,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -106,22 +106,16 @@ export function VisualsMenu({
   const rows: Array<IEditorSearchResultRow> = useMemo(
     () =>
       search.results.map((result: ISearchResult<XrayAsset>) => {
-        const separatorAt: number = result.item.logicalPath.lastIndexOf("\\");
+        const { name, directory } = splitLogicalPath(result.item.logicalPath);
 
-        return {
-          id: result.item.logicalPath,
-          label: separatorAt === -1 ? result.item.logicalPath : result.item.logicalPath.slice(separatorAt + 1),
-          description: separatorAt === -1 ? undefined : result.item.logicalPath.slice(0, separatorAt),
-        };
+        return { id: result.item.logicalPath, label: name, description: directory ?? undefined };
       }),
     [search.results]
   );
 
   // Selection follows what is open rather than what was clicked, so a failed open leaves the tree pointing at the model
   // the viewport is explaining.
-  const openSource: Nullable<string> = visualsService.visual.value
-    ? describeVisualSource(visualsService.visual.value.selected.source)
-    : null;
+  const openSource: Nullable<string> = visualsService.sourceLabel;
   const selectedItem: Nullable<string> = openSource ? toFileItemId(openSource) : null;
 
   const onSelectAsset = useCallback(

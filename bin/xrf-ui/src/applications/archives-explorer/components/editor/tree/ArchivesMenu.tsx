@@ -16,6 +16,7 @@ import {
   getDirectoryItemPath,
   getFileItemPath,
   LOGICAL_PATH_SEPARATOR,
+  splitLogicalPath,
   toDirectoryItemId,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
@@ -65,13 +66,9 @@ export function ArchivesMenu({
   const rows: Array<IEditorSearchResultRow> = useMemo(
     () =>
       search.results.map((result: ISearchResult<ArchiveFileDescriptor>) => {
-        const separatorAt: number = result.item.name.lastIndexOf("\\");
+        const { name, directory } = splitLogicalPath(result.item.name);
 
-        return {
-          id: result.item.name,
-          label: separatorAt === -1 ? result.item.name : result.item.name.slice(separatorAt + 1),
-          description: separatorAt === -1 ? undefined : result.item.name.slice(0, separatorAt),
-        };
+        return { id: result.item.name, label: name, description: directory ?? undefined };
       }),
     [search.results]
   );
