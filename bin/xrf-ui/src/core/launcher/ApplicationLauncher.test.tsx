@@ -235,12 +235,28 @@ describe("ApplicationLauncher", () => {
     ]);
   });
 
-  it("drops the section headings in rows, where the group is a column instead", async () => {
-    const { getByRole, queryByRole } = renderLauncher();
+  it("breaks the list where the group changes, rather than repeating it down a column", async () => {
+    const { getAllByRole, getByRole } = renderLauncher();
 
     await userEvent.click(getByRole("button", { name: "Row view" }));
 
-    expect(queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    // The same headings the grid shows, so the taxonomy does not depend on which view is chosen.
+    expect(getAllByRole("heading", { level: 2 }).map((heading: HTMLElement) => heading.textContent)).toEqual([
+      "Archives",
+      "Spawns",
+    ]);
+  });
+
+  it("names the group on a row only once the separators are gone", async () => {
+    const { getByLabelText, getByRole, getByTestId } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+    await userEvent.type(getByLabelText("Search tools"), "spawn");
+
+    const catalog = getByTestId("launcher-catalog");
+
+    expect(within(catalog).queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(within(catalog).getByText("Spawns")).toBeInTheDocument();
   });
 
   it("keeps drawing rows once a search narrows them", async () => {

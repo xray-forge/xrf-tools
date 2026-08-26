@@ -2,6 +2,7 @@ import { Box, Card, CardActionArea, Theme, Tooltip, Typography } from "@mui/mate
 import { ReactElement, useCallback } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLauncherGroupLabel";
+import { ApplicationLauncherPlannedBadge } from "@/core/launcher/ApplicationLauncherPlannedBadge";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 
 export interface IApplicationLauncherCardProps {
@@ -71,26 +72,7 @@ export function ApplicationLauncherCard({
           {application.label}
         </Typography>
 
-        {isPlanned ? (
-          <Typography
-            component={"span"}
-            variant={"caption"}
-            sx={{
-              flexShrink: 0,
-              alignSelf: "flex-start",
-              paddingX: 0.75,
-              color: "text.secondary",
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              fontSize: "0.625rem",
-              fontWeight: 600,
-              lineHeight: "17px",
-            }}
-          >
-            Planned
-          </Typography>
-        ) : null}
+        {isPlanned ? <ApplicationLauncherPlannedBadge /> : null}
       </Box>
 
       <Typography

@@ -1,7 +1,7 @@
 import { default as SearchOffIcon } from "@mui/icons-material/SearchOff";
-import { Box, Button, List, Typography } from "@mui/material";
+import { Box, Button, List, ListSubheader, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { ApplicationLauncherCard } from "@/core/launcher/ApplicationLauncherCard";
@@ -136,8 +136,8 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     onSelect: onSelectResult,
   });
 
-  /** Section headings survive only in the card grid, and only while it is showing the whole catalog. */
-  const isGrouped: boolean = view === "grid" && !search.isSearching;
+  /** Whether tools are announced under their group at all, which ranked results cannot be. */
+  const isGrouped: boolean = !search.isSearching;
 
   const entries: Array<TCatalogEntry> = search.isSearching
     ? search.results.map(({ item }: ISearchResult<TCatalogEntry>) => item)
@@ -148,14 +148,35 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     (tools: Array<TCatalogEntry>): ReactElement =>
       view === "rows" ? (
         <List aria-label={"Tools"} disablePadding={true}>
-          {tools.map(([application, group]: TCatalogEntry) => (
-            <ApplicationLauncherRow
-              key={application.id}
-              application={application}
-              group={group}
-              isEnabled={isEnabled(application)}
-              onOpen={onOpen}
-            />
+          {tools.map(([application, group]: TCatalogEntry, index: number) => (
+            <Fragment key={application.id}>
+              {isGrouped && group.id !== tools[index - 1]?.[1].id ? (
+                <ListSubheader
+                  disableGutters={true}
+                  disableSticky={true}
+                  sx={{
+                    backgroundColor: "transparent",
+                    lineHeight: "unset",
+                    paddingX: 1,
+                    paddingTop: index === 0 ? 0 : 2,
+                    paddingBottom: 0.5,
+                  }}
+                >
+                  <ApplicationLauncherSection
+                    group={group}
+                    count={tools.filter(([, it]: TCatalogEntry) => it.id === group.id).length}
+                  />
+                </ListSubheader>
+              ) : null}
+
+              <ApplicationLauncherRow
+                application={application}
+                group={group}
+                isEnabled={isEnabled(application)}
+                isGroupNamed={!isGrouped}
+                onOpen={onOpen}
+              />
+            </Fragment>
           ))}
         </List>
       ) : (
@@ -262,7 +283,7 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
                   }
                 />
               )
-            ) : isGrouped ? (
+            ) : view === "grid" ? (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {visibleSections.map(({ group, applications: grouped }: ILauncherSection) => (
                   <Box key={group.id} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>

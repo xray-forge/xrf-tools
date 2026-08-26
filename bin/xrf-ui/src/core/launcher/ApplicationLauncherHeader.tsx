@@ -66,7 +66,7 @@ export function ApplicationLauncherHeader({
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
-        gap: 1,
+        gap: 1.5,
         paddingBottom: 1.5,
         borderBottom: 1,
         borderColor: "divider",
@@ -145,13 +145,13 @@ export function ApplicationLauncherHeader({
           onChange={(_, next: Nullable<TCatalogView>) => next && onSelectView(next)}
         >
           <Tooltip title={"Grid view"}>
-            <ToggleButton value={"grid"} aria-label={"Grid view"}>
+            <ToggleButton aria-label={"Grid view"} value={"grid"}>
               <GridViewIcon fontSize={"small"} />
             </ToggleButton>
           </Tooltip>
 
           <Tooltip title={"Row view"}>
-            <ToggleButton value={"rows"} aria-label={"Row view"}>
+            <ToggleButton aria-label={"Row view"} value={"rows"}>
               <TableRowsIcon fontSize={"small"} />
             </ToggleButton>
           </Tooltip>
@@ -160,9 +160,9 @@ export function ApplicationLauncherHeader({
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
         <Chip
+          aria-pressed={selectedGroupId === null}
           size={"small"}
           label={`All ${totalCount}`}
-          aria-pressed={selectedGroupId === null}
           color={selectedGroupId === null ? "primary" : "default"}
           variant={selectedGroupId === null ? "filled" : "outlined"}
           onClick={() => onSelectGroup(null)}

@@ -2,24 +2,16 @@ import { Box, ListItem, ListItemButton, Theme, Tooltip, Typography } from "@mui/
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLauncherGroupLabel";
+import { ApplicationLauncherPlannedBadge } from "@/core/launcher/ApplicationLauncherPlannedBadge";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { TREE } from "@/core/theme/tokens";
-
-/** A row measures the same as an explorer tree row, so the two read as one application. */
-const ROW_LAYOUT = {
-  display: "grid",
-  gridTemplateColumns: `${TREE.iconWidth}px 240px minmax(0, 1fr) 132px 72px`,
-  alignItems: "center",
-  gap: 1,
-  height: TREE.rowHeight,
-  paddingX: 1,
-  paddingY: 0,
-} as const;
 
 export interface IApplicationLauncherRowProps {
   application: IApplicationDescriptor;
   group: IApplicationGroup;
   isEnabled: boolean;
+  /** Names the group on the row itself, for a list with no separator above it to say so. */
+  isGroupNamed?: boolean;
   onOpen: (application: IApplicationDescriptor) => void;
 }
 
@@ -30,6 +22,7 @@ export function ApplicationLauncherRow({
   application,
   group,
   isEnabled,
+  isGroupNamed,
   onOpen,
 }: IApplicationLauncherRowProps): ReactElement {
   const isPlanned: boolean = application.status === EApplicationStatus.PLANNED;
@@ -40,6 +33,20 @@ export function ApplicationLauncherRow({
       void application.preload?.();
     }
   }, [application, isEnabled]);
+
+  /**
+   * A row measures the same as an explorer tree row, so the two read as one application. The group
+   * takes a column only where it is not already stated above the run this row belongs to.
+   */
+  const layout = {
+    display: "grid",
+    gridTemplateColumns: `${TREE.iconWidth}px 240px minmax(0, 1fr)${isGroupNamed ? " 132px" : ""}`,
+    alignItems: "center",
+    gap: 1,
+    height: TREE.rowHeight,
+    paddingX: 1,
+    paddingY: 0,
+  } as const;
 
   const content: ReactNode = (
     <>
@@ -56,19 +63,23 @@ export function ApplicationLauncherRow({
         {application.icon}
       </Box>
 
-      <Typography
-        variant={"body2"}
-        sx={{
-          minWidth: 0,
-          overflow: "hidden",
-          color: "text.primary",
-          fontWeight: 500,
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {application.label}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+        <Typography
+          variant={"body2"}
+          sx={{
+            minWidth: 0,
+            overflow: "hidden",
+            color: "text.primary",
+            fontWeight: 500,
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {application.label}
+        </Typography>
+
+        {isPlanned ? <ApplicationLauncherPlannedBadge /> : null}
+      </Box>
 
       <Typography
         variant={"body2"}
@@ -83,28 +94,7 @@ export function ApplicationLauncherRow({
         {application.description}
       </Typography>
 
-      <ApplicationLauncherGroupLabel group={group} />
-
-      <Box sx={{ display: "flex", minWidth: 0 }}>
-        {isPlanned ? (
-          <Typography
-            component={"span"}
-            variant={"caption"}
-            sx={{
-              paddingX: 0.75,
-              color: "text.secondary",
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              fontSize: "0.625rem",
-              fontWeight: 600,
-              lineHeight: "17px",
-            }}
-          >
-            Planned
-          </Typography>
-        ) : null}
-      </Box>
+      {isGroupNamed ? <ApplicationLauncherGroupLabel group={group} /> : null}
     </>
   );
 
@@ -113,7 +103,7 @@ export function ApplicationLauncherRow({
       {isEnabled ? (
         <ListItemButton
           aria-label={application.label}
-          sx={ROW_LAYOUT}
+          sx={layout}
           onFocus={onWarm}
           onMouseEnter={onWarm}
           onClick={() => onOpen(application)}
@@ -122,7 +112,7 @@ export function ApplicationLauncherRow({
         </ListItemButton>
       ) : (
         <Tooltip describeChild title={"Not implemented yet"}>
-          <Box sx={{ ...ROW_LAYOUT, cursor: "not-allowed" }}>{content}</Box>
+          <Box sx={{ ...layout, cursor: "not-allowed" }}>{content}</Box>
         </Tooltip>
       )}
     </ListItem>

@@ -18,15 +18,13 @@ export function ApplicationLauncherSection({ group, count }: IApplicationLaunche
         {group.icon}
       </Box>
 
-      <Typography component={"h2"} variant={"caption"} sx={{ color: "text.secondary", fontWeight: 600 }}>
+      <Typography component={"h2"} variant={"subtitle2"} sx={{ color: "text.primary", fontWeight: 600 }}>
         {group.label}
       </Typography>
 
       <Typography variant={"caption"} sx={{ color: "text.secondary", opacity: 0.7 }}>
         {count}
       </Typography>
-
-      <Box aria-hidden={true} sx={{ flexGrow: 1, height: "1px", marginLeft: 0.5, backgroundColor: "divider" }} />
     </Box>
   );
 }

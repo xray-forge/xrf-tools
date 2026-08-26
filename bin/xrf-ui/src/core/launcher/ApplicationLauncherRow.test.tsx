@@ -33,13 +33,28 @@ const GROUP: IApplicationGroup = {
 };
 
 describe("ApplicationLauncherRow", () => {
-  it("names its group, which rows have instead of a section heading", () => {
+  it("carries the tool and what it does", () => {
     const { getByText } = renderWithProviders(
       <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
     );
 
     expect(getByText("Spawn editor")).toBeInTheDocument();
     expect(getByText("Browse and edit a packed spawn file")).toBeInTheDocument();
+  });
+
+  it("says nothing about the group while a separator above the run does", () => {
+    const { queryByText } = renderWithProviders(
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+    );
+
+    expect(queryByText("Spawns")).not.toBeInTheDocument();
+  });
+
+  it("names its group where the run is gone, which is every search result", () => {
+    const { getByText } = renderWithProviders(
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled isGroupNamed onOpen={jest.fn()} />
+    );
+
     expect(getByText("Spawns")).toBeInTheDocument();
   });
 
