@@ -2,9 +2,12 @@ use std::fs::{File, OpenOptions};
 use std::io::{Error as IoError, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fileslice::FileSlice;
+
+/// How long a run's directory survives before a later run collects it.
+const GENERATED_RESOURCE_RETENTION: Duration = Duration::from_secs(60 * 60);
 
 /// Get relative path to sample resource.
 pub fn build_relative_test_sample_file_path(file: &str, resource: &str) -> String {
@@ -25,6 +28,32 @@ pub fn build_relative_test_sample_file_directory(file: &str) -> String {
   path.into_os_string().into_string().unwrap()
 }
 
+/// Remove the run directories under `root` that were started before `collect_before`.
+///
+/// Only entries shaped `<target>-<pid>-<nanos>` are considered, so anything else left in the tree by hand is not this
+/// function's to delete. Best effort throughout - a directory another user owns, or one held open on Windows, is left
+/// where it is rather than failing a test run over housekeeping.
+fn collect_stale_generated_resources(root: &Path, collect_before: u128) {
+  let Ok(entries) = std::fs::read_dir(root) else {
+    return;
+  };
+
+  for entry in entries.flatten() {
+    let name: String = entry.file_name().to_string_lossy().into_owned();
+    let mut parts = name.rsplitn(3, '-');
+
+    let started_at: Option<u128> = parts.next().and_then(|part| part.parse().ok());
+    let process: Option<u32> = parts.next().and_then(|part| part.parse().ok());
+
+    if let (Some(started_at), Some(_), Some(_)) = (started_at, process, parts.next())
+      && started_at < collect_before
+      && entry.path().is_dir()
+    {
+      let _ = std::fs::remove_dir_all(entry.path());
+    }
+  }
+}
+
 /// Get absolute path to a generated test resource.
 pub fn build_absolute_generated_test_resource_path(resource_path: &str) -> PathBuf {
   static GENERATED_TEST_RESOURCE_ROOT: OnceLock<PathBuf> = OnceLock::new();
@@ -39,15 +68,27 @@ pub fn build_absolute_generated_test_resource_path(resource_path: &str) -> PathB
       .ok()
       .and_then(|path| path.file_stem().map(|stem| stem.to_string_lossy().into_owned()))
       .unwrap_or_else(|| String::from("test"));
+
+    // Cargo names a test binary `<target>-<16 hex>`, and that hash moves whenever the toolchain or a dependency does.
+    // Dropping it keeps a directory readable and groups every run of one target under the same prefix.
+    let target: &str = executable
+      .rsplit_once('-')
+      .filter(|(_, hash)| hash.len() == 16 && hash.chars().all(|char| char.is_ascii_hexdigit()))
+      .map_or(executable.as_str(), |(name, _)| name);
+
     let started_at: u128 = SystemTime::now()
       .duration_since(UNIX_EPOCH)
       .expect("system clock to be after the Unix epoch")
       .as_nanos();
 
-    workspace_root
-      .join("target")
-      .join("test-resources")
-      .join(format!("{executable}-{}-{started_at}", std::process::id()))
+    let root: PathBuf = workspace_root.join("target").join("test-resources");
+
+    collect_stale_generated_resources(
+      &root,
+      started_at.saturating_sub(GENERATED_RESOURCE_RETENTION.as_nanos()),
+    );
+
+    root.join(format!("{target}-{}-{started_at}", std::process::id()))
   });
 
   root.join(resource_path)
@@ -220,5 +261,67 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  /// A scratch tree inside this run's own directory, so a concurrent run never sees it.
+  fn collector_root(case: &str) -> PathBuf {
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("utils/collector/{case}"));
+
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).expect("scratch root");
+
+    root
+  }
+
+  fn run_directory(root: &Path, name: &str) -> PathBuf {
+    let path: PathBuf = root.join(name);
+
+    fs::create_dir_all(path.join("nested")).expect("run directory");
+    fs::write(path.join("nested").join("written.bin"), b"x").expect("run output");
+
+    path
+  }
+
+  #[test]
+  fn collects_run_directories_started_before_the_cutoff() {
+    let root: PathBuf = collector_root("collected");
+    let finished: PathBuf = run_directory(&root, "xrf_db-1234-1000");
+    let running: PathBuf = run_directory(&root, "xrf_db-5678-3000");
+
+    collect_stale_generated_resources(&root, 2000);
+
+    assert!(!finished.exists(), "a run old enough to be finished is collected");
+    // The whole point of the cutoff: a directory a live run may still be writing into must survive.
+    assert!(running.exists(), "a run that may still be writing is left alone");
+  }
+
+  #[test]
+  fn leaves_anything_that_is_not_a_run_directory_alone() {
+    let root: PathBuf = collector_root("untouched");
+
+    fs::create_dir_all(root.join("notes")).expect("directory");
+    fs::create_dir_all(root.join("xrf_db-nope")).expect("directory");
+    // Ends in a number old enough to collect, but names no process - a trailing timestamp alone is not a run.
+    fs::create_dir_all(root.join("notes-1000")).expect("directory");
+    fs::write(root.join("xrf_db-1234-1000"), b"a file, not a run").expect("file");
+
+    collect_stale_generated_resources(&root, u128::MAX);
+
+    assert!(
+      root.join("notes").exists(),
+      "a name that is not run-shaped is not ours to delete"
+    );
+    assert!(
+      root.join("xrf_db-nope").exists(),
+      "a name missing the timestamp is not run-shaped"
+    );
+    assert!(
+      root.join("notes-1000").exists(),
+      "a trailing number alone does not make a name run-shaped"
+    );
+    assert!(
+      root.join("xrf_db-1234-1000").is_file(),
+      "run-shaped or not, a file is never removed"
+    );
   }
 }
