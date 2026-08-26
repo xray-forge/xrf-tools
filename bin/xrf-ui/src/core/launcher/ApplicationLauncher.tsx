@@ -263,9 +263,9 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
                 />
               )
             ) : isGrouped ? (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {visibleSections.map(({ group, applications: grouped }: ILauncherSection) => (
-                  <Box key={group.id} sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                  <Box key={group.id} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <ApplicationLauncherSection group={group} count={grouped.length} />
 
                     {renderTools(

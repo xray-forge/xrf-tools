@@ -13,7 +13,7 @@ export interface IApplicationLauncherSectionProps {
  */
 export function ApplicationLauncherSection({ group, count }: IApplicationLauncherSectionProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, maxWidth: 340 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
       <Box aria-hidden={true} sx={{ display: "flex", color: "text.secondary", "& .MuiSvgIcon-root": { fontSize: 16 } }}>
         {group.icon}
       </Box>

@@ -97,7 +97,6 @@ export function ApplicationLauncherCard({
         variant={"body2"}
         sx={{
           display: "-webkit-box",
-          minHeight: 32,
           color: "text.secondary",
           WebkitBoxOrient: "vertical",
           WebkitLineClamp: 2,
