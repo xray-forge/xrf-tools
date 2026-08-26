@@ -132,7 +132,7 @@ export function createApplicationTheme(): Theme {
         styleOverrides: {
           root: ({ theme }) => ({
             borderRadius: RADIUS.lg,
-            borderColor: theme.palette.divider,
+            borderColor: (theme.vars ?? theme).palette.divider,
           }),
         },
       },
@@ -147,7 +147,13 @@ export function createApplicationTheme(): Theme {
       },
       MuiOutlinedInput: {
         styleOverrides: {
-          root: { borderRadius: RADIUS.sm },
+          root: ({ theme }) => ({
+            borderRadius: RADIUS.sm,
+            backgroundColor: (theme.vars ?? theme).palette.action.hover,
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: (theme.vars ?? theme).palette.divider,
+            },
+          }),
         },
       },
       MuiDataGrid: {
