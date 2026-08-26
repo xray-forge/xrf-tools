@@ -13,7 +13,7 @@ import {
   VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
 import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { FLOATS_PER_BONE } from "@/core/visuals/lib/visual-views";
+import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
 
@@ -313,4 +313,39 @@ export function mockVisualMotionTransforms(
   }
 
   return transforms.buffer as ArrayBuffer;
+}
+
+/**
+ * One bone's transform, flattened the way both the bind buffer and a baked motion store it.
+ *
+ * An identity basis and a translation, because a test reading a posed bone is nearly always asking where it ended up
+ * rather than which way it faces. `visual-views.test.ts` writes this layout out literally on purpose - it is the test
+ * that proves it - so this builder is for the tests that consume the layout rather than assert it.
+ *
+ * @param translation - Where this bone sits, in all three axes.
+ * @returns Twelve floats: `i`, `j`, `k`, then `c`.
+ */
+export function mockVisualBoneFloats(translation: number): Array<number> {
+  return [1, 0, 0, 0, 1, 0, 0, 0, 1, translation, translation, translation];
+}
+
+/**
+ * Creates model views, the shape every scene-layer component is handed.
+ *
+ * Empty by default - no geometry, no skeleton - so a test naming one field says exactly what it is about.
+ *
+ * @param overrides - Views to replace.
+ * @returns Model views a scene can be built from.
+ */
+export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {}): IVisualModelViews {
+  return {
+    submeshes: [],
+    fit: { center: [0, 0, 0], radius: 1 },
+    skeleton: null,
+    skeletonPairs: null,
+    skeletonBinds: null,
+    vertexCount: 0,
+    levelCount: 1,
+    ...overrides,
+  };
 }

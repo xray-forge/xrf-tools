@@ -1,15 +1,12 @@
 import {
   AmbientLight,
   AxesHelper,
-  Bone,
   BufferAttribute,
   BufferGeometry,
   Color,
   DataTexture,
   DirectionalLight,
   GridHelper,
-  LineBasicMaterial,
-  LineSegments,
   Matrix4,
   Mesh,
   MeshStandardMaterial,
@@ -17,7 +14,6 @@ import {
   Points,
   PointsMaterial,
   Scene,
-  Skeleton,
   SkinnedMesh,
   Texture,
   WebGLRenderer,
@@ -29,14 +25,9 @@ import {
   IVisualPreviewSceneConfig,
 } from "@/core/visuals/components/scene/scene-config";
 import { createCheckerTexture, createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
-import {
-  FLOATS_PER_BONE,
-  getVisualSubmeshLevel,
-  IVisualModelViews,
-  IVisualSubmeshLevel,
-  TRANSLATION_OFFSET,
-} from "@/core/visuals/lib/visual-views";
-import { Nullable, Optional } from "@/lib/types/general";
+import { VisualPreviewSkeleton } from "@/core/visuals/components/scene/VisualPreviewSkeleton";
+import { getVisualSubmeshLevel, IVisualModelViews, IVisualSubmeshLevel } from "@/core/visuals/lib/visual-views";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * How a preview looks before anyone touches a toggle.
@@ -88,21 +79,6 @@ interface IVisualSubmeshMesh {
 }
 
 /**
- * Where one frame's bone transforms are read from.
- *
- * Which buffer and how far apart its bones sit is one decision, not two: a motion too short for the frame asked for
- * falls back to the bind pose, and the bind pose has a stride and an origin of its own. Resolved once so the mesh and
- * the overlay index the same way instead of each re-deriving it.
- */
-interface IPosedFrame {
-  source: Float32Array;
-  /** Floats one bone occupies in `source`. */
-  stride: number;
-  /** Where this frame's first bone starts in `source`. */
-  base: number;
-}
-
-/**
  * Owns the three.js scene imperatively, outside of react state.
  *
  * An editor scene graph is long lived and mutated by direct manipulation, so it is deliberately not expressed as react
@@ -127,21 +103,12 @@ export class VisualPreviewScene {
    * position in an array would be the wrong thing to trust.
    */
   private meshes: Map<number, IVisualSubmeshMesh> = new Map();
-  /** The bind pose overlay of the current model, or null when it carries no bind data. */
-  private skeleton: Nullable<LineSegments<BufferGeometry, LineBasicMaterial>> = null;
+  /** The current model's bones, the skin they drive and the overlay drawing them, or null when it carries none. */
+  private skeleton: Nullable<VisualPreviewSkeleton> = null;
   /** The marker for a joint named elsewhere, kept across models rather than rebuilt. */
   private highlight: Nullable<Points<BufferGeometry, PointsMaterial>> = null;
   /** Where the marker points, kept so a toggle can show it again without the selection being sent a second time. */
   private highlightedJoint: Nullable<[number, number, number]> = null;
-  /**
-   * One bone per bind transform, in bone order, and the skeleton the skinned meshes are bound to.
-   *
-   * Flat rather than parented: the backend already composed every bone into model space, so a hierarchy here would
-   * compose it a second time. Their matrices are set directly and never derived, which is why they carry
-   * `matrixAutoUpdate = false`.
-   */
-  private bones: Array<Bone> = [];
-  private skin: Nullable<Skeleton> = null;
   /** The last options applied, so a texture landing later knows whether the checker is currently covering it. */
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   private model: Nullable<IVisualModelViews> = null;
@@ -157,14 +124,16 @@ export class VisualPreviewScene {
    */
   private hasFramed: boolean = false;
   /**
-   * The pose last asked for, so hiding a bone or opening another model can re-apply it without it being sent again.
+   * The pose and the hidden bones last asked for, kept because they outlive any one model.
+   *
+   * Both are stated against a skeleton rather than against one model's geometry, so a replacement wears them straight
+   * away instead of flashing its bind pose with every part attached until the owner sends the same state again.
    */
   private pose: { transforms: Nullable<Float32Array>; frame: number; floatsPerBone: number } = {
     floatsPerBone: 0,
     frame: 0,
     transforms: null,
   };
-  /** Bones collapsed to nothing, by index, already including the descendants of each. */
   private hiddenBones: ReadonlySet<number> = new Set();
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
@@ -224,7 +193,9 @@ export class VisualPreviewScene {
 
     this.model = model;
 
-    this.applySkin(model);
+    this.skeleton = model
+      ? VisualPreviewSkeleton.create(model, this.scene, { skeletonColor: this.config.skeletonColor })
+      : null;
 
     for (const submesh of model?.submeshes ?? []) {
       const geometry: BufferGeometry = createSubmeshGeometry(submesh, this.detail);
@@ -236,37 +207,31 @@ export class VisualPreviewScene {
 
       // Skinned only when this submesh carries links and the model carries bones to bind them to. A skinned mesh is
       // never frustum culled, because three.js measures it against its bind pose and a motion reaches outside that.
-      const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && this.skin);
+      const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && this.skeleton);
       const mesh: Mesh<BufferGeometry, MeshStandardMaterial> = isSkinned
         ? new SkinnedMesh(geometry, material)
         : new Mesh(geometry, material);
 
       mesh.name = submesh.label;
 
-      if (mesh instanceof SkinnedMesh && this.skin) {
+      if (mesh instanceof SkinnedMesh && this.skeleton) {
         mesh.frustumCulled = false;
         // An identity bind matrix, because the vertices and the bone transforms are already in the same space: the
         // backend composed both into model space. Letting three.js take the mesh's own world matrix instead would work
         // only as long as nothing ever moved the mesh.
-        mesh.bind(this.skin, new Matrix4());
+        mesh.bind(this.skeleton.getSkin(), new Matrix4());
       }
 
       this.meshes.set(submesh.index, { mesh, texture: null });
       this.scene.add(mesh);
     }
 
-    this.applySkeleton(model);
-
     if (this.viewOptions) {
       this.applyViewOptions(this.viewOptions);
     }
 
     this.applyScale();
-
-    // The pose and the hidden bones are the scene's to keep: both are expressed against the skeleton rather than
-    // against one model's geometry, so a replacement wears them straight away instead of flashing its bind pose with
-    // every part attached until the owner sends the same state again.
-    this.applyPose();
+    this.applySkeletonState();
 
     if (!this.hasFramed && model) {
       this.resetCamera();
@@ -300,10 +265,8 @@ export class VisualPreviewScene {
   /**
    * Poses the model from one frame of a baked motion, or returns it to its bind pose.
    *
-   * Drives the mesh and the overlay from one buffer: each bone's transform becomes that bone's matrix, which is what
-   * skinning multiplies by the inverse bind, and its translation becomes the overlay's segment endpoints. A frame is
-   * therefore a scatter of writes into matrices already allocated and one attribute update - no geometry rebuilt, no
-   * buffer allocated - which is what keeps thirty frames a second from becoming thirty uploads.
+   * Recorded as well as forwarded, because a model opened later has to arrive wearing it. What a frame costs and how it
+   * is indexed belongs to `VisualPreviewSkeleton`.
    *
    * @param transforms - Every frame's bone transforms, frame major, or null to show the bind pose again.
    * @param frame - Which frame of that buffer to show.
@@ -312,18 +275,20 @@ export class VisualPreviewScene {
   public setPose(transforms: Nullable<Float32Array>, frame: number, floatsPerBone: number): void {
     this.pose = { floatsPerBone, frame, transforms };
 
-    this.applyPose();
+    this.skeleton?.setPose(transforms, frame, floatsPerBone);
   }
 
   /**
    * Collapses some of the model's bones, the way the engine hides a part that is not attached.
+   *
+   * Recorded as well as forwarded, for the same reason the pose is.
    *
    * @param bones - Indices of bones to collapse, already including their descendants.
    */
   public setHiddenBones(bones: ReadonlySet<number>): void {
     this.hiddenBones = bones;
 
-    this.applyPose();
+    this.skeleton?.setHiddenBones(bones);
   }
 
   /**
@@ -432,9 +397,7 @@ export class VisualPreviewScene {
     this.grid.visible = options.isGridVisible;
     this.axes.visible = options.isAxesVisible;
 
-    if (this.skeleton) {
-      this.skeleton.visible = options.isSkeletonVisible;
-    }
+    this.skeleton?.setOverlayVisible(options.isSkeletonVisible);
 
     this.applyHighlightVisibility();
   }
@@ -520,225 +483,13 @@ export class VisualPreviewScene {
 
     this.meshes = new Map();
 
-    if (this.skeleton) {
-      this.scene.remove(this.skeleton);
-      this.skeleton.geometry.dispose();
-      this.skeleton.material.dispose();
-      this.skeleton = null;
-    }
-
-    for (const bone of this.bones) {
-      this.scene.remove(bone);
-    }
-
-    // Disposing releases the bone texture the renderer uploaded for it, which is one texture per model opened.
-    this.skin?.dispose();
-    this.skin = null;
-    this.bones = [];
+    this.skeleton?.dispose();
+    this.skeleton = null;
 
     // The marker itself survives a model change, but what it was pointing at does not. The owner re-sends the
     // selection against the replacement model, which resolves to nothing when that model has no such bone.
     this.highlightedJoint = null;
     this.applyHighlightVisibility();
-  }
-
-  /**
-   * Writes the current pose into the bones, then collapses the hidden ones.
-   *
-   * Hiding happens after posing rather than instead of it, because a hidden bone still has to be written before it is
-   * zeroed: nothing else clears the frame it was showing when it was visible.
-   */
-  private applyPose(): void {
-    const binds: Nullable<Float32Array> = this.model?.skeletonBinds ?? null;
-
-    if (!binds) {
-      return;
-    }
-
-    const boneCount: number = binds.length / FLOATS_PER_BONE;
-    const frame: IPosedFrame = this.resolveFrame(binds, boneCount);
-
-    for (let bone: number = 0; bone < boneCount; bone += 1) {
-      this.poseBone(bone, frame);
-    }
-
-    for (const bone of this.hiddenBones) {
-      this.hideBone(bone);
-    }
-
-    // The overlay keeps drawing the whole skeleton, hidden bones included. It is the only thing left that says where a
-    // hidden part sits, and an author turning a scope off is usually asking where the scope was.
-    this.poseOverlay(frame);
-  }
-
-  /**
-   * Decides which buffer this pose reads from.
-   *
-   * A motion buffer too short for the frame asked for is refused rather than indexed: the frame the owner named may
-   * belong to a motion baked against another skeleton, and posing from whatever happens to sit at that offset would
-   * show a mangled model instead of an honest bind pose.
-   *
-   * @param binds - Bind transforms of the current model, which is what a refused motion falls back to.
-   * @param boneCount - Bones the model carries, which is what makes a motion frame's stride.
-   * @returns The buffer to pose from and how to index it.
-   */
-  private resolveFrame(binds: Float32Array, boneCount: number): IPosedFrame {
-    const { transforms, frame, floatsPerBone } = this.pose;
-    const stride: number = boneCount * floatsPerBone;
-    const base: number = frame * stride;
-
-    return transforms && floatsPerBone > 0 && transforms.length >= base + stride
-      ? { base, source: transforms, stride: floatsPerBone }
-      : { base: 0, source: binds, stride: FLOATS_PER_BONE };
-  }
-
-  /**
-   * Collapses one bone to nothing.
-   *
-   * @param bone - Bone index to collapse.
-   */
-  private hideBone(bone: number): void {
-    const target: Optional<Bone> = this.bones[bone];
-
-    if (!target) {
-      return;
-    }
-
-    target.matrix.elements.fill(0);
-    target.matrix.elements[15] = 1;
-    target.matrixWorldNeedsUpdate = true;
-  }
-
-  /**
-   * Writes one bone's transform out of a flat buffer into its matrix.
-   *
-   * The twelve floats are already a column-major 4x4's three basis columns and its translation, so they are written
-   * straight into `elements` rather than through `Matrix4.set`, which takes its arguments row major and would silently
-   * transpose them. `matrixWorldNeedsUpdate` because these bones do not derive their matrices.
-   *
-   * @param bone - Bone index, which is also its index in the frame.
-   * @param frame - Frame to read this bone's transform out of.
-   */
-  private poseBone(bone: number, frame: IPosedFrame): void {
-    const target: Optional<Bone> = this.bones[bone];
-
-    if (!target) {
-      return;
-    }
-
-    const { source } = frame;
-    const offset: number = frame.base + bone * frame.stride;
-    const elements: Array<number> = target.matrix.elements;
-
-    elements[0] = source[offset];
-    elements[1] = source[offset + 1];
-    elements[2] = source[offset + 2];
-    elements[4] = source[offset + 3];
-    elements[5] = source[offset + 4];
-    elements[6] = source[offset + 5];
-    elements[8] = source[offset + 6];
-    elements[9] = source[offset + 7];
-    elements[10] = source[offset + 8];
-    elements[12] = source[offset + 9];
-    elements[13] = source[offset + 10];
-    elements[14] = source[offset + 11];
-
-    target.matrixWorldNeedsUpdate = true;
-  }
-
-  /**
-   * Moves the overlay's segment endpoints to where the posed bones now are.
-   *
-   * The pairs say which two bones each drawn segment joins, and a bone's translation is the last three of its twelve
-   * floats, so this reads the same buffer the matrices came from rather than being sent positions of its own.
-   *
-   * @param frame - Frame the bones were posed from, read again here for their translations.
-   */
-  private poseOverlay(frame: IPosedFrame): void {
-    const pairs: Nullable<Uint16Array> = this.model?.skeletonPairs ?? null;
-
-    if (!this.skeleton || !pairs) {
-      return;
-    }
-
-    const { source } = frame;
-    const attribute: BufferAttribute = this.skeleton.geometry.getAttribute("position") as BufferAttribute;
-
-    for (let segment: number = 0; segment < pairs.length / 2; segment += 1) {
-      const child: number = frame.base + pairs[segment * 2] * frame.stride + TRANSLATION_OFFSET;
-      const parent: number = frame.base + pairs[segment * 2 + 1] * frame.stride + TRANSLATION_OFFSET;
-
-      attribute.array.set(source.subarray(child, child + 3), segment * 6);
-      attribute.array.set(source.subarray(parent, parent + 3), segment * 6 + 3);
-    }
-
-    attribute.needsUpdate = true;
-
-    this.skeleton.geometry.computeBoundingSphere();
-  }
-
-  /**
-   * Builds the bone objects and the skeleton the model's skinned submeshes bind to.
-   *
-   * Bone inverses are taken here, once per model, from the bind transforms the backend composed: a vertex is posed by
-   * its bone's current transform times the inverse of where that bone started, and inverting fourty-odd matrices once
-   * is nothing next to doing it per frame.
-   */
-  private applySkin(model: Nullable<IVisualModelViews>): void {
-    const binds: Nullable<Float32Array> = model?.skeletonBinds ?? null;
-
-    if (!binds) {
-      return;
-    }
-
-    const inverses: Array<Matrix4> = [];
-    // The bind pose itself, never the motion or the hidden set: an inverse taken from a collapsed bone would be the
-    // inverse of a zero matrix, and every vertex weighted to it would pose to nothing for as long as the model is open.
-    const bindFrame: IPosedFrame = { base: 0, source: binds, stride: FLOATS_PER_BONE };
-
-    for (let bone: number = 0; bone < binds.length / FLOATS_PER_BONE; bone += 1) {
-      const joint: Bone = new Bone();
-
-      joint.matrixAutoUpdate = false;
-
-      this.bones.push(joint);
-      this.scene.add(joint);
-      this.poseBone(bone, bindFrame);
-
-      inverses.push(joint.matrix.clone().invert());
-    }
-
-    this.skin = new Skeleton(this.bones, inverses);
-  }
-
-  /**
-   * Builds the bind pose overlay, when the model came with one.
-   *
-   * `depthTest` off so the skeleton shows through the mesh it sits inside, which is the only way it answers where a
-   * bone is. Kept out of `meshes` because it is not a submesh: no texture ever addresses it, and the detail control
-   * has no range to set on it.
-   */
-  private applySkeleton(model: Nullable<IVisualModelViews>): void {
-    const positions: Nullable<Float32Array> = model?.skeleton ?? null;
-
-    if (!positions) {
-      return;
-    }
-
-    const geometry: BufferGeometry = new BufferGeometry();
-
-    // A copy, not the model's own array: posing writes into this attribute every frame, and the model's bind positions
-    // have to survive being posed so the overlay can go back to them.
-    geometry.setAttribute("position", new BufferAttribute(new Float32Array(positions), 3));
-
-    this.skeleton = new LineSegments(
-      geometry,
-      new LineBasicMaterial({ color: this.config.skeletonColor, depthTest: false, transparent: true })
-    );
-    this.skeleton.renderOrder = 1;
-    this.skeleton.visible = this.viewOptions?.isSkeletonVisible ?? false;
-
-    this.scene.add(this.skeleton);
   }
 
   /** Size the helpers to the model, so the grid reads as ground rather than as a backdrop. */
@@ -784,6 +535,17 @@ export class VisualPreviewScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  /**
+   * Dresses a newly built skeleton in the pose and the hidden bones the scene is holding.
+   *
+   * The scene holds them rather than the skeleton, because a skeleton lives and dies with one model while these outlive
+   * it: both are stated against bones rather than against one model's geometry.
+   */
+  private applySkeletonState(): void {
+    this.skeleton?.setPose(this.pose.transforms, this.pose.frame, this.pose.floatsPerBone);
+    this.skeleton?.setHiddenBones(this.hiddenBones);
   }
 
   private renderFrame(): void {

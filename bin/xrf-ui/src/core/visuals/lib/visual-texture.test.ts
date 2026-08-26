@@ -1,12 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { CompressedTexture, LinearFilter, RepeatWrapping, RGB_S3TC_DXT1_Format, RGBA_S3TC_DXT5_Format } from "three";
 
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import {
   createDdsTexture,
   EVisualTextureState,
-  getLocatedAsset,
   toInitialTextureState,
   toLoadableTextures,
 } from "@/core/visuals/lib/visual-texture";
@@ -14,36 +12,6 @@ import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixture
 import { mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { Nullable } from "@/lib/types/general";
-
-const DUMMY: XrayAsset = {
-  container: {
-    kind: "directory",
-    relativePath: "textures\\ed\\ed_not_existing_texture.dds",
-    root: "C:\\gamedata",
-  },
-  logicalPath: "textures\\ed\\ed_not_existing_texture.dds",
-};
-
-describe("getLocatedAsset", () => {
-  it("counts a substituted reference as located", () => {
-    // The engine's dummy is a real file and rendering it is what the game does, so it is fetched like any other.
-    expect(getLocatedAsset({ assets: [DUMMY], kind: "resolved", step: "asset root" })).toBe(DUMMY);
-    expect(
-      getLocatedAsset({
-        assets: [DUMMY],
-        fallback: "ed\\ed_not_existing_texture",
-        kind: "substituted",
-        step: "install",
-      })
-    ).toBe(DUMMY);
-  });
-
-  it("locates nothing for every outcome without a file", () => {
-    expect(getLocatedAsset({ kind: "missing", roots: ["C:\\gamedata"] })).toBeNull();
-    expect(getLocatedAsset({ kind: "noScope" })).toBeNull();
-    expect(getLocatedAsset({ kind: "rejected", reason: "not a logical path" })).toBeNull();
-  });
-});
 
 describe("toLoadableTextures", () => {
   it("keeps the submeshes whose reference located a file, addressed by that file", () => {

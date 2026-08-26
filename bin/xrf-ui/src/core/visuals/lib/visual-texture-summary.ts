@@ -1,6 +1,6 @@
+import { listLocatedAssets } from "@/core/assets/lib/resolution";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { listLocatedAssets } from "@/core/visuals/lib/visual-texture";
 import { formatBytes } from "@/lib/memory/format";
 
 /** What a model's textures weigh, and how much of what it asked for that accounts for. */

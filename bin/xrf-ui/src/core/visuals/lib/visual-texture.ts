@@ -1,6 +1,7 @@
 import { CompressedPixelFormat, CompressedTexture, LinearFilter, RepeatWrapping, Texture } from "three";
 import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
+import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
@@ -41,29 +42,6 @@ export interface IVisualTextureStatus {
   state: EVisualTextureState;
   /** Present when the state is `FAILED`, so a panel can say why rather than only that. */
   reason: Nullable<string>;
-}
-
-/**
- * The asset a resolution located, or null when it located none.
- *
- * A substituted reference counts: the engine's dummy is a real file and rendering it is what the game does, which
- * is the point of substituting rather than leaving the submesh blank.
- */
-export function getLocatedAsset(resolution: XrayResolution): Nullable<XrayAsset> {
-  return listLocatedAssets(resolution)[0] ?? null;
-}
-
-/**
- * Every asset an outcome located, which for a masked reference is more than one.
- *
- * A texture reference answers with exactly one file, but a motion reference may be a mask - `wpn\wpn_ak74_*.omf` - so
- * naming only the first would misreport what was found.
- *
- * @param resolution - What the backend reported for one reference.
- * @returns The located assets, empty when the outcome located nothing.
- */
-export function listLocatedAssets(resolution: XrayResolution): Array<XrayAsset> {
-  return resolution.kind === "resolved" || resolution.kind === "substituted" ? resolution.assets : [];
 }
 
 /** A submesh texture whose bytes can be fetched, and the located file to fetch them from. */
