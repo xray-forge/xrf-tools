@@ -5,6 +5,7 @@ use std::{fs, io};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -43,25 +44,10 @@ impl GenericCommand for PackCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Pack *.spawn file based on provided arguments.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, _context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
       .expect("Expected valid path to be provided");

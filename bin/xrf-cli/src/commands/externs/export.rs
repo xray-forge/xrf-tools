@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_export::{
   ExternFormat, ExternManifest, ExternManifestParser, LineEndings, ParsedExternManifest, normalize_line_endings,
@@ -10,9 +10,9 @@ use xrf_export::{
 };
 use xrf_output::OutputOptions;
 
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]
@@ -58,25 +58,9 @@ impl GenericCommand for ExportCommand {
           .long("line-endings")
           .value_parser(["lf", "crlf"]),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let declarations_root: &PathBuf = matches
       .get_one("declarations-root")
       .expect("Expected declarations root");
@@ -92,10 +76,8 @@ impl GenericCommand for ExportCommand {
       .map(|value: &String| LineEndings::from_str(value))
       .transpose()?;
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
-
+    let output: OutputOptions = context.get_output().clone();
     let format: ExternFormat = Self::resolve_format(matches, output_dir, check)?;
-
     let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
 
     if let Some(path) = output_dir {

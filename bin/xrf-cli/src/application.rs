@@ -1,29 +1,42 @@
 use std::process::ExitCode;
+use std::time::{Duration, Instant};
 
-use crate::core::generic_command::CommandGroup;
-use crate::registry::setup_command_groups;
+use clap::error::ErrorKind;
 use clap::{ArgMatches, Command};
 use xrf_build_info::{BuildInfo, build_info};
 
+use crate::core::command_context::CommandContext;
+use crate::core::generic_command::{CommandGroup, CommandResult};
+use crate::core::reporting::{CommandEnvelope, ReportingOptions, add_reporting_arguments, find_conflicting_selection};
+use crate::registry::setup_command_groups;
+
 /// Assemble the CLI from the registered commands and run the one the caller asked for.
 ///
-/// The only place a command outcome becomes a process exit. Every failure ends with exactly one
-/// final stderr line, printed unconditionally so `--silent` can never hide that a run failed;
-/// commands themselves report finding details and never exit.
+/// The only place a command outcome becomes a process exit, and for the same reason the only place
+/// the machine-readable envelope is written: an outcome and the report describing it are decided
+/// together, so a run that fails still reports itself whenever JSON was asked for. Every failure
+/// ends with exactly one final stderr line, printed unconditionally so `--silent` can never hide
+/// that a run failed, and never on stdout so it cannot corrupt a piped document; commands themselves
+/// report finding details and never exit.
 pub fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
   let groups: Vec<CommandGroup> = setup_command_groups();
 
-  let mut application: Command = Command::new("xrf-cli")
-    .about("XRF forge CLI tools application")
-    .version(get_short_version(&build))
-    .long_version(build.to_string())
-    .arg_required_else_help(true);
+  let mut application: Command = add_reporting_arguments(
+    Command::new("xrf-cli")
+      .about("XRF forge CLI tools application")
+      .version(get_short_version(&build))
+      .long_version(build.to_string())
+      .arg_required_else_help(true),
+  );
 
   for group in &groups {
     application = application.subcommand(group.init());
   }
 
+  // Kept past parsing so a selection clap cannot refuse on its own is still refused the way clap
+  // refuses one: the same message shape, the same exit code, from the same command.
+  let mut parser: Command = application.clone();
   let matches: ArgMatches = application.get_matches();
 
   // `arg_required_else_help` already answered the empty invocation, and clap rejects a subcommand it
@@ -44,7 +57,43 @@ pub fn run() -> ExitCode {
     unreachable!("clap matched '{domain} {operation}', which no registered command declares")
   };
 
-  match command.execute(arguments) {
+  // Global arguments reach the operation's own matches, which is also what the command reads - and
+  // is where a pair written at two different levels finally meets.
+  if let Some((first, second)) = find_conflicting_selection(arguments) {
+    parser
+      .error(
+        ErrorKind::ArgumentConflict,
+        format!("the argument '{first}' cannot be used with '{second}'"),
+      )
+      .exit()
+  }
+
+  let reporting: ReportingOptions = ReportingOptions::from_matches(arguments);
+  let mut context: CommandContext = CommandContext::new(&reporting);
+
+  let started_at: Instant = Instant::now();
+  let outcome: CommandResult = command.execute(arguments, &mut context);
+  let duration: Duration = started_at.elapsed();
+
+  let envelope: CommandEnvelope = CommandEnvelope::new(
+    vec![String::from(domain), String::from(operation)],
+    &outcome,
+    duration,
+    context.take_result(),
+  );
+
+  let result: CommandResult = match envelope.publish(&reporting.destination) {
+    Ok(()) => outcome,
+    Err(publication_error) => {
+      if let Err(error) = outcome {
+        xrf_output::error!(reporting.output, "{error}");
+      }
+
+      Err(publication_error)
+    }
+  };
+
+  match result {
     Ok(()) => ExitCode::SUCCESS,
     Err(error) => {
       eprintln!("{error}");

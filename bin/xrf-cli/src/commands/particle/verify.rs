@@ -4,9 +4,9 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -40,7 +40,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   /// Verify particle file based on provided arguments.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
       .expect("Expected valid path to be provided");
@@ -69,7 +69,7 @@ impl GenericCommand for VerifyCommand {
       Err(error @ XrfError::Io { .. }) => Err(error.into()),
       Err(error) => {
         xrf_output::failure!(
-          TerminalOutput::from_options(false, false),
+          context.get_output().clone(),
           "Provided particle file is invalid: {error}"
         );
 

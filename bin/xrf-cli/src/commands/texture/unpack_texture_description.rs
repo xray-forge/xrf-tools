@@ -6,8 +6,8 @@ use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackDescriptionOptions, UnpackDescriptionProcessor};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct UnpackTextureDescriptionCommand;
@@ -49,24 +49,8 @@ impl GenericCommand for UnpackTextureDescriptionCommand {
           .action(ArgAction::Append),
       )
       .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("strict")
           .help("Turn on strict unpack mode")
-          .short('s')
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
@@ -80,7 +64,7 @@ impl GenericCommand for UnpackTextureDescriptionCommand {
       )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let description: &PathBuf = matches
       .get_one::<PathBuf>("description")
       .expect("Expected valid path to be provided for texture description file or folder");
@@ -99,7 +83,7 @@ impl GenericCommand for UnpackTextureDescriptionCommand {
     let is_strict: bool = matches.get_flag("strict");
     let is_parallel: bool = matches.get_flag("parallel");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let started_at: Instant = Instant::now();
 

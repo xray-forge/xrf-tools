@@ -6,8 +6,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchivePackConfig, ArchivePackMode, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct PackCommand;
@@ -80,26 +80,10 @@ impl GenericCommand for PackCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Pack a directory into xray engine database archives.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
       .expect("Expected valid source path to be provided");
@@ -118,7 +102,7 @@ impl GenericCommand for PackCommand {
       .get_one::<_>("name")
       .expect("Expected valid archive name to be provided");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let mut config: ArchivePackConfig = ArchivePackConfig::new(path, &destination, name);
 
@@ -188,6 +172,8 @@ impl GenericCommand for PackCommand {
       xrf_utils::format_bytes_pair(result.size_source, result.size_written);
 
     xrf_output::info!(output, "Size: {size_source} source, {size_written} written");
+
+    context.set_result(|| &result)?;
 
     Ok(())
   }

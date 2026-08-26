@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{ImageFormat, Mipmaps};
 use xrf_output::OutputOptions;
 use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct CropDdsCommand;
@@ -76,24 +76,10 @@ impl GenericCommand for CropDdsCommand {
           .requires("fit-width")
           .value_parser(value_parser!(u32)),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Crop a region out of a dds file, optionally scaling it into different bounds.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let source: &PathBuf = matches
       .get_one::<PathBuf>("source")
       .expect("Expected valid source path to be provided");
@@ -106,7 +92,7 @@ impl GenericCommand for CropDdsCommand {
     let width: u32 = *matches.get_one::<u32>("width").expect("Expected valid width");
     let height: u32 = *matches.get_one::<u32>("height").expect("Expected valid height");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let result: CropTextureResult = CropTextureProcessor::crop(&CropTextureOptions {
       source: source.clone(),

@@ -6,8 +6,8 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_translation::{ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_dir, build_file};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct BuildCommand;
@@ -47,22 +47,6 @@ impl GenericCommand for BuildCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("sort")
           .help("Preserve source order instead of sorting dynamic translation files")
           .long("no-sort")
@@ -71,7 +55,7 @@ impl GenericCommand for BuildCommand {
       )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid path to be provided");
@@ -84,11 +68,9 @@ impl GenericCommand for BuildCommand {
       .get_one::<String>("language")
       .expect("Expected valid language for translation");
 
-    let is_silent: bool = matches.get_flag("silent");
-    let is_verbose: bool = matches.get_flag("verbose");
     let is_sorted: bool = matches.get_flag("sort");
 
-    let output: OutputOptions = TerminalOutput::from_options(is_silent, is_verbose);
+    let output: OutputOptions = context.get_output().clone();
 
     xrf_output::info!(
       output,

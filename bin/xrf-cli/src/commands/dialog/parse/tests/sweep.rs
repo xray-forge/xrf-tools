@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoots};
@@ -10,7 +11,8 @@ use xrf_vfs::{XrayMountMode, XrayRoots};
 use crate::commands::dialog::parse::command::ParseCommand;
 use crate::commands::dialog::parse::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
 use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command_testing::run_command_for_result;
+use crate::core::generic_command::CommandResult;
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
@@ -31,6 +33,11 @@ fn create_root(name: &str) -> XrfResult<PathBuf> {
 
 /// Run the command over a path, as the process would.
 fn run(path: &Path, extra: &[&str]) -> CommandResult {
+  run_for_result(path, extra).map(|_| ())
+}
+
+/// Run the command and read back the structured result it deposited.
+fn run_for_result(path: &Path, extra: &[&str]) -> CommandResult<Option<Value>> {
   let command: ParseCommand = ParseCommand;
   let mut arguments: Vec<String> = vec![
     String::from("parse"),
@@ -41,9 +48,7 @@ fn run(path: &Path, extra: &[&str]) -> CommandResult {
 
   arguments.extend(extra.iter().map(|it| String::from(*it)));
 
-  let matches = command.init().try_get_matches_from(arguments)?;
-
-  command.execute(&matches)
+  run_command_for_result(&command, &arguments)
 }
 
 #[test]
@@ -179,25 +184,37 @@ fn succeeds_on_findings_unless_strict_was_asked_for() -> CommandResult {
 }
 
 #[test]
-fn writes_a_json_report_when_asked() -> CommandResult {
+fn reports_its_checks_when_a_report_was_asked_for() -> CommandResult {
   let root: PathBuf = create_root("report")?;
-  let report: PathBuf = root.join("report.json");
 
   fs::write(
     root.join("dialogs.xml"),
     r#"<game_dialogs><dialog id="d"/></game_dialogs>"#,
   )?;
 
-  run(
-    &root,
-    &["--source", "directory", "--report", &report.display().to_string()],
-  )?;
-
-  let written: String = fs::read_to_string(&report)?;
+  // Publishing the deposited payload belongs to the composition root; what the command owes is the
+  // payload itself, which reaches a caller under the envelope's `result`.
+  let result: Option<Value> = run_for_result(&root, &["--source", "directory", "--json"])?;
+  let written: String = serde_json::to_string(&result.expect("a report to be deposited"))?;
 
   assert!(written.contains("dialog.read"));
   assert!(written.contains("dialog.schema"));
-  assert!(written.ends_with('\n'));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn deposits_nothing_when_no_report_was_asked_for() -> CommandResult {
+  let root: PathBuf = create_root("no-report")?;
+
+  fs::write(
+    root.join("dialogs.xml"),
+    r#"<game_dialogs><dialog id="d"/></game_dialogs>"#,
+  )?;
+
+  assert_eq!(run_for_result(&root, &["--source", "directory"])?, None);
 
   fs::remove_dir_all(root)?;
 

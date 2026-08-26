@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractResult, ArchiveUnpacker};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct ExtractCommand;
@@ -52,23 +52,9 @@ impl GenericCommand for ExtractCommand {
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
     let path: &PathBuf = matches
       .get_one("path")
@@ -76,7 +62,7 @@ impl GenericCommand for ExtractCommand {
     let destination: &PathBuf = matches
       .get_one("dest")
       .expect("Expected an extraction destination to be provided");
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
 
@@ -90,6 +76,8 @@ impl GenericCommand for ExtractCommand {
         xrf_utils::format_bytes(result.size),
         xrf_utils::format_duration(started_at.elapsed())
       );
+
+      context.set_result(|| &result)?;
     } else {
       let directory: &String = matches
         .get_one("directory")
@@ -105,6 +93,8 @@ impl GenericCommand for ExtractCommand {
         xrf_utils::format_bytes(result.size),
         xrf_utils::format_duration(started_at.elapsed()),
       );
+
+      context.set_result(|| &result)?;
     }
 
     Ok(())

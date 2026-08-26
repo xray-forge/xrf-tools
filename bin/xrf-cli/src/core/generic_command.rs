@@ -1,5 +1,6 @@
 use clap::{ArgMatches, Command};
 
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 
 pub type CommandResult<T = ()> = Result<T, CommandError>;
@@ -48,5 +49,12 @@ pub trait GenericCommand {
 
   fn init(&self) -> Command;
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult;
+  /// Runs the command.
+  ///
+  /// Reporting is not a command's concern: the reporting flags are declared once for the whole CLI
+  /// and resolved before dispatch, and the envelope is written afterwards by the same place that
+  /// turns this result into an exit code. A command reads its own arguments, says what it is doing
+  /// through `context.get_output()`, and deposits any structured result with
+  /// [`CommandContext::set_result`].
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult;
 }

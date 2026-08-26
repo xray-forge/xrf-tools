@@ -9,9 +9,9 @@ use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 use crate::commands::dialog::parse::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
 };
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct ParseCommand;
@@ -51,30 +51,9 @@ impl GenericCommand for ParseCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("report")
-          .help("Path to write the sweep report as json")
-          .short('r')
-          .long("report")
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("strict")
           .help("Answer with a check failure when anything was unreadable or off schema")
           .long("strict")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
           .action(ArgAction::SetTrue),
       )
   }
@@ -84,15 +63,14 @@ impl GenericCommand for ParseCommand {
   /// Reporting is the default and answers success: a sweep over reference trees exists to produce a
   /// tally, and a tally that also fails the build cannot be run casually. `--strict` is the mode that
   /// judges, and it is the one a CI step uses.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let paths: Vec<&PathBuf> = matches
       .get_many::<PathBuf>("path")
       .expect("Expected at least one path to be provided")
       .collect();
-    let report_path: Option<&PathBuf> = matches.get_one::<_>("report");
     let is_strict: bool = matches.get_flag("strict");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let source: XrayMountMode = XrayMountMode::try_from(
       matches
@@ -119,14 +97,8 @@ impl GenericCommand for ParseCommand {
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
 
-    if let Some(report_path) = report_path {
-      std::fs::write(
-        report_path,
-        format!("{}\n", serde_json::to_string_pretty(&result.report)?),
-      )?;
-
-      xrf_output::info!(output, "Wrote report to {}", report_path.display());
-    }
+    // Deposited before the verdict becomes an outcome, so a failing check still reports the findings that explain it.
+    context.set_result(|| &result.report)?;
 
     let status: Status = result.report.status();
 

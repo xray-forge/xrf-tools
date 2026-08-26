@@ -4,11 +4,9 @@ use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
 
-use crate::core::generic_command::CommandResult;
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct GamedataVerificationReportOutput {
+pub struct GamedataVerificationReportOutput {
   checks: Vec<GamedataVerificationCheckReportOutput>,
   duration_ms: u64,
   status: String,
@@ -32,26 +30,21 @@ struct GamedataVerificationFindingOutput {
   rule_id: String,
 }
 
-pub struct GamedataVerificationReportWriter<'a> {
+/// Builds what a `gamedata verify` run reports to a machine.
+///
+/// Findings name assets relative to the verified root, which is the only thing here a raw
+/// verification result cannot say on its own.
+pub struct GamedataVerificationReportPayload<'a> {
   root: &'a Path,
   report: &'a GamedataVerificationResult,
 }
 
-impl<'a> GamedataVerificationReportWriter<'a> {
+impl<'a> GamedataVerificationReportPayload<'a> {
   pub fn new(root: &'a Path, report: &'a GamedataVerificationResult) -> Self {
     Self { root, report }
   }
 
-  pub fn write(&self, report_path: &Path) -> CommandResult {
-    let output: GamedataVerificationReportOutput = self.report_output()?;
-    let json: String = serde_json::to_string_pretty(&output)?;
-
-    std::fs::write(report_path, format!("{json}\n"))?;
-
-    Ok(())
-  }
-
-  fn report_output(&self) -> CommandResult<GamedataVerificationReportOutput> {
+  pub fn build(&self) -> GamedataVerificationReportOutput {
     let checks: Vec<GamedataVerificationCheckReportOutput> = self
       .report
       .get_checks()
@@ -59,11 +52,11 @@ impl<'a> GamedataVerificationReportWriter<'a> {
       .map(|gamedata_check| self.check_report_output(gamedata_check, gamedata_check.get_report()))
       .collect();
 
-    Ok(GamedataVerificationReportOutput {
+    GamedataVerificationReportOutput {
       checks,
       duration_ms: xrf_utils::duration_to_millis(self.report.get_duration()),
       status: self.report.get_status().to_string(),
-    })
+    }
   }
 
   fn check_report_output(
@@ -115,7 +108,7 @@ mod tests {
   };
   use xrf_report::RuleId;
 
-  use super::GamedataVerificationReportWriter;
+  use super::GamedataVerificationReportPayload;
 
   static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -157,9 +150,8 @@ mod tests {
   }
 
   #[test]
-  fn writes_root_relative_paths_and_sorted_findings() {
+  fn reports_root_relative_paths_and_sorted_findings() {
     let root: PathBuf = temporary_gamedata_root();
-    let report_path: PathBuf = root.join("report.json");
     let mut report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
 
     report.add_check(
@@ -181,13 +173,12 @@ mod tests {
       }),
     );
 
-    GamedataVerificationReportWriter::new(&root, &report)
-      .write(&report_path)
-      .unwrap();
-    let json: serde_json::Value = serde_json::from_str(&fs::read_to_string(&report_path).unwrap()).unwrap();
+    let json: serde_json::Value =
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
+    // The payload stays the command's own shape: unifying it across commands is deferred with 0050.
     assert!(json.get("schemaVersion").is_none());
     assert_eq!(json["status"], "failed");
     assert_eq!(json["durationMs"], 42);

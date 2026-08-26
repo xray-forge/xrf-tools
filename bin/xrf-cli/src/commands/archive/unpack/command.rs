@@ -7,8 +7,9 @@ use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveUnpackResult, ArchiveUnpacker};
 
+use super::report::ArchiveUnpackDryReport;
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct UnpackCommand;
@@ -52,26 +53,10 @@ impl GenericCommand for UnpackCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Unpack xray engine database archive.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
       .expect("Expected valid path to be provided");
@@ -92,7 +77,7 @@ impl GenericCommand for UnpackCommand {
 
     let is_dry: bool = matches.get_flag("dry");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     if is_dry {
       xrf_output::info!(output, "Unpack in dry mode");
@@ -117,7 +102,16 @@ impl GenericCommand for UnpackCommand {
 
     xrf_output::info!(output, "Unpacking files, parallel {parallel}");
 
-    if !is_dry {
+    if is_dry {
+      // A dry run's whole result is what it would have written, which is the summary it just printed.
+      context.set_result(|| {
+        ArchiveUnpackDryReport::new(
+          &archive_project,
+          &xrf_utils::to_portable_path_string(path),
+          &xrf_utils::to_portable_path_string(&destination),
+        )
+      })?;
+    } else {
       let result: ArchiveUnpackResult = Runtime::new()?.block_on(ArchiveUnpacker::unpack_parallel(
         &archive_project,
         &destination,
@@ -131,6 +125,8 @@ impl GenericCommand for UnpackCommand {
         xrf_utils::format_duration(result.prepare_duration),
         xrf_utils::format_duration(result.unpack_duration),
       );
+
+      context.set_result(|| &result)?;
     }
 
     Ok(())

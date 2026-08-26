@@ -5,8 +5,8 @@ use xrf_output::OutputOptions;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 /// Maximum entries printed per section before reporting the omitted count.
 const PRINT_LIMIT: usize = 40;
@@ -69,31 +69,17 @@ impl GenericCommand for ListCommand {
           .long("shadowed")
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Reports the assets a path resolves and their source mounts.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let paths: Vec<&PathBuf> = matches
       .get_many::<PathBuf>("path")
       .expect("Expected at least one path to be provided")
       .collect();
     let prefix: Option<&String> = matches.get_one::<_>("prefix");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let mode: XrayMountMode = XrayMountMode::try_from(
       matches

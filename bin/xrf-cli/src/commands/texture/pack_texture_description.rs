@@ -5,8 +5,8 @@ use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackDescriptionOptions, PackDescriptionProcessor};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct PackTextureDescriptionCommand;
@@ -49,24 +49,8 @@ impl GenericCommand for PackTextureDescriptionCommand {
           .action(ArgAction::Append),
       )
       .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("strict")
           .help("Turn on strict unpack mode")
-          .short('s')
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
@@ -81,7 +65,7 @@ impl GenericCommand for PackTextureDescriptionCommand {
   }
 
   /// Pack texture descriptions file as single dds sprite.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let description: &PathBuf = matches
       .get_one::<PathBuf>("description")
       .expect("Expected valid path to be provided for texture description file or folder");
@@ -100,8 +84,7 @@ impl GenericCommand for PackTextureDescriptionCommand {
     let is_strict: bool = matches.get_flag("strict");
     let is_parallel: bool = matches.get_flag("parallel");
 
-    let output_options: OutputOptions =
-      TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output_options: OutputOptions = context.get_output().clone();
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
       description: description.clone(),

@@ -5,8 +5,8 @@ use xrf_db::{OgfFile, OgfRefsPatchReport, OgfTextureRefsProcessor, XRayByteOrder
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct PatchTextureRefsCommand;
@@ -54,24 +54,10 @@ impl GenericCommand for PatchTextureRefsCommand {
           .long("dry-run")
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Rename a texture reference of provided ogf file.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");
@@ -87,7 +73,7 @@ impl GenericCommand for PatchTextureRefsCommand {
       .get_one::<PathBuf>("dest")
       .map_or(path.as_path(), |it| it.as_path());
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     Self::patch_file(&output, path, destination, from, to, matches.get_flag("dry-run"))?;
 

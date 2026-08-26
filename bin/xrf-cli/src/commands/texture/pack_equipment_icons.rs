@@ -8,8 +8,8 @@ use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct PackEquipmentIconsCommand;
@@ -52,24 +52,8 @@ impl GenericCommand for PackEquipmentIconsCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("strict")
           .help("Turn on strict mode")
-          .short('s')
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
@@ -77,7 +61,7 @@ impl GenericCommand for PackEquipmentIconsCommand {
   }
 
   /// Command to pack equipment icons files into single dds file.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let system_ltx_path: &PathBuf = matches
       .get_one::<PathBuf>("system-ltx")
       .expect("Expected valid path to be provided for system-ltx");
@@ -94,8 +78,7 @@ impl GenericCommand for PackEquipmentIconsCommand {
 
     let is_strict: bool = matches.get_flag("strict");
 
-    let output_options: OutputOptions =
-      TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output_options: OutputOptions = context.get_output().clone();
 
     if !source.is_dir() {
       return Err(

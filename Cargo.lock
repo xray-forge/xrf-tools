@@ -6982,6 +6982,7 @@ dependencies = [
  "xrf-output",
  "xrf-pack",
  "xrf-report",
+ "xrf-test-utils",
  "xrf-texture",
  "xrf-translation",
  "xrf-utils",

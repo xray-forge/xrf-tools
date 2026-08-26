@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::ParticlesFile;
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -37,7 +38,7 @@ impl GenericCommand for ReUnpackCommand {
   }
 
   /// Re-unpack provided particle dir and validate it.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, _context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");

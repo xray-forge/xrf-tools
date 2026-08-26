@@ -7,9 +7,9 @@ use xrf_output::OutputOptions;
 use xrf_report::Status;
 
 use crate::commands::ogf::verify::ogf_verifier::{OgfVerificationCensus, OgfVerificationResult, OgfVerifier};
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -37,41 +37,19 @@ impl GenericCommand for VerifyCommand {
           .action(ArgAction::Append)
           .value_parser(value_parser!(PathBuf)),
       )
-      .arg(
-        Arg::new("report")
-          .help("Path to write the verification report as json")
-          .short('r')
-          .long("report")
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Pack every visual under the provided path and report what could not be drawn.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
       .expect("Expected valid path to be provided");
-    let report_path: Option<&PathBuf> = matches.get_one::<_>("report");
     let roots: Vec<PathBuf> = matches
       .get_many::<PathBuf>("root")
       .map(|values| values.cloned().collect())
       .unwrap_or_default();
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     xrf_output::info!(output, "Verifying ogf visuals in {}", path.display());
 
@@ -84,14 +62,9 @@ impl GenericCommand for VerifyCommand {
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);
 
-    if let Some(report_path) = report_path {
-      std::fs::write(
-        report_path,
-        format!("{}\n", serde_json::to_string_pretty(&result.report)?),
-      )?;
-
-      xrf_output::info!(output, "Wrote report to {}", report_path.display());
-    }
+    // Deposited before the verdict becomes an outcome, so a failing check still reports the findings
+    // that explain it.
+    context.set_result(|| &result.report)?;
 
     let status: Status = result.report.status();
 

@@ -7,8 +7,8 @@ use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct RenameMotionsCommand;
@@ -58,24 +58,10 @@ impl GenericCommand for RenameMotionsCommand {
           .long("dry-run")
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Rename motions of provided omf file.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");
@@ -88,7 +74,7 @@ impl GenericCommand for RenameMotionsCommand {
       .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     Self::rename_file(
       &output,

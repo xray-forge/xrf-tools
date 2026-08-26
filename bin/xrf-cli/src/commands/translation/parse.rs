@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -27,7 +28,7 @@ impl GenericCommand for ParseCommand {
   }
 
   /// Parse translation from path as json.
-  fn execute(&self, _matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, _matches: &ArgMatches, _context: &mut CommandContext) -> CommandResult {
     // todo;
 
     Ok(())

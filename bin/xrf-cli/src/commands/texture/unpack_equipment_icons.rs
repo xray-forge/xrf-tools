@@ -2,14 +2,14 @@ use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, ImageFormat};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_texture::{UnpackEquipmentOptions, UnpackEquipmentProcessor};
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct UnpackEquipmentIconsCommand;
@@ -44,24 +44,9 @@ impl GenericCommand for UnpackEquipmentIconsCommand {
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let system_ltx_path: &PathBuf = matches
       .get_one::<PathBuf>("system-ltx")
       .expect("Expected valid path to be provided for system-ltx");
@@ -74,8 +59,7 @@ impl GenericCommand for UnpackEquipmentIconsCommand {
       .get_one::<PathBuf>("output")
       .expect("Expected valid output folder path to be provided");
 
-    let output_options: OutputOptions =
-      TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output_options: OutputOptions = context.get_output().clone();
 
     let started_at: Instant = Instant::now();
 

@@ -1,14 +1,10 @@
-use std::path::Path;
-
 use serde::Serialize;
 use xrf_report::{CheckReport, Finding, Report};
 use xrf_translation::ProjectVerifyResult;
 
-use crate::core::generic_command::CommandResult;
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TranslationVerificationReportOutput {
+pub struct TranslationVerificationReportOutput {
   checked_translations_count: u32,
   checks: Vec<TranslationVerificationCheckOutput>,
   duration_ms: u64,
@@ -33,25 +29,17 @@ struct TranslationVerificationFindingOutput {
   subject: Option<String>,
 }
 
-pub struct TranslationVerificationReportWriter<'a> {
+/// Builds what a `translation verify` run reports to a machine.
+pub struct TranslationVerificationReportPayload<'a> {
   result: &'a ProjectVerifyResult,
 }
 
-impl<'a> TranslationVerificationReportWriter<'a> {
+impl<'a> TranslationVerificationReportPayload<'a> {
   pub fn new(result: &'a ProjectVerifyResult) -> Self {
     Self { result }
   }
 
-  pub fn write(&self, report_path: &Path) -> CommandResult {
-    let output: TranslationVerificationReportOutput = self.report_output();
-    let json: String = serde_json::to_string_pretty(&output)?;
-
-    std::fs::write(report_path, format!("{json}\n"))?;
-
-    Ok(())
-  }
-
-  fn report_output(&self) -> TranslationVerificationReportOutput {
+  pub fn build(&self) -> TranslationVerificationReportOutput {
     let report: Report = self.result.to_report();
     let checks: Vec<TranslationVerificationCheckOutput> = report.checks().iter().map(Self::check_output).collect();
 
@@ -90,19 +78,18 @@ mod tests {
 
   use xrf_translation::{ProjectVerifyOptions, TranslationLanguage, verify_file};
 
-  use super::TranslationVerificationReportWriter;
+  use super::TranslationVerificationReportPayload;
 
   static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 
   #[test]
-  fn writes_missing_translations_as_structured_findings() {
+  fn reports_missing_translations_as_structured_findings() {
     let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
     let root: PathBuf = std::env::temp_dir().join(format!(
       "xrf-cli-translation-verification-report-test-{}-{unique}",
       std::process::id()
     ));
     let translation_path: PathBuf = root.join("dialogs.json");
-    let report_path: PathBuf = root.join("report.json");
     let options: ProjectVerifyOptions = ProjectVerifyOptions {
       is_strict: false,
       output: xrf_output::OutputOptions::default(),
@@ -115,10 +102,8 @@ mod tests {
 
     let result = verify_file(&translation_path, &options).unwrap();
 
-    TranslationVerificationReportWriter::new(&result)
-      .write(&report_path)
-      .unwrap();
-    let json: serde_json::Value = serde_json::from_str(&fs::read_to_string(&report_path).unwrap()).unwrap();
+    let json: serde_json::Value =
+      serde_json::to_value(TranslationVerificationReportPayload::new(&result).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 

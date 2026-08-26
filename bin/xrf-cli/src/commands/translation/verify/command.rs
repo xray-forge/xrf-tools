@@ -6,10 +6,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_translation::{ProjectVerifyOptions, ProjectVerifyResult, TranslationLanguage, verify_dir, verify_file};
 
-use super::translation_verification_report::TranslationVerificationReportWriter;
+use super::translation_verification_report::TranslationVerificationReportPayload;
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -41,40 +41,15 @@ impl GenericCommand for VerifyCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("report")
-          .help("Write the structured verification report as JSON")
-          .long("report")
-          .required(false)
-          .value_name("PATH")
-          .num_args(1)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("strict")
           .help("Fail with non 0 error code if translation are missing")
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid path to be provided");
@@ -83,12 +58,9 @@ impl GenericCommand for VerifyCommand {
       .get_one::<String>("language")
       .expect("Expected valid language for translation");
 
-    let is_silent: bool = matches.get_flag("silent");
-    let is_verbose: bool = matches.get_flag("verbose");
     let is_strict: bool = matches.get_flag("strict");
-    let report_path: Option<PathBuf> = matches.get_one::<PathBuf>("report").cloned();
 
-    let output: OutputOptions = TerminalOutput::from_options(is_silent, is_verbose);
+    let output: OutputOptions = context.get_output().clone();
 
     xrf_output::info!(
       output,
@@ -121,9 +93,9 @@ impl GenericCommand for VerifyCommand {
       }
     };
 
-    if let Some(report_path) = report_path {
-      TranslationVerificationReportWriter::new(&result).write(&report_path)?;
-    }
+    // Deposited before the verdict becomes an outcome, so a failing check still reports the findings
+    // that explain it.
+    context.set_result(|| TranslationVerificationReportPayload::new(&result).build())?;
 
     xrf_output::info!(
       options.output,

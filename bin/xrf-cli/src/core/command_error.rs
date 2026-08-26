@@ -29,13 +29,25 @@ impl CommandError {
       Self::CheckFailed { .. } => 3,
     }
   }
+
+  /// The failure itself, without the label the terminal puts in front of it.
+  ///
+  /// This is what a machine-readable report carries: `Error:` is how a terminal line announces a
+  /// failure, not part of what failed.
+  pub fn message(&self) -> String {
+    match self {
+      Self::Execution(error) => error.to_string(),
+      Self::CheckFailed { findings } => format!("Check failed: {findings} finding(s)"),
+    }
+  }
 }
 
 impl Display for CommandError {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
     match self {
-      Self::Execution(error) => write!(formatter, "Error: {error}"),
-      Self::CheckFailed { findings } => write!(formatter, "Check failed: {findings} finding(s)"),
+      // A check verdict already reads as one; an execution failure needs saying.
+      Self::Execution(_) => write!(formatter, "Error: {}", self.message()),
+      Self::CheckFailed { .. } => formatter.write_str(&self.message()),
     }
   }
 }

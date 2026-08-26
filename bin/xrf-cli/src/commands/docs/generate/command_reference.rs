@@ -1,6 +1,7 @@
 use clap::{Arg, ArgAction, Command};
 
 use crate::core::generic_command::CommandGroup;
+use crate::core::reporting::add_reporting_arguments;
 
 /// Documentation model extracted from one registered CLI command group.
 pub struct GroupReference {
@@ -33,7 +34,8 @@ impl GroupReference {
       commands: group
         .commands
         .iter()
-        .map(|command| CommandReference::from_command(group.slug, command.init()))
+        // A command is documented as a caller meets it, which includes the reporting flags every command answers to.
+        .map(|command| CommandReference::from_command(group.slug, add_reporting_arguments(command.init())))
         .collect(),
     }
   }

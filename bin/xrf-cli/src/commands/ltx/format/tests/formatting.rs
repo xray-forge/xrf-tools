@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 
 use crate::commands::ltx::format::command::FormatCommand;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command_testing::run_command;
+use crate::core::generic_command::CommandResult;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-format-ltx-{name}-{}", std::process::id()));
@@ -28,11 +29,14 @@ fn preserves_standalone_semicolon_comments() -> CommandResult {
   fs::write(&file, ";\n")?;
 
   let command: FormatCommand = FormatCommand;
-  let matches = command
-    .init()
-    .try_get_matches_from(["format", "--path", &file.display().to_string(), "--silent"])?;
+  let arguments: Vec<String> = vec![
+    String::from("format"),
+    String::from("--path"),
+    file.display().to_string(),
+    String::from("--silent"),
+  ];
 
-  command.execute(&matches)?;
+  run_command(&command, &arguments)?;
 
   assert_eq!(fs::read_to_string(&file)?, ";\r\n");
 
@@ -50,14 +54,17 @@ fn formatting_standalone_comment_is_idempotent() -> CommandResult {
   fs::write(&file, &expected)?;
 
   let command: FormatCommand = FormatCommand;
-  let matches = command
-    .init()
-    .try_get_matches_from(["format", "--path", &file.display().to_string(), "--silent"])?;
+  let arguments: Vec<String> = vec![
+    String::from("format"),
+    String::from("--path"),
+    file.display().to_string(),
+    String::from("--silent"),
+  ];
 
-  command.execute(&matches)?;
+  run_command(&command, &arguments)?;
   let formatted_once: Vec<u8> = fs::read(&file)?;
 
-  command.execute(&matches)?;
+  run_command(&command, &arguments)?;
   let formatted_twice: Vec<u8> = fs::read(&file)?;
 
   assert_eq!(formatted_once, expected);
@@ -82,11 +89,14 @@ fn formats_the_loose_configs_of_an_installation() -> CommandResult {
   fs::write(&config, ";\n")?;
 
   let command: FormatCommand = FormatCommand;
-  let matches = command
-    .init()
-    .try_get_matches_from(["format", "--path", &root.display().to_string(), "--silent"])?;
+  let arguments: Vec<String> = vec![
+    String::from("format"),
+    String::from("--path"),
+    root.display().to_string(),
+    String::from("--silent"),
+  ];
 
-  command.execute(&matches)?;
+  run_command(&command, &arguments)?;
 
   assert_eq!(fs::read_to_string(&config)?, ";\r\n");
 

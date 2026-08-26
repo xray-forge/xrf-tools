@@ -5,9 +5,10 @@ use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 
+use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ListCommand;
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct FindCommand;
@@ -49,29 +50,15 @@ impl GenericCommand for FindCommand {
           .action(ArgAction::SetTrue),
       )
       .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Include stored size, unpacked size, and source volume")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
     let path: &PathBuf = matches
       .get_one("path")
       .expect("Expected an archive path to be provided");
     let query: &String = matches.get_one("query").expect("Expected a query to be provided");
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
     let query: String = query.to_ascii_lowercase();
@@ -106,6 +93,8 @@ impl GenericCommand for FindCommand {
       if entries.len() == 1 { "" } else { "es" },
       xrf_utils::format_duration(started_at.elapsed())
     );
+
+    context.set_result(|| ArchiveFindReport::new(&query, &entries))?;
 
     Ok(())
   }

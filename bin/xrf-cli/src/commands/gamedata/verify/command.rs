@@ -8,10 +8,10 @@ use xrf_gamedata::{
 };
 use xrf_output::OutputOptions;
 
-use super::verification_report::GamedataVerificationReportWriter;
+use super::verification_report::GamedataVerificationReportPayload;
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -34,15 +34,6 @@ impl GenericCommand for VerifyCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("report")
-          .help("Write the structured verification report as JSON")
-          .long("report")
-          .required(false)
-          .value_name("PATH")
-          .num_args(1)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("ignore")
           .help("Ignored assets in the gamedata root")
           .short('i')
@@ -61,24 +52,8 @@ impl GenericCommand for VerifyCommand {
           .value_parser(value_parser!(GamedataVerificationType)),
       )
       .arg(
-        Arg::new("silent")
-          .help("Turn off logging")
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("strict")
           .help("Fully validate expensive asset payloads")
-          .short('s')
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
@@ -86,12 +61,11 @@ impl GenericCommand for VerifyCommand {
   }
 
   /// Unpack xray engine database archive.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let root: PathBuf = matches
       .get_one::<PathBuf>("root")
       .expect("Expected a valid gamedata root to be provided")
       .clone();
-    let report_path: Option<PathBuf> = matches.get_one::<PathBuf>("report").cloned();
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
@@ -114,7 +88,7 @@ impl GenericCommand for VerifyCommand {
       .map(|it| it.cloned().collect::<Vec<_>>())
       .unwrap_or_else(GamedataVerificationType::get_all);
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
     let is_strict: bool = matches.get_flag("strict");
 
     let open_options: GamedataProjectReadOptions = GamedataProjectReadOptions {
@@ -142,9 +116,8 @@ impl GenericCommand for VerifyCommand {
     let verify_result: GamedataVerificationResult = project.verify(&verify_options)?;
     let status: GamedataVerificationStatus = verify_result.get_status();
 
-    if let Some(report_path) = report_path {
-      GamedataVerificationReportWriter::new(&root, &verify_result).write(&report_path)?;
-    }
+    // Deposited before the verdict is turned into an outcome, so a failing check still reports the findings.
+    context.set_result(|| GamedataVerificationReportPayload::new(&root, &verify_result).build())?;
 
     match status {
       GamedataVerificationStatus::Passed => {

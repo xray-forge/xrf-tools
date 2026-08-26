@@ -4,8 +4,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_output::OutputOptions;
 
+use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct DuplicateMotionCommand;
@@ -48,24 +48,10 @@ impl GenericCommand for DuplicateMotionCommand {
           .long("play-once")
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Copy a motion of an omf file under a new name.
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");
@@ -82,7 +68,7 @@ impl GenericCommand for DuplicateMotionCommand {
       .map_or(path.as_path(), |it| it.as_path());
 
     let play_once: bool = matches.get_flag("play-once");
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(path)?;
 

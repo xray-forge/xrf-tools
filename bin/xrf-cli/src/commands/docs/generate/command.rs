@@ -6,9 +6,9 @@ use xrf_output::OutputOptions;
 
 use super::command_reference::GroupReference;
 use super::markdown_renderer::ReferenceMarkdownRenderer;
+use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::output::TerminalOutput;
 
 #[derive(Default)]
 pub struct GenerateCommand;
@@ -37,30 +37,14 @@ impl GenericCommand for GenerateCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("silent")
-          .help("Disable any logging")
-          .short('s')
-          .long("silent")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("verbose")
-          .help("Turn on verbose logging")
-          .short('v')
-          .long("verbose")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
-  fn execute(&self, matches: &ArgMatches) -> CommandResult {
+  fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output_dir: &PathBuf = matches
       .get_one::<PathBuf>("output")
       .expect("Expected valid output directory to be provided");
 
-    let output: OutputOptions = TerminalOutput::from_options(matches.get_flag("silent"), matches.get_flag("verbose"));
+    let output: OutputOptions = context.get_output().clone();
 
     let groups: Vec<GroupReference> = crate::registry::setup_command_groups()
       .iter()
