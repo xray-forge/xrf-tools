@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_output::OutputOptions;
 
+use super::report::ParticleInfoReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -46,6 +47,8 @@ impl GenericCommand for InfoCommand {
     xrf_output::info!(output, "Version: {}", particles_file.header.version);
     xrf_output::info!(output, "Effects count: {}", particles_file.effects.effects.len());
     xrf_output::info!(output, "Groups count: {}", particles_file.groups.groups.len());
+
+    context.set_result(|| ParticleInfoReport::new(&particles_file))?;
 
     Ok(())
   }

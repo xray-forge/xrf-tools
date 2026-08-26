@@ -70,6 +70,9 @@ impl GenericCommand for VerifyCommand {
 
     let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { output })?;
 
+    // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
+    context.set_result(|| &result)?;
+
     if result.errors.is_empty() {
       Ok(())
     } else {

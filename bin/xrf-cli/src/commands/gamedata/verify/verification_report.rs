@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::Duration;
 
 use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
@@ -8,14 +9,16 @@ use xrf_report::{CheckReport, Finding};
 #[serde(rename_all = "camelCase")]
 pub struct GamedataVerificationReportOutput {
   checks: Vec<GamedataVerificationCheckReportOutput>,
-  duration_ms: u64,
+  #[serde(with = "xrf_utils::duration_ms")]
+  duration: Duration,
   status: String,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GamedataVerificationCheckReportOutput {
-  duration_ms: Option<u64>,
+  #[serde(with = "xrf_utils::optional_duration_ms")]
+  duration: Option<Duration>,
   findings: Vec<GamedataVerificationFindingOutput>,
   status: String,
   summary: String,
@@ -54,7 +57,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
 
     GamedataVerificationReportOutput {
       checks,
-      duration_ms: xrf_utils::duration_to_millis(self.report.get_duration()),
+      duration: self.report.get_duration(),
       status: self.report.get_status().to_string(),
     }
   }
@@ -71,7 +74,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       .collect();
 
     GamedataVerificationCheckReportOutput {
-      duration_ms: report.duration().map(xrf_utils::duration_to_millis),
+      duration: report.duration(),
       findings,
       status: report.status().to_string(),
       summary: gamedata_report.get_summary().to_string(),
@@ -181,8 +184,8 @@ mod tests {
     // The payload stays the command's own shape: unifying it across commands is deferred with 0050.
     assert!(json.get("schemaVersion").is_none());
     assert_eq!(json["status"], "failed");
-    assert_eq!(json["durationMs"], 42);
-    assert_eq!(json["checks"][0]["durationMs"], 7);
+    assert_eq!(json["duration"], 42);
+    assert_eq!(json["checks"][0]["duration"], 7);
     assert_eq!(json["checks"][0]["verificationType"], "textures");
     assert_eq!(json["checks"][0]["findings"][0]["assetPath"], "textures/a.dds");
     assert_eq!(json["checks"][0]["findings"][1]["assetPath"], "textures/z.dds");

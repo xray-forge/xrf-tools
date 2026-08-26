@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_output::OutputOptions;
 
+use super::report::OmfInfoReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -95,6 +96,8 @@ impl GenericCommand for InfoCommand {
     for part in &omf_file.parameters.parts {
       xrf_output::info!(output, "Part '{}' bones: {}", part.name, part.get_bones().join(","));
     }
+
+    context.set_result(|| OmfInfoReport::new(&omf_file))?;
 
     Ok(())
   }

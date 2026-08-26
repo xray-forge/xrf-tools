@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{OgfChunksProcessor, OgfFile, XRayByteOrder};
 use xrf_output::OutputOptions;
 
+use super::report::OgfInfoReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -93,13 +94,25 @@ impl GenericCommand for InfoCommand {
       }
     }
 
-    match OgfChunksProcessor::find_unknown_chunk_ids::<XRayByteOrder, _>(path) {
+    // Kept for the report: which chunks went unparsed is how an unsupported visual is told apart
+    // from an empty one, and a survey that could not run says nothing rather than "none".
+    let unknown_chunks: Option<Vec<u32>> = match OgfChunksProcessor::find_unknown_chunk_ids::<XRayByteOrder, _>(path) {
       Ok(unknown) if !unknown.is_empty() => {
         xrf_output::info!(output, "Unparsed chunk ids: {:?}", unknown);
+
+        Some(unknown)
       }
-      Ok(_) => xrf_output::verbose!(output, "Unparsed chunk ids: none"),
-      Err(error) => xrf_output::warning!(output, "Could not survey chunks: {}", error),
-    }
+      Ok(unknown) => {
+        xrf_output::verbose!(output, "Unparsed chunk ids: none");
+
+        Some(unknown)
+      }
+      Err(error) => {
+        xrf_output::warning!(output, "Could not survey chunks: {}", error);
+
+        None
+      }
+    };
 
     if let Some(children) = &ogf_file.children {
       xrf_output::info!(output, "OGF children ({}):", children.nested.len());
@@ -116,6 +129,8 @@ impl GenericCommand for InfoCommand {
         }
       }
     }
+
+    context.set_result(|| OgfInfoReport::new(&ogf_file, unknown_chunks))?;
 
     Ok(())
   }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::Serialize;
 use xrf_report::{CheckReport, Finding, Report};
 use xrf_translation::ProjectVerifyResult;
@@ -7,7 +9,8 @@ use xrf_translation::ProjectVerifyResult;
 pub struct TranslationVerificationReportOutput {
   checked_translations_count: u32,
   checks: Vec<TranslationVerificationCheckOutput>,
-  duration_ms: u64,
+  #[serde(with = "xrf_utils::duration_ms")]
+  duration: Duration,
   missing_translations_count: u32,
   status: String,
 }
@@ -15,7 +18,8 @@ pub struct TranslationVerificationReportOutput {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TranslationVerificationCheckOutput {
-  duration_ms: Option<u64>,
+  #[serde(with = "xrf_utils::optional_duration_ms")]
+  duration: Option<Duration>,
   findings: Vec<TranslationVerificationFindingOutput>,
   id: String,
   status: String,
@@ -46,7 +50,7 @@ impl<'a> TranslationVerificationReportPayload<'a> {
     TranslationVerificationReportOutput {
       checked_translations_count: self.result.checked_translations_count,
       checks,
-      duration_ms: xrf_utils::duration_to_millis(self.result.duration),
+      duration: self.result.duration,
       missing_translations_count: self.result.missing_translations_count,
       status: report.status().to_string(),
     }
@@ -54,7 +58,7 @@ impl<'a> TranslationVerificationReportPayload<'a> {
 
   fn check_output(report: &CheckReport) -> TranslationVerificationCheckOutput {
     TranslationVerificationCheckOutput {
-      duration_ms: report.duration().map(xrf_utils::duration_to_millis),
+      duration: report.duration(),
       findings: report.findings().iter().map(Self::finding_output).collect(),
       id: report.id().to_string(),
       status: report.status().to_string(),

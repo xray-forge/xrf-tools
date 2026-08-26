@@ -63,6 +63,8 @@ impl GenericCommand for FormatCommand {
     if is_check {
       let result: LtxProjectFormatResult = LtxFilesFormatter::check_format_opt(&files, options)?;
 
+      context.set_result(|| &result)?;
+
       if result.invalid_files > 0 {
         return Err(CommandError::new_check_failed(result.invalid_files));
       }

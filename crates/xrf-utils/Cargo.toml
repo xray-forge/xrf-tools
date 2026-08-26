@@ -11,5 +11,8 @@ encoding_rs = "0.8.35"
 serde = { workspace = true }
 xrf-error = { workspace = true }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

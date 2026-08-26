@@ -45,9 +45,34 @@ pub mod duration_ms {
   }
 }
 
+/// Serialize an optional `Duration` as whole milliseconds, or `null` when it was never measured.
+///
+/// Use as `#[serde(with = "xrf_utils::optional_duration_ms")]`. `serde(with)` does not reach through
+/// an `Option` on its own: without this, an `Option<Duration>` falls back to serde's own `Duration`
+/// representation and emits a `{ secs, nanos }` object beside fields that emit a millisecond count.
+/// A report that answers the same question two ways is the thing this exists to prevent.
+pub mod optional_duration_ms {
+  use std::time::Duration;
+
+  use serde::{Deserialize, Deserializer, Serializer};
+
+  pub fn serialize<S: Serializer>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error> {
+    match duration {
+      Some(duration) => serializer.serialize_some(&super::duration_to_millis(*duration)),
+      None => serializer.serialize_none(),
+    }
+  }
+
+  pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Duration>, D::Error> {
+    Ok(Option::<u64>::deserialize(deserializer)?.map(Duration::from_millis))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::time::Duration;
+
+  use serde::{Deserialize, Serialize};
 
   use crate::{duration_to_millis, format_duration};
 
@@ -57,6 +82,54 @@ mod tests {
     assert_eq!(duration_to_millis(Duration::from_millis(742)), 742);
     assert_eq!(duration_to_millis(Duration::from_micros(1500)), 1);
     assert_eq!(duration_to_millis(Duration::MAX), u64::MAX);
+  }
+
+  #[test]
+  fn test_serializes_durations_as_millisecond_counts() {
+    #[derive(Serialize)]
+    struct Measured {
+      #[serde(with = "crate::duration_ms")]
+      duration: Duration,
+      #[serde(with = "crate::optional_duration_ms")]
+      optional: Option<Duration>,
+    }
+
+    assert_eq!(
+      serde_json::to_value(Measured {
+        duration: Duration::from_millis(742),
+        optional: Some(Duration::from_millis(7)),
+      })
+      .unwrap(),
+      serde_json::json!({ "duration": 742, "optional": 7 })
+    );
+
+    assert_eq!(
+      serde_json::to_value(Measured {
+        duration: Duration::ZERO,
+        optional: None,
+      })
+      .unwrap(),
+      serde_json::json!({ "duration": 0, "optional": serde_json::Value::Null })
+    );
+  }
+
+  #[test]
+  fn test_reads_back_a_millisecond_count() {
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct Measured {
+      #[serde(with = "crate::duration_ms")]
+      duration: Duration,
+      #[serde(with = "crate::optional_duration_ms")]
+      optional: Option<Duration>,
+    }
+
+    assert_eq!(
+      serde_json::from_str::<Measured>(r#"{"duration":742,"optional":null}"#).unwrap(),
+      Measured {
+        duration: Duration::from_millis(742),
+        optional: None,
+      }
+    );
   }
 
   #[test]

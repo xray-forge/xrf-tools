@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, DdsFormat, DdsMetadata};
 use xrf_output::OutputOptions;
 
+use super::report::TextureDdsInfoReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -95,6 +96,8 @@ impl GenericCommand for InfoDdsCommand {
       DdsFormat::Dxgi(format) => xrf_output::info!(output, "DXGI format: {:?}", format),
       _ => {}
     }
+
+    context.set_result(|| TextureDdsInfoReport::new(&metadata))?;
 
     Ok(())
   }

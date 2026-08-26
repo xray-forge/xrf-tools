@@ -6,7 +6,7 @@ use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor};
+use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -110,7 +110,9 @@ impl GenericCommand for PackEquipmentIconsCommand {
 
     log::info!("DDS format: {}", options.dds_compression_format);
 
-    PackEquipmentProcessor::pack_sprites(options)?;
+    let result: PackEquipmentResult = PackEquipmentProcessor::pack_sprites(options)?;
+
+    context.set_result(|| &result)?;
 
     xrf_output::info!(
       output_options,

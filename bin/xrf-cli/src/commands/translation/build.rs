@@ -100,6 +100,8 @@ impl GenericCommand for BuildCommand {
       xrf_utils::format_duration(result.duration)
     );
 
+    context.set_result(|| &result)?;
+
     Ok(())
   }
 }

@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_output::OutputOptions;
 
+use super::report::SpawnInfoReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -64,6 +65,8 @@ impl GenericCommand for InfoCommand {
     );
     xrf_output::info!(output, "Level graph points: {}", spawn_file.graphs.header.points_count);
     xrf_output::info!(output, "Level graph edges: {}", spawn_file.graphs.header.edges_count);
+
+    context.set_result(|| SpawnInfoReport::new(&spawn_file))?;
 
     Ok(())
   }
