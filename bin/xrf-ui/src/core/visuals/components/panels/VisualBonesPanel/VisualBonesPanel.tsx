@@ -2,10 +2,9 @@ import { RichTreeView, TreeViewDefaultItemModelProperties } from "@mui/x-tree-vi
 import { useInjection } from "@wirestate/react";
 import { ReactElement, SyntheticEvent, useCallback, useMemo } from "react";
 
-import { toBoneTree } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
-import { VisualBoneVisibility } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBoneVisibility";
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
+import { toBoneTree } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
+import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
@@ -20,14 +19,13 @@ export function VisualBonesPanel({
   id,
   className,
 }: IVisualBonesPanelProps = {}): ReactElement {
-  const visualsService: VisualsService = useInjection(VisualsService);
-  const bones: Array<VisualBone> = visualsService.bones;
+  const { bones, boneControls }: IVisualInspection = useInjection(VISUAL_INSPECTION);
 
   const items: Array<TreeViewDefaultItemModelProperties> = useMemo(() => toBoneTree(bones), [bones]);
 
   const onSelectBone = useCallback(
-    (_: Nullable<SyntheticEvent>, name: Nullable<string>) => visualsService.highlightBone(name),
-    [visualsService]
+    (_: Nullable<SyntheticEvent>, name: Nullable<string>) => boneControls?.highlightBone(name),
+    [boneControls]
   );
 
   if (!bones.length) {
@@ -48,7 +46,7 @@ export function VisualBonesPanel({
         <RichTreeView
           items={items}
           defaultExpandedItems={items.map((it) => it.id)}
-          selectedItems={visualsService.highlightedBone}
+          selectedItems={boneControls?.highlightedBone ?? null}
           onSelectedItemsChange={onSelectBone}
         />
       </VisualPanelSection>

@@ -14,6 +14,7 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { getProjectGamedataPath } from "@/core/settings/lib/path/project";
 import { ProjectService } from "@/core/settings/services/project/project.service";
+import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
@@ -31,7 +32,7 @@ import { Nullable, Optional } from "@/lib/types/general";
  * drops the backend's selection.
  */
 @Injectable()
-export class VisualsService {
+export class VisualsService implements IVisualInspection {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
@@ -130,6 +131,15 @@ export class VisualsService {
   @Computed()
   public get addonBones(): Array<string> {
     return selectAddonBones(this.bones);
+  }
+
+  /**
+   * @returns Itself, because the explorer is a viewer: it marks and hides bones.
+   *
+   * The panels ask for this rather than for the service, so the same panels serve a surface that only inspects.
+   */
+  public get boneControls(): IVisualBoneControls {
+    return this;
   }
 
   /**

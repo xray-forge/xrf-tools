@@ -1,9 +1,9 @@
 import { Box, Chip } from "@mui/material";
 import { ReactElement } from "react";
 
-import { VisualSubmeshTexture } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualSubmeshTexture } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
 import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";

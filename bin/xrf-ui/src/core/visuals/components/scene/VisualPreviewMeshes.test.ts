@@ -117,9 +117,7 @@ describe("VisualPreviewMeshes", () => {
   });
 
   it("takes the same texture on two submeshes, as a shared file is drawn twice", () => {
-    const { meshes, parent } = mockMeshes(
-      mockVisualModelViews({ submeshes: [mockSubmesh(0), mockSubmesh(1)] })
-    );
+    const { meshes, parent } = mockMeshes(mockVisualModelViews({ submeshes: [mockSubmesh(0), mockSubmesh(1)] }));
     const texture: Texture = new Texture();
 
     meshes.applyTexture(0, texture);

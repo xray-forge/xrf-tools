@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Binding, Container, Newable, ServiceToken } from "@wirestate/core";
+import { Binding, BindingType, Container, getBindingType, Newable, ServiceToken } from "@wirestate/core";
 import { isObservableObject } from "@wirestate/mobx";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
@@ -30,7 +30,12 @@ function catalogServices(): Array<Binding> {
 
   for (const application of APPLICATION_CATALOG.applications) {
     for (const binding of application.container?.bindings ?? []) {
-      bound.add(binding);
+      // Instance bindings only, in wirestate's own vocabulary. A factory binding names a token rather than a service —
+      // an application pointing the shared inspection panels at whichever of its own services answers them — and what
+      // it resolves to is a class already in this list.
+      if (getBindingType(binding) === BindingType.Instance) {
+        bound.add(binding);
+      }
     }
   }
 

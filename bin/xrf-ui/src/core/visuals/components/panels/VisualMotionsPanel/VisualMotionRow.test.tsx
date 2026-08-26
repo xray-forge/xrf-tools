@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { VisualMotionRow } from "@/core/visuals/components/panels/VisualMotionsPanel/VisualMotionRow";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function mockMotion(logicalPath: string): XrayAsset {

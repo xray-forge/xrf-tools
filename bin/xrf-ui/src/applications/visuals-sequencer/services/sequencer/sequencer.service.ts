@@ -7,13 +7,16 @@ import { createRoots } from "@/core/assets/lib";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { getProjectGamedataPath } from "@/core/settings/lib/path/project";
 import { ProjectService } from "@/core/settings/services/project/project.service";
+import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
+import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
@@ -23,7 +26,7 @@ import { Nullable } from "@/lib/types/general";
  * The visual a sequence is being written against, and the motions it can be written out of.
  */
 @Injectable()
-export class SequencerService {
+export class SequencerService implements IVisualInspection {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
@@ -44,6 +47,37 @@ export class SequencerService {
   @Computed()
   public get textures(): ReadonlyMap<number, Texture> {
     return this.loadService.textures;
+  }
+
+  /**
+   * @returns What the backend reported about the open visual, or null when nothing is open.
+   */
+  @Computed()
+  public get selected(): Nullable<SelectedVisualDescription> {
+    return this.visual.value?.selected ?? null;
+  }
+
+  /**
+   * @returns The open model's skeleton, or no bones at all when nothing is open.
+   */
+  @Computed()
+  public get bones(): Array<VisualBone> {
+    return this.selected?.description.bones ?? [];
+  }
+
+  @Computed()
+  public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
+    return this.loadService.textureStatuses;
+  }
+
+  /**
+   * @returns Nothing: a sequencer composes motions rather than inspecting a skeleton, so its bone panel reads.
+   *
+   * Marking and hiding are the viewer's, and a track that recorded hidden bones would be a sequence document decision
+   * rather than a panel one.
+   */
+  public get boneControls(): null {
+    return null;
   }
 
   @Computed()

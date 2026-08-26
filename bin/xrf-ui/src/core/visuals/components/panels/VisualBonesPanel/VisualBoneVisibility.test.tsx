@@ -2,10 +2,11 @@ import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { VisualBoneVisibility } from "@/applications/visuals-explorer/components/panels/VisualBonesPanel/VisualBoneVisibility";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { ProjectService } from "@/core/settings/services/project";
+import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
+import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -36,7 +37,14 @@ async function renderVisibility(
     ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
   });
 
-  const container: Container = mockContainer([ProjectService, VisualLoadService, VisualMotionService, VisualsService]);
+  const container: Container = mockContainer([
+    ProjectService,
+    VisualLoadService,
+    VisualMotionService,
+    VisualsService,
+    // The binding an application makes at its composition root, which is what the panel resolves through.
+    { token: VISUAL_INSPECTION, factory: (it: Container) => it.get(VisualsService) },
+  ]);
   const service: VisualsService = container.get(VisualsService);
 
   await service.openFile("C:\\gamedata\\wpn_ak74.ogf");

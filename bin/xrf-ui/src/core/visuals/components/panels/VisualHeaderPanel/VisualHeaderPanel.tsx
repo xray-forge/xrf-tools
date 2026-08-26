@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { VisualBoundsSection } from "@/applications/visuals-explorer/components/panels/VisualHeaderPanel/VisualBoundsSection";
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualDescription } from "@/core/bindings/types/xrf-visual";
+import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
+import { VisualBoundsSection } from "@/core/visuals/components/panels/VisualHeaderPanel/VisualBoundsSection";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
@@ -26,8 +26,7 @@ export function VisualHeaderPanel({
   id,
   className,
 }: IVisualHeaderPanelProps = {}): ReactElement {
-  const visualsService: VisualsService = useInjection(VisualsService);
-  const description: Nullable<VisualDescription> = visualsService.selected?.description ?? null;
+  const description: Nullable<VisualDescription> = useInjection(VISUAL_INSPECTION).selected?.description ?? null;
 
   if (!description) {
     return (

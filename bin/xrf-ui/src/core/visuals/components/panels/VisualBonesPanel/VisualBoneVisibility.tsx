@@ -4,11 +4,13 @@ import { Box, Button, Chip, FormControlLabel, Switch, Typography } from "@mui/ma
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
 import { Nullable } from "@/lib/types/general";
+
+/** Stable, so a surface offering no bone controls does not hand the section a new set on every render. */
+const EMPTY_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
  * Turning parts of the model off, the way the engine turns off an addon that is not attached.
@@ -17,16 +19,16 @@ import { Nullable } from "@/lib/types/general";
  * the tree above: select a bone, then hide it.
  */
 export function VisualBoneVisibility(): Nullable<ReactElement> {
-  const visualsService: VisualsService = useInjection(VisualsService);
+  const { bones, boneControls }: IVisualInspection = useInjection(VISUAL_INSPECTION);
 
-  const bones: Array<VisualBone> = visualsService.bones;
-  const addons: Array<string> = visualsService.addonBones;
-  const selected: Nullable<string> = visualsService.highlightedBone;
+  const addons: Array<string> = boneControls?.addonBones ?? [];
+  const hidden: ReadonlySet<string> = boneControls?.hiddenBones ?? EMPTY_HIDDEN;
+  const selected: Nullable<string> = boneControls?.highlightedBone ?? null;
 
   // Addon bones carry their own switch, so listing them again as chips would offer the same action twice.
-  const others: Array<string> = [...visualsService.hiddenBones].filter((name: string) => !addons.includes(name));
+  const others: Array<string> = [...hidden].filter((name: string) => !addons.includes(name));
 
-  if (!bones.length) {
+  if (!bones.length || !boneControls) {
     return null;
   }
 
@@ -44,9 +46,9 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
           control={
             <Switch
               size={"small"}
-              checked={!visualsService.hiddenBones.has(name)}
+              checked={!hidden.has(name)}
               slotProps={{ input: { "aria-label": `Show ${name}` } }}
-              onChange={() => visualsService.toggleBoneVisibility(name)}
+              onChange={() => boneControls.toggleBoneVisibility(name)}
             />
           }
         />
@@ -56,10 +58,10 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
         {selected ? (
           <Button
             size={"small"}
-            startIcon={visualsService.hiddenBones.has(selected) ? <VisibilityIcon /> : <VisibilityOffIcon />}
-            onClick={() => visualsService.toggleBoneVisibility(selected)}
+            startIcon={hidden.has(selected) ? <VisibilityIcon /> : <VisibilityOffIcon />}
+            onClick={() => boneControls.toggleBoneVisibility(selected)}
           >
-            {visualsService.hiddenBones.has(selected) ? `Show ${selected}` : `Hide ${selected}`}
+            {hidden.has(selected) ? `Show ${selected}` : `Hide ${selected}`}
           </Button>
         ) : (
           <Typography variant={"caption"} sx={{ color: "text.disabled" }}>
@@ -67,8 +69,8 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
           </Typography>
         )}
 
-        {visualsService.hiddenBones.size ? (
-          <Button size={"small"} onClick={visualsService.showAllBones}>
+        {hidden.size ? (
+          <Button size={"small"} onClick={boneControls.showAllBones}>
             Show all
           </Button>
         ) : null}
@@ -77,7 +79,7 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
       {others.length ? (
         <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", marginTop: 1 }}>
           {others.map((name: string) => (
-            <Chip key={name} size={"small"} label={name} onDelete={() => visualsService.toggleBoneVisibility(name)} />
+            <Chip key={name} size={"small"} label={name} onDelete={() => boneControls.toggleBoneVisibility(name)} />
           ))}
         </Box>
       ) : null}

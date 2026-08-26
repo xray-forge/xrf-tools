@@ -4,6 +4,7 @@ import { default as PlaylistPlayIcon } from "@mui/icons-material/PlaylistPlay";
 import { SequenceMotionsPanel } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel";
 import { SequenceTrackPanel } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel";
 import { IEditorPanel } from "@/core/shell/panel/context";
+import { VISUAL_PANELS } from "@/core/visuals/components/panels/visual-panels";
 
 /**
  * What the sequencer contributes to the panel stripes.
@@ -27,4 +28,5 @@ export const SEQUENCER_PANELS: Array<IEditorPanel> = [
     label: "Sequence",
     render: () => <SequenceTrackPanel />,
   },
+  ...VISUAL_PANELS.filter((panel: IEditorPanel) => panel.id !== "motions"),
 ];

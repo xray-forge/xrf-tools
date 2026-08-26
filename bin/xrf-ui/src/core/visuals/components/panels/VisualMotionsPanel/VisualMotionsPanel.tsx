@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { VisualMotionNames } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionNames";
-import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualDescription, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
+import { VisualMotionNames } from "@/core/visuals/components/panels/VisualMotionsPanel/VisualMotionNames";
+import { VisualMotionRow } from "@/core/visuals/components/panels/VisualMotionsPanel/VisualMotionRow";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
@@ -24,9 +24,9 @@ export function VisualMotionsPanel({
   id,
   className,
 }: IVisualMotionsPanelProps = {}): ReactElement {
-  const visualsService: VisualsService = useInjection(VisualsService);
-  const description: Nullable<VisualDescription> = visualsService.selected?.description ?? null;
-  const refs: Array<VisualMotionDependency> = visualsService.selected?.dependencies.motions ?? [];
+  const { selected }: IVisualInspection = useInjection(VISUAL_INSPECTION);
+  const description: Nullable<VisualDescription> = selected?.description ?? null;
+  const refs: Array<VisualMotionDependency> = selected?.dependencies.motions ?? [];
   const embedded: Array<string> = description?.embeddedMotions ?? [];
 
   if (refs.length === 0 && embedded.length === 0) {

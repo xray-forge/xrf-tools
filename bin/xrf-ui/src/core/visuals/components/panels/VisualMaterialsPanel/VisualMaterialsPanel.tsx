@@ -2,10 +2,10 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
-import { VisualSubmeshSection } from "@/applications/visuals-explorer/components/panels/VisualMaterialsPanel/VisualSubmeshSection";
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
+import { VisualSubmeshSection } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshSection";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import {
@@ -24,8 +24,7 @@ export function VisualMaterialsPanel({
   id,
   className,
 }: IVisualMaterialsPanelProps = {}): ReactElement {
-  const visualsService: VisualsService = useInjection(VisualsService);
-  const selected: Nullable<SelectedVisualDescription> = visualsService.selected;
+  const { selected, textureStatuses }: IVisualInspection = useInjection(VISUAL_INSPECTION);
   const description: Nullable<VisualDescription> = selected?.description ?? null;
   const described: Record<string, AssetTextureDescriptor> = selected?.textures ?? {};
 
@@ -72,7 +71,7 @@ export function VisualMaterialsPanel({
           submesh={submesh}
           isFirst={index === 0}
           texture={textures.get(submesh.index) ?? null}
-          status={visualsService.textureStatuses.get(submesh.index) ?? null}
+          status={textureStatuses.get(submesh.index) ?? null}
           textures={described}
         />
       ))}
