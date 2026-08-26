@@ -1,5 +1,3 @@
 pub(crate) mod command;
-pub(crate) mod report;
-pub(crate) mod statistics;
 
 pub(crate) use command::RepackCommand;

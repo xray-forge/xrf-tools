@@ -6,6 +6,7 @@ use xrf_output::OutputOptions;
 
 use super::command_reference::GroupReference;
 use super::markdown_renderer::ReferenceMarkdownRenderer;
+use super::report::DocsGenerateReport;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -54,19 +55,26 @@ impl GenericCommand for GenerateCommand {
     let pages: Vec<(String, String)> = ReferenceMarkdownRenderer::render_pages(&groups);
 
     if matches.get_flag("check") {
-      Self::check_pages(output_dir, &pages, &output)
+      Self::check_pages(context, output_dir, &pages, &output)
     } else {
-      Self::write_pages(output_dir, &pages, &output)
+      Self::write_pages(context, output_dir, &pages, &output)
     }
   }
 }
 
 impl GenerateCommand {
   /// Replaces generated Markdown pages, including pages left over after a group rename.
-  fn write_pages(directory: &Path, pages: &[(String, String)], output: &OutputOptions) -> CommandResult {
+  fn write_pages(
+    context: &mut CommandContext,
+    directory: &Path,
+    pages: &[(String, String)],
+    output: &OutputOptions,
+  ) -> CommandResult {
     fs::create_dir_all(directory)?;
 
-    for name in Self::list_unexpected_pages(directory, pages) {
+    let removed: Vec<String> = Self::list_unexpected_pages(directory, pages);
+
+    for name in &removed {
       xrf_output::info!(output, "Removing stale documentation page: {name}");
       fs::remove_file(directory.join(name))?;
     }
@@ -82,10 +90,15 @@ impl GenerateCommand {
       directory.display()
     );
 
-    Ok(())
+    context.set_result(|| DocsGenerateReport::written(directory, pages.len(), removed))
   }
 
-  fn check_pages(directory: &Path, pages: &[(String, String)], output: &OutputOptions) -> CommandResult {
+  fn check_pages(
+    context: &mut CommandContext,
+    directory: &Path,
+    pages: &[(String, String)],
+    output: &OutputOptions,
+  ) -> CommandResult {
     let mut stale: Vec<String> = Vec::new();
 
     for (name, content) in pages {
@@ -108,8 +121,6 @@ impl GenerateCommand {
         directory.display(),
         pages.len()
       );
-
-      Ok(())
     } else {
       xrf_output::failure!(
         output,
@@ -120,8 +131,17 @@ impl GenerateCommand {
       for name in &stale {
         xrf_output::failure!(output, "  {name}");
       }
+    }
 
-      Err(CommandError::new_check_failed(stale.len()))
+    let drifted: usize = stale.len();
+
+    // Deposited before the verdict becomes an outcome, so a failing check still reports the drift that explains it.
+    context.set_result(|| DocsGenerateReport::checked(directory, pages.len(), stale))?;
+
+    if drifted == 0 {
+      Ok(())
+    } else {
+      Err(CommandError::new_check_failed(drifted))
     }
   }
 

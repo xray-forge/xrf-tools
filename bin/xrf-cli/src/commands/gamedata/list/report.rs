@@ -1,0 +1,106 @@
+use std::path::Path;
+use std::time::Duration;
+
+use serde::Serialize;
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayPathCollision, XraySkippedMount};
+
+use crate::commands::gamedata::list::asset_lister::AssetListing;
+
+/// One asset a mount resolved: its engine identity and the container that answered for it.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GamedataAssetReport {
+  container: String,
+  is_archived: bool,
+  logical_path: String,
+}
+
+impl GamedataAssetReport {
+  fn new(asset: &XrayAsset) -> Self {
+    let (container, is_archived): (&Path, bool) = match asset.get_container() {
+      XrayAssetContainer::Directory { root, .. } => (root.as_path(), false),
+      XrayAssetContainer::Archive { path } => (path.as_path(), true),
+    };
+
+    Self {
+      container: xrf_utils::to_portable_path_string(container),
+      is_archived,
+      logical_path: String::from(asset.get_logical_path().as_str()),
+    }
+  }
+
+  fn list(assets: &[XrayAsset]) -> Vec<Self> {
+    assets.iter().map(Self::new).collect()
+  }
+}
+
+/// One file a source holds but cannot reach, because another file in it claims the same identity.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GamedataCollisionReport {
+  kept: String,
+  logical_path: String,
+  unreachable: String,
+}
+
+impl GamedataCollisionReport {
+  fn new(collision: &XrayPathCollision) -> Self {
+    Self {
+      kept: xrf_utils::to_portable_path_string(&collision.kept),
+      logical_path: String::from(collision.logical_path.as_str()),
+      unreachable: xrf_utils::to_portable_path_string(&collision.unreachable),
+    }
+  }
+}
+
+/// One declared source that could not be opened, so the listing does not cover it.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GamedataSkippedMountReport {
+  origin: String,
+  path: String,
+  reason: String,
+}
+
+impl GamedataSkippedMountReport {
+  fn new(skipped: &XraySkippedMount) -> Self {
+    Self {
+      origin: skipped.origin.clone(),
+      path: xrf_utils::to_portable_path_string(&skipped.path),
+      reason: skipped.reason.clone(),
+    }
+  }
+}
+
+/// What `gamedata list` resolved out of the roots it was given.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GamedataListReport {
+  collisions: Vec<GamedataCollisionReport>,
+  #[serde(with = "xrf_utils::duration_ms")]
+  duration: Duration,
+  entries: Vec<GamedataAssetReport>,
+  /// Whether shadowed entries were asked for, since an empty list otherwise cannot say which it means.
+  is_shadowed_included: bool,
+  mounts: Vec<String>,
+  origin: String,
+  shadowed: Vec<GamedataAssetReport>,
+  skipped: Vec<GamedataSkippedMountReport>,
+  total: usize,
+}
+
+impl GamedataListReport {
+  pub fn new(listing: &AssetListing, is_shadowed_included: bool) -> Self {
+    Self {
+      collisions: listing.collisions.iter().map(GamedataCollisionReport::new).collect(),
+      duration: listing.duration,
+      entries: GamedataAssetReport::list(&listing.entries),
+      is_shadowed_included,
+      mounts: listing.mounts.clone(),
+      origin: listing.origin.clone(),
+      shadowed: GamedataAssetReport::list(&listing.shadowed),
+      skipped: listing.skipped.iter().map(GamedataSkippedMountReport::new).collect(),
+      total: listing.entries.len(),
+    }
+  }
+}

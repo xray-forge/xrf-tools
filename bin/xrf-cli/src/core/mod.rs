@@ -8,4 +8,5 @@ pub mod generic_command;
 pub mod logging;
 pub mod output;
 pub mod reporting;
+pub mod reports;
 pub mod staged_write;

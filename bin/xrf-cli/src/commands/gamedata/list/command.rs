@@ -5,6 +5,7 @@ use xrf_output::OutputOptions;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
+use crate::commands::gamedata::list::report::GamedataListReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -103,6 +104,8 @@ impl GenericCommand for ListCommand {
       .with_shadowed(matches.get_flag("shadowed"))
       .run()?;
 
+    let is_shadowed_included: bool = matches.get_flag("shadowed");
+
     xrf_output::info!(output, "Listing {}", listing.origin);
 
     for mount in &listing.mounts {
@@ -111,7 +114,7 @@ impl GenericCommand for ListCommand {
 
     Self::print_entries(&output, &listing);
 
-    if matches.get_flag("shadowed") {
+    if is_shadowed_included {
       Self::print_shadowed(&output, &listing);
     }
 
@@ -126,7 +129,9 @@ impl GenericCommand for ListCommand {
       xrf_utils::format_duration(listing.duration)
     );
 
-    Ok(())
+    // Every entry is reported, not the printed first [`PRINT_LIMIT`]: a machine consumer has no screen
+    // to spare and no chance to narrow the run with `--prefix` after the fact.
+    context.set_result(|| GamedataListReport::new(&listing, is_shadowed_included))
   }
 }
 
