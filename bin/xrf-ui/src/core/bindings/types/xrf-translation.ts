@@ -2,6 +2,36 @@
 
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
+/** How much one import run moved. */
+export type ProjectParseCensus = {
+  /** String tables read out of the scope. */
+  filesRead: number;
+  /** JSON sources created because nothing was there yet. */
+  filesCreated: number;
+  /** JSON sources rewritten because merging changed something in them. */
+  filesUpdated: number;
+  /** JSON sources left alone because merging changed nothing. */
+  filesUnchanged: number;
+  /** Files skipped without being read, because they are not string tables or hold no entries. */
+  filesSkipped: number;
+  /** Entries read out of the XML, before any merging. */
+  entriesRead: number;
+  /** Ids this run introduced to their file. */
+  entriesInserted: number;
+  /** Placeholders this run replaced with text. */
+  entriesFilled: number;
+  /** Ids whose text already matched what was read. */
+  entriesUnchanged: number;
+  /**
+   * Ids whose existing text differed from what was read.
+   *
+   * Kept unless the run was told to overwrite, in which case this counts what was replaced.
+   */
+  entriesConflicted: number;
+  /** `null` placeholders added for languages a file carries but a record did not. */
+  placeholdersAdded: number;
+};
+
 /**
  * One change to a translation entry, in whichever kind of file holds it.
  *

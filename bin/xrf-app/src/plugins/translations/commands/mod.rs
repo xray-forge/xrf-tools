@@ -2,5 +2,6 @@ pub mod close_project;
 pub mod detect_mode;
 pub mod get_project;
 pub mod open_project;
+pub mod parse_project;
 pub mod save_file;
 pub mod validate_text;

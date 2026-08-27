@@ -57,19 +57,9 @@ export const dialogsCommands = {
       translationsPrefix: string;
       /** Whether every file the project holds is loose, so an editing session could save all of it. */
       isEditable: boolean;
-      /**
-       * Languages the text tree offers, which is what a language switcher is built from.
-       *
-       * Empty when no text was read, so a surface can say it is showing keys rather than lines instead of
-       * inferring that from every phrase coming back unresolved.
-       */
+      /** Languages the text tree offers, which is what a language switcher is built from. */
       languages: Array<string>;
-      /**
-       * Distinct translation keys the text tree defines.
-       *
-       * The text is read at open, so its cost is reported rather than hidden. Zero here beside a
-       * non-empty `files` is the signature of dialogs whose text sits somewhere this layout did not look.
-       */
+      /** Distinct translation keys the text tree defines. */
       textKeys: number;
       /** Files keyed by their logical path, in logical-path order. */
       files: { [key in string]: DialogFileDescriptor };

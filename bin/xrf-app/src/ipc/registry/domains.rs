@@ -100,6 +100,7 @@ macro_rules! for_each_tauri_command_domain {
         detect_mode => crate::plugins::translations::commands::detect_mode::translations_detect_mode,
         get_project => crate::plugins::translations::commands::get_project::translations_get_project,
         open_project => crate::plugins::translations::commands::open_project::translations_open_project,
+        parse_project => crate::plugins::translations::commands::parse_project::translations_parse_project,
         save_file => crate::plugins::translations::commands::save_file::translations_save_file,
         validate_text => crate::plugins::translations::commands::validate_text::translations_validate_text,
       }

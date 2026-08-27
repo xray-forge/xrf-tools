@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
+import { TranslationParseSummary } from "@/core/bindings/types/xrf-app";
 import {
   TranslationEdit,
   TranslationFile,
@@ -60,6 +61,25 @@ export const translationsCommands = {
    */
   openProject: (roots: XrayRoots, mode: TranslationProjectMode, prefix: string | null) =>
     __TAURI_INVOKE<TranslationProjectDescriptor>("plugin:translations|open_project", { roots, mode, prefix }),
+  /** Import one language's raw XML string tables into JSON sources. */
+  parseProject: (
+    roots: XrayRoots,
+    language: string,
+    prefix: string | null,
+    outputDir: string,
+    file: string | null,
+    isOverwrite: boolean,
+    isDryRun: boolean
+  ) =>
+    __TAURI_INVOKE<TranslationParseSummary>("plugin:translations|parse_project", {
+      roots,
+      language,
+      prefix,
+      outputDir,
+      file,
+      isOverwrite,
+      isDryRun,
+    }),
   /**
    * Write one logical file's pending edits, grouped by the language each belongs to.
    *

@@ -1,6 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
+import { ProjectParseCensus } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
@@ -84,6 +85,23 @@ export type SelectedVisualDescription = {
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */
   textures: { [key in string]: AssetTextureDescriptor };
+};
+
+/** One thing worth reporting about a file the run met. */
+export type TranslationParseFinding = {
+  rule: string;
+  subject: string | null;
+  message: string;
+};
+
+/** What an import run reports back to the desktop surface. */
+export type TranslationParseSummary = {
+  /** The language every entry this run read was filed under. */
+  language: string;
+  /** Whether the run computed its answer without writing it. */
+  isDryRun: boolean;
+  census: ProjectParseCensus;
+  findings: Array<TranslationParseFinding>;
 };
 
 /**

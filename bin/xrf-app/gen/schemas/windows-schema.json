@@ -6771,10 +6771,10 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-save-file`\n- `allow-validate-text`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`",
           "type": "string",
           "const": "translations:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-save-file`\n- `allow-validate-text`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -6799,6 +6799,12 @@
           "type": "string",
           "const": "translations:allow-open-project",
           "markdownDescription": "Enables the open_project command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the parse_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:allow-parse-project",
+          "markdownDescription": "Enables the parse_project command without any pre-configured scope."
         },
         {
           "description": "Enables the save_file command without any pre-configured scope.",
@@ -6835,6 +6841,12 @@
           "type": "string",
           "const": "translations:deny-open-project",
           "markdownDescription": "Denies the open_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the parse_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:deny-parse-project",
+          "markdownDescription": "Denies the parse_project command without any pre-configured scope."
         },
         {
           "description": "Denies the save_file command without any pre-configured scope.",
