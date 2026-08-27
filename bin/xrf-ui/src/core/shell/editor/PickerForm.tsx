@@ -27,7 +27,7 @@ const PANEL_WIDTH: number = 560;
 /**
  * The least room a result keeps, whatever the parameters above it are doing.
  */
-const RESULT_MIN_HEIGHT: number = 360;
+const RESULT_MIN_HEIGHT: number = 380;
 
 export interface IPickerFormProps {
   title?: ReactNode;
@@ -240,7 +240,7 @@ export function PickerForm({
               minHeight: RESULT_MIN_HEIGHT,
               overflow: "hidden",
               paddingX: 3,
-              paddingBottom: 3,
+              marginBottom: 3,
             }}
           >
             {result}
