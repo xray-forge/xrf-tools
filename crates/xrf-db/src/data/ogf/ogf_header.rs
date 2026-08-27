@@ -17,15 +17,13 @@ impl ChunkReadWrite for OgfHeader {
   }
 }
 
-/*
-my $self = shift;
-  my ($cf) = @_;
-  my $packet = stkutils::data_packet->new($cf->r_chunk_data());
-  ($self->{ogf_version}, $self->{model_type}, $self->{shader_id}) = $packet->unpack('CCv', 4);
-  fail('unexpected ogf_file version '.$self->{ogf_version}) unless $self->{ogf_version} >= 2 && $self->{ogf_version} <= 4;
-  if ($self->{ogf_version} == 4) {
-    $self->read_bbox($packet);
-    $self->read_bsphere($packet);
-  }
-  $self->set_loaded('OGF_HEADER');
- */
+// todo: implement OGF_HEADER (chunk 1) read/write.
+//
+// Authority is `struct ogf_header` in `xray-16/src/xrCore/FMesh.hpp:99`: `u8 format_version`, `u8 type`,
+// `u16 shader_id`, then `ogf_bbox` (two `Fvector`) and `ogf_bsphere` (`Fvector` + `f32`). The engine reads it as one
+// fixed-size record and asserts `format_version == xrOGF_FormatVersion` (4), rejecting anything else outright
+// (`xray-16/src/Layers/xrRender/FBasicVisual.cpp:43-51`).
+//
+// Versions 2 and 3 carry no bounding box or sphere in this chunk - they appear as separate OGF_BBOX/OGF_BSPHERE
+// chunks - so a reader accepting them cannot use the fixed-size `ogf_header` layout. `shader_id` of zero means "no
+// shader"; the engine only resolves one when it is non-zero.
