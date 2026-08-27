@@ -23,6 +23,7 @@ export function ApplicationStatusBar({
       sx={{
         display: "flex",
         alignItems: "center",
+        justifyContent: "flex-end",
         gap: 1.5,
         height: LAYOUT.statusBarHeight,
         minHeight: LAYOUT.statusBarHeight,
