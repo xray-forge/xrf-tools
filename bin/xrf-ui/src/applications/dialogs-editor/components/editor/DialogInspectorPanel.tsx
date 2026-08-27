@@ -1,47 +1,14 @@
 import { Box, Chip, Divider, Stack, Typography } from "@mui/material";
-import { GridColDef } from "@mui/x-data-grid";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
+import { DialogInspectorSection } from "@/applications/dialogs-editor/components/editor/DialogInspectorSection";
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
+import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { DataTable } from "@/core/ui/table";
-import { identifierColumn, textColumn } from "@/core/ui/table/columns";
 import { Nullable } from "@/lib/types/general";
-
-/** One element as the property list shows it. Repeated keys stay repeated rows. */
-interface IInspectedElement {
-  /** Row identity, which the element name cannot supply because names repeat. */
-  index: number;
-  name: string;
-  value: string;
-}
-
-/**
- * The columns of the property list.
- *
- * Values are monospaced because most of them are identifiers the engine resolves — an info portion, a
- * phrase id, a script reference. Not syntax-highlighted: a dotted reference such as
- * `xr_conditions.actor_has_pda` holds no keyword, string or number for a grammar to colour, so
- * highlighting it would cost a pass over every row and render the same characters.
- */
-const COLUMNS: Array<GridColDef> = [textColumn("name", "Element", 150), identifierColumn("value", "Value", 260)];
-
-/**
- * Element kinds the surrounding surface already shows, so the property list does not repeat them.
- *
- * `text` is the line in this panel's own header, and `next` is drawn on the canvas as a numbered edge.
- * A deny-list rather than the node badges' allow-list, deliberately: badges are a glance and admit
- * only behaviour, where this is the full record and should omit nothing it is not already showing.
- * `script_text` therefore stays — the header has no line to show for a scripted phrase, so the
- * reference is the only thing that identifies it.
- */
-const SHOWN_ELSEWHERE: ReadonlySet<DialogElementDescriptor["kind"]> = new Set<DialogElementDescriptor["kind"]>([
-  "next",
-  "text",
-]);
 
 /** How every identifier in this panel reads: monospace, wrapping, and quieter than the prose above it. */
 const IDENTIFIER_SX = {
@@ -50,16 +17,6 @@ const IDENTIFIER_SX = {
   fontFamily: "monospace",
   overflowWrap: "anywhere",
 } as const;
-
-function toRows(elements: ReadonlyArray<DialogElementDescriptor>): Array<IInspectedElement> {
-  return elements
-    .filter((element: DialogElementDescriptor) => !SHOWN_ELSEWHERE.has(element.kind))
-    .map((element: DialogElementDescriptor, index: number) => ({
-      index,
-      name: element.name,
-      value: element.value,
-    }));
-}
 
 /**
  * What one node of the open dialog carries.
@@ -76,6 +33,16 @@ export function DialogInspectorPanel(): ReactElement {
     [dialog, nodeId]
   );
 
+  // Chosen inside the memo rather than beside it: `?? []` mints a new array every render, so a memo
+  // keyed on it would never hold and would regroup on every keystroke elsewhere in the application.
+  const groups: Array<IDialogElementGroup> = useMemo(() => {
+    const elements: ReadonlyArray<DialogElementDescriptor> = isDialogRoot
+      ? (dialog?.elements ?? [])
+      : (phrase?.elements ?? []);
+
+    return groupDialogElements(elements);
+  }, [dialog, isDialogRoot, phrase]);
+
   if (!dialog || !nodeId) {
     return (
       <EmptyState
@@ -91,12 +58,16 @@ export function DialogInspectorPanel(): ReactElement {
     return <EmptyState title={"Phrase is gone"} description={`This dialog no longer declares '${nodeId}'.`} />;
   }
 
-  const elements: ReadonlyArray<DialogElementDescriptor> = isDialogRoot ? dialog.elements : (phrase?.elements ?? []);
   const badges: Array<ReactElement> = [
     ...(isDialogRoot && dialog.priority !== null
       ? [<Chip key={"priority"} size={"small"} variant={"outlined"} label={`priority ${dialog.priority}`} />]
       : []),
-    ...(phrase?.isFinal ? [<Chip key={"final"} size={"small"} variant={"outlined"} label={"final"} />] : []),
+    // Terminality is worded here where there is room for it, and the two spellings read alike because
+    // they behave alike: the engine closes the dialog whether a phrase says `is_final` or simply
+    // offers nothing. Nearly four in ten phrases are the second kind.
+    ...(phrase && (phrase.isFinal || !phrase.next.length)
+      ? [<Chip key={"terminal"} size={"small"} variant={"outlined"} label={phrase.isFinal ? "final" : "ends here"} />]
+      : []),
     ...(phrase?.textKey && !phrase.text
       ? [<Chip key={"untranslated"} size={"small"} color={"warning"} variant={"outlined"} label={"untranslated"} />]
       : []),
@@ -139,30 +110,22 @@ export function DialogInspectorPanel(): ReactElement {
 
       <Divider />
 
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
-          minHeight: 0,
-          paddingBottom: 2,
-          paddingTop: 1.5,
-          paddingX: 2,
-        }}
-      >
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-          {isDialogRoot ? "Conditions" : "Elements"}
-        </Typography>
-
-        <Box sx={{ display: "flex", flexGrow: 1, marginTop: 1, minHeight: 0 }}>
-          <DataTable
-            rows={toRows(elements)}
-            columns={COLUMNS}
-            getRowId={(row: IInspectedElement) => row.index}
-            emptyLabel={isDialogRoot ? "This dialog carries no conditions." : "This phrase carries no elements."}
-            countNoun={"element"}
-          />
-        </Box>
+      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", paddingY: 1.5 }}>
+        {groups.length ? (
+          groups.map((group: IDialogElementGroup, index: number) => (
+            <DialogInspectorSection
+              key={group.id}
+              title={group.title}
+              caption={group.caption}
+              elements={group.elements}
+              isFirst={index === 0}
+            />
+          ))
+        ) : (
+          <Typography variant={"body2"} sx={{ color: "text.secondary", paddingX: 2 }}>
+            {isDialogRoot ? "This dialog gates nothing." : "This phrase carries no conditions or effects."}
+          </Typography>
+        )}
       </Box>
     </Box>
   );

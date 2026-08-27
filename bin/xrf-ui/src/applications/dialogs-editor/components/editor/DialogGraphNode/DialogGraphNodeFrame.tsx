@@ -46,6 +46,7 @@ export function DialogGraphNodeFrame({
         borderColor: isSelected ? "primary.main" : "divider",
         borderLeft: "3px solid",
         borderLeftColor: accent,
+        ...(data.isTerminal ? { borderBottom: "2px solid", borderBottomColor: "text.disabled" } : {}),
         borderRadius: 1,
         boxShadow: isSelected ? 3 : 0,
         padding: 1,

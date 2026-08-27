@@ -95,11 +95,36 @@ describe("DialogInspectorPanel", () => {
     expect(getByText("Conditions")).toBeInTheDocument();
   });
 
-  it("names the subject and its element band per node kind", () => {
-    const { getByText } = renderPanel("0");
+  it("groups elements into sections rather than one table", () => {
+    const { getByText, queryByText } = renderPanel("0");
 
     expect(getByText("Phrase")).toBeInTheDocument();
-    expect(getByText("Elements")).toBeInTheDocument();
+    // The fixture phrase gates on two info portions and does nothing else, so one section appears and
+    // the three it has nothing for stay away rather than drawing empty headings.
+    expect(getByText("Conditions")).toBeInTheDocument();
+    expect(queryByText("Effects")).not.toBeInTheDocument();
+    expect(queryByText("Script")).not.toBeInTheDocument();
+  });
+
+  it("says so for a phrase carrying neither a condition nor an effect", () => {
+    const { getByText } = renderPanel("1");
+
+    expect(getByText("This phrase carries no conditions or effects.")).toBeInTheDocument();
+  });
+
+  it("says a phrase offering nothing ends there, without calling it a fault", () => {
+    // Phrase `1` offers no continuation and does not say `is_final`. The engine closes the dialog
+    // anyway, and 36-40% of shipped phrases end this way, so it reads as a shape rather than a defect.
+    const { getByText } = renderPanel("1");
+
+    expect(getByText("ends here")).toBeInTheDocument();
+  });
+
+  it("uses the engine's own word where a phrase spells the ending out", () => {
+    const { getByText, queryByText } = renderPanel("0");
+
+    expect(getByText("final")).toBeInTheDocument();
+    expect(queryByText("ends here")).not.toBeInTheDocument();
   });
 
   it("says so when the inspected phrase is no longer declared", () => {

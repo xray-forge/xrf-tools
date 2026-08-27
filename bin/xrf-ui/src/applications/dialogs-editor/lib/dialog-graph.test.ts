@@ -117,6 +117,40 @@ describe("buildDialogGraph", () => {
     expect(nodeOf(graph, "0").data.hasIncoming).toBe(false);
   });
 
+  it("counts both spellings of an ending as terminal", () => {
+    // The engine closes the dialog whether a phrase says `is_final` or simply offers nothing, so both
+    // answer the graph question "where can this end?". Measured across the reference trees, ending by
+    // offering nothing is 36-40% of every phrase and `is_final` is 1-2%, so treating the common one as
+    // a defect would have painted a third of the graph.
+    const graph: IDialogGraph = buildDialogGraph(
+      dialog([
+        phrase({ id: "0", next: ["declared", "implied"] }),
+        phrase({ id: "declared", isFinal: true }),
+        phrase({ id: "implied" }),
+      ])
+    );
+
+    expect(nodeOf(graph, "declared").data).toMatchObject({ isFinal: true, isTerminal: true });
+    expect(nodeOf(graph, "implied").data).toMatchObject({ isFinal: false, isTerminal: true });
+    // A phrase that offers something is not an ending.
+    expect(nodeOf(graph, "0").data).toMatchObject({ isFinal: false, isTerminal: false });
+  });
+
+  it("does not call a phrase with a broken link an ending", () => {
+    // It declares somewhere to go. That the target is missing is a separate finding about the link, not
+    // a statement that the conversation ends here.
+    const graph: IDialogGraph = buildDialogGraph(dialog([phrase({ id: "0", next: ["missing"] })]));
+
+    expect(nodeOf(graph, "0").data.isTerminal).toBe(false);
+  });
+
+  it("never calls the dialog root terminal", () => {
+    // It is not a phrase. A conversation does not end at the thing that starts it.
+    const graph: IDialogGraph = buildDialogGraph(dialog([phrase({ id: "0", isFinal: true })]));
+
+    expect(nodeOf(graph, DIALOG_NODE_ID).data).toMatchObject({ isFinal: false, isTerminal: false });
+  });
+
   it("marks a phrase as having something leading to it", () => {
     const graph: IDialogGraph = buildDialogGraph(dialog([phrase({ id: "0", next: ["1"] }), phrase({ id: "1" })]));
 
