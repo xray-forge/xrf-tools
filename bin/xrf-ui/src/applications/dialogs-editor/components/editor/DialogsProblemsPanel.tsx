@@ -4,7 +4,11 @@ import { ReactElement } from "react";
 import { DialogFinding } from "@/core/bindings/types/xrf-dialog";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 
-/** Trims the project root off a subject, which is otherwise most of the line. */
+/**
+ * Trims the directory off a subject, which is otherwise most of the line.
+ *
+ * Subjects here are logical paths, so the separator is the engine one and not the host platform's.
+ */
 function toLeaf(subject: string): string {
   const separator: number = subject.lastIndexOf("\\");
 

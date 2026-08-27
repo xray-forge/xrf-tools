@@ -3,12 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib/roots";
 import { dialogsCommands } from "@/core/bindings/commands/dialogs";
-import {
-  DialogDescriptor,
-  DialogProjectDescriptor,
-  DialogProjectMode,
-  DialogSummaryDescriptor,
-} from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
@@ -184,10 +179,5 @@ ${transformError(error).message}`,
     if (this.selection) {
       void flowResult(this.selectDialog(this.selection.logicalPath, this.selection.id));
     }
-  }
-
-  /** Dialogs one file declares, as the project index listed them. */
-  public listDialogs(logicalPath: string): Array<DialogSummaryDescriptor> {
-    return this.project.value?.files[logicalPath]?.dialogs ?? [];
   }
 }
