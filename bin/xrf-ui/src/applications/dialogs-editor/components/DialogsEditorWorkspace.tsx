@@ -1,9 +1,7 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { DialogGraph } from "@/applications/dialogs-editor/components/editor/DialogGraph";
-import { DialogLanguageBar } from "@/applications/dialogs-editor/components/editor/DialogLanguageBar";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -33,26 +31,16 @@ function describeAbsentDialog(dialog: Loadable<Nullable<DialogDescriptor>>): { t
 }
 
 /**
- * The centre of the editor: which language the lines are read in, and the graph itself.
+ * The centre of the editor: the graph, and nothing competing with it for room.
  */
 export function DialogsEditorWorkspace(): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
   const dialog: Loadable<Nullable<DialogDescriptor>> = dialogsService.dialog;
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, minWidth: 0 }}>
-      <DialogLanguageBar
-        languages={dialogsService.languages}
-        selected={dialogsService.resolvedLanguage}
-        onSelect={dialogsService.setLanguage}
-      />
-
-      {dialog.value ? (
-        <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />
-      ) : (
-        <EmptyState {...describeAbsentDialog(dialog)} />
-      )}
-    </Box>
+  return dialog.value ? (
+    <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />
+  ) : (
+    <EmptyState {...describeAbsentDialog(dialog)} />
   );
 }

@@ -6,6 +6,7 @@ import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsE
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { ProjectService } from "@/core/settings/services/project";
+import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -48,10 +49,16 @@ const DIALOG: DialogDescriptor = {
 };
 
 function renderEditor(): RenderResult {
-  return renderWithProviders(<DialogsEditorApplication />, {
-    bindings: [ProjectService, DialogsService],
-    route: "/dialogs-editor",
-  });
+  return renderWithProviders(
+    <>
+      <DialogsEditorApplication />
+      <ApplicationStatusBar />
+    </>,
+    {
+      bindings: [ProjectService, DialogsService],
+      route: "/dialogs-editor",
+    }
+  );
 }
 
 describe("opened dialogs editor", () => {
@@ -103,14 +110,18 @@ describe("opened dialogs editor", () => {
     expect(queryByText("Reading dialog")).not.toBeInTheDocument();
   });
 
-  it("offers the languages the project read and nothing when it read none", async () => {
-    const { findByLabelText } = renderEditor();
+  it("offers a language action in the toolbar and states the current one in the status bar", async () => {
+    // Changing the language is an action and lives in the caption row; the language in force is state
+    // and lives in the status bar. That is the division `EditorToolbar` states in its own contract.
+    const { findByLabelText, findByText } = renderEditor();
 
-    expect(await findByLabelText("Language")).toBeInTheDocument();
+    expect(await findByLabelText("Change language")).toBeInTheDocument();
+    expect(await findByText("eng")).toBeInTheDocument();
   });
 
-  it("hides the language selector for a project with no text tree", async () => {
-    // A switcher over no languages offers a choice that cannot be made.
+  it("offers no language action for a project with no text tree", async () => {
+    // A switcher over no languages offers a choice that cannot be made, and the status bar already
+    // says the project read no text.
     setMockInvokeResponses({
       ["plugin:dialogs|get_project"]: { ...PROJECT, languages: [], textKeys: 0 },
       ["plugin:dialogs|get_dialog"]: DIALOG,
@@ -118,8 +129,7 @@ describe("opened dialogs editor", () => {
 
     const { findByText, queryByLabelText } = renderEditor();
 
-    await findByText("No dialog selected");
-
-    expect(queryByLabelText("Language")).not.toBeInTheDocument();
+    expect(await findByText("no text")).toBeInTheDocument();
+    expect(queryByLabelText("Change language")).not.toBeInTheDocument();
   });
 });

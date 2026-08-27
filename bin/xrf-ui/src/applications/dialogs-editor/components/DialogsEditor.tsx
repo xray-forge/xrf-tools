@@ -6,6 +6,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogsEditorWorkspace } from "@/applications/dialogs-editor/components/DialogsEditorWorkspace";
 import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/editor/DialogInspectorPanel";
+import { DialogsEditorActions } from "@/applications/dialogs-editor/components/editor/DialogsEditorActions";
 import { DialogsProblemsPanel } from "@/applications/dialogs-editor/components/editor/DialogsProblemsPanel";
 import { DialogsTreeMenu } from "@/applications/dialogs-editor/components/editor/DialogsTreeMenu";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
@@ -76,12 +77,15 @@ export function DialogsEditor(): ReactElement {
     `${dialogCount} dialogs`,
     // Zero text keys beside real dialogs is the signature of a layout pointed at the wrong place, so
     // it reads as a state rather than being left to infer from every phrase showing its key.
-    project?.textKeys ? `${project.textKeys} text keys` : "no text",
+    // The language in force is state, so it reads here rather than from the toolbar action that changes
+    // it — the division `EditorToolbar` states in its own contract.
+    project?.textKeys ? ` text keys` : "no text",
+    ...(dialogsService.resolvedLanguage ? [dialogsService.resolvedLanguage] : []),
     ...(findings.length ? [`${findings.length} problems`] : []),
   ]);
 
   return (
-    <EditorLayout toolbar={<EditorToolbar onBack={onClose} />}>
+    <EditorLayout toolbar={<EditorToolbar actions={<DialogsEditorActions />} onBack={onClose} />}>
       <DialogsEditorWorkspace />
     </EditorLayout>
   );
