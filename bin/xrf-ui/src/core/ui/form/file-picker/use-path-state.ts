@@ -8,7 +8,12 @@ export interface IPathStateOptions {
   filters?: Nullable<Array<DialogFilter>>;
   isDisabled?: boolean;
   isDirectory?: boolean;
-  /** Ask where to write instead of what to read. Pack screens choose an output file this way. */
+  /**
+   * Ask where to write instead of what to read, so a destination that does not exist yet is allowed.
+   *
+   * Says *whether the path must already exist*, never what kind of thing it is — `isDirectory` owns
+   * that, and wins. An output directory is both: it names a directory, and it need not be there yet.
+   */
   isSave?: boolean;
   /** Produces the starting path, read once on the first render. */
   initial?: () => Nullable<string>;
@@ -50,7 +55,11 @@ export function usePathState({
       return null;
     }
 
-    const pathResponse: Nullable<string> = isSave
+    // `isDirectory` decides which dialog, because a save dialog cannot pick one and asking for a
+    // directory is not negotiable — an output directory is still a directory when it is also new.
+    // `isSave` only relaxes the existence check, which `usePathField` applies. Branching on `isSave`
+    // first put a file-name dialog in front of every screen whose destination is a folder.
+    const pathResponse: Nullable<string> = isSave && !isDirectory
       ? await save({ title, filters: filters ? filters : undefined })
       : await open({ title, filters: filters ? filters : undefined, directory: isDirectory });
 

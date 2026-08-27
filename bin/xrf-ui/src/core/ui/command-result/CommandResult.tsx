@@ -38,6 +38,7 @@ export function CommandResult({
   "data-testid": dataTestId,
   id,
   className,
+  sx,
   headline,
   tone,
   stats,
@@ -49,7 +50,10 @@ export function CommandResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0 }}
+      sx={[
+        { display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0 },
+        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
+      ]}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
         <Typography variant={"subtitle2"} sx={{ color: TONE_COLORS[tone] }}>

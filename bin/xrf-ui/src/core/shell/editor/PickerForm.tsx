@@ -24,8 +24,10 @@ import { Maybe } from "@/lib/types/general";
 /** Wide enough for a full windows path at the monospace size the picker rows use. */
 const PANEL_WIDTH: number = 560;
 
-/** How much of a window with results the parameters may keep before they start scrolling instead. */
-const PANEL_MAX_HEIGHT_WITH_RESULT: string = "55%";
+/**
+ * The least room a result keeps, whatever the parameters above it are doing.
+ */
+const RESULT_MIN_HEIGHT: number = 360;
 
 export interface IPickerFormProps {
   title?: ReactNode;
@@ -68,6 +70,19 @@ export function PickerForm({
   const parametersRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setCollapsed] = useState<boolean>(false);
 
+  const hasUserExpanded = useRef<boolean>(false);
+  const hasResult: boolean = Boolean(result);
+
+  const onToggleCollapsed = useCallback(() => {
+    setCollapsed((it) => {
+      if (it) {
+        hasUserExpanded.current = true;
+      }
+
+      return !it;
+    });
+  }, []);
+
   const onFormSubmit = useCallback(
     (event: FormEvent) => {
       event.preventDefault();
@@ -98,20 +113,38 @@ export function PickerForm({
     inputs.find((input) => !input.value)?.focus();
   }, []);
 
+  // The form folds away when a result arrives, until the user says otherwise. Keyed on whether there
+  // is a result rather than on its identity, so re-running with the form deliberately open does not
+  // fold it again.
+  useEffect(() => {
+    if (hasResult && !hasUserExpanded.current) {
+      setCollapsed(true);
+    }
+
+    if (!hasResult) {
+      setCollapsed(false);
+    }
+  }, [hasResult]);
+
   return (
     <EditorLayout toolbar={<EditorToolbar />}>
       <Box
         component={"form"}
         noValidate={true}
-        sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          overflowY: "auto",
+        }}
         onSubmit={onFormSubmit}
         onKeyDown={onFormKeyDown}
       >
         <Box
           sx={{
             flexShrink: 0,
-            maxHeight: result ? PANEL_MAX_HEIGHT_WITH_RESULT : "100%",
-            overflowY: "auto",
             padding: 3,
             paddingBottom: result ? 2 : 3,
           }}
@@ -137,7 +170,7 @@ export function PickerForm({
                   <IconButton
                     aria-label={isCollapsed ? "Show parameters" : "Hide parameters"}
                     sx={{ flexShrink: 0 }}
-                    onClick={() => setCollapsed((it) => !it)}
+                    onClick={onToggleCollapsed}
                   >
                     {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
                   </IconButton>
@@ -157,11 +190,17 @@ export function PickerForm({
                       {String(error)}
                     </Alert>
                   ) : null}
-
-                  {status ? <Box>{status}</Box> : null}
                 </Stack>
               </>
             )}
+
+            {status ? (
+              <>
+                <Divider />
+
+                <Box sx={{ padding: 2 }}>{status}</Box>
+              </>
+            ) : null}
 
             <Divider />
 
@@ -198,7 +237,7 @@ export function PickerForm({
               display: "flex",
               flexDirection: "column",
               flexGrow: 1,
-              minHeight: 0,
+              minHeight: RESULT_MIN_HEIGHT,
               overflow: "hidden",
               paddingX: 3,
               paddingBottom: 3,

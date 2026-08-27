@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { fireEvent } from "@testing-library/react";
 
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -74,5 +75,71 @@ describe("PickerForm", () => {
     });
 
     expect(getByText("unpacked 512 files")).toBeInTheDocument();
+  });
+
+  // The parameters used to keep 55% of the window and scroll inside it, which gave the screen two
+  // stacked scrolling regions. They fold away instead, so the result gets the room and the only thing
+  // that scrolls is whatever the result puts there.
+  it("folds the parameters away once there is a result to read", () => {
+    const { queryByText, getByText } = renderWithProviders(
+      <PickerForm title={"Unpack"} result={<div>unpacked 512 files</div>}>
+        <div>source directory</div>
+      </PickerForm>,
+      { route: "/archives-unpacker" }
+    );
+
+    expect(getByText("unpacked 512 files")).toBeInTheDocument();
+    expect(queryByText("source directory")).not.toBeInTheDocument();
+  });
+
+  // Opening them is a statement of intent - "I am still working on these" - and it has to outlast the
+  // next run, or adjusting a path and re-running costs a click to reopen the form every single time.
+  it("leaves the parameters open once they have been opened by hand", () => {
+    const { getByLabelText, getByText, rerender } = renderWithProviders(
+      <PickerForm title={"Unpack"} result={<div>first run</div>}>
+        <div>source directory</div>
+      </PickerForm>,
+      { route: "/archives-unpacker" }
+    );
+
+    fireEvent.click(getByLabelText("Show parameters"));
+
+    expect(getByText("source directory")).toBeInTheDocument();
+
+    // Every screen clears its result when a run starts, so a second run is not one prop change but
+    // two. It is that round trip through "no result" which re-arms the fold, and which a test holding
+    // the result present throughout would never exercise.
+    rerender(
+      <>
+        <PickerForm title={"Unpack"}>
+          <div>source directory</div>
+        </PickerForm>
+      </>
+    );
+
+    rerender(
+      <>
+        <PickerForm title={"Unpack"} result={<div>second run</div>}>
+          <div>source directory</div>
+        </PickerForm>
+      </>
+    );
+
+    expect(getByText("second run")).toBeInTheDocument();
+    expect(getByText("source directory")).toBeInTheDocument();
+  });
+
+  // What the run said, rather than what the run was given. Two spawn screens have nothing else, and
+  // folding the parameters must not take their only confirmation with it.
+  it("keeps the status visible while the parameters are folded away", () => {
+    const { queryByText, getByText } = renderWithProviders(
+      <PickerForm title={"Unpack"} status={<div>Archives unpacked.</div>} result={<div>unpacked 512 files</div>}>
+        <div>source directory</div>
+      </PickerForm>,
+      { route: "/archives-unpacker" }
+    );
+
+    expect(queryByText("source directory")).not.toBeInTheDocument();
+    expect(getByText("Archives unpacked.")).toBeInTheDocument();
   });
 });

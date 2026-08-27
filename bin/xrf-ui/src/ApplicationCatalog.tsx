@@ -30,6 +30,7 @@ import { SPAWN_UNPACKER_APPLICATION } from "@/applications/spawn-unpacker";
 import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
+import { TRANSLATIONS_PARSER_APPLICATION } from "@/applications/translations-parser";
 import { TRANSLATIONS_VERIFIER_APPLICATION } from "@/applications/translations-verifier";
 import { VISUALS_EXPLORER_APPLICATION } from "@/applications/visuals-explorer";
 import { VISUALS_SEQUENCER_APPLICATION } from "@/applications/visuals-sequencer";
@@ -67,6 +68,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     SPAWN_PACKER_APPLICATION,
     SPAWN_UNPACKER_APPLICATION,
     TRANSLATIONS_EDITOR_APPLICATION,
+    TRANSLATIONS_PARSER_APPLICATION,
     TRANSLATIONS_BUILDER_APPLICATION,
     TRANSLATIONS_VERIFIER_APPLICATION,
     VISUALS_EXPLORER_APPLICATION,
