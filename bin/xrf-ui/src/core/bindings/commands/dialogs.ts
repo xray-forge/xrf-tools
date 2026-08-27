@@ -32,9 +32,14 @@ export const dialogsCommands = {
    * Addressed by file and id together, because ids are not unique across a tree: a mod overlaying a
    * dialog keeps the original's id, and searching every file would silently answer with whichever copy
    * was read first.
+   *
+   * `language` picks which of the project's languages the phrase lines are resolved in, defaulting to
+   * the first the text tree offers. Switching language is another call rather than a payload carrying
+   * all of them: the index is already resident, so it costs a lookup, and one dialog in nine languages
+   * would be nine times the bytes to display an eighth of it.
    */
-  getDialog: (logicalPath: string, id: string) =>
-    __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { logicalPath, id }),
+  getDialog: (logicalPath: string, id: string, language: string | null) =>
+    __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { logicalPath, id, language }),
   /**
    * The open project, described again rather than cached.
    *
@@ -52,6 +57,20 @@ export const dialogsCommands = {
       translationsPrefix: string;
       /** Whether every file the project holds is loose, so an editing session could save all of it. */
       isEditable: boolean;
+      /**
+       * Languages the text tree offers, which is what a language switcher is built from.
+       *
+       * Empty when no text was read, so a surface can say it is showing keys rather than lines instead of
+       * inferring that from every phrase coming back unresolved.
+       */
+      languages: Array<string>;
+      /**
+       * Distinct translation keys the text tree defines.
+       *
+       * The text is read at open, so its cost is reported rather than hidden. Zero here beside a
+       * non-empty `files` is the signature of dialogs whose text sits somewhere this layout did not look.
+       */
+      textKeys: number;
       /** Files keyed by their logical path, in logical-path order. */
       files: { [key in string]: DialogFileDescriptor };
       findings: Array<DialogFinding>;

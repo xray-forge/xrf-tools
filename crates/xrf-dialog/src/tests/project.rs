@@ -292,13 +292,16 @@ fn describes_one_dialog_addressed_by_file_and_id() -> XrfResult {
   let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
 
   let descriptor: DialogDescriptor = project
-    .describe_dialog(r"configs\gameplay\dialogs.xml", "d")
+    .describe_dialog(r"configs\gameplay\dialogs.xml", "d", None)
     .expect("the fixture declares it");
 
   assert_eq!(descriptor.id, "d");
   assert_eq!(descriptor.priority, Some(-5));
   assert_eq!(descriptor.phrases.len(), 1);
-  assert_eq!(descriptor.phrases[0].text.as_deref(), Some("key"));
+  assert_eq!(descriptor.phrases[0].text_key.as_deref(), Some("key"));
+  // The fixture's string table is empty, so the key has nothing to resolve to. A surface renders the
+  // key rather than an empty node, which is why the two are separate fields.
+  assert_eq!(descriptor.phrases[0].text, None);
 
   fs::remove_dir_all(root)?;
 
@@ -313,7 +316,7 @@ fn echoes_the_projects_own_spelling_of_the_path_not_the_callers() -> XrfResult {
   let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
 
   let descriptor: DialogDescriptor = project
-    .describe_dialog(r"CONFIGS\GAMEPLAY\DIALOGS.XML", "d")
+    .describe_dialog(r"CONFIGS\GAMEPLAY\DIALOGS.XML", "d", None)
     .expect("the lookup ignores case");
 
   assert_eq!(descriptor.logical_path, r"configs\gameplay\dialogs.xml");
@@ -328,14 +331,18 @@ fn answers_nothing_for_an_unknown_file_or_an_unknown_dialog() -> XrfResult {
   let root: PathBuf = create_gamedata("describe-dialog-missing")?;
   let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
 
-  assert!(project.describe_dialog(r"configs\gameplay\nothing.xml", "d").is_none());
   assert!(
     project
-      .describe_dialog(r"configs\gameplay\dialogs.xml", "nothing")
+      .describe_dialog(r"configs\gameplay\nothing.xml", "d", None)
+      .is_none()
+  );
+  assert!(
+    project
+      .describe_dialog(r"configs\gameplay\dialogs.xml", "nothing", None)
       .is_none()
   );
   // Right id, wrong file: the pair addresses it, not the id alone.
-  assert!(project.describe_dialog("", "d").is_none());
+  assert!(project.describe_dialog("", "d", None).is_none());
 
   fs::remove_dir_all(root)?;
 

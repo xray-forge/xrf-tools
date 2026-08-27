@@ -5,3 +5,4 @@ mod file;
 mod issue;
 mod phrase;
 mod project;
+mod text;

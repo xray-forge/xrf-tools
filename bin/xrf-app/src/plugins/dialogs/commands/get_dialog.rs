@@ -15,11 +15,17 @@ use crate::plugins::dialogs::state::DialogProjectState;
 /// Addressed by file and id together, because ids are not unique across a tree: a mod overlaying a
 /// dialog keeps the original's id, and searching every file would silently answer with whichever copy
 /// was read first.
+///
+/// `language` picks which of the project's languages the phrase lines are resolved in, defaulting to
+/// the first the text tree offers. Switching language is another call rather than a payload carrying
+/// all of them: the index is already resident, so it costs a lookup, and one dialog in nine languages
+/// would be nine times the bytes to display an eighth of it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_dialog"))]
 #[tauri::command(rename = "get_dialog")]
 pub async fn dialogs_get_dialog(
   logical_path: String,
   id: String,
+  language: Option<String>,
   state: State<'_, DialogProjectState>,
 ) -> TauriResult<DialogDescriptor> {
   let lock: MutexGuard<Option<DialogProject>> = state.project.lock().unwrap();
@@ -32,6 +38,6 @@ pub async fn dialogs_get_dialog(
   }
 
   project
-    .describe_dialog(&logical_path, &id)
+    .describe_dialog(&logical_path, &id, language.as_deref())
     .ok_or_else(|| format!("No dialog '{id}' in '{logical_path}'"))
 }

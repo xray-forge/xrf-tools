@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::element::DialogElementKind;
+use crate::element::{DialogElement, DialogElementKind};
 use crate::file::DialogFile;
 use crate::phrase::DialogPhrase;
 
@@ -97,4 +97,21 @@ fn reads_a_script_text_phrase_with_no_translation_key() -> XrfResult {
   );
 
   Ok(())
+}
+
+#[test]
+fn an_empty_text_element_is_not_a_key() {
+  // Anomaly writes 2,527 of these — a phrase carrying only actions, or a silent option. Reporting
+  // them as pointing at a missing translation would bury every real one.
+  let phrase: DialogPhrase = DialogPhrase::new(
+    String::from("0"),
+    vec![DialogElement::new(String::from("text"), String::new(), 0..0)],
+    0..0,
+    true,
+  );
+
+  assert_eq!(phrase.get_text(), None);
+  // The element itself survives, so a rewrite reproduces the file as written.
+  assert!(phrase.has_element_of(DialogElementKind::Text));
+  assert_eq!(phrase.get_elements().len(), 1);
 }

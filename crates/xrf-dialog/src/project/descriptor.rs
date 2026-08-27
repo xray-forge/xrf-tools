@@ -7,6 +7,7 @@ use crate::dialog::Dialog;
 use crate::element::{DialogElement, DialogElementKind};
 use crate::phrase::DialogPhrase;
 use crate::project::mode::DialogProjectMode;
+use crate::project::text_index::DialogTextLanguage;
 
 /// Something worth reporting about a project that was opened anyway.
 ///
@@ -78,10 +79,12 @@ impl From<&DialogElement> for DialogElementDescriptor {
 pub struct DialogPhraseDescriptor {
   /// Unique within its dialog, and what `next` references. The entry phrase is `0`.
   pub id: String,
-  /// Translation key of the line, not the line itself.
+  /// Translation key of the line, which is what the file holds.
   ///
   /// Absent for a phrase whose line comes from `script_text`, which is a state and not a defect:
   /// Anomaly does it 107 times.
+  pub text_key: Option<String>,
+  /// The line itself, in the language this dialog was described for.
   pub text: Option<String>,
   /// Whether selecting this phrase ends the conversation.
   pub is_final: bool,
@@ -95,11 +98,19 @@ pub struct DialogPhraseDescriptor {
   pub elements: Vec<DialogElementDescriptor>,
 }
 
-impl From<&DialogPhrase> for DialogPhraseDescriptor {
-  fn from(phrase: &DialogPhrase) -> Self {
+impl DialogPhraseDescriptor {
+  /// Describe a phrase, resolving its line when a text tree was read for the requested language.
+  pub fn new(phrase: &DialogPhrase, text: Option<DialogTextLanguage<'_>>) -> Self {
+    let text_key: Option<String> = phrase.get_text().map(str::to_owned);
+
     Self {
       id: phrase.get_id().to_owned(),
-      text: phrase.get_text().map(str::to_owned),
+      // Resolved only where there is a key to resolve. A `script_text` phrase builds its line at
+      // runtime, so looking one up would report it as untranslated when nothing is missing.
+      text: text_key
+        .as_deref()
+        .and_then(|key| text.and_then(|text| text.resolve(key))),
+      text_key,
       is_final: phrase.is_final(),
       is_in_phrase_list: phrase.is_in_phrase_list(),
       next: phrase.list_next().into_iter().map(str::to_owned).collect(),
@@ -124,6 +135,8 @@ pub struct DialogDescriptor {
   pub priority: Option<i32>,
   /// Dialog-level elements — preconditions, info gates, `init_func` — excluding the phrases.
   pub elements: Vec<DialogElementDescriptor>,
+  /// The language the phrase text was resolved in, echoed back.
+  pub language: Option<String>,
   /// Phrases in document order.
   ///
   /// Empty is legitimate: `dm_traveler_dialog` carries only a precondition and an init function and
@@ -132,14 +145,19 @@ pub struct DialogDescriptor {
 }
 
 impl DialogDescriptor {
-  /// Describe a dialog found under a logical path.
-  pub fn new(logical_path: impl Into<String>, dialog: &Dialog) -> Self {
+  /// Describe a dialog found under a logical path, resolving its lines where a text tree was read.
+  pub fn new(logical_path: impl Into<String>, dialog: &Dialog, text: Option<DialogTextLanguage<'_>>) -> Self {
     Self {
       logical_path: logical_path.into(),
       id: dialog.get_id().to_owned(),
       priority: dialog.get_priority(),
       elements: dialog.get_elements().iter().map(Into::into).collect(),
-      phrases: dialog.get_phrases().iter().map(Into::into).collect(),
+      language: text.map(|text| text.get_language().to_owned()),
+      phrases: dialog
+        .get_phrases()
+        .iter()
+        .map(|phrase| DialogPhraseDescriptor::new(phrase, text))
+        .collect(),
     }
   }
 }
@@ -178,6 +196,10 @@ pub struct DialogProjectDescriptor {
   pub translations_prefix: String,
   /// Whether every file the project holds is loose, so an editing session could save all of it.
   pub is_editable: bool,
+  /// Languages the text tree offers, which is what a language switcher is built from.
+  pub languages: Vec<String>,
+  /// Distinct translation keys the text tree defines.
+  pub text_keys: usize,
   /// Files keyed by their logical path, in logical-path order.
   pub files: IndexMap<String, DialogFileDescriptor>,
   pub findings: Vec<DialogFinding>,

@@ -36,11 +36,17 @@ const DIALOG: &str = r#"<game_dialogs>
   </dialog>
 </game_dialogs>"#;
 
+/// Describe the fixture with no text tree behind it, which is what these tests are about: the shape
+/// of the projection, not the resolution. Resolution has its own module.
 fn describe() -> XrfResult<DialogDescriptor> {
   let file: DialogFile = DialogFile::read_from_bytes(DIALOG.as_bytes())?;
   let dialog = file.find_dialog("escape_trader").expect("the fixture declares it");
 
-  Ok(DialogDescriptor::new(r"configs\gameplay\dialogs_escape.xml", dialog))
+  Ok(DialogDescriptor::new(
+    r"configs\gameplay\dialogs_escape.xml",
+    dialog,
+    None,
+  ))
 }
 
 fn phrase(descriptor: &DialogDescriptor, id: &str) -> DialogPhraseDescriptor {
@@ -100,7 +106,7 @@ fn projects_text_and_final_without_dropping_the_elements_they_came_from() -> Xrf
   let descriptor: DialogDescriptor = describe()?;
   let entry: DialogPhraseDescriptor = phrase(&descriptor, "0");
 
-  assert_eq!(entry.text.as_deref(), Some("escape_trader_0"));
+  assert_eq!(entry.text_key.as_deref(), Some("escape_trader_0"));
   assert!(!entry.is_final);
 
   // The projection is a convenience, not a replacement: `next` is still readable as elements.
@@ -119,7 +125,7 @@ fn reports_a_scripted_line_as_having_no_key_rather_than_a_missing_one() -> XrfRe
   let descriptor: DialogDescriptor = describe()?;
   let entry: DialogPhraseDescriptor = phrase(&descriptor, "1");
 
-  assert_eq!(entry.text, None);
+  assert_eq!(entry.text_key, None);
   assert!(
     entry
       .elements

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
+use xrf_translation::{TranslationProjectMode, read_gamedata_in, read_source_in};
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
@@ -12,6 +13,7 @@ use crate::project::descriptor::{
 };
 use crate::project::layout::DialogProjectLayout;
 use crate::project::mode::DialogProjectMode;
+use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 
 /// Filename prefix that marks a logical path as dialog data.
 ///
@@ -68,6 +70,7 @@ pub struct DialogProject {
   translations_prefix: String,
   vfs: XrayVfs,
   files: Vec<DialogProjectFile>,
+  text: DialogTextIndex,
   findings: Vec<DialogFinding>,
 }
 
@@ -139,15 +142,69 @@ impl DialogProject {
       }
     }
 
+    let translations_prefix: String = layout.get_translations_prefix().to_owned();
+    let text: DialogTextIndex = Self::read_text(&vfs, roots, layout.mode, &translations_prefix, &mut findings);
+
     Ok(Self {
       roots: roots.clone(),
       mode: layout.mode,
       dialogs_prefix,
-      translations_prefix: layout.get_translations_prefix().to_owned(),
+      translations_prefix,
       vfs,
       files,
+      text,
       findings,
     })
+  }
+
+  /// Read the text tree the dialogs resolve their lines from, over the roots already mounted.
+  ///
+  /// A text tree that cannot be read becomes a finding and the project still opens, matching how one
+  /// unreadable dialog file is handled. An editor that refuses to open because the translations are
+  /// missing cannot show you the dialog structure you opened it to inspect.
+  fn read_text(
+    vfs: &XrayVfs,
+    roots: &XrayRoots,
+    mode: DialogProjectMode,
+    prefix: &str,
+    findings: &mut Vec<DialogFinding>,
+  ) -> DialogTextIndex {
+    // The dialog layout decides the translation layout, because they are the same distinction seen
+    // from two crates: XRF sources keep JSON beside the configs, shipped gamedata keeps per-language
+    // XML under `configs\text`. Mapped rather than converted — the two enums default opposite ways on
+    // purpose, so a `From` that looked obvious would silently flip one.
+    let translation_mode: TranslationProjectMode = match mode {
+      DialogProjectMode::Source => TranslationProjectMode::Source,
+      DialogProjectMode::Gamedata => TranslationProjectMode::Gamedata,
+    };
+
+    let read = match translation_mode {
+      TranslationProjectMode::Source => read_source_in(vfs, roots, prefix),
+      TranslationProjectMode::Gamedata => read_gamedata_in(vfs, roots, prefix),
+    };
+
+    match read {
+      Ok(descriptor) => {
+        for finding in &descriptor.findings {
+          findings.push(DialogFinding::new(
+            format!("dialog.text.{}", finding.rule.trim_start_matches("translations.")),
+            finding.subject.clone(),
+            finding.message.clone(),
+          ));
+        }
+
+        DialogTextIndex::from_descriptor(&descriptor)
+      }
+      Err(error) => {
+        findings.push(DialogFinding::new(
+          "dialog.text-unreadable",
+          Some(prefix.to_owned()),
+          format!("Dialog text could not be read, so phrases show their keys: {error}"),
+        ));
+
+        DialogTextIndex::default()
+      }
+    }
   }
 
   /// Every dialog asset a scoped roots exposes, in logical-path order.
@@ -221,18 +278,39 @@ impl DialogProject {
     self.find_file(logical_path)?.get_file().find_dialog(id)
   }
 
-  /// Describe one dialog with every phrase it declares.
+  /// The text tree this project resolves its phrase lines from.
+  pub fn get_text(&self) -> &DialogTextIndex {
+    &self.text
+  }
+
+  /// Languages the text tree offers, which is what a surface builds a language switcher from.
+  pub fn list_languages(&self) -> &[String] {
+    self.text.get_languages()
+  }
+
+  /// Describe one dialog with every phrase it declares, resolving its lines into one language.
   ///
   /// The counterpart to [`Self::describe`], which lists 502 dialogs as summaries: this is what a
   /// selection fetches. Answers `None` for a file or an id the project does not hold, leaving the
   /// caller to say which of the two was wrong.
-  pub fn describe_dialog(&self, logical_path: &str, id: &str) -> Option<DialogDescriptor> {
+  ///
+  /// One language per call rather than every language per phrase. A caller shows one at a time, and a
+  /// dialog the size of `about_quests_dialog_stalkers` carried in nine would be nine times the payload
+  /// to display an eighth of it. Switching language is another call against the same resident index,
+  /// which costs a lookup and no I/O.
+  ///
+  /// `language` of `None` takes the tree's first, and a language the tree does not hold resolves
+  /// nothing rather than failing: the phrases still describe, showing their keys.
+  pub fn describe_dialog(&self, logical_path: &str, id: &str, language: Option<&str>) -> Option<DialogDescriptor> {
     let file: &DialogProjectFile = self.find_file(logical_path)?;
     let dialog: &Dialog = file.get_file().find_dialog(id)?;
+    let text: Option<DialogTextLanguage<'_>> = language
+      .or_else(|| self.text.get_default_language())
+      .and_then(|language| self.text.in_language(language));
 
     // Keyed by the path the project holds, not the one the caller typed: lookup is case-insensitive,
     // and echoing the caller's spelling back would hand out a key that does not match the index.
-    Some(DialogDescriptor::new(file.get_logical_path(), dialog))
+    Some(DialogDescriptor::new(file.get_logical_path(), dialog, text))
   }
 
   /// Total dialogs across every file the project read.
@@ -284,6 +362,8 @@ impl DialogProject {
       dialogs_prefix: self.dialogs_prefix.clone(),
       translations_prefix: self.translations_prefix.clone(),
       is_editable: self.is_editable(),
+      languages: self.text.get_languages().to_vec(),
+      text_keys: self.text.len(),
       files,
       findings: self.findings.clone(),
     }

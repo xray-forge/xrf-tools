@@ -66,14 +66,21 @@ impl DialogPhrase {
 
   /// Translation key of the line, when it has one.
   ///
+  /// An empty `<text></text>` answers `None`, because an empty string is not a key: nothing in a
+  /// string table is named by it, and treating it as one reports the phrase as pointing at a missing
+  /// translation. Anomaly writes 2,527 of them — phrases carrying only actions, or a silent option —
+  /// so the difference decides whether validation is usable on a real project or drowns in false
+  /// alarms. The literal element is still reachable through [`Self::get_elements`].
+  ///
   /// A phrase carries at most one `text` in shipped data, but the parser does not enforce that; a
-  /// second one is reachable through `get_elements`.
+  /// second one is reachable through `get_elements` too.
   pub fn get_text(&self) -> Option<&str> {
     self
       .elements
       .iter()
       .find(|element| element.get_kind() == DialogElementKind::Text)
       .map(DialogElement::get_value)
+      .filter(|value| !value.is_empty())
   }
 
   /// Whether selecting this phrase ends the conversation.

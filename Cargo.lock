@@ -7033,6 +7033,7 @@ dependencies = [
  "specta",
  "xrf-error",
  "xrf-test-utils",
+ "xrf-translation",
  "xrf-utils",
  "xrf-vfs",
  "xrf-xml",
