@@ -90,6 +90,15 @@ impl ChunkReadWrite for PatrolPoint {
 
     reader.assert_read("Chunk data should be read for patrol point")?;
 
+    if point.name.trim() != point.name {
+      // Anomaly ships five of these. The padding is part of the name and is preserved, but it survives an ltx round
+      // trip only through the section name, so say so rather than letting it pass unremarked.
+      log::warn!(
+        "Patrol point name '{}' is padded with whitespace, which ltx cannot carry in a value",
+        point.name
+      );
+    }
+
     Ok(point)
   }
 
@@ -105,6 +114,30 @@ impl ChunkReadWrite for PatrolPoint {
   }
 }
 
+impl PatrolPoint {
+  /// Import patrol point data from ltx config under a name the caller already resolved.
+  ///
+  /// Ltx trims values, so a name padded with whitespace cannot be recovered from the `name` key. The owning patrol
+  /// takes it from the section name, which keeps the padding.
+  pub fn import_named(section_name: &str, name: String, ltx: &Ltx) -> XrfResult<Self> {
+    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "Patrol point section '{}' should be defined in ltx file ({})",
+        section_name,
+        file!()
+      ))
+    })?;
+
+    Ok(Self {
+      name,
+      position: read_ltx_field("position", section)?,
+      flags: read_ltx_field("flags", section)?,
+      level_vertex_id: read_ltx_field("level_vertex_id", section)?,
+      game_vertex_id: read_ltx_field("game_vertex_id", section)?,
+    })
+  }
+}
+
 impl LtxImportExport for PatrolPoint {
   /// Import patrol point data from ltx config.
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
@@ -116,13 +149,7 @@ impl LtxImportExport for PatrolPoint {
       ))
     })?;
 
-    Ok(Self {
-      name: read_ltx_field("name", section)?,
-      position: read_ltx_field("position", section)?,
-      flags: read_ltx_field("flags", section)?,
-      level_vertex_id: read_ltx_field("level_vertex_id", section)?,
-      game_vertex_id: read_ltx_field("game_vertex_id", section)?,
-    })
+    Self::import_named(section_name, read_ltx_field("name", section)?, ltx)
   }
 
   /// Export patrol point data into ltx.

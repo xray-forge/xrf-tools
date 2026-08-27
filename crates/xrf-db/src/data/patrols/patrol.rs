@@ -154,9 +154,44 @@ impl Patrol {
     let mut points: Vec<PatrolPoint> = Vec::new();
     let mut links: Vec<PatrolLink> = Vec::with_capacity(links_count);
 
-    for (index, section) in points_list.split(',').map(str::trim).enumerate() {
-      points.push(PatrolPoint::import(
-        &format!("{}.{}.{}", name, index, section),
+    for (index, listed) in points_list.split(',').map(str::trim).enumerate() {
+      let prefix: String = format!("{name}.{index}.");
+      let exact: String = format!("{prefix}{listed}");
+
+      // Ltx trims values, so a point name padded with whitespace survives only in the section name. The listed name is
+      // what the trimmed name looks like; the section it belongs to carries the real one.
+      let section_name: String = if patrol_points_ltx.has_section(&exact) {
+        exact
+      } else {
+        let padded: String = patrol_points_ltx
+          .sections()
+          .find(|section| {
+            section
+              .strip_prefix(prefix.as_str())
+              .is_some_and(|point| point.trim() == listed)
+          })
+          .map(String::from)
+          .ok_or_else(|| {
+            XrfError::new_parsing_error(format!(
+              "Patrol point section '{}' should be defined in ltx file ({})",
+              exact,
+              file!()
+            ))
+          })?;
+
+        log::warn!(
+          "Patrol point '{}' of patrol '{}' recovered from padded section '{}'",
+          listed,
+          name,
+          padded
+        );
+
+        padded
+      };
+
+      points.push(PatrolPoint::import_named(
+        &section_name,
+        String::from(&section_name[prefix.len()..]),
         patrol_points_ltx,
       )?);
     }
@@ -346,6 +381,49 @@ mod tests {
       Patrol::read_list::<XRayByteOrder, _>(&mut ChunkReader::from_slice(file)?.read_child_by_index(0)?)?,
       original
     );
+
+    Ok(())
+  }
+
+  /// Anomaly ships patrol points whose names carry trailing whitespace. Ltx trims values, so the name survives only
+  /// in the section it was exported under, and importing has to take it from there or the repack loses those bytes.
+  #[test]
+  fn test_import_export_preserves_padded_point_names() -> XrfResult {
+    let original: Patrol = Patrol {
+      name: String::from("depo_terrain_camper_2_walk"),
+      points: vec![PatrolPoint {
+        name: String::from("wp00 "),
+        position: Vector3d::new(428.2036, 9.95521, -73.75238),
+        flags: 1,
+        level_vertex_id: 1393284,
+        game_vertex_id: 4553,
+      }],
+      links: vec![],
+    };
+
+    let patrol_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names.ltx");
+    let points_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names_points.ltx");
+    let links_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names_links.ltx");
+
+    let mut patrol_ltx: Ltx = Ltx::new();
+    let mut points_ltx: Ltx = Ltx::new();
+    let mut links_ltx: Ltx = Ltx::new();
+
+    original.export(&original.name, &mut patrol_ltx, &mut points_ltx, &mut links_ltx)?;
+
+    patrol_ltx.write_to(&mut overwrite_file(patrol_config_path)?)?;
+    points_ltx.write_to(&mut overwrite_file(points_config_path)?)?;
+    links_ltx.write_to(&mut overwrite_file(links_config_path)?)?;
+
+    let imported: Patrol = Patrol::import(
+      &original.name,
+      &Ltx::read_from_path(patrol_config_path)?,
+      &Ltx::read_from_path(points_config_path)?,
+      &Ltx::read_from_path(links_config_path)?,
+    )?;
+
+    assert_eq!(imported.points.first().unwrap().name, "wp00 ");
+    assert_eq!(imported, original);
 
     Ok(())
   }

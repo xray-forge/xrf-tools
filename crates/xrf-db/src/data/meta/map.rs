@@ -593,6 +593,34 @@ lazy_static! {
     "zone_mine_steam_average" => ClsId::ZsMBald,
     "zone_mine_steam_strong" => ClsId::ZsMBald,
     "zone_mine_steam_weak" => ClsId::ZsMBald,
+    // CoC and Anomaly:
+    "decoder" => ClsId::IIAttch,
+    "generator_dust_static" => ClsId::ZMbald,
+    "generator_electra" => ClsId::ZMbald,
+    "generator_torrid" => ClsId::ZTorrid,
+    "itm_repairkit_tier_1" => ClsId::SFood, // II_FOOD, Anomaly only
+    "itm_repairkit_tier_2" => ClsId::SFood, // II_FOOD, Anomaly only
+    "itm_repairkit_tier_3" => ClsId::SFood, // II_FOOD, Anomaly only
+    "m_lesnik" => ClsId::AiTrdS,
+    "m_trader" => ClsId::AiTrdS,
+    "main_story_1_quest_case" => ClsId::IIAttch,
+    "main_story_2_lab_x18_documents" => ClsId::IIAttch,
+    "main_story_4_lab_x10_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
+    "main_story_5_lab_x8_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
+    "main_story_6_jup_ug_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
+    "main_story_7_mon_con_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
+    "mine_actor" => ClsId::SExplo, // II_EXPLO
+    "pri_decoder_documents" => ClsId::IIAttch,
+    "red_forest_bridge" => ClsId::OPhysS, // O_PHYSIC in CoC
+    "zone_burning_fuzz1" => ClsId::ZsBFuzz,
+    "zone_emi" => ClsId::ZsMBald,
+    "zone_mine_field_soc" => ClsId::ZsMBald,
+    "zone_monolith" => ClsId::ZsRadio,
+    "zone_mosquito_bald" => ClsId::ZsMBald,
+    "zone_mosquito_bald_average" => ClsId::ZsMBald,
+    "zone_mosquito_bald_strong" => ClsId::ZsMBald,
+    "zone_mosquito_bald_weak" => ClsId::ZsMBald,
+    "zone_zhar" => ClsId::ZsMBald,
   };
 
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
@@ -603,6 +631,7 @@ lazy_static! {
     ClsId::AiRat => AlifeClass::SeMonster,
     ClsId::AiRatG => AlifeClass::CseAlifeRatGroup,
     ClsId::AiSpGrp => AlifeClass::CseAlifeSpawnGroup,
+    ClsId::AiTrdS => AlifeClass::CseAlifeTrader,
     ClsId::AmmoS => AlifeClass::CseAlifeItemAmmo,
     ClsId::Artefact => AlifeClass::CseAlifeItemArtefact,
     ClsId::CHlcpS => AlifeClass::CseAlifeHelicopter,
@@ -687,11 +716,12 @@ lazy_static! {
     ClsId::ZNoGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZTeamBs => AlifeClass::CseAlifeTeamBaseZone,
-    ClsId::ZsBFuzz => AlifeClass::SeZoneVisual,
-    ClsId::ZsGalan => AlifeClass::SeZoneAnom,
-    ClsId::ZsMBald => AlifeClass::SeZoneAnom,
-    ClsId::ZsMince => AlifeClass::SeZoneAnom,
-    ClsId::ZsRadio => AlifeClass::SeZoneAnom,
-    ClsId::ZsTorrd => AlifeClass::SeZoneTorrid,
+    ClsId::ZTorrid => AlifeClass::CseAlifeTorridZone,
+    ClsId::ZsBFuzz => AlifeClass::CseAlifeZoneVisual,
+    ClsId::ZsGalan => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZsMBald => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZsMince => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZsRadio => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZsTorrd => AlifeClass::CseAlifeTorridZone,
   };
 }

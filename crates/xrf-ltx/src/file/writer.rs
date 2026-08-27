@@ -3,7 +3,7 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_utils::read_as_string_from_w1251_encoded;
+use xrf_utils::{encode_string_to_w1251_bytes, read_as_string_from_w1251_encoded};
 
 use crate::Ltx;
 use crate::file::file_configuration::constants::ROOT_SECTION;
@@ -20,7 +20,8 @@ impl Ltx {
       Ok(false)
     } else {
       if write {
-        fs::write(&filename, formatted)?;
+        // The read path above decodes Windows-1251, so the rewrite has to go back in that encoding.
+        fs::write(&filename, encode_string_to_w1251_bytes(&formatted)?)?;
       }
 
       Ok(true)
@@ -38,13 +39,28 @@ impl Ltx {
     )
   }
 
-  /// Write to a writer with options
+  /// Write to a writer, in the Windows-1251 encoding the read path decodes.
   ///
-  /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one `write_all`
-  /// per format piece, so writing straight to a `File` cost four syscalls a line — two orders of magnitude slower than
-  /// this on an export the size of the particles library. Flushed explicitly so a failing flush is returned instead of
-  /// being swallowed when the buffer drops.
+  /// Rendered into a buffer first because `write!` of a Rust string emits UTF-8, which the next read would decode as
+  /// something else. Encoding per `write!` is not an option: a format piece can end mid-character.
   pub fn write_to<W: Write>(&self, writer: &mut W) -> XrfResult {
+    let mut rendered: Vec<u8> = Vec::new();
+
+    self.render_to(&mut rendered)?;
+
+    writer.write_all(&encode_string_to_w1251_bytes(
+      // Every piece written below came from a Rust string, so the buffer is valid UTF-8.
+      &String::from_utf8(rendered).expect("Rendered LTX to be valid UTF-8"),
+    )?)?;
+
+    Ok(())
+  }
+
+  /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one
+  /// `write_all` per format piece, so writing straight to a `File` cost four syscalls a line — two orders of magnitude
+  /// slower than this on an export the size of the particles library. Flushed explicitly so a failing flush is returned
+  /// instead of being swallowed when the buffer drops.
+  fn render_to<W: Write>(&self, writer: &mut W) -> XrfResult {
     let mut writer: BufWriter<&mut W> = BufWriter::new(writer);
     let mut firstline: bool = true;
 
@@ -98,6 +114,8 @@ impl Ltx {
 
 #[cfg(test)]
 mod test {
+  use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string};
+
   use crate::file::file_configuration::line_separator::DEFAULT_LINE_SEPARATOR;
   use crate::{Ltx, ROOT_SECTION};
 
@@ -177,14 +195,24 @@ a3 = n3
     );
   }
 
+  /// Non-ASCII values survive the write, which emits Windows-1251 rather than UTF-8 so that the read path decodes
+  /// back to the same text. Characters outside that encoding are refused rather than silently mangled.
   #[test]
-  fn fix_issue64() {
-    let input = format!("some-key = åäö{}", DEFAULT_LINE_SEPARATOR);
-    let conf = Ltx::read_from_str(&input).unwrap();
+  fn write_non_ascii_as_windows_1251() {
+    let input: String = format!("some-key = мова{}", DEFAULT_LINE_SEPARATOR);
+    let ltx: Ltx = Ltx::read_from_str(&input).unwrap();
 
-    let mut output = Vec::new();
-    conf.write_to(&mut output).unwrap();
+    let mut output: Vec<u8> = Vec::new();
+    ltx.write_to(&mut output).unwrap();
 
-    assert_eq!(input, String::from_utf8(output).unwrap());
+    assert_eq!(output, encode_string_to_w1251_bytes(&input).unwrap());
+    assert_eq!(encode_w1251_bytes_to_string(&output).unwrap(), input);
+  }
+
+  #[test]
+  fn refuse_values_outside_windows_1251() {
+    let ltx: Ltx = Ltx::read_from_str(&format!("some-key = åäö{}", DEFAULT_LINE_SEPARATOR)).unwrap();
+
+    assert!(ltx.write_to(&mut Vec::new()).is_err());
   }
 }

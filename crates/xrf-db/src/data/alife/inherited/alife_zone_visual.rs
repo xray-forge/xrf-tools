@@ -6,9 +6,9 @@ use xrf_ltx::{Ltx, Section};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::alife::inherited::alife_object_visual::AlifeObjectVisual;
-use crate::data::generic::time::Time;
+use crate::data::generic::last_spawn_time::LastSpawnTime;
 use crate::export::LtxImportExport;
-use crate::file_import::read_ltx_field;
+use crate::file_import::{read_ltx_field, read_ltx_optional_field};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -18,7 +18,7 @@ pub struct AlifeZoneVisual {
   pub visual: AlifeObjectVisual,
   pub idle_animation: String,
   pub attack_animation: String,
-  pub last_spawn_time: Option<Time>,
+  pub last_spawn_time: LastSpawnTime,
 }
 
 impl ChunkReadWrite for AlifeZoneVisual {
@@ -37,7 +37,7 @@ impl ChunkReadWrite for AlifeZoneVisual {
       } else {
         String::new()
       },
-      last_spawn_time: reader.read_xr_optional::<T, Time>()?,
+      last_spawn_time: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -47,7 +47,7 @@ impl ChunkReadWrite for AlifeZoneVisual {
     writer.write_xr::<T, _>(&self.visual)?;
     writer.write_w1251_string(&self.idle_animation)?;
     writer.write_w1251_string(&self.attack_animation)?;
-    writer.write_xr_optional::<T, Time>(self.last_spawn_time.as_ref())?;
+    writer.write_xr::<T, _>(&self.last_spawn_time)?;
 
     Ok(())
   }
@@ -69,7 +69,9 @@ impl LtxImportExport for AlifeZoneVisual {
       visual: AlifeObjectVisual::import(section_name, ltx)?,
       idle_animation: read_ltx_field("zone_visual.idle_animation", section)?,
       attack_animation: read_ltx_field("zone_visual.attack_animation", section)?,
-      last_spawn_time: Time::from_str_optional(&read_ltx_field::<String>("zone_visual.last_spawn_time", section)?)?,
+      last_spawn_time: LastSpawnTime::from_str_optional(
+        read_ltx_optional_field::<String>("zone_visual.last_spawn_time", section)?.as_deref(),
+      )?,
     })
   }
 
@@ -82,10 +84,7 @@ impl LtxImportExport for AlifeZoneVisual {
       .with_section(section_name)
       .set("zone_visual.idle_animation", &self.idle_animation)
       .set("zone_visual.attack_animation", &self.attack_animation)
-      .set(
-        "zone_visual.last_spawn_time",
-        Time::export_to_string(self.last_spawn_time.as_ref()),
-      );
+      .set("zone_visual.last_spawn_time", self.last_spawn_time.to_ltx_string());
 
     Ok(())
   }
@@ -107,6 +106,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
   use crate::data::alife::inherited::alife_object_visual::AlifeObjectVisual;
   use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
+  use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::generic::shape::Shape;
   use crate::data::generic::time::Time;
   use crate::data::generic::vector_3d::Vector3d;
@@ -157,7 +157,7 @@ mod tests {
       },
       idle_animation: String::from(""),
       attack_animation: String::from(""),
-      last_spawn_time: None,
+      last_spawn_time: LastSpawnTime::Unset,
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;
@@ -226,7 +226,7 @@ mod tests {
       },
       idle_animation: String::from("idle_animation"),
       attack_animation: String::from("attack_animation"),
-      last_spawn_time: Some(Time::new_mock()),
+      last_spawn_time: LastSpawnTime::Set(Time::new_mock()),
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;

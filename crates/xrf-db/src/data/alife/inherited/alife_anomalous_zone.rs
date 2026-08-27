@@ -5,16 +5,16 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
-use crate::data::generic::time::Time;
+use crate::data::generic::last_spawn_time::LastSpawnTime;
 use crate::export::LtxImportExport;
-use crate::file_import::read_ltx_field;
+use crate::file_import::read_ltx_optional_field;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeAnomalousZone {
   pub base: AlifeObjectAnomalyZone,
-  pub last_spawn_time: Option<Time>,
+  pub last_spawn_time: LastSpawnTime,
 }
 
 impl ChunkReadWrite for AlifeAnomalousZone {
@@ -22,14 +22,14 @@ impl ChunkReadWrite for AlifeAnomalousZone {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
-      last_spawn_time: reader.read_xr_optional::<T, Time>()?,
+      last_spawn_time: reader.read_xr::<T, _>()?,
     })
   }
 
   /// Write ALife anomalous zone data to the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_optional::<T, _>(self.last_spawn_time.as_ref())?;
+    writer.write_xr::<T, _>(&self.last_spawn_time)?;
 
     Ok(())
   }
@@ -48,7 +48,9 @@ impl LtxImportExport for AlifeAnomalousZone {
 
     Ok(Self {
       base: AlifeObjectAnomalyZone::import(section_name, ltx)?,
-      last_spawn_time: Time::from_str_optional(&read_ltx_field::<String>("anomalous_zone.last_spawn_time", section)?)?,
+      last_spawn_time: LastSpawnTime::from_str_optional(
+        read_ltx_optional_field::<String>("anomalous_zone.last_spawn_time", section)?.as_deref(),
+      )?,
     })
   }
 
@@ -56,10 +58,9 @@ impl LtxImportExport for AlifeAnomalousZone {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
-    ltx.with_section(section_name).set(
-      "anomalous_zone.last_spawn_time",
-      Time::export_to_string(self.last_spawn_time.as_ref()),
-    );
+    ltx
+      .with_section(section_name)
+      .set("anomalous_zone.last_spawn_time", self.last_spawn_time.to_ltx_string());
 
     Ok(())
   }
@@ -86,6 +87,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
   use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
+  use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::generic::shape::Shape;
   use crate::data::generic::time::Time;
   use crate::data::generic::vector_3d::Vector3d;
@@ -131,7 +133,7 @@ mod tests {
         artefact_spawn_count: 4,
         artefact_position_offset: 12,
       },
-      last_spawn_time: Some(Time {
+      last_spawn_time: LastSpawnTime::Set(Time {
         year: 22,
         month: 10,
         day: 24,
@@ -202,7 +204,7 @@ mod tests {
         artefact_spawn_count: 4,
         artefact_position_offset: 12,
       },
-      last_spawn_time: Some(Time {
+      last_spawn_time: LastSpawnTime::Set(Time {
         year: 22,
         month: 10,
         day: 25,
@@ -261,7 +263,7 @@ mod tests {
         artefact_spawn_count: 4,
         artefact_position_offset: 12,
       },
-      last_spawn_time: Some(Time {
+      last_spawn_time: LastSpawnTime::Set(Time {
         year: 22,
         month: 10,
         day: 24,

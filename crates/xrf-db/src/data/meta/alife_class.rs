@@ -82,8 +82,12 @@ pub enum AlifeClass {
   CseAlifeStationaryMGun,
   #[display("CseAlifeTeamBaseZone")]
   CseAlifeTeamBaseZone,
+  #[display("CseAlifeTorridZone")]
+  CseAlifeTorridZone,
   #[display("CseAlifeTrader")]
   CseAlifeTrader,
+  #[display("CseAlifeZoneVisual")]
+  CseAlifeZoneVisual,
   #[display("CseSpectator")]
   CseSpectator,
   #[display("SeActor")]
@@ -100,12 +104,6 @@ pub enum AlifeClass {
   SeSmartTerrain,
   #[display("SeStalker")]
   SeStalker,
-  #[display("SeZoneAnom")]
-  SeZoneAnom, // cse_anomalous_zone
-  #[display("SeZoneTorrid")]
-  SeZoneTorrid,
-  #[display("SeZoneVisual")]
-  SeZoneVisual,
   #[display("SimSquadScripted")]
   SimSquadScripted,
   #[display("Unknown")]

@@ -6,9 +6,9 @@ use xrf_ltx::{Ltx, Section};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
-use crate::data::generic::time::Time;
+use crate::data::generic::last_spawn_time::LastSpawnTime;
 use crate::export::LtxImportExport;
-use crate::file_import::read_ltx_field;
+use crate::file_import::read_ltx_optional_field;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -16,7 +16,7 @@ use crate::file_import::read_ltx_field;
 pub struct AlifeObjectTorridZone {
   pub base: AlifeObjectCustomZone,
   pub motion: AlifeObjectMotion,
-  pub last_spawn_time: Option<Time>,
+  pub last_spawn_time: LastSpawnTime,
 }
 
 impl ChunkReadWrite for AlifeObjectTorridZone {
@@ -25,7 +25,7 @@ impl ChunkReadWrite for AlifeObjectTorridZone {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       motion: reader.read_xr::<T, _>()?,
-      last_spawn_time: reader.read_xr_optional::<T, Time>()?,
+      last_spawn_time: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -33,7 +33,7 @@ impl ChunkReadWrite for AlifeObjectTorridZone {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.motion)?;
-    writer.write_xr_optional::<T, _>(self.last_spawn_time.as_ref())?;
+    writer.write_xr::<T, _>(&self.last_spawn_time)?;
 
     Ok(())
   }
@@ -53,7 +53,9 @@ impl LtxImportExport for AlifeObjectTorridZone {
     Ok(Self {
       base: AlifeObjectCustomZone::import(section_name, ltx)?,
       motion: AlifeObjectMotion::import(section_name, ltx)?,
-      last_spawn_time: Time::from_str_optional(&read_ltx_field::<String>("last_spawn_time", section)?)?,
+      last_spawn_time: LastSpawnTime::from_str_optional(
+        read_ltx_optional_field::<String>("last_spawn_time", section)?.as_deref(),
+      )?,
     })
   }
 
@@ -64,7 +66,7 @@ impl LtxImportExport for AlifeObjectTorridZone {
 
     ltx
       .with_section(section_name)
-      .set("last_spawn_time", Time::export_to_string(self.last_spawn_time.as_ref()));
+      .set("last_spawn_time", self.last_spawn_time.to_ltx_string());
 
     Ok(())
   }
@@ -85,6 +87,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
   use crate::data::alife::inherited::alife_object_torrid_zone::AlifeObjectTorridZone;
+  use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::generic::time::Time;
 
   #[test]
@@ -117,7 +120,7 @@ mod tests {
       motion: AlifeObjectMotion {
         motion_name: String::from("motion-name"),
       },
-      last_spawn_time: Some(Time {
+      last_spawn_time: LastSpawnTime::Set(Time {
         year: 12,
         month: 6,
         day: 3,

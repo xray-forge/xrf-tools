@@ -10,8 +10,8 @@ use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
 use crate::data::alife::inherited::alife_level_changer::AlifeLevelChanger;
-use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::alife::inherited::alife_object_breakable::AlifeObjectBreakable;
+use crate::data::alife::inherited::alife_object_car::AlifeObjectCar;
 use crate::data::alife::inherited::alife_object_climable::AlifeObjectClimable;
 use crate::data::alife::inherited::alife_object_hanging_lamp::AlifeObjectHangingLamp;
 use crate::data::alife::inherited::alife_object_helicopter::AlifeObjectHelicopter;
@@ -32,6 +32,7 @@ use crate::data::alife::inherited::alife_object_item_weapon_shotgun::AlifeObject
 use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
 use crate::data::alife::inherited::alife_object_torrid_zone::AlifeObjectTorridZone;
+use crate::data::alife::inherited::alife_object_trader::AlifeObjectTrader;
 use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
@@ -48,12 +49,13 @@ pub enum AlifeObjectInherited {
   CseAlifeGraphPoint(Box<AlifeGraphPoint>),
   CseAlifeSpaceRestrictor(Box<AlifeObjectSpaceRestrictor>),
   SeSmartCover(Box<AlifeSmartCover>),
-  CseAlifeAnomalousZone(Box<AlifeObjectAnomalyZone>),
-  SeZoneAnom(Box<AlifeAnomalousZone>),
-  SeZoneTorrid(Box<AlifeObjectTorridZone>),
+  CseAlifeAnomalousZone(Box<AlifeAnomalousZone>),
+  CseAlifeTorridZone(Box<AlifeObjectTorridZone>),
   SeSmartTerrain(Box<AlifeSmartTerrain>),
   SeLevelChanger(Box<AlifeLevelChanger>),
-  SeZoneVisual(Box<AlifeZoneVisual>),
+  CseAlifeZoneVisual(Box<AlifeZoneVisual>),
+  CseAlifeCar(Box<AlifeObjectCar>),
+  CseAlifeTrader(Box<AlifeObjectTrader>),
   CseAlifeObjectPhysic(Box<AlifeObjectPhysic>),
   CseAlifeHelicopter(Box<AlifeObjectHelicopter>),
   CseAlifeInventoryBox(Box<AlifeObjectInventoryBox>),
@@ -89,11 +91,12 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeZoneAnom => Self::SeZoneAnom(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeZoneTorrid => Self::SeZoneTorrid(Box::new(reader.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeZoneVisual => Self::SeZoneVisual(Box::new(reader.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(reader.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(reader.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeObjectPhysic => Self::CseAlifeObjectPhysic(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(reader.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeInventoryBox => Self::CseAlifeInventoryBox(Box::new(reader.read_xr::<T, _>()?)),
@@ -132,12 +135,13 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
       AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => Some(&object.base.custom_data),
       AlifeObjectInherited::SeSmartCover(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::SeZoneAnom(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::SeZoneTorrid(object) => Some(&object.base.base.base.custom_data),
+      AlifeObjectInherited::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.base.custom_data),
+      AlifeObjectInherited::CseAlifeTorridZone(object) => Some(&object.base.base.base.custom_data),
       AlifeObjectInherited::SeSmartTerrain(object) => Some(&object.base.base.base.custom_data),
       AlifeObjectInherited::SeLevelChanger(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::SeZoneVisual(object) => Some(&object.base.base.base.base.custom_data),
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base.custom_data),
+      AlifeObjectInherited::CseAlifeCar(object) => Some(&object.base.base.custom_data),
+      AlifeObjectInherited::CseAlifeTrader(object) => Some(&object.base.base.custom_data),
       AlifeObjectInherited::CseAlifeObjectPhysic(object) => Some(&object.base.base.custom_data),
       AlifeObjectInherited::CseAlifeHelicopter(object) => Some(&object.base.base.custom_data),
       AlifeObjectInherited::CseAlifeInventoryBox(object) => Some(&object.base.base.custom_data),
@@ -169,11 +173,12 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::SeSmartCover(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeAnomalousZone(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeZoneAnom(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeZoneTorrid(object) => writer.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeTorridZone(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::SeSmartTerrain(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::SeLevelChanger(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeZoneVisual(object) => writer.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => writer.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeCar(object) => writer.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeTrader(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeObjectPhysic(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeHelicopter(object) => writer.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeInventoryBox(object) => writer.write_xr::<T, _>(object.deref())?,
@@ -211,13 +216,16 @@ impl AlifeObjectInherited {
       }
       AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(AlifeSmartCover::import(section_name, ltx)?)),
       AlifeClass::CseAlifeAnomalousZone => {
-        Self::CseAlifeAnomalousZone(Box::new(AlifeObjectAnomalyZone::import(section_name, ltx)?))
+        Self::CseAlifeAnomalousZone(Box::new(AlifeAnomalousZone::import(section_name, ltx)?))
       }
-      AlifeClass::SeZoneAnom => Self::SeZoneAnom(Box::new(AlifeAnomalousZone::import(section_name, ltx)?)),
-      AlifeClass::SeZoneTorrid => Self::SeZoneTorrid(Box::new(AlifeObjectTorridZone::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeTorridZone => {
+        Self::CseAlifeTorridZone(Box::new(AlifeObjectTorridZone::import(section_name, ltx)?))
+      }
       AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(AlifeSmartTerrain::import(section_name, ltx)?)),
       AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(AlifeLevelChanger::import(section_name, ltx)?)),
-      AlifeClass::SeZoneVisual => Self::SeZoneVisual(Box::new(AlifeZoneVisual::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(AlifeZoneVisual::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(AlifeObjectCar::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(AlifeObjectTrader::import(section_name, ltx)?)),
       AlifeClass::CseAlifeObjectPhysic => {
         Self::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic::import(section_name, ltx)?))
       }
@@ -281,11 +289,12 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => object.export(section_name, ltx),
       AlifeObjectInherited::SeSmartCover(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeAnomalousZone(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeZoneAnom(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeZoneTorrid(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeTorridZone(object) => object.export(section_name, ltx),
       AlifeObjectInherited::SeSmartTerrain(object) => object.export(section_name, ltx),
       AlifeObjectInherited::SeLevelChanger(object) => object.export(section_name, ltx),
-      AlifeObjectInherited::SeZoneVisual(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeCar(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeTrader(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeHelicopter(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeInventoryBox(object) => object.export(section_name, ltx),

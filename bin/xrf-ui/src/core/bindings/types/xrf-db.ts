@@ -8,7 +8,7 @@ export type AlifeActor = {
 
 export type AlifeAnomalousZone = {
   base: AlifeObjectAnomalyZone;
-  lastSpawnTime: Time | null;
+  lastSpawnTime: LastSpawnTime;
 };
 
 export type AlifeGraphPoint = {
@@ -87,6 +87,12 @@ export type AlifeObjectAnomalyZone = {
 
 export type AlifeObjectBreakable = {
   base: AlifeObjectDynamicVisual;
+  health: number | null;
+};
+
+export type AlifeObjectCar = {
+  base: AlifeObjectDynamicVisual;
+  skeleton: AlifeObjectSkeleton;
   health: number | null;
 };
 
@@ -181,12 +187,9 @@ export type AlifeObjectInherited =
     } & AlifeSmartCover)
   | ({
       type: "CseAlifeAnomalousZone";
-    } & AlifeObjectAnomalyZone)
-  | ({
-      type: "SeZoneAnom";
     } & AlifeAnomalousZone)
   | ({
-      type: "SeZoneTorrid";
+      type: "CseAlifeTorridZone";
     } & AlifeObjectTorridZone)
   | ({
       type: "SeSmartTerrain";
@@ -195,8 +198,14 @@ export type AlifeObjectInherited =
       type: "SeLevelChanger";
     } & AlifeLevelChanger)
   | ({
-      type: "SeZoneVisual";
+      type: "CseAlifeZoneVisual";
     } & AlifeZoneVisual)
+  | ({
+      type: "CseAlifeCar";
+    } & AlifeObjectCar)
+  | ({
+      type: "CseAlifeTrader";
+    } & AlifeObjectTrader)
   | ({
       type: "CseAlifeObjectPhysic";
     } & AlifeObjectPhysic)
@@ -363,7 +372,12 @@ export type AlifeObjectSpaceRestrictor = {
 export type AlifeObjectTorridZone = {
   base: AlifeObjectCustomZone;
   motion: AlifeObjectMotion;
-  lastSpawnTime: Time | null;
+  lastSpawnTime: LastSpawnTime;
+};
+
+export type AlifeObjectTrader = {
+  base: AlifeObjectDynamicVisual;
+  trader: AlifeObjectTraderAbstract;
 };
 
 export type AlifeObjectTraderAbstract = {
@@ -416,7 +430,7 @@ export type AlifeZoneVisual = {
   visual: AlifeObjectVisual;
   idleAnimation: string;
   attackAnimation: string;
-  lastSpawnTime: Time | null;
+  lastSpawnTime: LastSpawnTime;
 };
 
 export type ArtefactSpawnPoint = {
@@ -434,6 +448,7 @@ export type ClsId =
   | "AiRat"
   | "AiRatG"
   | "AiSpGrp"
+  | "AiTrdS"
   | "AmmoS"
   | "Artefact"
   | "CHlcpS"
@@ -518,6 +533,7 @@ export type ClsId =
   | "ZNoGrav"
   | "ZRadio"
   | "ZTeamBs"
+  | "ZTorrid"
   | "ZsBFuzz"
   | "ZsGalan"
   | "ZsMBald"
@@ -573,6 +589,23 @@ export type GraphVertex = {
   edgesCount: number;
   levelPointsCount: number;
 };
+
+/**
+ * Trailing spawn time a fork's script class appends after the engine server class payload.
+ *
+ * The engine registers one server class per zone family; `se_zones.script` layers a script class
+ * over it and may or may not extend `STATE_Write`. A spawn file is a compiled artifact, so whether
+ * the tail exists is a property of the stored bytes, not of the section name or the installation
+ * config: CoC and Anomaly ship the same `generator_dust_static` object with and without it.
+ * The object chunk's remaining byte budget is the only authority.
+ */
+export type LastSpawnTime =
+  /** The script class wrote nothing past the engine payload. */
+  | { type: "Absent" }
+  /** The script class wrote its flag with no time behind it. */
+  | { type: "Unset" }
+  /** The script class wrote its flag and a time. */
+  | { type: "Set"; value: Time };
 
 /**
  * Patrols list is represented by list of samples containing patrol chunk.
