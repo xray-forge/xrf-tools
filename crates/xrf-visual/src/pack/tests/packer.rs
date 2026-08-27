@@ -321,10 +321,13 @@ fn labels_a_model_type_the_engine_has_no_name_for() {
 
 #[test]
 fn reports_bones_motion_refs_and_embedded_motions() {
+  let (motions, motion_parameters) = embedded_motions(&["idle", "reload"]);
+
   let file: OgfFile = OgfFile {
     bones: Some(bones(&[("wpn_body", ""), ("magazin", "wpn_body")])),
     kinematics: Some(kinematics(&["dynamics\\weapons\\wpn_ak74\\wpn_ak74_hud_animation"])),
-    motions: Some(embedded_motions(&["idle", "reload"])),
+    motions: Some(motions),
+    motion_parameters: Some(motion_parameters),
     description: Some(description("x:\\rawdata\\objects\\wpn_ak74.object")),
     ..skeleton(vec![static_triangle_child()])
   };
@@ -355,7 +358,8 @@ fn reports_bones_motion_refs_and_embedded_motions() {
   );
   assert_eq!(
     package.description.embedded_motions,
-    vec![String::from("idle"), String::from("reload")]
+    vec![String::from("idle"), String::from("reload")],
+    "expect the definition names, not the labels the payloads happen to carry"
   );
   assert_eq!(
     package.description.source_file.as_deref(),

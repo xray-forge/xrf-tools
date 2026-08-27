@@ -9,6 +9,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_b
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, open_export_file};
 
+use crate::data::ogf::ogf_motion::OgfMotion;
+use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
 use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
 use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 
@@ -114,6 +116,32 @@ impl OmfFile {
     self.parameters.motions.iter().map(|it| it.name.as_str()).collect()
   }
 
+  /// Motions as the engine resolves them: each definition with the key payload at its own ordinal.
+  ///
+  /// `motions_value::load` maps every definition name to its ordinal, then loads payload chunk `n + 1` into ordinal
+  /// `n` (`xray-16/src/xrCore/Animation/SkeletonMotions.cpp`). Neither the payload label nor
+  /// [`OgfMotionDefinition::motion`] joins the two, so ordinal position is the only pairing there is. Read and write
+  /// both reject a file whose two lists disagree in length, so every definition here has a payload.
+  pub fn get_motions(&self) -> impl Iterator<Item = (&OgfMotionDefinition, &OgfMotion)> {
+    self.parameters.motions.iter().zip(self.motions.motions.iter())
+  }
+
+  /// The motion a name resolves to, with the payload at its ordinal.
+  pub fn get_motion_by_name(&self, name: &str) -> Option<(&OgfMotionDefinition, &OgfMotion)> {
+    self.get_motions().find(|(definition, _)| definition.name == name)
+  }
+
+  /// Count of payloads whose preserved label no longer matches the name of the motion it carries.
+  ///
+  /// Release playback ignores the label entirely; a non-zero count marks a bank as edited by a tool that left the
+  /// prefix behind, and a `_DEBUG` engine build asserts on it.
+  pub fn get_diverging_labels_count(&self) -> usize {
+    self
+      .get_motions()
+      .filter(|(definition, motion)| !motion.has_label_matching(&definition.name))
+      .count()
+  }
+
   pub fn get_bones(&self) -> Vec<&str> {
     self
       .parameters
@@ -166,13 +194,13 @@ mod tests {
       motions: OmfMotionsChunk {
         motions: vec![
           OgfMotion {
-            name: String::from("ak74_draw"),
+            label: String::from("ak74_draw"),
             count: 2,
             flags: 1,
             remaining: vec![9, 8, 7],
           },
           OgfMotion {
-            name: String::from("ak74_idle"),
+            label: String::from("ak74_idle"),
             count: 4,
             flags: 0,
             remaining: vec![1, 2],
@@ -231,5 +259,87 @@ mod tests {
       file.write_to::<XRayByteOrder>(&mut Vec::new()).is_err(),
       "Expect write to reject unsupported omf version"
     );
+  }
+  #[test]
+  fn test_get_motion_names_reads_the_definitions() -> XrfResult {
+    let mut file: OmfFile = new_mock(4);
+
+    file.parameters.motions[0].name = String::from("ak74_draw");
+    file.parameters.motions[1].name = String::from("ak74_idle");
+    file.motions.motions[0].label = String::from("\u{2019}<\u{0427}");
+
+    assert_eq!(
+      file.get_motion_names(),
+      vec!["ak74_draw", "ak74_idle"],
+      "Expect names to come from the parameters chunk, whatever the payload labels hold"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_get_motions_pairs_by_ordinal_not_by_motion_id() -> XrfResult {
+    let mut file: OmfFile = new_mock(4);
+
+    file.parameters.motions[0].name = String::from("ak74_draw");
+    file.parameters.motions[1].name = String::from("ak74_idle");
+    // Ids a third-party bank actually carries: neither of these addresses a payload.
+    file.parameters.motions[0].motion = 50_992;
+    file.parameters.motions[1].motion = 57_565;
+
+    let paired: Vec<(&str, u32)> = file
+      .get_motions()
+      .map(|(definition, motion)| (definition.name.as_str(), motion.count))
+      .collect();
+
+    assert_eq!(
+      paired,
+      vec![("ak74_draw", 2), ("ak74_idle", 4)],
+      "Expect each definition to carry the payload at its own ordinal"
+    );
+
+    assert_eq!(
+      file.get_motion_by_name("ak74_idle").map(|(_, motion)| motion.count),
+      Some(4)
+    );
+    assert!(file.get_motion_by_name("ak74_missing").is_none());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_get_diverging_labels_count_ignores_case() -> XrfResult {
+    let mut file: OmfFile = new_mock(4);
+
+    file.parameters.motions[0].name = String::from("ak74_draw");
+    file.parameters.motions[1].name = String::from("ak74_idle");
+    // The engine lower-cases both sides before comparing, so this one agrees.
+    file.motions.motions[0].label = String::from("AK74_Draw");
+    file.motions.motions[1].label = String::from("ak74_idle_old");
+
+    assert_eq!(file.get_diverging_labels_count(), 1);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_write_read_preserves_a_non_text_label() -> XrfResult {
+    let filename: String = build_relative_test_sample_file_path(file!(), "non_text_label.omf");
+    let mut original: OmfFile = new_mock(4);
+
+    // Windows-1251 round-trips every byte, which is why repacking a scrambled bank is byte identical.
+    original.motions.motions[0].label = String::from("\u{2019}<\u{0427}\u{2019}\u{201A}m");
+    original.parameters.motions[0].motion = 50_992;
+
+    original.write_to_path::<XRayByteOrder, _>(&build_absolute_generated_test_resource_path(&filename))?;
+
+    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
+    let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
+
+    assert_eq!(read.motions.motions, original.motions.motions);
+    assert_eq!(read.parameters.motions[0].motion, 50_992);
+
+    Ok(())
   }
 }

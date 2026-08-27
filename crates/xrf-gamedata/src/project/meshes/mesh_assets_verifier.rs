@@ -99,7 +99,10 @@ impl<'a> MeshAssetsVerifier<'a> {
 
     let mut findings: Vec<Finding> = mesh_findings.into_iter().flatten().collect();
 
-    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
+    // A referenced animation bank is verified once per visual that names it, and hundreds of hands models share one
+    // bank. The finding is about the bank, so report it once rather than once per visual that led there.
+    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
+    findings.dedup();
 
     Ok(GamedataMeshAssetsVerificationResult {
       findings,
@@ -128,6 +131,11 @@ impl<'a> MeshAssetsVerifier<'a> {
     findings.extend(self.verify_mesh_shader_findings(output, shader_library, ogf, mesh_path));
     findings.extend(self.verify_mesh_skeleton_findings(ogf, mesh_path));
     findings.extend(self.verify_mesh_geometry_findings(ogf, mesh_path, bones_count));
+    findings.extend(Self::verify_motion_label_findings(
+      ogf.get_diverging_labels_count(),
+      ogf.get_motions().count(),
+      mesh_path,
+    ));
 
     // Verify all nested children in mesh object.
     if let Some(children) = &ogf.children {
@@ -488,7 +496,31 @@ impl<'a> MeshAssetsVerifier<'a> {
       }
     }
 
+    findings.extend(Self::verify_motion_label_findings(
+      omf.get_diverging_labels_count(),
+      omf.get_motions().count(),
+      motion_path,
+    ));
+
     Ok(findings)
+  }
+
+  /// Reports payload labels that no longer name the motion they are stored with.
+  ///
+  /// A motion is named by its definition and reached through its ordinal, so a divergent label costs release playback
+  /// nothing - but a `_DEBUG` engine build asserts on it, and it marks a bank an editor rewrote without keeping the
+  /// two in step. Reported once per file: the file is the unit that gets fixed, and `xrf-cli omf info` names the
+  /// individual motions on demand.
+  fn verify_motion_label_findings(diverging_count: usize, motions_count: usize, path: Option<&str>) -> Vec<Finding> {
+    if diverging_count == 0 {
+      return Vec::new();
+    }
+
+    vec![Self::new_motion_finding(
+      GamedataVerificationRule::MeshesMotionLabel,
+      path,
+      format!("{diverging_count} of {motions_count} payload labels do not match their motion names"),
+    )]
   }
 
   fn new_mesh_finding(rule: GamedataVerificationRule, mesh_path: Option<&str>, message: String) -> Finding {

@@ -46,37 +46,41 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Version: {}", omf_file.parameters.version);
 
-    xrf_output::info!(
-      output,
-      "Motions: {} {}",
-      omf_file.motions.motions.len(),
-      omf_file
-        .motions
-        .motions
-        .iter()
-        .map(|it| it.name.as_str())
-        .collect::<Vec<_>>()
-        .join(",")
-    );
+    let motion_names: Vec<&str> = omf_file.get_motion_names();
+
+    // Names come from the motion definitions; a payload's leading label is not what the engine resolves.
+    xrf_output::info!(output, "Motions: {} {}", motion_names.len(), motion_names.join(","));
+
+    let diverging_labels_count: usize = omf_file.get_diverging_labels_count();
+
+    // Worth saying and not worth printing: release playback ignores the label, and on the banks that have this the
+    // stored bytes are not text at all.
+    if diverging_labels_count > 0 {
+      xrf_output::info!(
+        output,
+        "Payload labels differing from motion names: {} of {}",
+        diverging_labels_count,
+        motion_names.len()
+      );
+    }
 
     // Keyframe count and playback speed together give effective duration.
-    for definition in &omf_file.parameters.motions {
-      let keyframes: Option<u32> = omf_file
-        .motions
-        .motions
-        .get(definition.motion as usize)
-        .map(|it| it.count);
-
+    for (definition, motion) in omf_file.get_motions() {
       xrf_output::verbose!(
         output,
-        "Motion '{}': keyframes {}, flags {:#04b}, speed {}, power {}, accrue {}, falloff {}",
+        "Motion '{}': keyframes {}, flags {:#04b}, speed {}, power {}, accrue {}, falloff {}{}",
         definition.name,
-        keyframes.map_or_else(|| String::from("?"), |it| it.to_string()),
+        motion.count,
         definition.flags,
         definition.speed,
         definition.power,
         definition.accrue,
-        definition.falloff
+        definition.falloff,
+        if motion.has_label_matching(&definition.name) {
+          ""
+        } else {
+          ", payload label differs"
+        }
       );
     }
 

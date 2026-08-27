@@ -21,9 +21,19 @@ pub fn bake_named_motion(
   dependencies: &VisualDependencies,
   name: &str,
 ) -> TauriResult<VisualMotionPose> {
-  if let Some(motion) = skeleton.embedded_motions.iter().find(|it| it.name == name) {
-    return bake_motion(&skeleton.bones, &skeleton.binds, &skeleton.embedded_parts, motion)
-      .map_err(|error| format!("Failed to pose embedded motion '{name}': {error}"));
+  if let Some((definition, motion)) = skeleton
+    .embedded_motions
+    .iter()
+    .find(|(definition, _)| definition.name == name)
+  {
+    return bake_motion(
+      &skeleton.bones,
+      &skeleton.binds,
+      &skeleton.embedded_parts,
+      definition,
+      motion,
+    )
+    .map_err(|error| format!("Failed to pose embedded motion '{name}': {error}"));
   }
 
   let mut searched: usize = 0;
@@ -36,9 +46,15 @@ pub fn bake_named_motion(
         continue;
       };
 
-      if let Some(motion) = omf.motions.motions.iter().find(|it| it.name == name) {
-        return bake_motion(&skeleton.bones, &skeleton.binds, &omf.parameters.parts, motion)
-          .map_err(|error| format!("Failed to pose motion '{name}': {error}"));
+      if let Some((definition, motion)) = omf.get_motion_by_name(name) {
+        return bake_motion(
+          &skeleton.bones,
+          &skeleton.binds,
+          &omf.parameters.parts,
+          definition,
+          motion,
+        )
+        .map_err(|error| format!("Failed to pose motion '{name}': {error}"));
       }
     }
   }
@@ -58,7 +74,11 @@ pub fn list_motion_names(
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
 ) -> Vec<String> {
-  let mut names: Vec<String> = skeleton.embedded_motions.iter().map(|it| it.name.clone()).collect();
+  let mut names: Vec<String> = skeleton
+    .embedded_motions
+    .iter()
+    .map(|(definition, _)| definition.name.clone())
+    .collect();
 
   for dependency in &dependencies.motions {
     for asset in located_assets(&dependency.resolution) {
@@ -66,9 +86,9 @@ pub fn list_motion_names(
         continue;
       };
 
-      for motion in &omf.motions.motions {
-        if !names.iter().any(|it| it == &motion.name) {
-          names.push(motion.name.clone());
+      for name in omf.get_motion_names() {
+        if !names.iter().any(|it| it == name) {
+          names.push(String::from(name));
         }
       }
     }

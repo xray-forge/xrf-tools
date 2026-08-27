@@ -100,11 +100,8 @@ impl VisualPacker {
         .as_ref()
         .map(|it| it.motion_refs.clone())
         .unwrap_or_default(),
-      embedded_motions: file
-        .motions
-        .as_ref()
-        .map(|it| it.motions.iter().map(|motion| motion.name.clone()).collect())
-        .unwrap_or_default(),
+      // Names come from the motion definitions; a payload's own label is not what the engine resolves.
+      embedded_motions: file.get_motion_names().into_iter().map(String::from).collect(),
       buffer_length: builder.length(),
     };
 

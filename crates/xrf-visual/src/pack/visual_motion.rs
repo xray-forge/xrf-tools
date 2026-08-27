@@ -1,5 +1,7 @@
 use serde::Serialize;
-use xrf_db::{OgfBone, OgfBoneIkData, OgfBoneMotion, OgfMotion, OgfPart, SAMPLE_FPS, XRayByteOrder};
+use xrf_db::{
+  OgfBone, OgfBoneIkData, OgfBoneMotion, OgfMotion, OgfMotionDefinition, OgfPart, SAMPLE_FPS, XRayByteOrder,
+};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::data::visual_description::VisualTransform;
@@ -51,6 +53,10 @@ pub const FLOATS_PER_BONE: usize = 12;
 /// A bone the motion does not drive keeps its bind transform rather than snapping to the origin, which is what the
 /// engine's remap leaves untouched for a bone no partition names.
 ///
+/// The definition and the payload are one motion's two halves, paired by ordinal: the definition names it and says how
+/// to play it, the payload carries its keys. The payload's own label is not its name, so identity comes from the
+/// definition alone.
+///
 /// # Errors
 ///
 /// Returns an error when the motion's key payload does not match the skeleton, which the decoder detects as bytes left
@@ -59,18 +65,22 @@ pub fn bake_motion(
   bones: &[OgfBone],
   binds: &[OgfBoneIkData],
   parts: &[OgfPart],
+  definition: &OgfMotionDefinition,
   motion: &OgfMotion,
 ) -> XrfResult<VisualMotionPose> {
   if binds.len() != bones.len() {
     return Err(XrfError::new_parsing_error(format!(
       "Motion '{}' cannot be posed: {} bones carry {} bind records",
-      motion.name,
+      definition.name,
       bones.len(),
       binds.len()
     )));
   }
 
-  let runs: Vec<OgfBoneMotion> = motion.decode_bone_motions::<XRayByteOrder>(total_part_bones(parts))?;
+  let runs: Vec<OgfBoneMotion> = motion
+    .decode_bone_motions::<XRayByteOrder>(total_part_bones(parts))
+    .map_err(|error| XrfError::new_parsing_error(format!("Motion '{}' cannot be posed: {error}", definition.name)))?;
+
   // Run index to bone index, by name: the payload is ordered by the motion's own indices, and the engine resolves each
   // through `find_bone_id` (`SkeletonMotions.cpp:106`). Positional pairing would animate the wrong bones whenever a
   // partition orders them differently from the bone chunk, which is the normal case.
@@ -109,7 +119,7 @@ pub fn bake_motion(
 
   Ok(VisualMotionPose {
     description: VisualMotionBake {
-      name: motion.name.clone(),
+      name: definition.name.clone(),
       frame_count: frame_count as u32,
       bone_count: bones.len() as u32,
       duration: frame_count as f32 / SAMPLE_FPS,

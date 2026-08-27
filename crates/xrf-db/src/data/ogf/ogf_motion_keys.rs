@@ -83,9 +83,9 @@ impl OgfMotion {
     }
 
     if !cursor.is_exhausted() {
+      // Named by the caller, which holds the definition: the payload label is not the motion's name.
       return Err(XrfError::new_parsing_error(format!(
-        "Motion '{}' has {} bytes left after {} bones, so the bone count does not match the payload",
-        self.name,
+        "Motion payload has {} bytes left after {} bones, so the bone count does not match the payload",
         cursor.remaining(),
         bone_count
       )));
@@ -317,7 +317,7 @@ mod tests {
     }
 
     OgfMotion {
-      name: String::from("test_motion"),
+      label: String::from("test_motion"),
       count,
       flags: first,
       remaining,

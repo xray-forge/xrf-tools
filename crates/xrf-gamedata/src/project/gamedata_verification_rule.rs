@@ -60,6 +60,8 @@ pub enum GamedataVerificationRule {
   LtxSchema,
   #[display("ltx.verification")]
   LtxVerification,
+  #[display("meshes.motion-label")]
+  MeshesMotionLabel,
   #[display("meshes.motion-read")]
   MeshesMotionRead,
   #[display("meshes.motion-validation")]
