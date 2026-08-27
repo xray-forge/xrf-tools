@@ -96,6 +96,7 @@ macro_rules! for_each_tauri_command_domain {
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::commands::read_texture::visuals_read_texture,
       }
       translations => "translations" {
+        build_project => crate::plugins::translations::commands::build_project::translations_build_project,
         close_project => crate::plugins::translations::commands::close_project::translations_close_project,
         detect_mode => crate::plugins::translations::commands::detect_mode::translations_detect_mode,
         get_project => crate::plugins::translations::commands::get_project::translations_get_project,

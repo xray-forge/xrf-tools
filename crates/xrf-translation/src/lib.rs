@@ -16,8 +16,8 @@ pub(crate) mod xml;
 pub use crate::edit::TranslationEdit;
 pub use crate::language::TranslationLanguage;
 pub use crate::project::build::options::ProjectBuildOptions;
-pub use crate::project::build::result::ProjectBuildResult;
-pub use crate::project::build::run::{build_dir, build_file};
+pub use crate::project::build::result::{ProjectBuildLanguageSummary, ProjectBuildResult};
+pub use crate::project::build::run::{build_file, build_roots, build_roots_in};
 pub use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };

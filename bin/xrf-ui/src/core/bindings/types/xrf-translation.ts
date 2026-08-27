@@ -2,6 +2,20 @@
 
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
+/** What one language's build produced. */
+export type ProjectBuildLanguageSummary = {
+  language: string;
+  /** String tables written for this language, one per source. */
+  files: number;
+  /**
+   * Ids compiled into them, counting an id once per file it appears in.
+   *
+   * A missing translation still compiles - to the id itself, which is the engine's own fallback - so
+   * this counts what the tables hold rather than what was translated.
+   */
+  entries: number;
+};
+
 /** How much one import run moved. */
 export type ProjectParseCensus = {
   /** String tables read out of the scope. */

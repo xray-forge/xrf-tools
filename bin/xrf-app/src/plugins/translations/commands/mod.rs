@@ -1,3 +1,4 @@
+pub mod build_project;
 pub mod close_project;
 pub mod detect_mode;
 pub mod get_project;

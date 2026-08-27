@@ -2,81 +2,119 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use walkdir::{DirEntry, WalkDir};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_utils::encode_string_to_bytes;
+use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
-use crate::json::read::read_json;
+use crate::json::read::{parse_json, read_json};
 use crate::language::TranslationLanguage;
 use crate::project::build::compile::compile_by_language;
 use crate::project::build::options::ProjectBuildOptions;
 use crate::project::build::result::ProjectBuildResult;
-use crate::project::build::targets::{ensure_output_outside_source, prepare_target_file, validate_targets};
-use crate::source_file_name::is_json_source;
+use crate::project::build::targets::{ensure_output_outside_roots, prepare_target_file, validate_targets};
+use crate::source_file_name::{is_json_source, is_json_source_name};
 use crate::types::TranslationJson;
 
-/// Build every translation source in a directory.
+/// Build every translation source the roots expose.
+///
+/// Reads through `xrf-vfs`, so a source tree layered over an installation compiles the sources the
+/// engine would actually load. Writes to the host, because a string table is a file and there is
+/// nowhere to put one inside a volume - which is why the output is a plain path rather than roots.
 ///
 /// Targets are validated before anything is written, so a build that would have two sources fighting
 /// over one output file fails having produced nothing.
 ///
 /// # Errors
 ///
-/// Returns an invalid error for colliding targets or output inside the sources, and whatever building
-/// an individual file returns.
-pub fn build_dir(dir: &Path, options: &ProjectBuildOptions) -> XrfResult<ProjectBuildResult> {
-  log::info!("Building dir {}", dir.display());
-  xrf_output::info!(options.output, "Building dir {}", dir.display());
+/// Returns an invalid error for colliding targets or for output inside a source root, and whatever
+/// building an individual source returns.
+pub fn build_roots(
+  roots: &XrayRoots,
+  prefix: Option<&str>,
+  options: &ProjectBuildOptions,
+) -> XrfResult<ProjectBuildResult> {
+  ensure_output_outside_roots(roots, &options.output_dir)?;
+
+  build_roots_in(&roots.open()?, prefix, options)
+}
+
+/// Build over roots somebody else mounted.
+///
+/// # Errors
+///
+/// The same as [`build_roots`], minus mounting and the output guard the caller has already applied.
+pub fn build_roots_in(
+  vfs: &XrayVfs,
+  prefix: Option<&str>,
+  options: &ProjectBuildOptions,
+) -> XrfResult<ProjectBuildResult> {
+  let scope: XrayLookupScope = XrayLookupScope::all().with_optional_prefix(prefix)?;
+  let scoped: XrayScopedVfs = vfs.scoped(&scope);
 
   let started_at: Instant = Instant::now();
   let mut result: ProjectBuildResult = ProjectBuildResult::new();
-  let mut source_files: Vec<PathBuf> = Vec::new();
 
-  ensure_output_outside_source(dir, &options.output_dir)?;
+  let mut assets: Vec<XrayAsset> = scoped
+    .list_entries()
+    .into_iter()
+    .filter(|asset| is_json_source_name(asset.get_logical_path().file_name()))
+    .collect();
 
-  for entry in WalkDir::new(dir).sort_by_file_name() {
-    let entry: DirEntry = entry.map_err(|error| {
-      XrfError::new_read_error(format!(
-        "Failed to walk translation directory '{}': {error}",
-        dir.display()
-      ))
-    })?;
+  // Sorted because mount order is not name order, and a build is only comparable across runs and
+  // machines if it depends on neither.
+  assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
-    if entry.path().is_file() {
-      source_files.push(entry.into_path());
-    }
-  }
+  let names: Vec<String> = assets
+    .iter()
+    .map(|asset| asset.get_logical_path().as_str().to_owned())
+    .collect();
 
-  validate_targets(&source_files, options)?;
+  validate_targets(&names, options)?;
 
-  for source_file in source_files {
-    build_file(&source_file, options)?;
+  xrf_output::info!(options.output, "Building {} translation source(s)", assets.len());
+
+  for asset in &assets {
+    let logical_path: &str = asset.get_logical_path().as_str();
+    let parsed: TranslationJson = scoped
+      .read_asset_bytes(asset)
+      .and_then(|data| parse_json(logical_path, &data))?;
+
+    result.sources += 1;
+
+    build_parsed(logical_path, &parsed, options, &mut result)?;
   }
 
   result.duration = started_at.elapsed();
 
   log::info!(
-    "Built dir {} in {}",
-    dir.display(),
+    "Built {} string table(s) from {} source(s) in {}",
+    result.files,
+    result.sources,
     xrf_utils::format_duration(result.duration)
   );
 
   Ok(result)
 }
 
-/// Build one source, skipping anything that is not a multi-language JSON.
+/// Build one source off disk, for a caller holding one file and no mounted roots.
+///
+/// The path-taking convenience the readers keep, and the reason `--path <one source>` still works: a
+/// VFS mounts a directory, never a file.
 ///
 /// # Errors
 ///
 /// Returns whatever building the JSON source returns.
 pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult<ProjectBuildResult> {
   let started_at: Instant = Instant::now();
-
   let mut result: ProjectBuildResult = ProjectBuildResult::new();
 
   // Through the shared parser rather than comparing an extension; see `verify_file` for why.
   if is_json_source(path.as_ref()) {
-    build_json_file(path, options)?;
+    let parsed: TranslationJson = read_json(path.as_ref())?;
+
+    result.sources += 1;
+
+    build_parsed(&path.as_ref().display().to_string(), &parsed, options, &mut result)?;
   } else {
     log::info!("Skip file {}", path.as_ref().display());
     xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
@@ -84,53 +122,43 @@ pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> Xr
 
   result.duration = started_at.elapsed();
 
-  log::info!(
-    "Built file {} in {}",
-    path.as_ref().display(),
-    xrf_utils::format_duration(result.duration)
-  );
-
   Ok(result)
 }
 
-/// Compile a multi-language JSON source into one string table per language.
-///
-/// # Errors
-///
-/// Returns a parsing error for an unreadable source and an encoding error for a value a target
-/// language cannot hold.
-pub fn build_json_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult {
-  xrf_output::info!(
-    options.output,
-    "Building JSON based translations {}",
-    path.as_ref().display()
-  );
-
-  let parsed: TranslationJson = read_json(path.as_ref())?;
+/// Compile one parsed source into one string table per language the run asked for.
+fn build_parsed(
+  subject: &str,
+  parsed: &TranslationJson,
+  options: &ProjectBuildOptions,
+  result: &mut ProjectBuildResult,
+) -> XrfResult {
+  xrf_output::verbose!(options.output, "Building translations {subject}");
 
   if options.language == TranslationLanguage::All {
     for language in TranslationLanguage::get_all() {
-      build_json_by_language(path.as_ref(), &parsed, &language, options)?;
+      build_language(subject, parsed, &language, options, result)?;
     }
   } else {
-    build_json_by_language(path.as_ref(), &parsed, &options.language, options)?;
+    build_language(subject, parsed, &options.language, options, result)?;
   }
 
   Ok(())
 }
 
-fn build_json_by_language(
-  path: &Path,
+fn build_language(
+  subject: &str,
   source: &TranslationJson,
   language: &TranslationLanguage,
   options: &ProjectBuildOptions,
+  result: &mut ProjectBuildResult,
 ) -> XrfResult {
-  let data: Vec<u8> = encode_string_to_bytes(
-    &compile_by_language(path, source, language, options)?,
-    language.new_language_encoder(),
-  )?;
+  let compiled: String = compile_by_language(Path::new(subject), source, language, options)?;
+  let data: Vec<u8> = encode_string_to_bytes(&compiled, language.new_language_encoder())?;
+  let target: PathBuf = crate::project::build::targets::target_path(subject, &options.output_dir, language)?;
 
-  prepare_target_file(&path, &options.output_dir, language, options)?.write_all(&data)?;
+  prepare_target_file(&target, options)?.write_all(&data)?;
+
+  result.record_built_file(&language.to_string(), source.len() as u32);
 
   Ok(())
 }

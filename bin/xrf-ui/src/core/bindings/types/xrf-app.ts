@@ -1,7 +1,11 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
-import { ProjectParseCensus, ProjectVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
+import {
+  ProjectBuildLanguageSummary,
+  ProjectParseCensus,
+  ProjectVerifyLanguageSummary,
+} from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
@@ -85,6 +89,24 @@ export type SelectedVisualDescription = {
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */
   textures: { [key in string]: AssetTextureDescriptor };
+};
+
+/**
+ * What a build reports back to the desktop surface.
+ *
+ * A row per language rather than the 272 files behind a full run, which is the natural grain of a
+ * build whose job is one string table per language.
+ */
+export type TranslationBuildSummary = {
+  /** The language built, or `all`. */
+  language: string;
+  /** Sources read. */
+  sources: number;
+  /** String tables written, across every language. */
+  files: number;
+  /** Where they were written, so the result can offer to open it. */
+  outputDir: string;
+  languages: Array<ProjectBuildLanguageSummary>;
 };
 
 /** One thing worth reporting about a file the run met. */

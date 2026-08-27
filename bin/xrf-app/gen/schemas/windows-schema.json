@@ -6771,10 +6771,16 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
           "type": "string",
           "const": "translations:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`"
+        },
+        {
+          "description": "Enables the build_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:allow-build-project",
+          "markdownDescription": "Enables the build_project command without any pre-configured scope."
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -6823,6 +6829,12 @@
           "type": "string",
           "const": "translations:allow-verify-project",
           "markdownDescription": "Enables the verify_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the build_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:deny-build-project",
+          "markdownDescription": "Denies the build_project command without any pre-configured scope."
         },
         {
           "description": "Denies the close_project command without any pre-configured scope.",

@@ -2,7 +2,11 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { TranslationParseSummary, TranslationVerifySummary } from "@/core/bindings/types/xrf-app";
+import {
+  TranslationBuildSummary,
+  TranslationParseSummary,
+  TranslationVerifySummary,
+} from "@/core/bindings/types/xrf-app";
 import {
   TranslationEdit,
   TranslationFile,
@@ -14,6 +18,23 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const translationsCommands = {
+  /**
+   * Compile translation sources into per-language string tables.
+   *
+   * `roots` names where the sources are read from, through the VFS, so a tree layered over an
+   * installation compiles what the engine would actually load. `outputDir` is a plain host directory,
+   * because a string table is a file and a `.db` volume has nowhere to put one.
+   *
+   * Refuses an output directory inside any of the source roots before writing anything.
+   */
+  buildProject: (roots: XrayRoots, prefix: string | null, language: string, outputDir: string, isSorted: boolean) =>
+    __TAURI_INVOKE<TranslationBuildSummary>("plugin:translations|build_project", {
+      roots,
+      prefix,
+      language,
+      outputDir,
+      isSorted,
+    }),
   closeProject: () => __TAURI_INVOKE<null>("plugin:translations|close_project"),
   /**
    * Report which layout roots look like, for the open form to preselect.

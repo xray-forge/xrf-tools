@@ -4,6 +4,7 @@ use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_portable_path_string;
+use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
 use crate::project::build::options::ProjectBuildOptions;
@@ -14,17 +15,9 @@ use crate::xml;
 ///
 /// # Errors
 ///
-/// Returns an invalid error when the source sits outside the project root, and an IO error when the
-/// target cannot be created.
-pub(crate) fn prepare_target_file<P1: AsRef<Path>, P2: AsRef<Path>>(
-  path: &P1,
-  destination: &P2,
-  language: &TranslationLanguage,
-  options: &ProjectBuildOptions,
-) -> XrfResult<File> {
-  let target: PathBuf = target_path(path.as_ref(), destination.as_ref(), language, options)?;
-
-  xrf_output::verbose!(options.output, "Writing file ({}) {}", language, target.display());
+/// Returns an IO error when the target cannot be created.
+pub(crate) fn prepare_target_file(target: &Path, options: &ProjectBuildOptions) -> XrfResult<File> {
+  xrf_output::verbose!(options.output, "Writing file {}", target.display());
 
   let target_parent: &Path = target.parent().ok_or_else(|| {
     XrfError::new_invalid_error(format!("Translation XML target has no parent: {}", target.display()))
@@ -35,48 +28,35 @@ pub(crate) fn prepare_target_file<P1: AsRef<Path>, P2: AsRef<Path>>(
   Ok(File::options().write(true).create(true).truncate(true).open(target)?)
 }
 
-/// Where one source lands, which is `<output>/<language>/<path relative to the root>.xml`.
+/// Where one source lands, which is `<output>/<language>/<source path>.xml`.
 ///
-/// The destination directory identifies the language, so the JSON stem is all the name that is
-/// needed.
+/// The source is named by the logical path the VFS resolved it under, so the built tree mirrors the
+/// source tree whatever host the sources came off. The destination directory identifies the language,
+/// so the JSON stem is all the name that is needed.
 ///
 /// # Errors
 ///
-/// Returns an invalid error when the source is outside the project root or has no file name.
-pub(crate) fn target_path(
-  source: &Path,
-  destination: &Path,
-  language: &TranslationLanguage,
-  options: &ProjectBuildOptions,
-) -> XrfResult<PathBuf> {
-  let mut relative_source: PathBuf = if source == options.path {
-    PathBuf::from(source.file_name().ok_or_else(|| {
-      XrfError::new_invalid_error(format!("Translation source has no file name: {}", source.display()))
-    })?)
-  } else {
-    source.strip_prefix(&options.path).map(PathBuf::from).map_err(|_| {
-      XrfError::new_invalid_error(format!(
-        "Translation source '{}' is outside project root '{}'",
-        source.display(),
-        options.path.display(),
-      ))
-    })?
-  };
+/// Returns an invalid error when the source is not a name this builds from.
+pub(crate) fn target_path(source: &str, destination: &Path, language: &TranslationLanguage) -> XrfResult<PathBuf> {
+  let mut relative: PathBuf = PathBuf::new();
 
-  let stem: String = relative_source
+  // Component by component, because a logical path is `\`-separated whatever the host uses. A host
+  // path from the single-file entry point splits on its own separator too, which `Path` handles.
+  for component in source.split(['\\', '/']).filter(|part| !part.is_empty()) {
+    relative.push(component);
+  }
+
+  let stem: String = relative
     .file_name()
     .and_then(parse_json_source_stem)
     .ok_or_else(|| {
-      XrfError::new_invalid_error(format!(
-        "Translation source '{}' is not a name this builds from",
-        source.display()
-      ))
+      XrfError::new_invalid_error(format!("Translation source '{source}' is not a name this builds from"))
     })?
     .to_owned();
 
-  relative_source.set_file_name(format!("{stem}.{}", xml::FILE_EXTENSION));
+  relative.set_file_name(format!("{stem}.{}", xml::FILE_EXTENSION));
 
-  Ok(destination.join(language.to_string()).join(relative_source))
+  Ok(destination.join(language.to_string()).join(relative))
 }
 
 /// Refuse a build where two sources would write the same file.
@@ -84,12 +64,12 @@ pub(crate) fn target_path(
 /// # Errors
 ///
 /// Returns an invalid error naming both sources and the target they collide on.
-pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildOptions) -> XrfResult {
-  let mut target_sources: HashMap<String, &Path> = HashMap::new();
+pub(crate) fn validate_targets(sources: &[String], options: &ProjectBuildOptions) -> XrfResult {
+  let mut target_sources: HashMap<String, &str> = HashMap::new();
 
-  for source in source_files {
+  for source in sources {
     for language in target_languages_for_source(source, options) {
-      let target: PathBuf = target_path(source, &options.output_dir, &language, options)?;
+      let target: PathBuf = target_path(source, &options.output_dir, &language)?;
       let target_key: String = to_portable_path_string(&target).to_lowercase();
 
       if let Some(existing_source) = target_sources.insert(target_key, source)
@@ -97,8 +77,8 @@ pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildO
       {
         return Err(XrfError::new_invalid_error(format!(
           "Translation sources '{}' and '{}' both build to '{}'",
-          existing_source.display(),
-          source.display(),
+          existing_source,
+          source,
           target.display(),
         )));
       }
@@ -110,10 +90,10 @@ pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildO
 
 /// Every language one source will be written for, which decides what its targets collide with.
 ///
-/// A JSON source carries all of them, so it builds for whichever the run asked for — one, or all
+/// A JSON source carries all of them, so it builds for whichever the run asked for - one, or all
 /// eight. Anything that is not a source builds for none.
-pub(crate) fn target_languages_for_source(path: &Path, options: &ProjectBuildOptions) -> Vec<TranslationLanguage> {
-  if path.file_name().and_then(parse_json_source_stem).is_none() {
+pub(crate) fn target_languages_for_source(source: &str, options: &ProjectBuildOptions) -> Vec<TranslationLanguage> {
+  if Path::new(source).file_name().and_then(parse_json_source_stem).is_none() {
     return Vec::new();
   }
 
@@ -122,6 +102,33 @@ pub(crate) fn target_languages_for_source(path: &Path, options: &ProjectBuildOpt
   } else {
     vec![options.language]
   }
+}
+
+/// Refuse to write build output inside any of the trees it was built from.
+///
+/// The hazard this was written for is gone: unsuffixed XML used to be a source, so a built
+/// `example.xml` could overwrite the `example.xml` it came from. Sources are JSON and output is XML
+/// now, so a build cannot clobber its own input by name. What is left is that filling an authored
+/// tree with 272 generated files is still nobody's intention, which is reason enough to keep it.
+///
+/// Every loose root is checked, since a layered build reads from all of them. An archived root has no
+/// host path and nothing can be written inside it anyway.
+///
+/// # Errors
+///
+/// Returns an invalid error naming the root the output would sit inside.
+pub(crate) fn ensure_output_outside_roots(roots: &XrayRoots, output: &Path) -> XrfResult {
+  for root in &roots.roots {
+    let source: &Path = Path::new(&root.path);
+
+    if !source.is_dir() {
+      continue;
+    }
+
+    ensure_output_outside_source(source, output)?;
+  }
+
+  Ok(())
 }
 
 /// Refuse to write build output into the sources it was built from.
