@@ -1,12 +1,11 @@
 import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { DialogGraph } from "@/applications/dialogs-editor/components/editor/DialogGraph";
 import { DialogLanguageBar } from "@/applications/dialogs-editor/components/editor/DialogLanguageBar";
-import { DialogsTreeMenu } from "@/applications/dialogs-editor/components/editor/DialogsTreeMenu";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
@@ -18,10 +17,7 @@ import { Nullable } from "@/lib/types/general";
  * only that something was asked for. A failed read leaves one set with no value and no loading, which
  * a selection-driven branch reports as still fetching — forever, and without ever showing the error.
  */
-function describeAbsentDialog(dialog: Loadable<Nullable<DialogDescriptor>>): {
-  title: string;
-  description: string;
-} {
+function describeAbsentDialog(dialog: Loadable<Nullable<DialogDescriptor>>): { title: string; description: string } {
   if (dialog.isLoading) {
     return { description: "Fetching its phrases.", title: "Reading dialog" };
   }
@@ -31,35 +27,32 @@ function describeAbsentDialog(dialog: Loadable<Nullable<DialogDescriptor>>): {
   }
 
   return {
-    description: "Pick one from the list to see its phrases and where they lead.",
+    description: "Pick one from the tree to see its phrases and where they lead.",
     title: "No dialog selected",
   };
 }
 
+/**
+ * The centre of the editor: which language the lines are read in, and the graph itself.
+ */
 export function DialogsEditorWorkspace(): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
-  const project: Nullable<DialogProjectDescriptor> = dialogsService.project.value;
   const dialog: Loadable<Nullable<DialogDescriptor>> = dialogsService.dialog;
 
-  const onSelect = useCallback(
-    (logicalPath: string, id: string) => void dialogsService.selectDialog(logicalPath, id),
-    [dialogsService]
-  );
-
   return (
-    <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
-      <DialogsTreeMenu files={project?.files ?? {}} selection={dialogsService.selection} onSelect={onSelect} />
+    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, minWidth: 0 }}>
+      <DialogLanguageBar
+        languages={dialogsService.languages}
+        selected={dialogsService.resolvedLanguage}
+        onSelect={dialogsService.setLanguage}
+      />
 
-      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, minWidth: 0 }}>
-        <DialogLanguageBar
-          languages={dialogsService.languages}
-          selected={dialogsService.resolvedLanguage}
-          onSelect={dialogsService.setLanguage}
-        />
-
-        {dialog.value ? <DialogGraph dialog={dialog.value} /> : <EmptyState {...describeAbsentDialog(dialog)} />}
-      </Box>
+      {dialog.value ? (
+        <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />
+      ) : (
+        <EmptyState {...describeAbsentDialog(dialog)} />
+      )}
     </Box>
   );
 }

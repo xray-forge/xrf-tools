@@ -74,6 +74,9 @@ describe("opened dialogs editor", () => {
   it("draws the graph for the dialog that was picked", async () => {
     const { findByText, findByTestId } = renderEditor();
 
+    // The tree groups dialogs under the file declaring them, so the file opens first. It starts
+    // collapsed, matching the archives explorer: the file rows are the overview.
+    await userEvent.click(await findByText("dialogs.xml"));
     await userEvent.click(await findByText("trader"));
 
     expect(await findByTestId("dialog-graph")).toBeInTheDocument();
@@ -91,6 +94,9 @@ describe("opened dialogs editor", () => {
 
     const { findByText, queryByText } = renderEditor();
 
+    // The tree groups dialogs under the file declaring them, so the file opens first. It starts
+    // collapsed, matching the archives explorer: the file rows are the overview.
+    await userEvent.click(await findByText("dialogs.xml"));
     await userEvent.click(await findByText("trader"));
 
     expect(await findByText("Could not read this dialog")).toBeInTheDocument();

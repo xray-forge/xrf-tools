@@ -9,6 +9,7 @@ import {
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
+  OnSelectionChangeFunc,
   ProOptions,
   ReactFlow,
   SelectionMode,
@@ -31,15 +32,17 @@ export interface IGraphCanvasProps extends BaseComponentProps {
   edges: Array<TGraphEdge>;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
-  onNodesChange?: OnNodesChange;
-  onEdgesChange?: OnEdgesChange;
-  onConnect?: OnConnect;
   /** Whether handles accept new links. A read-only surface still draws them, and refuses. */
   isConnectable?: boolean;
   /** Frames the graph on first render. Off for a surface restoring a saved viewport. */
   isFitToView?: boolean;
   /** Overlays inside the viewport, such as a minimap or a legend panel. */
   children?: ReactNode;
+  onNodesChange?: OnNodesChange;
+  onEdgesChange?: OnEdgesChange;
+  onConnect?: OnConnect;
+  /** What is selected now, reported rather than controlled. */
+  onSelectionChange?: OnSelectionChangeFunc;
 }
 
 /**
@@ -61,6 +64,7 @@ export function GraphCanvas({
   onNodesChange,
   onEdgesChange,
   onConnect,
+  onSelectionChange,
   isConnectable = true,
   isFitToView = true,
   children,
@@ -81,15 +85,16 @@ export function GraphCanvas({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodesConnectable={isConnectable}
+        proOptions={PRO_OPTIONS}
+        fitView={isFitToView}
+        selectionOnDrag={true}
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={PAN_MOUSE_BUTTONS}
+        elevateEdgesOnSelect={true}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        proOptions={PRO_OPTIONS}
-        fitView={isFitToView}
-        selectionOnDrag
-        selectionMode={SelectionMode.Partial}
-        panOnDrag={PAN_MOUSE_BUTTONS}
-        elevateEdgesOnSelect
+        onSelectionChange={onSelectionChange}
       >
         <Background gap={12} size={1} />
         <Controls position={"bottom-right"} />

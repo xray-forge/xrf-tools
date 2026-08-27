@@ -31,13 +31,11 @@ const ARCHIVE_TREE_ICONS: IVirtualizedTreeIcons = {
   leaf: <DescriptionIcon />,
 };
 
-export interface IArchivesMenuProps extends BaseComponentProps {}
-
 export function ArchivesMenu({
   "data-testid": dataTestId = "archives-menu",
   id,
   className,
-}: IArchivesMenuProps = {}): ReactElement {
+}: BaseComponentProps = {}): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());

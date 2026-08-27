@@ -39,6 +39,10 @@ export class DialogsService {
   @Observable()
   public selection: Nullable<IDialogSelection> = null;
 
+  /** Which node of the open dialog the inspector describes. */
+  @Observable()
+  public inspectedNodeId: Nullable<string> = null;
+
   /** Which language phrase text is shown in. */
   @Observable()
   public language: Nullable<string> = null;
@@ -117,6 +121,7 @@ export class DialogsService {
       this.project = createLoadable(response);
       this.selection = null;
       this.dialog = createLoadable(null);
+      this.inspectedNodeId = null;
       this.language = null;
     } catch (error) {
       this.log.error("Failed to open dialogs project:", error);
@@ -140,6 +145,7 @@ ${transformError(error).message}`,
     this.project = createLoadable(null);
     this.dialog = createLoadable(null);
     this.selection = null;
+    this.inspectedNodeId = null;
     this.language = null;
   }
 
@@ -152,6 +158,12 @@ ${transformError(error).message}`,
    */
   @LatestFlow("dialog")
   public *selectDialog(logicalPath: string, id: string): TFlow {
+    // Only when the dialog actually changes. A language switch re-fetches the same one through here,
+    // and dropping the inspection then would close the panel the reader is comparing languages in.
+    if (this.selection?.logicalPath !== logicalPath || this.selection.id !== id) {
+      this.inspectedNodeId = null;
+    }
+
     this.selection = { id, logicalPath };
     this.dialog = createLoadable(null, true);
 
@@ -164,6 +176,12 @@ ${transformError(error).message}`,
 
       this.dialog = createLoadable(null, false, error as Error);
     }
+  }
+
+  /** Point the inspector at one node of the open dialog, or at nothing. */
+  @BoundAction()
+  public inspectNode(nodeId: Nullable<string>): void {
+    this.inspectedNodeId = nodeId;
   }
 
   /**

@@ -1,5 +1,5 @@
-import { NodeTypes, useEdgesState, useNodesState } from "@xyflow/react";
-import { ReactElement, useEffect, useMemo } from "react";
+import { NodeTypes, OnSelectionChangeParams, useEdgesState, useNodesState } from "@xyflow/react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import {
   DialogGraphNode,
@@ -9,6 +9,7 @@ import { buildDialogGraph, EDialogGraphNodeType, IDialogGraph } from "@/applicat
 import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { GraphCanvas } from "@/core/graph/components";
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { Nullable } from "@/lib/types/general";
 
 const NODE_TYPES: NodeTypes = {
   [EDialogGraphNodeType.DIALOG]: DialogGraphNode,
@@ -17,20 +18,14 @@ const NODE_TYPES: NodeTypes = {
 
 export interface IDialogGraphProps {
   dialog: DialogDescriptor;
+  /** Which node the canvas selected, or `null` when a click cleared the selection. */
+  onSelect: (nodeId: Nullable<string>) => void;
 }
 
 /**
  * One dialog as a layered graph.
- *
- * Positions are recomputed from the dialog on every build rather than kept, which is what makes
- * reopening one deterministic and removes any sidecar file, debounce or drift before editing exists.
- * The canvas still owns node state so dragging and selection work — that state is simply reseeded
- * whenever the dialog changes, so a hand-nudged node lasts until the next selection and no longer.
- *
- * Requires a dialog rather than tolerating none: the workspace draws a placeholder while there is
- * nothing to show, so an empty canvas here would be a second answer to a question already settled.
  */
-export function DialogGraph({ dialog }: IDialogGraphProps): ReactElement {
+export function DialogGraph({ dialog, onSelect }: IDialogGraphProps): ReactElement {
   const graph: IDialogGraph = useMemo(() => buildDialogGraph(dialog), [dialog]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<TGraphNode>(graph.nodes);
@@ -43,6 +38,13 @@ export function DialogGraph({ dialog }: IDialogGraphProps): ReactElement {
     setEdges(graph.edges);
   }, [graph, setEdges, setNodes]);
 
+  // Reported from the canvas rather than tracked beside it: selection is the canvas's own state, and a
+  // second copy would drift the moment a click, a marquee and a keyboard move disagree.
+  const onSelectionChange = useCallback(
+    ({ nodes: selected }: OnSelectionChangeParams) => onSelect(selected[0]?.id ?? null),
+    [onSelect]
+  );
+
   return (
     <GraphCanvas
       data-testid={"dialog-graph"}
@@ -50,6 +52,7 @@ export function DialogGraph({ dialog }: IDialogGraphProps): ReactElement {
       edges={edges}
       nodeTypes={NODE_TYPES}
       isConnectable={false}
+      onSelectionChange={onSelectionChange}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
     />

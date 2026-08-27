@@ -1,9 +1,13 @@
+import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
+import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogsEditorWorkspace } from "@/applications/dialogs-editor/components/DialogsEditorWorkspace";
+import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/editor/DialogInspectorPanel";
 import { DialogsProblemsPanel } from "@/applications/dialogs-editor/components/editor/DialogsProblemsPanel";
+import { DialogsTreeMenu } from "@/applications/dialogs-editor/components/editor/DialogsTreeMenu";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogFinding, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -35,6 +39,24 @@ export function DialogsEditor(): ReactElement {
 
   useEditorPanels(
     () => [
+      {
+        icon: <AccountTreeIcon />,
+        id: "dialogs",
+        isOpenByDefault: true,
+        label: "Dialogs",
+        render: () => <DialogsTreeMenu />,
+        side: "left",
+      },
+      {
+        icon: <InfoOutlinedIcon />,
+        id: "inspector",
+        // Open by default: it is the half of the read-only editor the canvas cannot show, and a graph
+        // node carries more than a node is wide.
+        isOpenByDefault: true,
+        label: "Inspector",
+        render: () => <DialogInspectorPanel />,
+        side: "right",
+      },
       {
         icon: <ReportProblemIcon />,
         id: "problems",
