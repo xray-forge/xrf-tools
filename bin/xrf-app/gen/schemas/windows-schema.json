@@ -6771,10 +6771,10 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
           "type": "string",
           "const": "translations:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -6819,6 +6819,12 @@
           "markdownDescription": "Enables the validate_text command without any pre-configured scope."
         },
         {
+          "description": "Enables the verify_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:allow-verify-project",
+          "markdownDescription": "Enables the verify_project command without any pre-configured scope."
+        },
+        {
           "description": "Denies the close_project command without any pre-configured scope.",
           "type": "string",
           "const": "translations:deny-close-project",
@@ -6859,6 +6865,12 @@
           "type": "string",
           "const": "translations:deny-validate-text",
           "markdownDescription": "Denies the validate_text command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the verify_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:deny-verify-project",
+          "markdownDescription": "Denies the verify_project command without any pre-configured scope."
         },
         {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-browse`\n- `allow-close-model`\n- `allow-get-browse`\n- `allow-get-model`\n- `allow-list-motions`\n- `allow-open-browse`\n- `allow-open-model`\n- `allow-open-motion`\n- `allow-read-geometry`\n- `allow-read-motion`\n- `allow-read-texture`",

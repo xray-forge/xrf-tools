@@ -103,6 +103,7 @@ macro_rules! for_each_tauri_command_domain {
         parse_project => crate::plugins::translations::commands::parse_project::translations_parse_project,
         save_file => crate::plugins::translations::commands::save_file::translations_save_file,
         validate_text => crate::plugins::translations::commands::validate_text::translations_validate_text,
+        verify_project => crate::plugins::translations::commands::verify_project::translations_verify_project,
       }
     }
   };

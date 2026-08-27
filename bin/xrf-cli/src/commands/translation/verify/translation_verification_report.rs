@@ -2,17 +2,29 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_report::{CheckReport, Finding, Report};
-use xrf_translation::ProjectVerifyResult;
+use xrf_translation::{ProjectVerifyLanguageSummary, ProjectVerifyResult};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationVerificationReportOutput {
   checked_translations_count: u32,
   checks: Vec<TranslationVerificationCheckOutput>,
+  /// One row per file and language, so "which languages are incomplete" is answerable without
+  /// reading every finding - there are 149,979 of them for a two-language mod checked against eight.
+  languages: Vec<TranslationVerificationLanguageOutput>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
   missing_translations_count: u32,
   status: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TranslationVerificationLanguageOutput {
+  checked: u32,
+  file: String,
+  language: String,
+  missing: u32,
 }
 
 #[derive(Serialize)]
@@ -50,9 +62,19 @@ impl<'a> TranslationVerificationReportPayload<'a> {
     TranslationVerificationReportOutput {
       checked_translations_count: self.result.checked_translations_count,
       checks,
+      languages: self.result.languages.iter().map(Self::language_output).collect(),
       duration: self.result.duration,
       missing_translations_count: self.result.missing_translations_count,
       status: report.status().to_string(),
+    }
+  }
+
+  fn language_output(summary: &ProjectVerifyLanguageSummary) -> TranslationVerificationLanguageOutput {
+    TranslationVerificationLanguageOutput {
+      checked: summary.checked,
+      file: summary.file.clone(),
+      language: summary.language.clone(),
+      missing: summary.missing,
     }
   }
 
@@ -98,7 +120,7 @@ mod tests {
       is_strict: false,
       output: xrf_output::OutputOptions::default(),
       language: TranslationLanguage::Ukrainian,
-      path: root.clone(),
+      is_detailed: true,
     };
 
     fs::create_dir_all(&root).unwrap();

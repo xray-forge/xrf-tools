@@ -5,3 +5,4 @@ pub mod open_project;
 pub mod parse_project;
 pub mod save_file;
 pub mod validate_text;
+pub mod verify_project;

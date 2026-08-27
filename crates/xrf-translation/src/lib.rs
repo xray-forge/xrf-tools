@@ -32,6 +32,6 @@ pub use crate::project::parse::result::{ProjectParseCensus, ProjectParseResult};
 pub use crate::project::parse::run::{parse_translations, parse_translations_in};
 pub use crate::project::source_read::{read_source, read_source_in};
 pub use crate::project::verify::options::ProjectVerifyOptions;
-pub use crate::project::verify::result::ProjectVerifyResult;
-pub use crate::project::verify::run::{verify_dir, verify_file};
+pub use crate::project::verify::result::{ProjectVerifyLanguageSummary, ProjectVerifyResult};
+pub use crate::project::verify::run::{verify_file, verify_roots, verify_roots_in};
 pub use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
