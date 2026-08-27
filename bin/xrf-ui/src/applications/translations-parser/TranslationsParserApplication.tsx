@@ -63,7 +63,7 @@ export function TranslationsParserApplication(): ReactElement {
   const sourcePath: Nullable<string> = source.value;
   const outputPath: Nullable<string> = destination.value;
 
-  const run = useCallback(
+  const onRun = useCallback(
     async (isDryRun: boolean): Promise<void> => {
       if (!sourcePath || !outputPath) {
         return;
@@ -113,8 +113,9 @@ export function TranslationsParserApplication(): ReactElement {
     [sourcePath, outputPath, language, isOverwrite, log, notify]
   );
 
-  const onPreviewClicked = useCallback(() => void run(true), [run]);
-  const onImportClicked = useCallback(() => void run(false), [run]);
+  const onPreviewClicked = useCallback(() => void onRun(true), [onRun]);
+
+  const onImportClicked = useCallback(() => void onRun(false), [onRun]);
 
   const onLanguageChanged = useCallback(
     (event: SelectChangeEvent<string>) => {

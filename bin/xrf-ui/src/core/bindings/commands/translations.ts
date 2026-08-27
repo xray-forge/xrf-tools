@@ -2,7 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { TranslationParseSummary } from "@/core/bindings/types/xrf-app";
+import { TranslationParseSummary, TranslationVerifySummary } from "@/core/bindings/types/xrf-app";
 import {
   TranslationEdit,
   TranslationFile,
@@ -105,4 +105,11 @@ export const translationsCommands = {
    */
   validateText: (language: string, text: string) =>
     __TAURI_INVOKE<string | null>("plugin:translations|validate_text", { language, text }),
+  /**
+   * Report which translations are missing from which languages.
+   *
+   * Reads only. Nothing here writes, so an installation is a legitimate subject rather than a refusal.
+   */
+  verifyProject: (roots: XrayRoots, prefix: string | null, language: string) =>
+    __TAURI_INVOKE<TranslationVerifySummary>("plugin:translations|verify_project", { roots, prefix, language }),
 };

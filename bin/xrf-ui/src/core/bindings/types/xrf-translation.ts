@@ -32,6 +32,17 @@ export type ProjectParseCensus = {
   placeholdersAdded: number;
 };
 
+/** What one language is missing from one file. */
+export type ProjectVerifyLanguageSummary = {
+  /** The source this counts, as the project addresses it. */
+  file: string;
+  language: string;
+  /** Ids the file holds, which is the same for every language of that file. */
+  checked: number;
+  /** Ids with no text for this language, counting an explicit `null` as missing. */
+  missing: number;
+};
+
 /**
  * One change to a translation entry, in whichever kind of file holds it.
  *

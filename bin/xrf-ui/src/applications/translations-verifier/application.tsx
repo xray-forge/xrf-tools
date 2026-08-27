@@ -1,6 +1,7 @@
 import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
 import { lazy } from "react";
 
+import { TRANSLATIONS_VERIFIER_HELP } from "@/applications/translations-verifier/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -15,9 +16,10 @@ export const TRANSLATIONS_VERIFIER_APPLICATION: IApplicationDescriptor = {
   preload: () => import("./TranslationsVerifierApplication"),
   description: "Report translations missing from one or more languages",
   group: EApplicationGroupId.TRANSLATIONS,
+  help: TRANSLATIONS_VERIFIER_HELP,
   icon: <FactCheckIcon />,
   id: EApplicationId.TRANSLATIONS_VERIFIER,
   label: "Translations verifier",
   path: "/translations-verifier",
-  status: EApplicationStatus.PLANNED,
+  status: EApplicationStatus.READY,
 };

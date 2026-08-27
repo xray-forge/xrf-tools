@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
-import { ProjectParseCensus } from "@/core/bindings/types/xrf-translation";
+import { ProjectParseCensus, ProjectVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
@@ -102,6 +102,17 @@ export type TranslationParseSummary = {
   isDryRun: boolean;
   census: ProjectParseCensus;
   findings: Array<TranslationParseFinding>;
+};
+
+/** What a completeness check reports back to the desktop surface. */
+export type TranslationVerifySummary = {
+  /** The language the check was narrowed to, or `all`. */
+  language: string;
+  /** Ids checked across every source. */
+  checked: number;
+  /** Ids with no text, counted once per language that lacks them. */
+  missing: number;
+  languages: Array<ProjectVerifyLanguageSummary>;
 };
 
 /**
