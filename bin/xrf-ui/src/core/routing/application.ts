@@ -56,6 +56,25 @@ export enum EApplicationStatus {
   READY = "ready",
 }
 
+/**
+ * What an application tells its user about itself, beyond the launcher one-liner.
+ *
+ * The shape is the rubric: nuances and limitations over a walkthrough of controls the screen already
+ * shows. Backticked spans render as code; that is the only markup any string carries.
+ */
+export interface IApplicationHelp {
+  /** What the tool is for and when to reach for it, in a few sentences. */
+  summary: string;
+  /** The typical run, as ordered steps. */
+  workflow?: ReadonlyArray<string>;
+  /** Behaviors worth knowing that the screen does not make obvious. */
+  nuances?: ReadonlyArray<string>;
+  /** What the tool deliberately does not do, and its known constraints. */
+  limitations?: ReadonlyArray<string>;
+  /** Applications belonging to the same workflow. */
+  relatedTools?: ReadonlyArray<EApplicationId>;
+}
+
 export interface IApplicationDescriptor {
   id: EApplicationId;
   group: EApplicationGroupId;
@@ -65,6 +84,8 @@ export interface IApplicationDescriptor {
   icon: ReactElement;
   path: string;
   status: EApplicationStatus;
+  /** In-application help. Required for `READY` applications once the roster is covered. */
+  help?: IApplicationHelp;
   /** The container this application's services live in. Omit it to run in the root one. */
   container?: Omit<ContainerConfig, "parent">;
   Component: ComponentType;

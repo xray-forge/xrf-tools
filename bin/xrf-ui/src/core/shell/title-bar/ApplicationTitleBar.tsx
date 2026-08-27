@@ -1,6 +1,7 @@
 import { Box, LinearProgress } from "@mui/material";
 import { ReactElement, Ref } from "react";
 
+import { ApplicationHelp } from "@/core/help/components/ApplicationHelp";
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
 import { WindowControls } from "@/core/shell/title-bar/WindowControls";
 import { LAYOUT } from "@/core/theme/tokens";
@@ -46,6 +47,8 @@ export function ApplicationTitleBar({
       <ApplicationTitleBarIcon />
 
       <Box ref={toolbarRef} sx={{ display: "flex", alignItems: "center", flexGrow: 1, minWidth: 0, height: "100%" }} />
+
+      <ApplicationHelp />
 
       <WindowControls />
 
