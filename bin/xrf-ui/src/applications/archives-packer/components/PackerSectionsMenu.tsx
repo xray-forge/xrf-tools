@@ -6,7 +6,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
+import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
+
+/** Named once, because the panel and its own heading must not drift apart. */
+export const PACKER_SECTIONS_PANEL_LABEL: string = "Configuration";
 
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [
   {
@@ -34,5 +38,5 @@ export function PackerSectionsMenu(): ReactElement {
     onClick: () => packerService.setSection(section.id),
   }));
 
-  return <EditorSideMenu sections={items} />;
+  return <EditorSideMenu header={<EditorPanelHeader title={PACKER_SECTIONS_PANEL_LABEL} />} sections={items} />;
 }

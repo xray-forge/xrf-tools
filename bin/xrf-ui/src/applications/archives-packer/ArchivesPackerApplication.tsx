@@ -4,7 +4,10 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { PackerSectionsMenu } from "@/applications/archives-packer/components/PackerSectionsMenu";
+import {
+  PACKER_SECTIONS_PANEL_LABEL,
+  PackerSectionsMenu,
+} from "@/applications/archives-packer/components/PackerSectionsMenu";
 import { PackerToolbarActions } from "@/applications/archives-packer/components/PackerToolbarActions";
 import { ArchivesPackResult } from "@/applications/archives-packer/components/packing/ArchivesPackResult";
 import { PackerConfirmSummary } from "@/applications/archives-packer/components/packing/PackerConfirmSummary";
@@ -110,7 +113,7 @@ export function ArchivesPackerApplication(): ReactElement {
         icon: <TuneIcon />,
         id: "packer-sections",
         isOpenByDefault: true,
-        label: "Configuration",
+        label: PACKER_SECTIONS_PANEL_LABEL,
         render: () => <PackerSectionsMenu />,
         side: "left",
       },

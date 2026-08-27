@@ -1,9 +1,11 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
-import { Box, IconButton, InputAdornment, TextField, Tooltip, Typography } from "@mui/material";
+import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { ChangeEvent, KeyboardEvent, ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { EditorPanelHeader } from "./EditorPanelHeader";
 
 export interface IEditorSearchHeaderProps extends BaseComponentProps {
   /** What the panel lists, as its heading. */
@@ -33,23 +35,7 @@ export function EditorSearchHeader({
   onQueryChange,
 }: IEditorSearchHeaderProps): ReactElement {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 1,
-        padding: 1,
-        borderBottom: 1,
-        borderColor: "divider",
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", paddingX: 0.5 }}>
-        <Typography variant={"subtitle2"}>{title}</Typography>
-        <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
-          {count}
-        </Typography>
-      </Box>
-
+    <EditorPanelHeader title={title} caption={count}>
       <TextField
         value={query}
         placeholder={placeholder}
@@ -77,6 +63,6 @@ export function EditorSearchHeader({
         onKeyDown={onKeyDown}
         onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
       />
-    </Box>
+    </EditorPanelHeader>
   );
 }
