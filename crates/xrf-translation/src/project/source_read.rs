@@ -4,21 +4,20 @@ use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScoped
 
 use crate::json::read::parse_json;
 use crate::language::TranslationLanguage;
-use crate::project::constants::{LANGUAGE_NEUTRAL, MULTILANGUAGE};
 use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };
-use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
-use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
-use crate::xml;
-use crate::xml::encoding::TranslationIdentity;
-use crate::xml::read::parse_string_table;
+use crate::source_file_name::is_json_source_name;
+use crate::types::TranslationJson;
 
 /// Read an XRF translations source tree.
 ///
-/// Language lives in a JSON key or an `.eng.xml` style filename here, so the same file can carry
-/// several languages and several files can carry one between them. Unlike the build and the verifier,
-/// nothing in here refuses to open on content: problems come back as findings.
+/// Sources are JSON and only JSON: one file carries every language, keyed inside it. Language-suffixed
+/// and language-neutral XML used to be sources too; they are not, and raw XML now enters the project
+/// through `parse` instead, which is the one place that has to be told which language it is reading.
+///
+/// Unlike the build and the verifier, nothing in here refuses to open on content: problems come back
+/// as findings.
 ///
 /// Reads through `xrf-vfs` for the same reason the gamedata reader does — one way of reaching bytes,
 /// whether they are loose or packed.
@@ -56,13 +55,8 @@ pub fn read_source_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResu
   assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
   for asset in &assets {
-    let Some(source_name) = TranslationSourceFileName::parse(asset.get_logical_path().file_name()) else {
-      continue;
-    };
-
-    match source_name.get_kind() {
-      TranslationSourceFileKind::Json => merge_json(&scoped, asset, prefix, &mut descriptor),
-      TranslationSourceFileKind::Xml => merge_xml(&scoped, asset, prefix, &source_name, &mut descriptor),
+    if is_json_source_name(asset.get_logical_path().file_name()) {
+      merge_json(&scoped, asset, prefix, &mut descriptor);
     }
   }
 
@@ -78,10 +72,7 @@ pub fn read_source_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResu
     }
   }
 
-  descriptor.languages.sort_by(|first, second| {
-    // Neutral text belongs to no language, so it sorts last rather than under "a".
-    (first == LANGUAGE_NEUTRAL, first).cmp(&(second == LANGUAGE_NEUTRAL, second))
-  });
+  descriptor.languages.sort();
 
   descriptor.finalize_editable();
 
@@ -131,68 +122,6 @@ fn merge_json(scoped: &XrayScopedVfs, asset: &XrayAsset, prefix: &str, descripto
   }
 }
 
-fn merge_xml(
-  scoped: &XrayScopedVfs,
-  asset: &XrayAsset,
-  prefix: &str,
-  source_name: &TranslationSourceFileName,
-  descriptor: &mut TranslationProjectDescriptor,
-) {
-  let logical_path: &str = asset.get_logical_path().as_str();
-
-  // No language suffix means the build copies this file to every language, so presenting it as
-  // English - which a filename fallback would do - would show a change to all of them as one.
-  let language: String = source_name
-    .get_xml_language()
-    .map_or_else(|| LANGUAGE_NEUTRAL.to_owned(), |language| language.to_string());
-
-  let identity: TranslationIdentity = TranslationIdentity {
-    file_name: asset.get_logical_path().file_name(),
-    directory_name: None,
-  };
-
-  let entries: Vec<(String, String)> = match scoped
-    .read_asset_bytes(asset)
-    .and_then(|data| parse_string_table(identity, &data))
-  {
-    Ok(entries) => entries,
-    Err(error) => {
-      descriptor.findings.push(TranslationFinding::new(
-        "translations.unreadable",
-        Some(logical_path.to_owned()),
-        format!("Could not read this file, so its strings are missing: {error}"),
-      ));
-
-      return;
-    }
-  };
-
-  register_language(&mut descriptor.languages, &language);
-
-  let source: TranslationSource = source_of(asset);
-  let file: &mut TranslationFile = descriptor
-    .files
-    .entry(xml_key(prefix, asset, source_name, &language))
-    .or_default();
-
-  file.sources.insert(language.clone(), source);
-
-  for (id, text) in entries {
-    let entry: &mut TranslationEntry = file.entries.entry(id.clone()).or_default();
-
-    if entry
-      .insert(language.clone(), Some(TranslationVariant::String(text)))
-      .is_some()
-    {
-      descriptor.findings.push(TranslationFinding::new(
-        "translations.duplicate",
-        Some(logical_path.to_owned()),
-        format!("'{id}' appears more than once; the game uses the last one and the others are ignored"),
-      ));
-    }
-  }
-}
-
 /// One id served from two files is a conflict the engine resolves by load order, which is not
 /// something a project should be relying on.
 fn record_cross_file_duplicates(descriptor: &mut TranslationProjectDescriptor) {
@@ -214,26 +143,6 @@ fn record_cross_file_duplicates(descriptor: &mut TranslationProjectDescriptor) {
         format!("'{}' is also defined in '{}'", pair[0].0, pair[0].1),
       ));
     }
-  }
-}
-
-/// Group the language-suffixed variants of one file under a single entry.
-///
-/// Composed from the name the parser already broke apart rather than by rewriting the path: a
-/// search-and-replace over the whole path also rewrites any directory whose name happens to match, and
-/// rewrites every occurrence rather than the one suffix that carries the language.
-fn xml_key(prefix: &str, asset: &XrayAsset, source_name: &TranslationSourceFileName, language: &str) -> String {
-  let relative: String = relative(prefix, asset.get_logical_path());
-
-  if language == LANGUAGE_NEUTRAL {
-    return relative;
-  }
-
-  let merged: String = format!("{}.{MULTILANGUAGE}.{}", source_name.get_stem(), xml::FILE_EXTENSION);
-
-  match relative.rsplit_once('\\') {
-    Some((directory, _)) => format!("{directory}\\{merged}"),
-    None => merged,
   }
 }
 

@@ -7,6 +7,7 @@ pub(crate) mod edit;
 pub(crate) mod gamedata_read;
 pub(crate) mod initialize;
 pub(crate) mod layout;
+pub(crate) mod parse;
 pub(crate) mod source_read;
 pub(crate) mod verify;
 

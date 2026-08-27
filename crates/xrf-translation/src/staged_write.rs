@@ -44,6 +44,45 @@ pub(crate) fn write_file_staged(path: &Path, contents: &[u8]) -> XrfResult {
   result
 }
 
+/// Write a file that is not there yet, creating the directories above it.
+///
+/// Separate from [`write_file_staged`] because that one reads the permissions off the target it is
+/// replacing, which a file that does not exist cannot supply. Staged the same way regardless: an
+/// importer writing a hundred files should not leave a half-written one behind when the disk fills on
+/// the ninety-ninth.
+///
+/// # Errors
+///
+/// Returns an IO error when the directories or the file cannot be created, or the staged file cannot
+/// be moved into place.
+pub(crate) fn write_new_file(path: &Path, contents: &[u8]) -> XrfResult {
+  if let Some(parent) = path.parent() {
+    fs::create_dir_all(parent)?;
+  }
+
+  let sequence: u64 = STAGED_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+  let staged_path: PathBuf = sibling_path(path, "xrf-tmp", sequence)?;
+
+  let result: XrfResult = (|| -> XrfResult {
+    let mut staged_file: File = OpenOptions::new().write(true).create_new(true).open(&staged_path)?;
+
+    staged_file.write_all(contents)?;
+    staged_file.sync_all()?;
+    drop(staged_file);
+
+    replace_staged_file(&staged_path, path)?;
+    sync_parent_directory(path);
+
+    Ok(())
+  })();
+
+  if result.is_err() {
+    let _ = fs::remove_file(&staged_path);
+  }
+
+  result
+}
+
 /// Flush the directory entry the rename produced, so the replacement survives a power loss too.
 ///
 /// Best effort, and deliberately not an error: the bytes are already durable by this point, so a

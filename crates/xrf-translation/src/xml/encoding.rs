@@ -6,7 +6,6 @@ use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, new_u
 use xrf_xml::declared_xml_encoding;
 
 use crate::language::TranslationLanguage;
-use crate::source_file_name::TranslationSourceFileName;
 
 /// Where a string table says which language it holds.
 ///
@@ -15,9 +14,12 @@ use crate::source_file_name::TranslationSourceFileName;
 /// reader working in either domain can supply these without converting between them.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct TranslationIdentity<'a> {
-  /// `st_dialogs.eng.xml`, which is how a source carries its language.
+  /// `st_dialogs.xml`, which names the file but no longer says anything about its language.
+  ///
+  /// Kept because a refusal or a warning has to say which file it is about.
   pub file_name: &'a str,
-  /// The `rus` of `text\rus\st_dialogs.xml`, which is how gamedata carries it.
+  /// The `rus` of `text\rus\st_dialogs.xml`, which is how gamedata carries the language, and the
+  /// language an importer declares for a tree that carries none.
   pub directory_name: Option<&'a str>,
 }
 
@@ -35,9 +37,7 @@ impl<'a> TranslationIdentity<'a> {
 
   /// The language these names imply, if any.
   fn get_language(&self) -> Option<TranslationLanguage> {
-    TranslationSourceFileName::parse(self.file_name)
-      .and_then(|source_name| source_name.get_xml_language())
-      .or_else(|| self.directory_name.and_then(TranslationLanguage::from_directory_name))
+    self.directory_name.and_then(TranslationLanguage::from_directory_name)
   }
 }
 
@@ -53,8 +53,8 @@ pub(crate) struct DecodedTranslation {
 /// Shared by reading and writing on purpose: resolving it differently in each direction would decode
 /// a file one way and re-encode it another, corrupting every byte an edit never touched.
 ///
-/// The declaration wins where there is one. Otherwise the language comes from the filename suffix,
-/// then from the parent directory, which is where raw gamedata carries it.
+/// The declaration wins where there is one. Otherwise the language comes from the directory name,
+/// which is where raw gamedata carries it and what an importer declares for a tree that carries none.
 ///
 /// # Errors
 ///

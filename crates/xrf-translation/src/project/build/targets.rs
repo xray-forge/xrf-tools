@@ -7,7 +7,7 @@ use xrf_utils::to_portable_path_string;
 
 use crate::language::TranslationLanguage;
 use crate::project::build::options::ProjectBuildOptions;
-use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
+use crate::source_file_name::parse_json_source_stem;
 use crate::xml;
 
 /// Open the file a source builds to, creating the directories above it.
@@ -37,8 +37,8 @@ pub(crate) fn prepare_target_file<P1: AsRef<Path>, P2: AsRef<Path>>(
 
 /// Where one source lands, which is `<output>/<language>/<path relative to the root>.xml`.
 ///
-/// A language-suffixed XML source drops that suffix because its destination directory already
-/// identifies the language.
+/// The destination directory identifies the language, so the JSON stem is all the name that is
+/// needed.
 ///
 /// # Errors
 ///
@@ -63,17 +63,18 @@ pub(crate) fn target_path(
     })?
   };
 
-  let source_name: TranslationSourceFileName = relative_source
+  let stem: String = relative_source
     .file_name()
-    .and_then(TranslationSourceFileName::parse)
+    .and_then(parse_json_source_stem)
     .ok_or_else(|| {
-    XrfError::new_invalid_error(format!(
-      "Translation source '{}' is not a name this builds from",
-      source.display()
-    ))
-  })?;
+      XrfError::new_invalid_error(format!(
+        "Translation source '{}' is not a name this builds from",
+        source.display()
+      ))
+    })?
+    .to_owned();
 
-  relative_source.set_file_name(format!("{}.{}", source_name.get_stem(), xml::FILE_EXTENSION));
+  relative_source.set_file_name(format!("{stem}.{}", xml::FILE_EXTENSION));
 
   Ok(destination.join(language.to_string()).join(relative_source))
 }
@@ -107,26 +108,19 @@ pub(crate) fn validate_targets(source_files: &[PathBuf], options: &ProjectBuildO
   Ok(())
 }
 
+/// Every language one source will be written for, which decides what its targets collide with.
+///
+/// A JSON source carries all of them, so it builds for whichever the run asked for — one, or all
+/// eight. Anything that is not a source builds for none.
 pub(crate) fn target_languages_for_source(path: &Path, options: &ProjectBuildOptions) -> Vec<TranslationLanguage> {
-  match path.file_name().and_then(TranslationSourceFileName::parse) {
-    Some(source_name) => match source_name.get_kind() {
-      TranslationSourceFileKind::Json => {
-        if options.language == TranslationLanguage::All {
-          TranslationLanguage::get_all()
-        } else {
-          vec![options.language]
-        }
-      }
-      TranslationSourceFileKind::Xml => match source_name.get_xml_language() {
-        Some(language) if options.language == TranslationLanguage::All || options.language == language => {
-          vec![language]
-        }
-        Some(_) => Vec::new(),
-        None if options.language == TranslationLanguage::All => TranslationLanguage::get_all(),
-        None => vec![options.language],
-      },
-    },
-    _ => Vec::new(),
+  if path.file_name().and_then(parse_json_source_stem).is_none() {
+    return Vec::new();
+  }
+
+  if options.language == TranslationLanguage::All {
+    TranslationLanguage::get_all()
+  } else {
+    vec![options.language]
   }
 }
 

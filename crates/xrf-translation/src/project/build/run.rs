@@ -1,6 +1,5 @@
-use std::fs::File;
-use std::io::{Write, copy};
-use std::path::{Display, Path, PathBuf};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use walkdir::{DirEntry, WalkDir};
@@ -13,7 +12,7 @@ use crate::project::build::compile::compile_by_language;
 use crate::project::build::options::ProjectBuildOptions;
 use crate::project::build::result::ProjectBuildResult;
 use crate::project::build::targets::{ensure_output_outside_source, prepare_target_file, validate_targets};
-use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
+use crate::source_file_name::is_json_source;
 use crate::types::TranslationJson;
 
 /// Build every translation source in a directory.
@@ -65,25 +64,22 @@ pub fn build_dir(dir: &Path, options: &ProjectBuildOptions) -> XrfResult<Project
   Ok(result)
 }
 
-/// Build one source, dispatching on what kind of file it is.
+/// Build one source, skipping anything that is not a multi-language JSON.
 ///
 /// # Errors
 ///
-/// Returns whatever building the XML or JSON source returns.
+/// Returns whatever building the JSON source returns.
 pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult<ProjectBuildResult> {
   let started_at: Instant = Instant::now();
 
   let mut result: ProjectBuildResult = ProjectBuildResult::new();
 
-  match path.as_ref().file_name().and_then(TranslationSourceFileName::parse) {
-    Some(source_name) => match source_name.get_kind() {
-      TranslationSourceFileKind::Json => build_json_file(path, options)?,
-      TranslationSourceFileKind::Xml => build_xml_file(path, options)?,
-    },
-    None => {
-      log::info!("Skip file {}", path.as_ref().display());
-      xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
-    }
+  // Through the shared parser rather than comparing an extension; see `verify_file` for why.
+  if is_json_source(path.as_ref()) {
+    build_json_file(path, options)?;
+  } else {
+    log::info!("Skip file {}", path.as_ref().display());
+    xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
   }
 
   result.duration = started_at.elapsed();
@@ -95,58 +91,6 @@ pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> Xr
   );
 
   Ok(result)
-}
-
-/// Copy an XML source into the languages it belongs to.
-///
-/// A language-suffixed file goes to that language alone. An unsuffixed one is language-neutral and is
-/// copied into every language, which is why it must never be presented as English anywhere else.
-///
-/// # Errors
-///
-/// Returns an IO error when a source cannot be read or a target cannot be written.
-pub fn build_xml_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> XrfResult {
-  let path_display: Display = path.as_ref().display();
-  let locale: Option<TranslationLanguage> = path
-    .as_ref()
-    .file_name()
-    .and_then(TranslationSourceFileName::parse)
-    .and_then(|source_name| source_name.get_xml_language());
-
-  if let Some(locale) = locale {
-    xrf_output::info!(options.output, "Building XML based translations {path_display}");
-
-    if options.language == TranslationLanguage::All || locale == options.language {
-      log::info!("Building dynamic XML file {} ({})", path_display, locale);
-
-      copy(
-        &mut File::open(path)?,
-        &mut prepare_target_file(path, &options.output_dir, &locale, options)?,
-      )?;
-    } else {
-      log::info!("Skip dynamic XML file {}", path_display);
-    }
-  } else {
-    log::info!("Building static XML file {}", path.as_ref().display());
-
-    xrf_output::info!(options.output, "Copy static XML translations {path_display}");
-
-    if options.language == TranslationLanguage::All {
-      for language in TranslationLanguage::get_all() {
-        copy(
-          &mut File::open(path)?,
-          &mut prepare_target_file(path, &options.output_dir, &language, options)?,
-        )?;
-      }
-    } else {
-      copy(
-        &mut File::open(path)?,
-        &mut prepare_target_file(path, &options.output_dir, &options.language, options)?,
-      )?;
-    }
-  }
-
-  Ok(())
 }
 
 /// Compile a multi-language JSON source into one string table per language.

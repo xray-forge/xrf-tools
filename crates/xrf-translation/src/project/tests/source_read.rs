@@ -1,7 +1,6 @@
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use super::{roots, table};
-use crate::project::constants::LANGUAGE_NEUTRAL;
+use super::roots;
 use crate::project::source_read::read_source;
 
 #[test]
@@ -23,60 +22,6 @@ fn reads_a_json_map_as_one_file_carrying_every_language() {
   assert_eq!(file.entries.len(), 1);
   // Both languages are written back to the same JSON, so both point at it.
   assert_eq!(file.sources.len(), 2);
-}
-
-#[test]
-fn groups_language_suffixed_xml_under_one_entry() {
-  let root: &str = "source_read/suffixed";
-
-  write_generated_test_resource(&format!("{root}/dialogs.eng.xml"), table("st_hi", "Hi"))
-    .expect("Expected a written test file");
-  write_generated_test_resource(&format!("{root}/dialogs.ukr.xml"), table("st_hi", "Pryvit"))
-    .expect("Expected a written test file");
-
-  let descriptor = read_source(&roots(root), "").unwrap();
-  let file = descriptor
-    .files
-    .get("dialogs.multilang.xml")
-    .expect("Expected the merged file");
-
-  assert_eq!(file.entries.get("st_hi").unwrap().len(), 2);
-  // Each language keeps its own path, which is the file an edit has to be written back to.
-  assert!(file.sources["eng"].logical_path.ends_with("dialogs.eng.xml"));
-  assert!(file.sources["ukr"].logical_path.ends_with("dialogs.ukr.xml"));
-}
-
-#[test]
-fn treats_an_unsuffixed_xml_as_language_neutral() {
-  let root: &str = "source_read/neutral";
-
-  write_generated_test_resource(&format!("{root}/example.xml"), table("st_example", "example"))
-    .expect("Expected a written test file");
-
-  let descriptor = read_source(&roots(root), "").unwrap();
-  let file = descriptor.files.get("example.xml").expect("Expected the file");
-
-  // The build copies this to every language, so calling it English would misreport its reach.
-  assert!(file.entries["st_example"].contains_key(LANGUAGE_NEUTRAL));
-  assert!(!file.entries["st_example"].contains_key("eng"));
-  assert_eq!(descriptor.languages, vec![String::from(LANGUAGE_NEUTRAL)]);
-}
-
-#[test]
-fn sorts_neutral_text_last_rather_than_under_a() {
-  let root: &str = "source_read/neutral_order";
-
-  write_generated_test_resource(&format!("{root}/example.xml"), table("st_example", "example"))
-    .expect("Expected a written test file");
-  write_generated_test_resource(&format!("{root}/st_test.json"), r#"{"st_hello":{"eng":"Hello"}}"#)
-    .expect("Expected a written test file");
-
-  let descriptor = read_source(&roots(root), "").unwrap();
-
-  assert_eq!(
-    descriptor.languages,
-    vec![String::from("eng"), String::from(LANGUAGE_NEUTRAL)]
-  );
 }
 
 #[test]

@@ -8,7 +8,6 @@ use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath, require_writable_p
 
 use crate::edit::TranslationEdit;
 use crate::json::read::read_json;
-use crate::project::constants::LANGUAGE_NEUTRAL;
 use crate::project::descriptor::{TranslationFile, TranslationProjectDescriptor, TranslationSource};
 use crate::project::edit::{apply_edits, apply_edits_to_asset, find_unwritable_character};
 use crate::types::TranslationVariant;
@@ -85,17 +84,6 @@ fn names_the_character_a_target_cannot_hold() -> XrfResult {
 
   assert!(reported.contains("U+041F"));
   assert!(reported.contains("fra"));
-
-  Ok(())
-}
-
-#[test]
-fn neutral_text_must_survive_every_language() -> XrfResult {
-  let project = descriptor(&[]);
-
-  // Copied into all of them by the build, so passing in one code page is not enough.
-  assert!(find_unwritable_character(&project, LANGUAGE_NEUTRAL, "Привет")?.is_some());
-  assert_eq!(find_unwritable_character(&project, LANGUAGE_NEUTRAL, "plain")?, None);
 
   Ok(())
 }

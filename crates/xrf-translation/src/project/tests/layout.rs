@@ -36,15 +36,21 @@ fn a_json_map_looks_like_a_source_tree() -> XrfResult {
 }
 
 #[test]
-fn a_language_suffixed_xml_looks_like_a_source_tree() -> XrfResult {
-  let root: &str = "layout/source_xml";
+fn xml_under_the_source_prefix_is_not_evidence_of_a_source_tree() -> XrfResult {
+  // XML is a built artifact, not a source. When a checkout holds both, the language directories are
+  // the only real evidence, so this reads as gamedata rather than as the tree that produced it.
+  let root: &str = "layout/built_xml";
 
   write_generated_test_resource(
     &format!("{root}/translations/dialogs.eng.xml"),
     "<string_table></string_table>",
   )?;
+  write_generated_test_resource(
+    &format!("{root}/configs/text/rus/st_test.xml"),
+    "<string_table></string_table>",
+  )?;
 
-  assert_eq!(detect_mode(&roots(root))?, TranslationProjectMode::Source);
+  assert_eq!(detect_mode(&roots(root))?, TranslationProjectMode::Gamedata);
 
   Ok(())
 }

@@ -15,7 +15,7 @@ fn write_encoded(relative_path: &str, source: &str, encoding: xrf_utils::XRayEnc
 
 #[test]
 fn reads_xml_using_its_declared_windows_1251_encoding() -> XrfResult {
-  let relative_path: &str = "xml_encoding/declared.ukr.xml";
+  let relative_path: &str = "xml_encoding/declared.xml";
   let source: &str = "<?xml version=\"1.0\" encoding=\"windows-1251\"?><string_table><string id=\"st_test\"><text>Привіт</text></string></string_table>";
 
   let path: PathBuf = write_encoded(relative_path, source, new_windows1251_encoder())?;
@@ -42,12 +42,12 @@ fn declarationless_xml_uses_the_language_code_page_fallback() -> XrfResult {
 }
 
 #[test]
-fn a_declaration_outranks_the_filename_suffix() -> XrfResult {
-  let relative_path: &str = "xml_encoding/mismatched.eng.xml";
+fn a_declaration_outranks_the_directory_language() -> XrfResult {
+  let relative_path: &str = "xml_encoding/eng/mismatched.xml";
   let source: &str = "<?xml version=\"1.0\" encoding=\"windows-1251\"?><string_table><string id=\"st_test\"><text>Привет</text></string></string_table>";
 
-  // The name says English, which would mean 1252 and mangle every Cyrillic byte. What the file itself
-  // declares is what it was written with, so that is what it is read with.
+  // The directory says English, which would mean 1252 and mangle every Cyrillic byte. What the file
+  // itself declares is what it was written with, so that is what it is read with.
   let path: PathBuf = write_encoded(relative_path, source, new_windows1251_encoder())?;
 
   let entries = read_string_table(&path)?;
@@ -62,7 +62,7 @@ fn a_gamedata_directory_supplies_the_encoding_when_nothing_else_does() -> XrfRes
   let relative_path: &str = "xml_encoding/rus/undeclared.xml";
   let source: &str = "<string_table><string id=\"st_test\"><text>Привет</text></string></string_table>";
 
-  // No declaration and no suffix, so the only statement of language is the directory it sits in.
+  // No declaration, so the only statement of language is the directory it sits in.
   let path: PathBuf = write_encoded(relative_path, source, new_windows1251_encoder())?;
 
   let entries = read_string_table(&path)?;

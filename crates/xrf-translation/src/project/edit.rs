@@ -7,8 +7,7 @@ use xrf_xml::encoding_from_label;
 
 use crate::edit::TranslationEdit;
 use crate::json;
-use crate::language::{TranslationLanguage, find_unencodable_character};
-use crate::project::constants::LANGUAGE_NEUTRAL;
+use crate::language::find_unencodable_character;
 use crate::project::descriptor::TranslationProjectDescriptor;
 use crate::xml;
 
@@ -68,17 +67,9 @@ pub fn find_unwritable_character(
   language: &str,
   text: &str,
 ) -> XrfResult<Option<String>> {
-  // Neutral text is copied into every language, so it has to survive all of their code pages.
-  let candidates: Vec<(String, XRayEncoding)> = if language == LANGUAGE_NEUTRAL {
-    TranslationLanguage::get_all()
-      .into_iter()
-      .map(|known| (known.to_string(), known.new_language_encoder()))
-      .collect()
-  } else {
-    match descriptor.encodings.get(language) {
-      Some(label) => vec![(language.to_owned(), encoding_from_label(label)?)],
-      None => Vec::new(),
-    }
+  let candidates: Vec<(String, XRayEncoding)> = match descriptor.encodings.get(language) {
+    Some(label) => vec![(language.to_owned(), encoding_from_label(label)?)],
+    None => Vec::new(),
   };
 
   for (name, encoding) in candidates {

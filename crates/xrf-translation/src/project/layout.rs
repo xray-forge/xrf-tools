@@ -4,7 +4,7 @@ use xrf_vfs::{XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
 use crate::project::descriptor::TranslationProjectMode;
-use crate::source_file_name::{TranslationSourceFileKind, TranslationSourceFileName};
+use crate::source_file_name::is_json_source_name;
 
 /// Report which layout roots look like, for the open form to preselect.
 ///
@@ -35,18 +35,20 @@ pub fn detect_mode_in(vfs: &XrayVfs) -> TranslationProjectMode {
   TranslationProjectMode::Source
 }
 
-/// A source tree is recognised by what only it has: JSON maps and language-suffixed XML.
+/// A source tree is recognised by what only it has: multi-language JSON maps.
+///
+/// XML under the source prefix decides nothing, because a built tree and a source tree would then
+/// look the same. JSON is the source format, so JSON is the evidence.
 fn has_source_files(vfs: &XrayVfs) -> bool {
   let Ok(scope) = XrayLookupScope::all().with_prefix(TranslationProjectMode::Source.get_prefix()) else {
     return false;
   };
 
-  vfs.scoped(&scope).list_entries().iter().any(|asset| {
-    TranslationSourceFileName::parse(asset.get_logical_path().file_name()).is_some_and(|name| match name.get_kind() {
-      TranslationSourceFileKind::Json => true,
-      TranslationSourceFileKind::Xml => name.get_xml_language().is_some(),
-    })
-  })
+  vfs
+    .scoped(&scope)
+    .list_entries()
+    .iter()
+    .any(|asset| is_json_source_name(asset.get_logical_path().file_name()))
 }
 
 /// Gamedata is recognised by a directory named for a language the engine would load.
