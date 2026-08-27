@@ -6,6 +6,7 @@ use std::time::Duration;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use serde::Serialize;
 use serde_json::Value;
+use xrf_build_info::BuildInfo;
 use xrf_error::XrfError;
 use xrf_output::{OutputOptions, OutputVerbosity};
 
@@ -84,6 +85,8 @@ impl CommandOutcome {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandEnvelope {
+  /// Identity of the binary that produced the run, as recorded when it was compiled.
+  build: BuildInfo,
   /// The command path as it was dispatched, so a consumer never splits a string to learn it.
   command: Vec<String>,
   #[serde(with = "xrf_utils::duration_ms")]
@@ -95,8 +98,15 @@ pub struct CommandEnvelope {
 }
 
 impl CommandEnvelope {
-  pub fn new(command: Vec<String>, outcome: &CommandResult, duration: Duration, result: Option<Value>) -> Self {
+  pub fn new(
+    build: BuildInfo,
+    command: Vec<String>,
+    outcome: &CommandResult,
+    duration: Duration,
+    result: Option<Value>,
+  ) -> Self {
     Self {
+      build,
       command,
       duration,
       error: outcome.as_ref().err().map(CommandError::message),
@@ -256,6 +266,7 @@ mod tests {
 
   use clap::{ArgMatches, Command};
   use serde_json::{Value, json};
+  use xrf_build_info::{BuildInfo, BuildKind};
   use xrf_error::XrfError;
   use xrf_output::OutputVerbosity;
 
@@ -270,15 +281,45 @@ mod tests {
     add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true)).try_get_matches_from(arguments)
   }
 
+  /// A build that recorded nothing beyond its own version, so an expectation names only what it set.
+  fn build() -> BuildInfo {
+    BuildInfo {
+      version: "1.2.3",
+      kind: BuildKind::Local,
+      commit: None,
+      reference: None,
+      is_dirty: false,
+      built_at: None,
+      target: None,
+      rustc: None,
+      profile: None,
+      optimization: None,
+      run_id: None,
+    }
+  }
+
+  /// The envelope as a document, less the identity block covered by its own test.
+  ///
+  /// Removing it rather than restating it in every expectation keeps each test about the field it
+  /// names, and the removal doubles as the assertion that every envelope carries one.
   fn envelope(outcome: CommandResult, result: Option<Value>) -> Value {
     let envelope: CommandEnvelope = CommandEnvelope::new(
+      build(),
       vec![String::from("archive"), String::from("info")],
       &outcome,
       Duration::from_millis(1200),
       result,
     );
 
-    serde_json::to_value(envelope).expect("envelope to serialize")
+    let mut document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
+
+    document
+      .as_object_mut()
+      .expect("the envelope to serialize as an object")
+      .remove("build")
+      .expect("every envelope to carry the build that produced it");
+
+    document
   }
 
   #[test]
@@ -413,6 +454,36 @@ mod tests {
     );
   }
 
+  /// A report outlives its run, and nothing else in the envelope says which binary wrote it.
+  #[test]
+  fn records_the_binary_that_produced_the_run() {
+    let envelope: CommandEnvelope = CommandEnvelope::new(
+      build(),
+      vec![String::from("archive"), String::from("info")],
+      &Ok(()),
+      Duration::from_millis(1200),
+      None,
+    );
+    let document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
+
+    assert_eq!(
+      document["build"],
+      json!({
+        "version": "1.2.3",
+        "kind": "local",
+        "commit": Value::Null,
+        "reference": Value::Null,
+        "isDirty": false,
+        "builtAt": Value::Null,
+        "target": Value::Null,
+        "rustc": Value::Null,
+        "profile": Value::Null,
+        "optimization": Value::Null,
+        "runId": Value::Null,
+      })
+    );
+  }
+
   #[test]
   fn names_every_outcome_the_exit_contract_distinguishes() {
     assert_eq!(CommandOutcome::of(&Ok(())), CommandOutcome::Success);
@@ -428,14 +499,14 @@ mod tests {
 
   #[test]
   fn publishes_nothing_when_no_report_was_asked_for() {
-    let envelope: CommandEnvelope = CommandEnvelope::new(Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
 
     assert!(envelope.publish(&ReportDestination::None).is_ok());
   }
 
   #[test]
   fn fails_the_run_when_a_requested_report_cannot_be_written() {
-    let envelope: CommandEnvelope = CommandEnvelope::new(Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
     let destination: ReportDestination = ReportDestination::File(PathBuf::from("missing-directory/report.json"));
 
     let error: CommandError = envelope
