@@ -26,7 +26,7 @@ const MODE_DESCRIPTIONS: Record<TranslationProjectMode, string> = {
 };
 
 export function TranslationsEditorOpenForm(): ReactElement {
-  const log: Logger = useLogger("translations-open");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const translationsService: TranslationsService = useInjection(TranslationsService);
   const projectService: ProjectService = useInjection(ProjectService);

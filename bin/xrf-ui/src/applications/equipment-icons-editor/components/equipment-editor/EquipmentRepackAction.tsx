@@ -12,7 +12,7 @@ import { Nullable } from "@/lib/types/general";
  * Toolbar command that rebuilds the open sprite from its unpacked icons.
  */
 export function EquipmentRepackAction(): ReactElement {
-  const log: Logger = useLogger("equipment-repack");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const equipmentService: EquipmentService = useInjection(EquipmentService);
 

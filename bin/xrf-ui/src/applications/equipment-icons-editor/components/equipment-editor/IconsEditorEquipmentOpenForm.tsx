@@ -11,7 +11,7 @@ import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function IconsEditorEquipmentOpenForm(): ReactElement {
-  const log: Logger = useLogger("equipment-editor-open");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const projectService: ProjectService = useInjection(ProjectService);
   const equipmentService: EquipmentService = useInjection(EquipmentService);

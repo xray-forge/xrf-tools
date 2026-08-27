@@ -11,7 +11,7 @@ import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function SpawnEditorOpenForm(): ReactElement {
-  const log: Logger = useLogger("spawn-open");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
   const projectService: ProjectService = useInjection(ProjectService);

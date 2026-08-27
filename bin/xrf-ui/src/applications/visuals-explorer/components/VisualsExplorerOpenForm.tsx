@@ -39,7 +39,7 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
   const projectService: ProjectService = useInjection(ProjectService);
 
-  const log: Logger = useLogger("visuals");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = visualsService.visual.isLoading || browseService.visuals.isLoading;
 

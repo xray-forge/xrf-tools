@@ -16,7 +16,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function TranslationsEditor(): ReactElement {
-  const log: Logger = useLogger("translations");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const translationsService: TranslationsService = useInjection(TranslationsService);
 

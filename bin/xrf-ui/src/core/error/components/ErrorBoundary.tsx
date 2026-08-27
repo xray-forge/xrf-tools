@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<IErrorBoundaryProps, IErrorBoundary
     return { error };
   }
 
-  private readonly log: Logger = new Logger("ErrorBoundary");
+  private readonly log: Logger = new Logger(__MODULE_NAME__);
 
   public constructor(props: IErrorBoundaryProps) {
     super(props);

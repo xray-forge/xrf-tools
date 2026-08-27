@@ -16,7 +16,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function ArchivesUnpackerApplication(): ReactElement {
-  const log: Logger = useLogger("archives-unpacker");
+  const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
   const projectService: ProjectService = useInjection(ProjectService);

@@ -28,7 +28,7 @@ export interface IArchiveDirectoryContentProps {
  * because the tree only knows its own shape, while the totals people care about are recursive.
  */
 export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps): ReactElement {
-  const log: Logger = useLogger("archive-directory");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
 

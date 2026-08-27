@@ -43,7 +43,7 @@ export interface INotificationRowProps {
  * already reading it, and what makes the log unscannable before that.
  */
 export function NotificationRow({ notification }: INotificationRowProps): ReactElement {
-  const log: Logger = useLogger("notification-row");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const [isExpanded, setExpanded] = useState<boolean>(false);
 

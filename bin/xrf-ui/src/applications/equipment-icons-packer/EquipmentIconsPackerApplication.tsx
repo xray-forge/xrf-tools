@@ -20,7 +20,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function EquipmentIconsPackerApplication(): ReactElement {
-  const log: Logger = useLogger("equipment-editor-pack");
+  const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
   const equipmentService: EquipmentService = useInjection(EquipmentService);

@@ -10,7 +10,7 @@ import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function ExportsOpenForm(): ReactElement {
-  const log: Logger = useLogger("exports-open");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const exportsService: ExportsService = useInjection(ExportsService);
   const projectService: ProjectService = useInjection(ProjectService);

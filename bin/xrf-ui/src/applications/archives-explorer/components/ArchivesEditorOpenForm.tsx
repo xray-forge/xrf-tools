@@ -35,7 +35,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const projectService: ProjectService = useInjection(ProjectService);
 
-  const log: Logger = useLogger("archives");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = archivesService.project.isLoading;
 

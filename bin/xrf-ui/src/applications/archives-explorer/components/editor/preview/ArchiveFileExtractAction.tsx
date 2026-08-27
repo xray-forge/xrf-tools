@@ -18,7 +18,7 @@ export interface IArchiveFileExtractActionProps {
  * Writes the selected archived file out to disk.
  */
 export function ArchiveFileExtractAction({ descriptor }: IArchiveFileExtractActionProps): ReactElement {
-  const log: Logger = useLogger("archive-extract");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
 

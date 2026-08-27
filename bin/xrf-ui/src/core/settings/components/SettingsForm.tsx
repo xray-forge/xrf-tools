@@ -18,7 +18,7 @@ const COLOR_SCHEME_MODE_LABELS: Record<ColorSchemeMode, string> = {
 };
 
 export function SettingsForm(): ReactElement {
-  const log: Logger = useLogger("settings-modal");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const projectService: ProjectService = useInjection(ProjectService);
   const settingsService: SettingsService = useInjection(SettingsService);

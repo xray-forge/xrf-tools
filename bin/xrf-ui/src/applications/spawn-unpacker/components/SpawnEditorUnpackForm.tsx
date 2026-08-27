@@ -17,7 +17,7 @@ import { Nullable } from "@/lib/types/general";
  * Expand a packed spawn file into chunks on disk.
  */
 export function SpawnEditorUnpackForm(): ReactElement {
-  const log: Logger = useLogger("spawn-unpack");
+  const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
   const projectService: ProjectService = useInjection(ProjectService);

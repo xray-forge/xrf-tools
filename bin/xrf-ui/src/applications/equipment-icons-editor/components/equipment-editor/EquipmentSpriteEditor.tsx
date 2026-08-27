@@ -15,7 +15,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function EquipmentSpriteEditor(): ReactElement {
-  const log: Logger = useLogger("equipment-editor");
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const equipmentService: EquipmentService = useInjection(EquipmentService);
   const spriteImage: Nullable<IEquipmentPngDescriptor> = equipmentService.spriteImage.value;
