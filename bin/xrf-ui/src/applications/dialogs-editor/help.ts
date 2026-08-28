@@ -9,14 +9,15 @@ export const DIALOGS_EDITOR_HELP: IApplicationHelp = {
     "Pick a root and a layout. `Game data` reads phrase text from `configs\\text\\<language>`, `Project sources` " +
       "reads it from multi-language JSON under `translations`. The layout is detected and preselected, but never " +
       "decided for you.",
-    "Pick a dialog from the tree on the left, which groups every dialog under the file declaring it.",
+    "Open a dialog from the tree on the left, which groups every dialog under the file declaring it: a double " +
+      "click or `Enter` opens one, while a single click only selects its row.",
     "Read the graph. Select a node to see its conditions and effects in the inspector on the right.",
   ],
   nuances: [
     "Reads through the X-Ray virtual filesystem, so an installation opens as readily as a loose tree: on Anomaly " +
       "and CoC the dialogs come out of `db\\configs` and never exist as files on disk.",
     "One dialog per canvas. The project response carries only an index — 502 dialogs' worth of phrases is a " +
-      "payload nobody reads — so a dialog is fetched when you select it.",
+      "payload nobody reads — so a dialog is fetched when you open it.",
     "Layout is recomputed on every open rather than saved, so the same dialog always reads the same way. A node " +
       "dragged by hand lasts until the next selection.",
     "A phrase's `<text>` element holds a translation *key*, not the line. The node shows the resolved line where " +

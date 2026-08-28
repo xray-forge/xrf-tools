@@ -2,7 +2,7 @@ import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { IDialogTreeEntry, IDialogTreeLeaf, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { DialogsService, IDialogSelection } from "@/applications/dialogs-editor/services/dialogs";
@@ -15,9 +15,10 @@ import {
   LOGICAL_PATH_SEPARATOR,
   parsePathTree,
   splitLogicalPath,
-  toDirectoryItemId,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -41,7 +42,8 @@ export function DialogsTreeMenu({
 }: BaseComponentProps = {}): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   const entries: Array<IDialogTreeEntry> = useMemo(
     () => toDialogTreeEntries(dialogsService.project.value),
@@ -53,7 +55,7 @@ export function DialogsTreeMenu({
     [entries]
   );
 
-  const onSelectLeaf = useCallback(
+  const onOpenLeaf = useCallback(
     (leaf: IDialogTreeLeaf) => void dialogsService.selectDialog(leaf.logicalPath, leaf.id),
     [dialogsService]
   );
@@ -63,7 +65,7 @@ export function DialogsTreeMenu({
     // Ranked on the dialog id alone: it is what a writer knows the dialog by, and including the file
     // would let a filename match float dialogs whose own ids do not match at all.
     toSearchText: (it) => it.payload.id,
-    onSelect: (it) => onSelectLeaf(it.payload),
+    onSelect: (it) => onOpenLeaf(it.payload),
   });
 
   const rows: Array<IEditorSearchResultRow> = useMemo(
@@ -88,56 +90,37 @@ export function DialogsTreeMenu({
 
   const selectedItemId: Nullable<string> = selectedPath ? toFileItemId(selectedPath) : null;
 
-  // Reveal whatever is selected. A dialog picked out of the filter results, or restored with the
-  // project, otherwise stays hidden inside a collapsed file and the tree shows no selection at all.
-  // Additive, so collapsing a file by hand afterwards stays collapsed.
-  useEffect(() => {
-    const { directory } = selectedPath ? splitLogicalPath(selectedPath) : { directory: null };
-
-    if (directory) {
-      setExpandedIds((current: ReadonlySet<string>) => {
-        const id: string = toDirectoryItemId(directory);
-
-        return current.has(id) ? current : new Set(current).add(id);
-      });
-    }
-  }, [selectedPath]);
-
   /** Result rows are keyed by their tree path, which is what makes one row address one dialog. */
   const onSelectResult = useCallback(
     (rowId: string) => {
       const entry = entries.find((it) => it.path === rowId);
 
       if (entry) {
-        onSelectLeaf(entry.payload);
+        onOpenLeaf(entry.payload);
       }
     },
-    [entries, onSelectLeaf]
+    [entries, onOpenLeaf]
   );
 
-  const onToggleExpanded = useCallback((itemId: string) => {
-    setExpandedIds((current: ReadonlySet<string>) => {
-      const next: Set<string> = new Set(current);
+  const onSelectItem = useCallback((item: ITreeNode<IDialogTreeLeaf>) => tree.select(item.id), [tree]);
 
-      if (!next.delete(itemId)) {
-        next.add(itemId);
-      }
-
-      return next;
-    });
-  }, []);
-
-  const onSelectItem = useCallback(
-    (item: IPathTreeItem<IDialogTreeLeaf>) => {
-      // Leaves only. `VirtualizedTree` already expands a directory before reporting it, so toggling
-      // here as well would close the file the same click opened. A dialog file has nothing else to
-      // open — the canvas draws one dialog, not a whole file — so reporting it does nothing.
-      if (item.kind === "file") {
-        onSelectLeaf(item.payload);
+  const onActivateItem = useCallback(
+    (item: ITreeNode<IDialogTreeLeaf>) => {
+      // Leaves only, and a leaf is what carries a dialog. `VirtualizedTree` has already expanded a file node by
+      // the time this runs, and a dialog file has nothing else to open - the canvas draws one dialog, not a
+      // whole file.
+      if (item.payload) {
+        onOpenLeaf(item.payload);
       }
     },
-    [onSelectLeaf]
+    [onOpenLeaf]
   );
+
+  useEffect(() => {
+    if (selectedItemId) {
+      reveal(selectedItemId);
+    }
+  }, [reveal, selectedItemId]);
 
   return (
     <EditorSideMenu
@@ -171,12 +154,13 @@ export function DialogsTreeMenu({
       ) : (
         <VirtualizedTree
           items={items}
-          expandedIds={expandedIds}
-          selectedId={selectedItemId}
+          expandedIds={tree.expandedIds}
+          selectedId={tree.selectedId}
           ariaLabel={"Dialogs"}
           icons={DIALOG_TREE_ICONS}
-          onToggleExpanded={onToggleExpanded}
+          onToggleExpanded={tree.toggleExpanded}
           onSelect={onSelectItem}
+          onActivate={onActivateItem}
         />
       )}
     </EditorSideMenu>

@@ -56,14 +56,35 @@ describe("VisualsMenu", () => {
       mockArchivedVisual("meshes\\wpn\\wpn_abakan.ogf"),
     ]);
 
-    fireEvent.click(render.getByText("meshes"));
-    fireEvent.click(await render.findByText("wpn"));
+    fireEvent.dblClick(render.getByText("meshes"));
+    fireEvent.dblClick(await render.findByText("wpn"));
 
     expect(await render.findByText("wpn_abakan.ogf")).toBeInTheDocument();
     expect(render.getAllByText("db")).toHaveLength(1);
   });
 
-  it("opens the visual a leaf names, in the browsed roots", async () => {
+  it("selects a visual on one click without opening it", async () => {
+    const { render } = await renderMenu([mockLooseVisual("meshes\\actors\\stalker.ogf")]);
+
+    let openCalls: number = 0;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: () => {
+        openCalls += 1;
+
+        return null;
+      },
+    });
+
+    fireEvent.dblClick(render.getByText("meshes"));
+    fireEvent.dblClick(await render.findByText("actors"));
+    fireEvent.click(await render.findByText("stalker.ogf"));
+
+    expect(openCalls).toBe(0);
+    expect(render.getByText("stalker.ogf").closest("[role='treeitem']")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens the visual a leaf names, in the browsed roots, and keeps it selected when the open fails", async () => {
     const { container, render } = await renderMenu([mockLooseVisual("meshes\\actors\\stalker.ogf")]);
 
     let openParameters: Record<string, unknown> = {};
@@ -76,9 +97,9 @@ describe("VisualsMenu", () => {
       },
     });
 
-    fireEvent.click(render.getByText("meshes"));
-    fireEvent.click(await render.findByText("actors"));
-    fireEvent.click(await render.findByText("stalker.ogf"));
+    fireEvent.dblClick(render.getByText("meshes"));
+    fireEvent.dblClick(await render.findByText("actors"));
+    fireEvent.dblClick(await render.findByText("stalker.ogf"));
 
     await waitFor(() => expect(openParameters.source).toBeDefined());
 
@@ -88,5 +109,9 @@ describe("VisualsMenu", () => {
     });
 
     await waitFor(() => expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry"));
+
+    // Selection is the user's, not the viewport's: a model that failed to load leaves its row selected, which is
+    // the only way back to retrying it.
+    expect(render.getByText("stalker.ogf").closest("[role='treeitem']")).toHaveAttribute("aria-selected", "true");
   });
 });

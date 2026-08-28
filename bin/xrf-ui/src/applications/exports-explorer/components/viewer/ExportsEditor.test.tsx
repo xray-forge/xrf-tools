@@ -81,11 +81,11 @@ describe("opened exports editor", () => {
   it("expands namespaces without selecting and renders the complete selected declaration", async () => {
     const { findByRole, findByText, getByText } = renderEditor();
 
-    await userEvent.click(await findByText("xr_effects (1)"));
+    await userEvent.dblClick(await findByText("xr_effects (1)"));
 
     expect(getByText("Select an export to inspect")).toBeInTheDocument();
 
-    await userEvent.click(await findByText("xr_effects.play_sound"));
+    await userEvent.dblClick(await findByText("xr_effects.play_sound"));
 
     expect(getByText("Callable")).toBeInTheDocument();
     expect(getByText("xr_effects.play_sound(actor: game_object, volume?: number): boolean")).toBeInTheDocument();
@@ -126,8 +126,8 @@ describe("opened exports editor", () => {
 
     const { findByLabelText, findByText } = renderEditor();
 
-    await userEvent.click(await findByText("xr_effects (1)"));
-    await userEvent.click(await findByText("xr_effects.play_sound"));
+    await userEvent.dblClick(await findByText("xr_effects (1)"));
+    await userEvent.dblClick(await findByText("xr_effects.play_sound"));
     await userEvent.click(await findByLabelText("Refresh exports"));
 
     expect(await findByText("Updated sound documentation.")).toBeInTheDocument();
@@ -146,8 +146,8 @@ describe("opened exports editor", () => {
 
     const { findByLabelText, findByText, getByText } = renderEditor();
 
-    await userEvent.click(await findByText("xr_effects (1)"));
-    await userEvent.click(await findByText("xr_effects.play_sound"));
+    await userEvent.dblClick(await findByText("xr_effects (1)"));
+    await userEvent.dblClick(await findByText("xr_effects.play_sound"));
     await userEvent.click(await findByLabelText("Refresh exports"));
 
     expect(await findByText("Could not refresh exports: invalid declaration")).toBeInTheDocument();

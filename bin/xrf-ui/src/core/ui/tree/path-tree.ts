@@ -1,3 +1,4 @@
+import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -93,8 +94,32 @@ export function getDirectoryItemPath(itemId: Nullable<string>): Nullable<string>
   return path === "~" ? "" : path;
 }
 
+/**
+ * The ids of every directory standing above a node, outermost first.
+ *
+ * What a reveal has to expand before a node it did not choose by hand can be seen. A node whose id encodes no path -
+ * a bone, say - stands under nothing this can name, and answers an empty list.
+ *
+ * @param itemId - Node id to walk up from.
+ * @returns Directory node ids from the root down to the immediate parent.
+ */
+export function getAncestorDirectoryIds(itemId: Nullable<string>): Array<string> {
+  const path: Nullable<string> = getFileItemPath(itemId) ?? getDirectoryItemPath(itemId);
+
+  if (!path) {
+    return [];
+  }
+
+  const segments: Array<string> = path.split(LOGICAL_PATH_SEPARATOR);
+
+  // The node itself is not its own ancestor, so the last segment never forms an id.
+  return segments
+    .slice(0, -1)
+    .map((_: string, index: number) => toDirectoryItemId(segments.slice(0, index + 1).join(LOGICAL_PATH_SEPARATOR)));
+}
+
 /** A directory node, holding whatever the caller's leaves carry. */
-export interface IPathDirectoryTreeItem<T> {
+export interface IPathDirectoryTreeItem<T> extends ITreeNode<T> {
   id: string;
   label: string;
   path: string;
@@ -103,7 +128,7 @@ export interface IPathDirectoryTreeItem<T> {
 }
 
 /** A leaf node, paired with the payload the caller identified it by. */
-export interface IPathFileTreeItem<T> {
+export interface IPathFileTreeItem<T> extends ITreeNode<T> {
   id: string;
   label: string;
   path: string;

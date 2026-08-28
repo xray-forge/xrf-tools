@@ -8,8 +8,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
   workflow: [
     "Pick a mode: `Directory` indexes every archive found recursively under the chosen folder, " +
       "`Archive` opens one volume.",
-    "Browse or filter the file tree; selecting a file shows its preview and metadata, selecting a directory " +
-      "shows its recursive size summary.",
+    "Browse or filter the file tree. One click selects a row and nothing else; a double click or `Enter` opens " +
+      "it - a file shows its preview and metadata, a directory opens and shows its recursive size summary.",
     "Extract a single file from the preview header, or a whole directory (or the archive root) from the " +
       "directory view.",
   ],
@@ -28,8 +28,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Each open mode remembers its own last path; switching modes returns each field to where it last pointed.",
     "Compressed entries are decompressed transparently and verified against their CRC32 - a mismatch is an " +
       "error, not silent corruption.",
-    "Navigation is locked while an extraction runs, and a new file selection is ignored while a read is still " +
-      "in flight.",
+    "Browsing the tree stays free at all times; opening a file or a directory is ignored while a read or an " +
+      "extraction is still in flight.",
   ],
   limitations: [
     "Strictly read-only: no editing, repacking, or writing into archives.",

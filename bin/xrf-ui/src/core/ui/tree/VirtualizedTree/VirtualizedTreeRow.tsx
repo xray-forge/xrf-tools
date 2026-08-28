@@ -1,21 +1,25 @@
+import { default as ChevronRightIcon } from "@mui/icons-material/ChevronRight";
+import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
 import { Box } from "@mui/material";
-import { ReactElement, ReactNode } from "react";
+import { MouseEvent, ReactElement, ReactNode } from "react";
 
 import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
-import { IPathTreeItem } from "@/core/ui/tree/path-tree";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { Nullable } from "@/lib/types/general";
 
 export interface IVirtualizedTreeRowProps<T> {
   row: IFlatTreeRow<T>;
-  /** Element id, so the tree can point `aria-activedescendant` at the focused row. */
+  /** Element id, so the tree can point `aria-activedescendant` at the selected row. */
   rowId: string;
   isSelected: boolean;
-  isActive: boolean;
-  /** Drawn in the chevron column: open, closed, or leaf, chosen by the tree. */
-  icon: ReactNode;
-  /** Overrides the plain label, for a consumer that decorates its leaves. */
+  /** Drawn beside the chevron: open, closed, or leaf, chosen by the tree. Null for a tree that types nothing. */
+  icon: Nullable<ReactNode>;
+  /** Overrides the plain label, for a consumer that decorates its rows. */
   label?: ReactNode;
+  onSelect: (row: IFlatTreeRow<T>) => void;
   onActivate: (row: IFlatTreeRow<T>) => void;
+  onToggleExpanded: (id: string) => void;
 }
 
 /**
@@ -30,12 +34,13 @@ export function VirtualizedTreeRow<T>({
   row,
   rowId,
   isSelected,
-  isActive,
   icon,
   label,
+  onSelect,
   onActivate,
+  onToggleExpanded,
 }: IVirtualizedTreeRowProps<T>): ReactElement {
-  const item: IPathTreeItem<T> = row.item;
+  const item: ITreeNode<T> = row.item;
 
   return (
     <Box
@@ -44,7 +49,6 @@ export function VirtualizedTreeRow<T>({
       aria-posinset={row.posInSet}
       aria-selected={isSelected}
       aria-setsize={row.setSize}
-      data-active={isActive ? "" : undefined}
       data-testid={"virtualized-tree-row"}
       id={rowId}
       role={"treeitem"}
@@ -62,13 +66,12 @@ export function VirtualizedTreeRow<T>({
         paddingRight: 0.5,
         userSelect: "none",
         "&:hover": { backgroundColor: isSelected ? "action.selected" : "action.hover" },
-        // The keyboard's position is drawn rather than focused: focus stays on the tree so that
-        // scrolling a row out of the rendered window cannot destroy it.
-        "&[data-active]": { outline: "1px solid", outlineColor: "primary.main", outlineOffset: "-1px" },
       }}
-      onClick={() => onActivate(row)}
+      onClick={() => onSelect(row)}
+      onDoubleClick={() => onActivate(row)}
     >
       <Box
+        data-testid={"virtualized-tree-chevron"}
         sx={{
           alignItems: "center",
           color: "text.secondary",
@@ -78,9 +81,35 @@ export function VirtualizedTreeRow<T>({
           width: TREE.iconWidth,
           "& svg": { fontSize: TREE.iconSize },
         }}
+        // Expansion is structural, so it leaves the selection where the user put it. The double click is
+        // swallowed as well, or the row would activate and toggle a second time under the same gesture.
+        onClick={(event: MouseEvent<HTMLElement>) => {
+          event.stopPropagation();
+
+          if (row.hasChildren) {
+            onToggleExpanded(item.id);
+          }
+        }}
+        onDoubleClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
       >
-        {icon}
+        {row.hasChildren ? row.isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon /> : null}
       </Box>
+
+      {icon === null ? null : (
+        <Box
+          sx={{
+            alignItems: "center",
+            color: "text.secondary",
+            display: "flex",
+            flexShrink: 0,
+            justifyContent: "center",
+            width: TREE.iconWidth,
+            "& svg": { fontSize: TREE.iconSize },
+          }}
+        >
+          {icon}
+        </Box>
+      )}
 
       <Box
         component={"span"}

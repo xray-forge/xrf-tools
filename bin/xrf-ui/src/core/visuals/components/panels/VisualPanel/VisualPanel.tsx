@@ -16,6 +16,7 @@ export function VisualPanel({
   "data-testid": dataTestId = "visual-panel",
   id,
   className,
+  sx,
   title,
   children,
 }: IVisualPanelProps): ReactElement {
@@ -24,7 +25,7 @@ export function VisualPanel({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}
+      sx={{ display: "flex", flexDirection: "column", minHeight: 0, ...sx }}
     >
       <Box sx={{ paddingX: 2, paddingY: 1.5, borderBottom: 1, borderColor: "divider" }}>
         <Typography variant={"subtitle1"}>{title}</Typography>

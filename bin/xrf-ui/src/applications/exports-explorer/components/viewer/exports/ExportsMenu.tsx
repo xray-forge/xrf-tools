@@ -2,7 +2,7 @@ import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
-import { ReactElement, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import {
   exportGroupsToTree,
@@ -16,6 +16,8 @@ import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import { getFileItemPath, IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -34,7 +36,8 @@ export interface IExportsMenuProps extends BaseComponentProps {
 }
 
 export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMenuProps): ReactElement {
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   const groups: Array<IExportGroup> = useMemo(() => groupExports(declarations), [declarations]);
   const items: Array<IPathTreeItem<ExportDescriptor>> = useMemo(() => exportGroupsToTree(groups), [groups]);
@@ -67,11 +70,13 @@ export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMe
     [search.results]
   );
 
-  const selectedItem: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
+  const openItemId: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
 
-  const onSelectItem = useCallback(
-    (item: IPathTreeItem<ExportDescriptor>) => {
-      // Namespaces report too, and answer null here, which is what used to be spelled as disabling
+  const onSelectItem = useCallback((item: ITreeNode<ExportDescriptor>) => tree.select(item.id), [tree]);
+
+  const onActivateItem = useCallback(
+    (item: ITreeNode<ExportDescriptor>) => {
+      // Namespaces activate too, and answer null here, which is what used to be spelled as disabling
       // their selection.
       const name: Nullable<string> = getFileItemPath(item.id);
 
@@ -82,17 +87,13 @@ export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMe
     [onSelect]
   );
 
-  const onToggleExpanded = useCallback((itemId: string) => {
-    setExpandedIds((current: ReadonlySet<string>) => {
-      const next: Set<string> = new Set(current);
-
-      if (!next.delete(itemId)) {
-        next.add(itemId);
-      }
-
-      return next;
-    });
-  }, []);
+  // The viewer is showing a declaration the tree did not necessarily choose - a filter result, or the first one
+  // after a refresh - so the row follows what is on screen rather than being derived from it.
+  useEffect(() => {
+    if (openItemId) {
+      reveal(openItemId);
+    }
+  }, [openItemId, reveal]);
 
   return (
     <EditorSideMenu
@@ -125,10 +126,11 @@ export function ExportsMenu({ declarations, selectedName, onSelect }: IExportsMe
           ariaLabel={"Exports"}
           icons={EXPORT_TREE_ICONS}
           items={items}
-          expandedIds={expandedIds}
-          selectedId={selectedItem}
+          expandedIds={tree.expandedIds}
+          selectedId={tree.selectedId}
           onSelect={onSelectItem}
-          onToggleExpanded={onToggleExpanded}
+          onActivate={onActivateItem}
+          onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>

@@ -83,8 +83,8 @@ describe("opened dialogs editor", () => {
 
     // The tree groups dialogs under the file declaring them, so the file opens first. It starts
     // collapsed, matching the archives explorer: the file rows are the overview.
-    await userEvent.click(await findByText("dialogs.xml"));
-    await userEvent.click(await findByText("trader"));
+    await userEvent.dblClick(await findByText("dialogs.xml"));
+    await userEvent.dblClick(await findByText("trader"));
 
     expect(await findByTestId("dialog-graph")).toBeInTheDocument();
   });
@@ -103,8 +103,8 @@ describe("opened dialogs editor", () => {
 
     // The tree groups dialogs under the file declaring them, so the file opens first. It starts
     // collapsed, matching the archives explorer: the file rows are the overview.
-    await userEvent.click(await findByText("dialogs.xml"));
-    await userEvent.click(await findByText("trader"));
+    await userEvent.dblClick(await findByText("dialogs.xml"));
+    await userEvent.dblClick(await findByText("trader"));
 
     expect(await findByText("Could not read this dialog")).toBeInTheDocument();
     expect(queryByText("Reading dialog")).not.toBeInTheDocument();

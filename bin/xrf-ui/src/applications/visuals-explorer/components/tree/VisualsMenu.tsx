@@ -3,7 +3,7 @@ import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { Box, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
+import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -20,6 +20,8 @@ import {
   splitLogicalPath,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -37,11 +39,11 @@ const VISUAL_TREE_ICONS: IVirtualizedTreeIcons = {
  * Replaces the former `VisualTreeItem` slot: with a flat tree the payload is in hand at render time, so
  * the marker no longer needs a component that looks the item back up by id.
  *
- * @param item - Leaf being labelled.
- * @returns The decorated label, or the plain name for a loose file.
+ * @param item - Node being labelled; only a leaf carries the asset that could have come from a volume.
+ * @returns The decorated label, or the plain name for a directory or a loose file.
  */
-function renderVisualLabel(item: IPathTreeItem<XrayAsset>): ReactNode {
-  if (item.kind !== "file" || item.payload.container.kind !== "archive") {
+function renderVisualLabel(item: ITreeNode<XrayAsset>): ReactNode {
+  if (item.payload?.container.kind !== "archive") {
     return item.label;
   }
 
@@ -76,7 +78,8 @@ export function VisualsMenu({
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
   const visualsService: VisualsService = useInjection(VisualsService);
 
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   // Memoized rather than defaulted inline, so an empty listing does not hand the tree a new array every render.
   const visuals: Array<XrayAsset> = useMemo(() => browseService.visuals.value ?? [], [browseService.visuals.value]);
@@ -92,9 +95,13 @@ export function VisualsMenu({
 
   const onOpenPath = useCallback(
     (logicalPath: string) => {
+      // Selection is written from what was asked for, never derived from what the viewport ended up holding: a
+      // model that fails to load leaves its row selected, which is the only way back to retrying it.
+      reveal(toFileItemId(logicalPath));
+
       void visualsService.openAsset(logicalPath, browseService.rootPaths);
     },
-    [browseService.rootPaths, visualsService]
+    [browseService.rootPaths, reveal, visualsService]
   );
 
   const search: IUseRankedSearch<XrayAsset> = useRankedSearch({
@@ -113,13 +120,10 @@ export function VisualsMenu({
     [search.results]
   );
 
-  // Selection follows what is open rather than what was clicked, so a failed open leaves the tree pointing at the model
-  // the viewport is explaining.
-  const openSource: Nullable<string> = visualsService.sourceLabel;
-  const selectedItem: Nullable<string> = openSource ? toFileItemId(openSource) : null;
+  const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
 
-  const onSelectAsset = useCallback(
-    (item: IPathTreeItem<XrayAsset>) => {
+  const onActivateAsset = useCallback(
+    (item: ITreeNode<XrayAsset>) => {
       const path: Nullable<string> = getFileItemPath(item.id);
 
       if (path) {
@@ -128,18 +132,6 @@ export function VisualsMenu({
     },
     [onOpenPath]
   );
-
-  const onToggleExpanded = useCallback((itemId: string) => {
-    setExpandedIds((current: ReadonlySet<string>) => {
-      const next: Set<string> = new Set(current);
-
-      if (!next.delete(itemId)) {
-        next.add(itemId);
-      }
-
-      return next;
-    });
-  }, []);
 
   return (
     <EditorSideMenu
@@ -176,11 +168,12 @@ export function VisualsMenu({
           ariaLabel={"Visuals"}
           icons={VISUAL_TREE_ICONS}
           items={items}
-          expandedIds={expandedIds}
-          selectedId={selectedItem}
+          expandedIds={tree.expandedIds}
+          selectedId={tree.selectedId}
           renderLabel={renderVisualLabel}
           onSelect={onSelectAsset}
-          onToggleExpanded={onToggleExpanded}
+          onActivate={onActivateAsset}
+          onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>

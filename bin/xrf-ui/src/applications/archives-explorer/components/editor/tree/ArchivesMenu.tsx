@@ -3,10 +3,10 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveTreeItem, parseTree, TArchiveSelection } from "@/core/archive";
+import { IArchiveTreeItem, parseTree } from "@/core/archive";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
@@ -17,9 +17,10 @@ import {
   getFileItemPath,
   LOGICAL_PATH_SEPARATOR,
   splitLogicalPath,
-  toDirectoryItemId,
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -38,27 +39,36 @@ export function ArchivesMenu({
 }: BaseComponentProps = {}): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   const files: Array<ArchiveFileDescriptor> = archivesService.files;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
 
-  // Selecting again while a read or a write is in flight starts work that the previous one will
-  // outlive, and the tree would show a selection whose content is still the old one.
+  // Reading again while a read or a write is in flight starts work that the previous one will outlive, so
+  // opening waits. Selecting is inert and never waits for anything.
   const isBusy: boolean = archivesService.isBusy;
 
-  const onSelectDescriptor = useCallback(
+  const onOpenDescriptor = useCallback(
     (descriptor: ArchiveFileDescriptor) => {
+      if (isBusy) {
+        return;
+      }
+
+      // Opened from the filter rather than from the tree, so the tree is told where the user landed. Written on
+      // the request, not derived from what came back, so a failed read leaves the row selected to retry.
+      reveal(toFileItemId(descriptor.name));
+
       void archivesService.selectArchiveFile(descriptor);
     },
-    [archivesService]
+    [archivesService, isBusy, reveal]
   );
 
   const search: IUseRankedSearch<ArchiveFileDescriptor> = useRankedSearch({
     items: files,
     toSearchText: (it) => it.name,
-    onSelect: onSelectDescriptor,
+    onSelect: onOpenDescriptor,
   });
 
   const rows: Array<IEditorSearchResultRow> = useMemo(
@@ -71,43 +81,21 @@ export function ArchivesMenu({
     [search.results]
   );
 
-  const selection: TArchiveSelection = archivesService.selection;
-  const selectedItem: Nullable<string> =
-    selection.kind === "file"
-      ? toFileItemId(selection.descriptor.name)
-      : selection.kind === "directory"
-        ? toDirectoryItemId(selection.path)
-        : null;
-
-  const onSelectPath = useCallback(
+  const onOpenPath = useCallback(
     (path: string) => {
-      if (isBusy) {
-        return;
-      }
-
       const descriptor: Optional<ArchiveFileDescriptor> = archivesService.project.value?.files[path];
 
       if (descriptor) {
-        onSelectDescriptor(descriptor);
+        onOpenDescriptor(descriptor);
       }
     },
-    [archivesService, isBusy, onSelectDescriptor]
+    [archivesService, onOpenDescriptor]
   );
 
-  const onToggleExpanded = useCallback((itemId: string) => {
-    setExpandedIds((current: ReadonlySet<string>) => {
-      const next: Set<string> = new Set(current);
+  const onSelectItem = useCallback((item: ITreeNode<ArchiveFileDescriptor>) => tree.select(item.id), [tree]);
 
-      if (!next.delete(itemId)) {
-        next.add(itemId);
-      }
-
-      return next;
-    });
-  }, []);
-
-  const onSelectItem = useCallback(
-    (item: IArchiveTreeItem) => {
+  const onActivateItem = useCallback(
+    (item: ITreeNode<ArchiveFileDescriptor>) => {
       if (isBusy) {
         return;
       }
@@ -116,7 +104,7 @@ export function ArchivesMenu({
       const filePath: Nullable<string> = getFileItemPath(itemId);
 
       if (filePath) {
-        onSelectPath(filePath);
+        onOpenPath(filePath);
 
         return;
       }
@@ -129,7 +117,7 @@ export function ArchivesMenu({
         archivesService.selectArchiveDirectory(directoryPath);
       }
     },
-    [archivesService, isBusy, onSelectPath]
+    [archivesService, isBusy, onOpenPath]
   );
 
   return (
@@ -160,17 +148,18 @@ export function ArchivesMenu({
           total={search.total}
           activeIndex={search.activeIndex}
           onHoverIndex={search.setActiveIndex}
-          onSelect={onSelectPath}
+          onSelect={onOpenPath}
         />
       ) : items.length ? (
         <VirtualizedTree<ArchiveFileDescriptor>
           ariaLabel={"Archive files"}
           icons={ARCHIVE_TREE_ICONS}
           items={items}
-          expandedIds={expandedIds}
-          selectedId={selectedItem}
+          expandedIds={tree.expandedIds}
+          selectedId={tree.selectedId}
           onSelect={onSelectItem}
-          onToggleExpanded={onToggleExpanded}
+          onActivate={onActivateItem}
+          onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>

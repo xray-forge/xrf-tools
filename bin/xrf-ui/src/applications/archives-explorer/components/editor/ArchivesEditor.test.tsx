@@ -82,7 +82,7 @@ describe("opened archives editor", () => {
   it("selects and renders readable files as code with line numbers", async () => {
     const { findByLabelText, findByText } = renderEditor();
 
-    await userEvent.click(await findByText("readme.ltx"));
+    await userEvent.dblClick(await findByText("readme.ltx"));
 
     const viewer: HTMLElement = await findByLabelText("Contents of readme.ltx");
     const [lineNumbers, contents] = Array.from(viewer.querySelectorAll("pre"));
@@ -94,7 +94,7 @@ describe("opened archives editor", () => {
   it("decodes a texture into a picture rather than refusing it", async () => {
     const { findByAltText, findByText } = renderEditor();
 
-    await userEvent.click(await findByText("texture.dds"));
+    await userEvent.dblClick(await findByText("texture.dds"));
 
     // Compressed and not a readable extension, so the text path would have refused it outright.
     expect(await findByAltText(BINARY_FILE.name)).toHaveAttribute("src", "blob:decoded-texture");
@@ -107,7 +107,7 @@ describe("opened archives editor", () => {
   it("selects genuinely unsupported files without asking the backend to read them", async () => {
     const { findByText, getByText } = renderEditor();
 
-    await userEvent.click(await findByText("actor.omf"));
+    await userEvent.dblClick(await findByText("actor.omf"));
 
     expect(getByText("Preview unavailable")).toBeInTheDocument();
     expect(getByText(/this file type does not have a text preview/)).toBeInTheDocument();
@@ -141,7 +141,7 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByRole, findByText, getByLabelText, queryByText } = renderEditor();
 
-    await userEvent.click(await findByText("configs"));
+    await userEvent.dblClick(await findByText("configs"));
 
     expect(await findByText("system.ltx")).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
@@ -174,7 +174,7 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByRole, findByText } = renderEditor();
 
-    await userEvent.click(await findByText("readme.ltx"));
+    await userEvent.dblClick(await findByText("readme.ltx"));
 
     expect(await findByText("Could not read this file")).toBeInTheDocument();
     expect(await findByText("temporary read failure")).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("opened archives editor", () => {
       { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
 
-    await userEvent.click(await findByText("texture.dds"));
+    await userEvent.dblClick(await findByText("texture.dds"));
     await userEvent.click(await findByLabelText("File details"));
 
     expect(await findByText("Source archive")).toBeInTheDocument();
@@ -280,7 +280,7 @@ describe("opened archives editor", () => {
       { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
     );
 
-    await userEvent.click(await findByText("readme.ltx"));
+    await userEvent.dblClick(await findByText("readme.ltx"));
     await userEvent.click(await findByLabelText("Extract file"));
 
     await waitFor(() => expect(getByLabelText("Back to Archives explorer")).toBeDisabled());
@@ -297,12 +297,12 @@ describe("opened archives editor", () => {
 
     const { findByText, getByText } = renderEditor();
 
-    await userEvent.click(await findByText("readme.ltx"));
+    await userEvent.dblClick(await findByText("readme.ltx"));
 
     // A texture, so it would reach the backend on its own decode command rather than being ignored
     // as an unreadable type. Letting it through would leave the tree pointing at one file while the
     // content area still belongs to another.
-    await userEvent.click(getByText("texture.dds"));
+    await userEvent.dblClick(getByText("texture.dds"));
 
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_image", expect.anything());
   });

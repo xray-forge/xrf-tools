@@ -59,9 +59,10 @@ export function usePathState({
     // directory is not negotiable — an output directory is still a directory when it is also new.
     // `isSave` only relaxes the existence check, which `usePathField` applies. Branching on `isSave`
     // first put a file-name dialog in front of every screen whose destination is a folder.
-    const pathResponse: Nullable<string> = isSave && !isDirectory
-      ? await save({ title, filters: filters ? filters : undefined })
-      : await open({ title, filters: filters ? filters : undefined, directory: isDirectory });
+    const pathResponse: Nullable<string> =
+      isSave && !isDirectory
+        ? await save({ title, filters: filters ? filters : undefined })
+        : await open({ title, filters: filters ? filters : undefined, directory: isDirectory });
 
     // Cancelling resolves null. Keeping the previous value is deliberate: replacing a good path with
     // nothing because someone opened the dialog and thought better of it is never what was wanted.
