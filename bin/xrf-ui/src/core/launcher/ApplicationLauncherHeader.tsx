@@ -144,15 +144,15 @@ export function ApplicationLauncherHeader({
           // Releasing the active button would leave the catalog with no view at all.
           onChange={(_, next: Nullable<TCatalogView>) => next && onSelectView(next)}
         >
-          <Tooltip title={"Grid view"}>
-            <ToggleButton aria-label={"Grid view"} value={"grid"}>
-              <GridViewIcon fontSize={"small"} />
-            </ToggleButton>
-          </Tooltip>
-
           <Tooltip title={"Row view"}>
             <ToggleButton aria-label={"Row view"} value={"rows"}>
               <TableRowsIcon fontSize={"small"} />
+            </ToggleButton>
+          </Tooltip>
+
+          <Tooltip title={"Grid view"}>
+            <ToggleButton aria-label={"Grid view"} value={"grid"}>
+              <GridViewIcon fontSize={"small"} />
             </ToggleButton>
           </Tooltip>
         </ToggleButtonGroup>

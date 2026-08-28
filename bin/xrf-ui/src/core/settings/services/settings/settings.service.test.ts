@@ -34,10 +34,10 @@ describe("SettingsService", () => {
     expect(service.isDevModeEnabled).toBe(false);
   });
 
-  it("falls back to the card grid when nothing has chosen a catalog view", () => {
+  it("falls back to the dense rows when nothing has chosen a catalog view", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.catalogView).toBe("grid");
+    expect(service.catalogView).toBe("rows");
   });
 
   it("refuses a catalog view this build does not know, rather than handing it to the launcher", () => {
@@ -47,16 +47,16 @@ describe("SettingsService", () => {
 
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.catalogView).toBe("grid");
+    expect(service.catalogView).toBe("rows");
   });
 
   it("gives back the catalog view it was told to keep", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    service.setCatalogView("rows");
+    service.setCatalogView("grid");
 
-    expect(service.catalogView).toBe("rows");
-    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
-    expect(mockInjectedService(SettingsService).service.catalogView).toBe("rows");
+    expect(service.catalogView).toBe("grid");
+    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
+    expect(mockInjectedService(SettingsService).service.catalogView).toBe("grid");
   });
 });

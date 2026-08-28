@@ -3,12 +3,12 @@ import { Nullable } from "@/lib/types/general";
 /**
  * Layouts the root catalog offers, in the order its switch presents them.
  */
-export const CATALOG_VIEWS = ["grid", "rows"] as const;
+export const CATALOG_VIEWS = ["rows", "grid"] as const;
 
 export type TCatalogView = (typeof CATALOG_VIEWS)[number];
 
-/** A first run looks like the card grid the catalog has always been. */
-export const DEFAULT_CATALOG_VIEW: TCatalogView = "grid";
+/** A first run reads the whole catalog at once, which only the dense rows fit; cards are asked for. */
+export const DEFAULT_CATALOG_VIEW: TCatalogView = "rows";
 
 /**
  * Narrows a stored value to a view the launcher can render.

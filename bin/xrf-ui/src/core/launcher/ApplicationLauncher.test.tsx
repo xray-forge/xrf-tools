@@ -110,8 +110,10 @@ describe("ApplicationLauncher", () => {
     expect(getByText("2 tools · 1 ready")).toBeInTheDocument();
   });
 
-  it("heads each group's run of cards, so the taxonomy is visible without reading colours", () => {
-    const { getAllByRole } = renderLauncher();
+  it("heads each group's run of cards, so the taxonomy is visible without reading colours", async () => {
+    const { getAllByRole, getByRole } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Grid view" }));
 
     expect(getAllByRole("heading", { level: 2 }).map((heading: HTMLElement) => heading.textContent)).toEqual([
       "Archives",
@@ -131,8 +133,9 @@ describe("ApplicationLauncher", () => {
   });
 
   it("names the group on a result card, which no heading is left to say", async () => {
-    const { getByLabelText, getByTestId } = renderLauncher();
+    const { getByLabelText, getByRole, getByTestId } = renderLauncher();
 
+    await userEvent.click(getByRole("button", { name: "Grid view" }));
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
     expect(within(getByTestId("launcher-catalog")).getByText("Spawns")).toBeInTheDocument();
@@ -198,47 +201,30 @@ describe("ApplicationLauncher", () => {
     expect(getByLabelText("Search tools")).toHaveFocus();
   });
 
-  it("opens on the card grid, so a first run looks like it always has", () => {
+  it("opens on the dense rows, so the whole catalog is readable before anything is chosen", () => {
+    const { getByRole } = renderLauncher();
+
+    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
+  });
+
+  it("takes the view it was left in", () => {
+    window.localStorage.setItem("xrf-catalog-view", "grid");
+
     const { queryByRole } = renderLauncher();
 
     expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
   });
 
-  it("takes the view it was left in", () => {
-    window.localStorage.setItem("xrf-catalog-view", "rows");
+  it("falls back to the dense rows for a view it does not recognise", () => {
+    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
 
     const { getByRole } = renderLauncher();
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
   });
 
-  it("falls back to the card grid for a view it does not recognise", () => {
-    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
-
-    const { queryByRole } = renderLauncher();
-
-    expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
-  });
-
-  it("swaps the body for a dense list, and remembers being asked", async () => {
-    const { getByRole, getByTestId } = renderLauncher();
-
-    await userEvent.click(getByRole("button", { name: "Row view" }));
-
-    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
-    // Flat, in catalog order: the nine section headings do not survive into rows.
-    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
-      "Archives editor",
-      "Archives packer",
-      "Spawn editor",
-    ]);
-  });
-
-  it("breaks the list where the group changes, rather than repeating it down a column", async () => {
-    const { getAllByRole, getByRole } = renderLauncher();
-
-    await userEvent.click(getByRole("button", { name: "Row view" }));
+  it("breaks the list where the group changes, rather than repeating it down a column", () => {
+    const { getAllByRole } = renderLauncher();
 
     // The same headings the grid shows, so the taxonomy does not depend on which view is chosen.
     expect(getAllByRole("heading", { level: 2 }).map((heading: HTMLElement) => heading.textContent)).toEqual([
@@ -248,9 +234,8 @@ describe("ApplicationLauncher", () => {
   });
 
   it("names the group on a row only once the separators are gone", async () => {
-    const { getByLabelText, getByRole, getByTestId } = renderLauncher();
+    const { getByLabelText, getByTestId } = renderLauncher();
 
-    await userEvent.click(getByRole("button", { name: "Row view" }));
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
     const catalog = getByTestId("launcher-catalog");
@@ -262,20 +247,34 @@ describe("ApplicationLauncher", () => {
   it("keeps drawing rows once a search narrows them", async () => {
     const { getByLabelText, getByRole, getByTestId } = renderLauncher();
 
-    await userEvent.click(getByRole("button", { name: "Row view" }));
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
     expect(getToolNames(getByTestId("launcher-catalog"))).toEqual(["Spawn editor"]);
   });
 
-  it("goes back to the grid, leaving nothing of the list behind", async () => {
-    const { getByRole, queryByRole } = renderLauncher();
+  it("swaps the body for the card grid, and remembers being asked", async () => {
+    const { getByRole, getByTestId, queryByRole } = renderLauncher();
 
-    await userEvent.click(getByRole("button", { name: "Row view" }));
     await userEvent.click(getByRole("button", { name: "Grid view" }));
 
     expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
     expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
+    // The same tools in the same catalog order: only their drawing changed.
+    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
+      "Archives editor",
+      "Archives packer",
+      "Spawn editor",
+    ]);
+  });
+
+  it("goes back to the rows, leaving nothing of the grid behind", async () => {
+    const { getByRole } = renderLauncher();
+
+    await userEvent.click(getByRole("button", { name: "Grid view" }));
+    await userEvent.click(getByRole("button", { name: "Row view" }));
+
+    expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
+    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
   });
 });
