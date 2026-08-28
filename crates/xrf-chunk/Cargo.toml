@@ -12,7 +12,13 @@ xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
+
+# Throughput of the reader every binary format sits on; a regression here reaches all of them.
+[[bench]]
+name = "chunk_reading"
+harness = false
 
 [lints]
 workspace = true

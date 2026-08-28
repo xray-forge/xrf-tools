@@ -7144,6 +7144,7 @@ name = "xrf-chunk"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "criterion",
  "fileslice",
  "xrf-error",
  "xrf-test-utils",
@@ -7451,6 +7452,7 @@ dependencies = [
 name = "xrf-vfs"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "log",
  "serde",
  "serde_json",
