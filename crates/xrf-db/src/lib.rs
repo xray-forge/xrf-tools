@@ -78,6 +78,7 @@ pub use crate::ogf::ogf_chunks_processor::*;
 pub use crate::ogf::ogf_file::*;
 pub use crate::ogf::ogf_motion_refs_processor::*;
 pub use crate::ogf::ogf_refs_patch_report::*;
+pub use crate::ogf::ogf_residue::*;
 pub use crate::ogf::ogf_texture_refs_processor::*;
 pub use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
 pub use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;

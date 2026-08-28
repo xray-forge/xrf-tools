@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
-use xrf_db::{OgfFile, OmfFile, ShaderLibraryFile, XRayByteOrder};
+use xrf_db::{OgfFile, OgfResidueCause, OmfFile, ShaderLibraryFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
@@ -136,6 +136,7 @@ impl<'a> MeshAssetsVerifier<'a> {
       ogf.get_motions().count(),
       mesh_path,
     ));
+    findings.extend(Self::verify_mesh_residue_findings(ogf, mesh_path));
 
     // Verify all nested children in mesh object.
     if let Some(children) = &ogf.children {
@@ -520,6 +521,36 @@ impl<'a> MeshAssetsVerifier<'a> {
       GamedataVerificationRule::MeshesMotionLabel,
       path,
       format!("{diverging_count} of {motions_count} payload labels do not match their motion names"),
+    )]
+  }
+
+  /// A visual the reader accepts only because the engine never reads the bytes it ends with.
+  ///
+  /// Reported rather than tolerated silently: the file is malformed, and this is the one place a modder learns so
+  /// before a patch normalizes it away. Nested children never carry residue, which is a property of the byte stream, so
+  /// this yields nothing for them.
+  fn verify_mesh_residue_findings(ogf: &OgfFile, mesh_path: Option<&str>) -> Vec<Finding> {
+    let Some(residue) = &ogf.residue else {
+      return Vec::new();
+    };
+
+    let ignored: usize = residue.bytes.len()
+      + ogf
+        .kinematics
+        .as_ref()
+        .map_or(0, |kinematics| kinematics.trailing.len());
+
+    let detail: String = match &residue.cause {
+      OgfResidueCause::TrailingFragment => String::from("too few to be another chunk header"),
+      OgfResidueCause::SplitMotionRef { path } => {
+        format!("an uncounted motion reference '{path}' split across the declared bounds of the motion refs chunk")
+      }
+    };
+
+    vec![Self::new_mesh_finding(
+      GamedataVerificationRule::MeshesChunkResidue,
+      mesh_path,
+      format!("Mesh carries {ignored} bytes the engine never reads, {detail}"),
     )]
   }
 

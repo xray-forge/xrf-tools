@@ -11,7 +11,9 @@ use xrf_utils::open_export_file;
 use crate::ogf::chunks::ogf_children_chunk::OgfChildrenChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::ogf_file::OgfFile;
+use crate::ogf::ogf_raw_patch::OgfRawPatch;
 use crate::ogf::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::ogf::ogf_residue::{OgfResidue, normalize_ogf_bytes};
 
 /// Editing operations over the texture refs of an ogf file.
 pub struct OgfTextureRefsProcessor {}
@@ -35,7 +37,8 @@ impl OgfTextureRefsProcessor {
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, from)?;
 
-    let (patched, patched_count) = Self::write_texture_refs_to_buffer::<T>(Self::open_source(source)?, from, to)?;
+    let (patched, patched_count) =
+      Self::write_texture_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, from, to)?;
 
     if patched_count == 0 {
       return Err(XrfError::new_verify_error(format!(
@@ -50,6 +53,9 @@ impl OgfTextureRefsProcessor {
       original_size: original.len(),
       patched_size: patched.len(),
       patched_count,
+      discarded_size: original
+        .len()
+        .saturating_sub(normalize_ogf_bytes::<T>(&original)?.len()),
       is_dry_run,
     };
 
@@ -64,7 +70,7 @@ impl OgfTextureRefsProcessor {
     open_export_file(destination)?.write_all(&patched)?;
 
     if let Err(error) = Self::assert_written_refs_match::<T>(destination, from, to) {
-      Self::revert_destination(source, destination, &original)?;
+      OgfRawPatch::revert_destination(source, destination, &original)?;
 
       return Err(error);
     }
@@ -73,14 +79,21 @@ impl OgfTextureRefsProcessor {
   }
 
   /// Rename texture references of an ogf file, copying every other chunk verbatim.
+  ///
+  /// The result is well formed even when the source was not, on the same terms as the motion refs patcher: bytes the
+  /// engine's loader never reads are discarded rather than carried over, including those inside a motion refs chunk
+  /// this command otherwise never touches.
   pub fn write_texture_refs_to_buffer<T: ByteOrder>(file: File, from: &str, to: &str) -> XrfResult<(Vec<u8>, u32)> {
-    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
+    let (mut chunks, _) =
+      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
     for chunk in &mut chunks {
       let payload: Vec<u8> = if chunk.id == OgfChildrenChunk::CHUNK_ID {
         Self::rename_children_texture_refs::<T, _>(chunk, from, to, &mut patched_count)?
+      } else if OgfRawPatch::is_kinematics_chunk(chunk.id) {
+        OgfRawPatch::read_normalized_kinematics_payload::<T, _>(chunk)?
       } else {
         chunk.reset_pos()?;
         chunk.read_remaining()?
@@ -148,26 +161,16 @@ impl OgfTextureRefsProcessor {
     Ok(buffer)
   }
 
-  fn open_source(source: &Path) -> XrfResult<File> {
-    File::open(source).map_err(|error| {
-      XrfError::new_not_found_error(format!("OGF file was not read: {}, error: {}", source.display(), error))
-    })
-  }
-
-  /// Guard that a rename which changes nothing reproduces the source file byte for byte.
+  /// Guard that a rename which changes nothing reproduces the source file, normalized.
   fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], from: &str) -> XrfResult {
-    let (reverted, _) = Self::write_texture_refs_to_buffer::<T>(Self::open_source(source)?, from, from)?;
+    let (reverted, _) = Self::write_texture_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, from, from)?;
 
-    if reverted != original {
-      return Err(XrfError::new_verify_error(format!(
-        "Refused to patch {}, renaming a texture reference to itself did not reproduce the source file, {} bytes original and {} bytes rewritten",
-        source.display(),
-        original.len(),
-        reverted.len()
-      )));
-    }
-
-    Ok(())
+    OgfRawPatch::assert_chunk_copy_is_lossless::<T>(
+      source,
+      original,
+      &reverted,
+      "renaming a texture reference to itself",
+    )
   }
 
   /// Verify the written file names the new reference and no longer names the old one.

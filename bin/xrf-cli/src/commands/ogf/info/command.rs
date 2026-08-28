@@ -79,6 +79,22 @@ impl GenericCommand for InfoCommand {
       xrf_output::info!(output, "Motion refs: {:?}", kinematics.motion_refs);
     }
 
+    if let Some(residue) = &ogf_file.residue {
+      let ignored: usize = residue.bytes.len()
+        + ogf_file
+          .kinematics
+          .as_ref()
+          .map_or(0, |kinematics| kinematics.trailing.len());
+
+      xrf_output::info!(
+        output,
+        "Residue: {} bytes from offset {} the engine never reads, {:?}",
+        ignored,
+        residue.position,
+        residue.cause
+      );
+    }
+
     if let Some(swi_data) = &ogf_file.swi_data {
       xrf_output::info!(output, "Progressive lods: {}", swi_data.windows.len());
 

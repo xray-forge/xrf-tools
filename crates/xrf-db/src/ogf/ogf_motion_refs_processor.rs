@@ -10,7 +10,9 @@ use xrf_utils::open_export_file;
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_file::OgfFile;
+use crate::ogf::ogf_raw_patch::OgfRawPatch;
 use crate::ogf::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::ogf::ogf_residue::{OgfResidue, normalize_ogf_bytes};
 
 /// Editing operations over the motion refs of an ogf file.
 pub struct OgfMotionRefsProcessor {}
@@ -32,13 +34,16 @@ impl OgfMotionRefsProcessor {
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, &existing)?;
 
-    let patched: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(Self::open_source(source)?, motion_refs)?;
+    let patched: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, motion_refs)?;
 
     let report: OgfRefsPatchReport = OgfRefsPatchReport {
       original_size: original.len(),
       patched_size: patched.len(),
       // The buffer writer refuses anything other than exactly one refs chunk.
       patched_count: 1,
+      discarded_size: original
+        .len()
+        .saturating_sub(normalize_ogf_bytes::<T>(&original)?.len()),
       is_dry_run,
     };
 
@@ -53,7 +58,7 @@ impl OgfMotionRefsProcessor {
     open_export_file(destination)?.write_all(&patched)?;
 
     if let Err(error) = Self::assert_written_refs_match::<T>(destination, motion_refs) {
-      Self::revert_destination(source, destination, &original)?;
+      OgfRawPatch::revert_destination(source, destination, &original)?;
 
       return Err(error);
     }
@@ -62,14 +67,18 @@ impl OgfMotionRefsProcessor {
   }
 
   /// Rewrite motion refs of an ogf file, copying every other chunk verbatim.
+  ///
+  /// The result is well formed even when the source was not: bytes the engine's loader never reads are discarded
+  /// rather than carried over. See [`crate::normalize_ogf_bytes`] for what that covers and why the discarded path is
+  /// reported before it goes.
   pub fn write_motion_refs_to_buffer<T: ByteOrder>(file: File, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
-    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
+    let (mut chunks, _) =
+      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
     for chunk in &mut chunks {
-      let payload: Vec<u8> = if chunk.id == OgfKinematicsChunk::CHUNK_ID || chunk.id == OgfKinematicsChunk::CHUNK_ID_OLD
-      {
+      let payload: Vec<u8> = if OgfRawPatch::is_kinematics_chunk(chunk.id) {
         patched_count += 1;
 
         let mut kinematics_writer: ChunkWriter = ChunkWriter::new();
@@ -77,6 +86,8 @@ impl OgfMotionRefsProcessor {
         OgfKinematicsChunk {
           source_chunk_id: chunk.id,
           motion_refs: motion_refs.to_vec(),
+          // Dropped, not carried: a patched file is well formed, and the engine loads it identically.
+          trailing: Vec::new(),
         }
         .write::<T>(&mut kinematics_writer)?;
 
@@ -101,29 +112,11 @@ impl OgfMotionRefsProcessor {
     Ok(buffer)
   }
 
-  fn open_source(source: &Path) -> XrfResult<File> {
-    File::open(source).map_err(|error| {
-      XrfError::new_not_found_error(format!("OGF file was not read: {}, error: {}", source.display(), error))
-    })
-  }
-
-  /// Guard that rewriting the refs a file already has reproduces that file byte for byte.
-  ///
-  /// Geometry is not re-serializable, so this is what proves the chunk copy preserves everything
-  /// outside the motion refs chunk. A mismatch means patching would silently corrupt the model.
+  /// Guard that rewriting the refs a file already has reproduces that file, normalized.
   fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], existing: &[String]) -> XrfResult {
-    let reverted: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(Self::open_source(source)?, existing)?;
+    let reverted: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, existing)?;
 
-    if reverted != original {
-      return Err(XrfError::new_verify_error(format!(
-        "Refused to patch {}, rewriting its existing motion refs did not reproduce the source file, {} bytes original and {} bytes rewritten",
-        source.display(),
-        original.len(),
-        reverted.len()
-      )));
-    }
-
-    Ok(())
+    OgfRawPatch::assert_chunk_copy_is_lossless::<T>(source, original, &reverted, "rewriting its existing motion refs")
   }
 
   /// Guard that the written file reads back exactly the requested motion refs.
@@ -137,17 +130,6 @@ impl OgfMotionRefsProcessor {
         read_back,
         motion_refs
       )));
-    }
-
-    Ok(())
-  }
-
-  /// Undo a failed write, leaving neither a corrupted source nor a partial destination behind.
-  fn revert_destination(source: &Path, destination: &Path, original: &[u8]) -> XrfResult {
-    if destination == source {
-      fs::write(destination, original)?;
-    } else if destination.exists() {
-      fs::remove_file(destination)?;
     }
 
     Ok(())
@@ -183,6 +165,7 @@ mod tests {
     OgfKinematicsChunk {
       source_chunk_id: refs_chunk_id,
       motion_refs: motion_refs.to_vec(),
+      trailing: Vec::new(),
     }
     .write::<XRayByteOrder>(&mut refs_writer)?;
 

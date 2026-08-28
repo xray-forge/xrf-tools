@@ -16,6 +16,7 @@ use crate::ogf::chunks::ogf_lods_chunk::OgfLodsChunk;
 use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
+use crate::ogf::ogf_residue::OgfResidue;
 use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
 use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 
@@ -26,6 +27,17 @@ pub struct OgfChunkEntry {
   /// 0 for a chunk of the root object, 1 for a chunk of a direct child, and so on.
   pub depth: usize,
   pub size: u64,
+}
+
+/// What a walk of an ogf file found, including what it could not walk.
+///
+/// Residue travels with the entries rather than being dropped, because a survey that quietly tolerated unread bytes
+/// would answer "parsing is complete" for a file where it is not — which is the one question this survey exists to
+/// answer honestly.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OgfChunkSurvey {
+  pub entries: Vec<OgfChunkEntry>,
+  pub residue: Option<OgfResidue>,
 }
 
 /// Walks the chunk tree of an ogf file without interpreting payloads.
@@ -55,7 +67,7 @@ impl OgfChunksProcessor {
     OmfParametersChunk::CHUNK_ID,
   ];
 
-  pub fn collect_chunks_from_path<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<Vec<OgfChunkEntry>> {
+  pub fn collect_chunks_from_path<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<OgfChunkSurvey> {
     Self::collect_chunks::<T>(File::open(path.as_ref()).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OGF file was not read: {}, error: {}",
@@ -65,18 +77,20 @@ impl OgfChunksProcessor {
     })?)
   }
 
-  pub fn collect_chunks<T: ByteOrder>(file: File) -> XrfResult<Vec<OgfChunkEntry>> {
-    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
+  pub fn collect_chunks<T: ByteOrder>(file: File) -> XrfResult<OgfChunkSurvey> {
+    let (mut chunks, residue) =
+      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
 
-    Ok(entries)
+    Ok(OgfChunkSurvey { entries, residue })
   }
 
   /// Chunk ids present in the file that the reader does not understand, deduplicated and sorted.
   pub fn find_unknown_chunk_ids<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<Vec<u32>> {
     let mut unknown: Vec<u32> = Self::collect_chunks_from_path::<T, _>(path)?
+      .entries
       .into_iter()
       .map(|it| it.id)
       .filter(|id| !Self::KNOWN_CHUNK_IDS.contains(id))

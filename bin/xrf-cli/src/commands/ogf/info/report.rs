@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{OgfBox, OgfFile, OgfSphere};
+use xrf_db::{OgfBox, OgfFile, OgfResidueCause, OgfSphere};
 
 /// A bounding volume, reported as the numbers the file carries rather than as debug text.
 #[derive(Debug, Serialize)]
@@ -42,6 +42,21 @@ pub struct OgfBoneReport {
   parent: String,
 }
 
+/// Bytes a visual ends with that the engine's loader never reads.
+///
+/// Present only for a malformed visual the engine loads anyway. A patch discards these bytes, so this is the record
+/// that they were there and what they held.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OgfResidueReport {
+  cause: String,
+  /// The motion reference path the residue completes, for the split-reference shape only.
+  discarded_reference: Option<String>,
+  position: u64,
+  /// Every ignored byte, counting those inside the motion refs chunk as well as those after it.
+  size: usize,
+}
+
 /// What `ogf info` read out of a visual.
 ///
 /// Everything the command tells a human, including the per-bone and per-child detail it only prints
@@ -59,6 +74,7 @@ pub struct OgfInfoReport {
   model_type: u8,
   motion_refs: Vec<String>,
   progressive_lods: usize,
+  residue: Option<OgfResidueReport>,
   shader_id: u16,
   unknown_chunks: Option<Vec<u32>>,
   version: u8,
@@ -100,6 +116,22 @@ impl OgfInfoReport {
         .as_ref()
         .map_or_else(Vec::new, |kinematics| kinematics.motion_refs.clone()),
       progressive_lods: file.swi_data.as_ref().map_or(0, |swi| swi.windows.len()),
+      residue: file.residue.as_ref().map(|residue| OgfResidueReport {
+        cause: String::from(match residue.cause {
+          OgfResidueCause::TrailingFragment => "trailing-fragment",
+          OgfResidueCause::SplitMotionRef { .. } => "split-motion-ref",
+        }),
+        discarded_reference: match &residue.cause {
+          OgfResidueCause::SplitMotionRef { path } => Some(path.clone()),
+          OgfResidueCause::TrailingFragment => None,
+        },
+        position: residue.position,
+        size: residue.bytes.len()
+          + file
+            .kinematics
+            .as_ref()
+            .map_or(0, |kinematics| kinematics.trailing.len()),
+      }),
       shader_id: file.header.shader_id,
       unknown_chunks,
       version: file.header.version,

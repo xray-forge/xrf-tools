@@ -99,6 +99,7 @@ pub(crate) fn visual(model_type: u8) -> OgfFile {
     lods: None,
     motions: None,
     motion_parameters: None,
+    residue: None,
   }
 }
 
@@ -199,6 +200,7 @@ pub(crate) fn kinematics(motion_refs: &[&str]) -> OgfKinematicsChunk {
   OgfKinematicsChunk {
     source_chunk_id: OgfKinematicsChunk::CHUNK_ID,
     motion_refs: motion_refs.iter().map(|it| String::from(*it)).collect(),
+    trailing: Vec::new(),
   }
 }
 

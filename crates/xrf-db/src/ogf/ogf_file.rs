@@ -22,6 +22,7 @@ use crate::ogf::chunks::ogf_lods_chunk::OgfLodsChunk;
 use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
+use crate::ogf::ogf_residue::OgfResidue;
 use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
 use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 
@@ -52,6 +53,13 @@ pub struct OgfFile {
   /// types are reused verbatim.
   pub motions: Option<OmfMotionsChunk>,
   pub motion_parameters: Option<OmfParametersChunk>,
+  /// Bytes past the last root chunk that the engine's loader never reads.
+  ///
+  /// Present only for a visual that is not a well-formed chunk stream and is loaded anyway. Nothing forces a consumer
+  /// to look, so a reader answering "did this parse?" gets the same answer it always did; a consumer answering "is this
+  /// well-formed?" asks whether this is `None`, and learns what is wrong rather than only that something is.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub residue: Option<OgfResidue>,
 }
 
 impl OgfFile {
@@ -78,9 +86,12 @@ impl OgfFile {
   }
 
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
+    let (chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
 
-    Self::read_from_chunks::<T, _>(&chunks)
+    Ok(Self {
+      residue,
+      ..Self::read_from_chunks::<T, _>(&chunks)?
+    })
   }
 
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
@@ -148,6 +159,9 @@ impl OgfFile {
       },
       motions,
       motion_parameters,
+      // Root residue is a property of the byte stream, not of a chunk list, so a caller handed chunks directly cannot
+      // be told about it. `read_from_chunk` fills this in.
+      residue: None,
     })
   }
 
@@ -167,7 +181,7 @@ impl OgfFile {
   pub fn read_motion_refs_from_chunk<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
   ) -> XrfResult<Vec<String>> {
-    let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
+    let (chunks, _) = OgfResidue::read_root_chunks::<T, _>(reader)?;
 
     log::info!(
       "Reading ogf file motion refs, {} chunks, {} bytes",
