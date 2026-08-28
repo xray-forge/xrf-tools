@@ -8,7 +8,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{
   XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountMode, XrayPathCollision,
-  XraySkippedMount, XrayVfs,
+  XrayReadTraceSummary, XraySkippedMount, XrayVfs,
 };
 
 use crate::project::gamedata_project_options::GamedataProjectReadOptions;
@@ -84,6 +84,14 @@ impl GamedataProject {
     // Retaining motions is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
     let vfs: XrayVfs =
       XrayVfs::from_plan(&plan.ignoring(&options.ignored)?)?.with_cache_policy(XrayCachePolicy::verification());
+
+    // Applied after the identity probe, so the account describes the sweep rather than the two reads opening it took.
+    let vfs: XrayVfs = if options.is_tracing_reads {
+      vfs.with_read_trace()
+    } else {
+      vfs
+    };
+
     let ltx_project: LtxProject = LtxProject::open_at_scope_opt(
       // The configs directory, not the game root: this project *is* the config tree, and callers join onto its root.
       options.root.join(CONFIGS_DIRECTORY),
@@ -120,6 +128,14 @@ impl GamedataProject {
   /// that runs several has to difference it itself.
   pub fn get_cache_stats(&self) -> XrayCacheStats {
     self.vfs().get_cache().get_stats()
+  }
+
+  /// What this project physically read, or `None` unless it was opened with `is_tracing_reads`.
+  ///
+  /// `hottest` caps the paths named individually; the summary's `paths` reports the untruncated count, so a capped
+  /// list never reads as a complete one.
+  pub fn get_read_trace_summary(&self, hottest: usize) -> Option<XrayReadTraceSummary> {
+    self.vfs().get_read_trace().map(|trace| trace.get_summary(hottest))
   }
 
   /// Mounts and subtree the project's operations apply to.

@@ -11,6 +11,11 @@ pub struct GamedataProjectReadOptions {
   pub ignored: Vec<String>,
   pub output: OutputOptions,
   pub is_strict: bool,
+  /// Whether the project accounts for every asset it physically reads.
+  ///
+  /// A diagnostic rather than a mode: it puts a lock on the read path, so it is asked for by a caller measuring
+  /// redundancy and off for everyone else.
+  pub is_tracing_reads: bool,
 }
 
 #[derive(Default)]

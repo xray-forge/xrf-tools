@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
 use crate::source::XrayDirectorySource;
+use crate::trace::XrayReadTrace;
 use crate::vfs::XrayDirectoryListing;
 use crate::{
   XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayLookupScope, XrayMount,
@@ -28,6 +29,8 @@ pub struct XrayVfs {
   mounts: Vec<XrayMount>,
   /// Parsed assets this world retains, governed by its own policy and empty unless a caller sets one.
   cache: XrayAssetCache,
+  /// Per-path account of what was physically read, absent unless a caller asked to be told.
+  trace: Option<XrayReadTrace>,
   skipped: Vec<XraySkippedMount>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   ///
@@ -55,6 +58,35 @@ impl XrayVfs {
   /// The parsed assets this world is holding.
   pub fn get_cache(&self) -> &XrayAssetCache {
     &self.cache
+  }
+
+  /// Accounts for every physical read this world performs from here on.
+  ///
+  /// Off by default and deliberately opt-in: the account is a lock taken on the read path, which is where a sweep
+  /// spends its time. A run that wants the numbers pays for them; every other run pays a null check.
+  pub fn with_read_trace(mut self) -> Self {
+    self.trace = Some(XrayReadTrace::default());
+
+    self
+  }
+
+  /// What this world has read, or `None` when it was never asked to account for it.
+  pub fn get_read_trace(&self) -> Option<&XrayReadTrace> {
+    self.trace.as_ref()
+  }
+
+  /// Reads through a mount, accounting for the read when this world is tracing.
+  ///
+  /// The single place bytes leave a source, so both the path-keyed read and the asset-keyed one are counted without
+  /// either having to remember to.
+  fn read_from_mount(&self, mount: &XrayMount, source_path: &str, logical_path: &str) -> XrfResult<Vec<u8>> {
+    let bytes: Vec<u8> = mount.get_source().read(source_path)?;
+
+    if let Some(trace) = &self.trace {
+      trace.record(logical_path, bytes.len() as u64);
+    }
+
+    Ok(bytes)
   }
 
   /// Sources a plan named that could not be opened.
@@ -210,7 +242,7 @@ impl XrayVfs {
     let logical_path: Cow<str> = normalize(logical_path)?;
 
     match self.get_winner_in_scope(scope, &logical_path) {
-      Some((mount, source_path)) => mount.get_source().read(source_path),
+      Some((mount, source_path)) => self.read_from_mount(mount, source_path, &logical_path),
       // Absence is `NotFound` throughout this crate, so a consumer can tell "the asset is not here" from "the source
       // holding it failed" without reading the message.
       None => Err(XrfError::new_not_found_error(format!(
@@ -260,7 +292,7 @@ impl XrayVfs {
       )));
     };
 
-    mount.get_source().read(source_path)
+    self.read_from_mount(mount, source_path, asset.get_logical_path().as_str())
   }
 
   /// Size in bytes of the winning entry, without reading it.

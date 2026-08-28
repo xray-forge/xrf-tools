@@ -4,7 +4,7 @@ use std::time::Duration;
 use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
-use xrf_vfs::XrayCacheStats;
+use xrf_vfs::{XrayCacheStats, XrayReadTraceSummary};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +14,9 @@ pub struct GamedataVerificationReportOutput {
   checks: Vec<GamedataVerificationCheckReportOutput>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
+  /// What the sweep physically read, present only when `--trace-reads` asked for the account.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  reads: Option<XrayReadTraceSummary>,
   status: String,
 }
 
@@ -44,11 +47,22 @@ pub struct GamedataVerificationReportPayload<'a> {
   root: &'a Path,
   report: &'a GamedataVerificationResult,
   cache: XrayCacheStats,
+  reads: Option<XrayReadTraceSummary>,
 }
 
 impl<'a> GamedataVerificationReportPayload<'a> {
-  pub fn new(root: &'a Path, report: &'a GamedataVerificationResult, cache: XrayCacheStats) -> Self {
-    Self { root, report, cache }
+  pub fn new(
+    root: &'a Path,
+    report: &'a GamedataVerificationResult,
+    cache: XrayCacheStats,
+    reads: Option<XrayReadTraceSummary>,
+  ) -> Self {
+    Self {
+      root,
+      report,
+      cache,
+      reads,
+    }
   }
 
   pub fn build(&self) -> GamedataVerificationReportOutput {
@@ -63,6 +77,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       cache: self.cache,
       checks,
       duration: self.report.get_duration(),
+      reads: self.reads.clone(),
       status: self.report.get_status().to_string(),
     }
   }
@@ -115,7 +130,7 @@ mod tests {
     Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
   };
   use xrf_report::RuleId;
-  use xrf_vfs::XrayCacheStats;
+  use xrf_vfs::{XrayCacheStats, XrayReadTraceHotPath, XrayReadTraceSummary};
 
   use super::GamedataVerificationReportPayload;
 
@@ -191,7 +206,7 @@ mod tests {
     };
 
     let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache).build()).unwrap();
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache, None).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -220,7 +235,7 @@ mod tests {
     };
 
     let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache).build()).unwrap();
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache, None).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -234,5 +249,40 @@ mod tests {
         "refused": 1,
       })
     );
+
+    // The account is opt-in, and a zeroed one would read as a run that read nothing.
+    assert!(json.get("reads").is_none());
+  }
+
+  /// `--trace-reads` is the only thing that can say a run read the same bytes twice.
+  #[test]
+  fn reports_the_read_account_when_one_was_asked_for() {
+    let root: PathBuf = temporary_gamedata_root();
+    let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
+    let reads: XrayReadTraceSummary = XrayReadTraceSummary {
+      paths: 2,
+      reads: 4,
+      bytes: 3040,
+      unique_bytes: 1040,
+      hottest: vec![XrayReadTraceHotPath {
+        path: String::from("anims\\shared.omf"),
+        reads: 3,
+        bytes: 3000,
+      }],
+    };
+
+    let json: serde_json::Value = serde_json::to_value(
+      GamedataVerificationReportPayload::new(&root, &report, XrayCacheStats::default(), Some(reads)).build(),
+    )
+    .unwrap();
+
+    fs::remove_dir_all(&root).unwrap();
+
+    assert_eq!(json["reads"]["paths"], 2);
+    assert_eq!(json["reads"]["reads"], 4);
+    assert_eq!(json["reads"]["bytes"], 3040);
+    assert_eq!(json["reads"]["uniqueBytes"], 1040);
+    assert_eq!(json["reads"]["hottest"][0]["path"], "anims\\shared.omf");
+    assert_eq!(json["reads"]["hottest"][0]["reads"], 3);
   }
 }

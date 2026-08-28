@@ -13,6 +13,12 @@ use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
+/// How many of the most-read paths `--trace-reads` names individually.
+///
+/// A sweep touches tens of thousands, and the redundancy worth chasing has always been concentrated: four animation
+/// banks accounted for 47GB of one Anomaly run. The summary reports the untruncated path count beside the list.
+const HOTTEST_READ_PATHS_REPORTED: usize = 25;
+
 #[derive(Default)]
 pub struct VerifyCommand;
 
@@ -58,6 +64,13 @@ impl GenericCommand for VerifyCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .arg(
+        Arg::new("trace-reads")
+          .help("Account for every asset read, reporting redundancy against unique paths")
+          .long("trace-reads")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
   }
 
   /// Unpack xray engine database archive.
@@ -96,6 +109,7 @@ impl GenericCommand for VerifyCommand {
       ignored,
       output: output.clone(),
       is_strict,
+      is_tracing_reads: matches.get_flag("trace-reads"),
     };
 
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
@@ -118,7 +132,13 @@ impl GenericCommand for VerifyCommand {
 
     // Deposited before the verdict is turned into an outcome, so a failing check still reports the findings.
     context.set_result(|| {
-      GamedataVerificationReportPayload::new(&root, &verify_result, project.get_cache_stats()).build()
+      GamedataVerificationReportPayload::new(
+        &root,
+        &verify_result,
+        project.get_cache_stats(),
+        project.get_read_trace_summary(HOTTEST_READ_PATHS_REPORTED),
+      )
+      .build()
     })?;
 
     match status {

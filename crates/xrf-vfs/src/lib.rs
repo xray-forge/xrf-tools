@@ -11,6 +11,7 @@
 //! - [`mount`] — composing sources into a searchable order, and planning one from a path.
 //! - [`vfs`] — resolving and reading through that order, one scope at a time or as an ordered probe.
 //! - [`fsgame`] — the declaration file an installation describes its own layout with.
+//! - [`trace`] — what a world actually read, when a caller asked to be told.
 //!
 //! The `.db` volume format the archive source reads lives below this crate, in `xrf-archive`.
 
@@ -20,6 +21,7 @@ pub mod fsgame;
 pub mod mount;
 pub mod path;
 pub mod source;
+pub mod trace;
 pub mod vfs;
 
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
@@ -31,6 +33,7 @@ pub use mount::{
 };
 pub use path::{XrayLogicalPath, XrayPathCollision};
 pub use source::{XrayArchiveSource, XrayAssetSource, XraySourceKind};
+pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{
   XrayDirectoryListing, XrayLookupScope, XrayProbe, XrayProbeStep, XrayResolution, XrayScopedVfs, XrayVfs,
 };
