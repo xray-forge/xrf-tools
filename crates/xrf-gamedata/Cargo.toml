@@ -24,7 +24,14 @@ xrf-utils = { workspace = true }
 xrf-xml = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
+
+# Measures the pattern rather than the private call site, which is what the decision needs: whether the linear scan is
+# expensive at a realistic skeleton size. See `plans/xrf-tools-performance.md` in the agent context repository.
+[[bench]]
+name = "bone_matching"
+harness = false
 
 [lints]
 workspace = true

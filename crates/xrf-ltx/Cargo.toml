@@ -21,11 +21,17 @@ xrf-utils = { workspace = true }
 xrf-output = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta", "xrf-error/typescript-bindings"]
+
+# Throughput of the character-at-a-time parser, which the profile put at 614ms of an 11,965ms Anomaly sweep.
+[[bench]]
+name = "ltx_parsing"
+harness = false
 
 [lints]
 workspace = true
