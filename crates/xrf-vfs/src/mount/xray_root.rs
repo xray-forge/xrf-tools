@@ -6,6 +6,10 @@ use std::path::{Path, PathBuf};
 /// the root those aliases resolve against.
 pub(crate) const MESHES_DIRECTORY: &str = "meshes";
 pub(crate) const TEXTURES_DIRECTORY: &str = "textures";
+/// Further directories a root may hold, which are evidence of one without identifying it.
+pub(crate) const CONFIGS_DIRECTORY: &str = "configs";
+pub(crate) const SOUNDS_DIRECTORY: &str = "sounds";
+pub(crate) const SPAWNS_DIRECTORY: &str = "spawns";
 
 /// The X-Ray root a physical asset path sits under, if any.
 ///

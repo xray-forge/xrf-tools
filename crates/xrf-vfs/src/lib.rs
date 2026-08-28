@@ -28,8 +28,8 @@ pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, re
 pub use cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
 pub use mount::{
-  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XrayRoot, XrayRoots,
-  XraySkippedMount,
+  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XrayRoot, XrayRootKind,
+  XrayRootProbe, XrayRoots, XraySkippedMount,
 };
 pub use path::{XrayLogicalPath, XrayPathCollision};
 pub use source::{XrayArchiveSource, XrayAssetSource, XraySourceKind};
