@@ -32,6 +32,8 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "visibility mask are flagged: hiding them is viewer-only state.",
     "A submesh the format cannot express is skipped with a stated reason in Materials; the rest of the model " +
       "still renders.",
+    "References the browsed tree cannot answer are looked for in the configured game data and then in the game " +
+      "installation, so a mod tree carrying only what it changed still resolves the textures it did not.",
     "The session survives a reload; leaving the application closes the backend selection.",
   ],
   limitations: [

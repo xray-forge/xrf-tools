@@ -2,11 +2,12 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const TRANSLATIONS_VERIFIER_HELP: IApplicationHelp = {
   summary:
-    "Reports which translations are missing, and from which languages. It reads the JSON sources a " +
-    "project authors and answers one question for each of them: how many ids does this language have " +
+    "Reports which translations are missing, and from which languages. It reads authored JSON sources and " +
+    "answers one question for each of them: how many ids does this language have " +
     "text for, and how many is it still short. Nothing is written.",
   workflow: [
-    "Pick the translations directory, project root, or installation holding the JSON sources.",
+    "Pick the translations directory, source tree, or installation holding the JSON sources. It starts from the " +
+      "configured translations path, or `configs\\text` under game data.",
     "Pick one language, or `all` to report every language the build compiles.",
     "`Verify` answers with a row per file and language, sortable by how much each is missing.",
   ],

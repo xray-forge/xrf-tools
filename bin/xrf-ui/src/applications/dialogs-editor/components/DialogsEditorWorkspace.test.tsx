@@ -5,7 +5,6 @@ import { userEvent } from "@testing-library/user-event";
 import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsEditorApplication";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { ProjectService } from "@/core/settings/services/project";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -55,7 +54,7 @@ function renderEditor(): RenderResult {
       <ApplicationStatusBar />
     </>,
     {
-      bindings: [ProjectService, DialogsService],
+      bindings: [DialogsService],
       route: "/dialogs-editor",
     }
   );

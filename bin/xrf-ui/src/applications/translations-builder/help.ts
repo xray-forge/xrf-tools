@@ -2,11 +2,12 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const TRANSLATIONS_BUILDER_HELP: IApplicationHelp = {
   summary:
-    "Compiles a project's JSON translation sources into the string tables the game loads: one XML " +
+    "Compiles JSON translation sources into the string tables the game loads: one XML " +
     "file per source per language, written in that language's code page. This is the last step " +
     "before packaging, and the only one that produces files the engine reads directly.",
   workflow: [
-    "Pick the translations directory, project root, or installation holding the JSON sources.",
+    "Pick the translations directory, source tree, or installation holding the JSON sources. It starts from the " +
+      "configured translations path, or `configs\\text` under game data.",
     "Pick a language, or `all` to compile every language the build supports.",
     "Pick the output directory. Tables land under `<output>/<language>/<name>.xml`.",
     "`Build` reports a row per language with how many tables it wrote and how many ids each holds.",

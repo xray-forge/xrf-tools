@@ -1,42 +1,44 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { Box, IconButton, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, IconButton, TextField, Tooltip } from "@mui/material";
 import { ReactElement } from "react";
 
+import { SettingsSection } from "@/core/settings/components/SettingsSection";
+import { withStoppedPropagation } from "@/lib/dom/event";
 import { Nullable } from "@/lib/types/general";
 
 export interface ISettingsPathFieldProps {
   label: string;
   description: string;
   value: Nullable<string>;
+  /**
+   * The path this field would derive while nothing is set, shown greyed in place of the value.
+   */
+  placeholder?: Nullable<string>;
+  /** What the current value turned out to be, stated beside the label. */
+  fact?: Nullable<string>;
   onSelect: () => void;
   onClear: () => void;
 }
 
 /**
  * One directory setting: what it is, what it is set to, and the two things you can do to it.
- *
- * The value is rendered monospaced because these are always filesystem paths and are compared by eye.
  */
 export function SettingsPathField({
   label,
   description,
   value,
+  placeholder = null,
+  fact = null,
   onSelect,
   onClear,
 }: ISettingsPathFieldProps): ReactElement {
   return (
-    <Box>
-      <Typography variant={"subtitle2"}>{label}</Typography>
-
-      <Typography variant={"caption"} sx={{ display: "block", color: "text.secondary", marginBottom: 1 }}>
-        {description}
-      </Typography>
-
+    <SettingsSection title={label} description={description} fact={fact}>
       <TextField
         fullWidth
         size={"small"}
-        placeholder={"Not selected"}
+        placeholder={placeholder ?? "Not selected"}
         value={value ?? ""}
         sx={{ "& .MuiInputBase-input": { fontFamily: "'Cascadia Mono', 'Consolas', monospace", fontSize: "0.75rem" } }}
         slotProps={{
@@ -47,19 +49,14 @@ export function SettingsPathField({
               <Box sx={{ display: "flex", flexShrink: 0 }}>
                 {value ? (
                   <Tooltip title={"Clear"}>
-                    <IconButton
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onClear();
-                      }}
-                    >
+                    <IconButton aria-label={"Clear"} onClick={withStoppedPropagation(onClear)}>
                       <ClearIcon fontSize={"small"} />
                     </IconButton>
                   </Tooltip>
                 ) : null}
 
                 <Tooltip title={"Choose directory"}>
-                  <IconButton onClick={onSelect}>
+                  <IconButton aria-label={"Choose directory"} onClick={withStoppedPropagation(onSelect)}>
                     <FolderOpenIcon fontSize={"small"} />
                   </IconButton>
                 </Tooltip>
@@ -69,6 +66,6 @@ export function SettingsPathField({
         }}
         onClick={onSelect}
       />
-    </Box>
+    </SettingsSection>
   );
 }

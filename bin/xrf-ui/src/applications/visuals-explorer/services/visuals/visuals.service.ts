@@ -12,8 +12,8 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getProjectGamedataPath } from "@/core/settings/lib/path/project";
-import { ProjectService } from "@/core/settings/services/project/project.service";
+import { configuredAssetRoots } from "@/core/settings/lib/path/role";
+import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -163,7 +163,7 @@ export class VisualsService implements IVisualInspection {
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly projectService: ProjectService = inject(ProjectService),
+    private readonly pathsService: PathsService = inject(PathsService),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly motionService: VisualMotionService = inject(VisualMotionService)
   ) {}
@@ -309,10 +309,7 @@ export class VisualsService implements IVisualInspection {
    * @returns The roots spec to open with.
    */
   private async getRoots(roots: Array<string> = [], asset: Nullable<string> = null): Promise<XrayRoots> {
-    const projectPath: Nullable<string> = this.projectService.xrfProjectPath;
-    const project: Array<string> = projectPath ? [await getProjectGamedataPath(projectPath)] : [];
-
-    // The caller's roots come first: a browsed tree is the nearer answer, and the project is the fallback behind it.
-    return createRoots([...roots, ...project], asset);
+    // The caller's roots come first: a browsed tree is the nearer answer, and the configured ones fall in behind it.
+    return createRoots([...roots, ...configuredAssetRoots(this.pathsService.paths)], asset);
   }
 }

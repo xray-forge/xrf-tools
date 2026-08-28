@@ -18,8 +18,8 @@ import { PackerSelectionSection } from "@/applications/archives-packer/component
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
-import { getProjectArchivesPackPath, getProjectGamedataPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveOutputPath, resolvePathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
@@ -34,7 +34,7 @@ import { Nullable } from "@/lib/types/general";
 const CONFIG_FILTERS = [{ name: "Packing configuration", extensions: ["ltx"] }];
 
 export function ArchivesPackerApplication(): ReactElement {
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
   const packerService: PackerService = useInjection(PackerService);
 
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
@@ -48,7 +48,7 @@ export function ArchivesPackerApplication(): ReactElement {
     title: "Select directory to pack",
     isDirectory: true,
     isDisabled: isBusy,
-    seed: async () => (projectService.xrfProjectPath ? getProjectGamedataPath(projectService.xrfProjectPath) : null),
+    seed: () => resolvePathRole(EPathRole.GAMEDATA, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -58,8 +58,7 @@ export function ArchivesPackerApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isBusy,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectArchivesPackPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_PACKER, pathsService.paths),
   });
 
   /** The configuration as it would be packed, with the fields the editor owns folded back in. */

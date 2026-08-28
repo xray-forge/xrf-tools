@@ -1,1 +1,2 @@
-export * from "@/core/settings/lib/path/project";
+export * from "./path-role";
+export * from "./role";

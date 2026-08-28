@@ -8,8 +8,8 @@ import { TranslationParseSummary } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectLinkedGamePath, getProjectTranslationsPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations";
 import { FormRow } from "@/core/ui/form/FormRow";
@@ -23,7 +23,7 @@ export function TranslationsParserApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Nullable<string>>(null);
@@ -45,8 +45,7 @@ export function TranslationsParserApplication(): ReactElement {
     title: "Select translations source",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getExistingProjectLinkedGamePath(projectService.xrfProjectPath) : null,
+    seed: () => resolveExistingPathRole(EPathRole.BUILT_TRANSLATIONS, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -56,8 +55,7 @@ export function TranslationsParserApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectTranslationsPath(projectService.xrfProjectPath) : null,
+    seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
   const sourcePath: Nullable<string> = source.value;

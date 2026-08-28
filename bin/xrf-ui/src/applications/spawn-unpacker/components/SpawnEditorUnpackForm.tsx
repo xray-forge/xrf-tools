@@ -5,8 +5,8 @@ import { ReactElement, useCallback, useState } from "react";
 import { spawnCommands } from "@/core/bindings/commands/spawn";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectBuiltAllSpawnPath, getProjectAllSpawnUnpackPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole, resolveOutputPath } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -20,7 +20,7 @@ export function SpawnEditorUnpackForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Nullable<string>>(null);
@@ -32,8 +32,7 @@ export function SpawnEditorUnpackForm(): ReactElement {
     title: "Select spawn file",
     filters: [{ name: "spawn", extensions: ["spawn"] }],
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getExistingProjectBuiltAllSpawnPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveExistingPathRole(EPathRole.ALL_SPAWN, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -42,8 +41,7 @@ export function SpawnEditorUnpackForm(): ReactElement {
     title: "Select output directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectAllSpawnUnpackPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveOutputPath(EApplicationId.SPAWN_UNPACKER, pathsService.paths),
   });
 
   const onUnpack = useCallback(async () => {

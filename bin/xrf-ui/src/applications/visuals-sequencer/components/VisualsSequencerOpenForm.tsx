@@ -3,14 +3,13 @@ import { ReactElement, useCallback } from "react";
 
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectLinkedGamePath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 interface IVisualsSequencerOpenFormProps extends BaseComponentProps {
   /** Called once an open attempt has finished, successfully or not. */
@@ -22,17 +21,16 @@ interface IVisualsSequencerOpenFormProps extends BaseComponentProps {
  */
 export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFormProps): ReactElement {
   const sequencerService: SequencerService = useInjection(SequencerService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = sequencerService.visual.isLoading;
 
-  const seed = useCallback(async () => {
-    const projectPath: Nullable<string> = projectService.xrfProjectPath;
-
-    return projectPath ? getExistingProjectLinkedGamePath(projectPath) : null;
-  }, [projectService.xrfProjectPath]);
+  const seed = useCallback(
+    () => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths),
+    [pathsService.paths]
+  );
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_SEQUENCER,

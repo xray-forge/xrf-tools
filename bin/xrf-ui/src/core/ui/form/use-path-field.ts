@@ -1,9 +1,10 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
+import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
 
@@ -21,8 +22,8 @@ export interface IPathFieldOptions {
   isSave?: boolean;
   isDisabled?: boolean;
   isRequired?: boolean;
-  /** Produces a first guess when nothing has been remembered yet, usually from the project root. */
-  seed?: () => Promise<Nullable<string>>;
+  /** Produces a first guess when nothing has been remembered yet, usually from the configured paths. */
+  seed?: TPathSeed;
 }
 
 export interface IPathField {
@@ -37,10 +38,12 @@ export interface IPathField {
 /**
  * Manages a remembered, validated filesystem path for one form field.
  *
- * What is stored is only ever what a caller asked to store: the remembered path is read once, during
- * the first render, and written only by `select`, `clear`, and `setValue`. Nothing about mounting,
- * remounting, or seeding touches storage, so no session can overwrite or erase what an earlier one
- * remembered while its own state is still empty.
+ * What is stored is only ever what a caller asked to store: the remembered path is read once, during the first render,
+ * and written only by `select`, `clear`, and `setValue`. Nothing about mounting, remounting, or guessing touches
+ * storage, so no session can overwrite or erase what an earlier one remembered while its own state is still empty.
+ *
+ * Clearing asks for the guess again rather than leaving the field blank, which is what makes clearing read as "back to
+ * the default" once configured paths supply those defaults.
  *
  * @param options - Field identity, dialog behavior, and validation options.
  * @param options.application - Application the field belongs to, used to scope persistence.
@@ -77,49 +80,51 @@ export function usePathField({
   });
   const [error, setError] = useState<Nullable<string>>(null);
 
+  // A guess fills the field without being stored, so every session re-derives it until the user picks a path.
+  const { request: requestSeed, supersede: supersedeSeed }: IPathSeed = usePathSeed({ seed, onSeeded: setPath });
+
   const setValue = useCallback(
     (next: Nullable<string>): void => {
+      supersedeSeed();
       setPath(next);
       setLocalStorageValue(storageKey, next);
     },
-    [setPath, storageKey]
+    [setPath, storageKey, supersedeSeed]
   );
 
-  const clear = useCallback(() => setValue(null), [setValue]);
+  const clear = useCallback((): void => {
+    setPath(null);
+    setLocalStorageValue(storageKey, null);
+    requestSeed();
+  }, [requestSeed, setPath, storageKey]);
 
   const select = useCallback(async (): Promise<void> => {
+    // Superseded as the dialog opens rather than after it answers: the pick reaches the underlying state before this
+    // call resumes, so a guess arriving in between would land on top of it.
+    supersedeSeed();
+
     const picked: Nullable<string> = await selectPath();
 
-    // Cancelling reports null and leaves both the state and what was remembered as they were.
-    if (picked !== null) {
-      setLocalStorageValue(storageKey, picked);
+    // Cancelling leaves both the state and what was remembered as they were, which for an untouched field means the
+    // guess it would otherwise have shown.
+    if (picked === null) {
+      if (value === null) {
+        requestSeed();
+      }
+
+      return;
     }
-  }, [selectPath, storageKey]);
 
-  // Seeding happens once, and only when nothing was remembered. A guess is not a choice, so it fills
-  // the field without being stored, and every session re-derives it until the user picks a path.
-  const seedRef = useRef<Nullable<IPathFieldOptions["seed"]>>(seed);
-  const isSeedResolved = useRef<boolean>(false);
+    setLocalStorageValue(storageKey, picked);
+  }, [requestSeed, selectPath, storageKey, supersedeSeed, value]);
 
-  seedRef.current = seed;
-
+  // Asked for against storage rather than against the field, because the rule is that nothing was ever remembered
+  // here - which is also what the field holds at this point, and stays true if the key is ever replaced.
   useEffect(() => {
-    if (isSeedResolved.current) {
-      return;
+    if (getLocalStorageValue(storageKey) === null) {
+      requestSeed();
     }
-
-    isSeedResolved.current = true;
-
-    if (value !== null || !seedRef.current) {
-      return;
-    }
-
-    seedRef
-      .current()
-      .then((seeded) => seeded && setPath(seeded))
-      .catch(() => setPath(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  }, [requestSeed, storageKey]);
 
   useEffect(() => {
     if (!value || isSave) {

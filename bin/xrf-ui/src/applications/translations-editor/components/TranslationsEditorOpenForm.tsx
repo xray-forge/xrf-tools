@@ -6,8 +6,8 @@ import { TranslationsService } from "@/applications/translations-editor/services
 import { createRoots } from "@/core/assets/lib/roots";
 import { TranslationProjectMode } from "@/core/bindings/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
-import { getPathIfExists, getProjectEnginePath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
@@ -29,7 +29,7 @@ export function TranslationsEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const translationsService: TranslationsService = useInjection(TranslationsService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const isLoading: boolean = translationsService.project.isLoading;
 
@@ -41,8 +41,7 @@ export function TranslationsEditorOpenForm(): ReactElement {
     title: "Select root to read translations from",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectEnginePath(projectService.xrfProjectPath)) : null,
+    seed: () => resolveExistingPathRole(EPathRole.CONTENT_ROOT, pathsService.paths),
   });
 
   const path: Nullable<string> = translations.value;

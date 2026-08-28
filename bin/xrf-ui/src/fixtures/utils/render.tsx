@@ -6,11 +6,9 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ApplicationProvider } from "@/ApplicationProvider";
-import { createContainerPlugins } from "@/core/container";
-import { NotificationsService } from "@/core/notifications/services";
+import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
-import { SettingsService } from "@/core/settings/services/settings";
 import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
 import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
 import {
@@ -60,7 +58,7 @@ export function renderWithProviders(
   { route = "/", bindings = [], container }: IRenderOptions = {}
 ): RenderResult {
   const config: ContainerConfig = {
-    bindings: [NotificationsService, SettingsService, ...bindings],
+    bindings: [...ROOT_BINDINGS, ...bindings.filter((it) => !ROOT_BINDINGS.includes(it))],
     plugins: createContainerPlugins(),
   };
 

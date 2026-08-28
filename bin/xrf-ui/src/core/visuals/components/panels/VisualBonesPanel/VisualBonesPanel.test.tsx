@@ -4,7 +4,6 @@ import { Container } from "@wirestate/core";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { ProjectService } from "@/core/settings/services/project";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -39,7 +38,6 @@ async function renderPanel(): Promise<{ render: RenderResult; service: VisualsSe
   });
 
   const container: Container = mockContainer([
-    ProjectService,
     VisualLoadService,
     VisualMotionService,
     VisualsService,

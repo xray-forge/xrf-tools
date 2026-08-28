@@ -3,12 +3,10 @@ import { Binding, BindingType, Container, getBindingType, Newable, ServiceToken 
 import { isObservableObject } from "@wirestate/mobx";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
-import { createContainerPlugins } from "@/core/container";
-import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
-import { NotificationsService } from "@/core/notifications/services/notifications.service";
-import { ProjectService } from "@/core/settings/services/project";
-import { SettingsService } from "@/core/settings/services/settings";
 import { hasObservableMembers } from "@/lib/mobx";
+
+import { ROOT_BINDINGS } from "./bindings";
+import { createContainerPlugins } from "./plugins";
 
 /**
  * Every service the shipped applications bind, deduplicated.
@@ -21,12 +19,7 @@ import { hasObservableMembers } from "@/lib/mobx";
 function catalogServices(): Array<Binding> {
   // The root container's own bindings come first: an application service may inject one, and resolving it here has to
   // go through the same graph the application would.
-  const bound: Set<Binding> = new Set<Binding>([
-    ProjectService,
-    SettingsService,
-    NotificationsService,
-    ErrorCaptureService,
-  ]);
+  const bound: Set<Binding> = new Set<Binding>(ROOT_BINDINGS);
 
   for (const application of APPLICATION_CATALOG.applications) {
     for (const binding of application.container?.bindings ?? []) {

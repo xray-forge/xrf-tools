@@ -6,8 +6,8 @@ import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { createRoots } from "@/core/assets/lib/roots";
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { EApplicationId } from "@/core/routing/application";
-import { getPathIfExists, getProjectEnginePath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
@@ -29,7 +29,7 @@ export function DialogsEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const dialogsService: DialogsService = useInjection(DialogsService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const isLoading: boolean = dialogsService.project.isLoading;
 
@@ -42,8 +42,7 @@ export function DialogsEditorOpenForm(): ReactElement {
     title: "Select root to read dialogs from",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectEnginePath(projectService.xrfProjectPath)) : null,
+    seed: () => resolveExistingPathRole(EPathRole.CONTENT_ROOT, pathsService.paths),
   });
 
   const path: Nullable<string> = dialogs.value;

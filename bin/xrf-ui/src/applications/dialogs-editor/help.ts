@@ -2,9 +2,9 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const DIALOGS_EDITOR_HELP: IApplicationHelp = {
   summary:
-    "Read-only browser for NPC dialog trees. Open a gamedata tree, a game installation, or the XRF sources to " +
-    "read every `dialogs*.xml` under `configs\\gameplay` as a graph, with each phrase's line resolved from the " +
-    "project's own string tables. Nothing is written; editing arrives in a later phase.",
+    "Read-only browser for NPC dialog trees. Open a gamedata tree, a game installation, or an authored source tree " +
+    "to read every `dialogs*.xml` under `configs\\gameplay` as a graph, with each phrase's line resolved from the " +
+    "same root's own string tables. Nothing is written; editing arrives in a later phase.",
   workflow: [
     "Pick a root and a layout. `Game data` reads phrase text from `configs\\text\\<language>`, `Project sources` " +
       "reads it from multi-language JSON under `translations`. The layout is detected and preselected, but never " +

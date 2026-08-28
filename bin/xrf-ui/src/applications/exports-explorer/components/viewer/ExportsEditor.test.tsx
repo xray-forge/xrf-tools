@@ -6,7 +6,6 @@ import { ExportsExplorerApplication } from "@/applications/exports-explorer/Expo
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportsProject } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor, TValueExportDescriptor } from "@/core/exports";
-import { ProjectService } from "@/core/settings/services/project";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -61,7 +60,7 @@ describe("opened exports editor", () => {
         <ExportsExplorerApplication />
         <ApplicationStatusBar />
       </>,
-      { route: "/exports-explorer", bindings: [ProjectService, ExportsService] }
+      { route: "/exports-explorer", bindings: [ExportsService] }
     );
   }
 
@@ -159,7 +158,7 @@ describe("opened exports editor", () => {
     // draws its own picker whenever nothing is open, so there is nowhere else to go.
     const { findByLabelText, findByText } = renderWithProviders(<ExportsExplorerApplication />, {
       route: "/exports-explorer",
-      bindings: [ProjectService, ExportsService],
+      bindings: [ExportsService],
     });
 
     await userEvent.click(await findByLabelText("Back to Exports explorer"));
@@ -204,7 +203,7 @@ describe("empty exports editor", () => {
 
     const { findAllByText, findByText } = renderWithProviders(<ExportsExplorerApplication />, {
       route: "/exports-explorer",
-      bindings: [ProjectService, ExportsService],
+      bindings: [ExportsService],
     });
 
     expect((await findAllByText("No externs found")).length).toBeGreaterThan(0);

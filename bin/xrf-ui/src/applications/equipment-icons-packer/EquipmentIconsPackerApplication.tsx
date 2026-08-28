@@ -5,13 +5,8 @@ import { EquipmentPackResult } from "@/applications/equipment-icons-packer/compo
 import { EquipmentService, IPackEquipmentResult } from "@/core/equipment-icons";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import {
-  getPathIfExists,
-  getProjectEquipmentDDSPath,
-  getProjectEquipmentSourcePath,
-  getProjectSystemLtxPath,
-} from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -24,7 +19,7 @@ export function EquipmentIconsPackerApplication(): ReactElement {
   const notify: TEmitNotification = useEmitNotification();
 
   const equipmentService: EquipmentService = useInjection(EquipmentService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [result, setResult] = useState<Loadable<Nullable<IPackEquipmentResult>>>(() => createLoadable(null));
 
@@ -37,10 +32,7 @@ export function EquipmentIconsPackerApplication(): ReactElement {
     title: "Select source icons directory",
     isDirectory: true,
     isDisabled: result.isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath
-        ? getPathIfExists(getProjectEquipmentSourcePath(projectService.xrfProjectPath))
-        : null,
+    seed: () => resolveExistingPathRole(EPathRole.EQUIPMENT_ICON_SOURCES, pathsService.paths),
   });
 
   const output: IPathField = usePathField({
@@ -50,8 +42,7 @@ export function EquipmentIconsPackerApplication(): ReactElement {
     filters: [{ name: "dds", extensions: ["dds"] }],
     isSave: true,
     isDisabled: result.isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectEquipmentDDSPath(projectService.xrfProjectPath) : null,
+    seed: () => resolvePathRole(EPathRole.EQUIPMENT_SPRITE, pathsService.paths),
   });
 
   const systemLtx: IPathField = usePathField({
@@ -60,8 +51,7 @@ export function EquipmentIconsPackerApplication(): ReactElement {
     title: "Select system.ltx",
     filters: [{ name: "ltx", extensions: ["ltx"] }],
     isDisabled: result.isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectSystemLtxPath(projectService.xrfProjectPath)) : null,
+    seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
   const onPackEquipmentClicked = useCallback(async () => {

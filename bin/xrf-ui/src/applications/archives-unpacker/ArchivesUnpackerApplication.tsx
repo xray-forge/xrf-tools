@@ -7,8 +7,8 @@ import { archivesCommands } from "@/core/bindings/commands/archives";
 import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectLinkedGamePath, getProjectArchivesUnpackPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole, resolveOutputPath } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -19,7 +19,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Nullable<string>>(null);
@@ -31,8 +31,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
     title: "Select archives directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getExistingProjectLinkedGamePath(projectService.xrfProjectPath) : null,
+    seed: () => resolveExistingPathRole(EPathRole.ARCHIVES, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -42,8 +41,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectArchivesUnpackPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_UNPACKER, pathsService.paths),
   });
 
   const archivesPath: Nullable<string> = source.value;

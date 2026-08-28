@@ -3,7 +3,6 @@ import { ReactElement, useCallback } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { EApplicationId } from "@/core/routing/application";
-import { ProjectService } from "@/core/settings/services/project";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -13,17 +12,17 @@ export function ExportsOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const exportsService: ExportsService = useInjection(ExportsService);
-  const projectService: ProjectService = useInjection(ProjectService);
 
   const isLoading: boolean = exportsService.project.isLoading;
 
   const project: IPathField = usePathField({
     application: EApplicationId.EXPORTS_EXPLORER,
     id: "project",
-    title: "Select project directory",
+    title: "Select script sources directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () => projectService.xrfProjectPath ?? projectService.getXrfProjectPath(),
+    // Unseeded on purpose: a TypeScript source tree is not a path any other tool shares, so it is asked for here
+    // rather than configured once for the one application that reads it.
   });
 
   const onOpen = useCallback(() => {
@@ -46,8 +45,8 @@ export function ExportsOpenForm(): ReactElement {
     >
       <PathFormRow
         isDisabled={isLoading}
-        label={"Project"}
-        description={"Root of the xrf project whose script exports are read"}
+        label={"Script sources"}
+        description={"Root of the TypeScript sources whose extern declarations are read"}
         field={project}
       />
     </PickerForm>

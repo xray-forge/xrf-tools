@@ -24,7 +24,7 @@ interface IPanelRender {
  * @returns Render result and the notifications service used by the panel.
  */
 function renderPanel(seed: Array<INotificationPayload> = [], isDevModeEnabled: boolean = false): IPanelRender {
-  const container: Container = mockContainer([NotificationsService, SettingsService]);
+  const container: Container = mockContainer();
   const service: NotificationsService = container.get(NotificationsService);
   const settingsService: SettingsService = container.get(SettingsService);
 

@@ -5,8 +5,9 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectLinkedGamePath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
@@ -33,15 +34,17 @@ const ARCHIVE_FILTERS: Array<DialogFilter> = [
  */
 export function ArchivesEditorOpenForm(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = archivesService.project.isLoading;
 
-  // Browsing a directory is the primary workflow, so it is the default whenever there is a project whose archives to
+  // Browsing a directory is the primary workflow, so it is the default whenever an installation is configured to
   // browse. Without one, the likelier intent is the isolated volume that was downloaded or extracted on its own.
-  const [mode, setMode] = useState<TOpenMode>(projectService.xrfProjectPath ? "directory" : "archive");
+  const [mode, setMode] = useState<TOpenMode>(
+    pathsService.getPath(EWorkspacePath.GAME_INSTALLATION) ? "directory" : "archive"
+  );
 
   const directory: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_EXPLORER,
@@ -49,8 +52,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
     title: "Select archives directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getExistingProjectLinkedGamePath(projectService.xrfProjectPath) : null,
+    seed: () => resolveExistingPathRole(EPathRole.ARCHIVES, pathsService.paths),
   });
 
   // Unseeded on purpose: the only path a project offers is a directory, which would sit in a volume field looking like

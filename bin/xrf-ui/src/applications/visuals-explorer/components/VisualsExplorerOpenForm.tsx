@@ -5,15 +5,15 @@ import { ReactElement, useCallback, useState } from "react";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectLinkedGamePath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /** Which of the two things the picker is opening. */
 type TOpenMode = "folder" | "model";
@@ -37,20 +37,23 @@ interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
 export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenFormProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = visualsService.visual.isLoading || browseService.visuals.isLoading;
 
-  // Browsing is the primary workflow, so it is the default whenever there is a project whose gamedata to browse.
-  const [mode, setMode] = useState<TOpenMode>(projectService.xrfProjectPath ? "folder" : "model");
+  // Browsing is the primary workflow, so it is the default whenever a tree is configured to browse.
+  const [mode, setMode] = useState<TOpenMode>(
+    pathsService.getPath(EWorkspacePath.GAMEDATA) ?? pathsService.getPath(EWorkspacePath.GAME_INSTALLATION)
+      ? "folder"
+      : "model"
+  );
 
-  const seed = useCallback(async () => {
-    const projectPath: Nullable<string> = projectService.xrfProjectPath;
-
-    return projectPath ? getExistingProjectLinkedGamePath(projectPath) : null;
-  }, [projectService.xrfProjectPath]);
+  const seed = useCallback(
+    () => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths),
+    [pathsService.paths]
+  );
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_EXPLORER,

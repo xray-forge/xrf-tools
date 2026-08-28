@@ -3,7 +3,6 @@ import { userEvent } from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 
 import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
-import { ProjectService } from "@/core/settings/services/project";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -12,7 +11,8 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 describe("ExportsExplorerApplication", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.localStorage.setItem("xrf-project-path", "C:\\projects\\active-xrf");
+    // The picker remembers its own path: nothing configured describes a TypeScript source tree, so exports asks.
+    window.localStorage.setItem("xrf.form.exports-explorer.project", "C:\\projects\\active-xrf");
 
     setMockInvokeResponses({
       ["plugin:exports|get_project"]: null,
@@ -34,7 +34,7 @@ describe("ExportsExplorerApplication", () => {
           <Route path={"/"} element={<div>Application home</div>} />
         </Routes>
       </ApplicationShell>,
-      { route, bindings: [ProjectService] }
+      { route }
     );
   }
 
@@ -50,8 +50,8 @@ describe("ExportsExplorerApplication", () => {
   });
 
   it("resolves the services its descriptor declares, with nothing bound above the shell", async () => {
-    // `ExportsService` is bound by the frame out of `EXPORTS_EXPLORER_APPLICATION.bindings`. Only
-    // `ProjectService` is provided here, so if that wiring broke this would throw rather than render.
+    // `ExportsService` is bound by the frame out of `EXPORTS_EXPLORER_APPLICATION.bindings`. Only the root
+    // services are provided here, so if that wiring broke this would throw rather than render.
     const { findByRole } = renderApplication("/exports-explorer");
 
     await userEvent.click(await findByRole("button", { name: "Open exports" }));

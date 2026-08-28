@@ -6,7 +6,8 @@ import { VisualsService } from "@/applications/visuals-explorer/services/visuals
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { ProjectService } from "@/core/settings/services/project/project.service";
+import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
+import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -333,7 +334,7 @@ describe("VisualsService opening", () => {
     const { selected, buffer } = mockOpenableVisual();
     const { container, service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    container.get(ProjectService).setXrfProjectPath("C:\\project");
+    container.get(PathsService).setPath(EWorkspacePath.GAMEDATA, "C:\\gamedata");
 
     let readParameters: Nullable<Record<string, unknown>> = null;
 
@@ -360,7 +361,7 @@ describe("VisualsService opening", () => {
     expect(readParameters).toEqual({
       logicalPath: "textures\\wpn\\wpn_ak74.dds",
       // Centred on the model: the texture resolved through the model's own tree, so it is read back through it too.
-      roots: createRoots(["C:\\project\\target\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
+      roots: createRoots(["C:\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
     });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });

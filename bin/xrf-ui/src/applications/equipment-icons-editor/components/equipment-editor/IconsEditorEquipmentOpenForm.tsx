@@ -3,8 +3,8 @@ import { ReactElement, useCallback } from "react";
 
 import { EquipmentService } from "@/core/equipment-icons";
 import { EApplicationId } from "@/core/routing/application";
-import { getPathIfExists, getProjectEquipmentDDSPath, getProjectSystemLtxPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -13,7 +13,7 @@ import { Logger, useLogger } from "@/lib/logging";
 export function IconsEditorEquipmentOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
   const equipmentService: EquipmentService = useInjection(EquipmentService);
 
   const isLoading: boolean = equipmentService.spriteImage.isLoading;
@@ -24,8 +24,7 @@ export function IconsEditorEquipmentOpenForm(): ReactElement {
     title: "Select equipment sprite",
     filters: [{ name: "dds", extensions: ["dds"] }],
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectEquipmentDDSPath(projectService.xrfProjectPath)) : null,
+    seed: () => resolveExistingPathRole(EPathRole.EQUIPMENT_SPRITE, pathsService.paths),
   });
 
   const systemLtx: IPathField = usePathField({
@@ -34,8 +33,7 @@ export function IconsEditorEquipmentOpenForm(): ReactElement {
     title: "Select system.ltx",
     filters: [{ name: "ltx", extensions: ["ltx"] }],
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getPathIfExists(getProjectSystemLtxPath(projectService.xrfProjectPath)) : null,
+    seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
   const onOpenEquipmentClicked = useCallback(() => {

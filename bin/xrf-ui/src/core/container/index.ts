@@ -1,1 +1,2 @@
-export * from "@/core/container/plugins";
+export * from "./bindings";
+export * from "./plugins";

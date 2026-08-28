@@ -7,7 +7,6 @@ import { VisualsBrowseService } from "@/applications/visuals-explorer/services/b
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { createRoots } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { ProjectService } from "@/core/settings/services/project";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -27,7 +26,6 @@ async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderRe
   setMockInvokeResponses({ ["plugin:assets|list_assets"]: visuals, ["plugin:visuals|get_model"]: null });
 
   const container: Container = mockContainer([
-    ProjectService,
     VisualLoadService,
     VisualMotionService,
     VisualsBrowseService,

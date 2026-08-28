@@ -7,7 +7,6 @@ import { ArchivesExplorerApplication } from "@/applications/archives-explorer/Ar
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
-import { ProjectService } from "@/core/settings/services/project";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
@@ -64,7 +63,7 @@ describe("opened archives editor", () => {
         <ArchivesExplorerApplication />
         <ApplicationStatusBar />
       </>,
-      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
     );
   }
 
@@ -194,7 +193,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
     );
 
     const detailsButton: HTMLElement = await findByLabelText("File details");
@@ -215,7 +214,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
     );
 
     await userEvent.dblClick(await findByText("texture.dds"));
@@ -232,7 +231,7 @@ describe("opened archives editor", () => {
     // more, and the application already draws its picker whenever nothing is open.
     const { findByLabelText, findByText, queryByText } = renderWithProviders(<ArchivesExplorerApplication />, {
       route: "/archives-explorer",
-      bindings: [AssetService, ProjectService, ArchivesService],
+      bindings: [AssetService, ArchivesService],
     });
 
     await userEvent.click(await findByLabelText("Back to Archives explorer"));
@@ -277,7 +276,7 @@ describe("opened archives editor", () => {
           </ApplicationShellFrame>
         </EditorPanelsProvider>
       </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ProjectService, ArchivesService] }
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
     );
 
     await userEvent.dblClick(await findByText("readme.ltx"));

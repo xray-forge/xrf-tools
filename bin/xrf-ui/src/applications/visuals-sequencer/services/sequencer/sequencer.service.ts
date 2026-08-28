@@ -12,8 +12,8 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getProjectGamedataPath } from "@/core/settings/lib/path/project";
-import { ProjectService } from "@/core/settings/services/project/project.service";
+import { configuredAssetRoots } from "@/core/settings/lib/path/role";
+import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
@@ -92,7 +92,7 @@ export class SequencerService implements IVisualInspection {
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly projectService: ProjectService = inject(ProjectService),
+    private readonly pathsService: PathsService = inject(PathsService),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly sequenceService: VisualSequenceService = inject(VisualSequenceService)
   ) {}
@@ -225,9 +225,6 @@ export class SequencerService implements IVisualInspection {
    * @returns The roots spec to open with.
    */
   private async getRoots(asset: Nullable<string> = null): Promise<XrayRoots> {
-    const projectPath: Nullable<string> = this.projectService.xrfProjectPath;
-    const project: Array<string> = projectPath ? [await getProjectGamedataPath(projectPath)] : [];
-
-    return createRoots(project, asset);
+    return createRoots(configuredAssetRoots(this.pathsService.paths), asset);
   }
 }

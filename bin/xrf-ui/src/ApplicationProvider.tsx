@@ -8,10 +8,7 @@ import { ContainerProvider } from "@wirestate/react";
 import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 
-import { createContainerPlugins } from "@/core/container";
-import { ErrorCaptureService, NotificationsService } from "@/core/notifications/services";
-import { ProjectService } from "@/core/settings/services/project";
-import { SettingsService } from "@/core/settings/services/settings";
+import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { createApplicationStyleCache, createApplicationTheme } from "@/core/theme";
 import { isDevelopmentBuild } from "@/lib/env";
 import { Nullable } from "@/lib/types/general";
@@ -30,7 +27,7 @@ export function ApplicationProvider({
 
   const config: Nullable<ContainerConfig> = useMemo(
     () => ({
-      bindings: [ProjectService, SettingsService, NotificationsService, ErrorCaptureService],
+      bindings: ROOT_BINDINGS,
       plugins: createContainerPlugins(isDevelopmentBuild()),
     }),
     []

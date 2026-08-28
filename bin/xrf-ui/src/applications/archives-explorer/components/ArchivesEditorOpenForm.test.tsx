@@ -7,13 +7,14 @@ import { Container } from "@wirestate/core";
 import { ArchivesEditorOpenForm } from "@/applications/archives-explorer/components/ArchivesEditorOpenForm";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { ProjectService } from "@/core/settings/services/project";
+import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
+import { PathsService } from "@/core/settings/services/paths";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
-const PROJECT_PATH: string = "C:\\projects\\xrf";
+const INSTALLATION_PATH: string = "C:\\Games\\stalker";
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
 
@@ -28,13 +29,14 @@ describe("ArchivesEditorOpenForm", () => {
   });
 
   /**
-   * The mode defaults from the project path, which the root container resolves long before this form mounts. A test
-   * container is provisioned as the form renders, so the path is set on the service rather than awaited.
+   * The mode defaults from the configured installation, which the root container resolves long before this form
+   * mounts. A test container is provisioned as the form renders, so the path is set on the service rather than
+   * awaited.
    */
-  function renderForm(projectPath: Nullable<string> = PROJECT_PATH): RenderResult {
-    const container: Container = mockContainer([AssetService, ProjectService, ArchivesService]);
+  function renderForm(installationPath: Nullable<string> = INSTALLATION_PATH): RenderResult {
+    const container: Container = mockContainer([AssetService, PathsService, ArchivesService]);
 
-    container.get(ProjectService).setXrfProjectPath(projectPath);
+    container.get(PathsService).setPath(EWorkspacePath.GAME_INSTALLATION, installationPath);
 
     return renderWithProviders(<ArchivesEditorOpenForm />, { route: "/archives-explorer", container });
   }

@@ -1,8 +1,7 @@
 import { Binding, Container, ServiceToken } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
-import { createContainerPlugins } from "@/core/container";
-import { ProjectService } from "@/core/settings/services/project";
+import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 
 export interface IInjectedServiceMockDescriptor<T> {
   service: T;
@@ -12,11 +11,13 @@ export interface IInjectedServiceMockDescriptor<T> {
 /**
  * Builds a container wired the way the application wires one.
  *
- * @param bindings - Services to register.
+ * @param bindings - Services to register beside the root ones.
  * @returns A container ready to resolve them.
  */
-export function mockContainer(bindings: Array<Binding>): Container {
-  return new Container({ bindings, plugins: createContainerPlugins() });
+export function mockContainer(bindings: Array<Binding> = []): Container {
+  const roots: Array<Binding> = ROOT_BINDINGS.filter((it: Binding) => !bindings.includes(it));
+
+  return new Container({ bindings: [...roots, ...bindings], plugins: createContainerPlugins() });
 }
 
 /**
@@ -34,7 +35,7 @@ export function mockInjectedService<T>(
   token: ServiceToken<T>,
   bindings: Array<Binding> = []
 ): IInjectedServiceMockDescriptor<T> {
-  const container: Container = mockContainer([AssetService, ProjectService, ...bindings, token as Binding]);
+  const container: Container = mockContainer([AssetService, ...bindings, token as Binding]);
 
   return {
     container,

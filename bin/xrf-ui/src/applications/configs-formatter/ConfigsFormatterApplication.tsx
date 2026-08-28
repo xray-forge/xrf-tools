@@ -8,8 +8,8 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { LtxProjectFormatResult } from "@/core/bindings/types/xrf-ltx";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getProjectConfigsPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -20,7 +20,7 @@ export function ConfigsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [isCheck, setIsCheck] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +33,7 @@ export function ConfigsFormatterApplication(): ReactElement {
     title: "Select configs directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () => (projectService.xrfProjectPath ? getProjectConfigsPath(projectService.xrfProjectPath) : null),
+    seed: () => resolvePathRole(EPathRole.CONFIGS, pathsService.paths),
   });
 
   const onFormat = useCallback(async () => {

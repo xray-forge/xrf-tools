@@ -5,8 +5,8 @@ import { ReactElement, useCallback, useState } from "react";
 import { spawnCommands } from "@/core/bindings/commands/spawn";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { getExistingProjectUnpackedAllSpawnPath, getProjectAllSpawnRepackPath } from "@/core/settings/lib/path";
-import { ProjectService } from "@/core/settings/services/project";
+import { resolveOutputPath } from "@/core/settings/lib/path";
+import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -20,7 +20,7 @@ export function SpawnEditorPackForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const notify: TEmitNotification = useEmitNotification();
 
-  const projectService: ProjectService = useInjection(ProjectService);
+  const pathsService: PathsService = useInjection(PathsService);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Nullable<string>>(null);
@@ -32,8 +32,7 @@ export function SpawnEditorPackForm(): ReactElement {
     title: "Select unpacked spawn directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getExistingProjectUnpackedAllSpawnPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveOutputPath(EApplicationId.SPAWN_UNPACKER, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -43,8 +42,7 @@ export function SpawnEditorPackForm(): ReactElement {
     filters: [{ name: "spawn", extensions: ["spawn"] }],
     isSave: true,
     isDisabled: isLoading,
-    seed: async () =>
-      projectService.xrfProjectPath ? getProjectAllSpawnRepackPath(projectService.xrfProjectPath) : null,
+    seed: () => resolveOutputPath(EApplicationId.SPAWN_PACKER, pathsService.paths, "all.spawn"),
   });
 
   const onPack = useCallback(async () => {
