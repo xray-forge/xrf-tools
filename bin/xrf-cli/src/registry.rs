@@ -1,5 +1,5 @@
 use crate::commands::{
-  archive, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, spawn, texture, thm, translation,
+  archive, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, profile, spawn, texture, thm, translation,
 };
 use crate::core::generic_command::{CommandGroup, GenericCommand};
 
@@ -91,6 +91,12 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
         particle::unpack::UnpackCommand::new_box(),
         particle::verify::VerifyCommand::new_box(),
       ],
+    },
+    CommandGroup {
+      slug: "profile",
+      label: "Profile",
+      about: "Performance measurement tools",
+      commands: vec![profile::run::RunCommand::new_box()],
     },
     CommandGroup {
       slug: "spawn",

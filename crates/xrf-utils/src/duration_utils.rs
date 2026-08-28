@@ -68,6 +68,39 @@ pub mod optional_duration_ms {
   }
 }
 
+/// Serialize a sequence of `Duration`s as whole milliseconds, the workspace wire format for durations.
+///
+/// Use as `#[serde(with = "xrf_utils::duration_ms_vec")]`. Exists for the same reason
+/// [`optional_duration_ms`] does: `serde(with)` applies to the field, not through the container, so a
+/// `Vec<Duration>` would otherwise emit a list of `{ secs, nanos }` objects beside fields carrying a
+/// millisecond count. For a field reporting every measured round, where the whole point is that the
+/// individual figures are comparable with the median beside them.
+pub mod duration_ms_vec {
+  use std::time::Duration;
+
+  use serde::ser::SerializeSeq;
+  use serde::{Deserialize, Deserializer, Serializer};
+
+  pub fn serialize<S: Serializer>(durations: &[Duration], serializer: S) -> Result<S::Ok, S::Error> {
+    let mut sequence = serializer.serialize_seq(Some(durations.len()))?;
+
+    for duration in durations {
+      sequence.serialize_element(&super::duration_to_millis(*duration))?;
+    }
+
+    sequence.end()
+  }
+
+  pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Duration>, D::Error> {
+    Ok(
+      Vec::<u64>::deserialize(deserializer)?
+        .into_iter()
+        .map(Duration::from_millis)
+        .collect(),
+    )
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::time::Duration;
@@ -129,6 +162,40 @@ mod tests {
         duration: Duration::from_millis(742),
         optional: None,
       }
+    );
+  }
+
+  /// A sequence carries the same millisecond count as the scalar beside it, rather than serde's own shape.
+  #[test]
+  fn test_writes_a_sequence_of_millisecond_counts() {
+    #[derive(Debug, Deserialize, PartialEq, Serialize)]
+    struct Measured {
+      #[serde(with = "crate::duration_ms_vec")]
+      runs: Vec<Duration>,
+    }
+
+    let measured: Measured = Measured {
+      runs: vec![Duration::from_millis(4771), Duration::from_millis(4802)],
+    };
+
+    assert_eq!(serde_json::to_string(&measured).unwrap(), r#"{"runs":[4771,4802]}"#);
+    assert_eq!(
+      serde_json::from_str::<Measured>(r#"{"runs":[4771,4802]}"#).unwrap(),
+      measured
+    );
+  }
+
+  #[test]
+  fn test_writes_an_empty_sequence_of_durations() {
+    #[derive(Debug, Serialize)]
+    struct Measured {
+      #[serde(with = "crate::duration_ms_vec")]
+      runs: Vec<Duration>,
+    }
+
+    assert_eq!(
+      serde_json::to_string(&Measured { runs: Vec::new() }).unwrap(),
+      r#"{"runs":[]}"#
     );
   }
 
