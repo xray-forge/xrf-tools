@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::process::{Command as ChildCommand, Output, Stdio};
-use std::time::{Duration, Instant};
+use std::process::{Command as ChildCommand, Output};
+use std::time::Duration;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
@@ -8,6 +8,7 @@ use xrf_output::OutputOptions;
 
 use super::report::{ProfileReportOutput, ProfiledBinaryOutput};
 use super::rounds::{RoundStatistics, interleaved};
+use super::sample::{SampledRun, run_sampled};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -32,6 +33,8 @@ struct Subject {
   path: PathBuf,
   version: Vec<String>,
   runs: Vec<Duration>,
+  peaks: Vec<u64>,
+  means: Vec<u64>,
   exit_codes: Vec<i32>,
 }
 
@@ -116,6 +119,8 @@ impl GenericCommand for RunCommand {
         version: Self::read_version(&path)?,
         path,
         runs: Vec::with_capacity(rounds),
+        peaks: Vec::with_capacity(rounds),
+        means: Vec::with_capacity(rounds),
         exit_codes: Vec::new(),
       });
     }
@@ -129,21 +134,25 @@ impl GenericCommand for RunCommand {
 
     // Warmup is interleaved too: a first round that ran every binary back to back would leave the last one warmest.
     for (_, index) in interleaved(subjects.len(), warmup) {
-      Self::run_once(&subjects[index].path, &arguments)?;
+      run_sampled(&subjects[index].path, &arguments)?;
     }
 
     for (round, index) in interleaved(subjects.len(), rounds) {
       let subject: &mut Subject = &mut subjects[index];
-      let started_at: Instant = Instant::now();
-      let status: Output = Self::run_once(&subject.path, &arguments)?;
-      let elapsed: Duration = started_at.elapsed();
+      let measured: SampledRun = run_sampled(&subject.path, &arguments)?;
 
-      subject.runs.push(elapsed);
+      subject.runs.push(measured.elapsed);
 
-      let code: i32 = status.status.code().unwrap_or(-1);
+      if let Some(peak) = measured.peak_bytes {
+        subject.peaks.push(peak);
+      }
 
-      if !subject.exit_codes.contains(&code) {
-        subject.exit_codes.push(code);
+      if let Some(mean) = measured.mean_bytes {
+        subject.means.push(mean);
+      }
+
+      if !subject.exit_codes.contains(&measured.exit_code) {
+        subject.exit_codes.push(measured.exit_code);
       }
 
       xrf_output::info!(
@@ -151,15 +160,15 @@ impl GenericCommand for RunCommand {
         "round {}/{rounds} {}: {}",
         round + 1,
         subject.label,
-        xrf_utils::format_duration(elapsed)
+        xrf_utils::format_duration(measured.elapsed)
       );
     }
 
     let mut measured: Vec<ProfiledBinaryOutput> = Vec::with_capacity(subjects.len());
 
     for subject in subjects {
-      let statistics: RoundStatistics =
-        RoundStatistics::of(&subject.runs).expect("a measured round to exist after a non-zero count");
+      let statistics: RoundStatistics = RoundStatistics::of(&subject.runs, &subject.peaks, &subject.means)
+        .expect("a measured round to exist after a non-zero count");
 
       measured.push(ProfiledBinaryOutput::new(
         subject.label,
@@ -179,16 +188,26 @@ impl GenericCommand for RunCommand {
     }
 
     for entry in &measured {
+      let memory: String = match (entry.peak_bytes, entry.mean_bytes) {
+        (Some(peak), Some(mean)) => format!(
+          ", peak {} / mean {}",
+          xrf_utils::format_bytes(peak),
+          xrf_utils::format_bytes(mean)
+        ),
+        // Absent together: both come from the same samples, and a command that finished inside one interval has none.
+        _ => String::new(),
+      };
+
       match entry.delta_percent {
         Some(delta) => xrf_output::info!(
           output,
-          "{}: median {} ({delta:+.2}%)",
+          "{}: median {} ({delta:+.2}%){memory}",
           entry.label,
           xrf_utils::format_duration(entry.median)
         ),
         None => xrf_output::info!(
           output,
-          "{}: median {}",
+          "{}: median {}{memory}",
           entry.label,
           xrf_utils::format_duration(entry.median)
         ),
@@ -239,20 +258,5 @@ impl RunCommand {
         .filter(|line| !line.is_empty())
         .collect(),
     )
-  }
-
-  /// Runs one measured invocation, with its output discarded.
-  ///
-  /// Inherited streams would put the child's own logging into this run's, and a piped stream a caller never drains can
-  /// fill its buffer and block the very work being timed.
-  fn run_once(path: &Path, arguments: &[String]) -> CommandResult<Output> {
-    ChildCommand::new(path)
-      .args(arguments)
-      .stdout(Stdio::null())
-      .stderr(Stdio::null())
-      .output()
-      .map_err(|error| {
-        XrfError::new_io_error(format!("Failed to run '{}': {error}", path.display()), error.kind()).into()
-      })
   }
 }

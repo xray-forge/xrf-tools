@@ -41,6 +41,12 @@ pub struct ProfiledBinaryOutput {
   pub fastest: Duration,
   #[serde(with = "xrf_utils::duration_ms")]
   pub slowest: Duration,
+  /// Largest resident set seen during a round, as the median of the per-round peaks.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub peak_bytes: Option<u64>,
+  /// Mean resident set across a round's samples, as the median of the per-round means.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub mean_bytes: Option<u64>,
   /// Exit codes observed, deduplicated.
   ///
   /// Reported because a command that started failing halfway through the session is measuring something other than the
@@ -70,6 +76,8 @@ impl ProfiledBinaryOutput {
       median: statistics.median,
       fastest: statistics.fastest,
       slowest: statistics.slowest,
+      peak_bytes: statistics.peak_bytes,
+      mean_bytes: statistics.mean_bytes,
       exit_codes,
       delta_percent: None,
     }

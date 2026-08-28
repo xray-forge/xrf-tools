@@ -19,6 +19,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1.53.1", features = ["rt-multi-thread"] }
 walkdir = { workspace = true }
+sysinfo = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
