@@ -6,6 +6,7 @@ use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::iterator::chunk_iterator::ChunkIterator;
+use crate::reader::chunk_trailing::ChunkTrailing;
 use crate::source::chunk_data_source::ChunkDataSource;
 use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 
@@ -150,7 +151,56 @@ impl<T: ChunkDataSource> ChunkReader<T> {
 
   /// Returns all children and advances this reader through the child sequence.
   pub fn read_children(&mut self) -> XrfResult<Vec<Self>> {
-    ChunkIterator::<T>::from_start(self)?.collect()
+    let (chunks, trailing) = self.read_children_with_trailing()?;
+
+    match trailing {
+      Some(trailing) => Err(trailing.error),
+      None => Ok(chunks),
+    }
+  }
+
+  /// Returns all children, and on the first malformed header the bytes from the last good boundary rather than an
+  /// error.
+  ///
+  /// [`Self::read_children`] is this call with every trailing byte rejected, so the two cannot disagree about what a
+  /// well-formed child sequence is. Only the handling of what follows one differs, and only for a caller that knows the
+  /// format well enough to account for those bytes; see [`ChunkTrailing`].
+  ///
+  /// The cursor is left at the end of the last well-formed child, not at the end of the source.
+  pub fn read_children_with_trailing(&mut self) -> XrfResult<(Vec<Self>, Option<ChunkTrailing<T>>)> {
+    let total: u64 = self.data.end_pos().saturating_sub(self.data.start_pos());
+    let mut chunks: Vec<Self> = Vec::new();
+    let mut consumed: u64 = 0;
+    let mut failure: Option<XrfError> = None;
+
+    for chunk in ChunkIterator::<T>::from_start(self)? {
+      match chunk {
+        Ok(chunk) => {
+          consumed = chunk.position.saturating_add(chunk.size);
+          chunks.push(chunk);
+        }
+        Err(error) => {
+          failure = Some(error);
+          break;
+        }
+      }
+    }
+
+    let Some(error) = failure else {
+      return Ok((chunks, None));
+    };
+
+    self.data.set_seek(SeekFrom::Start(consumed))?;
+
+    Ok((
+      chunks,
+      Some(ChunkTrailing {
+        position: consumed,
+        size: total.saturating_sub(consumed),
+        data: self.data.slice(consumed..total),
+        error,
+      }),
+    ))
   }
 
   /// Verifies that the cursor consumed the entire chunk.
@@ -295,6 +345,85 @@ mod tests {
     assert_eq!(
       children.iter().map(|child| child.size).collect::<Vec<u64>>(),
       sizes.iter().map(|size| *size as u64).collect::<Vec<u64>>()
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reports_no_trailing_for_a_well_formed_sequence() -> XrfResult {
+    let bytes: Vec<u8> = [new_chunk_bytes(0, &[0xFF; 8]), new_chunk_bytes(1, &[0xEE; 4])].concat();
+    let (children, trailing) = ChunkReader::from_bytes(&bytes)?.read_children_with_trailing()?;
+
+    assert_eq!(children.len(), 2);
+    assert!(trailing.is_none(), "Expect a complete sequence to leave nothing over");
+
+    Ok(())
+  }
+
+  #[test]
+  fn reports_trailing_bytes_instead_of_failing() -> XrfResult {
+    let mut bytes: Vec<u8> = new_chunk_bytes(7, &[0xFF; 8]);
+
+    bytes.extend_from_slice(b"leftover");
+
+    let (children, trailing) = ChunkReader::from_bytes(&bytes)?.read_children_with_trailing()?;
+    let trailing = trailing.expect("Expect the unaccounted bytes to be reported");
+
+    assert_eq!(children.len(), 1, "Expect the well-formed chunk to still be read");
+    assert_eq!(trailing.position, 16, "Expect the offset of the first unaccounted byte");
+    assert_eq!(trailing.size, 8);
+
+    // The same walk over the same bytes must still be able to refuse them, with the message it always used.
+    let strict: String = match ChunkReader::from_bytes(&bytes)?.read_children() {
+      Ok(_) => panic!("Expected the strict walk to reject unaccounted trailing bytes"),
+      Err(error) => error.to_string(),
+    };
+
+    assert_eq!(
+      strict,
+      trailing.error.to_string(),
+      "Expect the strict walk to fail with exactly the error the tolerant one hands back"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reports_trailing_bytes_too_short_for_a_header() -> XrfResult {
+    let mut bytes: Vec<u8> = new_chunk_bytes(7, &[0xFF; 8]);
+
+    bytes.extend_from_slice(b"\r\n");
+
+    let (children, trailing) = ChunkReader::from_bytes(&bytes)?.read_children_with_trailing()?;
+    let trailing = trailing.expect("Expect a fragment shorter than a header to be reported, not swallowed");
+
+    assert_eq!(children.len(), 1);
+    assert_eq!(trailing.position, 16);
+    assert_eq!(trailing.size, 2);
+    assert!(
+      trailing.error.to_string().contains("Incomplete chunk header"),
+      "Unexpected error: {}",
+      trailing.error
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn leaves_the_cursor_at_the_last_well_formed_child() -> XrfResult {
+    let mut bytes: Vec<u8> = new_chunk_bytes(7, &[0xFF; 8]);
+
+    bytes.extend_from_slice(b"leftover");
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
+
+    reader.read_children_with_trailing()?;
+
+    assert_eq!(
+      reader.read_bytes_len(),
+      16,
+      "Expect the reader to have consumed the child sequence and nothing after it"
     );
 
     Ok(())

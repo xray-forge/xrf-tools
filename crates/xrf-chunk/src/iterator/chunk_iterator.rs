@@ -86,7 +86,8 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
 
     if end_position > self.reader.end_pos() {
       return self.fail(XrfError::new_invalid_error(format!(
-        "Chunk {id:#010x} at position {position} declares {size} bytes, beyond source end {}",
+        "Chunk {id:#010x} at position {position} declares {size} bytes, {} remain before source end {}",
+        self.reader.end_pos().saturating_sub(position),
         self.reader.end_pos()
       )));
     }
@@ -133,7 +134,11 @@ mod tests {
       Err(error) => error.to_string(),
     };
 
-    assert!(error.contains("beyond source end"), "Unexpected error: {error}");
+    // The bytes that remain are the number a reader needs; making it subtract them reads as a reader defect.
+    assert!(
+      error.contains("declares 10 bytes, 2 remain before source end 10"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

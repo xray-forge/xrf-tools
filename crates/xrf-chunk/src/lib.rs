@@ -11,6 +11,7 @@ pub use crate::chunk_trait::{ChunkReadWrite, ChunkReadWriteList, ChunkReadWriteO
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
 pub use crate::reader::chunk_reader::ChunkReader;
+pub use crate::reader::chunk_trailing::ChunkTrailing;
 pub use crate::source::chunk_data_source::ChunkDataSource;
 pub use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 pub use crate::types::XRayByteOrder;
