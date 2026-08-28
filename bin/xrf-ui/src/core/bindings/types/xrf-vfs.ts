@@ -147,6 +147,39 @@ export type XrayRoot = {
   mode?: XrayMountMode;
 };
 
+/** The kind a probed path belongs to. */
+export type XrayRootKind =
+  /** The path declares an installation with `fsgame.ltx`. */
+  | "installation"
+  /** The path is one archive volume, or a directory of them. */
+  | "volumes"
+  /** The path is a directory holding content an engine would load. */
+  | "root"
+  /** The path is a directory, but nothing beneath it looks like game data. */
+  | "unrecognized"
+  /** Nothing is there, or it cannot be read. */
+  | "missing";
+
+/**
+ * What a path turns out to be when planned, and why.
+ *
+ * Exists because planning alone cannot answer the question a surface asks. [`XrayMountMode::Auto`] plans any readable
+ * directory as a root, so a source repository and a game data tree plan identically; only the evidence separates them.
+ */
+export type XrayRootProbe = {
+  /** What the path is, as planning sees it. */
+  kind: XrayRootKind;
+  /**
+   * Which of the well-known entries sit directly beneath the path.
+   *
+   * Empty for an installation, whose content is behind its declaration rather than beside it, and empty for a
+   * directory holding nothing an engine would load.
+   */
+  evidence: Array<string>;
+  /** How many sources the path plans into, or zero when it plans into none. */
+  mounts: number;
+};
+
 /**
  * Everywhere a caller wants read: an optional subject asset, then ordered roots.
  *

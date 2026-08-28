@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use xrf_error::XrfResult;
 
 use crate::mount::xray_root::{
   CONFIGS_DIRECTORY, MESHES_DIRECTORY, SOUNDS_DIRECTORY, SPAWNS_DIRECTORY, TEXTURES_DIRECTORY,
 };
-use crate::{FsgameFile, XrayMountMode, XrayMountPlan};
+use crate::{FsgameFile, XrayMountPlan};
 
 /// Well-known entries a probe reports finding, in the order it reports them.
 ///
@@ -55,11 +56,43 @@ pub enum XrayRootKind {
   Missing,
 }
 
+impl XrayRootKind {
+  /// What a path is, before anything is opened or judged by its contents.
+  ///
+  /// The single classifier behind both describing a path and planning one, so a description cannot promise a kind
+  /// that mounting would then disagree with. Answers only [`Self::Installation`], [`Self::Volumes`] or
+  /// [`Self::Root`]; the other two are refinements a probe adds from what it finds.
+  pub(crate) fn of(path: &Path) -> Self {
+    if path.join(FsgameFile::FILE_NAME).is_file() {
+      Self::Installation
+    } else if XrayMountPlan::is_volume(path) || XrayMountPlan::holds_volumes(path) {
+      Self::Volumes
+    } else {
+      Self::Root
+    }
+  }
+
+  /// The plan this kind means for `path`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a declared `fsgame.ltx` cannot be read, decoded, or parsed.
+  pub(crate) fn plan(self, path: &Path) -> XrfResult<XrayMountPlan> {
+    match self {
+      Self::Installation => XrayMountPlan::from_fsgame(path),
+      Self::Volumes => XrayMountPlan::volumes(path),
+      // A directory nothing identifies is still mounted as the root it was named as. The two kinds only a probe
+      // reports mean the same thing here, because each still describes a path a caller may ask to mount.
+      Self::Root | Self::Unrecognized | Self::Missing => XrayMountPlan::root(path),
+    }
+  }
+}
+
 impl XrayRootProbe {
   /// Describes what `path` is without opening anything.
   ///
-  /// Planning is attempted, so an `fsgame.ltx` that is present but unreadable reports [`XrayRootKind::Unrecognized`]
-  /// rather than an installation the caller cannot mount.
+  /// Planning is attempted rather than assumed, so an `fsgame.ltx` that is present but unreadable is reported as
+  /// unrecognized instead of as an installation the caller cannot mount.
   pub fn describe(path: impl AsRef<Path>) -> Self {
     let path: &Path = path.as_ref();
 
@@ -72,22 +105,27 @@ impl XrayRootProbe {
     }
 
     let evidence: Vec<String> = Self::find_evidence(path);
-    let plan: Option<XrayMountPlan> = XrayMountMode::Auto.plan(path).ok();
-    let mounts: usize = plan.as_ref().map_or(0, XrayMountPlan::len);
+    let kind: XrayRootKind = XrayRootKind::of(path);
 
-    let kind: XrayRootKind = if plan.is_none() {
-      XrayRootKind::Unrecognized
-    } else if path.join(FsgameFile::FILE_NAME).is_file() {
-      XrayRootKind::Installation
-    } else if XrayMountPlan::is_volume(path) || XrayMountPlan::holds_volumes(path) {
-      XrayRootKind::Volumes
-    } else if evidence.is_empty() {
-      XrayRootKind::Unrecognized
-    } else {
-      XrayRootKind::Root
+    let Ok(plan) = kind.plan(path) else {
+      return Self {
+        kind: XrayRootKind::Unrecognized,
+        evidence,
+        mounts: 0,
+      };
     };
 
-    Self { kind, evidence, mounts }
+    Self {
+      // Planning alone cannot tell game data from any other readable directory, so what is beneath it decides: a tree
+      // holding nothing an engine would load is the mistake this probe exists to catch.
+      kind: if kind == XrayRootKind::Root && evidence.is_empty() {
+        XrayRootKind::Unrecognized
+      } else {
+        kind
+      },
+      evidence,
+      mounts: plan.len(),
+    }
   }
 
   fn find_evidence(path: &Path) -> Vec<String> {

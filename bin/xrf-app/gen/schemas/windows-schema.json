@@ -2397,16 +2397,22 @@
           "markdownDescription": "Denies the unpack_directory command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-list-assets`\n- `allow-read-asset`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-list-assets`\n- `allow-probe-root`\n- `allow-read-asset`",
           "type": "string",
           "const": "assets:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-list-assets`\n- `allow-read-asset`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-list-assets`\n- `allow-probe-root`\n- `allow-read-asset`"
         },
         {
           "description": "Enables the list_assets command without any pre-configured scope.",
           "type": "string",
           "const": "assets:allow-list-assets",
           "markdownDescription": "Enables the list_assets command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the probe_root command without any pre-configured scope.",
+          "type": "string",
+          "const": "assets:allow-probe-root",
+          "markdownDescription": "Enables the probe_root command without any pre-configured scope."
         },
         {
           "description": "Enables the read_asset command without any pre-configured scope.",
@@ -2419,6 +2425,12 @@
           "type": "string",
           "const": "assets:deny-list-assets",
           "markdownDescription": "Denies the list_assets command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the probe_root command without any pre-configured scope.",
+          "type": "string",
+          "const": "assets:deny-probe-root",
+          "markdownDescription": "Denies the probe_root command without any pre-configured scope."
         },
         {
           "description": "Denies the read_asset command without any pre-configured scope.",
@@ -6741,16 +6753,22 @@
           "markdownDescription": "Denies the unpack_file command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-reveal-path`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`",
           "type": "string",
           "const": "system:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-reveal-path`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`"
         },
         {
           "description": "Enables the get_build_info command without any pre-configured scope.",
           "type": "string",
           "const": "system:allow-get-build-info",
           "markdownDescription": "Enables the get_build_info command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_default_output_root command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:allow-get-default-output-root",
+          "markdownDescription": "Enables the get_default_output_root command without any pre-configured scope."
         },
         {
           "description": "Enables the reveal_path command without any pre-configured scope.",
@@ -6763,6 +6781,12 @@
           "type": "string",
           "const": "system:deny-get-build-info",
           "markdownDescription": "Denies the get_build_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_default_output_root command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:deny-get-default-output-root",
+          "markdownDescription": "Denies the get_default_output_root command without any pre-configured scope."
         },
         {
           "description": "Denies the reveal_path command without any pre-configured scope.",

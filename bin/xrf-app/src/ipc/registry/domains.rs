@@ -8,6 +8,7 @@ macro_rules! for_each_tauri_command_domain {
       // the domain that parses it.
       assets => "assets" {
         list_assets => crate::plugins::assets::commands::list_assets::assets_list_assets,
+        probe_root => crate::plugins::assets::commands::probe_root::assets_probe_root,
       }
       @raw {
         read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::commands::read_asset::assets_read_asset,
@@ -76,6 +77,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       system => "system" {
         get_build_info => crate::plugins::system::commands::get_build_info::system_get_build_info,
+        get_default_output_root => crate::plugins::system::commands::get_default_output_root::system_get_default_output_root,
         reveal_path => crate::plugins::system::commands::reveal_path::system_reveal_path,
       }
       visuals => "visuals" {

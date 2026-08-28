@@ -15,6 +15,16 @@ export const systemCommands = {
    */
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /**
+   * Where tools write when no output directory has been configured.
+   *
+   * A portable copy keeps its output beside itself, which is where somebody unpacking archives next to their game data
+   * expects to find it. An installed copy cannot: its own directory belongs to the installer and is not writable
+   * without elevation, so seeding a path there would only fail at the moment of writing. Writability decides between
+   * the two, tested by a temporary file rather than by creating the output tree, because a suggestion no one accepts
+   * must leave nothing behind.
+   */
+  getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
+  /**
    * Show a path in the desktop's own file manager.
    *
    * This exists instead of the shell plugin's `open` because that command validates what it is handed

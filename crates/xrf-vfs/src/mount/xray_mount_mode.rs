@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
 use crate::mount::xray_root::implied_install_root;
-use crate::{FsgameFile, XrayMountPlan};
+use crate::{FsgameFile, XrayMountPlan, XrayRootKind};
 
 /// How a caller's path is turned into mounts.
 ///
@@ -40,18 +40,11 @@ impl XrayMountMode {
     let path: &Path = path.as_ref();
 
     match self {
-      // A directory of volumes is neither an installation nor a loose root, and mounting it as the latter answers for
-      // `textures.db0` instead of for the assets inside it - which is what the fsgame planner already avoids when it
-      // meets the same directory through a declaration.
-      Self::Auto => {
-        if Self::declares_installation(path) {
-          XrayMountPlan::from_fsgame(path)
-        } else if XrayMountPlan::is_volume(path) || XrayMountPlan::holds_volumes(path) {
-          XrayMountPlan::volumes(path)
-        } else {
-          XrayMountPlan::root(path)
-        }
-      }
+      // Classified rather than branched on here, so that what a path is has one answer: a surface describing a path
+      // and this planning it must never disagree. A directory of volumes is neither an installation nor a loose root,
+      // and mounting it as the latter answers for `textures.db0` instead of for the assets inside it - which is what
+      // the fsgame planner already avoids when it meets the same directory through a declaration.
+      Self::Auto => XrayRootKind::of(path).plan(path),
       Self::Directory => XrayMountPlan::root(path),
       Self::Installation => XrayMountPlan::from_fsgame(path),
       Self::ContainingInstallation => {

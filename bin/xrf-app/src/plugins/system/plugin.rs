@@ -1,5 +1,7 @@
-use tauri::Runtime;
 use tauri::plugin::TauriPlugin;
+use tauri::{Manager, Runtime};
+
+use crate::plugins::system::state::SystemPathsState;
 
 /// Desktop integration that belongs to no editor in particular.
 pub struct SystemPlugin {}
@@ -9,6 +11,11 @@ impl SystemPlugin {
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new(Self::NAME)
+      .setup(|application, _| {
+        application.manage(SystemPathsState::new(application.path().app_local_data_dir().ok()));
+
+        Ok(())
+      })
       .invoke_handler(crate::core::logging::warn_on_unhandled_command(
         Self::NAME,
         crate::ipc::registry::system::handler(),

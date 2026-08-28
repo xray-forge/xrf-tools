@@ -2,7 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { XrayAsset, XrayAssetType, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayAssetType, XrayRootProbe, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const assetsCommands = {
@@ -17,4 +17,14 @@ export const assetsCommands = {
    */
   listAssets: (roots: XrayRoots, kind: XrayAssetType) =>
     __TAURI_INVOKE<Array<XrayAsset>>("plugin:assets|list_assets", { roots, kind }),
+  /**
+   * Describe what a path is, without mounting it.
+   *
+   * Answers the question a path setting asks and planning alone cannot: [`xrf_vfs::XrayMountMode::Auto`] plans any
+   * readable directory as a root, so a source repository and a game data tree plan identically. The probe carries the
+   * evidence that separates them, so a surface can say a directory holds nothing an engine would load.
+   *
+   * Cannot fail — an unreadable or absent path is one of the answers rather than an error.
+   */
+  probeRoot: (path: string) => __TAURI_INVOKE<XrayRootProbe>("plugin:assets|probe_root", { path }),
 };
