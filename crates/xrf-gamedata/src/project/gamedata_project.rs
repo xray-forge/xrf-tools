@@ -7,8 +7,8 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{
-  XrayAsset, XrayAssetType, XrayCachePolicy, XrayLookupScope, XrayMountMode, XrayPathCollision, XraySkippedMount,
-  XrayVfs,
+  XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountMode, XrayPathCollision,
+  XraySkippedMount, XrayVfs,
 };
 
 use crate::project::gamedata_project_options::GamedataProjectReadOptions;
@@ -111,6 +111,15 @@ impl GamedataProject {
   /// Mounted sources this project resolves through, owned by its config project.
   pub(crate) fn vfs(&self) -> &XrayVfs {
     self.ltx_project.vfs()
+  }
+
+  /// How well retention has served this project's reads so far.
+  ///
+  /// Cumulative over the project's lifetime rather than per operation, because the store belongs to the mounted world
+  /// and outlives any one sweep. A caller that runs a single operation may read it as that operation's account; one
+  /// that runs several has to difference it itself.
+  pub fn get_cache_stats(&self) -> XrayCacheStats {
+    self.vfs().get_cache().get_stats()
   }
 
   /// Mounts and subtree the project's operations apply to.

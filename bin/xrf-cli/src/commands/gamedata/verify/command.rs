@@ -117,7 +117,9 @@ impl GenericCommand for VerifyCommand {
     let status: GamedataVerificationStatus = verify_result.get_status();
 
     // Deposited before the verdict is turned into an outcome, so a failing check still reports the findings.
-    context.set_result(|| GamedataVerificationReportPayload::new(&root, &verify_result).build())?;
+    context.set_result(|| {
+      GamedataVerificationReportPayload::new(&root, &verify_result, project.get_cache_stats()).build()
+    })?;
 
     match status {
       GamedataVerificationStatus::Passed => {

@@ -4,10 +4,13 @@ use std::time::Duration;
 use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
+use xrf_vfs::XrayCacheStats;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GamedataVerificationReportOutput {
+  /// What retention held and how it served the sweep, which no timing can show.
+  cache: XrayCacheStats,
   checks: Vec<GamedataVerificationCheckReportOutput>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
@@ -40,11 +43,12 @@ struct GamedataVerificationFindingOutput {
 pub struct GamedataVerificationReportPayload<'a> {
   root: &'a Path,
   report: &'a GamedataVerificationResult,
+  cache: XrayCacheStats,
 }
 
 impl<'a> GamedataVerificationReportPayload<'a> {
-  pub fn new(root: &'a Path, report: &'a GamedataVerificationResult) -> Self {
-    Self { root, report }
+  pub fn new(root: &'a Path, report: &'a GamedataVerificationResult, cache: XrayCacheStats) -> Self {
+    Self { root, report, cache }
   }
 
   pub fn build(&self) -> GamedataVerificationReportOutput {
@@ -56,6 +60,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       .collect();
 
     GamedataVerificationReportOutput {
+      cache: self.cache,
       checks,
       duration: self.report.get_duration(),
       status: self.report.get_status().to_string(),
@@ -110,6 +115,7 @@ mod tests {
     Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
   };
   use xrf_report::RuleId;
+  use xrf_vfs::XrayCacheStats;
 
   use super::GamedataVerificationReportPayload;
 
@@ -176,8 +182,16 @@ mod tests {
       }),
     );
 
+    let cache: XrayCacheStats = XrayCacheStats {
+      entries: 3,
+      bytes: 4096,
+      hits: 12,
+      misses: 5,
+      refused: 1,
+    };
+
     let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report).build()).unwrap();
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -190,5 +204,35 @@ mod tests {
     assert_eq!(json["checks"][0]["findings"][0]["assetPath"], "textures/a.dds");
     assert_eq!(json["checks"][0]["findings"][1]["assetPath"], "textures/z.dds");
     assert_eq!(json["checks"][0]["findings"][1]["ruleId"], "textures.dds");
+  }
+
+  /// Retention is invisible to every timing the report already carries, so it is reported rather than inferred.
+  #[test]
+  fn reports_how_retention_served_the_sweep() {
+    let root: PathBuf = temporary_gamedata_root();
+    let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
+    let cache: XrayCacheStats = XrayCacheStats {
+      entries: 3,
+      bytes: 4096,
+      hits: 12,
+      misses: 5,
+      refused: 1,
+    };
+
+    let json: serde_json::Value =
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache).build()).unwrap();
+
+    fs::remove_dir_all(&root).unwrap();
+
+    assert_eq!(
+      json["cache"],
+      serde_json::json!({
+        "entries": 3,
+        "bytes": 4096,
+        "hits": 12,
+        "misses": 5,
+        "refused": 1,
+      })
+    );
   }
 }
