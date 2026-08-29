@@ -101,7 +101,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
       error={error ?? undefined}
       submitLabel={"Unpack"}
       status={result ? <Alert severity={"success"}>Archives unpacked.</Alert> : null}
-      result={result ? <ArchivesUnpackResult result={result} /> : null}
+      result={result ? <ArchivesUnpackResult result={result} outputPath={archivesUnpackPath} /> : null}
       onSubmit={onUnpackArchivesPathClicked}
     >
       <PathFormRow

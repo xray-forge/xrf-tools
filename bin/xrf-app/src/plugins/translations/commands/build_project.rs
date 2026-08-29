@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_translation::{
   ProjectBuildLanguageSummary, ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_roots,
 };
+use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
@@ -24,8 +25,6 @@ pub struct TranslationBuildSummary {
   pub sources: u32,
   /// String tables written, across every language.
   pub files: u32,
-  /// Where they were written, so the result can offer to open it.
-  pub output_dir: String,
   pub languages: Vec<ProjectBuildLanguageSummary>,
 }
 
@@ -47,11 +46,11 @@ pub async fn translations_build_project(
 ) -> TauriResult<TranslationBuildSummary> {
   // `all` is accepted: compiling every language at once is the ordinary build.
   let language: TranslationLanguage = TranslationLanguage::from_str(&language)?;
-  let output_label: String = output_dir.display().to_string();
 
   log::info!(
-    "Building translations: {} root(s), '{language}', into {output_label}",
-    roots.roots.len()
+    "Building translations: {} root(s), '{language}', into {}",
+    roots.roots.len(),
+    format_path(&output_dir)
   );
 
   let options: ProjectBuildOptions = ProjectBuildOptions {
@@ -79,7 +78,6 @@ pub async fn translations_build_project(
     language: language.to_string(),
     sources: result.sources,
     files: result.files,
-    output_dir: output_label,
     languages: result.languages,
   })
 }

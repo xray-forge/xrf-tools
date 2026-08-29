@@ -2,8 +2,8 @@
 //!
 //! A completed run reports `xrf_pack::ArchiveUnpackResult` directly: it is already this workspace's
 //! shape for what unpacking produced, shared with the desktop app over IPC, and a second CLI-only
-//! shape for the same operation is the drift the reporting contract exists to remove. Known limit -
-//! it serializes paths as `PathBuf`, so a non-Unicode host name fails a report whose run succeeded.
+//! shape for the same operation is the drift the reporting contract exists to remove. Both branches
+//! render their paths through `xrf_utils::format_path`, so `destination` means one thing either way.
 //!
 //! A dry run produced no such result, so what it reports is what it would have written: the same
 //! summary it printed, saying plainly that nothing was.

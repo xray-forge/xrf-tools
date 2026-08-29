@@ -8,11 +8,14 @@ import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/Comm
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable } from "@/lib/types/general";
 
 type TLanguageRow = ProjectBuildLanguageSummary & { id: string };
 
 export interface ITranslationsBuildResultProps extends BaseComponentProps {
   result: TranslationBuildSummary;
+  /** Where the build was told to write; the summary does not carry an address. */
+  outputPath: Nullable<string>;
 }
 
 export function TranslationsBuildResult({
@@ -21,6 +24,7 @@ export function TranslationsBuildResult({
   className,
   sx,
   result,
+  outputPath,
 }: ITranslationsBuildResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
@@ -57,7 +61,7 @@ export function TranslationsBuildResult({
       actions={
         <RevealPathButton
           application={EApplicationId.TRANSLATIONS_BUILDER}
-          path={result.outputDir}
+          path={outputPath}
           label={"Show output"}
         />
       }

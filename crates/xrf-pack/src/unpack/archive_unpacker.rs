@@ -9,6 +9,7 @@ use xrf_archive::ArchiveFileDescriptor;
 use xrf_archive::ArchiveProject;
 use xrf_archive::write_descriptor_contents;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
@@ -138,7 +139,7 @@ impl ArchiveUnpacker {
 
     Ok(ArchiveExtractDirectoryResult {
       prefix: normalized,
-      destination: destination.as_ref().to_string_lossy().into(),
+      destination: format_path(destination.as_ref()).to_string(),
       extracted_count,
       size,
     })
@@ -169,7 +170,7 @@ impl ArchiveUnpacker {
 
     Ok(ArchiveExtractResult {
       name: descriptor.name.clone(),
-      destination: destination.as_ref().to_string_lossy().into(),
+      destination: format_path(destination.as_ref()).to_string(),
       size: descriptor.size_real as u64,
     })
   }
@@ -184,9 +185,9 @@ impl ArchiveUnpacker {
       archives: project
         .archives
         .iter()
-        .map(|it| it.path.to_str().unwrap().into())
+        .map(|it| format_path(&it.path).to_string())
         .collect(),
-      destination: destination.to_str().unwrap().into(),
+      destination: format_path(destination).to_string(),
       duration: unpacked_at,
       prepare_duration: prepared_at,
       unpack_duration: unpacked_at.saturating_sub(prepared_at),

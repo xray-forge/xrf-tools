@@ -81,9 +81,18 @@ export type ArchivePackResult = {
   duration: number;
 };
 
+/**
+ * What unpacking a whole archive project produced.
+ *
+ * The two path fields are rendered for a person through `xrf_utils::format_path`, never addresses: a
+ * host name that is not valid Unicode renders lossily rather than failing a run whose files are already
+ * on disk. A caller that needs to open the destination uses the path it supplied.
+ */
 export type ArchiveUnpackResult = {
+  /** Volume files that were read, rendered for display. */
   archives: Array<string>;
   duration: number;
+  /** Root the files were written under, rendered for display. */
   destination: string;
   prepareDuration: number;
   unpackedSize: number;

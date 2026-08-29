@@ -104,8 +104,6 @@ export type TranslationBuildSummary = {
   sources: number;
   /** String tables written, across every language. */
   files: number;
-  /** Where they were written, so the result can offer to open it. */
-  outputDir: string;
   languages: Array<ProjectBuildLanguageSummary>;
 };
 

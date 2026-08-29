@@ -8,12 +8,15 @@ import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFin
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
+import { Nullable } from "@/lib/types/general";
 
 interface IArchivesUnpackResultProps {
   result: ArchiveUnpackResult;
+  /** Where the run was told to write. The result's rendered `destination` is display text, not an address. */
+  outputPath: Nullable<string>;
 }
 
-export function ArchivesUnpackResult({ result }: IArchivesUnpackResultProps): ReactElement {
+export function ArchivesUnpackResult({ result, outputPath }: IArchivesUnpackResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [{ field: "archive", headerName: "Archive", flex: 1, minWidth: 320, cellClassName: "monospace" }],
     []
@@ -43,7 +46,7 @@ export function ArchivesUnpackResult({ result }: IArchivesUnpackResultProps): Re
       actions={
         <RevealPathButton
           application={EApplicationId.ARCHIVES_UNPACKER}
-          path={result.destination}
+          path={outputPath}
           label={"Show output"}
         />
       }

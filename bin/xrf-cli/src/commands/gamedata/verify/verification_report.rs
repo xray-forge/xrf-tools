@@ -4,6 +4,7 @@ use std::time::Duration;
 use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
+use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayCacheStats, XrayReadTraceSummary};
 
 #[derive(Serialize)]
@@ -107,11 +108,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       asset_path: finding.subject().map(|subject| {
         let asset_path: &Path = Path::new(subject);
 
-        asset_path
-          .strip_prefix(self.root)
-          .unwrap_or(asset_path)
-          .to_string_lossy()
-          .replace('\\', "/")
+        to_portable_path_string(asset_path.strip_prefix(self.root).unwrap_or(asset_path))
       }),
       message: finding.message().to_string(),
       rule_id: finding.rule_id().to_string(),

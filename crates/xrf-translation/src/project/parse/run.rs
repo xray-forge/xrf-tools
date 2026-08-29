@@ -245,7 +245,7 @@ fn read_existing(target: &Path, result: &mut ProjectParseResult) -> XrfResult<Tr
   }
 
   match fs::read(target).map_err(XrfError::from).and_then(|data| {
-    let subject: String = target.display().to_string();
+    let subject: String = format_path(target).to_string();
 
     parse_json(&subject, &data)
   }) {

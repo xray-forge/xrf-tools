@@ -114,7 +114,7 @@ pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> Xr
 
     result.sources += 1;
 
-    build_parsed(&path.as_ref().display().to_string(), &parsed, options, &mut result)?;
+    build_parsed(&format_path(path.as_ref()).to_string(), &parsed, options, &mut result)?;
   } else {
     log::info!("Skip file {}", format_path(path.as_ref()));
     xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));

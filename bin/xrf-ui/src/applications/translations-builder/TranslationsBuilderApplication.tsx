@@ -126,7 +126,7 @@ export function TranslationsBuilderApplication(): ReactElement {
       error={error ?? undefined}
       submitLabel={"Build"}
       status={result ? <Alert severity={"success"}>Translations built.</Alert> : null}
-      result={result ? <TranslationsBuildResult result={result} /> : null}
+      result={result ? <TranslationsBuildResult result={result} outputPath={outputPath} /> : null}
       onSubmit={onBuild}
     >
       <PathFormRow

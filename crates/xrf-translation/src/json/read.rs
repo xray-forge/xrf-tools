@@ -6,6 +6,7 @@ use std::path::Path;
 use serde::de::{Error as _, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::types::{TranslationEntry, TranslationJson};
 
@@ -23,7 +24,7 @@ pub(crate) fn read_json(path: &Path) -> XrfResult<TranslationJson> {
 
   File::open(path)?.read_to_end(&mut data)?;
 
-  parse_json(&path.display().to_string(), &data)
+  parse_json(&format_path(path).to_string(), &data)
 }
 
 /// Parse a multi-language translation source already in hand.

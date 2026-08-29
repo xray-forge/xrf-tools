@@ -108,8 +108,8 @@ impl GenericCommand for UnpackCommand {
       context.set_result(|| {
         ArchiveUnpackDryReport::new(
           &archive_project,
-          &xrf_utils::to_portable_path_string(path),
-          &xrf_utils::to_portable_path_string(&destination),
+          &format_path(path).to_string(),
+          &format_path(&destination).to_string(),
         )
       })?;
     } else {

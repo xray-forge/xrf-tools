@@ -17,7 +17,7 @@ pub use project_projection::{
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_typescript::{TypeScriptSymbolResolver, parse_typescript_file};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, to_portable_path_string};
 
 use crate::extern_manifest::{ExternExport, ExternManifest, ParsedExternManifest};
 
@@ -139,7 +139,7 @@ impl ExternManifestParser {
       ))
     })?;
 
-    Ok(relative.to_string_lossy().replace('\\', "/"))
+    Ok(to_portable_path_string(relative))
   }
 }
 
