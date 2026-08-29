@@ -125,8 +125,10 @@ export class VisualMotionService {
     // Cleared rather than left standing: `play` below is a no-op while this says playback is already running, which
     // would leave the controls claiming to play a motion whose ticker was just stopped.
     this.isPlaying = false;
-    this.posed = this.posed.asLoading(null);
-    this.frame = 0;
+    // The pose on screen is kept while the next one bakes, rather than dropped. Dropping it put the model back in its
+    // bind pose for the length of a read, so switching between two motions meant watching the skeleton snap flat in
+    // between - the frame stays put with it, since a frame index means nothing without the bake it counts into.
+    this.posed = this.posed.asLoading();
 
     try {
       const bake: VisualMotionBake = yield* call(visualsCommands.openMotion(name));
@@ -141,6 +143,7 @@ export class VisualMotionService {
         );
       }
 
+      this.frame = 0;
       this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
 
       if (resume) {

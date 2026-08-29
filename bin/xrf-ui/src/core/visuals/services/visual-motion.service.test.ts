@@ -252,6 +252,47 @@ describe("VisualMotionService playback state", () => {
     expect(service.frame).toBe(1);
   });
 
+  it("holds the pose on screen while the next motion bakes", async () => {
+    // Dropping it put the model back in its bind pose for the length of a read, so switching between two motions
+    // meant watching the skeleton snap flat in between.
+    const first: VisualMotionBake = mockVisualMotionBake({ name: "norm_walk_fwd_1" });
+    const second: VisualMotionBake = mockVisualMotionBake({ name: "norm_idle_0", frameCount: 5 });
+
+    let releaseSecond: Nullable<() => void> = null;
+
+    const pendingSecond: Promise<VisualMotionBake> = new Promise((resolve) => {
+      releaseSecond = () => resolve(second);
+    });
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_motion"]: (parameters?: Record<string, unknown>) =>
+        (parameters as { name: string }).name === first.name ? first : pendingSecond,
+      ["plugin:visuals|read_motion"]: (parameters?: Record<string, unknown>) =>
+        mockVisualMotionTransforms((parameters as { name: string }).name === first.name ? first : second),
+    });
+
+    const { service } = mockInjectedService(VisualMotionService);
+
+    await service.open(first.name);
+    service.pause();
+    service.seek(2);
+
+    // Held rather than awaited, and cast the way `visual-load.service.test.ts` casts a flow it has to hold.
+    const opening: Promise<void> = service.open(second.name) as unknown as Promise<void>;
+
+    // Still the motion the viewport is showing, on the frame it was left on: a frame index means nothing without the
+    // bake it counts into, so neither moves until both can.
+    expect(service.posed.isLoading).toBe(true);
+    expect(service.posed.value?.bake.name).toBe(first.name);
+    expect(service.frame).toBe(2);
+
+    (releaseSecond as unknown as () => void)();
+    await opening;
+
+    expect(service.posed.value?.bake.name).toBe(second.name);
+    expect(service.frame).toBe(0);
+  });
+
   it("stays paused through a change of motion", async () => {
     // Comparing two motions frame by frame should not mean pausing each one again.
     mockMotion();
