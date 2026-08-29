@@ -711,17 +711,67 @@ lazy_static! {
     ClsId::WpScope => AlifeClass::CseAlifeItem,
     ClsId::WpSilen => AlifeClass::CseAlifeItem,
     ClsId::WpVAL => AlifeClass::CseAlifeItemWeaponMagazined,
+    ClsId::ZAcidF => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZAmeba => AlifeClass::CseAlifeZoneVisual,
+    ClsId::ZBFuzz => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZCFire => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZDead => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZGalant => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZMbald => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZMincer => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZNoGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRadio => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZRustyH => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZTeamBs => AlifeClass::CseAlifeTeamBaseZone,
     ClsId::ZTorrid => AlifeClass::CseAlifeTorridZone,
+    ClsId::ZsAmeba => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZsBFuzz => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZsGalan => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsMBald => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsMince => AlifeClass::CseAlifeAnomalousZone,
+    ClsId::ZsNGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsTorrd => AlifeClass::CseAlifeTorridZone,
   };
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::data::meta::alife_class::AlifeClass;
+  use crate::data::meta::cls_id::ClsId;
+
+  /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
+  /// class it registers it to. No spawn in the mounted corpora declares a section for most of them, so the registry
+  /// is what records the engine's answer.
+  #[test]
+  fn maps_every_engine_zone_clsid_to_its_server_class() {
+    for (cls_id, class) in [
+      (ClsId::ZMbald, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZMincer, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZAcidF, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZGalant, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZRadio, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZBFuzz, AlifeClass::CseAlifeZoneVisual),
+      (ClsId::ZRustyH, AlifeClass::CseAlifeZoneVisual),
+      (ClsId::ZDead, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZTeamBs, AlifeClass::CseAlifeTeamBaseZone),
+      (ClsId::ZTorrid, AlifeClass::CseAlifeTorridZone),
+      (ClsId::ZAmeba, AlifeClass::CseAlifeZoneVisual),
+      (ClsId::ZNoGrav, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZCFire, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZsBFuzz, AlifeClass::CseAlifeZoneVisual),
+      (ClsId::ZsMBald, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZsGalan, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZsMince, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZsAmeba, AlifeClass::CseAlifeZoneVisual),
+      (ClsId::ZsRadio, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZsNGrav, AlifeClass::CseAlifeAnomalousZone),
+    ] {
+      assert_eq!(
+        AlifeClass::from_cls_id(&cls_id),
+        class,
+        "unexpected class for {cls_id:?}"
+      );
+    }
+  }
 }
