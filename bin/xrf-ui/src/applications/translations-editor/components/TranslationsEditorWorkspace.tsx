@@ -8,6 +8,10 @@ import {
   ITranslationRow,
   TranslationsTable,
 } from "@/applications/translations-editor/components/editor/TranslationsTable";
+import {
+  ITranslationValidation,
+  useTranslationValidation,
+} from "@/applications/translations-editor/lib/use-translation-validation";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationFile, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -23,7 +27,12 @@ export function TranslationsEditorWorkspace(): ReactElement {
   const [selectedId, setSelectedId] = useState<Nullable<string>>(null);
   const [reference, setReference] = useState<string>("");
   const [target, setTarget] = useState<string>("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { getErrorOf, validate }: ITranslationValidation = useTranslationValidation({
+    file: selectedFile,
+    language: target,
+    validateText: (language: string, text: string) => translationsService.validateText(language, text),
+  });
 
   const file: Nullable<TranslationFile> = selectedFile ? (project?.files[selectedFile] ?? null) : null;
 
@@ -39,7 +48,7 @@ export function TranslationsEditorWorkspace(): ReactElement {
             reference: translationsService.resolveValue(selectedFile, reference, id),
             target: translationsService.resolveValue(selectedFile, target, id),
             isEdited: Boolean(pending && id in pending),
-            error: errors[id] ?? null,
+            error: getErrorOf(id),
           };
         })
       : [];
@@ -54,15 +63,9 @@ export function TranslationsEditorWorkspace(): ReactElement {
 
       // Asked at commit rather than at save, so a character the code page cannot hold is reported
       // where it was typed instead of at the end of a batch.
-      void translationsService.validateText(target, value).then((error: Nullable<string>) =>
-        setErrors((current: Record<string, string>) => {
-          const { [id]: _cleared, ...rest } = current;
-
-          return error ? { ...rest, [id]: error } : rest;
-        })
-      );
+      validate(id, value);
     },
-    [selectedFile, target, translationsService]
+    [selectedFile, target, translationsService, validate]
   );
 
   useEffect(() => {

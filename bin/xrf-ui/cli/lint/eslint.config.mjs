@@ -140,6 +140,20 @@ export default [
       "no-duplicate-imports": "error",
       "no-multi-spaces": "error",
       "no-multiple-empty-lines": ["error", { max: 1, maxBOF: 1 }],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@testing-library/react",
+              importNames: ["screen"],
+              message:
+                "Query through the render result instead: `const { findByRole } = renderWithProviders(...)`. " +
+                "`screen` searches the whole document, so a test cannot say which render it is asserting on.",
+            },
+          ],
+        },
+      ],
       "no-trailing-spaces": "error",
       "object-curly-newline": ["error", { consistent: true, multiline: true }],
       "object-curly-spacing": ["error", "always"],
