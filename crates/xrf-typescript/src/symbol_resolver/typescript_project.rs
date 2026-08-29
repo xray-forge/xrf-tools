@@ -102,12 +102,18 @@ struct TypeScriptCompilerOptions {
 }
 
 /// Read the compiler options needed for native module resolution.
+///
+/// The two failures are separated the way `parse_typescript_file` separates its own: a configuration
+/// that cannot be read is an `XrfError::Io`, and one whose content is malformed an `XrfError::Invalid`.
 fn read_typescript_config(path: &Path) -> XrfResult<TypeScriptConfig> {
   let source: String = fs::read_to_string(path).map_err(|error| {
-    XrfError::new_invalid_error(format!(
-      "Failed to read TypeScript configuration '{}': {error}",
-      format_path(path),
-    ))
+    XrfError::new_io_error(
+      format!(
+        "Failed to read TypeScript configuration '{}': {error}",
+        format_path(path),
+      ),
+      error.kind(),
+    )
   })?;
 
   serde_json::from_str(&source).map_err(|error| {

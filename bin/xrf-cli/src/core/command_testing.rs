@@ -22,10 +22,22 @@ pub fn run_command<T: GenericCommand>(command: &T, arguments: &[String]) -> Comm
 /// asks what the command reported rather than reading a file. Pass `--json` or `--report` in
 /// `arguments`: without one, nothing asked for a result and the command is right to skip building it.
 pub fn run_command_for_result<T: GenericCommand>(command: &T, arguments: &[String]) -> CommandResult<Option<Value>> {
-  let matches: ArgMatches = add_reporting_arguments(command.init()).try_get_matches_from(arguments)?;
+  let (verdict, result) = run_command_with_result(command, arguments);
+
+  verdict.map(|()| result)
+}
+
+/// Runs a command and returns its verdict alongside whatever result it deposited.
+///
+/// The pair is what a failing check needs: findings are deposited before the verdict becomes an
+/// outcome, so a helper that carries only the result drops them on the one path they exist for.
+pub fn run_command_with_result<T: GenericCommand>(command: &T, arguments: &[String]) -> (CommandResult, Option<Value>) {
+  let matches: ArgMatches = match add_reporting_arguments(command.init()).try_get_matches_from(arguments) {
+    Ok(matches) => matches,
+    Err(error) => return (Err(error.into()), None),
+  };
   let mut context: CommandContext = CommandContext::new(&ReportingOptions::from_matches(&matches));
+  let verdict: CommandResult = command.execute(&matches, &mut context);
 
-  command.execute(&matches, &mut context)?;
-
-  Ok(context.take_result())
+  (verdict, context.take_result())
 }

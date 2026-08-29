@@ -8,6 +8,7 @@ mod value_parser;
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 pub use project_projection::{
@@ -34,13 +35,21 @@ impl ExternManifestParser {
   }
 
   /// Scan `declarations_root` and parse every eligible TypeScript declaration.
+  ///
+  /// Failures split by whose defect they are, which is what `externs export --check` reads to pick a
+  /// verdict: declarations that were read and judged - a syntax error, a malformed declaration, a
+  /// duplicate name - are `Parsing` or `Invalid`, while a root that cannot be walked and a source
+  /// that cannot be read are `Io`.
   pub fn parse_directory(&self, declarations_root: &Path) -> XrfResult<ParsedExternManifest> {
     // todo: Allow single file parsing?
     if !declarations_root.is_dir() {
-      return Err(XrfError::new_invalid_error(format!(
-        "Extern source root '{}' is not a directory.",
-        format_path(declarations_root),
-      )));
+      return Err(XrfError::new_io_error(
+        format!(
+          "Extern source root '{}' is not a directory.",
+          format_path(declarations_root),
+        ),
+        ErrorKind::NotADirectory,
+      ));
     }
 
     let files: Vec<PathBuf> = self.read_source_files(declarations_root);
@@ -148,6 +157,7 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
 
+  use xrf_error::XrfError;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::ExternManifestParser;
@@ -265,13 +275,11 @@ mod tests {
       "export {}; extern(\"test\", (): boolean => true); extern(\"test\", (): boolean => false);",
     );
 
-    assert!(
-      parser
-        .parse_directory(&root)
-        .unwrap_err()
-        .to_string()
-        .contains("Duplicate extern")
-    );
+    // A duplicate is content the parser judged, so it must not arrive as an `Io` failure.
+    let error: XrfError = parser.parse_directory(&root).unwrap_err();
+
+    assert!(error.to_string().contains("Duplicate extern"), "{error}");
+    assert!(matches!(error, XrfError::Invalid { .. }), "{error}");
   }
 
   #[test]
@@ -469,11 +477,10 @@ mod tests {
   fn rejects_a_missing_source_root() {
     let root: PathBuf = build_absolute_generated_test_resource_path("extern-parser/missing");
 
-    let error = ExternManifestParser::new()
-      .parse_directory(&root)
-      .unwrap_err()
-      .to_string();
+    // A root that cannot be walked is the environment refusing, never a declaration to report on.
+    let error: XrfError = ExternManifestParser::new().parse_directory(&root).unwrap_err();
 
-    assert!(error.contains("is not a directory"), "{error}");
+    assert!(error.to_string().contains("is not a directory"), "{error}");
+    assert!(matches!(error, XrfError::Io { .. }), "{error}");
   }
 }

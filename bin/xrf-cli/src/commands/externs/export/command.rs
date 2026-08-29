@@ -80,11 +80,11 @@ impl GenericCommand for ExportCommand {
 
     let output: OutputOptions = context.get_output().clone();
     let format: ExternFormat = Self::resolve_format(matches, output_dir, check)?;
-    let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
-
-    let externs: usize = parsed.manifest.exports.len();
 
     if let Some(path) = output_dir {
+      // Writing judges nothing, so invalid declarations are simply work the command cannot do.
+      let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
+      let externs: usize = parsed.manifest.exports.len();
       let content: String = render_extern_manifest(&parsed.manifest, format, line_endings)?;
 
       Self::write_output(path, &content)?;
@@ -96,34 +96,61 @@ impl GenericCommand for ExportCommand {
 
     let path: &PathBuf = check.expect("Checked path is required after validation");
 
-    match Self::verify_artifact(path, format, &parsed.manifest, line_endings) {
-      Ok(()) => {
-        xrf_output::info!(
-          output,
-          "Extern artifact '{}' matches {externs} declarations.",
-          format_path(path)
-        );
-
-        context.set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, Vec::new()))
-      }
-      // A mismatched or unparseable artifact is the judged content failing the check; an
-      // unreadable one is an execution failure.
-      Err(error @ (XrfError::Verify { .. } | XrfError::Invalid { .. })) => {
-        xrf_output::failure!(output, "{error}");
-
-        // Deposited before the verdict becomes an outcome, so a failing check still reports the mismatch.
-        context.set_result(|| {
-          ExternsExportReport::checked(declarations_root, path, format, externs, vec![error.to_string()])
-        })?;
-
-        Err(CommandError::new_check_failed(1))
-      }
-      Err(error) => Err(error.into()),
-    }
+    Self::check_artifact(context, declarations_root, path, format, line_endings)
   }
 }
 
 impl ExportCommand {
+  /// Judge an artifact against the declarations it is supposed to describe.
+  ///
+  /// The declarations are checked content here just as the artifact is: a malformed tree, a
+  /// declaration this parser cannot read a contract from, or a name declared twice is a finding, and
+  /// only an unreadable input - a refused root, a source the filesystem will not hand over - stays an
+  /// execution failure.
+  fn check_artifact(
+    context: &mut CommandContext,
+    declarations_root: &Path,
+    path: &Path,
+    format: ExternFormat,
+    line_endings: Option<LineEndings>,
+  ) -> CommandResult {
+    let output: OutputOptions = context.get_output().clone();
+
+    let (externs, finding): (usize, Option<XrfError>) =
+      match ExternManifestParser::new().parse_directory(declarations_root) {
+        Err(error @ XrfError::Io { .. }) => return Err(error.into()),
+        // Declarations that never parsed exported nothing, and the count says so.
+        Err(error) => (0, Some(error)),
+        Ok(parsed) => {
+          let externs: usize = parsed.manifest.exports.len();
+
+          match Self::verify_artifact(path, format, &parsed.manifest, line_endings) {
+            Ok(()) => (externs, None),
+            Err(error @ XrfError::Io { .. }) => return Err(error.into()),
+            Err(error) => (externs, Some(error)),
+          }
+        }
+      };
+
+    let Some(error) = finding else {
+      xrf_output::info!(
+        output,
+        "Extern artifact '{}' matches {externs} declarations.",
+        format_path(path)
+      );
+
+      return context.set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, Vec::new()));
+    };
+
+    xrf_output::failure!(output, "{error}");
+
+    // Deposited before the verdict becomes an outcome, so a failing check still reports what it found.
+    context
+      .set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, vec![error.to_string()]))?;
+
+    Err(CommandError::new_check_failed(1))
+  }
+
   fn resolve_format(
     matches: &ArgMatches,
     output: Option<&PathBuf>,
