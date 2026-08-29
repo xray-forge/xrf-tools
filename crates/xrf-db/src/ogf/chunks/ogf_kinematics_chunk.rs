@@ -4,6 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_format_size;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OgfKinematicsChunk {
@@ -63,7 +64,7 @@ impl OgfKinematicsChunk {
   /// caller to make visibly, not something this type does on its behalf.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.source_chunk_id == OgfKinematicsChunk::CHUNK_ID {
-      writer.write_u32::<T>(self.motion_refs.len() as u32)?;
+      writer.write_u32::<T>(to_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
 
       for motion_ref in &self.motion_refs {
         writer.write_w1251_string(motion_ref)?;

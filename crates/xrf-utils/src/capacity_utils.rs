@@ -38,11 +38,40 @@ pub fn new_bounded_vec<T>(count: u64, budget: u64, min_record_size: u64, what: &
   Ok(vector)
 }
 
+/// A fixed-width format field a length can be narrowed into.
+///
+/// The label is carried here rather than read from [`std::any::type_name`], whose output the standard library does not
+/// guarantee, because it reaches the user inside an error message.
+pub trait FormatWidth: Sized + TryFrom<usize> {
+  const LABEL: &'static str;
+}
+
+impl FormatWidth for u8 {
+  const LABEL: &'static str = "u8";
+}
+
+impl FormatWidth for u16 {
+  const LABEL: &'static str = "u16";
+}
+
+impl FormatWidth for u32 {
+  const LABEL: &'static str = "u32";
+}
+
+/// Narrow an in-memory length into the fixed-width field its format stores it in.
+///
+/// A binary format states a count or a size in a field of a fixed width, and an `as` cast into that width truncates
+/// silently: the file is then written with a length that does not describe its own payload, and the defect only
+/// surfaces when something reads it back. `what` names the collection or payload being written.
+pub fn to_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> {
+  T::try_from(value).map_err(|_| XrfError::new_invalid_error(format!("{what} exceeds the {} format limit", T::LABEL)))
+}
+
 #[cfg(test)]
 mod tests {
   use xrf_error::XrfResult;
 
-  use crate::capacity_utils::{assert_count_fits, new_bounded_vec};
+  use crate::capacity_utils::{assert_count_fits, new_bounded_vec, to_format_size};
 
   #[test]
   fn accepts_count_that_fits_the_budget() -> XrfResult {
@@ -96,5 +125,39 @@ mod tests {
       .to_string();
 
     assert!(error.contains("only 8 remain"), "Unexpected error: {error}");
+  }
+
+  #[test]
+  fn narrows_a_length_that_fits_its_format_field() -> XrfResult {
+    assert_eq!(to_format_size::<u8>(255, "test records")?, 255u8);
+    assert_eq!(to_format_size::<u16>(65535, "test records")?, 65535u16);
+    assert_eq!(to_format_size::<u32>(u32::MAX as usize, "test records")?, u32::MAX);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_a_length_past_its_format_field() {
+    assert_eq!(
+      to_format_size::<u8>(256, "test records")
+        .expect_err("expect the length to exceed its format field")
+        .to_string(),
+      "Invalid error: test records exceeds the u8 format limit"
+    );
+
+    assert_eq!(
+      to_format_size::<u16>(65536, "test records")
+        .expect_err("expect the length to exceed its format field")
+        .to_string(),
+      "Invalid error: test records exceeds the u16 format limit"
+    );
+
+    // The u32 boundary is reachable here and nowhere else: the helper takes a length rather than a collection.
+    assert_eq!(
+      to_format_size::<u32>(u32::MAX as usize + 1, "test records")
+        .expect_err("expect the length to exceed its format field")
+        .to_string(),
+      "Invalid error: test records exceeds the u32 format limit"
+    );
   }
 }

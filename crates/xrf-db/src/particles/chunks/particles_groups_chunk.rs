@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
-use xrf_utils::open_export_file;
+use xrf_utils::{open_export_file, to_format_size};
 
 use crate::constants::META_TYPE_FIELD;
 use crate::data::particles::particle_group::ParticleGroup;
@@ -52,7 +52,8 @@ impl ChunkReadWrite for ParticlesGroupsChunk {
       let mut group_writer: ChunkWriter = ChunkWriter::new();
 
       group_writer.write_xr::<T, _>(group)?;
-      writer.write_all(&group_writer.flush_chunk_into_buffer::<T>(index as u32)?)?;
+      writer
+        .write_all(&group_writer.flush_chunk_into_buffer::<T>(to_format_size(index, "particle group chunk id")?)?)?;
     }
 
     log::info!("Written groups chunk, {} bytes", writer.bytes_written());

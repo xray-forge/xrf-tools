@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::ogf::ogf_bone::OgfBone;
 
@@ -37,7 +37,7 @@ impl ChunkReadWrite for OgfBonesChunk {
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.bones.len() as u32)?;
+    writer.write_u32::<T>(to_format_size(self.bones.len(), "ogf bones")?)?;
 
     for bone in &self.bones {
       writer.write_xr::<T, _>(bone)?

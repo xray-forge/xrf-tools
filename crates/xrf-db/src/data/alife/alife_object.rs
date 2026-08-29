@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::{assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64};
+use xrf_utils::{
+  assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
+};
 
 use crate::constants::{FLAG_SPAWN_DESTROY_ON_SPAWN, MINIMAL_SUPPORTED_SPAWN_VERSION, NET_ACTION_SPAWN};
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
@@ -106,9 +108,16 @@ impl ChunkReadWrite for AlifeObject {
     let spawn_id: u16 = spawn_reader.read_u16::<T>()?;
     let inherited_size: u16 = spawn_reader.read_u16::<T>()?;
 
+    // Checked: a prefix smaller than its own two-byte field must be an error, not an underflow.
+    let inherited_data_size: u64 = u64::from(inherited_size).checked_sub(2).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "ALife object inherited size {inherited_size} is less than its own two-byte prefix"
+      ))
+    })?;
+
     assert_equal(
-      inherited_size as u64 - 2,
-      spawn_reader.end_pos() - spawn_reader.cursor_pos(),
+      inherited_data_size,
+      spawn_reader.read_bytes_remain(),
       "Expect correct size of inherited data for ALife object",
     )?;
 
@@ -189,16 +198,25 @@ impl ChunkReadWrite for AlifeObject {
 
     self.inherited.write::<T>(&mut inherited_data_writer)?;
 
-    object_data_writer.write_u16::<T>(inherited_data_writer.bytes_written() as u16 + 2)?;
+    object_data_writer.write_u16::<T>(to_format_size(
+      inherited_data_writer.bytes_written() + 2,
+      "alife object inherited data",
+    )?)?;
     object_data_writer.write_all(inherited_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
-    data_spawn_writer.write_u16::<T>(object_data_writer.bytes_written() as u16)?;
+    data_spawn_writer.write_u16::<T>(to_format_size(
+      object_data_writer.bytes_written(),
+      "alife object spawn data",
+    )?)?;
     data_spawn_writer.write_all(object_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
     updated_data_writer.write_u16::<T>(0)?;
     updated_data_writer.write_all(&self.update_data)?;
 
-    data_update_writer.write_u16::<T>(updated_data_writer.bytes_written() as u16)?;
+    data_update_writer.write_u16::<T>(to_format_size(
+      updated_data_writer.bytes_written(),
+      "alife object update data",
+    )?)?;
     data_update_writer.write_all(updated_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
     writer.write_all(
@@ -292,7 +310,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write};
   use std::path::PathBuf;
 
-  use byteorder::WriteBytesExt;
+  use byteorder::{ByteOrder, WriteBytesExt};
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
@@ -306,6 +324,7 @@ mod tests {
 
   use crate::data::alife::alife_object::AlifeObject;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+  use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
@@ -539,6 +558,143 @@ mod tests {
     assert_eq!(serialized.to_string(), serialized);
 
     assert_eq!(serde_json::from_str::<AlifeObject>(&serialized)?, original);
+
+    Ok(())
+  }
+  /// The smallest object the reader accepts: a graph point carries two strings and four bytes.
+  fn new_graph_point_object() -> AlifeObject {
+    AlifeObject {
+      id: 342,
+      net_action: 1,
+      section: String::from("graph_point"),
+      clsid: ClsId::AiGraph,
+      name: String::from("test-graph-point"),
+      script_game_id: 2,
+      script_rp: 3,
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      direction: Vector3d::new(3.0, 2.0, 1.0),
+      respawn_time: 0,
+      parent_id: 2143,
+      phantom_id: 0,
+      script_flags: 33,
+      version: 128,
+      game_type: 1,
+      script_version: 10,
+      client_data_size: 0,
+      spawn_id: 2355,
+      inherited: AlifeObjectInherited::CseAlifeGraphPoint(Box::new(AlifeGraphPoint {
+        connection_point_name: String::from("connection-point"),
+        connection_level_name: String::from("connection-level"),
+        location0: 1,
+        location1: 2,
+        location2: 3,
+        location3: 4,
+      })),
+      update_data: Vec::new(),
+    }
+  }
+
+  #[test]
+  fn rejects_inherited_data_past_its_size_field() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.inherited = AlifeObjectInherited::CseAlifeGraphPoint(Box::new(AlifeGraphPoint {
+      connection_point_name: "x".repeat(70000),
+      connection_level_name: String::from("connection-level"),
+      location0: 1,
+      location1: 2,
+      location2: 3,
+      location3: 4,
+    }));
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      original
+        .write::<XRayByteOrder>(&mut writer)
+        .expect_err("expect the inherited data to exceed its size field")
+        .to_string(),
+      "Invalid error: alife object inherited data exceeds the u16 format limit"
+    );
+  }
+
+  #[test]
+  fn rejects_spawn_data_past_its_size_field() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.name = "x".repeat(70000);
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      original
+        .write::<XRayByteOrder>(&mut writer)
+        .expect_err("expect the spawn data to exceed its size field")
+        .to_string(),
+      "Invalid error: alife object spawn data exceeds the u16 format limit"
+    );
+  }
+
+  #[test]
+  fn rejects_update_data_past_its_size_field() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.update_data = vec![0; 70000];
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      original
+        .write::<XRayByteOrder>(&mut writer)
+        .expect_err("expect the update data to exceed its size field")
+        .to_string(),
+      "Invalid error: alife object update data exceeds the u16 format limit"
+    );
+  }
+
+  #[test]
+  fn rejects_inherited_size_below_its_own_prefix() -> XrfResult {
+    let original: AlifeObject = new_graph_point_object();
+
+    let mut inherited_writer: ChunkWriter = ChunkWriter::new();
+
+    original.inherited.write::<XRayByteOrder>(&mut inherited_writer)?;
+
+    let inherited_length: usize = inherited_writer.bytes_written();
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+
+    // The inherited payload ends the spawn chunk, so its size prefix is the two bytes before it. Eight bytes of outer
+    // chunk header, then the spawn chunk's own header, then its payload.
+    let spawn_end: usize = 16 + XRayByteOrder::read_u32(&bytes[12..16]) as usize;
+    let prefix_at: usize = spawn_end - inherited_length - 2;
+
+    assert_eq!(
+      XRayByteOrder::read_u16(&bytes[prefix_at..prefix_at + 2]),
+      inherited_length as u16 + 2,
+      "Expect the inherited size prefix at the computed offset"
+    );
+
+    for size in [0u16, 1u16] {
+      let mut corrupted: Vec<u8> = bytes.clone();
+
+      XRayByteOrder::write_u16(&mut corrupted[prefix_at..prefix_at + 2], size);
+
+      let mut reader: ChunkReader<InMemoryChunkDataSource> =
+        ChunkReader::from_bytes(&corrupted)?.read_child_by_index(0)?;
+
+      let error: XrfError = AlifeObject::read::<XRayByteOrder, _>(&mut reader)
+        .expect_err("expect the inherited size prefix to be rejected");
+
+      assert_eq!(
+        error.to_string(),
+        format!("Invalid error: ALife object inherited size {size} is less than its own two-byte prefix")
+      );
+    }
 
     Ok(())
   }

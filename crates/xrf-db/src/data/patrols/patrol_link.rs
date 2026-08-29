@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::export::LtxImportExport;
 use crate::file_import::read_ltx_field;
@@ -72,7 +72,7 @@ impl ChunkReadWrite for PatrolLink {
   /// Write patrol link data into chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u32::<T>(self.index)?;
-    writer.write_u32::<T>(self.links.len() as u32)?;
+    writer.write_u32::<T>(to_format_size(self.links.len(), "patrol links")?)?;
 
     for (to, weight) in &self.links {
       writer.write_u32::<T>(*to)?;

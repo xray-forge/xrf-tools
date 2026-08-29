@@ -2,6 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_format_size;
 
 use crate::OgfFile;
 
@@ -44,7 +45,7 @@ impl ChunkReadWrite for OgfChildrenChunk {
 
       // todo: Child write.
 
-      child_writer.flush_chunk_into::<T>(writer, index as u32)?;
+      child_writer.flush_chunk_into::<T>(writer, to_format_size(index, "ogf child chunk id")?)?;
     }
 
     todo!("Implement OGF file writer here");

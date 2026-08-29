@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::ogf::ogf_motion_mark::OgfMotionMark;
 
@@ -101,7 +101,7 @@ impl OgfMotionDefinition {
   }
 
   pub fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, definitions: &[Self], version: u16) -> XrfResult {
-    writer.write_u16::<T>(definitions.len() as u16)?;
+    writer.write_u16::<T>(to_format_size(definitions.len(), "ogf motion definitions")?)?;
 
     for definition in definitions {
       definition
@@ -123,7 +123,7 @@ impl OgfMotionDefinition {
     writer.write_f32::<T>(self.falloff)?;
 
     if version == 4 {
-      writer.write_u32::<T>(self.marks.len() as u32)?;
+      writer.write_u32::<T>(to_format_size(self.marks.len(), "ogf motion marks")?)?;
 
       for mark in &self.marks {
         mark
@@ -187,6 +187,19 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     OgfMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, version)
+  }
+
+  #[test]
+  fn rejects_a_definition_list_past_its_count_field() {
+    let definitions: Vec<OgfMotionDefinition> = vec![OgfMotionDefinition::new_mock(Vec::new()); 65536];
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      OgfMotionDefinition::write_list::<XRayByteOrder>(&mut writer, &definitions, 4)
+        .expect_err("expect the definition count to exceed its format field")
+        .to_string(),
+      "Invalid error: ogf motion definitions exceeds the u16 format limit"
+    );
   }
 
   #[test]

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
-use xrf_utils::{assert, open_export_file};
+use xrf_utils::{assert, open_export_file, to_format_size};
 
 use crate::constants::META_TYPE_FIELD;
 use crate::data::particles::particle_effect::ParticleEffect;
@@ -53,7 +53,11 @@ impl ChunkReadWrite for ParticlesEffectsChunk {
 
       effect.write::<T>(&mut effect_writer)?;
 
-      writer.write_all(effect_writer.flush_chunk_into_buffer::<T>(index as u32)?.as_slice())?;
+      writer.write_all(
+        effect_writer
+          .flush_chunk_into_buffer::<T>(to_format_size(index, "particle effect chunk id")?)?
+          .as_slice(),
+      )?;
     }
 
     log::info!(

@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, read_u32_chunk};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::assert_equal;
+use xrf_utils::{assert_equal, to_format_size};
 
 use crate::data::ogf::ogf_motion::OgfMotion;
 
@@ -55,7 +55,7 @@ impl ChunkReadWrite for OmfMotionsChunk {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(self.motions.len() as u32)?;
+    count_writer.write_u32::<T>(to_format_size(self.motions.len(), "omf motions")?)?;
     writer.write_all(count_writer.flush_chunk_into_buffer::<T>(0)?.as_slice())?;
 
     for (index, motion) in self.motions.iter().enumerate() {
@@ -63,7 +63,11 @@ impl ChunkReadWrite for OmfMotionsChunk {
 
       motion.write::<T>(&mut motion_writer)?;
 
-      writer.write_all(motion_writer.flush_chunk_into_buffer::<T>(index as u32 + 1)?.as_slice())?;
+      writer.write_all(
+        motion_writer
+          .flush_chunk_into_buffer::<T>(to_format_size(index + 1, "omf motion chunk id")?)?
+          .as_slice(),
+      )?;
     }
 
     log::info!(

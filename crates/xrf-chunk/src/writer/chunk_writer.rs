@@ -3,6 +3,7 @@ use std::io::Write;
 
 use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::to_format_size;
 
 #[derive(Default)]
 pub struct ChunkWriter {
@@ -23,8 +24,7 @@ impl ChunkWriter {
   ///
   /// Returns an error when the payload exceeds the format's `u32` length limit or the destination rejects a write.
   pub fn flush_chunk_into<T: ByteOrder>(&mut self, destination: &mut dyn Write, id: u32) -> XrfResult<usize> {
-    let payload_size: u32 = u32::try_from(self.buffer.len())
-      .map_err(|_| XrfError::new_invalid_error("Chunk payload exceeds the u32 format limit"))?;
+    let payload_size: u32 = to_format_size(self.buffer.len(), "Chunk payload")?;
 
     destination.write_u32::<T>(id)?;
     destination.write_u32::<T>(payload_size)?;
@@ -52,8 +52,7 @@ impl ChunkWriter {
 
     let mut buffer: Vec<u8> = Vec::with_capacity(capacity);
 
-    let payload_size: u32 = u32::try_from(self.buffer.len())
-      .map_err(|_| XrfError::new_invalid_error("Chunk payload exceeds the u32 format limit"))?;
+    let payload_size: u32 = to_format_size(self.buffer.len(), "Chunk payload")?;
 
     buffer.write_u32::<T>(id)?;
     buffer.write_u32::<T>(payload_size)?;

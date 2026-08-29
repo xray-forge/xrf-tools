@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::file_import::read_ltx_field;
 use crate::types::{Matrix3d, Sphere3d};
@@ -80,7 +80,7 @@ impl ChunkReadWriteList for Shape {
 
   /// Write list of shapes data into the chunk reader.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, shapes: &[Self]) -> XrfResult {
-    writer.write_u8(shapes.len() as u8)?;
+    writer.write_u8(to_format_size(shapes.len(), "shapes")?)?;
 
     for shape in shapes {
       shape.write::<T>(writer)?;
@@ -176,6 +176,19 @@ mod tests {
 
   use crate::data::generic::shape::Shape;
   use crate::data::generic::vector_3d::Vector3d;
+
+  #[test]
+  fn rejects_a_shape_list_past_its_count_field() {
+    let shapes: Vec<Shape> = vec![Shape::Sphere((Vector3d::new(0.0, 0.0, 0.0), 1.0)); 256];
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      Shape::write_list::<XRayByteOrder>(&mut writer, &shapes)
+        .expect_err("expect the shape count to exceed its format field")
+        .to_string(),
+      "Invalid error: shapes exceeds the u8 format limit"
+    );
+  }
 
   #[test]
   fn test_read_write_list() -> XrfResult {

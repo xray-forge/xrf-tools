@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,7 +43,7 @@ impl ChunkReadWriteList for OgfPart {
   }
 
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, parts: &[Self]) -> XrfResult {
-    writer.write_u16::<T>(parts.len() as u16)?;
+    writer.write_u16::<T>(to_format_size(parts.len(), "ogf parts")?)?;
 
     for part in parts {
       part
@@ -71,7 +71,7 @@ impl ChunkReadWrite for OgfPart {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
-    writer.write_u16::<T>(self.bones.len() as u16)?;
+    writer.write_u16::<T>(to_format_size(self.bones.len(), "ogf part bones")?)?;
 
     for (name, index) in &self.bones {
       writer.write_w1251_string(name)?;
@@ -95,6 +95,44 @@ mod tests {
   };
 
   use crate::data::ogf::ogf_part::OgfPart;
+
+  #[test]
+  fn rejects_a_part_list_past_its_count_field() {
+    let parts: Vec<OgfPart> = vec![
+      OgfPart {
+        name: String::new(),
+        bones: Vec::new(),
+      };
+      65536
+    ];
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      OgfPart::write_list::<XRayByteOrder>(&mut writer, &parts)
+        .expect_err("expect the part count to exceed its format field")
+        .to_string(),
+      "Invalid error: ogf parts exceeds the u16 format limit"
+    );
+  }
+
+  #[test]
+  fn rejects_a_bone_list_past_its_count_field() {
+    let part: OgfPart = OgfPart {
+      name: String::from("part"),
+      bones: vec![(String::new(), 0); 65536],
+    };
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      part
+        .write::<XRayByteOrder>(&mut writer)
+        .expect_err("expect the bone count to exceed its format field")
+        .to_string(),
+      "Invalid error: ogf part bones exceeds the u16 format limit"
+    );
+  }
 
   #[test]
   fn test_read_write_list() -> XrfResult {

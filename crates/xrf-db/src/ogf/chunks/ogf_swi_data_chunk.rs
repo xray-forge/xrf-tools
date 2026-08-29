@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_utils::to_format_size;
 
 use crate::data::ogf::ogf_slide_window::OgfSlideWindow;
 
@@ -45,7 +46,7 @@ impl ChunkReadWrite for OgfSwiDataChunk {
       writer.write_u32::<T>(*value)?;
     }
 
-    writer.write_u32::<T>(self.windows.len() as u32)?;
+    writer.write_u32::<T>(to_format_size(self.windows.len(), "ogf slide windows")?)?;
 
     for window in &self.windows {
       window.write::<T>(writer)?;

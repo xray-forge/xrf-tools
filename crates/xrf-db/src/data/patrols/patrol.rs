@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::{assert_equal, assert_length, new_bounded_vec};
+use xrf_utils::{assert_equal, assert_length, new_bounded_vec, to_format_size};
 
 use crate::data::patrols::patrol_link::PatrolLink;
 use crate::data::patrols::patrol_point::PatrolPoint;
@@ -67,7 +67,7 @@ impl ChunkReadWriteList for Patrol {
 
       patrol.write::<T>(&mut patrol_writer)?;
 
-      writer.write_all(&patrol_writer.flush_chunk_into_buffer::<T>(index as u32)?)?;
+      writer.write_all(&patrol_writer.flush_chunk_into_buffer::<T>(to_format_size(index, "patrol chunk id")?)?)?;
     }
 
     Ok(())
@@ -118,7 +118,7 @@ impl ChunkReadWrite for Patrol {
     meta_writer.write_w1251_string(&self.name)?;
     writer.write_all(&meta_writer.flush_chunk_into_buffer::<T>(Self::META_CHUNK_ID)?)?;
 
-    point_count_writer.write_u32::<T>(self.points.len() as u32)?;
+    point_count_writer.write_u32::<T>(to_format_size(self.points.len(), "patrol points")?)?;
     data_writer.write_all(&point_count_writer.flush_chunk_into_buffer::<T>(Self::DATA_POINT_COUNT_CHUNK_ID)?)?;
 
     points_writer.write_xr_list::<T, _>(&self.points)?;

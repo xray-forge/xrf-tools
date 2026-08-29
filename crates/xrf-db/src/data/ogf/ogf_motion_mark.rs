@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::assert_length;
+use xrf_utils::{assert_length, to_format_size};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +42,7 @@ impl ChunkReadWrite for OgfMotionMark {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_rn_string(&self.name)?;
-    writer.write_u32::<T>(self.intervals.len() as u32)?;
+    writer.write_u32::<T>(to_format_size(self.intervals.len(), "ogf motion mark intervals")?)?;
 
     for (from, to) in &self.intervals {
       writer.write_f32::<T>(*from)?;

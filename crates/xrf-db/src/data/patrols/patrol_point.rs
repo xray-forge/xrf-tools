@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::assert_equal;
+use xrf_utils::{assert_equal, to_format_size};
 
 use crate::data::generic::vector_3d::Vector3d;
 use crate::export::LtxImportExport;
@@ -59,18 +59,20 @@ impl ChunkReadWriteList for PatrolPoint {
   /// Write list of patrol points into chunk writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
     for (index, point) in list.iter().enumerate() {
+      let index: u32 = to_format_size(index, "patrol point index")?;
+
       let mut point_chunk_writer: ChunkWriter = ChunkWriter::new();
 
       let mut point_index_writer: ChunkWriter = ChunkWriter::new();
       let mut point_writer: ChunkWriter = ChunkWriter::new();
 
-      point_index_writer.write_u32::<T>(index as u32)?;
+      point_index_writer.write_u32::<T>(index)?;
       point.write::<T>(&mut point_writer)?;
 
       point_chunk_writer.write_all(&point_index_writer.flush_chunk_into_buffer::<T>(Self::INDEX_CHUNK_ID)?)?;
       point_chunk_writer.write_all(&point_writer.flush_chunk_into_buffer::<T>(Self::DATA_CHUNK_ID)?)?;
 
-      writer.write_all(&point_chunk_writer.flush_chunk_into_buffer::<T>(index as u32)?)?;
+      writer.write_all(&point_chunk_writer.flush_chunk_into_buffer::<T>(index)?)?;
     }
 
     Ok(())

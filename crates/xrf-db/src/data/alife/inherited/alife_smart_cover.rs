@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
+use xrf_utils::to_format_size;
 
 use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
 use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLoophole;
@@ -50,7 +51,7 @@ impl ChunkReadWrite for AlifeSmartCover {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_w1251_string(&self.last_description)?;
-    writer.write_u8(self.loopholes.len() as u8)?;
+    writer.write_u8(to_format_size(self.loopholes.len(), "smart cover loopholes")?)?;
 
     for loophole in &self.loopholes {
       writer.write_w1251_string(&loophole.name)?;
@@ -107,8 +108,54 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
   use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
   use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
+  use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLoophole;
   use crate::data::generic::shape::Shape;
   use crate::data::generic::vector_3d::Vector3d;
+
+  #[test]
+  fn rejects_a_loophole_list_past_its_count_field() {
+    let original: AlifeSmartCover = AlifeSmartCover {
+      base: AlifeObjectSmartCover {
+        base: AlifeObjectDynamic {
+          base: AlifeObjectAbstract {
+            game_vertex_id: 6734,
+            distance: 38.287,
+            direct_control: 234760,
+            level_vertex_id: 29836,
+            flags: 68,
+            custom_data: String::from("custom-data"),
+            story_id: 8723,
+            spawn_story_id: 160278,
+          },
+        },
+        shape: vec![Shape::Sphere((Vector3d::new(2.5, 1.3, -4.125), 5.5))],
+        description: String::from("description"),
+        hold_position_time: 34.0,
+        enter_min_enemy_distance: 23.0,
+        exit_min_enemy_distance: 36.0,
+        is_combat_cover: 1,
+        can_fire: 1,
+      },
+      last_description: String::from("last-description"),
+      loopholes: vec![
+        AlifeSmartCoverLoophole {
+          name: String::from("loophole"),
+          enabled: 1,
+        };
+        256
+      ],
+    };
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert_eq!(
+      original
+        .write::<XRayByteOrder>(&mut writer)
+        .expect_err("expect the loophole count to exceed its format field")
+        .to_string(),
+      "Invalid error: smart cover loopholes exceeds the u8 format limit"
+    );
+  }
 
   #[test]
   fn test_read_write() -> XrfResult {

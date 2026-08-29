@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_utils::to_format_size;
 
 use crate::level::level_shader_entry::{LevelShaderEntry, LevelShaderReference};
 
@@ -54,7 +55,7 @@ impl ChunkReadWrite for LevelShadersChunk {
 
   /// Write level shaders table into the chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.entries.len() as u32)?;
+    writer.write_u32::<T>(to_format_size(self.entries.len(), "level shaders")?)?;
 
     for entry in &self.entries {
       writer.write_w1251_string(&entry.to_raw())?;

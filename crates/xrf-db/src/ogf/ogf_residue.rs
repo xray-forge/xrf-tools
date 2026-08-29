@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkTrailing, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::{encode_w1251_bytes_to_string, to_format_size};
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 
@@ -188,7 +188,7 @@ pub fn normalize_ogf_bytes<T: ByteOrder>(original: &[u8]) -> XrfResult<Vec<u8>> 
 
   let mut size_field: [u8; 4] = [0; 4];
 
-  T::write_u32(&mut size_field, kept as u32);
+  T::write_u32(&mut size_field, to_format_size(kept, "ogf chunk payload")?);
 
   let mut normalized: Vec<u8> = Vec::with_capacity(end);
 

@@ -9,6 +9,7 @@ use xrf_chunk::{
   InMemoryChunkDataSource,
 };
 use xrf_error::XrfResult;
+use xrf_utils::to_format_size;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -47,7 +48,10 @@ impl GraphCrossTable {
       let mut cross_table_writer: ChunkWriter = ChunkWriter::new();
       cross_table_writer.write_xr::<T, _>(cross_table)?;
 
-      cross_tables_writer.write_u32::<T>(cross_table_writer.bytes_written() as u32 + 4)?;
+      cross_tables_writer.write_u32::<T>(to_format_size(
+        cross_table_writer.bytes_written() + 4,
+        "graph cross table",
+      )?)?;
       cross_tables_writer.write_all(&cross_table_writer.flush_raw_into_buffer()?)?;
     }
 
@@ -78,7 +82,7 @@ impl ChunkReadWriteList for GraphCrossTable {
       let mut table_writer: ChunkWriter = ChunkWriter::new();
       table_writer.write_xr::<T, _>(table)?;
 
-      writer.write_u32::<T>(table_writer.bytes_written() as u32 + 4)?;
+      writer.write_u32::<T>(to_format_size(table_writer.bytes_written() + 4, "graph cross table")?)?;
       writer.write_all(&table_writer.buffer)?;
     }
 
