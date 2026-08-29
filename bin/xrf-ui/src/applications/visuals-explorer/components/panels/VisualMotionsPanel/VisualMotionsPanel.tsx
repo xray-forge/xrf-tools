@@ -33,9 +33,13 @@ export function VisualMotionsPanel({
   const refs: Array<VisualMotionDependency> = selected?.dependencies.motions ?? [];
   const embedded: Array<string> = selected?.description.embeddedMotions ?? [];
   const hasMotions: boolean = visualsService.hasMotions;
+  const playable: number = motionService.motions.value?.length ?? 0;
 
   const onFilter = useCallback((event: ChangeEvent<HTMLInputElement>) => setFilter(event.target.value), []);
 
+  // Listed when this panel is on screen rather than when a model lands: naming motions means reading every animation
+  // file the visual references, about fifty milliseconds each, and most models are opened to be looked at. Depending
+  // on the selection is what lists the next model's motions without this panel having to unmount.
   useEffect(() => {
     if (hasMotions) {
       void motionService.list();
@@ -51,48 +55,58 @@ export function VisualMotionsPanel({
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
-      <Box
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
-          paddingX: 2,
-          paddingTop: 1,
-          paddingBottom: 1.5,
-          backgroundColor: "background.default",
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <VisualMotionTransport />
+    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ minHeight: "100%" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            flexShrink: 0,
+            paddingX: 2,
+            paddingTop: 1,
+            paddingBottom: 1.5,
+            backgroundColor: "background.default",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <VisualMotionTransport />
 
-        <TextField
-          fullWidth
-          size={"small"}
-          value={filter}
-          placeholder={"Filter motions"}
-          sx={{ marginTop: 1 }}
-          slotProps={{ htmlInput: { "aria-label": "Filter motions" } }}
-          onChange={onFilter}
-        />
+          <TextField
+            fullWidth
+            size={"small"}
+            value={filter}
+            placeholder={"Filter motions"}
+            sx={{ marginTop: 1 }}
+            slotProps={{ htmlInput: { "aria-label": "Filter motions" } }}
+            onChange={onFilter}
+          />
+        </Box>
+
+        <VisualPanelSection
+          title={playable ? `Playable (${playable})` : "Playable"}
+          caption={"Grouped by the token a name starts with; double click or Enter to pose one"}
+          isFirst={true}
+          isFilling={true}
+        >
+          <VisualMotionList filter={filter} />
+        </VisualPanelSection>
+
+        {refs.length > 0 ? (
+          <VisualPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
+            {refs.map((motion: VisualMotionDependency) => (
+              <VisualMotionRow key={motion.reference} motion={motion} />
+            ))}
+          </VisualPanelSection>
+        ) : null}
+
+        {embedded.length > 0 ? (
+          <VisualPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
+            <VisualMotionNames names={embedded} />
+          </VisualPanelSection>
+        ) : null}
       </Box>
-
-      <VisualMotionList filter={filter} />
-
-      {refs.length > 0 ? (
-        <VisualPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
-          {refs.map((motion: VisualMotionDependency) => (
-            <VisualMotionRow key={motion.reference} motion={motion} />
-          ))}
-        </VisualPanelSection>
-      ) : null}
-
-      {embedded.length > 0 ? (
-        <VisualPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
-          <VisualMotionNames names={embedded} />
-        </VisualPanelSection>
-      ) : null}
     </VisualPanel>
   );
 }

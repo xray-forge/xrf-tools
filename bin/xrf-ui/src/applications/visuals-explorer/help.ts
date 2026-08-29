@@ -12,8 +12,8 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "selected too.",
     "Inspect the Header, Materials, Bones, and Motions panels; toggle wireframe, UV checkerboard, or the " +
       "skeleton overlay.",
-    "If the model carries motions, open the `Motions` panel: filter the names, click one to pose it, then " +
-      "play, scrub, or step it.",
+    "If the model carries motions, open the `Motions` panel: names are grouped into families you can open, " +
+      "or filter them. Double click a name, or press `Enter` on it, to pose it, then play, scrub, or step it.",
   ],
   nuances: [
     "The camera fits the first model shown and then holds position across model switches; `Reset camera` " +
@@ -23,8 +23,12 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
     "Playback lives in the `Motions` panel rather than under the viewport, so what a model turns out to " +
       "contain never resizes the preview. A motion keeps playing while another panel is open.",
     "Motion names are listed the first time the `Motions` panel is shown for a model, since naming them means " +
-      "reading every referenced animation file; the panel filters that list rather than scrolling it, because a " +
-      "character can reference thousands.",
+      "reading every referenced animation file. A character can name thousands, so they are grouped by the token " +
+      "each name starts with - `norm`, `cr`, `loophole`, `animpoint` - which is a convention these files follow " +
+      "rather than anything the format states; a set named some other way lands in fewer, larger families. " +
+      "Filtering searches every name and opens whatever it matched.",
+    "One click selects a motion and does nothing else, as in every tree here; posing reads and bakes the motion, " +
+      "so it waits for a double click or `Enter`. The posed motion is marked in the list.",
     "Picking another motion carries the play/pause state over; dragging the frame slider pauses. Motions are " +
       "baked one at a time by the backend, so switching is serialized.",
     "The duration beside the frame counter is the time the engine takes: the motion's frames at 30 fps over the " +

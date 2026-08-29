@@ -1,14 +1,20 @@
-import { Box, ListItemButton, Typography } from "@mui/material";
+import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
+import { Box, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useMemo } from "react";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
+import {
+  getMotionNodeName,
+  groupMotionNames,
+  listMotionGroupIds,
+} from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/motion-groups";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
+import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
-
-/** How many matches are drawn at once, as the sequencer's list caps them. */
-const SHOWN_LIMIT: number = 200;
 
 export interface IVisualMotionListProps extends BaseComponentProps {
   /** What the panel's filter field holds, already the user's whole query. */
@@ -16,10 +22,14 @@ export interface IVisualMotionListProps extends BaseComponentProps {
 }
 
 /**
- * Every motion the open visual can play, narrowed by the panel's filter, each one posed by a click.
+ * Every motion the open visual can play, grouped by the token its name starts with.
  *
- * A filtered list rather than the autocomplete the footer bar used: search stays how a name is found among the
- * thousands a character references, and a column has the height to show what matched, which a bar did not.
+ * A tree rather than the flat list a footer bar could afford: an actor names about 2,500 motions, and a wall of them
+ * truncated at a couple of hundred answers only the user who already knows what to type. Collapsed families are some
+ * sixty rows to read, which is what looking rather than searching needs. Filtering still searches every name and
+ * opens whatever matched, so knowing the name is never slower than it was.
+ *
+ * Virtualized, so the group that holds four hundred names costs the same to open as the one holding four.
  */
 export function VisualMotionList({
   "data-testid": dataTestId = "visual-motion-list",
@@ -28,11 +38,12 @@ export function VisualMotionList({
   filter,
 }: IVisualMotionListProps): ReactElement {
   const service: VisualMotionService = useInjection(VisualMotionService);
+  const tree: IUseTreeState = useTreeState();
+  const { expandAll } = tree;
 
-  // The loadable's own value is what the memo depends on: `names` defaults to a fresh array every render, which as a
-  // dependency would refilter on each one.
+  // The loadable's own value is what the memo depends on: a default of `[]` is a fresh array every render, which as a
+  // dependency would regroup on each one.
   const listed: Nullable<Array<string>> = service.motions.value;
-  const names: Array<string> = listed ?? [];
   const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
 
   const matched: Array<string> = useMemo(() => {
@@ -41,11 +52,54 @@ export function VisualMotionList({
     return needle ? (listed ?? []).filter((name: string) => name.toLowerCase().includes(needle)) : (listed ?? []);
   }, [filter, listed]);
 
+  const nodes: Array<ITreeNode<string>> = useMemo(() => groupMotionNames(matched), [matched]);
+
+  /** Marks the motion the viewport is posing, which selection cannot say: selection is where the user is. */
+  const renderLabel = useCallback(
+    (item: ITreeNode<string>): ReactNode =>
+      item.payload === posed ? (
+        <Box sx={{ alignItems: "center", display: "flex", gap: 0.5, minWidth: 0 }}>
+          <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+            {item.label}
+          </Box>
+
+          <Tooltip title={"Posed in the viewport"}>
+            <PlayArrowIcon fontSize={"inherit"} sx={{ color: "primary.main", flexShrink: 0 }} />
+          </Tooltip>
+        </Box>
+      ) : (
+        item.label
+      ),
+    [posed]
+  );
+
+  const onSelect = useCallback((item: ITreeNode<string>) => tree.select(item.id), [tree]);
+
+  /** Posing reads and bakes a motion, which is work, so it waits for the gesture that means work. */
+  const onActivate = useCallback(
+    (item: ITreeNode<string>) => {
+      const name: Nullable<string> = getMotionNodeName(item.id);
+
+      if (name) {
+        void service.open(name);
+      }
+    },
+    [service]
+  );
+
+  // A filter that matched inside a family opens it, because a closed family answering a query looks like no answer.
+  // Additive, so a family opened by hand stays open once the query is cleared.
+  useEffect(() => {
+    if (filter.trim()) {
+      expandAll(listMotionGroupIds(nodes));
+    }
+  }, [expandAll, filter, nodes]);
+
   if (service.motions.isLoading) {
     return <VisualPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />;
   }
 
-  if (!names.length) {
+  if (!listed?.length) {
     return (
       <VisualPanelEmpty
         label={service.motions.error?.message ?? "This visual references animation files that name no motions."}
@@ -53,31 +107,24 @@ export function VisualMotionList({
     );
   }
 
+  if (!nodes.length) {
+    return <VisualPanelEmpty label={`No motion of the ${listed.length} this visual plays matches that.`} />;
+  }
+
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ paddingX: 1 }}>
-      {matched.slice(0, SHOWN_LIMIT).map((name: string) => (
-        <ListItemButton
-          key={name}
-          dense
-          selected={name === posed}
-          sx={{ borderRadius: 1, paddingY: 0.2 }}
-          onClick={() => void service.open(name)}
-        >
-          <Typography variant={"body2"} sx={{ wordBreak: "break-all" }}>
-            {name}
-          </Typography>
-        </ListItemButton>
-      ))}
-
-      {matched.length === 0 ? (
-        <VisualPanelEmpty label={`No motion of the ${names.length} this visual plays matches that.`} />
-      ) : null}
-
-      {matched.length > SHOWN_LIMIT ? (
-        <Typography variant={"caption"} sx={{ display: "block", padding: 1, color: "text.disabled" }}>
-          {`Showing ${SHOWN_LIMIT} of ${matched.length} matches. Narrow the filter to reach the rest.`}
-        </Typography>
-      ) : null}
-    </Box>
+    <VirtualizedTree<string>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      ariaLabel={"Motions"}
+      items={nodes}
+      expandedIds={tree.expandedIds}
+      selectedId={tree.selectedId}
+      renderLabel={renderLabel}
+      sx={{ minHeight: 160, padding: 0 }}
+      onSelect={onSelect}
+      onActivate={onActivate}
+      onToggleExpanded={tree.toggleExpanded}
+    />
   );
 }

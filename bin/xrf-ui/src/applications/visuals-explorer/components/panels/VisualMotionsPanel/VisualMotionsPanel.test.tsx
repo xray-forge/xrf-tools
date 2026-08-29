@@ -81,8 +81,15 @@ async function renderPanel(
 }
 
 describe("VisualMotionsPanel", () => {
-  it("lists what the visual plays when it is on screen, and offers no transport before a pose", async () => {
+  it("gathers what the visual plays into families, and offers no transport before a pose", async () => {
+    // The families are collapsed, which is the point of them: a stalker names about 2,500 motions and a wall of them
+    // is only readable by someone who already knows what to type.
     const { render } = await renderPanel([mockMotionRef()], ["stand_idle_0", "stand_idle_1"]);
+
+    expect(await render.findByText("stand (2)")).toBeInTheDocument();
+    expect(render.queryByText("stand_idle_0")).toBeNull();
+
+    fireEvent.dblClick(render.getByText("stand (2)"));
 
     expect(await render.findByText("stand_idle_0")).toBeInTheDocument();
     expect(render.getByText("stand_idle_1")).toBeInTheDocument();
@@ -102,21 +109,42 @@ describe("VisualMotionsPanel", () => {
     expect(listCalls()).toBe(0);
   });
 
-  it("narrows the list to what the filter names", async () => {
+  it("opens what a filter matched, because a closed family reads as no answer", async () => {
+    const { render } = await renderPanel(
+      [mockMotionRef()],
+      ["stand_idle_0", "stand_idle_1", "crouch_walk_fwd", "crouch_walk_back"]
+    );
+
+    await render.findByText("stand (2)");
+
+    fireEvent.change(render.getByRole("textbox", { name: "Filter motions" }), { target: { value: "walk_fwd" } });
+
+    expect(await render.findByText("crouch_walk_fwd")).toBeInTheDocument();
+    expect(render.queryByText("crouch_walk_back")).toBeNull();
+    expect(render.queryByText("stand (2)")).toBeNull();
+  });
+
+  it("says how much it searched when a filter matches nothing", async () => {
     const { render } = await renderPanel([mockMotionRef()], ["stand_idle_0", "crouch_walk_fwd"]);
 
     await render.findByText("stand_idle_0");
 
-    fireEvent.change(render.getByRole("textbox", { name: "Filter motions" }), { target: { value: "crouch" } });
+    fireEvent.change(render.getByRole("textbox", { name: "Filter motions" }), { target: { value: "swim" } });
 
-    expect(render.getByText("crouch_walk_fwd")).toBeInTheDocument();
-    expect(render.queryByText("stand_idle_0")).toBeNull();
+    expect(await render.findByText("No motion of the 2 this visual plays matches that.")).toBeInTheDocument();
   });
 
-  it("poses the motion a row names, and the transport then has frames to play", async () => {
+  it("poses on activation rather than on selection, since a bake is work", async () => {
     const { render, container } = await renderPanel([mockMotionRef()], ["stand_idle_0"]);
 
-    fireEvent.click(await render.findByText("stand_idle_0"));
+    const row: HTMLElement = await render.findByText("stand_idle_0");
+
+    // Arrowing through 2,500 names would otherwise read and bake one motion per keystroke.
+    fireEvent.click(row);
+
+    expect(container.get(VisualMotionService).posed.value).toBeNull();
+
+    fireEvent.dblClick(row);
 
     await waitFor(() => expect(container.get(VisualMotionService).frameCount).toBe(4));
 
