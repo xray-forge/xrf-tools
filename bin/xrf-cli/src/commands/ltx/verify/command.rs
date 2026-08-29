@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 use xrf_vfs::XrayLookupScope;
 
 use crate::commands::ltx::ltx_installation::mount_installation;
@@ -47,7 +48,7 @@ impl GenericCommand for VerifyCommand {
       );
     }
 
-    log::info!("Verifying ltx folder: {}", path.display());
+    log::info!("Verifying ltx folder: {}", format_path(path));
 
     let options: LtxProjectOptions = LtxProjectOptions {
       is_with_schemes_check: true,
@@ -92,7 +93,7 @@ impl VerifyCommand {
         output,
         "Source: {:?} {} ({})",
         mount.get_kind(),
-        mount.get_source().get_root_path().display(),
+        format_path(mount.get_source().get_root_path()),
         mount.get_label()
       );
     }

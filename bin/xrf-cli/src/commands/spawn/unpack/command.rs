@@ -5,6 +5,7 @@ use std::{fs, io};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -62,8 +63,8 @@ impl GenericCommand for UnpackCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Starting parsing spawn file: {}", path.display());
-    xrf_output::info!(output, "Unpack destination: {}", destination.display());
+    xrf_output::info!(output, "Starting parsing spawn file: {}", format_path(path));
+    xrf_output::info!(output, "Unpack destination: {}", format_path(destination));
 
     // Apply force flag and delete existing directories.
     if force && destination.exists() && destination.is_dir() {

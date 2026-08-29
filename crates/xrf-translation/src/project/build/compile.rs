@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_xml::serialize_xml;
 
 use crate::language::{TranslationLanguage, find_unencodable_character};
@@ -61,7 +62,7 @@ fn validate_entry_encoding(path: &Path, language: &TranslationLanguage, id: &str
     if let Some(character) = find_unencodable_character(value, language.new_language_encoder()) {
       return Err(XrfError::new_encoding_error(format!(
         "Translation '{}' entry '{}' {} cannot be encoded as {}: '{}' (U+{:04X})",
-        path.display(),
+        format_path(path),
         id,
         field,
         language.get_language_encoding(),

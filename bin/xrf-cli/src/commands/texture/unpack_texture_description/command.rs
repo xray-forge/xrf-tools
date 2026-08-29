@@ -5,6 +5,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackDescriptionOptions, UnpackDescriptionProcessor};
+use xrf_utils::format_path;
 
 use crate::commands::texture::pack_texture_description::report::TextureDescriptionReport;
 use crate::core::command_context::CommandContext;
@@ -88,16 +89,16 @@ impl GenericCommand for UnpackTextureDescriptionCommand {
 
     let started_at: Instant = Instant::now();
 
-    log::info!("Unpacking texture descriptions from: {}", description.display());
-    log::info!("Paths: base {}, output {}", base.display(), output_path.display());
+    log::info!("Unpacking texture descriptions from: {}", format_path(description));
+    log::info!("Paths: base {}, output {}", format_path(base), format_path(output_path));
     log::info!("Parallel mode: {}", is_parallel);
 
     xrf_output::info!(
       output,
       "Unpacking texture descriptions: {}, from {} to {}, parallel - {}",
-      description.display(),
-      base.display(),
-      output_path.display(),
+      format_path(description),
+      format_path(base),
+      format_path(output_path),
       is_parallel
     );
 

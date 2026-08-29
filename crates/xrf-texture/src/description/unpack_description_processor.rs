@@ -7,6 +7,7 @@ use rayon::prelude::*;
 use xrf_dds::{DdsFile, Mipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_utils::format_path;
 
 use crate::constants::DDS_EXTENSION;
 use crate::data::TextureFileDescriptor;
@@ -60,18 +61,23 @@ impl UnpackDescriptionProcessor {
     let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION));
     let destination: PathBuf = options.output_path.join(relative_path);
 
-    xrf_output::verbose!(output, "Unpacking {}", full_name.display());
+    xrf_output::verbose!(output, "Unpacking {}", format_path(&full_name));
 
     let dds: RgbaImage = match DdsFile::read_from_path(&full_name).and_then(|dds| dds.decode_rgba(0)) {
       Ok(dds) => dds,
       Err(_) if options.is_strict => {
         return Err(XrfError::new_texture_processing_error(format!(
           "Could not find file for texture unpacking: {}",
-          full_name.display()
+          format_path(&full_name)
         )));
       }
       Err(error) => {
-        xrf_output::warning!(output, "Skip file {}, not able to read: {}", full_name.display(), error);
+        xrf_output::warning!(
+          output,
+          "Skip file {}, not able to read: {}",
+          format_path(&full_name),
+          error
+        );
 
         return Ok(false);
       }
@@ -82,7 +88,7 @@ impl UnpackDescriptionProcessor {
     }
 
     for sprite in &file.sprites {
-      xrf_output::verbose!(output, "Unpacking {} -> {}", full_name.display(), sprite.id);
+      xrf_output::verbose!(output, "Unpacking {} -> {}", format_path(&full_name), sprite.id);
 
       let (max_x, max_y) = sprite.get_dimension_boundaries();
 
@@ -95,7 +101,7 @@ impl UnpackDescriptionProcessor {
             max_y,
             dds.width(),
             dds.height(),
-            full_name.display()
+            format_path(&full_name)
           )));
         }
 
@@ -107,7 +113,7 @@ impl UnpackDescriptionProcessor {
           max_y,
           dds.width(),
           dds.height(),
-          full_name.display()
+          format_path(&full_name)
         );
 
         continue;

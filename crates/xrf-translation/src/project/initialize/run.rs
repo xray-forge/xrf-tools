@@ -1,8 +1,9 @@
-use std::path::{Display, Path};
+use std::path::Path;
 use std::time::Instant;
 
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
@@ -21,7 +22,7 @@ pub fn initialize_dir<P: AsRef<Path>>(
   dir: &P,
   options: &ProjectInitializeOptions,
 ) -> XrfResult<ProjectInitializeResult> {
-  xrf_output::info!(options.output, "Initializing dir {}", dir.as_ref().display());
+  xrf_output::info!(options.output, "Initializing dir {}", format_path(dir.as_ref()));
 
   let started_at: Instant = Instant::now();
   let mut result: ProjectInitializeResult = ProjectInitializeResult::new();
@@ -30,7 +31,7 @@ pub fn initialize_dir<P: AsRef<Path>>(
     let entry: DirEntry = entry.map_err(|error| {
       XrfError::new_read_error(format!(
         "Failed to walk translation directory '{}': {error}",
-        dir.as_ref().display()
+        format_path(dir.as_ref())
       ))
     })?;
 
@@ -43,7 +44,7 @@ pub fn initialize_dir<P: AsRef<Path>>(
 
   log::info!(
     "Initialize dir {} in {}",
-    dir.as_ref().display(),
+    format_path(dir.as_ref()),
     xrf_utils::format_duration(result.duration)
   );
 
@@ -64,8 +65,8 @@ pub fn initialize_file<P: AsRef<Path>>(
     return initialize_json_file(path, options);
   }
 
-  log::info!("Skip file {}", path.as_ref().display());
-  xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
+  log::info!("Skip file {}", format_path(path.as_ref()));
+  xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
 
   Ok(ProjectInitializeResult::new())
 }
@@ -83,7 +84,7 @@ pub fn initialize_json_file<P: AsRef<Path>>(
   path: &P,
   options: &ProjectInitializeOptions,
 ) -> XrfResult<ProjectInitializeResult> {
-  let path_display: Display = path.as_ref().display();
+  let path_display: String = format_path(path.as_ref()).to_string();
 
   let mut result: ProjectInitializeResult = ProjectInitializeResult::new();
   let mut initialized_count: u32 = 0;

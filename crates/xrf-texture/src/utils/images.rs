@@ -5,7 +5,7 @@ use image::{DynamicImage, GenericImage, ImageBuffer, ImageFormat, Rgba, RgbaImag
 use xrf_dds::{DdsEncodeOptions, DdsFile, ImageFormat as DDSImageFormat, Mipmaps, Quality};
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
-use xrf_utils::assert;
+use xrf_utils::{assert, format_path};
 
 /// Scale an image to the given bounds and centre it on a transparent canvas of exactly that size.
 ///
@@ -25,7 +25,7 @@ pub fn fit_image_into_bounds(image: DynamicImage, width: u32, height: u32, sourc
     height,
     image_width,
     image_height,
-    source.display()
+    format_path(source)
   );
 
   let rescaled_image: DynamicImage = image.resize(width, height, FilterType::Lanczos3);
@@ -42,7 +42,7 @@ pub fn fit_image_into_bounds(image: DynamicImage, width: u32, height: u32, sourc
     height,
     rescaled_width,
     rescaled_height,
-    source.display()
+    format_path(source)
   );
 
   let mut centered: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::new(width, height);
@@ -92,7 +92,7 @@ pub fn warn_on_reshaped_ui_dds(output: &OutputOptions, path: &Path, width: u32, 
       xrf_output::warning!(
         output,
         "Cannot compare shape against replaced file {}: {}",
-        path.display(),
+        format_path(path),
         error
       );
 
@@ -105,7 +105,7 @@ pub fn warn_on_reshaped_ui_dds(output: &OutputOptions, path: &Path, width: u32, 
     xrf_output::warning!(
       output,
       "Replacing {} of {}x{} with {} mipmap levels by {}x{} with {} mipmap levels",
-      path.display(),
+      format_path(path),
       metadata.width,
       metadata.height,
       metadata.mipmap_levels,

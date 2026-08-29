@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XrayRoots, XraySkippedMount,
   XraySourceKind, XrayVfs,
@@ -107,7 +108,7 @@ impl AssetLister {
           format!(
             "{:<9} {} ({})",
             format!("{:?}", mount.get_kind()),
-            mount.get_source().get_root_path().display(),
+            format_path(mount.get_source().get_root_path()),
             mount.get_label()
           )
         })

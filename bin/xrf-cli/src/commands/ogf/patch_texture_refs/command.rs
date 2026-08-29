@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OgfFile, OgfRefsPatchReport, OgfTextureRefsProcessor, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -102,7 +103,7 @@ impl PatchTextureRefsCommand {
     xrf_output::info!(
       output,
       "Patch ogf texture refs {}, '{}' -> '{}', existing {:?}",
-      path.display(),
+      format_path(path),
       from,
       to,
       existing
@@ -116,7 +117,7 @@ impl PatchTextureRefsCommand {
         output,
         "Dry run, nothing written, {} references would be renamed and {} would receive {} bytes instead of {}",
         report.patched_count,
-        destination.display(),
+        format_path(destination),
         report.patched_size,
         report.original_size
       );
@@ -128,7 +129,7 @@ impl PatchTextureRefsCommand {
       output,
       "Renamed {} ogf texture references, written into {}",
       report.patched_count,
-      destination.display()
+      format_path(destination)
     );
 
     Ok(report)

@@ -7,6 +7,7 @@ use walkdir::WalkDir;
 use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::{OmfRepackFindingReport, OmfRepackVerifyReport};
 use super::statistics::{RepackOmfOutcome, RepackOmfStatistics};
@@ -128,7 +129,7 @@ impl RepackCommand {
       return Ok(());
     }
 
-    Err(XrfError::new_verify_error(format!("Omf repack verification failed for {}", path.display())).into())
+    Err(XrfError::new_verify_error(format!("Omf repack verification failed for {}", format_path(path))).into())
   }
 
   /// Read provided omf file and write it into destination path.
@@ -138,7 +139,7 @@ impl RepackCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Repack omf file {}", path.display());
+    xrf_output::info!(output, "Repack omf file {}", format_path(path));
 
     let started_at: Instant = Instant::now();
     let omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(&path)?);
@@ -148,7 +149,7 @@ impl RepackCommand {
 
     let write_duration: Duration = started_at.elapsed() - read_duration;
 
-    xrf_output::info!(output, "Omf file repacked into {}", destination.display());
+    xrf_output::info!(output, "Omf file repacked into {}", format_path(destination));
 
     context.set_result(|| FileConversionReport::new(path, destination, read_duration, write_duration))?;
 
@@ -177,14 +178,14 @@ impl RepackCommand {
     match Self::repack_into_buffer(path) {
       Ok((original, repacked)) => {
         if original == repacked {
-          xrf_output::verbose!(output, "Byte identical: {}", path.display());
+          xrf_output::verbose!(output, "Byte identical: {}", format_path(path));
 
           RepackOmfOutcome::Identical
         } else {
           xrf_output::error!(
             output,
             "Repacked bytes differ: {}, {} bytes original, {} bytes repacked",
-            path.display(),
+            format_path(path),
             original.len(),
             repacked.len()
           );
@@ -202,7 +203,7 @@ impl RepackCommand {
         }
       }
       Err(error) => {
-        xrf_output::error!(output, "Failed to repack {}: {}", path.display(), error);
+        xrf_output::error!(output, "Failed to repack {}: {}", format_path(path), error);
 
         findings.push(OmfRepackFindingReport::new(path, error.to_string()));
 

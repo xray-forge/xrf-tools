@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::{assert_equal, open_export_file};
+use xrf_utils::{assert_equal, format_path, open_export_file};
 
 use crate::constants::META_TYPE_FIELD;
 use crate::export::FileImportExport;
@@ -57,7 +57,7 @@ impl FileImportExport for ParticlesHeaderChunk {
   /// Import header data from provided path.
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    log::info!("Importing particles header: {}", path.as_ref().display());
+    log::info!("Importing particles header: {}", format_path(path.as_ref()));
 
     let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("header.ltx"))?;
     let section: &Section = ltx

@@ -7,7 +7,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::XrfResult;
-use xrf_utils::{assert, assert_length, open_export_file};
+use xrf_utils::{assert, assert_length, format_path, open_export_file};
 
 use crate::export::FileImportExport;
 use crate::particles::chunks::particles_effects_chunk::ParticlesEffectsChunk;
@@ -91,7 +91,7 @@ impl ParticlesFile {
 
   /// Read spawn file from provided path.
   pub fn import_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    log::info!("Importing particles file: {}", path.as_ref().display());
+    log::info!("Importing particles file: {}", format_path(path.as_ref()));
 
     Ok(Self {
       header: ParticlesHeaderChunk::import(path)?,

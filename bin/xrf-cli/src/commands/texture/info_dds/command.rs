@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, DdsFormat, DdsMetadata};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::TextureDdsInfoReport;
 use crate::core::command_context::CommandContext;
@@ -38,7 +39,7 @@ impl GenericCommand for InfoDdsCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read dds file {}", path.display());
+    xrf_output::info!(output, "Read dds file {}", format_path(path));
 
     let metadata: DdsMetadata = DdsFile::read_from_path(path)?.metadata();
 

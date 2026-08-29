@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
@@ -60,17 +61,17 @@ impl ArchiveProject {
     let is_single_volume: bool = path.is_file();
 
     if is_single_volume {
-      log::info!("Reading archive file: {}", path.display());
+      log::info!("Reading archive file: {}", format_path(path));
 
       archives.push(ArchiveReader::from_path(path)?.read_archive()?);
     } else {
-      log::info!("Reading archive directory: {}", path.display());
+      log::info!("Reading archive directory: {}", format_path(path));
 
       for entry in WalkDir::new(path).max_depth(depth).into_iter().filter_map(Result::ok) {
         let path: &Path = entry.path();
 
         if ArchiveDescriptor::is_valid_db_path(path) {
-          log::info!("Reading archive file: {}", path.display());
+          log::info!("Reading archive file: {}", format_path(path));
 
           archives.push(ArchiveReader::from_path(path)?.read_archive()?);
         }
@@ -80,7 +81,7 @@ impl ArchiveProject {
     if archives.is_empty() {
       return Err(XrfError::new_read_error(format!(
         "Unable to read archives at location {}",
-        path.display()
+        format_path(path)
       )));
     }
 

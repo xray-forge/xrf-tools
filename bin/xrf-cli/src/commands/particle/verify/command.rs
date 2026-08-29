@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
@@ -48,7 +49,7 @@ impl GenericCommand for VerifyCommand {
 
     let unpacked: bool = matches.get_flag("unpacked");
 
-    log::info!("Verify particle file {}, unpacked: {}", path.display(), unpacked);
+    log::info!("Verify particle file {}, unpacked: {}", format_path(path), unpacked);
 
     let particles_file_result: XrfResult<ParticlesFile> = if unpacked {
       ParticlesFile::import_from_path(path)

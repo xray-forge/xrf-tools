@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::{format_path, to_portable_path_string};
 use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
@@ -17,10 +17,10 @@ use crate::xml;
 ///
 /// Returns an IO error when the target cannot be created.
 pub(crate) fn prepare_target_file(target: &Path, options: &ProjectBuildOptions) -> XrfResult<File> {
-  xrf_output::verbose!(options.output, "Writing file {}", target.display());
+  xrf_output::verbose!(options.output, "Writing file {}", format_path(target));
 
   let target_parent: &Path = target.parent().ok_or_else(|| {
-    XrfError::new_invalid_error(format!("Translation XML target has no parent: {}", target.display()))
+    XrfError::new_invalid_error(format!("Translation XML target has no parent: {}", format_path(target)))
   })?;
 
   fs::create_dir_all(target_parent)?;
@@ -79,7 +79,7 @@ pub(crate) fn validate_targets(sources: &[String], options: &ProjectBuildOptions
           "Translation sources '{}' and '{}' both build to '{}'",
           existing_source,
           source,
-          target.display(),
+          format_path(&target),
         )));
       }
     }
@@ -148,8 +148,8 @@ pub(crate) fn ensure_output_outside_source(source: &Path, output: &Path) -> XrfR
   if path_is_within(&output_lexical, &source_lexical) || path_is_within(&output_resolved, &source_resolved) {
     return Err(XrfError::new_invalid_error(format!(
       "Translation output '{}' must be outside source directory '{}'",
-      output.display(),
-      source.display(),
+      format_path(output),
+      format_path(source),
     )));
   }
 

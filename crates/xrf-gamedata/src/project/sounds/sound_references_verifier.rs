@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject};
+use xrf_utils::format_path;
 use xrf_vfs::XrayAssetType;
 use xrf_vfs::XrayLogicalPath;
 use xrf_xml::{XmlDocument, XmlParseOptions};
@@ -75,7 +76,7 @@ impl<'a> SoundReferencesVerifier<'a> {
         Err(error) => xrf_output::verbose!(
           self.options.output,
           "Skipping ltx entry in sound reference check: {} - {}",
-          reported.display(),
+          format_path(&reported),
           error
         ),
       }
@@ -164,7 +165,11 @@ impl<'a> SoundReferencesVerifier<'a> {
       }
     }
 
-    xrf_output::verbose!(self.options.output, "Verified sound references in {}", path.display());
+    xrf_output::verbose!(
+      self.options.output,
+      "Verified sound references in {}",
+      format_path(path)
+    );
   }
 
   fn verify_reference(

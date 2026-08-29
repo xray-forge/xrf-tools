@@ -4,6 +4,7 @@ use std::path::Path;
 
 use ogg::reading::PacketReader;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::SoundMetadata;
 use crate::sound_file_metadata::read_sound_metadata;
@@ -58,7 +59,7 @@ impl SoundFile {
     let path: &Path = path.as_ref();
 
     read_xrf_sound(path, is_strict)
-      .map_err(|error| XrfError::new_verify_error(format!("Failed to read sound {}: {error}", path.display())))
+      .map_err(|error| XrfError::new_verify_error(format!("Failed to read sound {}: {error}", format_path(path))))
   }
 }
 

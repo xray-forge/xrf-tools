@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{ImageFormat, Mipmaps};
 use xrf_output::OutputOptions;
 use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
+use xrf_utils::format_path;
 
 use super::report::TextureDdsCropReport;
 use crate::core::command_context::CommandContext;
@@ -122,8 +123,8 @@ impl GenericCommand for CropDdsCommand {
       result.height,
       x,
       y,
-      source.display(),
-      output_path.display()
+      format_path(source),
+      format_path(output_path)
     );
 
     Ok(())

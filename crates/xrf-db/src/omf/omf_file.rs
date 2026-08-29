@@ -7,7 +7,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert_equal, open_export_file};
+use xrf_utils::{assert_equal, format_path, open_export_file};
 
 use crate::data::ogf::ogf_motion::OgfMotion;
 use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
@@ -28,7 +28,7 @@ impl OmfFile {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OMF file was not read: {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error
       ))
     })?)

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 use xrf_db::{OgfFile, XRayByteOrder};
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_utils::format_path;
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 
 use crate::commands::ogf::verify::ogf_texture_resolver::{OgfTextureResolver, TextureResolution};
@@ -337,7 +338,7 @@ impl<'a> OgfVerifier<'a> {
           findings.push(Finding::new(
             Self::rule("visuals.textures.unreadable"),
             Some(subject),
-            format!("'{}' would not parse: {reason}", texture.display()),
+            format!("'{}' would not parse: {reason}", format_path(&texture)),
           ));
         }
         TextureResolution::Resolved {

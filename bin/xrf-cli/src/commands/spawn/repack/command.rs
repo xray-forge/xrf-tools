@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -48,8 +49,8 @@ impl GenericCommand for RepackCommand {
       .get_one::<_>("dest")
       .expect("Expected valid output path to be provided");
 
-    log::info!("Starting parsing spawn file {}", path.display());
-    log::info!("Repack into {}", destination.display());
+    log::info!("Starting parsing spawn file {}", format_path(path));
+    log::info!("Repack into {}", format_path(destination));
 
     let started_at: Instant = Instant::now();
     let spawn_file: Box<SpawnFile> = Box::new(SpawnFile::read_from_path::<XRayByteOrder, _>(path)?);
@@ -62,7 +63,7 @@ impl GenericCommand for RepackCommand {
     log::info!("Read spawn file took: {}", xrf_utils::format_duration(read_duration));
     log::info!("Write spawn file took: {}", xrf_utils::format_duration(write_duration));
 
-    log::info!("Spawn file was repacked into {}", destination.display());
+    log::info!("Spawn file was repacked into {}", format_path(destination));
 
     context.set_result(|| FileConversionReport::new(path, destination, read_duration, write_duration))?;
 

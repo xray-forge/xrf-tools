@@ -5,6 +5,7 @@ use std::path::Path;
 
 use xrf_archive::ArchiveProject;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::path::{is_component_prefix, normalize_logical};
 use crate::source::xray_asset_source::label_from_path;
@@ -44,7 +45,7 @@ impl XrayArchiveSource {
       })
       .collect();
 
-    log::info!("Mounted {} archive entries from {}", entries.len(), path.display());
+    log::info!("Mounted {} archive entries from {}", entries.len(), format_path(path));
 
     Ok(Self {
       entries,

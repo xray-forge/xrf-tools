@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use xrf_error::XrfResult;
-use xrf_utils::encode_string_to_bytes;
+use xrf_utils::{encode_string_to_bytes, format_path};
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::json::read::{parse_json, read_json};
@@ -116,8 +116,8 @@ pub fn build_file<P: AsRef<Path>>(path: &P, options: &ProjectBuildOptions) -> Xr
 
     build_parsed(&path.as_ref().display().to_string(), &parsed, options, &mut result)?;
   } else {
-    log::info!("Skip file {}", path.as_ref().display());
-    xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
+    log::info!("Skip file {}", format_path(path.as_ref()));
+    xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
   }
 
   result.duration = started_at.elapsed();

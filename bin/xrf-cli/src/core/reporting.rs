@@ -9,6 +9,7 @@ use serde_json::Value;
 use xrf_build_info::BuildInfo;
 use xrf_error::XrfError;
 use xrf_output::{OutputOptions, OutputVerbosity};
+use xrf_utils::format_path;
 
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::CommandResult;
@@ -143,7 +144,7 @@ impl CommandEnvelope {
 
         write_file_staged(path, &document).map_err(|error| {
           CommandError::from(XrfError::new_io_error(
-            format!("Failed to write the report to '{}': {error}", path.display()),
+            format!("Failed to write the report to '{}': {error}", format_path(path)),
             error.kind(),
           ))
         })

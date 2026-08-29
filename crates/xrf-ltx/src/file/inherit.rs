@@ -1,5 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path_or;
 
+use crate::file::file_configuration::constants::VIRTUAL_LTX_PATH;
 use crate::file::file_section::section::Section;
 use crate::file::types::LtxSections;
 use crate::{Ltx, LtxCheck};
@@ -59,7 +61,7 @@ impl LtxInheritConvertor {
       None => {
         return Err(XrfError::new_convert_error(format!(
           "Failed to inherit unknown section [{section_name}] when reading ltx file ({})",
-          ltx.path.as_ref().map_or("virtual", |path| path.to_str().unwrap())
+          format_path_or(ltx.path.as_deref(), VIRTUAL_LTX_PATH)
         )));
       }
       Some(it) => it,
@@ -170,5 +172,65 @@ e = 100
     assert_eq!(base_2.len(), 2);
     assert_eq!(base_2.get("a"), Some("1"));
     assert_eq!(base_2.get("b"), Some("2"));
+  }
+}
+
+#[cfg(test)]
+mod reported_path_test {
+  use std::fs;
+  use std::path::{Path, PathBuf};
+
+  use xrf_error::XrfResult;
+
+  use crate::file::ltx::Ltx;
+
+  /// Reads a file that inherits an undeclared section, and returns the rendered diagnostic.
+  fn inherit_error_for(root: &Path, name: impl AsRef<Path>) -> XrfResult<String> {
+    fs::create_dir_all(root)?;
+
+    let path: PathBuf = root.join(name);
+
+    fs::write(&path, "[child]:missing\n")?;
+
+    let error: String = Ltx::read_from_file_full(&path)
+      .expect_err("Expected inheriting an undeclared section to fail")
+      .to_string();
+
+    fs::remove_dir_all(root)?;
+
+    Ok(error)
+  }
+
+  #[test]
+  fn names_the_file_the_undeclared_section_was_inherited_in() -> XrfResult {
+    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-inherit-named-{}", std::process::id()));
+    let error: String = inherit_error_for(&root, "broken.ltx")?;
+
+    assert!(error.contains("Failed to inherit unknown section [missing]"), "{error}");
+    assert!(error.contains("broken.ltx"), "{error}");
+
+    Ok(())
+  }
+
+  /// A Unix filename is bytes, not text, so a valid path can still not be valid Unicode. Rendering the
+  /// inheritance diagnostic used to unwrap `Path::to_str` on it and abort the process instead of
+  /// returning the error the caller asked for.
+  #[test]
+  #[cfg(unix)]
+  fn returns_an_inheritance_error_for_a_file_whose_name_is_not_valid_unicode() -> XrfResult {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-inherit-non-utf8-{}", std::process::id()));
+    let name: &OsStr = OsStr::from_bytes(b"\xffbroken.ltx");
+
+    assert!(name.to_str().is_none());
+
+    let error: String = inherit_error_for(&root, name)?;
+
+    assert!(error.contains("Failed to inherit unknown section [missing]"), "{error}");
+    assert!(error.contains('\u{fffd}'), "{error}");
+
+    Ok(())
   }
 }

@@ -6,7 +6,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::open_export_file;
+use xrf_utils::{format_path, open_export_file};
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_file::OgfFile;
@@ -126,7 +126,7 @@ impl OgfMotionRefsProcessor {
     if read_back != motion_refs {
       return Err(XrfError::new_verify_error(format!(
         "Patched {} reads back motion refs {:?} instead of {:?}",
-        destination.display(),
+        format_path(destination),
         read_back,
         motion_refs
       )));

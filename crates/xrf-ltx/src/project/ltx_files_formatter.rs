@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 
 use crate::Ltx;
 use crate::project::ltx_format_options::LtxFormatOptions;
@@ -28,7 +29,7 @@ impl LtxFilesFormatter {
         result.invalid_files += 1;
         result.to_format.push(file.clone());
 
-        xrf_output::info!(options.output, "Formatted: {}", file.display());
+        xrf_output::info!(options.output, "Formatted: {}", format_path(file));
       } else {
         result.valid_files += 1;
       }

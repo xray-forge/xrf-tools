@@ -6,6 +6,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::OmfRenameMotionsReport;
 use crate::core::command_context::CommandContext;
@@ -121,7 +122,7 @@ impl RenameMotionsCommand {
       return Err(
         XrfError::new_invalid_error(format!(
           "Refused to rename {}, no motion matched the provided map",
-          path.display()
+          format_path(path)
         ))
         .into(),
       );
@@ -130,7 +131,7 @@ impl RenameMotionsCommand {
     xrf_output::info!(
       output,
       "Renamed omf motions {}, {renamed_count}/{} renamed",
-      path.display(),
+      format_path(path),
       omf_file.motions.motions.len()
     );
 
@@ -140,7 +141,7 @@ impl RenameMotionsCommand {
       xrf_output::info!(
         output,
         "Dry run, nothing written, {} would receive {renamed_count} renamed motions",
-        destination.display()
+        format_path(destination)
       );
 
       return Ok(());
@@ -148,7 +149,7 @@ impl RenameMotionsCommand {
 
     omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
-    xrf_output::info!(output, "Renamed omf file written into {}", destination.display());
+    xrf_output::info!(output, "Renamed omf file written into {}", format_path(destination));
 
     Ok(())
   }
@@ -158,14 +159,14 @@ impl RenameMotionsCommand {
     let content: String = fs::read_to_string(map_path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Motions rename map was not read: {}, error: {error}",
-        map_path.display()
+        format_path(map_path)
       ))
     })?;
 
     serde_json::from_str(&content).map_err(|error| {
       XrfError::new_parsing_error(format!(
         "Motions rename map is not a valid JSON object of string to string: {}, error: {error}",
-        map_path.display()
+        format_path(map_path)
       ))
     })
   }
@@ -181,7 +182,7 @@ impl RenameMotionsCommand {
     if !uncovered.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
         "Refused to rename {} in strict mode, {} motions are missing from the map: {}",
-        path.display(),
+        format_path(path),
         uncovered.len(),
         uncovered.join(",")
       )));

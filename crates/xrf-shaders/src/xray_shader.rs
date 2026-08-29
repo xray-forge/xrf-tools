@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::xray_shader_import_reference::XRayShaderImportReference;
 use crate::{ShaderRenderer, XRayShaderCompiler, XRayShaderImport, XRayShaderSourceLoader};
@@ -59,7 +60,7 @@ impl XRayShader {
     let Some(source) = loader.load_source(path)? else {
       return Err(XrfError::new_not_found_error(format!(
         "Shader source was not found: {}",
-        path.display()
+        format_path(path)
       )));
     };
 
@@ -80,7 +81,7 @@ impl XRayShader {
     if active_paths.iter().any(|active_path| active_path == path) {
       return Err(XrfError::new_verify_error(format!(
         "Shader include cycle reaches {}",
-        path.display()
+        format_path(path)
       )));
     }
 
@@ -123,7 +124,7 @@ impl XRayShader {
 
     Err(XrfError::new_not_found_error(format!(
       "Shader {} includes missing file '{}' on line {}",
-      source_path.display(),
+      format_path(source_path),
       import.path(),
       import.line_number()
     )))

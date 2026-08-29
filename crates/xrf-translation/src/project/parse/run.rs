@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::json;
@@ -274,7 +275,7 @@ fn write_merged(
   if !outcome.is_changed {
     result.census.files_unchanged += 1;
 
-    xrf_output::verbose!(options.output, "Unchanged {}", target.display());
+    xrf_output::verbose!(options.output, "Unchanged {}", format_path(target));
 
     return Ok(());
   }
@@ -295,7 +296,7 @@ fn write_merged(
     } else {
       "Creating"
     },
-    target.display()
+    format_path(target)
   );
 
   if options.is_dry_run {
@@ -305,7 +306,7 @@ fn write_merged(
   let mut serialized: Vec<u8> = serde_json::to_vec_pretty(merged).map_err(|error| {
     XrfError::new_serialization_error(format!(
       "Failed to serialize parsed translation JSON '{}': {error}",
-      target.display()
+      format_path(target)
     ))
   })?;
 

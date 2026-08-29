@@ -1,4 +1,5 @@
 use xrf_pack::{ArchivePackConfig, ArchivePackResult, ArchivePacker};
+use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
@@ -12,8 +13,8 @@ use crate::core::types::TauriResult;
 pub async fn archives_pack_directory(config: ArchivePackConfig) -> TauriResult<ArchivePackResult> {
   log::info!(
     "Packing archive: {} -> {} as '{}'",
-    config.source.display(),
-    config.destination.display(),
+    format_path(&config.source),
+    format_path(&config.destination),
     config.name
   );
 

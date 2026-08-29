@@ -7,6 +7,7 @@ use std::time::Instant;
 use xrf_db::{ParticlesFile, SpawnFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject};
+use xrf_utils::format_path;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -98,7 +99,7 @@ impl GamedataProject {
           xrf_output::verbose!(
             options.output,
             "Skipping ltx entry in particles usage check: {} - {}",
-            reported.display(),
+            format_path(&reported),
             error
           );
         }
@@ -224,7 +225,7 @@ impl GamedataProject {
             xrf_output::error!(
               options.output,
               "Unknown particle reference: [{section_name}] {key} = {reference} ({})",
-              path.display()
+              format_path(path)
             );
 
             result.findings.push(GamedataFindingFactory::for_asset(

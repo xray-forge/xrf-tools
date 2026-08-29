@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::edit::TranslationEdit;
 use crate::json::read::read_json;
@@ -44,7 +45,7 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
   let mut serialized: Vec<u8> = serde_json::to_vec_pretty(&parsed).map_err(|error| {
     XrfError::new_parsing_error(format!(
       "Failed to serialize translation JSON '{}': {error}",
-      path.display()
+      format_path(path)
     ))
   })?;
 

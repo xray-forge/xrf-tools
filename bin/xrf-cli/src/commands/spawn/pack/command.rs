@@ -4,6 +4,7 @@ use std::{fs, io};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -59,8 +60,8 @@ impl GenericCommand for PackCommand {
 
     let force: bool = matches.get_flag("force");
 
-    log::info!("Starting packing spawn file {}", path.display());
-    log::info!("Pack destination {}", destination.display());
+    log::info!("Starting packing spawn file {}", format_path(path));
+    log::info!("Pack destination {}", format_path(destination));
 
     // Apply force flag and delete existing spawn output.
     if force && destination.exists() && destination.is_file() {

@@ -2,6 +2,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::Ltx;
 use crate::file::include::LtxIncludeConvertor;
@@ -37,7 +38,7 @@ impl LtxIncludeSource for LtxIncludeFilesystemSource {
   }
 
   fn describe(&self, path: &Path) -> String {
-    path.display().to_string()
+    format_path(path).to_string()
   }
 }
 

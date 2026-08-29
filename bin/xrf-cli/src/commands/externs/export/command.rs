@@ -9,6 +9,7 @@ use xrf_export::{
   render_extern_manifest,
 };
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::ExternsExportReport;
 use crate::core::command_context::CommandContext;
@@ -88,7 +89,7 @@ impl GenericCommand for ExportCommand {
 
       Self::write_output(path, &content)?;
 
-      xrf_output::info!(output, "Exported {externs} externs to '{}'.", path.display());
+      xrf_output::info!(output, "Exported {externs} externs to '{}'.", format_path(path));
 
       return context.set_result(|| ExternsExportReport::written(declarations_root, path, format, externs));
     }
@@ -100,7 +101,7 @@ impl GenericCommand for ExportCommand {
         xrf_output::info!(
           output,
           "Extern artifact '{}' matches {externs} declarations.",
-          path.display()
+          format_path(path)
         );
 
         context.set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, Vec::new()))
@@ -140,7 +141,7 @@ impl ExportCommand {
 
     Err(XrfError::new_invalid_error(format!(
       "--format is required when writing '{}'.",
-      path.display()
+      format_path(path)
     )))
   }
 
@@ -167,14 +168,14 @@ impl ExportCommand {
         let actual: ExternManifest = serde_json::from_str(&existing).map_err(|error| {
           XrfError::new_invalid_error(format!(
             "Cannot parse '{}' as an extern JSON manifest: {error}",
-            path.display()
+            format_path(path)
           ))
         })?;
 
         if actual != *manifest {
           return Err(XrfError::new_verify_error(format!(
             "Extern JSON artifact '{}' does not match the parsed declaration manifest.",
-            path.display()
+            format_path(path)
           )));
         }
       }
@@ -190,7 +191,7 @@ impl ExportCommand {
               ExternFormat::Html => "HTML",
               ExternFormat::Json => unreachable!(),
             },
-            path.display()
+            format_path(path)
           )));
         }
       }

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use full_moon::{LuaVersion, ast::Ast, parse_fallible};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::lua_method_call_collector::LuaMethodCallCollector;
 use crate::xray_lua_method_call::XRayLuaMethodCall;
@@ -46,7 +47,7 @@ impl XRayLuaScript {
       .map_err(|errors| {
         XrfError::new_verify_error(format!(
           "Failed to check LuaJIT script file: {}, errors: {}",
-          path.display(),
+          format_path(path),
           errors.iter().map(|it| it.to_string()).collect::<Vec<_>>().join(", ")
         ))
       })

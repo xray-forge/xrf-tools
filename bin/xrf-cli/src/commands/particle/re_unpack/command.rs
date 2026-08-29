@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::ParticlesFile;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -48,8 +49,8 @@ impl GenericCommand for ReUnpackCommand {
       .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");
 
-    log::info!("Starting importing particle file {}", path.display());
-    log::info!("Re-unpack into {}", destination.display());
+    log::info!("Starting importing particle file {}", format_path(path));
+    log::info!("Re-unpack into {}", format_path(destination));
 
     let started_at: Instant = Instant::now();
     let particles_file: Box<ParticlesFile> = Box::new(ParticlesFile::import_from_path(path)?);
@@ -68,7 +69,7 @@ impl GenericCommand for ReUnpackCommand {
       xrf_utils::format_duration(export_duration)
     );
 
-    log::info!("Particles file was re-unpacked into {}", destination.display());
+    log::info!("Particles file was re-unpacked into {}", format_path(destination));
 
     context.set_result(|| FileConversionReport::new(path, destination, import_duration, export_duration))?;
 

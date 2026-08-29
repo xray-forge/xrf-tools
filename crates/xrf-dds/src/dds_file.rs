@@ -7,6 +7,7 @@ use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use image_dds::{ImageFormat, Mipmaps, Quality, dds_from_image};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::uncompressed::decode_uncompressed;
 use crate::{DdsMetadata, DdsPng};
@@ -47,7 +48,7 @@ impl DdsFile {
     let dds: Dds = Dds::read(&mut file).map_err(|error| {
       XrfError::new_texture_processing_error(format!(
         "Failed to read texture by path {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error,
       ))
     })?;
@@ -69,7 +70,7 @@ impl DdsFile {
     let dds: Dds = Dds::read(&mut file.take(MAXIMUM_HEADER_SIZE)).map_err(|error| {
       XrfError::new_texture_processing_error(format!(
         "Failed to read texture header by path {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error,
       ))
     })?;

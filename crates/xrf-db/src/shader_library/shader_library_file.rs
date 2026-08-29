@@ -4,7 +4,7 @@ use std::path::Path;
 
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::{encode_w1251_bytes_to_string, format_path};
 
 /// Names of compiled blender definitions stored in `shaders.xr`.
 ///
@@ -25,7 +25,7 @@ impl ShaderLibraryFile {
     Self::read_from_file(File::open(path.as_ref()).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Shader library was not read: {}, error: {error}",
-        path.as_ref().display()
+        format_path(path.as_ref())
       ))
     })?)
   }

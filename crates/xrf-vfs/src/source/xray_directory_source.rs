@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::path::{is_component_prefix, to_host_relative};
 use crate::source::xray_asset_source::label_from_path;
@@ -84,14 +85,14 @@ impl XrayAssetSource for XrayDirectorySource {
       // Absent, not unreadable: the distinction lets a caller fall back rather than fail.
       return Err(XrfError::new_not_found_error(format!(
         "no asset '{path}' under root {}",
-        self.get_root_path().display()
+        format_path(self.get_root_path())
       )));
     };
 
     let absolute: PathBuf = asset.absolute_path();
 
     fs::read(&absolute)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to read '{}': {error}", absolute.display())))
+      .map_err(|error| XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(&absolute))))
   }
 
   /// Overwrites an indexed entry without creating new files.
@@ -101,12 +102,12 @@ impl XrayAssetSource for XrayDirectorySource {
     let Some(absolute) = self.index.find(path).ok().flatten().map(|asset| asset.absolute_path()) else {
       return Err(XrfError::new_asset_error(format!(
         "no asset '{path}' under root {} to write",
-        self.get_root_path().display()
+        format_path(self.get_root_path())
       )));
     };
 
     fs::write(&absolute, bytes)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to write '{}': {error}", absolute.display())))
+      .map_err(|error| XrfError::new_asset_error(format!("failed to write '{}': {error}", format_path(&absolute))))
   }
 
   /// Creates a loose file absent from the mount-time index, including any missing parent directories.
@@ -120,7 +121,7 @@ impl XrayAssetSource for XrayDirectorySource {
     if self.contains(path) {
       return Err(XrfError::new_asset_error(format!(
         "asset '{path}' already exists under root {}",
-        self.get_root_path().display()
+        format_path(self.get_root_path())
       )));
     }
 
@@ -128,11 +129,11 @@ impl XrayAssetSource for XrayDirectorySource {
 
     if let Some(parent) = absolute.parent() {
       fs::create_dir_all(parent)
-        .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", parent.display())))?;
+        .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", format_path(parent))))?;
     }
 
     fs::write(&absolute, bytes)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", absolute.display())))
+      .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", format_path(&absolute))))
   }
 
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {

@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert, assert_equal, assert_not_equal};
+use xrf_utils::{assert, assert_equal, assert_not_equal, format_path};
 
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
 
@@ -111,7 +111,7 @@ fn decompress_descriptor(raw: &[u8], descriptor: &ArchiveFileDescriptor) -> XrfR
     XrfError::new_read_error(format!(
       "Failed to decompress '{}' from '{}': {error}.",
       descriptor.name,
-      descriptor.source.display()
+      format_path(&descriptor.source)
     ))
   })?;
 

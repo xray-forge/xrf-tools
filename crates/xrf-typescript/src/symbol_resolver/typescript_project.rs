@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 /// Resolves TypeScript modules using one project's compiler configuration.
 pub struct TypeScriptProject {
@@ -90,14 +91,14 @@ fn read_typescript_config(path: &Path) -> XrfResult<TypeScriptConfig> {
   let source: String = fs::read_to_string(path).map_err(|error| {
     XrfError::new_invalid_error(format!(
       "Failed to read TypeScript configuration '{}': {error}",
-      path.display(),
+      format_path(path),
     ))
   })?;
 
   serde_json::from_str(&source).map_err(|error| {
     XrfError::new_invalid_error(format!(
       "Failed to parse TypeScript configuration '{}': {error}",
-      path.display(),
+      format_path(path),
     ))
   })
 }

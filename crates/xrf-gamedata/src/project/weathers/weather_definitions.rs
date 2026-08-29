@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use xrf_ltx::{Ltx, LtxProject};
+use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 /// Definitions that weather sections may reference.
@@ -98,7 +99,7 @@ impl WeatherDefinitions {
     project.read_full(&logical_path).map_err(|error| {
       format!(
         "Could not read weather definitions from {}: {error}",
-        project.path_of(&logical_path).display()
+        format_path(&project.path_of(&logical_path))
       )
     })
   }

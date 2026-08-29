@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::command_reference::GroupReference;
 use super::markdown_renderer::ReferenceMarkdownRenderer;
@@ -87,7 +88,7 @@ impl GenerateCommand {
       output,
       "Generated {} documentation pages in {}",
       pages.len(),
-      directory.display()
+      format_path(directory)
     );
 
     context.set_result(|| DocsGenerateReport::written(directory, pages.len(), removed))
@@ -118,14 +119,14 @@ impl GenerateCommand {
       xrf_output::info!(
         output,
         "CLI documentation in {} is up to date ({} pages)",
-        directory.display(),
+        format_path(directory),
         pages.len()
       );
     } else {
       xrf_output::failure!(
         output,
         "CLI documentation in {} is stale, regenerate it with 'xrf-cli docs generate':",
-        directory.display()
+        format_path(directory)
       );
 
       for name in &stale {

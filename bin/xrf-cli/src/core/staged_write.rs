@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use xrf_utils::format_path;
+
 static STAGED_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Write a complete artifact beside its destination, then move it into place.
@@ -62,12 +64,15 @@ fn get_sibling_path(path: &Path, sequence: u64) -> IoResult<PathBuf> {
   let parent: &Path = path.parent().ok_or_else(|| {
     IoError::new(
       ErrorKind::InvalidInput,
-      format!("File has no parent directory: {}", path.display()),
+      format!("File has no parent directory: {}", format_path(path)),
     )
   })?;
-  let file_name: &OsStr = path
-    .file_name()
-    .ok_or_else(|| IoError::new(ErrorKind::InvalidInput, format!("File has no name: {}", path.display())))?;
+  let file_name: &OsStr = path.file_name().ok_or_else(|| {
+    IoError::new(
+      ErrorKind::InvalidInput,
+      format!("File has no name: {}", format_path(path)),
+    )
+  })?;
 
   let mut staged_name: OsString = OsString::from(".");
 

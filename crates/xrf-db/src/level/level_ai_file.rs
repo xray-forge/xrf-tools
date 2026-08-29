@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::data::generic::vector_3d::Vector3d;
 
@@ -75,7 +76,7 @@ impl LevelAiFile {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level AI-map file was not read: {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error
       ))
     })?)

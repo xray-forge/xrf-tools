@@ -4,6 +4,7 @@ use std::time::Instant;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::ArchiveInfoReport;
 use crate::core::command_context::CommandContext;
@@ -44,7 +45,7 @@ impl GenericCommand for InfoCommand {
     let (compressed, unpacked): (String, String) =
       xrf_utils::format_bytes_pair(project.get_compressed_size(), project.get_real_size());
 
-    xrf_output::info!(output, "Archive root: {}", project.root.display());
+    xrf_output::info!(output, "Archive root: {}", format_path(&project.root));
     xrf_output::info!(output, "Volumes: {}", project.archives.len());
     xrf_output::info!(
       output,
@@ -60,9 +61,9 @@ impl GenericCommand for InfoCommand {
         xrf_output::info!(
           output,
           "  {}: {} entry(s), {compressed} compressed, {unpacked} unpacked, root {}",
-          archive.path.display(),
+          format_path(&archive.path),
           archive.files.len(),
-          archive.output_root_path.display(),
+          format_path(&archive.output_root_path),
         );
       }
     }

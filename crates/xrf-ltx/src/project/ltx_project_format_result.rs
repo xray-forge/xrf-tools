@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::Serialize;
+use xrf_utils::format_path;
 
 use crate::LtxFormatOptions;
 
@@ -36,7 +37,7 @@ impl LtxProjectFormatResult {
     if is_formatted {
       self.valid_files += 1;
     } else {
-      xrf_output::info!(options.output, "Not formatted: {}", path.display());
+      xrf_output::info!(options.output, "Not formatted: {}", format_path(&path));
 
       self.invalid_files += 1;
       self.to_format.push(path);

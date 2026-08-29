@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{ThmBumpPatchReport, ThmBumpProcessor, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -116,7 +117,7 @@ impl PatchBumpCommand {
         output,
         "Dry run, nothing written, {} and {} would receive {} bytes instead of {}",
         outcome,
-        destination.display(),
+        format_path(destination),
         report.patched_size,
         report.original_size
       );
@@ -128,7 +129,7 @@ impl PatchBumpCommand {
       output,
       "Patched thm {}, written into {}",
       outcome,
-      destination.display()
+      format_path(destination)
     );
 
     Ok(report)

@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackDescriptionOptions, PackDescriptionProcessor};
+use xrf_utils::format_path;
 
 use super::report::TextureDescriptionReport;
 use crate::core::command_context::CommandContext;
@@ -98,8 +99,8 @@ impl GenericCommand for PackTextureDescriptionCommand {
       is_parallel,
     };
 
-    log::info!("Packing texture descriptions from: {}", description.display());
-    log::info!("Paths: base {}, output {}", base.display(), output.display());
+    log::info!("Packing texture descriptions from: {}", format_path(description));
+    log::info!("Paths: base {}, output {}", format_path(base), format_path(output));
     log::info!("DDS format: {:?}", options.dds_compression_format);
 
     // The payload is what the run was pointed at, so it is deposited before the work rather than

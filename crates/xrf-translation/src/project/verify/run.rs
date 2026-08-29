@@ -1,7 +1,8 @@
-use std::path::{Display, Path};
+use std::path::Path;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::json::read::{parse_json, read_json};
@@ -94,19 +95,19 @@ pub fn verify_file<P: AsRef<Path>>(path: &P, options: &ProjectVerifyOptions) -> 
   // the reader does. An exact compare skipped `ST_A.JSON` with only an info line, while the editor
   // opened it — the VFS lower-cases logical paths and the host walk does not.
   if !is_json_source(path.as_ref()) {
-    log::info!("Skip file {}", path.as_ref().display());
-    xrf_output::info!(options.output, "Skip file {}", path.as_ref().display());
+    log::info!("Skip file {}", format_path(path.as_ref()));
+    xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
 
     return Ok(ProjectVerifyResult::new());
   }
 
-  let path_display: Display = path.as_ref().display();
+  let path_display: String = format_path(path.as_ref()).to_string();
 
   log::info!("Verifying JSON file {}", path_display);
 
   let started_at: Instant = Instant::now();
   let parsed: TranslationJson = read_json(path.as_ref())?;
-  let mut result: ProjectVerifyResult = verify_parsed(&path_display.to_string(), &parsed, options);
+  let mut result: ProjectVerifyResult = verify_parsed(&path_display, &parsed, options);
 
   result.duration = started_at.elapsed();
 

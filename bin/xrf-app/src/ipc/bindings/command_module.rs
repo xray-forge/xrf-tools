@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use xrf_utils::to_camel_case;
+use xrf_utils::{format_path, to_camel_case};
 
 use crate::ipc::bindings::constants::{GENERATED_HEADER, TYPES_MARKER};
 use crate::ipc::bindings::output::write_generated;
@@ -15,7 +15,7 @@ use crate::ipc::bindings::ownership::TypeOwnership;
 /// made every call site alias it by hand.
 pub(super) fn finalize_command_module(path: &Path, plugin: &str, ownership: &TypeOwnership) {
   let contents: String =
-    fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", path.display()));
+    fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
   let commands: String = contents
     .split_once(TYPES_MARKER)
     .map_or(contents.as_str(), |(before, _)| before)
@@ -29,7 +29,7 @@ pub(super) fn finalize_command_module(path: &Path, plugin: &str, ownership: &Typ
 
   let (header, body) = commands
     .split_once("\n\n")
-    .unwrap_or_else(|| panic!("{} has no header", path.display()));
+    .unwrap_or_else(|| panic!("{} has no header", format_path(path)));
 
   write_generated(
     path,

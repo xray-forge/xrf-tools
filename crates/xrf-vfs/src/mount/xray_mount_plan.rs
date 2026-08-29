@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 
 use crate::mount::xray_root::{find_implied_asset_root, implied_install_root};
 use crate::path::{normalize, normalize_base};
@@ -48,7 +49,7 @@ pub struct XrayPlannedMount {
 ///   .ignoring(&[String::from("textures\\wip")])?;
 ///
 /// for planned in plan.get_mounts() {
-///   println!("{} <- {} ({:?})", planned.base, planned.path.display(), planned.kind);
+///   println!("{} <- {} ({:?})", planned.base, format_path(planned.path), planned.kind);
 /// }
 ///
 /// let vfs: XrayVfs = XrayVfs::from_plan(&plan)?;
@@ -151,7 +152,7 @@ impl XrayMountPlan {
         log::info!(
           "Skipping fsgame alias {}: {} is not a directory",
           declaration.alias,
-          path.display()
+          format_path(&path)
         );
 
         continue;

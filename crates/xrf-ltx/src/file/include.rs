@@ -3,8 +3,10 @@ use std::io;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path_or;
 
 use crate::Ltx;
+use crate::file::file_configuration::constants::VIRTUAL_LTX_PATH;
 use crate::file::include_filesystem_source::LtxIncludeFilesystemSource;
 use crate::file::include_source::LtxIncludeSource;
 
@@ -142,7 +144,7 @@ impl LtxIncludeConvertor {
         return Err(XrfError::new_convert_error(format!(
           "Failed to parse ltx file, nested file {} in {} error: {error}",
           source.describe(path),
-          into.path.as_ref().unwrap().display(),
+          format_path_or(into.path.as_deref(), VIRTUAL_LTX_PATH),
         )));
       }
     };
@@ -160,7 +162,7 @@ impl LtxIncludeConvertor {
             return Err(XrfError::new_convert_error(format!(
               "Failed to include ltx file '{}' in {}, duplicate section '{}' found",
               source.describe(path),
-              into.path.as_ref().unwrap().display(),
+              format_path_or(into.path.as_deref(), VIRTUAL_LTX_PATH),
               key
             )));
           }

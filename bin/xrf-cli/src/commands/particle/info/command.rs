@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::ParticleInfoReport;
 use crate::core::command_context::CommandContext;
@@ -38,7 +39,7 @@ impl GenericCommand for InfoCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read particle file {}", path.display());
+    xrf_output::info!(output, "Read particle file {}", format_path(path));
 
     let particles_file: Box<ParticlesFile> = Box::new(ParticlesFile::read_from_path::<XRayByteOrder, _>(path)?);
 

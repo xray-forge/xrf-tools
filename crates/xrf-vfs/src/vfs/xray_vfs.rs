@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
@@ -281,7 +282,7 @@ impl XrayVfs {
       return Err(XrfError::new_not_found_error(format!(
         "cannot read '{}': no mount in this VFS holds {}",
         asset.get_logical_path(),
-        container_root.display()
+        format_path(container_root)
       )));
     };
 

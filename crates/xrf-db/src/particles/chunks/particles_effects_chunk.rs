@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
-use xrf_utils::{assert, open_export_file, to_format_size};
+use xrf_utils::{assert, format_path, open_export_file, to_format_size};
 
 use crate::constants::META_TYPE_FIELD;
 use crate::data::particles::particle_effect::ParticleEffect;
@@ -73,7 +73,7 @@ impl ChunkReadWrite for ParticlesEffectsChunk {
 impl FileImportExport for ParticlesEffectsChunk {
   /// Import particles effects data from provided path.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    log::info!("Importing particles effects: {}", path.as_ref().display());
+    log::info!("Importing particles effects: {}", format_path(path.as_ref()));
 
     let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("effects.ltx"))?;
     let mut effects: Vec<ParticleEffect> = Vec::new();

@@ -5,6 +5,7 @@ use clap::parser::ValueSource;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchivePackConfig, ArchivePackMode, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -108,7 +109,7 @@ impl GenericCommand for PackCommand {
 
     // The configuration file supplies defaults; anything named on the command line wins over it.
     if let Some(ltx) = matches.get_one::<PathBuf>("ltx") {
-      xrf_output::info!(output, "Pack config: {}", ltx.display());
+      xrf_output::info!(output, "Pack config: {}", format_path(ltx));
 
       config = config.with_ltx_file(ltx)?;
     }
@@ -132,8 +133,8 @@ impl GenericCommand for PackCommand {
       config = config.with_max_volume_size(xrf_utils::megabytes_to_bytes(*size))?;
     }
 
-    xrf_output::info!(output, "Pack source: {}", path.display());
-    xrf_output::info!(output, "Pack destination: {}", destination.display());
+    xrf_output::info!(output, "Pack source: {}", format_path(path));
+    xrf_output::info!(output, "Pack destination: {}", format_path(&destination));
 
     // A headerless archive is not neutral to the engine: unless it is named `xdb`, the loader assumes it
     // is an encrypted Shadow of Chernobyl archive and decrypts it into nonsense.
@@ -148,7 +149,7 @@ impl GenericCommand for PackCommand {
     let result: ArchivePackResult = ArchivePacker::pack(&config)?;
 
     for volume in &result.volumes {
-      xrf_output::info!(output, "Wrote {}", volume.display());
+      xrf_output::info!(output, "Wrote {}", format_path(volume));
     }
 
     xrf_output::success!(

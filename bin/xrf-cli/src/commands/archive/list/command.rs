@@ -4,6 +4,7 @@ use std::time::Instant;
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::ArchiveListReport;
 use crate::core::command_context::CommandContext;
@@ -70,7 +71,7 @@ impl GenericCommand for ListCommand {
           output,
           "{} [{compressed} stored, {unpacked} unpacked, {}]",
           entry.name,
-          entry.source.display(),
+          format_path(&entry.source),
         );
       } else {
         xrf_output::info!(output, "{}", entry.name);

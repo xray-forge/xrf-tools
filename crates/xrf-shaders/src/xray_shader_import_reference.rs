@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::ShaderRenderer;
 
@@ -43,7 +44,7 @@ impl XRayShaderImportReference {
       }) else {
         return Err(XrfError::new_invalid_error(format!(
           "Shader {} has malformed #include on line {line_number}: expected a quoted or angle-bracket import path",
-          path.display()
+          format_path(path)
         )));
       };
 
@@ -65,7 +66,7 @@ impl XRayShaderImportReference {
         let Some(include) = include.trim_start().strip_prefix('"') else {
           return Err(XrfError::new_invalid_error(format!(
             "OpenGL shader {} has malformed #include on line {line_number}: expected a quoted import path",
-            path.display()
+            format_path(path)
           )));
         };
 
@@ -88,7 +89,7 @@ impl XRayShaderImportReference {
     let Some(end) = include.find(closing_delimiter) else {
       return Err(XrfError::new_invalid_error(format!(
         "Shader {} has malformed #include on line {line_number}: expected a closing {closing_delimiter}",
-        shader_path.display()
+        format_path(shader_path)
       )));
     };
 
@@ -97,7 +98,7 @@ impl XRayShaderImportReference {
     if import_path.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
         "Shader {} has malformed #include on line {line_number}: import path is empty",
-        shader_path.display()
+        format_path(shader_path)
       )));
     }
 

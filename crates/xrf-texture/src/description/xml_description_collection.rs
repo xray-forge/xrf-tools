@@ -4,6 +4,7 @@ use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_xml::{XmlDocument, XmlElement, XmlParseOptions};
 
 use crate::constants::{XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW};
@@ -58,7 +59,7 @@ impl XmlDescriptionCollection {
 
       return Err(XrfError::new_texture_processing_error(format!(
         "Expected requested files to be described in {}, not found: {}, available: {}",
-        options.description.display(),
+        format_path(&options.description),
         unknown.join(", "),
         available.join(", ")
       )));
@@ -87,7 +88,7 @@ impl XmlDescriptionCollection {
       xrf_output::info!(
         options.output,
         "Check texture descriptions from dir: {}",
-        options.description.display()
+        format_path(&options.description)
       );
 
       let mut files: HashMap<String, TextureFileDescriptor> = HashMap::new();
@@ -129,7 +130,7 @@ impl XmlDescriptionCollection {
     options: &PackDescriptionOptions,
     path: &Path,
   ) -> XrfResult<HashMap<String, TextureFileDescriptor>> {
-    xrf_output::verbose!(options.output, "Found texture description: {}", path.display());
+    xrf_output::verbose!(options.output, "Found texture description: {}", format_path(path));
 
     let mut descriptions: HashMap<String, TextureFileDescriptor> = HashMap::new();
 
@@ -140,12 +141,17 @@ impl XmlDescriptionCollection {
         if options.is_strict {
           return Err(XrfError::new_parsing_error(format!(
             "Failed to parse xml: {} - {}",
-            path.display(),
+            format_path(path),
             error
           )));
         }
 
-        xrf_output::warning!(options.output, "Error parsing XML file: {} - {}", path.display(), error);
+        xrf_output::warning!(
+          options.output,
+          "Error parsing XML file: {} - {}",
+          format_path(path),
+          error
+        );
         return Ok(HashMap::new());
       }
     };
@@ -182,7 +188,7 @@ impl XmlDescriptionCollection {
             xrf_output::warning!(
               options.output,
               "Skip definitions node \"{file_name}\" without textures (in {})",
-              path.display()
+              format_path(path)
             );
           } else {
             match descriptions.get_mut(&file_description.name) {
@@ -207,7 +213,7 @@ impl XmlDescriptionCollection {
       xrf_output::warning!(
         options.output,
         "Got no 'w' tag for file '{}'",
-        options.description.display()
+        format_path(&options.description)
       );
     }
 

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use xrf_translation::{ProjectParseCensus, ProjectParseOptions, ProjectParseResult, TranslationLanguage};
+use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
@@ -47,7 +48,7 @@ pub async fn translations_parse_project(
   log::info!(
     "Parsing translations: {} root(s), '{language}', into {}{}",
     roots.roots.len(),
-    output_dir.display(),
+    format_path(&output_dir),
     if is_dry_run { " (dry run)" } else { "" }
   );
 

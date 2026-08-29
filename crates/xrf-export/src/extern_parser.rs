@@ -17,6 +17,7 @@ pub use project_projection::{
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_typescript::{TypeScriptSymbolResolver, parse_typescript_file};
+use xrf_utils::format_path;
 
 use crate::extern_manifest::{ExternExport, ExternManifest, ParsedExternManifest};
 
@@ -38,7 +39,7 @@ impl ExternManifestParser {
     if !declarations_root.is_dir() {
       return Err(XrfError::new_invalid_error(format!(
         "Extern source root '{}' is not a directory.",
-        declarations_root.display(),
+        format_path(declarations_root),
       )));
     }
 
@@ -133,8 +134,8 @@ impl ExternManifestParser {
     let relative: &Path = path.strip_prefix(declarations_root).map_err(|_| {
       XrfError::new_invalid_error(format!(
         "Declaration '{}' is outside declarations root '{}'.",
-        path.display(),
-        declarations_root.display(),
+        format_path(path),
+        format_path(declarations_root),
       ))
     })?;
 

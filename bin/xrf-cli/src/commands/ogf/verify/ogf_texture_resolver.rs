@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use xrf_dds::{DdsFile, DdsMetadata};
+use xrf_utils::format_path;
 use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayProbePlan, XrayProbeStep, XrayResolution, XrayVfs};
 
 /// The outcome of resolving and reading one texture reference.
@@ -109,19 +110,19 @@ impl OgfTextureResolver {
   fn locate(&mut self, root: &Path, reference: &str) -> Option<XrayResolution> {
     let mut plan: XrayProbePlan = XrayProbePlan::new()
       .with_root(Self::VISUAL_ROOT_STEP, root)
-      .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", root.display()))
+      .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(root)))
       .ok()?;
 
     for named in &self.roots {
       plan = plan
         .with_root(named.display().to_string(), named)
-        .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", named.display()))
+        .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(named)))
         .ok()?;
     }
 
     let steps: Vec<XrayProbeStep> = plan
       .mount_into(&mut self.vfs)
-      .inspect_err(|error| log::warn!("Failed to mount root {}: {error}", root.display()))
+      .inspect_err(|error| log::warn!("Failed to mount root {}: {error}", format_path(root)))
       .ok()?;
 
     self

@@ -4,6 +4,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::data::ogf::ogf_geometry::OgfGeometry;
 use crate::ogf::chunks::ogf_bones_chunk::OgfBonesChunk;
@@ -71,7 +72,7 @@ impl OgfChunksProcessor {
     Self::collect_chunks::<T>(File::open(path.as_ref()).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OGF file was not read: {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error
       ))
     })?)

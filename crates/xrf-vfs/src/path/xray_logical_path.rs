@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 /// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
 ///
@@ -226,9 +227,12 @@ pub(crate) fn normalize_base(base: &str) -> XrfResult<String> {
 ///
 /// Named for the domain it crosses: the input is a host path fragment, the output an engine identity.
 pub(crate) fn normalize_host_relative(path: &Path) -> XrfResult<String> {
-  let path: &str = path
-    .to_str()
-    .ok_or_else(|| XrfError::new_asset_error(format!("directory asset path is not valid UTF-8: {}", path.display())))?;
+  let path: &str = path.to_str().ok_or_else(|| {
+    XrfError::new_asset_error(format!(
+      "directory asset path is not valid UTF-8: {}",
+      format_path(path)
+    ))
+  })?;
 
   Ok(normalize(path)?.into_owned())
 }

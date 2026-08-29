@@ -5,6 +5,7 @@ use std::time::Instant;
 use image::{DynamicImage, GenericImage, ImageBuffer, ImageReader, Rgba};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::constants::{
@@ -57,7 +58,7 @@ impl PackEquipmentProcessor {
         h,
         sprite.width(),
         sprite.height(),
-        sprite_path.display(),
+        format_path(&sprite_path),
       );
 
       Self::warn_on_conflicting_slot(
@@ -158,7 +159,7 @@ impl PackEquipmentProcessor {
         xrf_output::warning!(
           options.output,
           "Skip icon {} / '{}', reason: {}",
-          sprite_path.display(),
+          format_path(&sprite_path),
           sprite.section,
           error
         );

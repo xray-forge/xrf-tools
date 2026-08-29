@@ -4,6 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
@@ -40,7 +41,7 @@ impl GenericCommand for VerifyCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    log::info!("Verify spawn file {}", path.display());
+    log::info!("Verify spawn file {}", format_path(path));
 
     match SpawnFile::read_from_path::<XRayByteOrder, _>(path) {
       Ok(_) => {

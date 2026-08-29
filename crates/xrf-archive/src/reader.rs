@@ -10,7 +10,9 @@ use byteorder::ReadBytesExt;
 use regex::Regex;
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::decompress;
-use xrf_utils::{XRayEncoding, assert, decode_bytes_to_string_without_bom_handling, new_windows1251_encoder};
+use xrf_utils::{
+  XRayEncoding, assert, decode_bytes_to_string_without_bom_handling, format_path, new_windows1251_encoder,
+};
 
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
@@ -58,7 +60,7 @@ impl ArchiveReader {
       }),
       Err(error) => Err(XrfError::new_read_error(format!(
         "Failed to read archive file {}, {error}",
-        path.display()
+        format_path(path)
       ))),
     }
   }
@@ -83,7 +85,7 @@ impl ArchiveReader {
     let header: ArchiveHeader = self.read_archive_header()?.ok_or_else(|| {
       XrfError::new_read_error(format!(
         "archive {} holds no file descriptors chunk",
-        self.path.display()
+        format_path(&self.path)
       ))
     })?;
     let metadata = self.file.metadata()?;
@@ -137,7 +139,7 @@ impl ArchiveReader {
       if u64::from(chunk_size) > volume_size.saturating_sub(position) {
         return Err(XrfError::new_read_error(format!(
           "archive {} declares a {chunk_size}-byte chunk at {position}, beyond its {volume_size}-byte end",
-          self.path.display()
+          format_path(&self.path)
         )));
       }
 
@@ -155,7 +157,7 @@ impl ArchiveReader {
         root_path = self.read_root_path(chunk_data.as_slice())?.ok_or_else(|| {
           XrfError::new_read_error(format!(
             "archive {} has a metadata chunk without an [header] entry_point",
-            self.path.display()
+            format_path(&self.path)
           ))
         })?;
       } else {

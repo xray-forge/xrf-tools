@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
@@ -175,8 +176,8 @@ impl ListCommand {
       xrf_output::warning!(
         output,
         "  {} is unreachable, {} answers '{}'",
-        collision.unreachable.display(),
-        collision.kept.display(),
+        format_path(&collision.unreachable),
+        format_path(&collision.kept),
         collision.logical_path
       );
     }
@@ -210,7 +211,7 @@ impl ListCommand {
         output,
         "  {} at {}: {}",
         skipped.origin,
-        skipped.path.display(),
+        format_path(&skipped.path),
         skipped.reason
       );
     }

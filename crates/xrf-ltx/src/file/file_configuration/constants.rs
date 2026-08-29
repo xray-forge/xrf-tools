@@ -30,3 +30,6 @@ pub const LTX_SYMBOL_SECTION_CLOSE: char = ']';
 pub const LTX_SYMBOL_OPTIONAL: char = '?';
 
 pub const LTX_SYMBOL_ARRAY: &str = "[]";
+
+/// How an `Ltx` that was never read from a file names itself in a diagnostic.
+pub const VIRTUAL_LTX_PATH: &str = "virtual";

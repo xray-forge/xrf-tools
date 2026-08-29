@@ -6,6 +6,7 @@ use tokio::runtime::Runtime;
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveUnpackResult, ArchiveUnpacker};
+use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
 use crate::core::command_context::CommandContext;
@@ -83,8 +84,8 @@ impl GenericCommand for UnpackCommand {
       xrf_output::info!(output, "Unpack in dry mode");
     }
 
-    xrf_output::info!(output, "Unpack source: {}", path.display());
-    xrf_output::info!(output, "Unpack destination: {}", destination.display());
+    xrf_output::info!(output, "Unpack source: {}", format_path(path));
+    xrf_output::info!(output, "Unpack destination: {}", format_path(&destination));
 
     let archive_project: Box<ArchiveProject> = Box::new(ArchiveProject::new(path)?);
 

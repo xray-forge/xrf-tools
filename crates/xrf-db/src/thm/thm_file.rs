@@ -5,6 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::thm::chunks::thm_bump_chunk::ThmBumpChunk;
 
@@ -24,7 +25,7 @@ impl ThmFile {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "THM file was not read: {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error
       ))
     })?)

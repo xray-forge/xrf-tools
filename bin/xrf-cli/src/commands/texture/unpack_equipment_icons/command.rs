@@ -7,6 +7,7 @@ use xrf_dds::{DdsFile, DdsMetadata, ImageFormat};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_texture::{UnpackEquipmentOptions, UnpackEquipmentProcessor};
+use xrf_utils::format_path;
 
 use super::report::TextureEquipmentUnpackReport;
 use crate::core::command_context::CommandContext;
@@ -64,7 +65,7 @@ impl GenericCommand for UnpackEquipmentIconsCommand {
 
     let started_at: Instant = Instant::now();
 
-    xrf_output::info!(output_options, "Opening DDS file: {}", source.display());
+    xrf_output::info!(output_options, "Opening DDS file: {}", format_path(source));
 
     let source_file: DdsFile = DdsFile::read_from_path(source)?;
     let metadata: DdsMetadata = source_file.metadata();
@@ -84,7 +85,7 @@ impl GenericCommand for UnpackEquipmentIconsCommand {
     xrf_output::info!(
       output_options,
       "Unpacking equipment DDS file into: {}",
-      output.display()
+      format_path(output)
     );
 
     create_dir_all(output)?;

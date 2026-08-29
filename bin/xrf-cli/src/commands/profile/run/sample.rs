@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use xrf_error::XrfError;
+use xrf_utils::format_path;
 
 use crate::core::generic_command::CommandResult;
 
@@ -73,7 +74,7 @@ pub fn run_sampled(path: &Path, arguments: &[String]) -> CommandResult<SampledRu
     .stdout(Stdio::null())
     .stderr(Stdio::null())
     .spawn()
-    .map_err(|error| XrfError::new_io_error(format!("Failed to run '{}': {error}", path.display()), error.kind()))?;
+    .map_err(|error| XrfError::new_io_error(format!("Failed to run '{}': {error}", format_path(path)), error.kind()))?;
 
   let samples: Arc<ResidentSamples> = Arc::new(ResidentSamples::default());
   let is_running: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
@@ -89,7 +90,10 @@ pub fn run_sampled(path: &Path, arguments: &[String]) -> CommandResult<SampledRu
   let _ = sampler.join();
 
   let status = status.map_err(|error| {
-    XrfError::new_io_error(format!("Failed to wait on '{}': {error}", path.display()), error.kind())
+    XrfError::new_io_error(
+      format!("Failed to wait on '{}': {error}", format_path(path)),
+      error.kind(),
+    )
   })?;
 
   let (peak_bytes, mean_bytes) = samples.summarize();

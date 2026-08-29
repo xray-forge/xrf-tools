@@ -7,6 +7,7 @@ use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -84,16 +85,16 @@ impl GenericCommand for PackEquipmentIconsCommand {
       return Err(
         XrfError::new_read_error(format!(
           "Expected valid source folder containing DDS icons, got: {}",
-          source.display()
+          format_path(source)
         ))
         .into(),
       );
     }
 
     xrf_output::info!(output_options, "Starting packing DDS icons file, parallel");
-    xrf_output::info!(output_options, "System ltx: {}", system_ltx_path.display());
-    xrf_output::info!(output_options, "Source icons dir: {}", source.display());
-    xrf_output::info!(output_options, "Output dir: {}", output.display());
+    xrf_output::info!(output_options, "System ltx: {}", format_path(system_ltx_path));
+    xrf_output::info!(output_options, "Source icons dir: {}", format_path(source));
+    xrf_output::info!(output_options, "Output dir: {}", format_path(output));
 
     let started_at: Instant = Instant::now();
     let system_ltx: Ltx = Ltx::read_from_file_full(system_ltx_path)?;
@@ -117,7 +118,7 @@ impl GenericCommand for PackEquipmentIconsCommand {
     xrf_output::info!(
       output_options,
       "Saved resulting file with combined icons {}",
-      output.display()
+      format_path(output)
     );
 
     log::info!(

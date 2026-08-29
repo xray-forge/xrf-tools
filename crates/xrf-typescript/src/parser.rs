@@ -12,6 +12,7 @@ use swc_common::{
 use swc_ecma_ast::Program;
 use swc_ecma_parser::{Parser, StringInput, Syntax, lexer::Lexer};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 /// A parsed TypeScript file together with the metadata needed for diagnostics.
 pub struct TypeScriptSource {
@@ -52,7 +53,7 @@ pub fn parse_typescript_file(path: &Path) -> XrfResult<TypeScriptSource> {
   if !diagnostics.is_empty() {
     return Err(XrfError::new_parsing_error(format!(
       "Failed to parse TypeScript file {}: {}",
-      path.display(),
+      format_path(path),
       diagnostics
         .iter()
         .map(|builder| builder

@@ -10,6 +10,7 @@ ddsfile = { workspace = true }
 image = { workspace = true, features = ["png"] }
 image_dds = { workspace = true }
 xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{Manager, Runtime};
+use xrf_utils::format_path;
 
 /// Browser extensions a developer supplied locally, loaded into the application window.
 pub trait DevExtensions {
@@ -16,7 +17,7 @@ impl<R: Runtime, M: Manager<R>> DevExtensions for WebviewWindowBuilder<'_, R, M>
   fn with_dev_extensions(self) -> Self {
     match resolve_extensions_directory() {
       Some(directory) => {
-        log::info!("Loading webview extensions from '{}'", directory.display());
+        log::info!("Loading webview extensions from '{}'", format_path(&directory));
 
         self.browser_extensions_enabled(true).extensions_path(directory)
       }
@@ -54,7 +55,7 @@ fn resolve_extensions_directory() -> Option<PathBuf> {
     if !entry.join("manifest.json").is_file() {
       log::error!(
         "Skipping webview extensions, '{}' has no manifest.json and WebView2 would reject it",
-        entry.display()
+        format_path(entry)
       );
 
       return None;

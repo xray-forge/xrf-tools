@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, Section};
+use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use super::weather_definitions::WeatherDefinitions;
@@ -241,7 +242,7 @@ fn report_weather_finding(
 ) -> Finding {
   let message: String = message.into();
 
-  xrf_output::error!(options.output, "{}: {}", message, config_path.display());
+  xrf_output::error!(options.output, "{}: {}", message, format_path(config_path));
 
   GamedataFindingFactory::for_asset(GamedataVerificationRule::WeathersValidation, config_path, message)
 }

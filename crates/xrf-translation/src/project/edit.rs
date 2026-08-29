@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::XRayEncoding;
+use xrf_utils::{XRayEncoding, format_path};
 use xrf_vfs::XrayAsset;
 use xrf_xml::encoding_from_label;
 
@@ -27,7 +27,7 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
     Some(xml::FILE_EXTENSION) => xml::write::apply_edits(path, edits),
     _ => Err(XrfError::new_invalid_error(format!(
       "Translation '{}' is not a file this can write",
-      path.display()
+      format_path(path)
     ))),
   }
 }

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_translation::{ProjectInitializeOptions, ProjectInitializeResult, initialize_dir, initialize_file};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -36,7 +37,7 @@ impl GenericCommand for InitializeCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Verifying translation {}", path.display());
+    xrf_output::info!(output, "Verifying translation {}", format_path(path));
 
     let options: ProjectInitializeOptions = ProjectInitializeOptions {
       output,

@@ -9,7 +9,7 @@ use lzokay::compress::Dict;
 use xrf_archive::CHUNK_ID_COMPRESSED_MASK;
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::compress;
-use xrf_utils::encode_string_to_w1251_bytes;
+use xrf_utils::{encode_string_to_w1251_bytes, format_path};
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackMode};
 use crate::pack::archive_pack_result::ArchivePackResult;
@@ -65,7 +65,7 @@ impl ArchivePacker {
     if source.entries.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
         "Nothing to pack from '{}': {} file(s) matched, {} skipped by the configured rules",
-        config.source.display(),
+        format_path(&config.source),
         source.entries.len(),
         source.skipped
       )));

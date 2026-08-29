@@ -7214,6 +7214,7 @@ dependencies = [
  "image_dds",
  "xrf-error",
  "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7267,6 +7268,7 @@ dependencies = [
  "xrf-error",
  "xrf-test-utils",
  "xrf-typescript",
+ "xrf-utils",
  "xrf-xml",
 ]
 
@@ -7317,6 +7319,7 @@ version = "0.1.0"
 dependencies = [
  "full_moon",
  "xrf-error",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7366,6 +7369,7 @@ version = "0.1.0"
 dependencies = [
  "xrf-error",
  "xrf-lua",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7375,6 +7379,7 @@ dependencies = [
  "ogg",
  "symphonia",
  "xrf-error",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7435,6 +7440,7 @@ dependencies = [
  "swc_ecma_codegen",
  "swc_ecma_parser",
  "xrf-error",
+ "xrf-utils",
 ]
 
 [[package]]

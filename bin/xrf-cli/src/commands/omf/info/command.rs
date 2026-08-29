@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::OmfInfoReport;
 use crate::core::command_context::CommandContext;
@@ -38,7 +39,7 @@ impl GenericCommand for InfoCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read omf file {}", path.display());
+    xrf_output::info!(output, "Read omf file {}", format_path(path));
 
     let omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(path)?);
 

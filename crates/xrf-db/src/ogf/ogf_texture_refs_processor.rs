@@ -6,7 +6,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::open_export_file;
+use xrf_utils::{format_path, open_export_file};
 
 use crate::ogf::chunks::ogf_children_chunk::OgfChildrenChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
@@ -43,7 +43,7 @@ impl OgfTextureRefsProcessor {
     if patched_count == 0 {
       return Err(XrfError::new_verify_error(format!(
         "Refused to patch {}, no texture reference matched '{}', found {:?}",
-        source.display(),
+        format_path(source),
         from,
         existing
       )));
@@ -180,7 +180,7 @@ impl OgfTextureRefsProcessor {
     if written.iter().any(|it| it == from) {
       return Err(XrfError::new_verify_error(format!(
         "Wrote {} but it still names '{}', refs are {:?}",
-        destination.display(),
+        format_path(destination),
         from,
         written
       )));
@@ -189,7 +189,7 @@ impl OgfTextureRefsProcessor {
     if !written.iter().any(|it| it == to) {
       return Err(XrfError::new_verify_error(format!(
         "Wrote {} but it does not name '{}', refs are {:?}",
-        destination.display(),
+        format_path(destination),
         to,
         written
       )));

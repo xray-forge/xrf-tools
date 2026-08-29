@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use xrf_typescript::swc_common::{SourceMap, sync::Lrc};
 use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
 use xrf_typescript::{parse_typescript_file, render_module_item};
+use xrf_utils::format_path;
 
 use crate::ipc::bindings::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
 use crate::ipc::bindings::normalization::normalize_module_item;
@@ -89,10 +90,10 @@ pub(super) fn compare_surfaces(committed: &Surface, generated: &Surface) -> Surf
 }
 
 fn read_module_directory(path: &Path, directory: &str, surface: &mut Surface) {
-  let entries = fs::read_dir(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", path.display()));
+  let entries = fs::read_dir(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
 
   for entry in entries {
-    let entry = entry.unwrap_or_else(|error| panic!("Failed to read an entry of {}: {error}", path.display()));
+    let entry = entry.unwrap_or_else(|error| panic!("Failed to read an entry of {}: {error}", format_path(path)));
     let file: PathBuf = entry.path();
 
     if !file.extension().is_some_and(|extension| extension == "ts") {
@@ -101,7 +102,7 @@ fn read_module_directory(path: &Path, directory: &str, surface: &mut Surface) {
 
     let name: String = file
       .file_name()
-      .unwrap_or_else(|| panic!("Failed to name {}", file.display()))
+      .unwrap_or_else(|| panic!("Failed to name {}", format_path(&file)))
       .to_string_lossy()
       .into_owned();
 
@@ -112,10 +113,10 @@ fn read_module_directory(path: &Path, directory: &str, surface: &mut Surface) {
 
 fn read_module(path: &Path, module: &str, surface: &mut Surface) {
   let source = parse_typescript_file(path)
-    .unwrap_or_else(|error| panic!("Failed to parse bindings module {}: {error}", path.display()));
+    .unwrap_or_else(|error| panic!("Failed to parse bindings module {}: {error}", format_path(path)));
 
   let Program::Module(parsed) = &source.program else {
-    panic!("Bindings module {} did not parse as a module", path.display());
+    panic!("Bindings module {} did not parse as a module", format_path(path));
   };
 
   for item in &parsed.body {

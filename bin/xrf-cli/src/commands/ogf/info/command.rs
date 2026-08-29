@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_db::{OgfChunksProcessor, OgfFile, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::OgfInfoReport;
 use crate::core::command_context::CommandContext;
@@ -38,7 +39,7 @@ impl GenericCommand for InfoCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read ogf file {}", path.display());
+    xrf_output::info!(output, "Read ogf file {}", format_path(path));
 
     let ogf_file: Box<OgfFile> = Box::new(OgfFile::read_from_path::<XRayByteOrder, _>(path)?);
 

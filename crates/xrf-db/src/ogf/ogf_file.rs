@@ -8,6 +8,7 @@ use xrf_chunk::{
   find_optional_chunk_by_id, find_required_chunk_by_id,
 };
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::data::ogf::ogf_geometry::OgfGeometry;
 use crate::data::ogf::ogf_motion::OgfMotion;
@@ -67,7 +68,7 @@ impl OgfFile {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OGF file was not read: {}, error: {}",
-        path.as_ref().display(),
+        format_path(path.as_ref()),
         error
       ))
     })?)

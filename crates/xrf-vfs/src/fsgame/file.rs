@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
+use xrf_utils::{decode_bytes_to_string, format_path, new_windows1251_encoder};
 
 use crate::fsgame::declaration::FsgameDeclaration;
 
@@ -34,7 +34,7 @@ impl FsgameFile {
     let root: &Path = root.as_ref();
     let path: PathBuf = root.join(Self::FILE_NAME);
     let bytes: Vec<u8> = fs::read(&path)
-      .map_err(|error| XrfError::new_read_error(format!("failed to read {}: {error}", path.display())))?;
+      .map_err(|error| XrfError::new_read_error(format!("failed to read {}: {error}", format_path(&path))))?;
 
     Self::parse(root, &decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }

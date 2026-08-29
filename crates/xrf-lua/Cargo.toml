@@ -8,6 +8,7 @@ rust-version.workspace = true
 [dependencies]
 full_moon = { version = "2.2.0", features = ["luajit"] }
 xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
 
 [lints]
 workspace = true

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::source::DirectoryAsset;
 
@@ -26,7 +27,7 @@ impl DirectoryAssetIndex {
   pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
 
-    log::debug!("reading directory assets from {}", root.display());
+    log::debug!("reading directory assets from {}", format_path(root));
 
     let mut assets: Vec<DirectoryAsset> = Vec::new();
 
@@ -34,7 +35,10 @@ impl DirectoryAssetIndex {
       let entry = match entry {
         Ok(entry) => entry,
         Err(error) => {
-          log::warn!("Skipping unreadable directory entry under {}: {error}", root.display());
+          log::warn!(
+            "Skipping unreadable directory entry under {}: {error}",
+            format_path(root)
+          );
 
           continue;
         }
@@ -54,7 +58,7 @@ impl DirectoryAssetIndex {
 
     assets.sort_by(|left, right| left.relative_path().cmp(right.relative_path()));
 
-    log::debug!("read {} directory assets from {}", assets.len(), root.display());
+    log::debug!("read {} directory assets from {}", assets.len(), format_path(root));
 
     Ok(Self {
       root: root.to_path_buf(),

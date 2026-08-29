@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
 use crate::extern_manifest::{ExternCallable, ExternExport, ExternManifest, ExternParameter};
@@ -41,7 +42,7 @@ impl ExternFormat {
       "html" | "htm" => Ok(Self::Html),
       _ => Err(XrfError::new_invalid_error(format!(
         "Cannot infer extern export format from '{}'; use --format.",
-        path.display()
+        format_path(path)
       ))),
     }
   }

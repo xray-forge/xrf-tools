@@ -1,19 +1,48 @@
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::path::Path;
 
-/// Stringify list of paths for better display in logs / debug info / information printing.
-#[inline]
-pub fn path_vec_to_string<T: AsRef<Path>>(paths: &[T]) -> String {
-  path_vec_to_string_sep(paths, ", ")
+struct HostPath<'a> {
+  path: Option<&'a Path>,
+  fallback: &'a str,
 }
 
-/// Stringify list of paths for better display in logs / debug info / information printing.
+impl Display for HostPath<'_> {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+    match self.path {
+      Some(path) => Display::fmt(&path.display(), formatter),
+      None => formatter.write_str(self.fallback),
+    }
+  }
+}
+
+/// Render a host path the way it is shown to a person: platform-native separators, and the lossy
+/// substitution `Path::display` already performs for a name that is not valid Unicode.
+///
+/// This is the one boundary for human-facing host path output, so a presentation change happens here
+/// rather than at every call site. It answers a different question than `to_portable_path_string`,
+/// which is a deterministic wire or report key, and than `XrayLogicalPath`, which is an engine
+/// identity. Rendering, never a write address: resolve a path to write through the VFS instead.
+///
+/// The returned type is deliberately opaque, so the rendering can change without breaking signatures,
+/// and it borrows rather than allocating, which is what a format argument needs.
 #[inline]
-pub fn path_vec_to_string_sep<T: AsRef<Path>>(paths: &[T], separator: &str) -> String {
-  paths
-    .iter()
-    .map(|it| it.as_ref().display().to_string())
-    .collect::<Vec<_>>()
-    .join(separator)
+pub fn format_path<P: AsRef<Path> + ?Sized>(path: &P) -> impl Display + '_ {
+  HostPath {
+    path: Some(path.as_ref()),
+    fallback: "",
+  }
+}
+
+/// Render a host path that may be absent, naming the absent case explicitly.
+///
+/// The fallback is the caller's word, because what a missing path means is the caller's domain: an
+/// `Ltx` built in memory is `virtual`, and nothing here should have to know that.
+#[inline]
+pub fn format_path_or<'a, P: AsRef<Path> + ?Sized>(path: Option<&'a P>, fallback: &'a str) -> impl Display + 'a {
+  HostPath {
+    path: path.map(AsRef::as_ref),
+    fallback,
+  }
 }
 
 /// Render a host path with forward slashes, for a wire contract or a report key.
@@ -29,9 +58,9 @@ pub fn to_portable_path_string<T: AsRef<Path>>(path: T) -> String {
 
 #[cfg(test)]
 mod tests {
-  use std::path::PathBuf;
+  use std::path::{Path, PathBuf};
 
-  use super::to_portable_path_string;
+  use super::{format_path, format_path_or, to_portable_path_string};
 
   #[test]
   fn renders_separators_the_same_way_on_every_platform() {
@@ -41,5 +70,53 @@ mod tests {
     );
     assert_eq!(to_portable_path_string("already/portable"), "already/portable");
     assert_eq!(to_portable_path_string(""), "");
+  }
+
+  #[test]
+  fn renders_a_host_path_with_native_separators() {
+    let path: PathBuf = PathBuf::from("configs").join("gameplay").join("dialogs.xml");
+
+    assert_eq!(format_path(&path).to_string(), path.display().to_string());
+    assert_eq!(format_path(Path::new("system.ltx")).to_string(), "system.ltx");
+    assert_eq!(format_path("system.ltx").to_string(), "system.ltx");
+  }
+
+  #[test]
+  fn renders_an_empty_path_as_nothing() {
+    assert_eq!(format_path("").to_string(), "");
+  }
+
+  #[test]
+  fn keeps_a_backslash_that_is_part_of_the_name() {
+    // Only Windows reads this as a separator; on Unix it is an ordinary character and must survive.
+    assert_eq!(format_path("configs\\system.ltx").to_string(), "configs\\system.ltx");
+  }
+
+  #[test]
+  fn names_the_absent_path_with_the_supplied_word() {
+    assert_eq!(
+      format_path_or(Some(Path::new("system.ltx")), "virtual").to_string(),
+      "system.ltx"
+    );
+    assert_eq!(format_path_or(None::<&Path>, "virtual").to_string(), "virtual");
+    assert_eq!(format_path_or(None::<&Path>, "").to_string(), "");
+  }
+
+  /// A Unix filename is bytes, not text, so it can be a valid path and still not be valid Unicode.
+  /// `to_str` returns `None` for it, which is what used to be unwrapped; rendering must not.
+  #[test]
+  #[cfg(unix)]
+  fn renders_a_path_that_is_not_valid_unicode() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let path: PathBuf = PathBuf::from(OsStr::from_bytes(b"configs/\xff_broken.ltx"));
+
+    assert!(path.to_str().is_none());
+    assert_eq!(format_path(&path).to_string(), "configs/\u{fffd}_broken.ltx");
+    assert_eq!(
+      format_path_or(Some(&path), "virtual").to_string(),
+      "configs/\u{fffd}_broken.ltx"
+    );
   }
 }

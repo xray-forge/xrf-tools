@@ -1,8 +1,11 @@
 use indexmap::map::Entry;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path_or;
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
 
-use crate::file::file_configuration::constants::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME};
+use crate::file::file_configuration::constants::{
+  LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME, VIRTUAL_LTX_PATH,
+};
 use crate::file::file_section::section::Section;
 use crate::file::ltx::Ltx;
 use crate::file::types::LtxSectionSchemes;
@@ -42,7 +45,7 @@ impl LtxSchemeParser {
           Entry::Occupied(_) => {
             return Err(XrfError::new_convert_error(format!(
               "Failed to parse ltx schemes - duplicate declaration of [{name}] section when reading '{}'",
-              ltx.path.as_ref().map_or("virtial", |path| path.to_str().unwrap())
+              format_path_or(ltx.path.as_deref(), VIRTUAL_LTX_PATH)
             )));
           }
           Entry::Vacant(entry) => {

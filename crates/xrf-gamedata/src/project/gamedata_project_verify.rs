@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationReport, GamedataVerificationType};
 
@@ -12,7 +13,11 @@ impl GamedataProject {
       return Err(XrfError::new_unexpected_error("No gamedata checks to perform provided"));
     }
 
-    xrf_output::info!(options.output, "Verifying gamedata project: {}", self.root().display());
+    xrf_output::info!(
+      options.output,
+      "Verifying gamedata project: {}",
+      format_path(self.root())
+    );
 
     xrf_output::info!(
       options.output,
@@ -34,7 +39,7 @@ impl GamedataProject {
           options.output,
           "  - {} at {}: {}",
           skipped.origin,
-          skipped.path.display(),
+          format_path(&skipped.path),
           skipped.reason
         );
       }

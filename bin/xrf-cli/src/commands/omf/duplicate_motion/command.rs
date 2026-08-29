@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::OmfDuplicateMotionReport;
 use crate::core::command_context::CommandContext;
@@ -83,7 +84,7 @@ impl GenericCommand for DuplicateMotionCommand {
       from,
       to,
       if play_once { ", playing once" } else { "" },
-      destination.display()
+      format_path(destination)
     );
 
     context.set_result(|| OmfDuplicateMotionReport::new(path, destination, &omf_file, from, to, play_once))?;

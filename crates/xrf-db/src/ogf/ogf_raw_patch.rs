@@ -5,6 +5,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_residue::normalize_ogf_bytes;
@@ -18,7 +19,11 @@ pub(crate) struct OgfRawPatch {}
 impl OgfRawPatch {
   pub(crate) fn open_source(source: &Path) -> XrfResult<File> {
     File::open(source).map_err(|error| {
-      XrfError::new_not_found_error(format!("OGF file was not read: {}, error: {}", source.display(), error))
+      XrfError::new_not_found_error(format!(
+        "OGF file was not read: {}, error: {}",
+        format_path(source),
+        error
+      ))
     })
   }
 
@@ -43,7 +48,7 @@ impl OgfRawPatch {
     if reverted != expected {
       return Err(XrfError::new_verify_error(format!(
         "Refused to patch {}, {} did not reproduce the source file, {} bytes original, {} bytes expected and {} bytes rewritten",
-        source.display(),
+        format_path(source),
         identity,
         original.len(),
         expected.len(),

@@ -5,6 +5,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
+use xrf_utils::format_path;
 
 use crate::commands::ogf::verify::ogf_verifier::{OgfVerificationCensus, OgfVerificationResult, OgfVerifier};
 use crate::core::command_context::CommandContext;
@@ -51,10 +52,10 @@ impl GenericCommand for VerifyCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Verifying ogf visuals in {}", path.display());
+    xrf_output::info!(output, "Verifying ogf visuals in {}", format_path(path));
 
     for root in &roots {
-      xrf_output::info!(output, "Searching textures in {} as well", root.display());
+      xrf_output::info!(output, "Searching textures in {} as well", format_path(root));
     }
 
     let result: OgfVerificationResult = OgfVerifier::new(path, roots.clone()).run();

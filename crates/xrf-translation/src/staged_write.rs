@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 static STAGED_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -101,7 +102,7 @@ fn sync_parent_directory(path: &Path) {
   {
     log::debug!(
       "Could not sync directory '{}' after replacing a file: {error}",
-      parent.display()
+      format_path(parent)
     );
   }
 }
@@ -116,10 +117,10 @@ fn sync_parent_directory(path: &Path) {
 fn sibling_path(path: &Path, suffix: &str, sequence: u64) -> XrfResult<PathBuf> {
   let parent: &Path = path
     .parent()
-    .ok_or_else(|| XrfError::new_invalid_error(format!("File has no parent directory: {}", path.display())))?;
+    .ok_or_else(|| XrfError::new_invalid_error(format!("File has no parent directory: {}", format_path(path))))?;
   let file_name: &OsStr = path
     .file_name()
-    .ok_or_else(|| XrfError::new_invalid_error(format!("File has no name: {}", path.display())))?;
+    .ok_or_else(|| XrfError::new_invalid_error(format!("File has no name: {}", format_path(path))))?;
 
   let mut staged_name: OsString = OsString::from(".");
 

@@ -4,6 +4,7 @@ use std::time::Instant;
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ListCommand;
@@ -79,7 +80,7 @@ impl GenericCommand for FindCommand {
           output,
           "{} [{size}, {compressed} stored, {unpacked} unpacked, {}]",
           entry.name,
-          entry.source.display(),
+          format_path(&entry.source),
         );
       } else {
         xrf_output::info!(output, "{} [{size}]", entry.name);

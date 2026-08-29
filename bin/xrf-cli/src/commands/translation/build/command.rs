@@ -5,6 +5,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_translation::{ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_file, build_roots};
+use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::core::command_context::CommandContext;
@@ -104,7 +105,7 @@ impl GenericCommand for BuildCommand {
       xrf_output::info!(
         options.output,
         "Building translation {}, language - {}, sorted - {}",
-        paths[0].display(),
+        format_path(&paths[0]),
         language,
         is_sorted
       );

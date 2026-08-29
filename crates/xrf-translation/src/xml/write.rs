@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{XRayEncoding, encode_string_to_bytes};
+use xrf_utils::{XRayEncoding, encode_string_to_bytes, format_path};
 use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_text};
 
 use crate::edit::TranslationEdit;
@@ -95,7 +95,7 @@ pub(crate) fn splice_edits(
     if pair[1].0.end > pair[0].0.start {
       return Err(XrfError::new_invalid_error(format!(
         "Translation edits for '{}' overlap in the same region",
-        path.display()
+        format_path(path)
       )));
     }
   }
@@ -124,7 +124,7 @@ fn text_content_range(path: &Path, element: &XmlElementSpan, id: &str) -> XrfRes
     .ok_or_else(|| {
       XrfError::new_invalid_error(format!(
         "Translation '{}' entry '{id}' has no text element to edit",
-        path.display()
+        format_path(path)
       ))
     })
 }
@@ -133,7 +133,7 @@ fn validate_encodable(path: &Path, encoding: XRayEncoding, id: &str, field: &str
   if let Some(character) = find_unencodable_character(value, encoding) {
     return Err(XrfError::new_encoding_error(format!(
       "Translation '{}' entry '{id}' {field} cannot be encoded as {}: '{character}' (U+{:04X})",
-      path.display(),
+      format_path(path),
       encoding.name(),
       character as u32,
     )));

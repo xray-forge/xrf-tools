@@ -4,6 +4,7 @@ use std::{fs, io};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{ParticlesFile, XRayByteOrder};
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -59,8 +60,8 @@ impl GenericCommand for UnpackCommand {
 
     let force: bool = matches.get_flag("force");
 
-    log::info!("Starting particle spawn file {}", path.display());
-    log::info!("Unpack destination {}", destination.display());
+    log::info!("Starting particle spawn file {}", format_path(path));
+    log::info!("Unpack destination {}", format_path(destination));
 
     // Apply force flag and delete existing directories.
     if force && destination.exists() && destination.is_dir() {

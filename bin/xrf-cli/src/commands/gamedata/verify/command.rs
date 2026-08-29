@@ -7,6 +7,7 @@ use xrf_gamedata::{
   GamedataVerificationStatus, GamedataVerificationType,
 };
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::verification_report::GamedataVerificationReportPayload;
 use crate::core::command_context::CommandContext;
@@ -122,7 +123,7 @@ impl GenericCommand for VerifyCommand {
     xrf_output::info!(
       open_options.output,
       "Root: {}, ignored: [{}]",
-      open_options.root.display(),
+      format_path(&open_options.root),
       open_options.ignored.join(", "),
     );
 

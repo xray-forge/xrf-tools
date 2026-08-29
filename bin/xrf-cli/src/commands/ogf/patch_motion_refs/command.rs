@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OgfFile, OgfMotionRefsProcessor, OgfRefsPatchReport, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -94,7 +95,7 @@ impl PatchMotionRefsCommand {
     xrf_output::info!(
       output,
       "Patch ogf motion refs {}, {:?} -> {:?}",
-      path.display(),
+      format_path(path),
       existing,
       motion_refs
     );
@@ -106,7 +107,7 @@ impl PatchMotionRefsCommand {
       xrf_output::info!(
         output,
         "Dry run, nothing written, {} would receive {} bytes instead of {}",
-        destination.display(),
+        format_path(destination),
         report.patched_size,
         report.original_size
       );
@@ -114,7 +115,7 @@ impl PatchMotionRefsCommand {
       return Ok(report);
     }
 
-    xrf_output::info!(output, "Ogf motion refs written into {}", destination.display());
+    xrf_output::info!(output, "Ogf motion refs written into {}", format_path(destination));
 
     Ok(report)
   }

@@ -5,6 +5,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_translation::{ProjectVerifyOptions, ProjectVerifyResult, TranslationLanguage, verify_file, verify_roots};
+use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use super::translation_verification_report::TranslationVerificationReportPayload;
@@ -96,7 +97,7 @@ impl GenericCommand for VerifyCommand {
       xrf_output::info!(
         options.output,
         "Verifying translation file {}, language - {}",
-        paths[0].display(),
+        format_path(&paths[0]),
         language
       );
 

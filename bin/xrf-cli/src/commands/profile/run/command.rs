@@ -5,6 +5,7 @@ use std::time::Duration;
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::{ProfileReportOutput, ProfiledBinaryOutput};
 use super::rounds::{RoundStatistics, interleaved};
@@ -111,7 +112,7 @@ impl GenericCommand for RunCommand {
 
     for path in binaries {
       if !path.is_file() {
-        return Err(XrfError::new_not_found_error(format!("No binary to measure at '{}'", path.display())).into());
+        return Err(XrfError::new_not_found_error(format!("No binary to measure at '{}'", format_path(&path))).into());
       }
 
       subjects.push(Subject {
@@ -246,10 +247,9 @@ impl RunCommand {
   /// `--version` rather than a report envelope's `build` block, so that a binary predating that field still identifies
   /// itself — which every historical revision worth measuring against does.
   fn read_version(path: &Path) -> CommandResult<Vec<String>> {
-    let output: Output = ChildCommand::new(path)
-      .arg("--version")
-      .output()
-      .map_err(|error| XrfError::new_io_error(format!("Failed to run '{}': {error}", path.display()), error.kind()))?;
+    let output: Output = ChildCommand::new(path).arg("--version").output().map_err(|error| {
+      XrfError::new_io_error(format!("Failed to run '{}': {error}", format_path(path)), error.kind())
+    })?;
 
     Ok(
       String::from_utf8_lossy(&output.stdout)

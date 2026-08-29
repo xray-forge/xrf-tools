@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 specta = { workspace = true, optional = true }
 walkdir = { workspace = true }
 xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
 xrf-typescript = { workspace = true }
 xrf-xml = { workspace = true }
 

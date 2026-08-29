@@ -1,6 +1,7 @@
 use image::{DynamicImage, GenericImageView, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::constants::PNG_EXTENSION;
 use crate::crop::{CropTextureOptions, CropTextureResult};
@@ -19,7 +20,7 @@ impl CropTextureProcessor {
         options.y,
         options.width,
         options.height,
-        options.source.display(),
+        format_path(&options.source),
         image.width(),
         image.height()
       )));

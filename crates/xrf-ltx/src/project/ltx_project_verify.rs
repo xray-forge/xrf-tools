@@ -1,9 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
 
 use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::file::file_configuration::constants::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
 use crate::project::ltx_verify_options::LtxVerifyOptions;
@@ -18,12 +19,10 @@ impl LtxProject {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
     let started_at: Instant = Instant::now();
 
-    xrf_output::heading!(options.output, "Verify path: {}", self.root.display());
+    xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
 
     // For each file entry in the project:
     for entry in &self.ltx_file_entries {
-      // Reported by the path a person can act on: the file on disk when it is loose, the logical path when it is archived.
-      let reported: PathBuf = self.path_of(entry);
       // Do not check scheme definitions for scheme files - makes no sense.
       if Self::is_ltx_scheme_path(entry) {
         continue;
@@ -31,14 +30,17 @@ impl LtxProject {
         result.total_files += 1;
       }
 
+      // Reported by the path a person can act on: the file on disk when it is loose, the logical path when it is archived.
+      // Rendered once per file because a scheme error carries its location as a string and one file can raise many.
+      let reported: String = format_path(&self.path_of(entry)).to_string();
+
       // One unreadable config must not end the run.
       let ltx: Ltx = match self.read_full(entry) {
         Ok(ltx) => ltx,
         Err(error) => {
-          result.errors.push(XrfError::new_verify_error(format!(
-            "Cannot read {}: {error}",
-            reported.display()
-          )));
+          result
+            .errors
+            .push(XrfError::new_verify_error(format!("Cannot read {reported}: {error}")));
 
           continue;
         }
@@ -71,7 +73,7 @@ impl LtxProject {
                 xrf_output::verbose!(
                   options.output,
                   "Checking {} [{}] {}",
-                  reported.display(),
+                  reported,
                   section_name,
                   field_name
                 );
@@ -87,7 +89,7 @@ impl LtxProject {
                         section_name,
                         field_name,
                         message,
-                        reported.to_str().unwrap(),
+                        &reported,
                       ));
                     }
                     error => return Err(error),
@@ -100,7 +102,7 @@ impl LtxProject {
                   section_name,
                   field_name,
                   "Unexpected field, definition is required in strict mode",
-                  reported.to_str().unwrap(),
+                  &reported,
                 ));
               }
             }
@@ -114,7 +116,7 @@ impl LtxProject {
                     section_name,
                     field_name,
                     "Required field was not provided",
-                    reported.to_str().unwrap(),
+                    &reported,
                   ));
                 }
               }
@@ -126,7 +128,7 @@ impl LtxProject {
               section_name,
               "*",
               format!("Required schema '{scheme_name}' definition is not found"),
-              reported.to_str().unwrap(),
+              &reported,
             ));
           }
 

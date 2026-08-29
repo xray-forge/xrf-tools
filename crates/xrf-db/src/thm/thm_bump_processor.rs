@@ -6,7 +6,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::open_export_file;
+use xrf_utils::{format_path, open_export_file};
 
 use crate::thm::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::thm::thm_bump_patch_report::ThmBumpPatchReport;
@@ -134,14 +134,18 @@ impl ThmBumpProcessor {
 
   fn open_source(source: &Path) -> XrfResult<File> {
     File::open(source).map_err(|error| {
-      XrfError::new_not_found_error(format!("THM file was not read: {}, error: {}", source.display(), error))
+      XrfError::new_not_found_error(format!(
+        "THM file was not read: {}, error: {}",
+        format_path(source),
+        error
+      ))
     })
   }
 
   fn read_bump(source: &Path) -> XrfResult<ThmBumpChunk> {
     ThmFile::read_from_path::<xrf_chunk::XRayByteOrder, _>(&source)?
       .bump
-      .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", source.display())))
+      .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", format_path(source))))
   }
 
   /// Guard that rewriting the declaration a file already has reproduces that file byte for byte.
@@ -154,7 +158,7 @@ impl ThmBumpProcessor {
     if reverted != original {
       return Err(XrfError::new_verify_error(format!(
         "Refused to patch {}, rewriting its existing bump declaration did not reproduce the source file, {} bytes original and {} bytes rewritten",
-        source.display(),
+        format_path(source),
         original.len(),
         reverted.len()
       )));
@@ -170,7 +174,7 @@ impl ThmBumpProcessor {
     if &read_back != expected {
       return Err(XrfError::new_verify_error(format!(
         "Patched {} reads back bump {:?} instead of {:?}",
-        destination.display(),
+        format_path(destination),
         read_back,
         expected
       )));

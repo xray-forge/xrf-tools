@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::assert_equal;
+use xrf_utils::{assert_equal, format_path};
 
 use crate::constants::{DDS_EXTENSION, UI_MIPMAP_LEVELS, UI_MIPMAPS};
 use crate::data::TextureFileDescriptor;
@@ -45,14 +45,14 @@ impl PackDescriptionProcessor {
     xrf_output::verbose!(
       options.output,
       "Packing file {} ({width}x{height})",
-      full_name.display()
+      format_path(&full_name)
     );
 
     for texture in &file.sprites {
       xrf_output::verbose!(
         options.output,
         "Packing texture {} -> {} at [x:{}, y:{}, w:{}, h:{}]",
-        full_name.display(),
+        format_path(&full_name),
         texture.id,
         texture.x,
         texture.y,
@@ -88,7 +88,7 @@ impl PackDescriptionProcessor {
               "Failed to read texture dds {} for {} ({}): {}",
               texture.id,
               file.name,
-              full_name.display(),
+              format_path(&full_name),
               error
             )));
           } else {
@@ -97,7 +97,7 @@ impl PackDescriptionProcessor {
               "Failed to read texture dds {} for {} ({}): {}",
               texture.id,
               file.name,
-              full_name.display(),
+              format_path(&full_name),
               error
             )
           }
@@ -107,7 +107,7 @@ impl PackDescriptionProcessor {
 
     let destination: PathBuf = options.output_path.join(relative_path.with_extension(DDS_EXTENSION));
 
-    xrf_output::verbose!(options.output, "Saving file: {}", destination.display());
+    xrf_output::verbose!(options.output, "Saving file: {}", format_path(&destination));
 
     warn_on_reshaped_ui_dds(&options.output, &destination, width, height, UI_MIPMAP_LEVELS);
 

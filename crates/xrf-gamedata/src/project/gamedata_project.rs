@@ -6,6 +6,7 @@ use std::sync::Arc;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_utils::format_path;
 use xrf_vfs::{
   XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountMode, XrayPathCollision,
   XrayReadTraceSummary, XraySkippedMount, XrayVfs,
@@ -54,7 +55,7 @@ impl GamedataProject {
           ErrorKind::NotFound,
           format!(
             "Invalid gamedata root provided: {}, an existing directory is required",
-            options.root.display()
+            format_path(&options.root)
           ),
         )
         .into(),
@@ -73,7 +74,7 @@ impl GamedataProject {
           ErrorKind::NotFound,
           format!(
             "Invalid gamedata provided: {}, nothing resolves '{SYSTEM_LTX_LOGICAL_PATH}'",
-            options.root.display()
+            format_path(&options.root)
           ),
         )
         .into(),

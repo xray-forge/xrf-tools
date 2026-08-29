@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
+use xrf_utils::format_path;
 
 use super::report::OmfFilterMotionsReport;
 use crate::core::command_context::CommandContext;
@@ -131,7 +132,7 @@ impl FilterMotionsCommand {
       return Err(
         XrfError::new_invalid_error(format!(
           "Refused to filter {}, no motion matched the provided filters, {original_count} motions available",
-          path.display()
+          format_path(path)
         ))
         .into(),
       );
@@ -140,7 +141,7 @@ impl FilterMotionsCommand {
     xrf_output::info!(
       output,
       "Filtered omf motions {}, {retained_count}/{original_count} kept",
-      path.display()
+      format_path(path)
     );
 
     xrf_output::verbose!(output, "Kept motions: {}", omf_file.get_motion_names().join(","));
@@ -149,7 +150,7 @@ impl FilterMotionsCommand {
       xrf_output::info!(
         output,
         "Dry run, nothing written, {} would receive {retained_count} motions",
-        destination.display()
+        format_path(destination)
       );
 
       return Ok(());
@@ -157,7 +158,7 @@ impl FilterMotionsCommand {
 
     omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
-    xrf_output::info!(output, "Filtered omf file written into {}", destination.display());
+    xrf_output::info!(output, "Filtered omf file written into {}", format_path(destination));
 
     Ok(())
   }

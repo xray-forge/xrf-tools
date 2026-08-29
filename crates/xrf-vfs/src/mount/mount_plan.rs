@@ -1,4 +1,5 @@
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 
 use crate::source::XrayArchiveSource;
 use crate::source::XrayDirectorySource;
@@ -23,7 +24,7 @@ impl XrayVfs {
           log::warn!(
             "Skipping planned mount {} at {}: {error}",
             planned.origin,
-            planned.path.display()
+            format_path(&planned.path)
           );
 
           self.record_skipped(XraySkippedMount {
@@ -45,7 +46,7 @@ fn mount_one(vfs: &mut XrayVfs, planned: &XrayPlannedMount) -> XrfResult<XrayMou
     log::debug!(
       "Reusing mount {existing:?} for already-mounted {} at {}",
       planned.origin,
-      planned.path.display()
+      format_path(&planned.path)
     );
 
     return Ok(existing);

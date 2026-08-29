@@ -2,6 +2,8 @@ use std::io;
 use std::path::Path;
 use std::process::Command;
 
+use xrf_utils::format_path;
+
 use crate::core::types::TauriResult;
 
 /// Show a path in the desktop's own file manager.
@@ -34,9 +36,9 @@ fn reveal(target: &Path) -> io::Result<()> {
   // Written as one raw argument because `explorer` parses `/select,<path>` itself: passed as a normal
   // argument the quoting lands around the whole token and it opens the user's documents instead.
   if target.is_dir() {
-    command.raw_arg(format!("\"{}\"", target.display()));
+    command.raw_arg(format!("\"{}\"", format_path(target)));
   } else {
-    command.raw_arg(format!("/select,\"{}\"", target.display()));
+    command.raw_arg(format!("/select,\"{}\"", format_path(target)));
   }
 
   // Spawned rather than waited on: `explorer` exits with a failing status even when it opened the

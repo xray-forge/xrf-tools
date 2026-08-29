@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::LTX_EXTENSION;
+use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayVfs};
 
 use crate::commands::ltx::ltx_installation::mount_installation;
@@ -111,7 +112,7 @@ impl LtxFormatSelection {
     if !path.exists() {
       return Err(XrfError::new_not_found_error(format!(
         "Failed to format ltx, provided path does not exist: {}",
-        path.display()
+        format_path(path)
       )));
     }
 

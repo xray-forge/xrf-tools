@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::XrayAssetType;
 use crate::path::XrayLogicalPath;
@@ -101,7 +102,7 @@ impl XrayAsset {
   pub fn format_container(&self) -> String {
     match &self.container {
       XrayAssetContainer::Directory { root, .. } => root.display().to_string(),
-      XrayAssetContainer::Archive { path } => format!("{} (archive)", path.display()),
+      XrayAssetContainer::Archive { path } => format!("{} (archive)", format_path(path)),
     }
   }
 }

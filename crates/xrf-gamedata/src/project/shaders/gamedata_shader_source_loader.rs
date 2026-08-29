@@ -2,6 +2,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_shaders::XRayShaderSourceLoader;
+use xrf_utils::format_path;
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 /// Loads shader sources through mounted sources, so an installation's `db\shaders` volume reads like a loose tree.
@@ -19,7 +20,10 @@ impl<'a> GamedataShaderSourceLoader<'a> {
 impl XRayShaderSourceLoader for GamedataShaderSourceLoader<'_> {
   fn load_source(&self, path: &Path) -> XrfResult<Option<Vec<u8>>> {
     let logical_path: &str = path.to_str().ok_or_else(|| {
-      XrfError::new_read_error(format!("Shader source path is not valid unicode: {}", path.display()))
+      XrfError::new_read_error(format!(
+        "Shader source path is not valid unicode: {}",
+        format_path(path)
+      ))
     })?;
 
     // Absence is not an error here: a missing include is reported by the caller as a finding against the shader that names
