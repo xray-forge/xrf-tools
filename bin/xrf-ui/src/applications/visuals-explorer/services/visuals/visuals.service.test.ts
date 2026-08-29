@@ -366,6 +366,59 @@ describe("VisualsService opening", () => {
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });
 
+  it("opens the same source again when the failed attempt is retried", async () => {
+    // The retry repeats the request, not the outcome: the row it was opened from is a navigation gesture, and a
+    // single-model session has no row at all.
+    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\meshes\\stalker.ogf");
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    const opened: Array<Record<string, unknown>> = [];
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => {
+        opened.push(parameters ?? {});
+
+        if (opened.length === 1) {
+          throw new Error("file was removed after listing");
+        }
+
+        return selected;
+      },
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.openAsset("meshes\\stalker.ogf", ["C:\\gamedata"]);
+
+    expect(service.visual.error?.message).toBe("file was removed after listing");
+
+    await service.retryOpen();
+
+    expect(service.visual.error).toBeNull();
+    expect(service.visual.value?.views.submeshes).toHaveLength(1);
+    expect(opened).toHaveLength(2);
+    expect(opened[1]).toEqual(opened[0]);
+  });
+
+  it("has nothing to retry before anything has been opened", async () => {
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+
+    let openCalls: number = 0;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: () => {
+        openCalls += 1;
+
+        return null;
+      },
+    });
+
+    await service.retryOpen();
+
+    expect(openCalls).toBe(0);
+    expect(service.visual.value).toBeNull();
+    expect(service.visual.error).toBeNull();
+  });
+
   it("clears the model when closed", async () => {
     const { selected, buffer } = mockOpenableVisual();
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);

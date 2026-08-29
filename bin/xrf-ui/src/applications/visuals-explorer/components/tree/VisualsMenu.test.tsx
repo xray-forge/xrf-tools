@@ -108,8 +108,8 @@ describe("VisualsMenu", () => {
 
     await waitFor(() => expect(container.get(VisualsService).visual.error?.message).toBe("stop before geometry"));
 
-    // Selection is the user's, not the viewport's: a model that failed to load leaves its row selected, which is
-    // the only way back to retrying it.
+    // Selection is the user's, not the viewport's: a model that failed to load leaves its row selected, beside
+    // the retry the failure itself offers.
     expect(render.getByText("stalker.ogf").closest("[role='treeitem']")).toHaveAttribute("aria-selected", "true");
   });
 });

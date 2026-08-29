@@ -70,6 +70,7 @@ export function VisualsExplorerApplication({
       tree={isBrowsing ? <VisualsMenu /> : undefined}
       isLoading={visualsService.visual.isLoading}
       error={visualsService.visual.error?.message}
+      onRetry={visualsService.retryOpen}
       onOpen={onOpen}
       onBrowse={isBrowsing ? undefined : onBrowse}
     />

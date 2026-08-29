@@ -96,7 +96,7 @@ export function VisualsMenu({
   const onOpenPath = useCallback(
     (logicalPath: string) => {
       // Selection is written from what was asked for, never derived from what the viewport ended up holding: a
-      // model that fails to load leaves its row selected, which is the only way back to retrying it.
+      // model that fails to load leaves its row selected, beside the failure's own retry.
       reveal(toFileItemId(logicalPath));
 
       void visualsService.openAsset(logicalPath, browseService.rootPaths);

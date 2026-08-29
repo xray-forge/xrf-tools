@@ -1,5 +1,4 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box } from "@mui/material";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 import { Texture } from "three";
@@ -8,10 +7,10 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 import {
   IVisualPreviewViewportProps,
   VisualPreviewAnimationBar,
+  VisualPreviewEmpty,
   VisualPreviewMotionViewport,
   VisualPreviewToolbar,
 } from "@/core/visuals/components/preview";
@@ -59,6 +58,8 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
   isLoading?: boolean;
   /** Why the last open failed, shown in place of a model rather than dismissing the session. */
   error?: string;
+  /** Reads the failed open's source again. Absent while an application cannot repeat its last attempt. */
+  onRetry?: () => void;
   /** Reopens the picker. Absent while an application has no way to choose a different visual. */
   onOpen?: () => void;
   /** Promotes a single-model session to a browsed one. Absent while already browsing. */
@@ -88,6 +89,7 @@ export function VisualPreviewLayout({
   footer,
   isLoading = false,
   error,
+  onRetry,
   onOpen,
   onBrowse,
 }: IVisualPreviewLayoutProps): ReactElement {
@@ -175,15 +177,7 @@ export function VisualPreviewLayout({
           />
         )}
 
-        {!model && !isLoading ? (
-          <Box sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}>
-            <EmptyState
-              title={error ? "Could not open this visual" : "No visual open"}
-              description={error ?? "Pick a model from the tree to preview it."}
-              icon={error ? <ErrorOutlineIcon /> : undefined}
-            />
-          </Box>
-        ) : null}
+        {!model && !isLoading ? <VisualPreviewEmpty error={error} onRetry={onRetry} /> : null}
 
         {isLoading ? (
           <Box

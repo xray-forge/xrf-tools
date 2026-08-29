@@ -8,7 +8,8 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
     "Pick a mode: `Folder` lists every visual under a root (such as `gamedata` or a `meshes` directory), " +
       "`Model` opens one loose `.ogf`.",
     "Open a model with a double click in the tree, `Enter`, or the filter; the viewport shows its bind pose. " +
-      "One click only selects, so a model that fails to load leaves its row selected to try again.",
+      "A model that fails to open states why and offers `Retry`; one click only selects, so its row stays " +
+      "selected too.",
     "Inspect the Header, Materials, Bones, and Motions panels; toggle wireframe, UV checkerboard, or the " +
       "skeleton overlay.",
     "If the model carries motions, pick one in the animation bar and play, scrub, or step it.",

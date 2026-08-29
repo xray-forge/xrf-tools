@@ -25,6 +25,18 @@ import { Logger } from "@/lib/logging";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
+ * What one open asked for, kept so the same request can be made again.
+ *
+ * The arguments rather than the roots they resolved to: a retry re-derives them, so a configured path corrected after
+ * the failure is picked up instead of being repeated as it was wrong.
+ */
+interface IVisualOpenAttempt {
+  source: VisualSource;
+  roots: Array<string>;
+  asset: Nullable<string>;
+}
+
+/**
  * The visual the explorer has open, and everything about choosing it.
  *
  * Loading itself belongs to `VisualLoadService`, which the archives preview uses too. What is here is what only this
@@ -161,6 +173,13 @@ export class VisualsService implements IVisualInspection {
     return separatorAt > 0 ? source.path.slice(0, separatorAt) : null;
   }
 
+  /**
+   * The open a retry repeats, or null before anything has been asked for.
+   *
+   * Not observable: what offers the retry is the failure already on screen, so nothing renders this.
+   */
+  private attempt: Nullable<IVisualOpenAttempt> = null;
+
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
     private readonly pathsService: PathsService = inject(PathsService),
@@ -259,6 +278,21 @@ export class VisualsService implements IVisualInspection {
     await this.open({ kind: "asset", logicalPath }, roots);
   }
 
+  /**
+   * Open again whatever the last attempt asked for, or do nothing when nothing has been asked for yet.
+   *
+   * The way out of a failed open. Re-activating the row works too - selection survives a failure by design - but that
+   * is a navigation gesture standing in for a recovery action, and a single-model session has no row to activate.
+   */
+  @BoundAction()
+  public async retryOpen(): Promise<void> {
+    const attempt: Nullable<IVisualOpenAttempt> = this.attempt;
+
+    if (attempt) {
+      await this.open(attempt.source, attempt.roots, attempt.asset);
+    }
+  }
+
   /** Close what is open, on screen and in the backend. */
   @BoundAction()
   public async close(): Promise<void> {
@@ -280,6 +314,9 @@ export class VisualsService implements IVisualInspection {
    * @param asset - Asset the roots is centred on, whose own tree is searched first.
    */
   private async open(source: VisualSource, roots: Array<string> = [], asset: Nullable<string> = null): Promise<void> {
+    // Recorded before the read rather than after it, so a retry repeats the request even when the read never returns.
+    this.attempt = { asset, roots, source };
+
     // A motion belongs to the skeleton it was baked against, and the backend has just parked a different selection.
     this.motionService.clear();
 
