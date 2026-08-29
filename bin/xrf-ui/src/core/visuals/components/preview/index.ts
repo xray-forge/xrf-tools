@@ -1,4 +1,3 @@
-export * from "./VisualPreviewAnimationBar";
 export * from "./VisualPreviewEmpty";
 export * from "./VisualPreviewLayout";
 export * from "./VisualPreviewMotionViewport";

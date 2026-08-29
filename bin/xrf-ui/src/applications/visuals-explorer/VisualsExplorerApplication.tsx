@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
+import { VISUALS_EXPLORER_PANELS } from "@/applications/visuals-explorer/components/panels/visuals-explorer-panels";
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsExplorerOpenForm } from "@/applications/visuals-explorer/components/VisualsExplorerOpenForm";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { VISUAL_PANELS } from "@/core/visuals/components/panels/visual-panels";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -62,9 +62,8 @@ export function VisualsExplorerApplication({
       className={className}
       model={visual?.views ?? null}
       subtitle={visualsService.sourceLabel ?? undefined}
-      panels={VISUAL_PANELS}
+      panels={VISUALS_EXPLORER_PANELS}
       textures={visualsService.textures}
-      hasMotions={visualsService.hasMotions}
       highlightedJoint={visualsService.highlightedJoint}
       hiddenBones={visualsService.hiddenBoneIndices}
       tree={isBrowsing ? <VisualsMenu /> : undefined}

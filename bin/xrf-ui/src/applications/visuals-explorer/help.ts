@@ -12,17 +12,21 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "selected too.",
     "Inspect the Header, Materials, Bones, and Motions panels; toggle wireframe, UV checkerboard, or the " +
       "skeleton overlay.",
-    "If the model carries motions, pick one in the animation bar and play, scrub, or step it.",
+    "If the model carries motions, open the `Motions` panel: filter the names, click one to pose it, then " +
+      "play, scrub, or step it.",
   ],
   nuances: [
     "The camera fits the first model shown and then holds position across model switches; `Reset camera` " +
       "refits it to the current model.",
     "The mesh detail slider walks each submesh's progressive edge-collapse chain - it is view quality, not " +
       "authored LODs - and the chosen fraction survives model switches.",
-    "Motion names are listed on demand when a model lands, since naming them means reading every referenced " +
-      "animation file; the picker is an autocomplete because a character can reference thousands.",
-    "Picking another motion carries the play/pause state over; dragging the frame slider pauses; clearing the " +
-      "motion restores the bind pose. Motions are baked one at a time by the backend, so switching is serialized.",
+    "Playback lives in the `Motions` panel rather than under the viewport, so what a model turns out to " +
+      "contain never resizes the preview. A motion keeps playing while another panel is open.",
+    "Motion names are listed the first time the `Motions` panel is shown for a model, since naming them means " +
+      "reading every referenced animation file; the panel filters that list rather than scrolling it, because a " +
+      "character can reference thousands.",
+    "Picking another motion carries the play/pause state over; dragging the frame slider pauses. Motions are " +
+      "baked one at a time by the backend, so switching is serialized.",
     "The duration beside the frame counter is the time the engine takes: the motion's frames at 30 fps over the " +
       "playback speed its file declares, so a motion authored at speed `1.2` reports less time than its frames " +
       "span. The `Playback rate` control is separate - it changes how fast the motion is being looked at and " +

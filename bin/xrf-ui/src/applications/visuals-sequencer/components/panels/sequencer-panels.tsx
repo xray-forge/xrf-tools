@@ -28,5 +28,5 @@ export const SEQUENCER_PANELS: Array<IEditorPanel> = [
     label: "Sequence",
     render: () => <SequenceTrackPanel />,
   },
-  ...VISUAL_PANELS.filter((panel: IEditorPanel) => panel.id !== "motions"),
+  ...VISUAL_PANELS,
 ];

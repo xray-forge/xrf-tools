@@ -9,7 +9,6 @@ import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import {
   IVisualPreviewViewportProps,
-  VisualPreviewAnimationBar,
   VisualPreviewEmpty,
   VisualPreviewMotionViewport,
   VisualPreviewToolbar,
@@ -30,13 +29,6 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
   panels?: Array<IEditorPanel>;
   /** Loaded textures by submesh index, passed straight through to the viewport. */
   textures?: ReadonlyMap<number, Texture>;
-  /**
-   * Whether the open model has motions at all, which is what the playback bar is for.
-   *
-   * Most models carry none, and a bar whose only message is that there is nothing to play is noise on every one of
-   * them, so it is absent rather than disabled.
-   */
-  hasMotions?: boolean;
   /** Joint to mark in the viewport, named elsewhere - the bones panel - and resolved to a position by its owner. */
   highlightedJoint?: Nullable<[number, number, number]>;
   /** Bones the viewport collapses, by index, as the engine collapses an addon that is not attached. */
@@ -48,11 +40,7 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
    * are this layout's to own: a caller passing a finished element would have to be handed all four back.
    */
   renderViewport?: (props: IVisualPreviewViewportProps) => ReactNode;
-  /**
-   * Replaces the playback bar under the viewport.
-   *
-   * The bar plays one picked motion, which is one workflow rather than the only one.
-   */
+  /** Drawn under the viewport, at whatever height it asks for. */
   footer?: ReactNode;
   /** Whether a model is on its way, reported over the viewport rather than by replacing the screen. */
   isLoading?: boolean;
@@ -82,7 +70,6 @@ export function VisualPreviewLayout({
   tree,
   panels,
   textures,
-  hasMotions = false,
   highlightedJoint = null,
   hiddenBones,
   renderViewport,
@@ -155,7 +142,7 @@ export function VisualPreviewLayout({
           onBrowse={onBrowse}
         />
       }
-      footer={footer ?? (hasMotions ? <VisualPreviewAnimationBar model={model} /> : undefined)}
+      footer={footer}
     >
       <Box
         data-testid={dataTestId}
