@@ -1,6 +1,7 @@
-//! Engine names and the host paths they cross into: the only place this crate decides separators.
+//! Names and the host paths they cross into: the only place this crate decides separators.
 
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -24,6 +25,29 @@ pub(crate) fn to_host_relative(name: &str) -> XrfResult<PathBuf> {
   }
 
   Ok(path)
+}
+
+/// Checks that a caller-supplied name is one host file name rather than a path.
+///
+/// A volume is published as `destination.join(name)`, and `join` honours a rooted or separator-bearing name by
+/// dropping the destination the caller was shown. Both separators and the drive colon are refused on every host,
+/// because `std::path` on Linux reads `..\outside` and `C:\outside` as one ordinary component, which would carry
+/// the escape to the host that recognizes it.
+pub(crate) fn validate_host_file_name(name: &str, what: &str) -> XrfResult {
+  // With neither separator nor colon left, a name is one component or it is empty, `.`, or `..`.
+  let is_one_file_name: bool = !name.contains(['\\', '/', ':'])
+    && matches!(
+      Path::new(name).components().next(),
+      Some(Component::Normal(component)) if component == OsStr::new(name)
+    );
+
+  if is_one_file_name {
+    Ok(())
+  } else {
+    Err(XrfError::new_invalid_error(format!(
+      "{what} '{name}' must be a single file name, without a separator, a drive, or a traversal"
+    )))
+  }
 }
 
 /// Whether an engine name is a directory prefix itself or lies below it.
@@ -66,7 +90,7 @@ pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a 
 mod tests {
   use std::path::Path;
 
-  use super::{is_component_prefix, relative_to_prefix, to_host_relative};
+  use super::{is_component_prefix, relative_to_prefix, to_host_relative, validate_host_file_name};
 
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
@@ -93,6 +117,41 @@ mod tests {
   fn rejects_archive_path_components_that_could_escape_the_destination() {
     for path in ["..\\system.ltx", "configs/./system.ltx", "C:/system.ltx"] {
       assert!(to_host_relative(path).is_err(), "'{path}' must not become a host path");
+    }
+  }
+
+  #[test]
+  fn a_published_name_may_be_one_host_file_name() {
+    for name in ["gamedata", "levels.part2", "weapons-v1"] {
+      assert!(
+        validate_host_file_name(name, "Archive name").is_ok(),
+        "'{name}' names one file"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_a_published_name_that_would_leave_its_destination() {
+    // A rooted or drive-qualified name does not escape the destination so much as discard it: `join` returns it
+    // whole. The Windows spellings are refused on Linux too, where they would otherwise pack as innocent file names
+    // and escape on the host that reads them back.
+    for name in [
+      "",
+      ".",
+      "..",
+      "..\\outside",
+      "../outside",
+      "nested\\name",
+      "nested/name",
+      "\\rooted",
+      "/rooted",
+      "C:\\outside",
+      "C:outside",
+    ] {
+      assert!(
+        validate_host_file_name(name, "Archive name").is_err(),
+        "'{name}' must not name a published file"
+      );
     }
   }
 

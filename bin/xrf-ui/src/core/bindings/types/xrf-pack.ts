@@ -28,7 +28,12 @@ export type ArchivePackConfig = {
   /** Root the archived names are relative to, normally a `gamedata` directory. */
   source: string;
   destination: string;
-  /** Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on. */
+  /**
+   * Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on.
+   *
+   * One host file name, never a path: it is joined to `destination`, and packing refuses anything that would
+   * resolve elsewhere.
+   */
   name: string;
   includeFiles: Array<string>;
   includeDirectories: Array<ArchivePackDirectory>;

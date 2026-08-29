@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::Ltx;
 
+use crate::path::validate_host_file_name;
+
 /// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
 pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
 
@@ -80,6 +82,9 @@ pub struct ArchivePackConfig {
   pub source: PathBuf,
   pub destination: PathBuf,
   /// Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on.
+  ///
+  /// One host file name, never a path: it is joined to `destination`, and packing refuses anything that would
+  /// resolve elsewhere.
   pub name: String,
   pub include_files: Vec<String>,
   pub include_directories: Vec<ArchivePackDirectory>,
@@ -175,8 +180,14 @@ impl ArchivePackConfig {
     Ok(self)
   }
 
-  /// Reject volume sizes that cannot produce an engine-mountable archive.
+  /// Reject a configuration that cannot produce an engine-mountable archive, or that would publish outside the
+  /// destination the caller was shown.
+  ///
+  /// Runs before any filesystem operation, because both publication paths join the name to `destination`: the volume
+  /// each `File::create` opens, and the rename a lone volume ends under.
   pub(crate) fn validate_for_packing(&self) -> XrfResult {
+    validate_host_file_name(&self.name, "Archive name")?;
+
     if self.max_volume_size == 0 {
       return Err(XrfError::new_invalid_error(
         "Archive volume size must be greater than zero".to_string(),

@@ -316,6 +316,79 @@ fn rejects_an_oversized_volume_before_writing() {
 }
 
 #[test]
+fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
+  let scope: &str = "refuses_a_volume_name_that_would_leave_the_destination_before_writing";
+  let source: PathBuf = create_source(scope, &[("configs\\system.ltx", CONFIG)]);
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  for name in ["", "..\\outside", "nested\\name", "\\rooted", "C:\\outside"] {
+    let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, name);
+
+    config.include_directories = vec![ArchivePackDirectory {
+      path: String::new(),
+      is_recursive: true,
+    }];
+
+    assert!(
+      matches!(ArchivePacker::pack(&config), Err(XrfError::Invalid { .. })),
+      "'{name}' must not name a volume"
+    );
+  }
+
+  assert!(!destination.exists(), "a refused name creates no destination");
+  // The destination's own parent exists, holding the source tree, so a name that walked out of it would land here.
+  assert!(
+    !destination
+      .parent()
+      .expect("destination parent")
+      .join("outside.db0")
+      .exists(),
+    "and writes nothing beside it"
+  );
+}
+
+#[test]
+fn every_published_volume_is_a_direct_child_of_the_destination() {
+  let scope: &str = "every_published_volume_is_a_direct_child_of_the_destination";
+
+  // Distinct payloads, or the writer would alias them onto one copy and never split.
+  let files: Vec<(String, Vec<u8>)> = (0..8u8)
+    .map(|index| (format!("textures\\tile_{index}.dds"), vec![b'a' + index; 4096]))
+    .collect();
+  let borrowed: Vec<(&str, &[u8])> = files
+    .iter()
+    .map(|(name, contents)| (name.as_str(), contents.as_slice()))
+    .collect();
+
+  // Both publication paths: the file each volume is created as, and the rename a lone volume ends under.
+  let split: (ArchivePackResult, PathBuf) = pack(&format!("{scope}/split"), &borrowed, |config| {
+    config.max_volume_size = 8 * 1024;
+  });
+  let single: (ArchivePackResult, PathBuf) =
+    pack(&format!("{scope}/single"), &[("configs\\system.ltx", CONFIG)], |_| {});
+
+  assert!(split.0.volumes.len() > 1, "the split set spans several volumes");
+  assert_eq!(
+    single.0.volumes,
+    vec![single.1.join("packed.db")],
+    "the lone volume is renamed"
+  );
+
+  for (result, destination) in [split, single] {
+    for volume in &result.volumes {
+      assert_eq!(
+        volume.parent(),
+        Some(destination.as_path()),
+        "a volume stays in the destination"
+      );
+      assert!(volume.is_file(), "and is the file that was written");
+    }
+  }
+}
+
+#[test]
 fn a_lone_volume_carries_no_index() {
   let (result, destination) = pack(
     "a_lone_volume_carries_no_index",
