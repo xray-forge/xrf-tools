@@ -1,4 +1,4 @@
-use std::sync::MutexGuard;
+use std::sync::Arc;
 
 use tauri::State;
 use xrf_archive::{ArchiveProject, ProjectReadResult};
@@ -11,15 +11,7 @@ use crate::plugins::archives::state::ArchiveProjectState;
 pub async fn archives_read_file(path: &str, state: State<'_, ArchiveProjectState>) -> TauriResult<ProjectReadResult> {
   log::info!("Reading archive file: {}", path);
 
-  let lock: MutexGuard<Option<ArchiveProject>> = state.project.lock().unwrap();
+  let project: Arc<ArchiveProject> = state.require("read file")?;
 
-  if (*lock).is_none() {
-    return Err(String::from("Failed to read file - archive is not open"));
-  }
-
-  lock
-    .as_ref()
-    .unwrap()
-    .read_file_as_string(path)
-    .map_err(|error| error.to_string())
+  project.read_file_as_string(path).map_err(|error| error.to_string())
 }

@@ -9,10 +9,10 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-bounded_join_set = "0.3.0"
 crc32fast = "1.5.0"
 log = { workspace = true }
 lzokay = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 walkdir = { workspace = true }
@@ -23,8 +23,6 @@ xrf-lzhuf = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
-# The parallel unpack path is async, so its tests need a runtime; nothing outside them pulls tokio in.
-tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 # Only the pack-then-mount integration test reads volumes back through the VFS.
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }

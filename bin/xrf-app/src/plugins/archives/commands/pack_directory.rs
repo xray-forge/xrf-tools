@@ -18,5 +18,10 @@ pub async fn archives_pack_directory(config: ArchivePackConfig) -> TauriResult<A
     config.name
   );
 
-  ArchivePacker::pack(&config).map_err(error_to_string)
+  // Off the async worker: packing walks the whole source tree, compresses what the engine expects compressed, and
+  // writes every volume. An `async fn` alone would leave all of that on an executor thread meant for short requests.
+  tauri::async_runtime::spawn_blocking(move || ArchivePacker::pack(&config))
+    .await
+    .map_err(|error| format!("Archive pack did not finish: {error}"))?
+    .map_err(error_to_string)
 }

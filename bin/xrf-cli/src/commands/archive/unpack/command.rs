@@ -3,7 +3,6 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use tokio::runtime::Runtime;
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveUnpackResult, ArchiveUnpacker};
@@ -43,9 +42,8 @@ impl GenericCommand for UnpackCommand {
       )
       .arg(
         Arg::new("parallel")
-          .help("Count of parallel threads for unpack")
+          .help("Count of parallel threads for unpack, defaulting to the host's available parallelism")
           .long("parallel")
-          .default_value("32")
           .value_parser(value_parser!(NonZeroUsize)),
       )
       .arg(
@@ -73,9 +71,12 @@ impl GenericCommand for UnpackCommand {
       destination.clone()
     };
 
-    let parallel: NonZeroUsize = *matches
+    // Resolved here rather than by clap: the default is what this host can actually run, which is not a string the
+    // parser could carry.
+    let parallel: NonZeroUsize = matches
       .get_one::<NonZeroUsize>("parallel")
-      .expect("Expected valid parallel threads count to be provided");
+      .copied()
+      .unwrap_or_else(ArchiveUnpacker::get_default_concurrency);
 
     let is_dry: bool = matches.get_flag("dry");
 
@@ -114,11 +115,7 @@ impl GenericCommand for UnpackCommand {
         )
       })?;
     } else {
-      let result: ArchiveUnpackResult = Runtime::new()?.block_on(ArchiveUnpacker::unpack_parallel(
-        &archive_project,
-        &destination,
-        parallel,
-      ))?;
+      let result: ArchiveUnpackResult = ArchiveUnpacker::unpack(&archive_project, &destination, parallel)?;
 
       xrf_output::success!(
         output,
@@ -137,6 +134,8 @@ impl GenericCommand for UnpackCommand {
 
 #[cfg(test)]
 mod tests {
+  use std::num::NonZeroUsize;
+
   use crate::core::generic_command::GenericCommand;
 
   use super::UnpackCommand;
@@ -148,8 +147,10 @@ mod tests {
       .is_ok()
   }
 
-  /// Zero threads once reached the join set as zero permits, where no task acquires one and the command
-  /// waits forever on an archive holding a single file. It is a usage error before any archive is read.
+  /// Zero threads once reached a bounded join set as zero permits, where no task acquired one and the command waited
+  /// forever on an archive holding a single file. It is still a usage error rejected before any archive is read, and
+  /// the reason has only got quieter: Rayon reads `num_threads(0)` as "decide for me", so a zero that got through would
+  /// silently run one worker per core instead of the bound the user asked for.
   #[test]
   fn rejects_zero_parallelism() {
     assert!(!parses("0"));
@@ -158,5 +159,17 @@ mod tests {
   #[test]
   fn accepts_the_smallest_usable_parallelism() {
     assert!(parses("1"));
+  }
+
+  /// The flag has no clap default any more, because the default is the host's parallelism rather than a fixed number.
+  /// Omitting it has to stay a valid invocation, resolved after parsing.
+  #[test]
+  fn accepts_an_omitted_parallelism() {
+    assert!(
+      UnpackCommand
+        .init()
+        .try_get_matches_from(["unpack", "--path", "archive.db"])
+        .is_ok_and(|matches| matches.get_one::<NonZeroUsize>("parallel").is_none())
+    );
   }
 }

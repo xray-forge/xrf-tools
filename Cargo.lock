@@ -405,15 +405,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bounded_join_set"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae18fd8f4a623bcf416b5bc8f1e0905534d9911597ed17cc57ab9b6eed65454d"
-dependencies = [
- "tokio",
-]
-
-[[package]]
 name = "brotli"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5823,19 +5814,7 @@ dependencies = [
  "mio",
  "pin-project-lite",
  "socket2",
- "tokio-macros",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "tokio-macros"
-version = "2.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78773a2a397f451582ce068015985c33193cf6dea8b74d2a639fe457b2f07b0e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.3",
 ]
 
 [[package]]
@@ -7173,7 +7152,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sysinfo",
- "tokio",
  "walkdir",
  "xrf-archive",
  "xrf-build-info",
@@ -7349,13 +7327,12 @@ version = "0.1.0"
 name = "xrf-pack"
 version = "0.1.0"
 dependencies = [
- "bounded_join_set",
  "crc32fast",
  "log",
  "lzokay",
+ "rayon",
  "serde",
  "specta",
- "tokio",
  "walkdir",
  "xrf-archive",
  "xrf-error",

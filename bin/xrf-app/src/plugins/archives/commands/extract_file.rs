@@ -1,4 +1,4 @@
-use std::sync::MutexGuard;
+use std::sync::Arc;
 
 use tauri::State;
 use xrf_archive::ArchiveProject;
@@ -15,16 +15,14 @@ pub async fn archives_extract_file(
   destination: &str,
   state: State<'_, ArchiveProjectState>,
 ) -> TauriResult<ArchiveExtractResult> {
-  let lock: MutexGuard<Option<ArchiveProject>> = state.project.lock().unwrap();
-
-  let project: &ArchiveProject = lock
-    .as_ref()
-    .ok_or_else(|| String::from("Failed to extract file - archive is not open"))?;
+  // Stays on the calling worker, unlike whole-directory extraction: one entry is one seek and one payload, which is a
+  // short request rather than work bounded by the size of the archive.
+  let project: Arc<ArchiveProject> = state.require("extract file")?;
 
   log::info!("Extracting archive file '{}' to '{}'", name, destination);
 
   let result: ArchiveExtractResult =
-    ArchiveUnpacker::extract_file(project, name, destination).map_err(|error| error.to_string())?;
+    ArchiveUnpacker::extract_file(&project, name, destination).map_err(|error| error.to_string())?;
 
   Ok(result)
 }

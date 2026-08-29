@@ -4,8 +4,11 @@ use std::fs::File;
 use std::io::ErrorKind::AlreadyExists;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::thread::available_parallelism;
 use std::time::Duration;
 
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::{ThreadPool, ThreadPoolBuilder};
 use xrf_archive::ArchiveFileDescriptor;
 use xrf_archive::ArchiveProject;
 use xrf_archive::write_descriptor_contents;
@@ -21,38 +24,29 @@ use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 pub struct ArchiveUnpacker;
 
 impl ArchiveUnpacker {
-  /// Write every file in the project beneath a destination root.
-  pub fn unpack<P: AsRef<Path>>(project: &ArchiveProject, destination: P) -> XrfResult<ArchiveUnpackResult> {
-    let destination: &Path = destination.as_ref();
-    let mut progress: ArchiveUnpackProgress = ArchiveUnpackProgress::begin(project.files.len());
-
-    Self::unpack_dirs(project, destination)?;
-    progress.record_prepared();
-
-    for descriptor in project.files.values() {
-      if !descriptor.is_directory {
-        Self::unpack_file(destination, descriptor)?;
-      }
-
-      progress.record_unpacked();
-    }
-
-    Ok(Self::describe(
-      project,
-      destination,
-      progress.get_prepared_at(),
-      progress.elapsed(),
-    ))
+  /// Workers an unpack run uses when its caller states no preference.
+  ///
+  /// The host's own parallelism rather than a fixed number, because the count sizes a real thread pool: a value chosen
+  /// for one machine is idle capacity on a larger one and oversubscription on a smaller one. A host that cannot report
+  /// its parallelism unpacks on a single worker, which is slower but never wrong.
+  pub fn get_default_concurrency() -> NonZeroUsize {
+    available_parallelism().unwrap_or(NonZeroUsize::MIN)
   }
 
-  /// Write every file in the project beneath a destination root, up to `concurrency` at a time.
+  /// Write every file in the project beneath a destination root, up to `concurrency` entries at a time.
   ///
-  /// The count is non-zero because it becomes the permit count of the bounded join set: zero permits and no spawned
-  /// task ever acquires one, so an archive holding a single file never finishes rather than failing.
+  /// Synchronous, and it owns the pool it runs on: nothing below this performs asynchronous I/O, so a caller on an
+  /// executor has to move the whole call to a blocking thread rather than expect it to yield. One worker is a
+  /// sequential run, so this is the only unpack entry point.
   ///
-  /// The first task to fail ends the run, and the rest are dropped: a partial tree reported as a success is worse than
-  /// a failure, because nothing downstream can tell that the missing files were never written.
-  pub async fn unpack_parallel<P: AsRef<Path>>(
+  /// The count is non-zero because `ThreadPoolBuilder::num_threads(0)` means "decide for me" to Rayon: a zero would
+  /// quietly become one worker per core, which is the opposite of what a caller asking for a bound wants.
+  ///
+  /// A failure ends the run: no further entry is started, entries already started run to completion, and one of the
+  /// errors is returned. Which one is unspecified, because entries are dispatched out of a hash table and finish out
+  /// of order. Whatever was written stays on disk and the run is still reported as a failure — a partial tree reported
+  /// as a success is worse, because nothing downstream can tell that the missing files were never written.
+  pub fn unpack<P: AsRef<Path>>(
     project: &ArchiveProject,
     destination: P,
     concurrency: NonZeroUsize,
@@ -63,26 +57,19 @@ impl ArchiveUnpacker {
     Self::unpack_dirs(project, destination)?;
     progress.record_prepared();
 
-    let mut tasks: bounded_join_set::JoinSet<XrfResult> = bounded_join_set::JoinSet::new(concurrency.get());
+    Self::build_pool(concurrency)?.install(|| {
+      project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
+        // A directory row carries no payload, and the tree it names was created during preparation. It is counted
+        // anyway, so the progress total stays the entry count the project reports holding.
+        if !descriptor.is_directory {
+          Self::unpack_file(destination, descriptor)?;
+        }
 
-    for descriptor in project.files.values() {
-      if descriptor.is_directory {
         progress.record_unpacked();
 
-        continue;
-      }
-
-      let descriptor: ArchiveFileDescriptor = descriptor.clone();
-      let destination: PathBuf = destination.into();
-
-      tasks.spawn(async move { Self::unpack_file(destination, &descriptor) });
-    }
-
-    while let Some(joined) = tasks.join_next().await {
-      joined.map_err(|error| XrfError::new_unexpected_error(format!("archive unpack task failed: {error}")))??;
-
-      progress.record_unpacked();
-    }
+        Ok(())
+      })
+    })?;
 
     Ok(Self::describe(
       project,
@@ -177,6 +164,18 @@ impl ArchiveUnpacker {
       destination: format_path(destination.as_ref()).to_string(),
       size: descriptor.size_real as u64,
     })
+  }
+
+  /// A pool built for one run, never the process-wide one.
+  ///
+  /// Installing onto the global pool would make one command's chosen worker count everything else's too, and the
+  /// caller asked to bound this unpack rather than the process it happens to run in.
+  fn build_pool(concurrency: NonZeroUsize) -> XrfResult<ThreadPool> {
+    ThreadPoolBuilder::new()
+      .num_threads(concurrency.get())
+      .thread_name(|index| format!("xrf-unpack-{index}"))
+      .build()
+      .map_err(|error| XrfError::new_unexpected_error(format!("cannot start {concurrency} unpack worker(s): {error}")))
   }
 
   fn describe(
@@ -277,5 +276,12 @@ mod tests {
       ArchiveUnpacker::build_target_path(Path::new("out"), &descriptor).expect("safe archive path"),
       PathBuf::from("out").join("gamedata").join("configs").join("system.ltx")
     );
+  }
+
+  /// The default is handed straight to a pool builder, so it has to be a usable worker count without further checking.
+  /// A host that cannot report its own parallelism still has to unpack rather than fail or stall on zero workers.
+  #[test]
+  fn the_default_concurrency_is_always_a_usable_worker_count() {
+    assert!(ArchiveUnpacker::get_default_concurrency().get() >= 1);
   }
 }

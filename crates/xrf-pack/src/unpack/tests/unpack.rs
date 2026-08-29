@@ -7,6 +7,12 @@ use xrf_archive::ArchiveProject;
 use super::fixtures::{Entry, create_project, create_temporary_directory};
 use crate::ArchiveUnpacker;
 
+/// One worker: the smallest pool that runs at all, and the sequential unpack the crate no longer spells separately.
+const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
+
+/// More entries than workers, which is what an ordinary run looks like.
+const TWO: NonZeroUsize = NonZeroUsize::new(2).expect("a non-zero worker count");
+
 #[test]
 fn unpack_preserves_empty_files_and_directories() {
   let directory: PathBuf = create_temporary_directory("empty-tree");
@@ -19,7 +25,7 @@ fn unpack_preserves_empty_files_and_directories() {
   );
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack(&project, &out).expect("unpack");
+  ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
 
   assert!(out.join("configs").join("empty").is_dir());
   assert_eq!(
@@ -59,7 +65,7 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   });
 
   let out: PathBuf = directory.join(OsStr::from_bytes(b"out\xff"));
-  let result: ArchiveUnpackResult = ArchiveUnpacker::unpack(&project, &out).expect("unpack");
+  let result: ArchiveUnpackResult = ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
 
   // The write really did complete: the panic used to happen after this file was already on disk.
   assert_eq!(
@@ -71,18 +77,19 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   assert_eq!(result.archives, vec![format!("{root}/broken\u{FFFD}.db0")]);
 }
 
-/// Concurrency is the permit count of the bounded join set, so one is the smallest value that can hand a permit out at
-/// all. Zero used to be expressible: every spawned task awaited a permit that never came, `join_next` never returned,
-/// and an archive holding one file never finished. `NonZeroUsize` at the boundary is what makes that call unwritable.
-#[tokio::test(flavor = "multi_thread")]
-async fn unpack_parallel_writes_a_file_on_a_single_permit() {
+/// A plain test, deliberately not an async one: unpacking drives its own pool and must not need an ambient executor.
+/// While this ran on a Tokio join set the same call panicked with "there is no reactor running" outside a runtime, and
+/// inside one it put every blocking write onto an executor worker.
+///
+/// One worker is also the smallest pool that runs at all. Zero used to be expressible, and an archive holding a single
+/// file then never finished; `NonZeroUsize` at the boundary is what makes that call unwritable.
+#[test]
+fn unpack_writes_a_file_on_a_single_worker_without_a_runtime() {
   let directory: PathBuf = create_temporary_directory("parallel-one-permit");
   let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack_parallel(&project, &out, NonZeroUsize::new(1).expect("a non-zero permit count"))
-    .await
-    .expect("parallel unpack");
+  ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
 
   assert_eq!(
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
@@ -90,10 +97,10 @@ async fn unpack_parallel_writes_a_file_on_a_single_permit() {
   );
 }
 
-/// The ordinary parallel run: more entries than permits, a directory row that spawns no task, and a compressed entry a
-/// worker has to decompress.
-#[tokio::test(flavor = "multi_thread")]
-async fn unpack_parallel_writes_every_entry_across_several_permits() {
+/// The ordinary parallel run: more entries than workers, a directory row with nothing to write, and a compressed entry
+/// a worker has to decompress.
+#[test]
+fn unpack_writes_every_entry_across_several_workers() {
   const COMPRESSIBLE: &[u8] = b"[alife]\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\n";
 
   let directory: PathBuf = create_temporary_directory("parallel-several-permits");
@@ -107,9 +114,7 @@ async fn unpack_parallel_writes_every_entry_across_several_permits() {
   );
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack_parallel(&project, &out, NonZeroUsize::new(2).expect("a non-zero permit count"))
-    .await
-    .expect("parallel unpack");
+  ArchiveUnpacker::unpack(&project, &out, TWO).expect("unpack");
 
   assert!(out.join("configs").join("empty").is_dir());
   assert_eq!(

@@ -1,9 +1,11 @@
-use std::sync::MutexGuard;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use tauri::State;
 use xrf_archive::ArchiveProject;
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveUnpacker};
 
+use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -18,19 +20,15 @@ pub async fn archives_extract_directory(
   destination: &str,
   state: State<'_, ArchiveProjectState>,
 ) -> TauriResult<ArchiveExtractDirectoryResult> {
-  let lock: MutexGuard<Option<ArchiveProject>> = state
-    .project
-    .lock()
-    .map_err(|error| format!("Failed to extract directory - archive state is unavailable: {error}"))?;
-
-  let project: &ArchiveProject = lock
-    .as_ref()
-    .ok_or_else(|| String::from("Failed to extract directory - archive is not open"))?;
-
   log::info!("Extracting archive directory '{}' to '{}'", prefix, destination);
 
-  let result: ArchiveExtractDirectoryResult =
-    ArchiveUnpacker::extract_directory(project, prefix, destination).map_err(|error| error.to_string())?;
+  let project: Arc<ArchiveProject> = state.require("extract directory")?;
+  let prefix: String = prefix.to_owned();
+  let destination: PathBuf = PathBuf::from(destination);
 
-  Ok(result)
+  // Off the async worker: an empty prefix means the whole archive, so this is a full unpack in everything but name.
+  tauri::async_runtime::spawn_blocking(move || ArchiveUnpacker::extract_directory(&project, &prefix, &destination))
+    .await
+    .map_err(|error| format!("Archive directory extraction did not finish: {error}"))?
+    .map_err(error_to_string)
 }
