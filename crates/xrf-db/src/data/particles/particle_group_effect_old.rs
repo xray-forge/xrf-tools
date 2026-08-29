@@ -23,6 +23,9 @@ impl ParticleGroupEffectOld {
 
   pub const EFFECT_ACTIONS_LIMIT: usize = 10_000;
 
+  /// Two terminated names, both times, and the flags.
+  pub const MIN_SERIALIZED_SIZE: u64 = 2 + 4 + 4 + 4;
+
   pub fn get_effect_old_section(section_name: &str, index: usize) -> String {
     format!("{section_name}.effect_old.{index}")
   }
@@ -33,7 +36,8 @@ impl ChunkReadWriteList for ParticleGroupEffectOld {
   fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let count: u32 = reader.read_u32::<T>()?;
 
-    let mut effects: Vec<Self> = Vec::with_capacity(count as usize);
+    let mut effects: Vec<Self> =
+      reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "old particle group effects")?;
 
     for _ in 0..count {
       effects.push(Self::read::<T, _>(reader)?);
@@ -172,7 +176,9 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{
+    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  };
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_test_utils::FileSlice;
@@ -368,6 +374,22 @@ mod tests {
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<ParticleGroupEffectOld>(&serialized)?);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_effect_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
+
+    let error: String = ParticleGroupEffectOld::read_list::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared effect count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("old particle group effects declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

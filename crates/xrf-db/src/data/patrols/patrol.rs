@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
-use xrf_utils::{assert_equal, assert_length};
+use xrf_utils::{assert_equal, assert_length, new_bounded_vec};
 
 use crate::data::patrols::patrol_link::PatrolLink;
 use crate::data::patrols::patrol_point::PatrolPoint;
@@ -39,6 +39,9 @@ impl Patrol {
   pub const DATA_POINT_COUNT_CHUNK_ID: u32 = 0;
   pub const DATA_POINT_DATA_CHUNK_ID: u32 = 1;
   pub const DATA_LIST_CHUNK_ID: u32 = 2;
+
+  /// Sections one imported link occupies in the links file.
+  pub const MIN_LINK_SECTIONS: u64 = 1;
 }
 
 impl ChunkReadWriteList for Patrol {
@@ -152,7 +155,14 @@ impl Patrol {
     let links_count: usize = read_ltx_field("links_count", section)?;
 
     let mut points: Vec<PatrolPoint> = Vec::new();
-    let mut links: Vec<PatrolLink> = Vec::with_capacity(links_count);
+
+    // Every link is imported from its own section, so the links file cannot hold more links than it has sections.
+    let mut links: Vec<PatrolLink> = new_bounded_vec(
+      links_count as u64,
+      patrol_links_ltx.len() as u64,
+      Self::MIN_LINK_SECTIONS,
+      "patrol links",
+    )?;
 
     for (index, listed) in points_list.split(',').map(str::trim).enumerate() {
       let prefix: String = format!("{name}.{index}.");
@@ -531,6 +541,41 @@ mod tests {
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<Patrol>(&serialized)?);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_a_link_count_larger_than_the_links_file_before_reserving_it() -> XrfResult {
+    let original: Patrol = Patrol {
+      name: String::from("hostile-count-patrol"),
+      points: vec![PatrolPoint {
+        name: String::from("wp00"),
+        position: Vector3d::new(1.0, 2.0, 3.0),
+        flags: 1,
+        level_vertex_id: 12,
+        game_vertex_id: 24,
+      }],
+      links: vec![],
+    };
+
+    let mut patrols_ltx: Ltx = Ltx::new();
+    let mut points_ltx: Ltx = Ltx::new();
+    let mut links_ltx: Ltx = Ltx::new();
+
+    original.export(&original.name, &mut patrols_ltx, &mut points_ltx, &mut links_ltx)?;
+
+    // The links file holds no sections at all, so no count above zero can be imported from it.
+    patrols_ltx.with_section(&original.name).set("links_count", "1000");
+
+    let error: String = Patrol::import(&original.name, &patrols_ltx, &points_ltx, &links_ltx)
+      .expect_err("expect the declared link count to exceed the links file")
+      .to_string();
+
+    assert!(
+      error.contains("patrol links declares 1000 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

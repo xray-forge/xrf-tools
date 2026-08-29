@@ -41,25 +41,38 @@ impl ChunkReadWrite for SpawnGraphsChunk {
 
     let header: GraphHeader = reader.read_xr::<T, _>()?;
 
-    let mut levels: Vec<GraphLevel> = Vec::with_capacity(header.levels_count as usize);
+    let mut levels: Vec<GraphLevel> = reader.new_bounded_vec(
+      header.levels_count.into(),
+      GraphLevel::MIN_SERIALIZED_SIZE,
+      "graph levels",
+    )?;
 
     for _ in 0..header.levels_count {
       levels.push(reader.read_xr::<T, _>()?)
     }
 
-    let mut vertices: Vec<GraphVertex> = Vec::with_capacity(header.vertices_count as usize);
+    let mut vertices: Vec<GraphVertex> = reader.new_bounded_vec(
+      header.vertices_count.into(),
+      GraphVertex::MIN_SERIALIZED_SIZE,
+      "graph vertices",
+    )?;
 
     for _ in 0..header.vertices_count {
       vertices.push(reader.read_xr::<T, _>()?);
     }
 
-    let mut edges: Vec<GraphEdge> = Vec::with_capacity(header.edges_count as usize);
+    let mut edges: Vec<GraphEdge> =
+      reader.new_bounded_vec(header.edges_count.into(), GraphEdge::MIN_SERIALIZED_SIZE, "graph edges")?;
 
     for _ in 0..header.edges_count {
       edges.push(reader.read_xr::<T, _>()?);
     }
 
-    let mut points: Vec<GraphLevelPoint> = Vec::with_capacity(header.points_count as usize);
+    let mut points: Vec<GraphLevelPoint> = reader.new_bounded_vec(
+      header.points_count.into(),
+      GraphLevelPoint::MIN_SERIALIZED_SIZE,
+      "graph level points",
+    )?;
 
     for _ in 0..header.points_count {
       points.push(reader.read_xr::<T, _>()?);
@@ -255,7 +268,7 @@ impl fmt::Debug for SpawnGraphsChunk {
 #[cfg(test)]
 mod tests {
   use uuid::uuid;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -450,6 +463,77 @@ mod tests {
       .expect("0 index chunk to exist");
 
     assert_eq!(SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  /// A graphs header declaring the supplied collection counts and nothing else.
+  fn mock_graphs_header(vertices_count: u16, edges_count: u32, points_count: u32, levels_count: u8) -> Vec<u8> {
+    let mut bytes: Vec<u8> = vec![10];
+
+    bytes.extend(vertices_count.to_le_bytes());
+    bytes.extend(edges_count.to_le_bytes());
+    bytes.extend(points_count.to_le_bytes());
+    bytes.extend([0; 16]);
+    bytes.push(levels_count);
+
+    bytes
+  }
+
+  fn read_graphs_error(bytes: &[u8]) -> XrfResult<String> {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
+
+    Ok(
+      SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut reader)
+        .expect_err("expect the declared count to exceed the chunk")
+        .to_string(),
+    )
+  }
+
+  #[test]
+  fn rejects_level_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let error: String = read_graphs_error(&mock_graphs_header(0, 0, 0, 255))?;
+
+    assert!(
+      error.contains("graph levels declares 255 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_vertex_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let error: String = read_graphs_error(&mock_graphs_header(65535, 0, 0, 0))?;
+
+    assert!(
+      error.contains("graph vertices declares 65535 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_edge_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let error: String = read_graphs_error(&mock_graphs_header(0, u32::MAX, 0, 0))?;
+
+    assert!(
+      error.contains("graph edges declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_level_point_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let error: String = read_graphs_error(&mock_graphs_header(0, 0, u32::MAX, 0))?;
+
+    assert!(
+      error.contains("graph level points declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

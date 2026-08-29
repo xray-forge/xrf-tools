@@ -26,7 +26,11 @@ impl ChunkReadWrite for AlifeSmartCover {
 
     let last_description: String = reader.read_w1251_string()?;
     let count: u8 = reader.read_u8()?;
-    let mut loopholes: Vec<AlifeSmartCoverLoophole> = Vec::with_capacity(count as usize);
+    let mut loopholes: Vec<AlifeSmartCoverLoophole> = reader.new_bounded_vec(
+      count.into(),
+      AlifeSmartCoverLoophole::MIN_SERIALIZED_SIZE,
+      "smart cover loopholes",
+    )?;
 
     for _ in 0..count {
       let name: String = reader.read_w1251_string()?;
@@ -91,7 +95,7 @@ impl LtxImportExport for AlifeSmartCover {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -102,6 +106,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
   use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
+  use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
   use crate::data::generic::shape::Shape;
   use crate::data::generic::vector_3d::Vector3d;
 
@@ -156,6 +161,57 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(AlifeObjectSmartCover::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_loophole_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let original: AlifeSmartCover = AlifeSmartCover {
+      base: AlifeObjectSmartCover {
+        base: AlifeObjectDynamic {
+          base: AlifeObjectAbstract {
+            game_vertex_id: 12,
+            distance: 1.5,
+            direct_control: 24,
+            level_vertex_id: 36,
+            flags: 0,
+            custom_data: String::from("custom-data"),
+            story_id: 48,
+            spawn_story_id: 60,
+          },
+        },
+        shape: vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))],
+        description: String::from("description"),
+        hold_position_time: 1.0,
+        enter_min_enemy_distance: 2.0,
+        exit_min_enemy_distance: 3.0,
+        is_combat_cover: 1,
+        can_fire: 1,
+      },
+      last_description: String::from("last-description"),
+      loopholes: vec![],
+    };
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    // The loophole count is the last byte written, so raising it declares loopholes the payload cannot hold.
+    let mut bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+
+    *bytes.last_mut().expect("expect a trailing loophole count") = 255;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?;
+
+    let error: String = AlifeSmartCover::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared loophole count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("smart cover loopholes declares 255 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

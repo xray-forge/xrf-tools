@@ -31,7 +31,11 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
     log::info!("Reading artefacts spawns chunk: {} bytes", reader.read_bytes_remain());
 
     let count: u32 = reader.read_u32::<T>()?;
-    let mut nodes: Vec<ArtefactSpawnPoint> = Vec::with_capacity(count as usize);
+    let mut nodes: Vec<ArtefactSpawnPoint> = reader.new_bounded_vec(
+      count.into(),
+      ArtefactSpawnPoint::MIN_SERIALIZED_SIZE,
+      "artefact spawn points",
+    )?;
 
     // Parsing CLevelPoint structure, 20 bytes per one.
     for _ in 0..count {
@@ -103,7 +107,7 @@ impl fmt::Debug for SpawnArtefactSpawnsChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -156,6 +160,22 @@ mod tests {
     assert_eq!(
       SpawnArtefactSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)?,
       original
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_point_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
+
+    let error: String = SpawnArtefactSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared point count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("artefact spawn points declares 4294967295 entries"),
+      "Unexpected error: {error}"
     );
 
     Ok(())

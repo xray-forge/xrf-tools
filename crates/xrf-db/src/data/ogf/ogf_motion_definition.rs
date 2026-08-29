@@ -24,12 +24,17 @@ pub struct OgfMotionDefinition {
 // todo: Version based switcher?
 // todo: Version based switcher?
 impl OgfMotionDefinition {
+  /// The terminator of an empty name, the flags, the bone or part and motion ids, and the four float parameters. The
+  /// marks that version 4 appends only make a record longer.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 4 + 2 + 2 + 16;
+
   pub fn read_list<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     version: u16,
   ) -> XrfResult<Vec<Self>> {
     let count: u16 = reader.read_u16::<T>()?;
-    let mut definitions: Vec<Self> = Vec::with_capacity(count as usize);
+    let mut definitions: Vec<Self> =
+      reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "ogf motion definitions")?;
 
     for _ in 0..count {
       definitions.push(
@@ -59,7 +64,8 @@ impl OgfMotionDefinition {
 
     let marks: Vec<OgfMotionMark> = if version == 4 {
       let count: u32 = reader.read_u32::<T>()?;
-      let mut marks: Vec<OgfMotionMark> = Vec::with_capacity(count as usize);
+      let mut marks: Vec<OgfMotionMark> =
+        reader.new_bounded_vec(count.into(), OgfMotionMark::MIN_SERIALIZED_SIZE, "ogf motion marks")?;
 
       for _ in 0..count {
         marks.push(
@@ -155,7 +161,7 @@ impl OgfMotionDefinition {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -224,5 +230,43 @@ mod tests {
       definition.write::<XRayByteOrder>(&mut writer, 3).is_err(),
       "Expect marks to be rejected when writing version 3 motion definition"
     );
+  }
+
+  #[test]
+  fn rejects_definition_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255])?;
+
+    let error: String = OgfMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, 4)
+      .expect_err("expect the declared definition count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf motion definitions declares 65535 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_mark_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut bytes: Vec<u8> = vec![0];
+
+    // Flags, the bone or part and motion ids, and the four float parameters, all zeroed.
+    bytes.extend([0; 4 + 2 + 2 + 16]);
+    bytes.extend([255, 255, 255, 255]);
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
+
+    let error: String = OgfMotionDefinition::read::<XRayByteOrder, _>(&mut reader, 4)
+      .expect_err("expect the declared mark count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf motion marks declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
   }
 }

@@ -40,13 +40,18 @@ impl ChunkReadWriteList for PatrolLink {
   }
 }
 
+impl PatrolLink {
+  /// One link is a destination index and its weight.
+  pub const MIN_LINK_SIZE: u64 = 4 + 4;
+}
+
 impl ChunkReadWrite for PatrolLink {
   /// Read patrol link from chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let index: u32 = reader.read_u32::<T>()?;
     let count: u32 = reader.read_u32::<T>()?;
 
-    let mut vertices: Vec<(u32, f32)> = Vec::with_capacity(count as usize);
+    let mut vertices: Vec<(u32, f32)> = reader.new_bounded_vec(count.into(), Self::MIN_LINK_SIZE, "patrol links")?;
 
     for _ in 0..count {
       let to: u32 = reader.read_u32::<T>()?; // from->to in u16.
@@ -131,7 +136,9 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{
+    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  };
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_test_utils::FileSlice;
@@ -255,6 +262,23 @@ mod tests {
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<PatrolLink>(&serialized)?);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_link_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    // The link index, then a count no payload can satisfy.
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 0, 0, 0, 255, 255, 255, 255])?;
+
+    let error: String = PatrolLink::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared link count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("patrol links declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

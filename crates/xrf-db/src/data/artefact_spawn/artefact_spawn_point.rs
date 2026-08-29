@@ -17,6 +17,11 @@ pub struct ArtefactSpawnPoint {
   pub distance: f32,
 }
 
+impl ArtefactSpawnPoint {
+  /// One `CLevelPoint`: a position, the level vertex id, and the distance.
+  pub const MIN_SERIALIZED_SIZE: u64 = 12 + 4 + 4;
+}
+
 impl ChunkReadWrite for ArtefactSpawnPoint {
   /// Read artefact spawn point from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

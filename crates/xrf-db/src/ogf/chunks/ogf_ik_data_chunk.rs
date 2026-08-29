@@ -19,7 +19,11 @@ impl OgfIkDataChunk {
   pub const CHUNK_ID: u32 = 16;
 
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, bones_count: usize) -> XrfResult<Self> {
-    let mut bones: Vec<OgfBoneIkData> = Vec::with_capacity(bones_count);
+    let mut bones: Vec<OgfBoneIkData> = reader.new_bounded_vec(
+      bones_count as u64,
+      OgfBoneIkData::MIN_SERIALIZED_SIZE,
+      "ogf ik data bones",
+    )?;
 
     for _ in 0..bones_count {
       bones.push(reader.read_xr::<T, _>()?);
@@ -42,6 +46,7 @@ impl OgfIkDataChunk {
 #[cfg(test)]
 mod tests {
   use std::io::Write;
+  use xrf_chunk::InMemoryChunkDataSource;
 
   use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
@@ -160,6 +165,22 @@ mod tests {
 
     assert_eq!(read.bones[0].joint.friction, None);
     assert_eq!(read.bones[0], chunk.bones[0]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_bone_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 0, 0, 0])?;
+
+    let error: String = OgfIkDataChunk::read::<XRayByteOrder, _>(&mut reader, 1_000)
+      .expect_err("expect the supplied bone count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf ik data bones declares 1000 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

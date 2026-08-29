@@ -17,6 +17,10 @@ pub struct GraphLevelPoint {
   pub distance: f32,
 }
 
+impl GraphLevelPoint {
+  pub const MIN_SERIALIZED_SIZE: u64 = 12 + 4 + 4;
+}
+
 impl ChunkReadWrite for GraphLevelPoint {
   /// Read level point from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

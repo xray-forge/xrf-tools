@@ -17,10 +17,18 @@ impl OgfPart {
   }
 }
 
+impl OgfPart {
+  /// The terminator of an empty name and the bone count.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 2;
+
+  /// One bone is a terminated name and its index.
+  pub const MIN_BONE_SIZE: u64 = 1 + 4;
+}
+
 impl ChunkReadWriteList for OgfPart {
   fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let count: u16 = reader.read_u16::<T>()?;
-    let mut parts: Vec<Self> = Vec::with_capacity(count as usize);
+    let mut parts: Vec<Self> = reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "ogf parts")?;
 
     for _ in 0..count {
       parts.push(
@@ -52,7 +60,7 @@ impl ChunkReadWrite for OgfPart {
     let name: String = reader.read_w1251_string()?;
     let count: u16 = reader.read_u16::<T>()?;
 
-    let mut bones: Vec<(String, u32)> = Vec::with_capacity(count as usize);
+    let mut bones: Vec<(String, u32)> = reader.new_bounded_vec(count.into(), Self::MIN_BONE_SIZE, "ogf part bones")?;
 
     for _ in 0..count {
       bones.push((reader.read_w1251_string()?, reader.read_u32::<T>()?));
@@ -76,7 +84,9 @@ impl ChunkReadWrite for OgfPart {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{
+    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  };
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -110,6 +120,39 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(OgfPart::read_list::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_part_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255])?;
+
+    let error: String = OgfPart::read_list::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared part count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf parts declares 65535 entries"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_part_bone_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    // An empty part name, then a bone count no payload can satisfy.
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 255, 255])?;
+
+    let error: String = OgfPart::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared bone count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf part bones declares 65535 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

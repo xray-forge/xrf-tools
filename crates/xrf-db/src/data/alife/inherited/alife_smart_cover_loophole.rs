@@ -10,6 +10,9 @@ pub struct AlifeSmartCoverLoophole {
 }
 
 impl AlifeSmartCoverLoophole {
+  /// The terminator of an empty name and the enabled flag.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1;
+
   /// Serialize list of loopholes into single string.
   pub fn list_to_string(loopholes: &[Self]) -> String {
     loopholes

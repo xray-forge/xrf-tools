@@ -15,6 +15,11 @@ pub struct OgfBone {
   pub half_size: Vector3d,
 }
 
+impl OgfBone {
+  /// Two terminated names, the rotation triple, the translation, and the half size.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1 + 36 + 12 + 12;
+}
+
 impl ChunkReadWrite for OgfBone {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {

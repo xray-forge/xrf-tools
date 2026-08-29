@@ -15,6 +15,10 @@ pub struct GraphEdge {
   pub distance: f32,
 }
 
+impl GraphEdge {
+  pub const MIN_SERIALIZED_SIZE: u64 = 2 + 4;
+}
+
 impl ChunkReadWrite for GraphEdge {
   /// Read edge from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

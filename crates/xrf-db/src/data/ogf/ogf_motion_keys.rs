@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{assert_count_fits, new_bounded_vec};
 
 use crate::data::generic::vector_3d::Vector3d;
 use crate::data::ogf::ogf_motion::OgfMotion;
@@ -18,6 +19,10 @@ const FL_T_KEY_16_IS_BIT: u8 = 1 << 2;
 
 /// Bytes one quantised rotation key occupies: four `i16` components.
 const ROTATION_KEY_SIZE: usize = 8;
+
+/// Bytes one quantised translation key occupies, in each of the two widths the flags select.
+const TRANSLATION_KEY_16_SIZE: usize = 6;
+const TRANSLATION_KEY_8_SIZE: usize = 3;
 
 /// A rotation, as the format stores one: a quaternion, dequantised.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -73,7 +78,10 @@ impl OgfMotion {
   /// Returns an error when the payload ends early, or when it does not end exactly where the last bone's keys do.
   pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<OgfBoneMotion>> {
     let mut cursor: MotionCursor = MotionCursor::new(&self.remaining);
-    let mut bones: Vec<OgfBoneMotion> = Vec::with_capacity(bone_count);
+
+    // The bone count comes from the skeleton rather than the payload, so it is bounded by the keys that remain.
+    let mut bones: Vec<OgfBoneMotion> =
+      new_bounded_vec(bone_count as u64, cursor.remaining() as u64, 1, "ogf motion bones")?;
 
     for index in 0..bone_count {
       // Every bone but the first reads its own flags; the first one's was taken by the chunk reader.
@@ -103,6 +111,14 @@ impl OgfMotion {
       // The checksum guards the shared-memory cache the engine keys by it; nothing here needs it.
       cursor.skip(4)?;
 
+      // Collecting a range reserves its whole length up front, so the frame count is proven against the keys first.
+      assert_count_fits(
+        count as u64,
+        cursor.remaining() as u64,
+        ROTATION_KEY_SIZE as u64,
+        "ogf motion rotation keys",
+      )?;
+
       (0..count)
         .map(|_| cursor.read_rotation::<T>())
         .collect::<XrfResult<_>>()?
@@ -118,7 +134,21 @@ impl OgfMotion {
 
     cursor.skip(4)?;
 
-    let quantised: Vec<[f32; 3]> = match flags & FL_T_KEY_16_IS_BIT != 0 {
+    let is_16_bit: bool = flags & FL_T_KEY_16_IS_BIT != 0;
+    let translation_key_size: usize = if is_16_bit {
+      TRANSLATION_KEY_16_SIZE
+    } else {
+      TRANSLATION_KEY_8_SIZE
+    };
+
+    assert_count_fits(
+      count as u64,
+      cursor.remaining() as u64,
+      translation_key_size as u64,
+      "ogf motion translation keys",
+    )?;
+
+    let quantised: Vec<[f32; 3]> = match is_16_bit {
       true => (0..count)
         .map(|_| cursor.read_translation_key_16::<T>())
         .collect::<XrfResult<_>>()?,
@@ -202,7 +232,7 @@ impl<'a> MotionCursor<'a> {
   }
 
   fn read_translation_key_16<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]> {
-    let mut bytes: &[u8] = self.take(6)?;
+    let mut bytes: &[u8] = self.take(TRANSLATION_KEY_16_SIZE)?;
 
     Ok([
       f32::from(bytes.read_i16::<T>()?),
@@ -212,7 +242,7 @@ impl<'a> MotionCursor<'a> {
   }
 
   fn read_translation_key_8(&mut self) -> XrfResult<[f32; 3]> {
-    let bytes: &[u8] = self.take(3)?;
+    let bytes: &[u8] = self.take(TRANSLATION_KEY_8_SIZE)?;
 
     Ok([
       f32::from(bytes[0] as i8),
@@ -421,5 +451,61 @@ mod tests {
   fn reports_duration_from_the_sample_rate() {
     assert_eq!(mock_motion(30, vec![]).get_duration_seconds(), 1.0);
     assert_eq!(mock_motion(15, vec![]).get_duration_seconds(), 0.5);
+  }
+
+  #[test]
+  fn rejects_a_bone_count_larger_than_the_payload_before_reserving_it() {
+    let motion: OgfMotion = mock_motion(1, vec![BoneRun::held()]);
+
+    let error: String = motion
+      .decode_bone_motions::<LittleEndian>(10_000)
+      .expect_err("expect the supplied bone count to exceed the payload")
+      .to_string();
+
+    assert!(
+      error.contains("ogf motion bones declares 10000 entries"),
+      "Unexpected error: {error}"
+    );
+  }
+
+  #[test]
+  fn rejects_a_rotation_frame_count_larger_than_the_payload_before_reserving_it() {
+    // Collecting the frame range reserves its whole length up front, so a held payload must not declare one.
+    let motion: OgfMotion = OgfMotion {
+      label: String::from("test_motion"),
+      count: u32::MAX,
+      flags: 0,
+      remaining: vec![0; 8],
+    };
+
+    let error: String = motion
+      .decode_bone_motions::<LittleEndian>(1)
+      .expect_err("expect the declared frame count to exceed the payload")
+      .to_string();
+
+    assert!(
+      error.contains("ogf motion rotation keys declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
+  }
+
+  #[test]
+  fn rejects_a_translation_frame_count_larger_than_the_payload_before_reserving_it() {
+    let motion: OgfMotion = OgfMotion {
+      label: String::from("test_motion"),
+      count: u32::MAX,
+      flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
+      remaining: vec![0; 12],
+    };
+
+    let error: String = motion
+      .decode_bone_motions::<LittleEndian>(1)
+      .expect_err("expect the declared frame count to exceed the payload")
+      .to_string();
+
+    assert!(
+      error.contains("ogf motion translation keys declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
   }
 }

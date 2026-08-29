@@ -78,6 +78,9 @@ pub enum ParticleAction {
 
 impl ParticleAction {
   pub const META_TYPE: &'static str = "particle_action";
+
+  /// The action type selects the payload that follows it, so only the type itself is unconditional.
+  pub const MIN_SERIALIZED_SIZE: u64 = 4;
 }
 
 impl ChunkReadWriteList for ParticleAction {
@@ -85,7 +88,7 @@ impl ChunkReadWriteList for ParticleAction {
   fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let count: u32 = reader.read_u32::<T>()?;
 
-    let mut actions: Vec<Self> = Vec::with_capacity(count as usize);
+    let mut actions: Vec<Self> = reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "particle actions")?;
 
     for _ in 0..count {
       actions.push(
@@ -336,7 +339,9 @@ impl LtxImportExport for ParticleAction {
 #[cfg(test)]
 mod tests {
   use byteorder::ReadBytesExt;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{
+    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  };
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -389,6 +394,22 @@ mod tests {
 
     assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, rotate);
     assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, velocity);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_action_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
+
+    let error: String = ParticleAction::read_list::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared action count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("particle actions declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

@@ -47,6 +47,11 @@ impl AlifeObject {
   pub const DATA_UPDATE_CHUNK_ID: u32 = 1;
 }
 
+impl AlifeObject {
+  /// One framed object chunk: its own header, plus the header and payload of the index chunk it must carry.
+  pub const MIN_SERIALIZED_SIZE: u64 = 8 + 8 + 2;
+}
+
 impl ChunkReadWrite for AlifeObject {
   /// Read generic ALife object data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

@@ -27,6 +27,12 @@ pub struct OgfBoneIkData {
   pub center_of_mass: Vector3d,
 }
 
+impl OgfBoneIkData {
+  /// The version, the shortest material name, and the shape blob. The joint record and the transforms that trail it
+  /// only make a record longer, so they stay out of the floor.
+  pub const MIN_SERIALIZED_SIZE: u64 = 4 + 1 + OgfBoneShape::SIZE as u64;
+}
+
 impl ChunkReadWrite for OgfBoneIkData {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     // Stored as u32 even though only the low half is meaningful.

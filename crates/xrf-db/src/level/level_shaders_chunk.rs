@@ -16,6 +16,9 @@ pub struct LevelShadersChunk {
 impl LevelShadersChunk {
   pub const CHUNK_ID: u32 = 2;
 
+  /// One entry is a terminated string, so an empty one still costs its terminator.
+  pub const MIN_ENTRY_SIZE: u64 = 1;
+
   /// Iterate over entries the renderer actually resolves.
   pub fn references(&self) -> impl Iterator<Item = &LevelShaderReference> {
     self.entries.iter().filter_map(|entry| match entry {
@@ -37,7 +40,8 @@ impl ChunkReadWrite for LevelShadersChunk {
   /// Read level shaders table from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let count: u32 = reader.read_u32::<T>()?;
-    let mut entries: Vec<LevelShaderEntry> = Vec::with_capacity(count as usize);
+    let mut entries: Vec<LevelShaderEntry> =
+      reader.new_bounded_vec(count.into(), Self::MIN_ENTRY_SIZE, "level shaders")?;
 
     for _ in 0..count {
       entries.push(LevelShaderEntry::parse(&reader.read_w1251_string()?));
@@ -62,7 +66,7 @@ impl ChunkReadWrite for LevelShadersChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -118,6 +122,22 @@ mod tests {
       .expect("0 index chunk to exist");
 
     assert_eq!(LevelShadersChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_entry_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
+
+    let error: String = LevelShadersChunk::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared entry count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("level shaders declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

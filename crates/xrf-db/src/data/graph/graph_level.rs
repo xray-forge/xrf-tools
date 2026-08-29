@@ -21,6 +21,11 @@ pub struct GraphLevel {
   pub guid: Uuid,
 }
 
+impl GraphLevel {
+  /// The terminators of an empty name and section, the offset, the id, and the guid.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 12 + 1 + 1 + 16;
+}
+
 impl ChunkReadWrite for GraphLevel {
   /// Read graph level data from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

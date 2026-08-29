@@ -28,7 +28,8 @@ impl ChunkReadWrite for OgfSwiDataChunk {
     ];
 
     let count: u32 = reader.read_u32::<T>()?;
-    let mut windows: Vec<OgfSlideWindow> = Vec::with_capacity(count as usize);
+    let mut windows: Vec<OgfSlideWindow> =
+      reader.new_bounded_vec(count.into(), OgfSlideWindow::MIN_SERIALIZED_SIZE, "ogf slide windows")?;
 
     for _ in 0..count {
       windows.push(reader.read_xr::<T, _>()?);
@@ -57,6 +58,7 @@ impl ChunkReadWrite for OgfSwiDataChunk {
 #[cfg(test)]
 mod tests {
   use std::io::Write;
+  use xrf_chunk::InMemoryChunkDataSource;
 
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
@@ -146,6 +148,24 @@ mod tests {
     .write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.flush_raw_into_buffer()?.len(), 8);
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_window_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
+    // Four reserved words, then a count no payload can satisfy.
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_bytes(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255])?;
+
+    let error: String = OgfSwiDataChunk::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared window count to exceed the chunk")
+      .to_string();
+
+    assert!(
+      error.contains("ogf slide windows declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

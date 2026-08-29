@@ -19,6 +19,10 @@ pub struct OgfSlideWindow {
   pub num_verts: u16,
 }
 
+impl OgfSlideWindow {
+  pub const MIN_SERIALIZED_SIZE: u64 = 4 + 2 + 2;
+}
+
 impl ChunkReadWrite for OgfSlideWindow {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {

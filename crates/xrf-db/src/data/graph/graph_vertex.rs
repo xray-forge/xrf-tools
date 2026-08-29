@@ -25,6 +25,11 @@ pub struct GraphVertex {
   pub level_points_count: u8,
 }
 
+impl GraphVertex {
+  /// Two points, the level id and its packed vertex id, the vertex type, both offsets, and both counts.
+  pub const MIN_SERIALIZED_SIZE: u64 = 12 + 12 + 1 + 3 + 4 + 4 + 4 + 1 + 1;
+}
+
 impl ChunkReadWrite for GraphVertex {
   /// Read graph vertex data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

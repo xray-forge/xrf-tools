@@ -43,7 +43,10 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
     let vertex_reader: ChunkReader<D> = reader.read_child_by_index(Self::VERTEX_CHUNK_ID)?;
 
     let count: u32 = count_reader.read_u32::<T>()?;
-    let mut objects: Vec<AlifeObject> = Vec::with_capacity(count as usize);
+
+    // The count is declared in its own chunk, so the objects chunk is what has to hold that many records.
+    let mut objects: Vec<AlifeObject> =
+      objects_reader.new_bounded_vec(count.into(), AlifeObject::MIN_SERIALIZED_SIZE, "alife objects")?;
 
     for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
       let mut object_reader: ChunkReader<D> = object_reader?;
@@ -171,7 +174,8 @@ impl fmt::Debug for SpawnALifeSpawnsChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use byteorder::WriteBytesExt;
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
@@ -333,6 +337,34 @@ mod tests {
     for (index, object) in read.objects.iter().enumerate() {
       assert_eq!(object, original.objects.get(index).unwrap());
     }
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_object_count_larger_than_the_objects_chunk_before_reserving_it() -> XrfResult {
+    let mut count_writer: ChunkWriter = ChunkWriter::new();
+    let mut objects_writer: ChunkWriter = ChunkWriter::new();
+    let mut vertex_writer: ChunkWriter = ChunkWriter::new();
+
+    count_writer.write_u32::<XRayByteOrder>(u32::MAX)?;
+
+    let mut bytes: Vec<u8> = Vec::new();
+
+    bytes.extend(count_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::COUNT_CHUNK_ID)?);
+    bytes.extend(objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::OBJECTS_CHUNK_ID)?);
+    bytes.extend(vertex_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::VERTEX_CHUNK_ID)?);
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
+
+    let error: String = SpawnALifeSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect the declared object count to exceed the objects chunk")
+      .to_string();
+
+    assert!(
+      error.contains("alife objects declares 4294967295 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }

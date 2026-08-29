@@ -25,6 +25,14 @@ impl<D: ChunkDataSource> ChunkReader<D> {
 }
 
 impl<D: ChunkDataSource> ChunkReader<D> {
+  /// Create a vector for a record count this chunk declares, bounded by the bytes remaining in it.
+  ///
+  /// `min_record_size` counts only the bytes every record consumes unconditionally; see
+  /// [`xrf_utils::assert_count_fits`].
+  pub fn new_bounded_vec<C>(&self, count: u64, min_record_size: u64, what: &str) -> XrfResult<Vec<C>> {
+    xrf_utils::new_bounded_vec(count, self.read_bytes_remain(), min_record_size, what)
+  }
+
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
   pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32::<T>()?;
@@ -138,6 +146,26 @@ mod tests {
     assert_eq!(ChunkReader::from_bytes(&[0, 1, 2])?.read_remaining()?, vec![0, 1, 2]);
     assert_eq!(ChunkReader::from_bytes(&[0])?.read_remaining()?, vec![0]);
     assert_eq!(ChunkReader::from_bytes(&[])?.read_remaining()?, Vec::<u8>::new());
+
+    Ok(())
+  }
+
+  #[test]
+  fn bounds_a_declared_count_by_the_bytes_remaining_in_the_chunk() -> XrfResult {
+    let chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7])?;
+
+    assert_eq!(chunk.new_bounded_vec::<u64>(1, 8, "test records")?.capacity(), 1);
+
+    let error: String = chunk
+      .new_bounded_vec::<u64>(2, 8, "test records")
+      .expect_err("expect the declared count to exceed the remaining bytes")
+      .to_string();
+
+    assert!(
+      error.contains("test records declares 2 entries"),
+      "Unexpected error: {error}"
+    );
+    assert!(error.contains("only 8 remain"), "Unexpected error: {error}");
 
     Ok(())
   }
