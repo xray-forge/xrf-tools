@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /** Reports the first character a language cannot hold, or `null` when the value is writable. */
@@ -40,6 +41,8 @@ export function useTranslationValidation({
   language,
   validateText,
 }: IUseTranslationValidationOptions): ITranslationValidation {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Held rather than closed over, because callers pass a fresh arrow every render and validating must not
@@ -71,7 +74,13 @@ export function useTranslationValidation({
         .current(language, value)
         .then((error: Nullable<string>) => {
           if (commitsRef.current.get(key) !== commit) {
+            log.debug("Discarded a superseded translation validation:", file, language, id);
+
             return;
+          }
+
+          if (error) {
+            log.info("Translation value cannot be written:", file, language, id, error);
           }
 
           setErrors((current: Record<string, string>) => {
@@ -86,9 +95,11 @@ export function useTranslationValidation({
             return error ? { ...rest, [key]: error } : rest;
           });
         })
-        .catch(() => undefined);
+        // Only an unexpected throw reaches this: the service answers `null` for a backend that refused, so a cell
+        // whose validation broke is left reading as writable and the reason has nowhere else to go.
+        .catch((reason: unknown) => log.warn("Could not validate a translation value:", file, language, id, reason));
     },
-    [file, language]
+    [file, language, log]
   );
 
   return { getErrorOf, validate };

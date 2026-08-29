@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useCallback, useState } from "react";
 
@@ -51,7 +52,7 @@ export function usePathState({
   const filtersKey: string = JSON.stringify(filters);
 
   const onSelectPath = useCallback(async (): Promise<Nullable<string>> => {
-    if (isDisabled) {
+    if (isDisabled || !isTauri()) {
       return null;
     }
 

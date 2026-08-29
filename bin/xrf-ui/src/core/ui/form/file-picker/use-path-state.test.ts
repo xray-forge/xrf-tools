@@ -3,6 +3,8 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { act, renderHook } from "@testing-library/react";
 
 import { type IPathStateOptions, type TPathState, usePathState } from "@/core/ui/form/file-picker/use-path-state";
+import { mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { Nullable } from "@/lib/types/general";
 
 describe("usePathState", () => {
   function select(options: IPathStateOptions): void {
@@ -59,6 +61,30 @@ describe("usePathState", () => {
   it("opens nothing while disabled", () => {
     select({ title: "Pick a directory", isDirectory: true, isDisabled: true });
 
+    expect(open).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("opens no native dialog outside Tauri", async () => {
+    mockIsTauri.mockReturnValue(false);
+
+    const { result } = renderHook(() => usePathState({ title: "Pick a file" }));
+
+    const selected: Nullable<string> = await act(() => (result.current as TPathState)[2]());
+
+    expect(selected).toBeNull();
+    expect(open).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("opens no native save dialog outside Tauri", async () => {
+    mockIsTauri.mockReturnValue(false);
+
+    const { result } = renderHook(() => usePathState({ isSave: true, title: "Save a file" }));
+
+    const selected: Nullable<string> = await act(() => (result.current as TPathState)[2]());
+
+    expect(selected).toBeNull();
     expect(open).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
   });

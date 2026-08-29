@@ -2,6 +2,9 @@ import { jest } from "@jest/globals";
 
 export type InvokeHandler = (args?: Record<string, unknown>) => unknown;
 
+/** Whether tests are running in the mocked desktop runtime. */
+export const mockIsTauri = jest.fn((): boolean => true);
+
 /**
  * Responses keyed by tauri command name.
  *
@@ -27,6 +30,12 @@ export function setMockInvokeResponses(handlers: InvokeMap): void {
  */
 export function resetMockInvoke(): void {
   state.handlers = {};
+}
+
+/** Restores the mocked runtime to the desktop default. */
+export function resetMockIsTauri(): void {
+  mockIsTauri.mockReset();
+  mockIsTauri.mockReturnValue(true);
 }
 
 const windowState: { isMaximized: boolean; listeners: Array<() => void> } = { isMaximized: false, listeners: [] };
