@@ -377,6 +377,54 @@ mod tests {
   }
 
   #[test]
+  fn resolves_imports_through_the_most_specific_path_alias() {
+    let root: PathBuf = create_test_root("overlapping-aliases");
+
+    write_source(
+      &root,
+      "tsconfig.json",
+      r#"{
+        "compilerOptions": {
+          "paths": {
+            "@/*": ["src/*"],
+            "@/shared/*": ["shared/*"]
+          }
+        }
+      }"#,
+    );
+    write_source(
+      &root,
+      "src/shared/callbacks.ts",
+      "export function run(generic: number): boolean { return true; }",
+    );
+    write_source(
+      &root,
+      "shared/callbacks.ts",
+      "export function run(specific: string): void {}",
+    );
+    write_source(
+      &root,
+      "src/declarations/callbacks.ts",
+      r#"
+        import { run } from "@/shared/callbacks";
+
+        extern("callbacks", { run: run });
+      "#,
+    );
+
+    let parsed = ExternManifestParser::new()
+      .parse_directory(&root.join("src/declarations"))
+      .unwrap();
+    let ExternExport::Callable(callback) = parsed.manifest.exports.get("callbacks.run").unwrap() else {
+      panic!("Expected callable extern");
+    };
+
+    assert_eq!(callback.params[0].name, "specific");
+    assert_eq!(callback.params[0].type_name, "string");
+    assert_eq!(callback.returns, "void");
+  }
+
+  #[test]
   fn resolves_local_function_references() {
     let root: PathBuf = create_test_root("local-function");
     write_source(
