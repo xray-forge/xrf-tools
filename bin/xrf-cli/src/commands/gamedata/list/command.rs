@@ -176,8 +176,8 @@ impl ListCommand {
       xrf_output::warning!(
         output,
         "  {} is unreachable, {} answers '{}'",
-        format_path(&collision.unreachable),
-        format_path(&collision.kept),
+        collision.unreachable,
+        collision.kept,
         collision.logical_path
       );
     }

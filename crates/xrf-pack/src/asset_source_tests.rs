@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
-  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayLookupScope, XrayMountPlan, XrayProbe, XrayProbePlan,
-  XrayProbeStep, XraySourceKind, XrayVfs,
+  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayCollisionSite, XrayLookupScope, XrayMountPlan,
+  XrayPathCollision, XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XrayVfs,
 };
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
@@ -18,6 +18,8 @@ use crate::pack::archive_packer::ArchivePacker;
 
 const TEXTURE: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xfe];
 const CONFIG: &[u8] = b"[section]\nvalue = 1\n";
+/// Distinct payload for the volume that must win, so a test names which volume answered rather than only that one did.
+const PATCHED: &[u8] = b"patched";
 
 /// Packs a source tree into volumes and mounts the result.
 fn mount(scope: &str, files: &[(&str, &[u8])]) -> XrayArchiveSource {
@@ -42,6 +44,39 @@ fn mount(scope: &str, files: &[(&str, &[u8])]) -> XrayArchiveSource {
   }];
 
   ArchivePacker::pack(&config).expect("archive packs");
+
+  XrayArchiveSource::read(&destination).expect("volume set mounts")
+}
+
+/// Packs each named tree into its own volume of one destination, in the order given.
+///
+/// Two spellings of one name cannot share a directory on a case-insensitive filesystem, so they are authored in separate
+/// trees and meet only inside the volume set — which is how a case-only duplicate reaches a player's install in the
+/// first place, as a patch volume built elsewhere.
+fn mount_volumes(scope: &str, volumes: &[(&str, &str, &[u8])]) -> XrayArchiveSource {
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  for (volume, name, contents) in volumes {
+    let source: PathBuf =
+      build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/{volume}"));
+    let path: PathBuf = source.join(name.replace('\\', "/"));
+
+    let _ = fs::remove_dir_all(&source);
+
+    fs::create_dir_all(path.parent().expect("entry parent")).expect("source directory");
+    fs::write(&path, contents).expect("source file");
+
+    let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, volume);
+
+    config.include_directories = vec![ArchivePackDirectory {
+      is_recursive: true,
+      path: String::new(),
+    }];
+
+    ArchivePacker::pack(&config).expect("archive packs");
+  }
 
   XrayArchiveSource::read(&destination).expect("volume set mounts")
 }
@@ -194,4 +229,57 @@ fn a_directory_of_volumes_is_planned_as_an_archive_source() {
     None,
     "an archived model has no filesystem path, which is why it is addressed logically"
   );
+}
+
+#[test]
+fn a_case_only_duplicate_across_volumes_is_reported_and_resolved_by_volume_order() {
+  let source: XrayArchiveSource = mount_volumes(
+    "case_collision",
+    &[
+      ("base", "textures\\wpn\\wpn_ak74.dds", TEXTURE),
+      ("patch", "Textures\\Wpn\\WPN_AK74.DDS", PATCHED),
+    ],
+  );
+
+  assert_eq!(
+    source
+      .read("textures\\wpn\\wpn_ak74.dds")
+      .expect("the folded identity reads"),
+    PATCHED,
+    "the later volume answers, as CLocatorAPI::Register resolves it"
+  );
+
+  let collisions: &[XrayPathCollision] = source.get_collisions();
+
+  assert_eq!(collisions.len(), 1, "one identity, one report");
+  assert_eq!(collisions[0].logical_path.as_str(), "textures\\wpn\\wpn_ak74.dds");
+  assert_site(&collisions[0].kept, "patch.db", "Textures\\Wpn\\WPN_AK74.DDS");
+  assert_site(&collisions[0].unreachable, "base.db", "textures\\wpn\\wpn_ak74.dds");
+}
+
+#[test]
+fn an_exact_name_override_across_volumes_is_precedence_rather_than_a_collision() {
+  // The documented merge this must not start reporting: two volumes naming one file identically is shadowing, which has
+  // a defined winner, not an authoring error with an unreachable loser.
+  let source: XrayArchiveSource = mount_volumes(
+    "exact_override",
+    &[
+      ("base", "configs\\system.ltx", CONFIG),
+      ("patch", "configs\\system.ltx", PATCHED),
+    ],
+  );
+
+  assert_eq!(source.read("configs\\system.ltx").expect("reads"), PATCHED);
+  assert!(source.get_collisions().is_empty());
+}
+
+/// Asserts a collision side names one authored entry of one volume.
+fn assert_site(site: &XrayCollisionSite, expected_volume: &str, expected_name: &str) {
+  match site {
+    XrayCollisionSite::Archived { volume, name } => {
+      assert_eq!(volume.file_name().and_then(|name| name.to_str()), Some(expected_volume));
+      assert_eq!(name, expected_name, "the authored spelling survives the fold");
+    }
+    XrayCollisionSite::Loose(path) => panic!("archived entry expected, got loose {}", path.display()),
+  }
 }

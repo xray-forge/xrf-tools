@@ -9,7 +9,9 @@ use std::path::PathBuf;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::vfs::tests::fake_source::FakeArchiveSource;
-use crate::{XrayLogicalPath, XrayLookupScope, XrayMountPlan, XrayPathCollision, XraySourceKind, XrayVfs};
+use crate::{
+  XrayCollisionSite, XrayLogicalPath, XrayLookupScope, XrayMountPlan, XrayPathCollision, XraySourceKind, XrayVfs,
+};
 
 /// Writes a tree whose file names differ only by case, which normalize to one logical path.
 fn tree(name: &str, files: &[&str]) -> PathBuf {
@@ -42,9 +44,9 @@ fn reports_collisions_from_every_mount_in_scope() {
       "",
       Box::new(
         FakeArchiveSource::new("clashing", &["textures/wpn/wpn_ak74.dds"]).with_collision(XrayPathCollision {
-          kept: PathBuf::from("C:\\tree\\textures\\wpn\\wpn_ak74.dds"),
+          kept: XrayCollisionSite::Loose(PathBuf::from("C:\\tree\\textures\\wpn\\wpn_ak74.dds")),
           logical_path: XrayLogicalPath::new("textures\\wpn\\wpn_ak74.dds").expect("valid logical path"),
-          unreachable: PathBuf::from("C:\\tree\\textures\\Wpn\\wpn_ak74.dds"),
+          unreachable: XrayCollisionSite::Loose(PathBuf::from("C:\\tree\\textures\\Wpn\\wpn_ak74.dds")),
         }),
       ),
     )

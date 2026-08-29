@@ -46,9 +46,9 @@ pub struct GamedataCollisionReport {
 impl GamedataCollisionReport {
   fn new(collision: &XrayPathCollision) -> Self {
     Self {
-      kept: xrf_utils::to_portable_path_string(&collision.kept),
+      kept: collision.kept.to_portable_string(),
       logical_path: String::from(collision.logical_path.as_str()),
-      unreachable: xrf_utils::to_portable_path_string(&collision.unreachable),
+      unreachable: collision.unreachable.to_portable_string(),
     }
   }
 }

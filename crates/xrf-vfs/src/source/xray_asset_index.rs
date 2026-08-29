@@ -4,9 +4,9 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::XrayPathCollision;
 use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative};
 use crate::source::{DirectoryAssetIndex, IndexedAsset};
+use crate::{XrayCollisionSite, XrayPathCollision};
 
 /// Maps X-Ray logical paths onto the files of one physical directory.
 ///
@@ -51,9 +51,9 @@ impl XrayAssetIndex {
       // Keeping the first indexed makes the winner deterministic; replacing would make it depend on traversal order.
       if let Some(previous) = assets.get(&logical_path) {
         collisions.push(XrayPathCollision {
-          kept: directory.root().join(directory.asset(*previous).relative_path()),
+          kept: XrayCollisionSite::Loose(directory.root().join(directory.asset(*previous).relative_path())),
           logical_path: XrayLogicalPath::from_normalized(logical_path),
-          unreachable: directory.root().join(asset.relative_path()),
+          unreachable: XrayCollisionSite::Loose(directory.root().join(asset.relative_path())),
         });
 
         continue;

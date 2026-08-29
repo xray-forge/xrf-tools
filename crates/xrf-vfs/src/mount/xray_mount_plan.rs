@@ -41,6 +41,7 @@ pub struct XrayPlannedMount {
 /// over an installation:
 ///
 /// ```rust,no_run
+/// use xrf_utils::format_path;
 /// use xrf_vfs::{XrayMountMode, XrayMountPlan, XrayVfs};
 ///
 /// # fn main() -> xrf_error::XrfResult {
@@ -49,7 +50,7 @@ pub struct XrayPlannedMount {
 ///   .ignoring(&[String::from("textures\\wip")])?;
 ///
 /// for planned in plan.get_mounts() {
-///   println!("{} <- {} ({:?})", planned.base, format_path(planned.path), planned.kind);
+///   println!("{} <- {} ({:?})", planned.base, format_path(&planned.path), planned.kind);
 /// }
 ///
 /// let vfs: XrayVfs = XrayVfs::from_plan(&plan)?;

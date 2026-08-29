@@ -7,4 +7,4 @@ pub use xray_logical_path::XrayLogicalPath;
 pub(crate) use xray_logical_path::{
   is_component_prefix, join, normalize, normalize_base, normalize_host_relative, normalize_logical, to_host_relative,
 };
-pub use xray_path_collision::XrayPathCollision;
+pub use xray_path_collision::{XrayCollisionSite, XrayPathCollision};

@@ -89,8 +89,9 @@ pub trait XrayAssetSource: Debug + Send + Sync {
 
   /// Files this source holds but cannot reach, because another file already claims their engine identity.
   ///
-  /// Defaults to none, which is correct for a source whose names are unique by construction: an archive volume keys entries
-  /// by name, so two entries cannot collide inside one set.
+  /// Defaults to none, which is correct only for a source whose names are unique *after* normalization. Uniqueness as
+  /// authored is not enough: an archive volume keys entries by their authored name, yet `Textures\A.DDS` and
+  /// `textures\a.dds` are one identity to the engine, so [`XrayArchiveSource`](crate::XrayArchiveSource) overrides this.
   fn get_collisions(&self) -> &[XrayPathCollision] {
     &[]
   }
