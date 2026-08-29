@@ -23,6 +23,8 @@ xrf-lzhuf = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+# The parallel unpack path is async, so its tests need a runtime; nothing outside them pulls tokio in.
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 # Only the pack-then-mount integration test reads volumes back through the VFS.
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }

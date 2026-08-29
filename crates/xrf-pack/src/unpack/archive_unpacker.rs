@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
 use std::io::ErrorKind::AlreadyExists;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -46,12 +47,15 @@ impl ArchiveUnpacker {
 
   /// Write every file in the project beneath a destination root, up to `concurrency` at a time.
   ///
+  /// The count is non-zero because it becomes the permit count of the bounded join set: zero permits and no spawned
+  /// task ever acquires one, so an archive holding a single file never finishes rather than failing.
+  ///
   /// The first task to fail ends the run, and the rest are dropped: a partial tree reported as a success is worse than
   /// a failure, because nothing downstream can tell that the missing files were never written.
   pub async fn unpack_parallel<P: AsRef<Path>>(
     project: &ArchiveProject,
     destination: P,
-    concurrency: usize,
+    concurrency: NonZeroUsize,
   ) -> XrfResult<ArchiveUnpackResult> {
     let destination: &Path = destination.as_ref();
     let mut progress: ArchiveUnpackProgress = ArchiveUnpackProgress::begin(project.files.len());
@@ -59,7 +63,7 @@ impl ArchiveUnpacker {
     Self::unpack_dirs(project, destination)?;
     progress.record_prepared();
 
-    let mut tasks: bounded_join_set::JoinSet<XrfResult> = bounded_join_set::JoinSet::new(concurrency);
+    let mut tasks: bounded_join_set::JoinSet<XrfResult> = bounded_join_set::JoinSet::new(concurrency.get());
 
     for descriptor in project.files.values() {
       if descriptor.is_directory {

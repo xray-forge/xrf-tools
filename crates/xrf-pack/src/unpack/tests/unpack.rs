@@ -1,4 +1,5 @@
 use std::fs;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
@@ -68,4 +69,55 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
 
   assert_eq!(result.destination, format!("{root}/out\u{FFFD}"));
   assert_eq!(result.archives, vec![format!("{root}/broken\u{FFFD}.db0")]);
+}
+
+/// Concurrency is the permit count of the bounded join set, so one is the smallest value that can hand a permit out at
+/// all. Zero used to be expressible: every spawned task awaited a permit that never came, `join_next` never returned,
+/// and an archive holding one file never finished. `NonZeroUsize` at the boundary is what makes that call unwritable.
+#[tokio::test(flavor = "multi_thread")]
+async fn unpack_parallel_writes_a_file_on_a_single_permit() {
+  let directory: PathBuf = create_temporary_directory("parallel-one-permit");
+  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
+  let out: PathBuf = directory.join("out");
+
+  ArchiveUnpacker::unpack_parallel(&project, &out, NonZeroUsize::new(1).expect("a non-zero permit count"))
+    .await
+    .expect("parallel unpack");
+
+  assert_eq!(
+    fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
+    "[section]"
+  );
+}
+
+/// The ordinary parallel run: more entries than permits, a directory row that spawns no task, and a compressed entry a
+/// worker has to decompress.
+#[tokio::test(flavor = "multi_thread")]
+async fn unpack_parallel_writes_every_entry_across_several_permits() {
+  const COMPRESSIBLE: &[u8] = b"[alife]\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\nvalue = 1\n";
+
+  let directory: PathBuf = create_temporary_directory("parallel-several-permits");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\empty\\", b""),
+      Entry::stored("configs\\system.ltx", b"[section]"),
+      Entry::compressed("configs\\alife.ltx", COMPRESSIBLE),
+    ],
+  );
+  let out: PathBuf = directory.join("out");
+
+  ArchiveUnpacker::unpack_parallel(&project, &out, NonZeroUsize::new(2).expect("a non-zero permit count"))
+    .await
+    .expect("parallel unpack");
+
+  assert!(out.join("configs").join("empty").is_dir());
+  assert_eq!(
+    fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
+    "[section]"
+  );
+  assert_eq!(
+    fs::read(out.join("configs").join("alife.ltx")).expect("written file"),
+    COMPRESSIBLE
+  );
 }

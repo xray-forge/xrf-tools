@@ -215,7 +215,7 @@ mod tests {
       },
       skeleton: AlifeObjectSkeleton {
         name: String::from("skeleton-name"),
-        flags: 45,
+        flags: 41,
         source_id: 10,
       },
       holder_id: 4,

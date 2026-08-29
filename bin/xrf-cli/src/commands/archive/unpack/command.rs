@@ -1,4 +1,5 @@
 use std::env;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
@@ -45,7 +46,7 @@ impl GenericCommand for UnpackCommand {
           .help("Count of parallel threads for unpack")
           .long("parallel")
           .default_value("32")
-          .value_parser(value_parser!(usize)),
+          .value_parser(value_parser!(NonZeroUsize)),
       )
       .arg(
         Arg::new("dry")
@@ -72,8 +73,8 @@ impl GenericCommand for UnpackCommand {
       destination.clone()
     };
 
-    let parallel: usize = *matches
-      .get_one::<usize>("parallel")
+    let parallel: NonZeroUsize = *matches
+      .get_one::<NonZeroUsize>("parallel")
       .expect("Expected valid parallel threads count to be provided");
 
     let is_dry: bool = matches.get_flag("dry");
@@ -131,5 +132,31 @@ impl GenericCommand for UnpackCommand {
     }
 
     Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::core::generic_command::GenericCommand;
+
+  use super::UnpackCommand;
+
+  fn parses(parallel: &str) -> bool {
+    UnpackCommand
+      .init()
+      .try_get_matches_from(["unpack", "--path", "archive.db", "--parallel", parallel])
+      .is_ok()
+  }
+
+  /// Zero threads once reached the join set as zero permits, where no task acquires one and the command
+  /// waits forever on an archive holding a single file. It is a usage error before any archive is read.
+  #[test]
+  fn rejects_zero_parallelism() {
+    assert!(!parses("0"));
+  }
+
+  #[test]
+  fn accepts_the_smallest_usable_parallelism() {
+    assert!(parses("1"));
   }
 }

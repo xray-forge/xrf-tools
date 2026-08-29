@@ -17,6 +17,25 @@ pub struct AlifeObjectSkeleton {
   pub source_id: u16,
 }
 
+impl AlifeObjectSkeleton {
+  /// Reject a skeleton that promises saved bone data.
+  ///
+  /// The engine appends `CSE_PHSkeleton::data_load` bones after the header when the flag is set
+  /// (`xray-16/src/xrServerEntities/xrServer_Objects.cpp:202`). This type cannot hold that payload, so
+  /// reading it would drop bytes and writing it would declare bones the chunk does not carry.
+  // todo: Read and write the saved bone payload described by `CSE_PHSkeleton::data_load`.
+  fn assert_no_saved_bone_data(&self) -> XrfResult {
+    if self.flags & FLAG_SKELETON_SAVED_DATA == 0 {
+      return Ok(());
+    }
+
+    Err(XrfError::new_parsing_error(format!(
+      "Skeleton '{}' declares saved bone data (flags {}), saved skeleton bones are not implemented",
+      self.name, self.flags
+    )))
+  }
+}
+
 impl ChunkReadWrite for AlifeObjectSkeleton {
   /// Read skeleton data from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
@@ -26,15 +45,15 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
       source_id: reader.read_u16::<XRayByteOrder>()?,
     };
 
-    if object.flags & FLAG_SKELETON_SAVED_DATA != 0 {
-      todo!("Extend skeleton parsing to include bones based on flag")
-    }
+    object.assert_no_saved_bone_data()?;
 
     Ok(object)
   }
 
   /// Write skeleton data into the chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.assert_no_saved_bone_data()?;
+
     writer.write_w1251_string(&self.name)?;
     writer.write_u8(self.flags)?;
     writer.write_u16::<XRayByteOrder>(self.source_id)?;
@@ -54,11 +73,15 @@ impl LtxImportExport for AlifeObjectSkeleton {
       ))
     })?;
 
-    Ok(Self {
+    let object = Self {
       name: read_ltx_field("skeleton.name", section)?,
       flags: read_ltx_field("skeleton.flags", section)?,
       source_id: read_ltx_field("skeleton.source_id", section)?,
-    })
+    };
+
+    object.assert_no_saved_bone_data()?;
+
+    Ok(object)
   }
 
   /// Export object data into ltx file.
@@ -78,9 +101,10 @@ mod tests {
   use std::fs::File;
   use std::io::{Seek, SeekFrom, Write};
 
+  use byteorder::WriteBytesExt;
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{XrfError, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
@@ -89,6 +113,7 @@ mod tests {
     open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
   };
 
+  use crate::constants::FLAG_SKELETON_SAVED_DATA;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
   use crate::export::LtxImportExport;
 
@@ -137,7 +162,7 @@ mod tests {
 
     let second: AlifeObjectSkeleton = AlifeObjectSkeleton {
       name: String::from("test-name-second"),
-      flags: 54,
+      flags: 50,
       source_id: 526,
     };
 
@@ -155,10 +180,74 @@ mod tests {
   }
 
   #[test]
+  fn test_read_rejects_saved_bone_data() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+    let filename: String = build_relative_test_sample_file_path(file!(), "read_saved_bone_data.chunk");
+
+    writer.write_w1251_string("test-name")?;
+    writer.write_u8(FLAG_SKELETON_SAVED_DATA)?;
+    writer.write_u16::<XRayByteOrder>(753)?;
+
+    writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+
+    let mut reader: ChunkReader =
+      ChunkReader::from_slice(open_generated_test_resource_as_slice(&filename)?)?.read_child_by_index(0)?;
+
+    assert!(matches!(
+      AlifeObjectSkeleton::read::<XRayByteOrder, _>(&mut reader),
+      Err(XrfError::Parsing { message }) if message.contains("saved skeleton bones are not implemented")
+    ));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_write_rejects_saved_bone_data() -> XrfResult {
+    let original: AlifeObjectSkeleton = AlifeObjectSkeleton {
+      name: String::from("test-name"),
+      flags: FLAG_SKELETON_SAVED_DATA,
+      source_id: 753,
+    };
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    assert!(matches!(
+      original.write::<XRayByteOrder>(&mut writer),
+      Err(XrfError::Parsing { message }) if message.contains("saved skeleton bones are not implemented")
+    ));
+    assert_eq!(writer.bytes_written(), 0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_import_rejects_saved_bone_data() -> XrfResult {
+    let mut ltx: Ltx = Ltx::new();
+
+    AlifeObjectSkeleton {
+      name: String::from("test-name"),
+      flags: 0,
+      source_id: 753,
+    }
+    .export("object", &mut ltx)?;
+
+    ltx
+      .with_section("object")
+      .set("skeleton.flags", FLAG_SKELETON_SAVED_DATA.to_string());
+
+    assert!(matches!(
+      AlifeObjectSkeleton::import("object", &ltx),
+      Err(XrfError::Parsing { message }) if message.contains("saved skeleton bones are not implemented")
+    ));
+
+    Ok(())
+  }
+
+  #[test]
   fn test_serialize_deserialize() -> XrfResult {
     let original: AlifeObjectSkeleton = AlifeObjectSkeleton {
       name: String::from("test-name-serde"),
-      flags: 45,
+      flags: 41,
       source_id: 34,
     };
 
