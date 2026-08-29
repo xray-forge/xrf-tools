@@ -1,4 +1,4 @@
-import { Alert, Checkbox, FormControlLabel } from "@mui/material";
+import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -106,19 +106,6 @@ export function ConfigsFormatterApplication(): ReactElement {
       }
       error={error ?? undefined}
       submitLabel={isCheck ? "Check" : "Format"}
-      status={
-        result ? (
-          result.toFormat.length ? (
-            isCheck ? (
-              <Alert severity={"error"}>There are files with invalid formatting.</Alert>
-            ) : (
-              <Alert severity={"warning"}>Formatted {result.toFormat.length} file(s).</Alert>
-            )
-          ) : (
-            <Alert severity={"success"}>All files are in correct format.</Alert>
-          )
-        ) : null
-      }
       result={result ? <ConfigsFormatResult isCheck={isCheck} result={result} /> : null}
       onSubmit={onFormat}
     >

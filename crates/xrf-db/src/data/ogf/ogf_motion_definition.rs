@@ -28,6 +28,23 @@ impl OgfMotionDefinition {
   /// marks that version 4 appends only make a record longer.
   pub const MIN_SERIALIZED_SIZE: u64 = 1 + 4 + 2 + 2 + 16;
 
+  /// The rate a motion plays at when its own is unusable, which is the rate the format samples at.
+  pub const DEFAULT_SPEED: f32 = 1.0;
+
+  /// The rate playback runs at, as a multiplier of the format's sample rate.
+  ///
+  /// The engine divides a motion's length by this (`SkeletonAnimated.cpp:290`), so it scales how long the motion takes
+  /// rather than how many frames it has. A stored value that is not positive - zero, negative, or not a number -
+  /// would make that division infinite or backwards, so it reads as [`Self::DEFAULT_SPEED`]; the stored value stays
+  /// untouched, since nothing here writes it back.
+  pub fn get_playback_speed(&self) -> f32 {
+    if self.speed > 0.0 {
+      self.speed
+    } else {
+      Self::DEFAULT_SPEED
+    }
+  }
+
   pub fn read_list<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     version: u16,
@@ -187,6 +204,32 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     OgfMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, version)
+  }
+
+  #[test]
+  fn reports_a_stored_playback_speed_as_it_is() {
+    let mut definition: OgfMotionDefinition = OgfMotionDefinition::new_mock(Vec::new());
+
+    definition.speed = 1.2;
+
+    assert_eq!(definition.get_playback_speed(), 1.2);
+  }
+
+  #[test]
+  fn reads_a_speed_that_cannot_scale_playback_as_the_sample_rate() {
+    // The engine divides a motion's length by its speed, which these three turn into infinity, a negative length, and
+    // a value nothing can be compared against.
+    for speed in [0.0, -1.0, f32::NAN] {
+      let mut definition: OgfMotionDefinition = OgfMotionDefinition::new_mock(Vec::new());
+
+      definition.speed = speed;
+
+      assert_eq!(
+        definition.get_playback_speed(),
+        OgfMotionDefinition::DEFAULT_SPEED,
+        "expect {speed} to be read as the default speed"
+      );
+    }
   }
 
   #[test]

@@ -1,4 +1,4 @@
-import { Alert, MenuItem, Select, SelectChangeEvent } from "@mui/material";
+import { MenuItem, Select, SelectChangeEvent } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -113,15 +113,6 @@ export function TranslationsVerifierApplication(): ReactElement {
       description={"Checks every JSON source for ids a language has no text for. Nothing is written."}
       error={error ?? undefined}
       submitLabel={"Verify"}
-      status={
-        result ? (
-          result.missing ? (
-            <Alert severity={"warning"}>Some languages are incomplete.</Alert>
-          ) : (
-            <Alert severity={"success"}>Every language is complete.</Alert>
-          )
-        ) : null
-      }
       result={result ? <TranslationsVerifyResult result={result} /> : null}
       onSubmit={onVerify}
     >

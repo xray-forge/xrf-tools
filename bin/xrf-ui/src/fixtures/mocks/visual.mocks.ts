@@ -12,7 +12,7 @@ import {
   VisualTextureDependency,
   VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
-import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
@@ -269,8 +269,8 @@ export function mockTextureDependency(overrides: Partial<VisualTextureDependency
 /**
  * Creates a baked motion fixture.
  *
- * The duration follows the frame count unless it is overridden, so a test asking for a longer motion does not have to
- * restate how long that makes it.
+ * The duration follows the frame count and the speed unless it is overridden, so a test asking for a longer or a
+ * faster motion does not have to restate how long that makes it.
  *
  * @param overrides - Field values to override.
  * @returns A bake fixture.
@@ -283,10 +283,13 @@ export function mockVisualMotionBake(overrides: Partial<VisualMotionBake> = {}):
     animatedBoneCount: 2,
     floatsPerBone: FLOATS_PER_BONE,
     duration: 0,
+    speed: MOTION_DEFAULT_SPEED,
     ...overrides,
   };
 
-  return { ...bake, duration: overrides.duration ?? bake.frameCount / MOTION_SAMPLE_FPS };
+  const speed: number = bake.speed && bake.speed > 0 ? bake.speed : MOTION_DEFAULT_SPEED;
+
+  return { ...bake, duration: overrides.duration ?? bake.frameCount / (MOTION_SAMPLE_FPS * speed) };
 }
 
 /**

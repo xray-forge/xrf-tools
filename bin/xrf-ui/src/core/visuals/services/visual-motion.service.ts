@@ -54,9 +54,9 @@ export class VisualMotionService {
   /**
    * Frames a second playback advances at, which starts at the rate the format samples.
    *
-   * A viewing aid rather than a property of the motion: the reported duration stays what the motion is, and playing it
-   * at another rate only changes how long looking at it takes. Slowing a two second animation down is the only way to
-   * see what a foot does in three frames.
+   * A viewing aid rather than a property of the motion: the reported duration stays the time the engine would take,
+   * which the motion's own speed already scales, and playing it at another rate only changes how long looking at it
+   * takes. Slowing a two second animation down is the only way to see what a foot does in three frames.
    */
   @Observable()
   public fps: number = MOTION_SAMPLE_FPS;

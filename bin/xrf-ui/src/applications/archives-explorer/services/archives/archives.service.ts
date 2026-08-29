@@ -81,13 +81,16 @@ export class ArchivesService {
   }
 
   /**
-   * Reports whether a content or write operation is in progress.
+   * Reports whether a write to disk is in progress.
    *
-   * @returns Whether navigation or another command would race with the active operation.
+   * Only a write holds the next open back. A read in flight does not: the `content` lane supersedes it, so the newer
+   * gesture cancels the older read rather than being dropped for it.
+   *
+   * @returns Whether an extraction would race with another command.
    */
   @Computed()
-  public get isBusy(): boolean {
-    return this.content.isLoading || this.operation.isLoading;
+  public get isWriting(): boolean {
+    return this.operation.isLoading;
   }
 
   /**

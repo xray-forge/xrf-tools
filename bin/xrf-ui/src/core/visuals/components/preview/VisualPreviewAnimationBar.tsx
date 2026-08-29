@@ -7,7 +7,7 @@ import { useInjection } from "@wirestate/react";
 import { MouseEvent, ReactElement, SyntheticEvent, useCallback, useEffect, useState } from "react";
 
 import { LAYOUT } from "@/core/theme/tokens";
-import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { formatMotionTiming, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { formatDuration } from "@/lib/format/duration";
@@ -40,6 +40,7 @@ export function VisualPreviewAnimationBar({ model }: IVisualPreviewAnimationBarP
   const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
   const frames: number = service.frameCount;
   const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
+  const speed: Nullable<number> = service.posed.value?.bake.speed ?? null;
   const isSampleRate: boolean = service.fps === MOTION_SAMPLE_FPS;
 
   const onPick = useCallback(
@@ -132,10 +133,12 @@ export function VisualPreviewAnimationBar({ model }: IVisualPreviewAnimationBarP
         onChange={onSeek}
       />
 
-      <Typography variant={"caption"} sx={{ minWidth: LAYOUT.motionCounterWidth, textAlign: "right" }}>
-        {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
-        {duration ? ` · ${formatDuration(Math.round(duration * 1000))}` : ""}
-      </Typography>
+      <Tooltip title={frames ? formatMotionTiming(frames, speed) : ""}>
+        <Typography variant={"caption"} sx={{ minWidth: LAYOUT.motionCounterWidth, textAlign: "right" }}>
+          {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
+          {duration ? ` · ${formatDuration(Math.round(duration * 1000))}` : ""}
+        </Typography>
+      </Tooltip>
 
       <Tooltip title={`Playback rate: ${service.fps} fps`}>
         <IconButton

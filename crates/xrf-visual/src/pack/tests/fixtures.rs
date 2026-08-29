@@ -5,9 +5,10 @@
 //! non zero offset rather than covering the whole index buffer.
 
 use xrf_db::{
-  OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfDescriptionChunk, OgfFile, OgfGeometry, OgfHeaderChunk,
-  OgfKinematicsChunk, OgfMotion, OgfMotionDefinition, OgfPart, OgfSlideWindow, OgfSphere, OgfSwiDataChunk,
-  OgfTextureChunk, OgfVertex, OgfVertexLink, OmfMotionsChunk, OmfParametersChunk, Vector3d,
+  OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
+  OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfMotion, OgfMotionDefinition,
+  OgfObb, OgfPart, OgfSlideWindow, OgfSphere, OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink,
+  OmfMotionsChunk, OmfParametersChunk, Vector3d,
 };
 
 pub(crate) const MODEL_TYPE_SKELETON_ANIM: u8 = 3;
@@ -193,6 +194,55 @@ pub(crate) fn bones(names: &[(&str, &str)]) -> OgfBonesChunk {
         half_size: vector(0.0, 0.0, 0.0),
       })
       .collect(),
+  }
+}
+
+/// One bone's bind record, carrying nothing but the transform a pose is composed from.
+///
+/// Every physics field is the "none" value: shape type 0 and joint type 4 are what the engine reads as a bone with no
+/// collision primitive and no joint, so a fixture states a bind pose without also stating physics it does not test.
+pub(crate) fn bind(rotation: Vector3d, position: Vector3d) -> OgfBoneIkData {
+  OgfBoneIkData {
+    version: 1,
+    game_material: String::from("default"),
+    shape: OgfBoneShape {
+      shape_type: 0,
+      flags: 0,
+      box_shape: OgfObb {
+        rotate: [vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)],
+        translate: vector(0.0, 0.0, 0.0),
+        half_size: vector(0.0, 0.0, 0.0),
+      },
+      sphere: OgfSphere {
+        position: vector(0.0, 0.0, 0.0),
+        radius: 0.0,
+      },
+      cylinder: OgfCylinder {
+        center: vector(0.0, 0.0, 0.0),
+        direction: vector(0.0, 0.0, 0.0),
+        height: 0.0,
+        radius: 0.0,
+      },
+    },
+    joint: OgfJointIkData {
+      joint_type: 4,
+      limits: core::array::from_fn(|_| OgfJointLimit {
+        limit_from: 0.0,
+        limit_to: 0.0,
+        spring_factor: 0.0,
+        damping_factor: 0.0,
+      }),
+      spring_factor: 0.0,
+      damping_factor: 0.0,
+      ik_flags: 0,
+      break_force: 0.0,
+      break_torque: 0.0,
+      friction: Some(0.0),
+    },
+    bind_rotation: rotation,
+    bind_position: position,
+    mass: 0.0,
+    center_of_mass: vector(0.0, 0.0, 0.0),
   }
 }
 

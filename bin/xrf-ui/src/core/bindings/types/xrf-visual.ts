@@ -136,8 +136,21 @@ export type VisualMotionBake = {
   name: string;
   frameCount: number;
   boneCount: number;
-  /** Seconds the motion runs for, from the format's fixed sample rate. */
+  /**
+   * Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
+   *
+   * The time the engine spends on it rather than the span of its keyframes, so two motions of the same length that
+   * play at different speeds report different durations. The raw span is `frame_count` over the sample rate, which a
+   * consumer indexing frames already holds, so only the speed it was divided by is reported beside this.
+   */
   duration: number | null;
+  /**
+   * The playback speed the motion's definition declares, as stored.
+   *
+   * A value that is not positive is not what `duration` was divided by; see
+   * [`OgfMotionDefinition::get_playback_speed`].
+   */
+  speed: number | null;
   /** How many bones the motion actually drives, the rest holding their bind pose. */
   animatedBoneCount: number;
   /** Floats one bone's transform occupies in the baked buffer, so a consumer indexes it without agreeing a constant. */

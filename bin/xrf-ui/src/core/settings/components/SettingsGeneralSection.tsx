@@ -36,10 +36,7 @@ export function SettingsGeneralSection(): ReactElement {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <SettingsSection
-        title={"Appearance"}
-        description={"Follow the system theme, or pin the application to one."}
-      >
+      <SettingsSection title={"Appearance"} description={"Follow the system theme, or pin the application to one."}>
         <ToggleButtonGroup exclusive size={"small"} value={mode ?? DEFAULT_COLOR_SCHEME_MODE} onChange={onChangeMode}>
           {COLOR_SCHEME_MODES.map((it: ColorSchemeMode) => (
             <ToggleButton key={it} value={it}>

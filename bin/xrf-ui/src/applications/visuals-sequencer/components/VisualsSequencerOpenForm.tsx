@@ -27,10 +27,7 @@ export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFo
 
   const isLoading: boolean = sequencerService.visual.isLoading;
 
-  const seed = useCallback(
-    () => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths),
-    [pathsService.paths]
-  );
+  const seed = useCallback(() => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths), [pathsService.paths]);
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_SEQUENCER,

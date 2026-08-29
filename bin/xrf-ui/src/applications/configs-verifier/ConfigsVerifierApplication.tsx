@@ -1,4 +1,3 @@
-import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -92,15 +91,6 @@ export function ConfigsVerifierApplication(): ReactElement {
       description={"Checks every LTX file in the directory. Nothing is written."}
       error={error ?? undefined}
       submitLabel={"Verify"}
-      status={
-        result ? (
-          result.errors.length ? (
-            <Alert severity={"error"}>Configs did not pass validation.</Alert>
-          ) : (
-            <Alert severity={"success"}>Configs passed validation.</Alert>
-          )
-        ) : null
-      }
       result={result ? <ConfigsVerifyResult result={result} /> : null}
       onSubmit={onVerify}
     >

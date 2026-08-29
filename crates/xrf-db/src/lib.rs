@@ -15,11 +15,16 @@ pub use xrf_chunk::XRayByteOrder;
 
 pub use crate::data::ogf::ogf_bone::OgfBone;
 pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
+pub use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
 pub use crate::data::ogf::ogf_box::*;
+pub use crate::data::ogf::ogf_cylinder::OgfCylinder;
 pub use crate::data::ogf::ogf_geometry::*;
+pub use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
+pub use crate::data::ogf::ogf_joint_limit::OgfJointLimit;
 pub use crate::data::ogf::ogf_motion::*;
 pub use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
 pub use crate::data::ogf::ogf_motion_keys::{OgfBoneMotion, Quaternion, SAMPLE_FPS};
+pub use crate::data::ogf::ogf_obb::OgfObb;
 pub use crate::data::ogf::ogf_part::OgfPart;
 pub use crate::data::ogf::ogf_slide_window::*;
 pub use crate::data::ogf::ogf_sphere::*;

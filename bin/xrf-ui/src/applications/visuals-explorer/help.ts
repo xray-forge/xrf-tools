@@ -22,6 +22,10 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "animation file; the picker is an autocomplete because a character can reference thousands.",
     "Picking another motion carries the play/pause state over; dragging the frame slider pauses; clearing the " +
       "motion restores the bind pose. Motions are baked one at a time by the backend, so switching is serialized.",
+    "The duration beside the frame counter is the time the engine takes: the motion's frames at 30 fps over the " +
+      "playback speed its file declares, so a motion authored at speed `1.2` reports less time than its frames " +
+      "span. The `Playback rate` control is separate - it changes how fast the motion is being looked at and " +
+      "never what is reported.",
     "Textures the renderer can read directly (`DXT1/3/5`, `ETC1`, `BC6H`, uncompressed BGRA/BGR) upload as-is; " +
       "other layouts are decoded by the backend to PNG and upload without a mip chain, which the Materials " +
       "panel reports - such textures shimmer at distance.",

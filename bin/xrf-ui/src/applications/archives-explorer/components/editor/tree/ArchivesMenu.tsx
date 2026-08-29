@@ -46,13 +46,13 @@ export function ArchivesMenu({
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
 
-  // Reading again while a read or a write is in flight starts work that the previous one will outlive, so
-  // opening waits. Selecting is inert and never waits for anything.
-  const isBusy: boolean = archivesService.isBusy;
+  // Only a write holds an open back: an extraction runs outside the archive and cannot be abandoned, while a read
+  // is simply superseded by the next open. Selecting is inert and never waits for anything.
+  const isWriting: boolean = archivesService.isWriting;
 
   const onOpenDescriptor = useCallback(
     (descriptor: ArchiveFileDescriptor) => {
-      if (isBusy) {
+      if (isWriting) {
         return;
       }
 
@@ -62,7 +62,7 @@ export function ArchivesMenu({
 
       void archivesService.selectArchiveFile(descriptor);
     },
-    [archivesService, isBusy, reveal]
+    [archivesService, isWriting, reveal]
   );
 
   const search: IUseRankedSearch<ArchiveFileDescriptor> = useRankedSearch({
@@ -96,7 +96,7 @@ export function ArchivesMenu({
 
   const onActivateItem = useCallback(
     (item: ITreeNode<ArchiveFileDescriptor>) => {
-      if (isBusy) {
+      if (isWriting) {
         return;
       }
 
@@ -117,7 +117,7 @@ export function ArchivesMenu({
         archivesService.selectArchiveDirectory(directoryPath);
       }
     },
-    [archivesService, isBusy, onOpenPath]
+    [archivesService, isWriting, onOpenPath]
   );
 
   return (
@@ -141,7 +141,7 @@ export function ArchivesMenu({
       {search.isSearching ? (
         <EditorSearchResults
           ariaLabel={"Archive search results"}
-          isDisabled={isBusy}
+          isDisabled={isWriting}
           isStale={search.isStale}
           emptyLabel={`No files match ${search.query.trim()}.`}
           rows={rows}

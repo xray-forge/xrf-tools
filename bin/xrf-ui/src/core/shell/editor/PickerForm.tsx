@@ -41,6 +41,7 @@ export interface IPickerFormProps {
   secondaryActions?: ReactNode;
   isLoading?: boolean;
   error?: Maybe<ReactNode>;
+  /** How the run went, for a screen that produces no result. A result says it in its own headline. */
   status?: Maybe<ReactNode>;
   result?: Maybe<ReactNode>;
   onSubmit?: () => void;

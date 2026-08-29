@@ -1,4 +1,3 @@
-import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -100,7 +99,6 @@ export function ArchivesUnpackerApplication(): ReactElement {
       description={"Reads every archive in the source directory and writes its files into the output directory."}
       error={error ?? undefined}
       submitLabel={"Unpack"}
-      status={result ? <Alert severity={"success"}>Archives unpacked.</Alert> : null}
       result={result ? <ArchivesUnpackResult result={result} outputPath={archivesUnpackPath} /> : null}
       onSubmit={onUnpackArchivesPathClicked}
     >

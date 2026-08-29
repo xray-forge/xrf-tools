@@ -58,7 +58,10 @@ impl OgfBoneMotion {
 }
 
 impl OgfMotion {
-  /// How long the motion runs, in seconds.
+  /// How many seconds the motion's frames span at the format's fixed sample rate.
+  ///
+  /// Not how long playing it takes: the engine divides this by the speed its definition declares, which is the other
+  /// half of the pair. See [`crate::OgfMotionDefinition::get_playback_speed`].
   pub fn get_duration_seconds(&self) -> f32 {
     self.count as f32 / SAMPLE_FPS
   }

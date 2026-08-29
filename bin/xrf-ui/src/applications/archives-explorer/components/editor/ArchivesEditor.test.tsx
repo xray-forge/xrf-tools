@@ -287,22 +287,26 @@ describe("opened archives editor", () => {
     save.mockRestore();
   });
 
-  it("refuses a second selection while a read is still in flight", async () => {
+  it("supersedes a read still in flight with the next file opened", async () => {
     setMockInvokeResponses({
       ["plugin:archives|get_project"]: PROJECT,
-      // Never settles, so the first selection stays in flight for the length of the assertion.
+      // Never settles, so the first selection is still in flight when the second one is made.
       ["plugin:archives|read_file"]: () => new Promise(() => {}),
+      ["plugin:archives|describe_image"]: {
+        size: BINARY_FILE.sizeReal,
+        shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
+      },
+      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
 
-    const { findByText, getByText } = renderEditor();
+    const { findByAltText, findByText, getByText } = renderEditor();
 
     await userEvent.dblClick(await findByText("readme.ltx"));
 
-    // A texture, so it would reach the backend on its own decode command rather than being ignored
-    // as an unreadable type. Letting it through would leave the tree pointing at one file while the
-    // content area still belongs to another.
+    // A texture, so it reaches the backend on its own decode command. A read cannot be waited out - a
+    // large one holds every open for its whole duration - so the newer gesture abandons it instead.
     await userEvent.dblClick(getByText("texture.dds"));
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_image", expect.anything());
+    expect(await findByAltText(BINARY_FILE.name)).toHaveAttribute("src", "blob:decoded-texture");
   });
 });

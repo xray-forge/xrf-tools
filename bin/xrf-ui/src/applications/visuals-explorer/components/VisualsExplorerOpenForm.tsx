@@ -45,15 +45,12 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
 
   // Browsing is the primary workflow, so it is the default whenever a tree is configured to browse.
   const [mode, setMode] = useState<TOpenMode>(
-    pathsService.getPath(EWorkspacePath.GAMEDATA) ?? pathsService.getPath(EWorkspacePath.GAME_INSTALLATION)
+    (pathsService.getPath(EWorkspacePath.GAMEDATA) ?? pathsService.getPath(EWorkspacePath.GAME_INSTALLATION))
       ? "folder"
       : "model"
   );
 
-  const seed = useCallback(
-    () => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths),
-    [pathsService.paths]
-  );
+  const seed = useCallback(() => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths), [pathsService.paths]);
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_EXPLORER,

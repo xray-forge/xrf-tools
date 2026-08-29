@@ -148,10 +148,11 @@ export class VisualSequenceService {
   }
 
   /**
-   * @returns How long the whole track runs at the rate the format samples, in seconds.
+   * @returns How long the whole track takes the engine, in seconds.
    *
-   * Reported at the sample rate rather than the current one, for the same reason one motion's duration is: the
-   * playback rate says how fast it is being looked at, not how long it is.
+   * The sum of what each clip's bake reports, so each one is already over its own playback speed. Not affected by the
+   * viewer's rate, for the same reason one motion's duration is not: that says how fast the track is being looked at,
+   * not how long it is.
    */
   @Computed()
   public get duration(): number {

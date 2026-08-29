@@ -70,7 +70,7 @@ describe("ArchivesMenu", () => {
     expect(await render.findByText("system.ltx")).toBeInTheDocument();
   });
 
-  it("keeps browsing free while a read is in flight, and refuses to start another", async () => {
+  it("keeps browsing free while a read is in flight, and supersedes it with the next open", async () => {
     const { render, service } = renderMenu([
       mockArchiveFileDescriptor({ name: "configs\\system.ltx" }),
       mockArchiveFileDescriptor({ name: "configs\\game.ltx" }),
@@ -82,10 +82,26 @@ describe("ArchivesMenu", () => {
 
     fireEvent.click(await render.findByText("game.ltx"));
 
-    // Selecting is inert, so it never waits on a read; opening is what the busy state holds back.
+    // Selecting is inert, so it never waits on a read.
     expect(fileRow(render, "game.ltx")).toHaveAttribute("aria-selected", "true");
 
     fireEvent.dblClick(render.getByText("game.ltx"));
+
+    // The read in flight is abandoned for this one rather than swallowing the gesture that replaces it.
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", { path: "configs\\game.ltx" })
+    );
+  });
+
+  it("refuses to open anything while an extraction is writing to disk", async () => {
+    const { render, service } = renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+
+    fireEvent.dblClick(render.getByText("configs"));
+
+    // A write leaves the archive and cannot be abandoned the way a read can, so it still holds an open back.
+    act(() => runInAction(() => (service.operation = createLoadable(null, true))));
+
+    fireEvent.dblClick(await render.findByText("system.ltx"));
 
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
   });

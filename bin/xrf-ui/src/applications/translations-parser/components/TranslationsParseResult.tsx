@@ -3,7 +3,7 @@ import { ReactElement, useMemo } from "react";
 
 import { TranslationParseFinding, TranslationParseSummary } from "@/core/bindings/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
-import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
+import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -51,9 +51,13 @@ export function TranslationsParseResult({
     [result.census]
   );
 
+  // The census below counts files created and updated, which a preview did neither of.
   const headline: string = result.isDryRun
-    ? `Would import ${result.census.entriesRead} entries as '${result.language}'`
+    ? `Preview only — would import ${result.census.entriesRead} entries as '${result.language}'`
     : `Imported ${result.census.entriesRead} entries as '${result.language}'`;
+
+  // Findings outrank the mode, and a preview is neutral rather than a success.
+  const tone: TCommandResultTone = result.findings.length > 0 ? "warning" : result.isDryRun ? "info" : "success";
 
   return (
     <CommandResult
@@ -62,7 +66,7 @@ export function TranslationsParseResult({
       className={className}
       sx={sx}
       headline={headline}
-      tone={result.findings.length > 0 ? "warning" : "success"}
+      tone={tone}
       stats={stats}
       actions={
         outputPath && !result.isDryRun ? (

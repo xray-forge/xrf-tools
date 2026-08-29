@@ -25,7 +25,7 @@ describe("ArchivesService file selection", () => {
     expect(isComputedProp(service, "files")).toBe(true);
     expect(isComputedProp(service, "selectedFile")).toBe(true);
     expect(isComputedProp(service, "selectedDirectory")).toBe(true);
-    expect(isComputedProp(service, "isBusy")).toBe(true);
+    expect(isComputedProp(service, "isWriting")).toBe(true);
   });
 
   it("publishes the files of a project without the directories its volumes record", () => {
@@ -99,6 +99,29 @@ describe("ArchivesService file selection", () => {
     expect(service.selectedFile).toStrictEqual(second);
     expect(service.content.value?.kind === "text" ? service.content.value.result.name : null).toBe(second.name);
     expect(service.content.value?.kind === "text" ? service.content.value.result.content : null).toBe("second");
+  });
+
+  it("reports a write in flight as busy and a read as free", () => {
+    // The one thing a surface holding an open back is allowed to test: a read is superseded by the next
+    // open, so treating it as busy is what dropped the second gesture entirely.
+    const descriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+
+    setMockInvokeResponses({
+      // Neither settles, so both stay in flight for the length of the assertion.
+      ["plugin:archives|read_file"]: () => new Promise(() => {}),
+      ["plugin:archives|extract_file"]: () => new Promise(() => {}),
+    });
+
+    const service: ArchivesService = mockArchivesService([descriptor]);
+
+    void service.selectArchiveFile(descriptor);
+
+    expect(service.content.isLoading).toBe(true);
+    expect(service.isWriting).toBe(false);
+
+    void service.extractFile(descriptor, "C:\\out\\system.ltx");
+
+    expect(service.isWriting).toBe(true);
   });
 
   it("clears file state when the project closes", async () => {

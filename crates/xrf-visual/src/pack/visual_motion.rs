@@ -19,8 +19,17 @@ pub struct VisualMotionBake {
   pub name: String,
   pub frame_count: u32,
   pub bone_count: u32,
-  /// Seconds the motion runs for, from the format's fixed sample rate.
+  /// Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
+  ///
+  /// The time the engine spends on it rather than the span of its keyframes, so two motions of the same length that
+  /// play at different speeds report different durations. The raw span is `frame_count` over the sample rate, which a
+  /// consumer indexing frames already holds, so only the speed it was divided by is reported beside this.
   pub duration: f32,
+  /// The playback speed the motion's definition declares, as stored.
+  ///
+  /// A value that is not positive is not what `duration` was divided by; see
+  /// [`OgfMotionDefinition::get_playback_speed`].
+  pub speed: f32,
   /// How many bones the motion actually drives, the rest holding their bind pose.
   pub animated_bone_count: u32,
   /// Floats one bone's transform occupies in the baked buffer, so a consumer indexes it without agreeing a constant.
@@ -122,7 +131,8 @@ pub fn bake_motion(
       name: definition.name.clone(),
       frame_count: frame_count as u32,
       bone_count: bones.len() as u32,
-      duration: frame_count as f32 / SAMPLE_FPS,
+      duration: frame_count as f32 / (SAMPLE_FPS * definition.get_playback_speed()),
+      speed: definition.speed,
       animated_bone_count: animated.iter().filter(|it| it.is_some()).count() as u32,
       floats_per_bone: FLOATS_PER_BONE as u32,
     },

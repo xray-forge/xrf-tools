@@ -28,8 +28,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Each open mode remembers its own last path; switching modes returns each field to where it last pointed.",
     "Compressed entries are decompressed transparently and verified against their CRC32 - a mismatch is an " +
       "error, not silent corruption.",
-    "Browsing the tree stays free at all times; opening a file or a directory is ignored while a read or an " +
-      "extraction is still in flight.",
+    "Browsing the tree stays free at all times, and opening something else while a preview is still loading " +
+      "abandons that read for the new one. Only an extraction in flight holds an open back.",
   ],
   limitations: [
     "Strictly read-only: no editing, repacking, or writing into archives.",

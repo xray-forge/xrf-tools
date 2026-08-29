@@ -1,4 +1,4 @@
-import { Alert, MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
+import { MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -125,7 +125,6 @@ export function TranslationsBuilderApplication(): ReactElement {
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}
       error={error ?? undefined}
       submitLabel={"Build"}
-      status={result ? <Alert severity={"success"}>Translations built.</Alert> : null}
       result={result ? <TranslationsBuildResult result={result} outputPath={outputPath} /> : null}
       onSubmit={onBuild}
     >

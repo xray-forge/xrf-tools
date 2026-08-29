@@ -129,8 +129,9 @@ describe("PickerForm", () => {
     expect(getByText("source directory")).toBeInTheDocument();
   });
 
-  // What the run said, rather than what the run was given. Two spawn screens have nothing else, and
-  // folding the parameters must not take their only confirmation with it.
+  // The status sits outside the parameters, so folding cannot take it away. No screen pairs it with a
+  // result today — the two spawn screens report a run this way and produce nothing else — so only this
+  // test holds the two together.
   it("keeps the status visible while the parameters are folded away", () => {
     const { queryByText, getByText } = renderWithProviders(
       <PickerForm title={"Unpack"} status={<div>Archives unpacked.</div>} result={<div>unpacked 512 files</div>}>

@@ -1,4 +1,4 @@
-import { Alert, Button, MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
+import { Button, MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -146,13 +146,6 @@ export function TranslationsParserApplication(): ReactElement {
         >
           Preview
         </Button>
-      }
-      status={
-        result ? (
-          <Alert severity={result.isDryRun ? "info" : "success"}>
-            {result.isDryRun ? "Preview only — nothing was written." : "Translations imported."}
-          </Alert>
-        ) : null
       }
       result={result ? <TranslationsParseResult result={result} outputPath={outputPath} /> : null}
       onSubmit={onImportClicked}

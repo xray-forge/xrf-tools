@@ -59,11 +59,7 @@ export function TranslationsBuildResult({
       tone={"success"}
       stats={stats}
       actions={
-        <RevealPathButton
-          application={EApplicationId.TRANSLATIONS_BUILDER}
-          path={outputPath}
-          label={"Show output"}
-        />
+        <RevealPathButton application={EApplicationId.TRANSLATIONS_BUILDER} path={outputPath} label={"Show output"} />
       }
     >
       <CommandResultFindings<TLanguageRow>
