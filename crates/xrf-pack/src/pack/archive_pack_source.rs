@@ -4,6 +4,7 @@ use walkdir::WalkDir;
 use xrf_error::XrfResult;
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::path::is_component_prefix;
 
 /// One file selected for packing.
 #[derive(Clone, Debug)]
@@ -126,13 +127,17 @@ fn normalize_name(name: &str) -> String {
   name.replace('/', "\\").trim_matches('\\').to_string()
 }
 
-/// An excluded directory matches by prefix when recursive, and by exact name otherwise.
+/// A recursive exclusion covers the directory and everything below it; a plain one covers only the directory itself.
+///
+/// Both match on complete path components and without case, the way the engine resolves a name. A raw `starts_with`
+/// would make `configs` swallow `configs_backup`, and a raw comparison would miss the `Configs` the same tree answers
+/// to.
 fn is_excluded_directory(config: &ArchivePackConfig, name: &str) -> bool {
   config.exclude_directories.iter().any(|directory| {
     if directory.is_recursive {
-      name.starts_with(&directory.path)
+      is_component_prefix(name, &directory.path)
     } else {
-      name == directory.path
+      name.eq_ignore_ascii_case(&directory.path)
     }
   })
 }
@@ -235,11 +240,22 @@ fn matches_pattern(text: &str, pattern: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::{is_skipped_file, matches_pattern};
-  use crate::pack::archive_pack_config::ArchivePackConfig;
+  use super::{is_excluded_directory, is_skipped_file, matches_pattern};
+  use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
 
   fn config() -> ArchivePackConfig {
     ArchivePackConfig::new("gamedata", "db", "configs")
+  }
+
+  fn config_excluding(path: &str, is_recursive: bool) -> ArchivePackConfig {
+    let mut config: ArchivePackConfig = config();
+
+    config.exclude_directories = vec![ArchivePackDirectory {
+      path: String::from(path),
+      is_recursive,
+    }];
+
+    config
   }
 
   #[test]
@@ -297,6 +313,46 @@ mod tests {
 
     assert!(is_skipped_file(&config, "configs\\data.json"));
     assert!(!is_skipped_file(&config, "configs\\data.ltx"));
+  }
+
+  #[test]
+  fn a_recursive_exclusion_takes_the_directory_and_everything_below_it() {
+    let config: ArchivePackConfig = config_excluding("configs", true);
+
+    assert!(is_excluded_directory(&config, "configs"));
+    assert!(is_excluded_directory(&config, "configs\\system.ltx"));
+    assert!(is_excluded_directory(&config, "configs\\weapons\\w_ak74.ltx"));
+
+    // The defect this rule closes: a byte prefix reaches every sibling spelled like the excluded directory.
+    assert!(!is_excluded_directory(&config, "configs_backup"));
+    assert!(!is_excluded_directory(&config, "configs_backup\\system.ltx"));
+    assert!(!is_excluded_directory(&config, "configs2\\system.ltx"));
+  }
+
+  #[test]
+  fn a_plain_exclusion_takes_only_the_directory_it_names() {
+    let config: ArchivePackConfig = config_excluding("configs", false);
+
+    assert!(is_excluded_directory(&config, "configs"));
+    assert!(!is_excluded_directory(&config, "configs\\weapons"));
+    assert!(!is_excluded_directory(&config, "configs_backup"));
+  }
+
+  #[test]
+  fn an_exclusion_matches_the_case_the_engine_folds() {
+    for is_recursive in [true, false] {
+      let config: ArchivePackConfig = config_excluding("Configs", is_recursive);
+
+      assert!(
+        is_excluded_directory(&config, "configs"),
+        "a mixed-case rule names the same directory (recursive: {is_recursive})"
+      );
+    }
+
+    assert!(is_excluded_directory(
+      &config_excluding("Configs", true),
+      "CONFIGS\\system.ltx"
+    ));
   }
 
   #[test]

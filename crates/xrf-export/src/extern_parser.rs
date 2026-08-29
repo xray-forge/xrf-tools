@@ -275,6 +275,23 @@ mod tests {
   }
 
   #[test]
+  fn reports_malformed_typescript_instead_of_panicking() {
+    let root: PathBuf = create_test_root("malformed");
+    write_source(&root, "broken.ts", "export {}; extern(\"test\", (): boolean => );");
+
+    let error: String = ExternManifestParser::new()
+      .parse_directory(&root)
+      .unwrap_err()
+      .to_string();
+
+    assert!(
+      error.starts_with("Parsing error: Failed to parse TypeScript "),
+      "{error}"
+    );
+    assert!(error.contains("broken.ts:1:42"), "{error}");
+  }
+
+  #[test]
   fn explains_an_unresolved_function_reference() {
     let root: PathBuf = create_test_root("function-reference");
     write_source(&root, "callbacks.ts", "export {}; extern(\"callbacks.run\", run);");

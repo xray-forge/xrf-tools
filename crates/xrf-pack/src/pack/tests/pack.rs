@@ -393,3 +393,30 @@ fn leaves_out_what_the_engine_rebuilds() {
   assert!(project.files.contains_key("configs\\system.ltx"));
   assert!(!project.files.contains_key("readme.txt"));
 }
+
+#[test]
+fn an_excluded_directory_does_not_reach_the_neighbour_it_shares_a_prefix_with() {
+  let (result, destination) = pack(
+    "an_excluded_directory_does_not_reach_the_neighbour_it_shares_a_prefix_with",
+    &[
+      ("configs\\system.ltx", CONFIG),
+      ("configs\\weapons\\w_ak74.ltx", CONFIG),
+      ("configs_backup\\system.ltx", CONFIG),
+    ],
+    |config| {
+      // Spelled unlike the tree on disk, because the engine resolves a name either way.
+      config.exclude_directories = vec![ArchivePackDirectory {
+        path: String::from("Configs"),
+        is_recursive: true,
+      }];
+    },
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(result.files_total, 1, "only the backup tree survives the rule");
+  assert_eq!(read(&project, "configs_backup\\system.ltx"), CONFIG);
+
+  for name in ["configs\\", "configs\\system.ltx", "configs\\weapons\\w_ak74.ltx"] {
+    assert!(!project.files.contains_key(name), "'{name}' is excluded");
+  }
+}

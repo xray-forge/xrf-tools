@@ -5001,7 +5001,6 @@ dependencies = [
  "swc_atoms",
  "swc_eq_ignore_macros",
  "swc_visit",
- "termcolor",
  "tracing",
  "unicode-width",
  "url",
@@ -7453,6 +7452,7 @@ dependencies = [
  "swc_ecma_codegen",
  "swc_ecma_parser",
  "xrf-error",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 

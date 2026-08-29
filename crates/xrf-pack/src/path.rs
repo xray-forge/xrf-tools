@@ -26,33 +26,47 @@ pub(crate) fn to_host_relative(name: &str) -> XrfResult<PathBuf> {
   Ok(path)
 }
 
+/// Whether an engine name is a directory prefix itself or lies below it.
+///
+/// The boundary rule both packing and extraction need. Compared segment-wise rather than by raw `starts_with`, so
+/// `configs` does not swallow `configs_backup`. Case is ignored and either separator closes a component, because a
+/// volume records a name as authored and a configuration names a directory as typed, while the engine folds both.
+///
+/// An empty prefix names the source root, which takes everything.
+pub(crate) fn is_component_prefix(name: &str, prefix: &str) -> bool {
+  if prefix.is_empty() {
+    return true;
+  }
+
+  let Some((head, tail)) = name.split_at_checked(prefix.len()) else {
+    return false;
+  };
+
+  head.eq_ignore_ascii_case(prefix) && (tail.is_empty() || tail.starts_with(['\\', '/']))
+}
+
 /// The part of an engine name below a directory prefix, or `None` when it lies outside it.
 ///
-/// Compared segment-wise rather than by raw `starts_with`, so `configs` does not swallow `configs_backup\...`. Case is
-/// ignored, because a volume records a name as authored and the engine resolves it either way.
+/// Descendants only, unlike [`is_component_prefix`]: a name equal to the prefix leaves nothing to write below an
+/// extraction destination.
 pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
   if prefix.is_empty() {
     return Some(name);
   }
 
-  if name.len() <= prefix.len() {
+  if !is_component_prefix(name, prefix) {
     return None;
   }
 
-  let (head, tail) = name.split_at(prefix.len());
-
-  if head.eq_ignore_ascii_case(prefix) && tail.starts_with(['\\', '/']) {
-    Some(&tail[1..])
-  } else {
-    None
-  }
+  // The boundary is proven, so what follows the prefix is either empty or starts at the separator.
+  name[prefix.len()..].strip_prefix(['\\', '/'])
 }
 
 #[cfg(test)]
 mod tests {
   use std::path::Path;
 
-  use super::{relative_to_prefix, to_host_relative};
+  use super::{is_component_prefix, relative_to_prefix, to_host_relative};
 
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
@@ -106,5 +120,30 @@ mod tests {
   #[test]
   fn a_prefix_ignores_case_like_the_archives_do() {
     assert_eq!(relative_to_prefix("Configs\\a.ltx", "configs"), Some("a.ltx"));
+  }
+
+  #[test]
+  fn a_component_prefix_covers_the_directory_itself_and_what_is_below_it() {
+    assert!(is_component_prefix("configs", "configs"));
+    assert!(is_component_prefix("configs\\system.ltx", "configs"));
+    assert!(is_component_prefix("configs/system.ltx", "configs"));
+    assert!(is_component_prefix("configs\\weapons\\w_ak74.ltx", "configs\\weapons"));
+    assert!(is_component_prefix("anything", ""), "the source root takes everything");
+  }
+
+  #[test]
+  fn a_component_prefix_stops_at_the_component_boundary() {
+    // The trap a raw `starts_with` walks into: a rule for `configs` reaching every sibling spelled like it.
+    for name in ["configs_backup", "configs_backup\\a.ltx", "configs2", "config"] {
+      assert!(!is_component_prefix(name, "configs"), "'{name}' is outside `configs`");
+    }
+  }
+
+  #[test]
+  fn a_component_prefix_ignores_case_and_a_multibyte_name_stays_in_bounds() {
+    assert!(is_component_prefix("Configs\\System.ltx", "configs"));
+    assert!(is_component_prefix("configs\\a.ltx", "Configs"));
+    // Slicing at the prefix length must not land inside a character.
+    assert!(!is_component_prefix("тексты", "configs"));
   }
 }

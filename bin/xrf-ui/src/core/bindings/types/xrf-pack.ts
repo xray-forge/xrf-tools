@@ -51,7 +51,8 @@ export type ArchivePackConfig = {
  * itself says `directory`.
  *
  * The boolean has a different meaning on each side, which is an xrCompress quirk worth stating: an
- * included directory recurses into subdirectories, while an excluded one matches by prefix rather than exactly.
+ * included directory recurses into subdirectories, while an excluded one covers everything below itself rather than
+ * only the directory it names. Either way the path is matched on complete components, without case.
  */
 export type ArchivePackDirectory = {
   path: string;
