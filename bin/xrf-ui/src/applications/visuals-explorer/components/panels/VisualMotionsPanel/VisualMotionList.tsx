@@ -23,13 +23,6 @@ export interface IVisualMotionListProps extends BaseComponentProps {
 
 /**
  * Every motion the open visual can play, grouped by the token its name starts with.
- *
- * A tree rather than the flat list a footer bar could afford: an actor names about 2,500 motions, and a wall of them
- * truncated at a couple of hundred answers only the user who already knows what to type. Collapsed families are some
- * sixty rows to read, which is what looking rather than searching needs. Filtering still searches every name and
- * opens whatever matched, so knowing the name is never slower than it was.
- *
- * Virtualized, so the group that holds four hundred names costs the same to open as the one holding four.
  */
 export function VisualMotionList({
   "data-testid": dataTestId = "visual-motion-list",

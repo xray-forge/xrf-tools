@@ -14,6 +14,7 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
+
 export interface IVisualMotionsPanelProps extends BaseComponentProps {}
 
 /**
@@ -55,8 +56,8 @@ export function VisualMotionsPanel({
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ minHeight: "100%" }}>
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
         <Box
           sx={{
             position: "sticky",
@@ -86,26 +87,28 @@ export function VisualMotionsPanel({
 
         <VisualPanelSection
           title={playable ? `Playable (${playable})` : "Playable"}
-          caption={"Grouped by the token a name starts with; double click or Enter to pose one"}
+          caption={"Grouped by name prefix; double click to pose"}
           isFirst={true}
           isFilling={true}
         >
           <VisualMotionList filter={filter} />
         </VisualPanelSection>
 
-        {refs.length > 0 ? (
-          <VisualPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
-            {refs.map((motion: VisualMotionDependency) => (
-              <VisualMotionRow key={motion.reference} motion={motion} />
-            ))}
-          </VisualPanelSection>
-        ) : null}
+        <Box sx={{ flexShrink: 0, maxHeight: "25%", overflowY: "auto" }}>
+          {refs.length > 0 ? (
+            <VisualPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
+              {refs.map((motion: VisualMotionDependency) => (
+                <VisualMotionRow key={motion.reference} motion={motion} />
+              ))}
+            </VisualPanelSection>
+          ) : null}
 
-        {embedded.length > 0 ? (
-          <VisualPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
-            <VisualMotionNames names={embedded} />
-          </VisualPanelSection>
-        ) : null}
+          {embedded.length > 0 ? (
+            <VisualPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
+              <VisualMotionNames names={embedded} />
+            </VisualPanelSection>
+          ) : null}
+        </Box>
       </Box>
     </VisualPanel>
   );
