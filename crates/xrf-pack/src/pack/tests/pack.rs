@@ -15,7 +15,8 @@ use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, 
 use crate::pack::archive_pack_result::ArchivePackResult;
 use crate::pack::archive_packer::ArchivePacker;
 use crate::pack::tests::fixtures::{
-  BINARY, CONFIG, borrow_files, create_config, create_source, distinct_files, open, pack, read,
+  BINARY, CONFIG, allow_directory, borrow_files, create_config, create_source, deny_directory, distinct_files, open,
+  pack, read,
 };
 
 /// Pack one source tree into a destination shared with other volumes, under its own volume name.
@@ -272,6 +273,100 @@ fn refuses_a_name_it_cannot_encode() {
 
   // Silently mangling a name would produce an archive the engine cannot resolve by that name.
   assert!(ArchivePacker::pack(&config).is_err());
+}
+
+/// A packed volume set is read as a complete build of what the configuration selected, so a source subtree the walk
+/// cannot enumerate has to end the run. Filtered out, packing reported success over an archive silently missing
+/// everything below the unreadable directory.
+#[test]
+fn refuses_to_pack_a_source_subtree_it_cannot_read() {
+  let (config, destination) = create_config(
+    "refuses_to_pack_a_source_subtree_it_cannot_read",
+    &[
+      ("configs\\system.ltx", CONFIG),
+      ("scripts\\locked\\hidden.script", CONFIG),
+    ],
+  );
+  let locked: PathBuf = config.source.join("scripts").join("locked");
+
+  if !deny_directory(&locked) {
+    return;
+  }
+
+  let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
+
+  // Restored before asserting, so a failed expectation still leaves a tree the next run can remove.
+  allow_directory(&locked);
+
+  assert!(
+    result.is_err(),
+    "an unreadable subtree is a packing failure, not an omission"
+  );
+  assert!(
+    !destination.exists(),
+    "and selection fails before anything is published"
+  );
+}
+
+/// The other half of that rule: a subtree a recursive exclusion drops holds nothing that could be selected, so it is
+/// never read at all and does not have to be readable for the rest of the tree to pack.
+#[test]
+fn does_not_read_a_recursively_excluded_subtree() {
+  let (mut config, destination) = create_config(
+    "does_not_read_a_recursively_excluded_subtree",
+    &[
+      ("configs\\system.ltx", CONFIG),
+      ("scripts\\locked\\hidden.script", CONFIG),
+    ],
+  );
+  let locked: PathBuf = config.source.join("scripts").join("locked");
+
+  config.exclude_directories = vec![ArchivePackDirectory {
+    path: String::from("scripts"),
+    is_recursive: true,
+  }];
+
+  if !deny_directory(&locked) {
+    return;
+  }
+
+  let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
+
+  allow_directory(&locked);
+
+  assert_eq!(
+    result.expect("the excluded subtree is never read").files_total,
+    1,
+    "only the configuration outside the rule is packed"
+  );
+  assert!(open(&destination).files.contains_key("configs\\system.ltx"));
+}
+
+/// A Unix filename is bytes, not text, so a source file can be perfectly valid and have no archive name at all. The
+/// writer already refuses a name it cannot encode as windows-1251; this one never reached it, because a host path
+/// that is not valid Unicode produced no name to refuse.
+#[test]
+#[cfg(unix)]
+fn refuses_a_source_file_whose_host_name_is_not_valid_unicode() {
+  use std::ffi::OsStr;
+  use std::os::unix::ffi::OsStrExt;
+
+  let (config, destination) = create_config(
+    "refuses_a_source_file_whose_host_name_is_not_valid_unicode",
+    &[("configs\\system.ltx", CONFIG)],
+  );
+
+  fs::write(
+    config.source.join("configs").join(OsStr::from_bytes(b"broken\xff.ltx")),
+    CONFIG,
+  )
+  .expect("source file");
+
+  assert!(
+    ArchivePacker::pack(&config).is_err(),
+    "a file with no archive name is reported rather than dropped"
+  );
+  assert!(!destination.exists(), "and nothing is published");
 }
 
 #[test]

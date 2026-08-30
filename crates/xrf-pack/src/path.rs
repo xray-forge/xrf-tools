@@ -4,6 +4,7 @@ use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 /// Converts an engine name into host path components.
 ///
@@ -25,6 +26,37 @@ pub(crate) fn to_host_relative(name: &str) -> XrfResult<PathBuf> {
   }
 
   Ok(path)
+}
+
+/// Express a host path as the engine name relative to the root it was found under.
+///
+/// The counterpart of [`to_host_relative`], and the direction packing crosses in.
+///
+/// # Errors
+///
+/// Returns an error when the path is not below the source root, which would mean the walk left it, and when the host
+/// path is not valid Unicode, which leaves no name to write: the archive has to say so rather than drop the file.
+pub(crate) fn to_archive_name(source: &Path, path: &Path) -> XrfResult<String> {
+  let relative: &Path = path.strip_prefix(source).map_err(|_| {
+    XrfError::new_unexpected_error(format!(
+      "Packing source '{}' is not below its root '{}'",
+      format_path(path),
+      format_path(source)
+    ))
+  })?;
+
+  match relative.to_str() {
+    Some(name) => Ok(normalize_archive_name(name)),
+    None => Err(XrfError::new_encoding_error(format!(
+      "Packing source '{}' cannot be named in an archive: its host path is not valid Unicode",
+      format_path(path)
+    ))),
+  }
+}
+
+/// Spell an authored name the way an archive stores one: X-Ray separators, no leading or trailing one.
+pub(crate) fn normalize_archive_name(name: &str) -> String {
+  name.replace('/', "\\").trim_matches('\\').to_string()
 }
 
 /// Checks that a caller-supplied name is one host file name rather than a path.
@@ -88,9 +120,27 @@ pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a 
 
 #[cfg(test)]
 mod tests {
-  use std::path::Path;
+  use std::ffi::OsString;
+  use std::path::{Path, PathBuf};
 
-  use super::{is_component_prefix, relative_to_prefix, to_host_relative, validate_host_file_name};
+  use super::{is_component_prefix, relative_to_prefix, to_archive_name, to_host_relative, validate_host_file_name};
+
+  /// A file name the host accepts and UTF-8 cannot spell: raw bytes on Unix, a lone surrogate on Windows.
+  fn unrepresentable_name() -> OsString {
+    #[cfg(unix)]
+    {
+      use std::os::unix::ffi::OsStringExt;
+
+      OsString::from_vec(b"system\xff.ltx".to_vec())
+    }
+
+    #[cfg(windows)]
+    {
+      use std::os::windows::ffi::OsStringExt;
+
+      OsString::from_wide(&[0x0073, 0xd800, 0x002e, 0x006c, 0x0074, 0x0078])
+    }
+  }
 
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
@@ -118,6 +168,40 @@ mod tests {
     for path in ["..\\system.ltx", "configs/./system.ltx", "C:/system.ltx"] {
       assert!(to_host_relative(path).is_err(), "'{path}' must not become a host path");
     }
+  }
+
+  #[test]
+  fn a_source_path_becomes_the_name_the_engine_resolves() {
+    let source: &Path = Path::new("gamedata");
+
+    assert_eq!(
+      to_archive_name(source, &source.join("configs").join("system.ltx")).expect("a name below the root"),
+      "configs\\system.ltx"
+    );
+  }
+
+  #[test]
+  fn a_path_outside_the_source_root_is_refused() {
+    // Only reachable if the walk left the root it was given, which is worth saying rather than passing over.
+    assert!(
+      to_archive_name(
+        Path::new("gamedata"),
+        Path::new("elsewhere").join("system.ltx").as_path()
+      )
+      .is_err()
+    );
+  }
+
+  #[test]
+  fn a_source_path_that_is_not_valid_unicode_is_refused_rather_than_dropped() {
+    let source: &Path = Path::new("gamedata");
+    let path: PathBuf = source.join("configs").join(unrepresentable_name());
+
+    // There is no archive name to write for it, and dropping it would leave a successful pack one file short.
+    assert!(
+      to_archive_name(source, &path).is_err(),
+      "an unnameable file is reported"
+    );
   }
 
   #[test]

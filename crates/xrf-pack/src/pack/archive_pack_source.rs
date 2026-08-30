@@ -1,10 +1,18 @@
+//! The walk that decides what one packing run will write.
+//!
+//! Discovery only. Whether a name the walk reaches is wanted is `archive_pack_config_rules.rs`; how a host path
+//! becomes an archive name is `crate::path`.
+
+use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use walkdir::WalkDir;
-use xrf_error::XrfResult;
+use walkdir::{DirEntry, Error as WalkError, WalkDir};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::path::is_component_prefix;
+use crate::path::{normalize_archive_name, to_archive_name};
 
 /// One file selected for packing.
 #[derive(Clone, Debug)]
@@ -49,15 +57,7 @@ impl ArchivePackSource {
     }
 
     for name in &config.include_files {
-      let name: String = normalize_name(name);
-      let path: PathBuf = config.source.join(name.replace('\\', "/"));
-
-      // Listed files bypass the directory rules, exactly as `[include_files]` does in xrCompress, but a
-      // name that does not resolve is a configuration error rather than something to pass over, which is what this
-      // otherwise unused lookup establishes.
-      path.metadata()?;
-
-      source.entries.push(ArchivePackEntry { name, path });
+      source.collect_file(config, name)?;
     }
 
     source.entries.sort_by(|left, right| left.name.cmp(&right.name));
@@ -68,6 +68,22 @@ impl ArchivePackSource {
     Ok(source)
   }
 
+  /// Take one file `[include_files]` names, whatever the directory rules would have said about it.
+  ///
+  /// Listed files bypass those rules exactly as they do in xrCompress, but a name that does not resolve is a
+  /// configuration error rather than something to pass over, which is what this otherwise unused lookup
+  /// establishes.
+  fn collect_file(&mut self, config: &ArchivePackConfig, name: &str) -> XrfResult<()> {
+    let name: String = normalize_archive_name(name);
+    let path: PathBuf = config.source.join(name.replace('\\', "/"));
+
+    path.metadata()?;
+
+    self.entries.push(ArchivePackEntry { name, path });
+
+    Ok(())
+  }
+
   fn collect_directory(&mut self, config: &ArchivePackConfig, directory: &ArchivePackDirectory) -> XrfResult<()> {
     let root: PathBuf = if directory.path.is_empty() {
       config.source.clone()
@@ -75,7 +91,7 @@ impl ArchivePackSource {
       config.source.join(directory.path.replace('\\', "/"))
     };
 
-    if !root.exists() {
+    if !is_present_source_root(&root)? {
       return Ok(());
     }
 
@@ -87,20 +103,24 @@ impl ArchivePackSource {
       WalkDir::new(&root).max_depth(1)
     };
 
-    for entry in walk.into_iter().filter_map(Result::ok) {
+    // Every failure the walk reports ends the run. A packed volume set is read as a complete build of what the
+    // configuration selected, so a subtree that could not be enumerated has to be an error rather than an omission.
+    for entry in walk
+      .into_iter()
+      .filter_entry(|entry| !is_pruned_directory(config, entry))
+    {
+      let entry: DirEntry = entry.map_err(|error| walk_error(&root, error))?;
       let path: &Path = entry.path();
-      let Some(name) = relative_name(&config.source, path) else {
-        continue;
-      };
+      let name: String = to_archive_name(&config.source, path)?;
 
-      if name.is_empty() || is_excluded_directory(config, &name) {
+      if name.is_empty() || config.is_excluded_directory(&name) {
         continue;
       }
 
       if entry.file_type().is_dir() {
         self.directories.push(name);
       } else if entry.file_type().is_file() {
-        if is_skipped_file(config, &name) {
+        if config.is_skipped_file(&name) {
           self.skipped += 1;
 
           continue;
@@ -117,251 +137,46 @@ impl ArchivePackSource {
   }
 }
 
-/// Express a host path as the engine-facing name relative to the source root.
-fn relative_name(source: &Path, path: &Path) -> Option<String> {
-  Some(normalize_name(path.strip_prefix(source).ok()?.to_str()?))
-}
-
-fn normalize_name(name: &str) -> String {
-  name.replace('/', "\\").trim_matches('\\').to_string()
-}
-
-/// A recursive exclusion covers the directory and everything below it; a plain one covers only the directory itself.
+/// Whether an included root is there at all, refusing an answer the filesystem could not give.
 ///
-/// Both match on complete path components and without case, the way the engine resolves a name. A raw `starts_with`
-/// would make `configs` swallow `configs_backup`, and a raw comparison would miss the `Configs` the same tree answers
-/// to.
-fn is_excluded_directory(config: &ArchivePackConfig, name: &str) -> bool {
-  config.exclude_directories.iter().any(|directory| {
-    if directory.is_recursive {
-      is_component_prefix(name, &directory.path)
-    } else {
-      name.eq_ignore_ascii_case(&directory.path)
-    }
-  })
+/// A root that is not there contributes nothing, which is how a shared configuration names optional trees. Every
+/// other failure is a discovery failure: `Path::exists` reports a directory it may not read as absent too, and
+/// packing would then publish a volume set missing everything below it.
+fn is_present_source_root(root: &Path) -> XrfResult<bool> {
+  match fs::metadata(root) {
+    Ok(_) => Ok(true),
+    Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+    Err(error) => Err(XrfError::new_io_error(
+      format!(
+        "Failed to read packing source directory '{}': {error}",
+        format_path(root)
+      ),
+      error.kind(),
+    )),
+  }
 }
 
-/// Decide whether a file is left out of the archive.
+/// Turn a walk failure into an error naming what could not be read.
 ///
-/// The hard-coded half is `testSKIP` in `xrCompress.cpp`: editor intermediates, source control leftovers,
-/// and the texture variants the engine rebuilds. It is optional here because a caller packing something
-/// other than a game build has no reason to inherit it.
-fn is_skipped_file(config: &ArchivePackConfig, name: &str) -> bool {
-  let lowered: String = name.to_ascii_lowercase();
-  let file: &str = lowered.rsplit('\\').next().unwrap_or(&lowered);
-  let (stem, extension) = match file.rsplit_once('.') {
-    Some((stem, extension)) => (stem, format!(".{extension}")),
-    None => (file, String::new()),
-  };
+/// The walker knows which entry it tripped on for everything below the root, and names the root itself otherwise.
+fn walk_error(root: &Path, error: WalkError) -> XrfError {
+  let path: String = format_path(error.path().unwrap_or(root)).to_string();
 
-  if config
-    .exclude_extensions
-    .iter()
-    .any(|pattern| matches_pattern(&extension, pattern))
-  {
-    return true;
+  // The wrapper repeats the path it already named, so the failure itself is what carries here.
+  match error.io_error() {
+    Some(cause) => XrfError::new_io_error(format!("Failed to read packing source '{path}': {cause}"), cause.kind()),
+    None => XrfError::new_invalid_error(format!("Failed to read packing source '{path}': {error}")),
   }
-
-  if !config.is_with_skip_list {
-    return false;
-  }
-
-  if lowered.contains("textures\\lod\\") || lowered.contains("textures\\det\\") {
-    return true;
-  }
-
-  // Terrain tiles are rebuilt from their masks, so only the masks are worth carrying.
-  if extension != ".thm" && lowered.contains("textures\\terrain\\terrain_") && !stem.ends_with("_mask") {
-    return true;
-  }
-
-  if lowered.contains("textures\\") && stem.ends_with("_nmap") && !stem.contains("water_flowing_nmap") {
-    return true;
-  }
-
-  // Level build intermediates, except the lighting the engine still reads.
-  if stem == "build" {
-    return matches!(extension.as_str(), ".aimap" | ".cform" | ".details" | ".prj");
-  }
-
-  if stem == "do_light" && extension == ".ltx" {
-    return true;
-  }
-
-  if matches!(
-    extension.as_str(),
-    ".txt" | ".tga" | ".db" | ".smf" | ".vcproj" | ".sln" | ".old" | ".rc"
-  ) {
-    return true;
-  }
-
-  // Editor and backup leftovers, named by their second character the way xrCompress tests it.
-  matches!(extension.chars().nth(1), Some('~' | '_'))
 }
 
-/// Match a `*` and `?` wildcard pattern, case-insensitively, the way `PatternMatch` does.
-fn matches_pattern(text: &str, pattern: &str) -> bool {
-  let text: Vec<char> = text.to_ascii_lowercase().chars().collect();
-  let pattern: Vec<char> = pattern.to_ascii_lowercase().chars().collect();
-
-  let mut text_index: usize = 0;
-  let mut pattern_index: usize = 0;
-  let mut star: Option<(usize, usize)> = None;
-
-  while text_index < text.len() {
-    match pattern.get(pattern_index) {
-      Some('*') => {
-        star = Some((pattern_index, text_index));
-        pattern_index += 1;
-      }
-      Some('?') => {
-        text_index += 1;
-        pattern_index += 1;
-      }
-      Some(symbol) if *symbol == text[text_index] => {
-        text_index += 1;
-        pattern_index += 1;
-      }
-      // Backtrack to the last star and let it swallow one more character.
-      _ => match star {
-        Some((star_index, matched)) => {
-          pattern_index = star_index + 1;
-          text_index = matched + 1;
-          star = Some((star_index, text_index));
-        }
-        None => return false,
-      },
-    }
-  }
-
-  pattern[pattern_index..].iter().all(|symbol| *symbol == '*')
-}
-
-#[cfg(test)]
-mod tests {
-  use super::{is_excluded_directory, is_skipped_file, matches_pattern};
-  use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-
-  fn config() -> ArchivePackConfig {
-    ArchivePackConfig::new("gamedata", "db", "configs")
-  }
-
-  fn config_excluding(path: &str, is_recursive: bool) -> ArchivePackConfig {
-    let mut config: ArchivePackConfig = config();
-
-    config.exclude_directories = vec![ArchivePackDirectory {
-      path: String::from(path),
-      is_recursive,
-    }];
-
-    config
-  }
-
-  #[test]
-  fn matches_wildcards_case_insensitively() {
-    assert!(matches_pattern(".txt", "*.txt"));
-    assert!(matches_pattern(".TXT", "*.txt"));
-    assert!(matches_pattern(".json", "*.js?n"));
-    assert!(matches_pattern(".anything", "*"));
-    assert!(!matches_pattern(".ltx", "*.txt"));
-    assert!(!matches_pattern("", "*.txt"));
-  }
-
-  #[test]
-  fn skips_what_the_engine_rebuilds_or_never_reads() {
-    for name in [
-      "textures\\lod\\lod_wall.dds",
-      "textures\\det\\det_grass.dds",
-      "textures\\terrain\\terrain_swamp.dds",
-      "textures\\wall_nmap.dds",
-      "levels\\l01_escape\\build.cform",
-      "configs\\do_light.ltx",
-      "readme.txt",
-      "textures\\wall.tga",
-      "database\\nested.db",
-      // The engine tests the character after the dot, so a backup marker leads the extension.
-      "configs\\system.~ltx",
-      "configs\\system._ltx",
-    ] {
-      assert!(is_skipped_file(&config(), name), "{name} should be skipped");
-    }
-  }
-
-  #[test]
-  fn keeps_what_the_engine_loads() {
-    for name in [
-      "configs\\system.ltx",
-      "scripts\\xr_logic.script",
-      "textures\\wall.dds",
-      "textures\\terrain\\terrain_swamp_mask.dds",
-      "textures\\terrain\\terrain_swamp.thm",
-      "textures\\water\\water_flowing_nmap.dds",
-      "levels\\l01_escape\\build.lights",
-      "meshes\\actor.ogf",
-      "configs\\system.ltx~",
-    ] {
-      assert!(!is_skipped_file(&config(), name), "{name} should be kept");
-    }
-  }
-
-  #[test]
-  fn applies_configured_extension_patterns() {
-    let mut config: ArchivePackConfig = config();
-
-    config.exclude_extensions = vec![String::from("*.json")];
-
-    assert!(is_skipped_file(&config, "configs\\data.json"));
-    assert!(!is_skipped_file(&config, "configs\\data.ltx"));
-  }
-
-  #[test]
-  fn a_recursive_exclusion_takes_the_directory_and_everything_below_it() {
-    let config: ArchivePackConfig = config_excluding("configs", true);
-
-    assert!(is_excluded_directory(&config, "configs"));
-    assert!(is_excluded_directory(&config, "configs\\system.ltx"));
-    assert!(is_excluded_directory(&config, "configs\\weapons\\w_ak74.ltx"));
-
-    // The defect this rule closes: a byte prefix reaches every sibling spelled like the excluded directory.
-    assert!(!is_excluded_directory(&config, "configs_backup"));
-    assert!(!is_excluded_directory(&config, "configs_backup\\system.ltx"));
-    assert!(!is_excluded_directory(&config, "configs2\\system.ltx"));
-  }
-
-  #[test]
-  fn a_plain_exclusion_takes_only_the_directory_it_names() {
-    let config: ArchivePackConfig = config_excluding("configs", false);
-
-    assert!(is_excluded_directory(&config, "configs"));
-    assert!(!is_excluded_directory(&config, "configs\\weapons"));
-    assert!(!is_excluded_directory(&config, "configs_backup"));
-  }
-
-  #[test]
-  fn an_exclusion_matches_the_case_the_engine_folds() {
-    for is_recursive in [true, false] {
-      let config: ArchivePackConfig = config_excluding("Configs", is_recursive);
-
-      assert!(
-        is_excluded_directory(&config, "configs"),
-        "a mixed-case rule names the same directory (recursive: {is_recursive})"
-      );
-    }
-
-    assert!(is_excluded_directory(
-      &config_excluding("Configs", true),
-      "CONFIGS\\system.ltx"
-    ));
-  }
-
-  #[test]
-  fn configured_patterns_apply_without_the_built_in_list() {
-    let mut config: ArchivePackConfig = config();
-
-    config.is_with_skip_list = false;
-    config.exclude_extensions = vec![String::from("*.json")];
-
-    assert!(is_skipped_file(&config, "configs\\data.json"));
-    assert!(!is_skipped_file(&config, "readme.txt"), "the built-in list is off");
-  }
+/// Whether a directory can be dropped without descending into it.
+///
+/// A recursive exclusion covers everything below the directory it names, so nothing inside can be selected and
+/// reading it would only turn a deliberately excluded corner of the tree into a packing failure. A plain exclusion
+/// drops the directory alone while its contents still pack, so it must not prune. A directory whose name cannot be
+/// expressed is kept, so the walk reports it instead of losing it here.
+fn is_pruned_directory(config: &ArchivePackConfig, entry: &DirEntry) -> bool {
+  entry.file_type().is_dir()
+    && to_archive_name(&config.source, entry.path())
+      .is_ok_and(|name| !name.is_empty() && config.is_recursively_excluded_directory(&name))
 }

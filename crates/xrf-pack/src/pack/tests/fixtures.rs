@@ -71,6 +71,65 @@ pub(crate) fn pack(
   (result, destination)
 }
 
+/// Make `directory` unreadable, answering whether the denial actually took effect.
+///
+/// Discovery failures are the point of the checks that use this, and the only portable way to produce one is to take
+/// away the right to list a directory. No account is bound by its own denial, though: `root` ignores a zero mode
+/// outright. A run that cannot deny says so and skips, rather than passing a check it never made.
+pub(crate) fn deny_directory(directory: &Path) -> bool {
+  set_directory_denied(directory, true);
+
+  if fs::read_dir(directory).is_ok() {
+    eprintln!(
+      "skipping: '{}' stays readable for the account running this",
+      format_path(directory)
+    );
+
+    allow_directory(directory);
+
+    return false;
+  }
+
+  true
+}
+
+/// Give back what [`deny_directory`] took, so the scratch tree can be removed again.
+pub(crate) fn allow_directory(directory: &Path) {
+  set_directory_denied(directory, false);
+}
+
+#[cfg(unix)]
+fn set_directory_denied(directory: &Path, is_denied: bool) {
+  use std::os::unix::fs::PermissionsExt;
+
+  let mode: u32 = if is_denied { 0o000 } else { 0o755 };
+
+  fs::set_permissions(directory, fs::Permissions::from_mode(mode)).expect("directory mode");
+}
+
+/// Windows has no mode bits, so a deny entry for the running account is what stops this process listing the directory.
+///
+/// A failure is left to the caller's own readability check, because a filesystem that carries no access list refuses
+/// the command and stays readable, which is exactly the case that should skip.
+#[cfg(windows)]
+fn set_directory_denied(directory: &Path, is_denied: bool) {
+  use std::process::{Command, Stdio};
+
+  let user: String = std::env::var("USERNAME").expect("the running account");
+  let rule: [String; 2] = if is_denied {
+    [String::from("/deny"), format!("{user}:(RD)")]
+  } else {
+    [String::from("/remove:d"), user]
+  };
+
+  let _ = Command::new("icacls")
+    .arg(directory)
+    .args(rule)
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .status();
+}
+
 pub(crate) fn open(destination: &Path) -> ArchiveProject {
   ArchiveProject::new(destination).expect("written archive opens")
 }
