@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { EventBus } from "@wirestate/core";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer/index";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
+import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 function mockPackerService(config: ArchivePackConfig = FALLBACK_PACK_CONFIG): PackerService {
@@ -175,5 +177,80 @@ describe("PackerService configuration files", () => {
       path: "C:\\configs\\other.ltx",
       config: service.config,
     });
+  });
+});
+
+describe("PackerService adoption", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  /**
+   * A packer wired the way the application wires one, with its event handlers live.
+   *
+   * Provisioned rather than merely resolved, because what is under test here arrives on the event bus: a service that
+   * was never provisioned is subscribed to nothing and would pass every assertion by doing nothing at all.
+   *
+   * @param listed - What the jobs listing answers, which is how a pack is already running before this window loads.
+   * @returns The packer and its container.
+   */
+  function provisionedPacker(listed: Array<unknown> = []): IInjectedServiceMockDescriptor<PackerService> {
+    setMockInvokeResponses({
+      ["plugin:jobs|list"]: listed,
+      ["plugin:jobs|attach"]: true,
+      ["plugin:archives|default_pack_config"]: FALLBACK_PACK_CONFIG,
+    });
+
+    const descriptor: IInjectedServiceMockDescriptor<PackerService> = mockInjectedService(PackerService);
+
+    descriptor.container.provision();
+
+    return descriptor;
+  }
+
+  it("renders the answer of a pack it never awaited", () => {
+    // The command replied to a page that no longer exists. What the backend retained arrives as an announcement, and
+    // the cast to a pack result belongs here because this is what knows a pack when it sees one.
+    const { service, container }: IInjectedServiceMockDescriptor<PackerService> = provisionedPacker();
+    const result: Partial<ArchivePackResult> = { volumes: ["textures.db0"], filesTotal: 2 };
+
+    container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
+      id: "b8f0",
+      kind: "archives.pack",
+      conclusion: "completed",
+      error: null,
+      result,
+    });
+
+    expect(service.result).toStrictEqual(result);
+  });
+
+  it("leaves another tool's job alone", () => {
+    const { service, container }: IInjectedServiceMockDescriptor<PackerService> = provisionedPacker();
+
+    container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
+      id: "b8f0",
+      kind: "archives.unpack",
+      conclusion: "completed",
+      error: null,
+      result: { extracted: 4 },
+    });
+
+    expect(service.result).toBeNull();
+  });
+
+  it("shows why a pack it never awaited failed", () => {
+    const { service, container }: IInjectedServiceMockDescriptor<PackerService> = provisionedPacker();
+
+    container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
+      id: "b8f0",
+      kind: "archives.pack",
+      conclusion: "failed",
+      error: "volume cap refuses particles.xr",
+      result: null,
+    });
+
+    expect(service.result).toBeNull();
+    expect(service.error).toBe("volume cap refuses particles.xr");
   });
 });

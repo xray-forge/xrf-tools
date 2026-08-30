@@ -1,21 +1,16 @@
 import { Channel } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { jobsCommands } from "@/core/bindings/commands/jobs";
 import { JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { transformError } from "@/core/error/lib";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
-import {
-  IJobDescriptor,
-  IJobRun,
-  IJobSettledPayload,
-  IJobState,
-  JOB_SETTLED_EVENT,
-} from "@/core/jobs/lib/jobs-types";
+import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib/jobs-types";
 import { emitNotification } from "@/core/notifications/lib";
 import { Logger } from "@/lib/logging";
+import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -47,13 +42,17 @@ export class JobsService {
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
     this.log.info("Provisioning:", provisionId);
-    await this.adoptRunningJobs();
+
+    await flowResult(this.adoptRunningJobs());
   }
 
   @OnDeprovision()
   public onDeprovision(provisionId: ProvisionId): void {
     this.log.info("Deprovisioning:", provisionId);
 
+    // An adoption still in flight belongs to the provision that is ending. Letting it land would take jobs over on
+    // behalf of a window that has gone, and start a timer nothing would ever stop.
+    cancelFlow(this, "jobs");
     this.stopWatchingAdopted();
   }
 
@@ -140,10 +139,7 @@ export class JobsService {
   private onStarted(id: string, kind: string): void {
     // No request: the tool that started this has its own arguments, and echoing them back through the backend would
     // be a second copy of the truth for the one case that does not need it.
-    this.jobs = [
-      ...this.jobs,
-      { id, kind, progress: null, request: null, isCancelRequested: false, isAdopted: false },
-    ];
+    this.jobs = [...this.jobs, { id, kind, progress: null, request: null, isCancelRequested: false, isAdopted: false }];
   }
 
   /**
@@ -152,8 +148,9 @@ export class JobsService {
    * Failure is not reported: a listing this window could not read is a worse reason to interrupt a start-up than the
    * jobs it would have described, and the lease still prevents a duplicate from doing damage.
    */
-  private async adoptRunningJobs(): Promise<void> {
-    const listed: Array<JobDescription> = await this.listJobs();
+  @LatestFlow("jobs")
+  private *adoptRunningJobs(): TFlow {
+    const listed: Array<JobDescription> = yield* call(this.listJobs());
     const running: Array<JobDescription> = listed.filter((job: JobDescription) => job.conclusion === null);
 
     if (!running.length) {
@@ -164,9 +161,9 @@ export class JobsService {
 
     this.onAdopted(running);
 
-    for (const job of running) {
-      void this.attachTo(job.id);
-    }
+    // Awaited rather than left running, so provisioning finishes with this window actually watching. It also keeps the
+    // attaches inside the lane: a provision superseded here stops before it can point a job at a page that is going.
+    yield* all(running.map((job: JobDescription) => this.attachTo(job.id)));
 
     this.startWatchingAdopted();
   }
@@ -208,8 +205,9 @@ export class JobsService {
    * through a channel, and a listing can lag those by up to one emission interval - merging the two would let a
    * running bar go backwards.
    */
-  private async pollAdoptedJobs(): Promise<void> {
-    const listed: Array<JobDescription> = await this.listJobs();
+  @LatestFlow()
+  private *pollAdoptedJobs(): TFlow {
+    const listed: Array<JobDescription> = yield* call(this.listJobs());
     const byId: Map<string, JobDescription> = new Map(listed.map((job: JobDescription) => [job.id, job]));
 
     for (const job of this.jobs.filter((it: IJobState) => it.isAdopted)) {

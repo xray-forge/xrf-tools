@@ -19,6 +19,9 @@ const ATTACH_COMMAND: string = "plugin:jobs|attach";
 /** How long the service waits between asking an adopted job where it has got to. */
 const POLL_INTERVAL: number = 1000;
 
+/** A listing slow enough that a test can provision again while it is still in the air. */
+const SLOW_LISTING: number = 50;
+
 function described(patch: Partial<JobDescription> = {}): JobDescription {
   return {
     id: "b8f0",
@@ -27,6 +30,7 @@ function described(patch: Partial<JobDescription> = {}): JobDescription {
     isCancelRequested: false,
     progress: null,
     conclusion: null,
+    request: null,
     error: null,
     result: null,
     duration: 1000,
@@ -205,6 +209,45 @@ describe("JobsService adoption", () => {
     expect(settled[0].error).toBe("volume cap refuses particles.xr");
   });
 
+  it("drops an adoption the window that asked for it no longer wants", async () => {
+    // Deprovisioning ends the provision that sent the listing. Letting the answer land would take jobs over on behalf
+    // of a window that has gone, and start a timer nothing is left to stop.
+    setMockInvokeResponses({
+      [LIST_COMMAND]: () => new Promise((resolve) => setTimeout(() => resolve([described()]), SLOW_LISTING)),
+      [ATTACH_COMMAND]: true,
+    });
+
+    const { service } = watched();
+
+    void service.onProvision(1);
+
+    service.onDeprovision(1);
+
+    await jest.advanceTimersByTimeAsync(SLOW_LISTING);
+
+    expect(service.jobs).toHaveLength(0);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("lets the newest provision own the adoption when an older one is still asking", async () => {
+    // Two listings in the air at once is what a reload during start-up produces, and what strict mode produces on
+    // every mount. The older answer must not adopt behind the newer one.
+    setMockInvokeResponses({
+      [LIST_COMMAND]: () => new Promise((resolve) => setTimeout(() => resolve([described()]), SLOW_LISTING)),
+      [ATTACH_COMMAND]: true,
+    });
+
+    const { service } = watched();
+
+    void service.onProvision(1);
+    void service.onProvision(2);
+
+    await jest.advanceTimersByTimeAsync(SLOW_LISTING);
+
+    expect(service.jobs).toHaveLength(1);
+    expect(service.getJob("b8f0")?.isAdopted).toBe(true);
+  });
+
   it("adopts one job once when the same service is provisioned twice", async () => {
     // What React strict mode does on every mount in development: the provider deprovisions and provisions again, and
     // the container it retains hands back the same service. Two entries for one run would draw two bars over one pack.
@@ -227,6 +270,21 @@ describe("JobsService adoption", () => {
     await service.onProvision(1);
 
     expect(service.jobs).toHaveLength(0);
+  });
+
+  it("carries what an adopted job was asked to do", async () => {
+    // The arguments live nowhere else once the page that sent them is gone, and a bar with no subject cannot say which
+    // of two packs the user is looking at.
+    setMockInvokeResponses({
+      [LIST_COMMAND]: [described({ request: { source: "c:\\gamedata", destination: "c:\\out" } })],
+      [ATTACH_COMMAND]: true,
+    });
+
+    const { service } = watched();
+
+    await service.onProvision(1);
+
+    expect(service.getJob("b8f0")?.request).toEqual({ source: "c:\\gamedata", destination: "c:\\out" });
   });
 
   it("lets a tool re-attach to an adopted job by kind", async () => {
