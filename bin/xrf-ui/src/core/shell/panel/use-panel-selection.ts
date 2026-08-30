@@ -1,38 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/panel/context";
-import { PANEL } from "@/core/theme/tokens";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
 
-export interface IPanelSlot {
+export interface IPanelSelection {
   activePanel: Nullable<IEditorPanel>;
   activePanelId: Nullable<string>;
-  width: number;
-  onResize: (width: number) => void;
   onTogglePanel: (id: string) => void;
 }
 
-function readWidth(side: TEditorPanelSide): number {
-  const stored: Nullable<string> = getLocalStorageValue(`xrf.panels.${side}.width`);
-  const parsed: number = stored === null ? NaN : Number(stored);
-
-  return Number.isFinite(parsed) ? Math.min(PANEL.maxWidth, Math.max(PANEL.minWidth, parsed)) : PANEL.defaultWidth;
-}
-
 /**
- * Manages the active panel and width for one side of the frame.
+ * Manages which panel is open on one side of the frame.
  *
- * @param side - Frame side managed by the slot.
+ * @param side - Frame side managed by the selection.
  * @param panels - Panels available on that side.
  * @param selectionScope - Stable scope used to persist the active panel.
- * @returns The resolved panel, width, and update callbacks.
+ * @returns The resolved panel and its toggle.
  */
-export function usePanelSlot(side: TEditorPanelSide, panels: Array<IEditorPanel>, selectionScope: string): IPanelSlot {
+export function usePanelSelection(
+  side: TEditorPanelSide,
+  panels: Array<IEditorPanel>,
+  selectionScope: string
+): IPanelSelection {
   const storageKey: string = `xrf.panels.${side}.${selectionScope}`;
 
   const [activeId, setActiveId] = useState<Nullable<string>>(null);
-  const [width, setWidth] = useState<number>(() => readWidth(side));
 
   const defaultPanelId: Nullable<string> = panels.find((panel) => panel.isOpenByDefault !== false)?.id ?? null;
 
@@ -40,14 +33,6 @@ export function usePanelSlot(side: TEditorPanelSide, panels: Array<IEditorPanel>
     activeId === null ? defaultPanelId : panels.some((panel) => panel.id === activeId) ? activeId : null;
 
   const activePanel: Nullable<IEditorPanel> = panels.find((panel) => panel.id === resolvedPanelId) ?? null;
-
-  const onResize = useCallback(
-    (next: number) => {
-      setWidth(next);
-      setLocalStorageValue(`xrf.panels.${side}.width`, String(next));
-    },
-    [side]
-  );
 
   const onTogglePanel = useCallback(
     (id: string) => {
@@ -63,5 +48,5 @@ export function usePanelSlot(side: TEditorPanelSide, panels: Array<IEditorPanel>
     setActiveId(getLocalStorageValue(storageKey));
   }, [storageKey]);
 
-  return { activePanel, activePanelId: resolvedPanelId, onResize, onTogglePanel, width };
+  return { activePanel, activePanelId: resolvedPanelId, onTogglePanel };
 }

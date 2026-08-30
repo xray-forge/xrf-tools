@@ -2,7 +2,6 @@ import { Box } from "@mui/material";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/panel/context";
-import { PANEL } from "@/core/theme/tokens";
 
 export interface IPanelResizerProps {
   side: TEditorPanelSide;
@@ -37,7 +36,7 @@ export function PanelResizer({ side, width, onResize }: IPanelResizerProps): Rea
       // The left panel grows as the cursor moves right; the right panel grows as it moves left.
       const delta: number = (event.clientX - origin.current.x) * (side === "left" ? 1 : -1);
 
-      onResize(Math.min(PANEL.maxWidth, Math.max(PANEL.minWidth, origin.current.width + delta)));
+      onResize(origin.current.width + delta);
     },
     [onResize, side]
   );

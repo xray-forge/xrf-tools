@@ -19,6 +19,19 @@ function EditorWithPanel({ name }: { name: string }): ReactElement {
   return <div>{name} editor</div>;
 }
 
+/** Stands in for an editor that browses on the left and inspects on the right, as the dialogs editor does. */
+function EditorWithBothPanels(): ReactElement {
+  useEditorPanels(
+    () => [
+      { icon: <span>t</span>, id: "tree", label: "Tree", render: () => <div>tree panel</div>, side: "left" },
+      { icon: <span>i</span>, id: "inspector", label: "Inspector", render: () => <div>inspector panel</div> },
+    ],
+    []
+  );
+
+  return <div>both editor</div>;
+}
+
 function EditorWithRouter(): ReactElement {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -51,6 +64,8 @@ describe("ApplicationShellFrame", () => {
   beforeEach(() => {
     // The frame remembers which panel was open, so a leftover choice would decide the next test.
     window.localStorage.clear();
+    // The narrowest window the app supports, where the ratio binds and the fixed maximum never did.
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
   });
 
   it("offers the notification centre even when the active editor declares no panels", () => {
@@ -99,6 +114,35 @@ describe("ApplicationShellFrame", () => {
 
     expect(queryByText(/Nothing has been reported yet/)).not.toBeInTheDocument();
     expect(queryByText("Bones panel")).not.toBeInTheDocument();
+  });
+
+  it("renders a lone panel at the window budget rather than its stored width", () => {
+    window.localStorage.setItem("xrf.panels.right.width", "640");
+
+    const { getByTestId } = renderFrame(<EditorWithPanel name={"Bones"} />);
+
+    expect(getByTestId("application-panel-slot-right")).toHaveStyle({ minWidth: "450px", width: "450px" });
+  });
+
+  it("splits the budget so two open panels leave the content room", () => {
+    window.localStorage.setItem("xrf.panels.left.width", "640");
+    window.localStorage.setItem("xrf.panels.right.width", "640");
+
+    const { getByTestId } = renderFrame(<EditorWithBothPanels />);
+
+    expect(getByTestId("application-panel-slot-left")).toHaveStyle({ width: "225px" });
+    expect(getByTestId("application-panel-slot-right")).toHaveStyle({ width: "225px" });
+  });
+
+  it("returns the closed panel's share to the one still open", async () => {
+    window.localStorage.setItem("xrf.panels.left.width", "640");
+    window.localStorage.setItem("xrf.panels.right.width", "640");
+
+    const { getByLabelText, getByTestId } = renderFrame(<EditorWithBothPanels />);
+
+    await userEvent.click(getByLabelText("Inspector"));
+
+    expect(getByTestId("application-panel-slot-left")).toHaveStyle({ width: "450px" });
   });
 
   it("restores the global right-panel selection", () => {

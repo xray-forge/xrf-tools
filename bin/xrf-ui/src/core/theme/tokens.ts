@@ -68,6 +68,8 @@ export const PANEL = {
   defaultWidth: 300,
   minWidth: 200,
   maxWidth: 640,
+  /** Share of the window every open panel may occupy together, so the content keeps the rest. */
+  maxWidthRatio: 0.5,
 } as const;
 
 export const ACCENT = {
