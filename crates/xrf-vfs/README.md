@@ -38,9 +38,9 @@ let bytes: Vec<u8> = vfs.read_bytes("configs\\system.ltx")?;
 - **Mount** — one source (a loose directory or a `.db` volume set) at a logical base. `XrayVfs` searches its mounts in
   order; the first mount holding a path wins and shadows the rest.
 - **Mode** — `XrayMountMode` says how a caller's path becomes mounts: `Auto` detects an installation at exactly the
-  given path, `Directory` forces a loose root, `Installation` requires an `fsgame.ltx`, and `ContainingInstallation`
-  searches upward for one. Every tool surface exposes this same vocabulary, so `--source` means the same thing
-  everywhere.
+  given path, `Directory` forces a loose root, `Volumes` mounts every `.db` volume beneath the path rather than only
+  the ones directly under it, `Installation` requires an `fsgame.ltx`, and `ContainingInstallation` searches upward for
+  one. Every tool surface exposes this same vocabulary, so `--source` means the same thing everywhere.
 - **Plan** — `XrayMountPlan` is the inspectable list of sources a mode decided to mount, before anything is opened.
   Reach for it only to inspect or chain plans; `XrayVfs::open` plans and mounts in one call.
 - **Scope** — `XrayLookupScope` narrows where one lookup may look: which mounts, and which logical subtree. Lookups on

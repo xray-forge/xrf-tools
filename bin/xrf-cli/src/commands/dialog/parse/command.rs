@@ -38,11 +38,11 @@ impl GenericCommand for ParseCommand {
       .arg(
         Arg::new("source")
           .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, installation requires one, containing-installation searches parent directories for one",
+            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, volumes mounts every archive volume beneath it, installation requires one, containing-installation searches parent directories for one",
           )
           .long("source")
           .default_value("containing-installation")
-          .value_parser(["auto", "directory", "installation", "containing-installation"]),
+          .value_parser(["auto", "directory", "volumes", "installation", "containing-installation"]),
       )
       .arg(
         Arg::new("prefix")

@@ -78,6 +78,10 @@ export const archivesCommands = {
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", { prefix, destination }),
   getProject: () =>
     __TAURI_INVOKE<{
+      /**
+       * Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
+       * search them in reverse to resolve an entry to the bytes this project's table names.
+       */
       archives: Array<ArchiveDescriptor>;
       files: { [key in string]: ArchiveFileDescriptor };
       readPolicy: ArchiveProjectReadPolicy;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
-import { createRoots } from "@/core/assets/lib";
+import { createRoot } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -24,8 +24,12 @@ const DESCRIPTOR: AssetTextureDescriptor = {
   shape: { width: 256, height: 256, mipmapLevels: 9, format: "DXT5" },
 };
 
-/** The roots an archive project mounts, which both media calls have to name identically. */
-const ROOTS: XrayRoots = createRoots(["C:\\game\\database"]);
+/**
+ * The roots an archive project mounts, which both media calls have to name identically.
+ *
+ * Read as `volumes`, so a volume in a subdirectory of the project root is searched too.
+ */
+const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
 
 const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 

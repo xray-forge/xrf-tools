@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayMountMode, XrayProbeStep, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayMountMode, XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackMode};
 use crate::pack::archive_pack_result::ArchivePackResult;
@@ -103,6 +103,54 @@ fn a_named_volume_is_searched_as_a_root() {
 
   // The directory holding both is a wider root on purpose, and is what a directory-opened project still mounts.
   assert!(find(sibling.parent().expect("volume parent"), "configs\\second.ltx"));
+}
+
+#[test]
+fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
+  // The explorer discovers volumes recursively and then mounts the project's root to preview an entry. Planned as one
+  // shallow volume set, that root sees only the volumes directly under it, and every entry stored deeper is listed,
+  // sized and extractable but previews as missing.
+  let scope: &str = "a_volume_in_a_subdirectory_is_read_through_the_project_root";
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  pack_volume(scope, "shaders", &[("shaders\\r1\\clouds.vs", CONFIG)]);
+
+  // Moved below the root the way an installation stores its own: `db\textures\textures.db0` beside `db\shaders.db0`.
+  let packed: PathBuf = pack_volume(scope, "textures", &[("textures\\act.dds", BINARY)]);
+  let nested: PathBuf = destination.join("textures");
+
+  fs::create_dir_all(&nested).expect("volume subdirectory");
+  fs::rename(&packed, nested.join(packed.file_name().expect("volume name"))).expect("volume moves");
+
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(project.archives.len(), 2, "both volumes belong to the project");
+  assert_eq!(project.root, destination);
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let steps: Vec<XrayProbeStep> = XrayRoots::one(project.root.display().to_string(), XrayMountMode::Volumes)
+    .to_probe_plan()
+    .expect("roots plan")
+    .mount_into(&mut vfs)
+    .expect("plan mounts");
+  let probe: XrayProbe = vfs.probe().with_steps(steps);
+
+  for name in ["shaders\\r1\\clouds.vs", "textures\\act.dds"] {
+    let asset: XrayAsset = probe
+      .find(name)
+      .expect("lookup succeeds")
+      .get_asset()
+      .cloned()
+      .unwrap_or_else(|| panic!("'{name}' is listed by the project, so it must resolve through its root"));
+
+    assert_eq!(
+      probe.read_asset_bytes(&asset).expect("asset reads"),
+      read(&project, name),
+      "'{name}' reads the same bytes through the root and through the project"
+    );
+  }
 }
 
 #[test]

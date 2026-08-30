@@ -90,6 +90,18 @@ export type XrayMountMode =
   | "auto"
   /** Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it. */
   | "directory"
+  /**
+   * Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own.
+   *
+   * What the engine does for a path declared with `recurs = true`: `CLocatorAPI::ProcessOne` hands any `.db*` or
+   * `.xdb*` file it meets to `ProcessArchive`, including one `Recurse` found in a subdirectory
+   * (`xray-16/src/xrCore/LocatorAPI.cpp`). `Auto` is the `recurs = false` half of the same rule, which is how Anomaly
+   * declares `$arch_dir$` and each of its subdirectories.
+   *
+   * Name it for a path a person picked rather than one `fsgame.ltx` declared, where a listing already read that path
+   * recursively and every entry it lists must be readable back.
+   */
+  | "volumes"
   /** Require the path to declare an installation, and mount everything it declares. */
   | "installation"
   /** Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`. */

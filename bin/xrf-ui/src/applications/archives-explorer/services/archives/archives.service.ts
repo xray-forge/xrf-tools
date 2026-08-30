@@ -2,6 +2,7 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import {
+  createArchiveRoots,
   getArchivePreviewSupport,
   isArchiveAudio,
   isArchiveImage,
@@ -10,7 +11,6 @@ import {
   TArchiveOperation,
   TArchiveSelection,
 } from "@/core/archive";
-import { createRoots } from "@/core/assets/lib";
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
@@ -91,16 +91,6 @@ export class ArchivesService {
   @Computed()
   public get isWriting(): boolean {
     return this.operation.isLoading;
-  }
-
-  /**
-   * The roots an archived asset is read out of, which is the project's own tree.
-   *
-   * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
-   * root are the whole roots. The same spec the model preview mounts, so both reach one set of bytes.
-   */
-  private getAssetRoots(project: ArchiveProject): XrayRoots {
-    return createRoots([project.root]);
   }
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
@@ -392,7 +382,7 @@ export class ArchivesService {
    * @returns The sound's description and its bytes as stored.
    */
   private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = this.getAssetRoots(project);
+    const roots: XrayRoots = createArchiveRoots(project);
 
     const [audio, bytes] = await Promise.all([
       archivesCommands.describeAudio(roots, descriptor.name),
@@ -413,7 +403,7 @@ export class ArchivesService {
    * @returns The texture's shape and the decoded png bytes.
    */
   private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = this.getAssetRoots(project);
+    const roots: XrayRoots = createArchiveRoots(project);
 
     const [texture, bytes] = await Promise.all([
       archivesCommands.describeImage(roots, descriptor.name),

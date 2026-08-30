@@ -55,6 +55,10 @@ export type ArchiveFileDescriptor = {
  * Later volumes win the merge, so a patch volume shadows the entry it replaces.
  */
 export type ArchiveProject = {
+  /**
+   * Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
+   * search them in reverse to resolve an entry to the bytes this project's table names.
+   */
   archives: Array<ArchiveDescriptor>;
   files: { [key in string]: ArchiveFileDescriptor };
   readPolicy: ArchiveProjectReadPolicy;

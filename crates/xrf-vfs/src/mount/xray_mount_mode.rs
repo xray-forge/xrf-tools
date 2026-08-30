@@ -23,6 +23,16 @@ pub enum XrayMountMode {
   Auto,
   /// Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it.
   Directory,
+  /// Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own.
+  ///
+  /// What the engine does for a path declared with `recurs = true`: `CLocatorAPI::ProcessOne` hands any `.db*` or
+  /// `.xdb*` file it meets to `ProcessArchive`, including one `Recurse` found in a subdirectory
+  /// (`xray-16/src/xrCore/LocatorAPI.cpp`). `Auto` is the `recurs = false` half of the same rule, which is how Anomaly
+  /// declares `$arch_dir$` and each of its subdirectories.
+  ///
+  /// Name it for a path a person picked rather than one `fsgame.ltx` declared, where a listing already read that path
+  /// recursively and every entry it lists must be readable back.
+  Volumes,
   /// Require the path to declare an installation, and mount everything it declares.
   Installation,
   /// Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`.
@@ -46,6 +56,7 @@ impl XrayMountMode {
       // the fsgame planner already avoids when it meets the same directory through a declaration.
       Self::Auto => XrayRootKind::of(path).plan(path),
       Self::Directory => XrayMountPlan::root(path),
+      Self::Volumes => XrayMountPlan::nested_volumes(path),
       Self::Installation => XrayMountPlan::from_fsgame(path),
       Self::ContainingInstallation => {
         if Self::declares_installation(path) {
@@ -71,6 +82,7 @@ impl Display for XrayMountMode {
     formatter.write_str(match self {
       Self::Auto => "auto",
       Self::Directory => "directory",
+      Self::Volumes => "volumes",
       Self::Installation => "installation",
       Self::ContainingInstallation => "containing-installation",
     })
@@ -84,10 +96,11 @@ impl TryFrom<&str> for XrayMountMode {
     match value {
       "auto" => Ok(Self::Auto),
       "directory" => Ok(Self::Directory),
+      "volumes" => Ok(Self::Volumes),
       "installation" => Ok(Self::Installation),
       "containing-installation" => Ok(Self::ContainingInstallation),
       other => Err(xrf_error::XrfError::new_asset_error(format!(
-        "unknown source mode '{other}', expected auto, directory, installation or containing-installation"
+        "unknown source mode '{other}', expected auto, directory, volumes, installation or containing-installation"
       ))),
     }
   }
@@ -108,6 +121,8 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+  use crate::XraySourceKind;
 
   use super::XrayMountMode;
 
@@ -134,7 +149,10 @@ mod tests {
     fs::create_dir_all(&root).expect("volumes root");
 
     for name in names {
-      fs::write(root.join(name), []).expect("volume");
+      let volume: PathBuf = root.join(name);
+
+      fs::create_dir_all(volume.parent().expect("volume parent")).expect("volume directory");
+      fs::write(volume, []).expect("volume");
     }
 
     root
@@ -183,6 +201,65 @@ mod tests {
     assert_eq!(plan.len(), 1);
     assert_eq!(plan.get_mounts()[0].origin, "volumes");
     assert_eq!(plan.get_mounts()[0].path, root);
+  }
+
+  #[test]
+  fn auto_leaves_a_volume_below_the_directory_unmounted() {
+    // Non-recursive on purpose: `fsgame.ltx` declares each volume directory separately, so a declared alias means the
+    // volumes directly under it. `Volumes` is the mode for a path a person named instead.
+    let root: PathBuf = volumes("auto_nested_volume", &["gamedata.db0", "textures/textures.db1"]);
+
+    let plan = XrayMountMode::Auto.plan(&root).expect("plan");
+
+    assert_eq!(plan.len(), 1);
+    assert_eq!(plan.get_mounts()[0].path, root);
+  }
+
+  #[test]
+  fn volumes_mounts_every_volume_beneath_the_directory() {
+    // What an archive project lists is what this must reach, and it lists recursively.
+    let root: PathBuf = volumes(
+      "volumes_nested",
+      &["gamedata.db0", "textures/textures.db1", "patches/xpatch.db"],
+    );
+
+    let plan = XrayMountMode::Volumes.plan(&root).expect("plan");
+    let paths: Vec<PathBuf> = plan.get_mounts().iter().map(|mount| mount.path.clone()).collect();
+
+    // Reverse of the order the project merges them in, which is the name order `Recurse` registers them in: no
+    // directory is special, so the volume its name table names answers the lookup.
+    assert_eq!(
+      paths,
+      vec![
+        root.join("textures").join("textures.db1"),
+        root.join("patches").join("xpatch.db"),
+        root.join("gamedata.db0"),
+      ]
+    );
+    assert!(
+      plan
+        .get_mounts()
+        .iter()
+        .all(|mount| mount.kind == XraySourceKind::Archive && mount.base.is_empty())
+    );
+  }
+
+  #[test]
+  fn volumes_mounts_a_named_volume_as_itself() {
+    let root: PathBuf = volumes("volumes_named", &["gamedata.db0", "textures.db1"]);
+    let volume: PathBuf = root.join("gamedata.db0");
+
+    let plan = XrayMountMode::Volumes.plan(&volume).expect("plan");
+
+    assert_eq!(plan.len(), 1);
+    assert_eq!(plan.get_mounts()[0].path, volume);
+  }
+
+  #[test]
+  fn volumes_plans_nothing_where_there_are_none() {
+    let root: PathBuf = volumes("volumes_absent", &["readme.txt"]);
+
+    assert!(XrayMountMode::Volumes.plan(&root).expect("plan").is_empty());
   }
 
   #[test]
@@ -235,6 +312,7 @@ mod tests {
     for mode in [
       XrayMountMode::Auto,
       XrayMountMode::Directory,
+      XrayMountMode::Volumes,
       XrayMountMode::Installation,
       XrayMountMode::ContainingInstallation,
     ] {

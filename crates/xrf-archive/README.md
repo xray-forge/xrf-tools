@@ -8,7 +8,9 @@ below both. Prefer those crates unless you are working on the format itself — 
 all live in `xrf-vfs`.
 
 `ArchiveProject` is the entry point: it merges a volume set into a single name table with the later volume winning,
-matching how the engine registers archives, and volumes under a `patches` directory winning over everything.
+matching how the engine registers archives. Volumes merge in path order, which is the name-sorted depth-first order
+`CLocatorAPI::Recurse` walks a directory in; no directory is special to it. Precedence *between* archive directories is
+their `fsgame.ltx` declaration order, which `xrf-vfs` applies when it plans an installation.
 
 ```rust,no_run
 use xrf_archive::ArchiveProject;

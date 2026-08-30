@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { createRoots } from "@/core/assets/lib";
+import { createArchiveRoots } from "@/core/archive";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -32,18 +32,17 @@ export function ArchiveModelPreview({
   const loadService: VisualLoadService = useInjection(VisualLoadService);
 
   const project: Nullable<ArchiveProject> = archivesService.project.value;
-  const root: Nullable<string> = project?.root ?? null;
   const visual: Loadable<Nullable<IOpenVisual>> = loadService.visual;
 
   const [cameraResetToken, setCameraResetToken] = useState(0);
 
   useEffect(() => {
-    if (root) {
-      void loadService.load({ kind: "asset", logicalPath: name }, createRoots([root]));
+    if (project) {
+      void loadService.load({ kind: "asset", logicalPath: name }, createArchiveRoots(project));
     }
 
     return () => loadService.clear();
-  }, [loadService, name, root]);
+  }, [loadService, name, project]);
 
   // Refit once the model is on screen. The scene fits its camera when the geometry lands, but this viewport mounts with
   // the selection rather than with the application, so at that moment the panel is still taking its width - and a fit

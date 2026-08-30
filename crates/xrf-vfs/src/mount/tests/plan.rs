@@ -15,16 +15,32 @@ $game_data$         = true  | true  | $fs_root$   | gamedata\\
 $game_meshes$       = true  | true  | $game_data$ | meshes\\
 ";
 
+/// One archive alias, declared the way Anomaly declares `$arch_dir$`: the volumes the directory itself holds.
+const ARCH_DIR_FSGAME: &str = "\
+$arch_dir$  = false | false | $fs_root$ | db\\
+$game_data$ = true  | true  | $fs_root$ | gamedata\\
+";
+
+/// The same alias asking the engine to descend, which is what `recurs = true` means to `Recurse`.
+const RECURSIVE_ARCH_DIR_FSGAME: &str = "\
+$arch_dir$  = true | false | $fs_root$ | db\\
+$game_data$ = true | true  | $fs_root$ | gamedata\\
+";
+
 /// Builds an installation on disk, since a plan is decided by what is actually there.
 ///
 /// `files` are paths relative to the installation, so a caller writes `db\\textures\\textures.db0` to place a volume.
 fn install(name: &str, files: &[&str]) -> PathBuf {
+  install_with(name, FSGAME, files)
+}
+
+fn install_with(name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_plan/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 
   fs::create_dir_all(&root).expect("install root");
-  fs::write(root.join("fsgame.ltx"), FSGAME).expect("fsgame written");
+  fs::write(root.join("fsgame.ltx"), fsgame).expect("fsgame written");
 
   for file in files {
     let path: PathBuf = root.join(file.replace('\\', "/"));
@@ -40,6 +56,21 @@ fn plan(name: &str, files: &[&str]) -> XrayMountPlan {
   let root: PathBuf = install(name, files);
 
   XrayMountPlan::from_fsgame(&root).expect("fsgame plans")
+}
+
+/// Archive mount paths relative to the installation, so an assertion names what was declared rather than a scratch path.
+fn archive_paths<'plan>(plan: &'plan XrayMountPlan, root: &Path) -> Vec<&'plan Path> {
+  plan
+    .get_mounts()
+    .iter()
+    .filter(|mount| mount.kind == XraySourceKind::Archive)
+    .map(|mount| {
+      mount
+        .path
+        .strip_prefix(root)
+        .expect("mount sits inside the installation")
+    })
+    .collect()
 }
 
 #[test]
@@ -65,6 +96,38 @@ fn plans_a_directory_of_volumes_as_an_archive() {
   assert_eq!(plan.len(), 1);
   assert_eq!(plan.get_mounts()[0].kind, XraySourceKind::Archive);
   assert!(plan.get_mounts()[0].path.ends_with("textures"));
+}
+
+#[test]
+fn a_declaration_reads_its_volumes_as_deep_as_its_recurs_column_says() {
+  // The first fsgame column decides whether `Recurse` descends, and `ProcessOne` archives any `.db*` file it reaches.
+  // Anomaly declares `$arch_dir$` non-recursively, so a subdirectory volume belongs to whichever alias declares it -
+  // but an installation asking for recursion must get the deeper volumes from the one alias.
+  let volumes: [&str; 2] = ["db\\files.db0", "db\\textures\\textures.db0"];
+
+  let shallow_root: PathBuf = install_with("recurs_false", ARCH_DIR_FSGAME, &volumes);
+  let deep_root: PathBuf = install_with("recurs_true", RECURSIVE_ARCH_DIR_FSGAME, &volumes);
+
+  let shallow: XrayMountPlan = XrayMountPlan::from_fsgame(&shallow_root).expect("fsgame plans");
+  let deep: XrayMountPlan = XrayMountPlan::from_fsgame(&deep_root).expect("fsgame plans");
+
+  assert_eq!(
+    archive_paths(&shallow, &shallow_root),
+    vec![Path::new("db")],
+    "a non-recursive alias is one mount over the directory it names"
+  );
+
+  // Reversed into search order, so the entry the merged name table would name is the one that answers.
+  assert_eq!(
+    archive_paths(&deep, &deep_root),
+    vec![Path::new("db\\textures\\textures.db0"), Path::new("db\\files.db0")]
+  );
+  assert!(
+    deep
+      .get_mounts()
+      .iter()
+      .all(|mount| mount.origin == "$arch_dir$" || mount.origin == "$game_data$")
+  );
 }
 
 #[test]

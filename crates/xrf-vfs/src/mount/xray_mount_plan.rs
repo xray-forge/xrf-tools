@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_archive::ArchiveDescriptor;
+use xrf_archive::{ArchiveDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
@@ -127,10 +127,43 @@ impl XrayMountPlan {
     Self::new().with_kind(path, "", "volumes", XraySourceKind::Archive)
   }
 
+  /// Plans every volume beneath a path, one archive mount each, highest priority first.
+  ///
+  /// The recursive half of [`Self::volumes`], which is the engine's own `recurs = true` scan: `CLocatorAPI::ProcessOne`
+  /// registers any `.db*` or `.xdb*` file `Recurse` reaches, at any depth. [`ArchiveProject::new`] discovers volumes the
+  /// same way, so a caller listing a directory and then mounting it to read one entry back gets the identical volume
+  /// set instead of a tree offering files the read cannot reach.
+  ///
+  /// One mount per volume rather than one for the set, because search order is the only precedence a plan has:
+  /// reversing the order the project merges its name table in makes a lookup answer out of the volume that table
+  /// names.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a mount cannot be planned at the root base.
+  pub fn nested_volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
+    Self::new().with_volumes_beneath(path.as_ref(), "volumes")
+  }
+
+  /// Appends one archive mount per volume beneath `path`, highest priority first.
+  ///
+  /// Reversed, because [`ArchiveProject`] returns them in merge order — later wins — while a plan resolves out of the
+  /// first mount holding a path.
+  fn with_volumes_beneath(self, path: &Path, origin: &str) -> XrfResult<Self> {
+    let mut plan: Self = self;
+
+    for volume in ArchiveProject::discover_volumes(path).into_iter().rev() {
+      plan = plan.with_kind(volume, "", origin, XraySourceKind::Archive)?;
+    }
+
+    Ok(plan)
+  }
+
   /// Plans a whole installation from its `fsgame.ltx`.
   ///
   /// The plan includes the existing `$game_data$` directory and existing declared directories that directly contain a
-  /// file whose extension starts with `db`. Other declared directories are omitted.
+  /// file whose extension starts with `db`. Other declared directories are omitted. A declaration's `recurs` column
+  /// decides how deep its volumes are read, the way it decides whether the engine's own scan descends.
   ///
   /// # Errors
   ///
@@ -167,8 +200,19 @@ impl XrayMountPlan {
         continue;
       }
 
+      // A recursive alias reaches volumes a subdirectory holds, because `ProcessOne` archives any `.db*` file
+      // `Recurse` descends onto. Anomaly declares every `$arch_dir*$` with `recurs = false`, which stops at the
+      // directory itself and is the branch below.
+      //
+      // Still gated on the volumes the directory holds itself, which is cheap. Asking whether any recursive alias has
+      // a volume somewhere beneath it would walk each declared gamedata subtree on every mount, and such an alias is
+      // already absent from the plan for holding no volumes at all.
       if Self::holds_volumes(&path) {
-        plan = plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?;
+        plan = if declaration.is_recursive {
+          plan.with_volumes_beneath(&path, &declaration.alias)?
+        } else {
+          plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?
+        };
       }
     }
 

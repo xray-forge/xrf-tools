@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
-import { createRoots } from "@/core/assets/lib";
+import { createRoot } from "@/core/assets/lib";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -25,8 +25,12 @@ const DESCRIPTOR: AudioDescriptor = {
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
 };
 
-/** The roots an archive project mounts, which both media calls have to name identically. */
-const ROOTS: XrayRoots = createRoots(["C:\\game\\database"]);
+/**
+ * The roots an archive project mounts, which both media calls have to name identically.
+ *
+ * Read as `volumes`, so a volume in a subdirectory of the project root is searched too.
+ */
+const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
 
 const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 
