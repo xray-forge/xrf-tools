@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+mod emission_gate;
 mod job_handle;
 mod job_outcome;
 mod job_progress;

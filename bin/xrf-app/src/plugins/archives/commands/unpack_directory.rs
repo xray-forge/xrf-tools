@@ -12,7 +12,7 @@ use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use crate::core::error::error_to_string;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::to_unpack_lease_key;
+use crate::plugins::archives::lease::{UNPACK_JOB_KIND, to_unpack_lease_key};
 
 /// What an unpack was asked to do, for a window that has to describe a run it did not start.
 ///
@@ -47,7 +47,7 @@ pub async fn archives_unpack_directory(
   // Before the hop, never inside it: registering in the blocking closure leaves a window where a second request sees
   // no holder and both write the same tree.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, "archives.unpack")
+    JobStart::new(job_id, UNPACK_JOB_KIND)
       .with_lease_keys(vec![to_unpack_lease_key(&destination)])
       .with_request(&ArchiveUnpackRequest {
         source: &source,

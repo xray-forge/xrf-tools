@@ -1,9 +1,10 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::emission_gate::EmissionGate;
 use crate::job_progress::JobProgress;
 use crate::job_scope::{JobScope, LevelState};
 use crate::progress_level::ProgressLevel;
@@ -20,17 +21,15 @@ pub const DEFAULT_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 
 /// Everything one job run shares, however many threads are doing its work.
 pub(crate) struct JobState {
-  started_at: Instant,
   sink: Arc<dyn ProgressSink>,
   /// False for an inert job, which skips the whole emission path rather than reporting into a sink that discards.
   is_reporting: bool,
-  interval: Duration,
+  /// When the run started, and which thread may report right now.
+  gate: EmissionGate,
   cancelled: AtomicBool,
   /// The active stack, outermost first. Written on enter and leave, read only when a snapshot is actually being built.
   levels: RwLock<Vec<Arc<LevelState>>>,
   detail: RwLock<Option<String>>,
-  /// Milliseconds since `started_at` at the last emission, and the claim one thread wins to emit.
-  last_emit: AtomicU64,
 }
 
 /// A job's progress and its cancellation, as one thing an operation is handed.
@@ -57,14 +56,12 @@ impl JobHandle {
   pub fn with_interval(sink: Arc<dyn ProgressSink>, interval: Duration) -> Self {
     Self {
       state: Arc::new(JobState {
-        started_at: Instant::now(),
         sink,
         is_reporting: true,
-        interval,
+        gate: EmissionGate::new(interval),
         cancelled: AtomicBool::new(false),
         levels: RwLock::new(Vec::new()),
         detail: RwLock::new(None),
-        last_emit: AtomicU64::new(0),
       }),
     }
   }
@@ -76,14 +73,12 @@ impl JobHandle {
   pub fn inert() -> Self {
     Self {
       state: Arc::new(JobState {
-        started_at: Instant::now(),
         sink: Arc::new(NoopSink),
         is_reporting: false,
-        interval: DEFAULT_PROGRESS_INTERVAL,
+        gate: EmissionGate::new(DEFAULT_PROGRESS_INTERVAL),
         cancelled: AtomicBool::new(false),
         levels: RwLock::new(Vec::new()),
         detail: RwLock::new(None),
-        last_emit: AtomicU64::new(0),
       }),
     }
   }
@@ -140,7 +135,7 @@ impl JobHandle {
 
   /// How long the run has taken so far.
   pub fn elapsed(&self) -> Duration {
-    self.state.started_at.elapsed()
+    self.state.gate.elapsed()
   }
 
   /// What a watcher would be told right now, whether or not an emission is due.
@@ -211,47 +206,15 @@ impl JobState {
     }
   }
 
-  /// One unit was counted somewhere; decide whether that is worth saying.
-  ///
-  /// The clock is read per unit rather than every so many of them. A counter in front of it would save that read, but
-  /// it would also make the reporting rate a function of how many units an operation has: ten large files over three
-  /// minutes would report once and then sit still until the next phase, which is precisely the frozen bar this exists
-  /// to remove. The read is tens of nanoseconds against work measured in microseconds at best, and the expensive part
-  /// — claiming the emission — is still reached only once an interval has actually passed.
+  /// One unit was counted somewhere; report it where the gate says this thread is the one to.
   pub(crate) fn on_unit(&self) {
     if !self.is_reporting {
       return;
     }
 
-    // A zero interval says everything, which is what a test asserting the sequence asks for. It skips the claim too:
-    // with no interval to enforce, a losing thread would silently drop a snapshot the test is waiting for.
-    if self.interval.is_zero() {
-      return self.report();
+    if self.gate.is_immediate() || self.gate.claim() {
+      self.report();
     }
-
-    self.emit_if_due();
-  }
-
-  /// Emit if the interval has passed and this thread is the one that claims it.
-  fn emit_if_due(&self) {
-    let elapsed: u64 = self.started_at.elapsed().as_millis() as u64;
-    let last: u64 = self.last_emit.load(Ordering::Relaxed);
-
-    if elapsed.saturating_sub(last) < self.interval.as_millis() as u64 {
-      return;
-    }
-
-    // Whoever wins the exchange emits; whoever loses has nothing to add, because the winner is about to describe the
-    // same stack. Losing is the common case under a pool and must stay cheap.
-    if self
-      .last_emit
-      .compare_exchange(last, elapsed, Ordering::AcqRel, Ordering::Relaxed)
-      .is_err()
-    {
-      return;
-    }
-
-    self.report();
   }
 
   /// Emit now, regardless of the interval.
@@ -260,10 +223,7 @@ impl JobState {
       return;
     }
 
-    self
-      .last_emit
-      .store(self.started_at.elapsed().as_millis() as u64, Ordering::Relaxed);
-
+    self.gate.stamp();
     self.report();
   }
 
@@ -286,7 +246,7 @@ impl JobState {
         .iter()
         .map(|level| level.describe())
         .collect::<Vec<ProgressLevel>>(),
-      duration: self.started_at.elapsed(),
+      duration: self.gate.elapsed(),
       detail: self.detail.read().unwrap_or_else(PoisonError::into_inner).clone(),
     }
   }

@@ -2,6 +2,7 @@
 
 mod job_conclusion;
 mod job_description;
+mod job_leases;
 mod job_progress_sink;
 mod job_registry;
 mod job_start;

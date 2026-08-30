@@ -1,5 +1,4 @@
 use crate::job_progress::JobProgress;
-use crate::progress_level::ProgressLevel;
 use crate::progress_sink::ProgressSink;
 
 /// Writes each snapshot as a log line.
@@ -29,12 +28,5 @@ impl ProgressSink for LoggingSink {
       // A count with nothing to compare it against, which is what an uncountable phase honestly has.
       None => log::info!("{path}: {}", deepest.completed),
     }
-  }
-}
-
-impl LoggingSink {
-  /// The deepest level of a snapshot, which is the one whose counts are moving.
-  pub fn get_active_level(progress: &JobProgress) -> Option<&ProgressLevel> {
-    progress.levels.last()
   }
 }

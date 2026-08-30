@@ -11,6 +11,7 @@ use xrf_job::{JobHandle, JobProgress, ProgressSink};
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
+use crate::core::jobs::job_leases::JobLeases;
 use crate::core::jobs::job_progress_sink::JobProgressSink;
 use crate::core::jobs::job_start::JobStart;
 use crate::core::types::TauriResult;
@@ -47,6 +48,32 @@ struct LiveJob {
   is_cancel_requested: bool,
 }
 
+impl LiveJob {
+  /// This job as the listing describes it: running where `ending` is absent, and finished where it is.
+  ///
+  /// One shape for both, because the listing shows one list and a job crossing from running to finished should change
+  /// its fields rather than the code that builds them.
+  fn describe(&self, id: Uuid, ending: Option<JobEnding>) -> JobDescription {
+    let (conclusion, error, result) = match ending {
+      Some(ending) => (Some(ending.conclusion), ending.error, ending.result),
+      None => (None, None, None),
+    };
+
+    JobDescription {
+      id,
+      kind: self.kind.clone(),
+      lease_keys: self.lease_keys.clone(),
+      request: self.request.clone(),
+      is_cancel_requested: self.is_cancel_requested,
+      progress: self.handle.get_progress(),
+      conclusion,
+      error,
+      result,
+      duration: self.started_at.elapsed(),
+    }
+  }
+}
+
 /// How a job ended, as the run itself reported it.
 struct JobEnding {
   conclusion: JobConclusion,
@@ -60,8 +87,7 @@ struct JobEnding {
 
 struct RegistryState {
   live: HashMap<Uuid, LiveJob>,
-  /// Lease key to the job holding it, so a refusal can name what refused it.
-  leases: HashMap<String, Uuid>,
+  leases: JobLeases,
   finished: VecDeque<JobDescription>,
   /// Cancels that arrived before the job they name, newest last.
   tombstones: VecDeque<Uuid>,
@@ -80,19 +106,18 @@ impl JobRegistry {
     Self {
       state: Mutex::new(RegistryState {
         live: HashMap::new(),
-        leases: HashMap::new(),
+        leases: JobLeases::default(),
         finished: VecDeque::new(),
         tombstones: VecDeque::new(),
       }),
     }
   }
 
-  /// Take `lease_keys` for `id` and start reporting it as running.
+  /// Take the job's lease keys and start reporting it as running.
   ///
-  /// All the keys or none of them: a job that took some and failed on the rest would leave the ones it took held by
-  /// nobody. A key already held refuses the whole registration, naming the holder — never joins it, because two
-  /// requests for one destination can carry different configurations, and handing the second caller the first
-  /// caller's result would report a success for work nobody asked for.
+  /// A key already held refuses the whole registration, naming the holder — never joins it, because two requests for
+  /// one destination can carry different configurations, and handing the second caller the first caller's result would
+  /// report a success for work nobody asked for. What holding a key means is `JobLeases`.
   ///
   /// Call this before moving the work onto a blocking thread. Registering inside the closure leaves a window in which
   /// a second request sees no holder and both proceed, which is the race the lease exists to close.
@@ -120,8 +145,8 @@ impl JobRegistry {
     let handle: JobHandle = JobHandle::new(reporting);
     let mut state: MutexGuard<RegistryState> = self.lock();
 
-    if let Some(taken) = lease_keys.iter().find(|key| state.leases.contains_key(*key)) {
-      let holder: Option<&LiveJob> = state.leases.get(taken).and_then(|owner| state.live.get(owner));
+    if let Some(taken) = state.leases.get_taken(&lease_keys) {
+      let holder: Option<&LiveJob> = state.leases.get_holder(taken).and_then(|owner| state.live.get(&owner));
 
       return Err(format!(
         "Cannot start {kind}: {} is already working on '{taken}'.",
@@ -136,9 +161,7 @@ impl JobRegistry {
       handle.cancel();
     }
 
-    for key in &lease_keys {
-      state.leases.insert(key.clone(), id);
-    }
+    state.leases.take(id, &lease_keys);
 
     let is_cancel_requested: bool = handle.is_cancelled();
 
@@ -218,22 +241,7 @@ impl JobRegistry {
   /// Every job, running first and newest finished after them.
   pub fn list(&self) -> Vec<JobDescription> {
     let state: MutexGuard<RegistryState> = self.lock();
-    let mut running: Vec<JobDescription> = state
-      .live
-      .iter()
-      .map(|(id, job)| JobDescription {
-        id: *id,
-        kind: job.kind.clone(),
-        lease_keys: job.lease_keys.clone(),
-        request: job.request.clone(),
-        is_cancel_requested: job.is_cancel_requested,
-        progress: job.handle.get_progress(),
-        conclusion: None,
-        error: None,
-        result: None,
-        duration: job.started_at.elapsed(),
-      })
-      .collect();
+    let mut running: Vec<JobDescription> = state.live.iter().map(|(id, job)| job.describe(*id, None)).collect();
 
     // A map has no order of its own, and a listing that reshuffled itself on every read would be unreadable.
     // Longest-running first, so the job somebody is most likely looking for does not move as shorter ones come and go.
@@ -251,26 +259,8 @@ impl JobRegistry {
       return;
     };
 
-    for key in &job.lease_keys {
-      // Only where this job still holds it. Removing by key alone would let a job's teardown release a lease a later
-      // job had already taken, which is worse than never having held one.
-      if state.leases.get(key) == Some(&id) {
-        state.leases.remove(key);
-      }
-    }
-
-    state.finished.push_back(JobDescription {
-      id,
-      kind: job.kind,
-      lease_keys: job.lease_keys,
-      request: job.request,
-      is_cancel_requested: job.is_cancel_requested,
-      progress: job.handle.get_progress(),
-      conclusion: Some(ending.conclusion),
-      error: ending.error,
-      result: ending.result,
-      duration: job.started_at.elapsed(),
-    });
+    state.leases.release(id, &job.lease_keys);
+    state.finished.push_back(job.describe(id, Some(ending)));
 
     while state.finished.len() > RETAINED_JOBS {
       state.finished.pop_front();

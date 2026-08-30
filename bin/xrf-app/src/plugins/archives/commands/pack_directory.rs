@@ -10,7 +10,7 @@ use xrf_utils::format_path;
 use crate::core::error::error_to_string;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::to_pack_lease_key;
+use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
 
 /// Pack a directory into archive volumes from a configuration held by the caller.
 ///
@@ -36,7 +36,7 @@ pub async fn archives_pack_directory(
   );
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, "archives.pack")
+    JobStart::new(job_id, PACK_JOB_KIND)
       .with_lease_keys(vec![to_pack_lease_key(&config)])
       .with_request(&config)
       .with_progress(progress),

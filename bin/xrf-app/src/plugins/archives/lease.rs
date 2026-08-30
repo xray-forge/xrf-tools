@@ -8,6 +8,16 @@ use std::path::{Path, PathBuf};
 
 use xrf_pack::ArchivePackConfig;
 
+/// What a pack registers itself as, and the prefix of every lease it takes.
+///
+/// One constant for both, because a kind that was spelled once for the registry and again inside a key would let the
+/// two drift while every test still passed: the registry does not read a key, and nothing else compares them. The
+/// frontend spells the same strings in `EJobKind`, which is the wire contract this side owns.
+pub const PACK_JOB_KIND: &str = "archives.pack";
+
+/// What an unpack registers itself as, and the prefix of every lease it takes.
+pub const UNPACK_JOB_KIND: &str = "archives.unpack";
+
 /// The destination a pack would publish to, as a lease key.
 ///
 /// Both the directory and the volume basename, because a destination directory can legitimately hold several named
@@ -21,7 +31,7 @@ use xrf_pack::ArchivePackConfig;
 /// not, which is the narrow gap this leaves open.
 pub fn to_pack_lease_key(config: &ArchivePackConfig) -> String {
   format!(
-    "archives.pack:{}|{}",
+    "{PACK_JOB_KIND}:{}|{}",
     to_comparable_path(&config.destination),
     config.name.to_lowercase()
   )
@@ -32,7 +42,7 @@ pub fn to_pack_lease_key(config: &ArchivePackConfig) -> String {
 /// The root alone: an unpack writes the whole archive layout beneath it, so two runs sharing a destination overlap
 /// whatever they were asked to extract.
 pub fn to_unpack_lease_key(destination: &Path) -> String {
-  format!("archives.unpack:{}", to_comparable_path(destination))
+  format!("{UNPACK_JOB_KIND}:{}", to_comparable_path(destination))
 }
 
 /// One spelling of a path, for comparing two of them.
