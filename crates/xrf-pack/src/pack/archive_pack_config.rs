@@ -96,6 +96,9 @@ pub struct ArchivePackConfig {
   /// Verbatim `[header]` text written as chunk 666.
   pub header: Option<String>,
   pub mode: ArchivePackMode,
+  /// Hard maximum for a produced volume file, counting every byte it holds: chunk headers, header text, payloads as
+  /// they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
+  /// than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
   pub max_volume_size: u64,
   pub volume_extension: ArchiveVolumeExtension,
 }

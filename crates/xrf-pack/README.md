@@ -20,7 +20,7 @@ let packed = ArchivePacker::pack(&config)?;
 // Unpack a volume set back into a directory. Unpacking is synchronous and builds a pool of the given size, so a
 // caller on an async executor runs the whole call on a blocking thread. One worker is a sequential run.
 let project: ArchiveProject = ArchiveProject::new("C:\\Games\\Anomaly\\db")?;
-let unpacked = ArchiveUnpacker::unpack(&project, "C:\\work\\unpacked", ArchiveUnpacker::default_concurrency())?;
+let unpacked = ArchiveUnpacker::unpack(&project, "C:\\work\\unpacked", ArchiveUnpacker::get_default_concurrency())?;
 
 println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.archives.len());
 # Ok(())
@@ -29,4 +29,15 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
 
 Volumes are written with a mountable `[header]` by default: a headerless archive not named `xdb` is assumed by the
 engine to be an encrypted Shadow of Chernobyl archive and decrypts into nonsense, so the harmless case is the default.
-Volume size is capped at the engine's `XRP_MAX_SIZE`.
+
+`max_volume_size` is a hard maximum on each finished volume file and is itself capped at the engine's `XRP_MAX_SIZE`.
+Every byte counts against it: the header chunk, the data chunk, each payload as it is actually stored, and the
+descriptor chunk appended at the end. This is stricter than the `XRP_TARGET_SIZE` of xrCompress, which only tests the
+position reached before the next file and is therefore overshot by that file and by everything written after it.
+
+A cap the packer cannot keep is refused rather than exceeded, with no oversized-volume exception:
+
+- A cap with no room for one volume's chunk headers, header text, and directory rows plus a single entry is rejected
+  before anything is written.
+- An entry whose payload and descriptor row do not fit an otherwise empty volume is rejected, naming the file and the
+  volume size it would have needed. Raise the cap, drop the file, or store it loose.
