@@ -3,7 +3,7 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { ACCENT, DIVIDER, LAYOUT, RADIUS, STATUS, SURFACE, TEXT } from "@/core/theme/tokens";
+import { ACCENT, DIVIDER, LAYOUT, MONOSPACE, RADIUS, STATUS, SURFACE, TEXT } from "@/core/theme/tokens";
 
 type ColorScheme = "light" | "dark";
 
@@ -166,7 +166,7 @@ export function createApplicationTheme(): Theme {
             border: "none",
             // Opt-in per column: identifiers, paths and file positions are compared by eye and read
             // badly in proportional type.
-            "& .monospace": { fontFamily: "'Cascadia Mono', 'Consolas', monospace", fontSize: "0.75rem" },
+            "& .monospace": MONOSPACE,
           },
         },
       },

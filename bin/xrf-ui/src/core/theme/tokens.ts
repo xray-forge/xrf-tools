@@ -72,6 +72,18 @@ export const PANEL = {
   maxWidthRatio: 0.5,
 } as const;
 
+/**
+ * Text compared by eye rather than read as prose: identifiers, engine paths, archive entry names, file positions.
+ *
+ * One definition, because the theme's `.monospace` class and the surfaces that style their own rows have to agree - a
+ * path in a panel and the same path in a grid cell that disagree on size read as two different kinds of thing. The
+ * size is smaller than `body2` on purpose: these strings are long, and a panel is narrow.
+ */
+export const MONOSPACE = {
+  fontFamily: "'Cascadia Mono', 'Consolas', monospace",
+  fontSize: "0.75rem",
+} as const;
+
 export const ACCENT = {
   primary: {
     main: { light: "#8a5e0c", dark: "#ffb51a" },
