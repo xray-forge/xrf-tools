@@ -52,6 +52,11 @@ fn install_with(name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
   root
 }
 
+/// The mirror of `install`: a path written the way fsgame writes it, rebuilt with this platform's separator.
+fn declared(path: &str) -> PathBuf {
+  path.split('\\').collect()
+}
+
 fn plan(name: &str, files: &[&str]) -> XrayMountPlan {
   let root: PathBuf = install(name, files);
 
@@ -113,14 +118,14 @@ fn a_declaration_reads_its_volumes_as_deep_as_its_recurs_column_says() {
 
   assert_eq!(
     archive_paths(&shallow, &shallow_root),
-    vec![Path::new("db")],
+    vec![declared("db")],
     "a non-recursive alias is one mount over the directory it names"
   );
 
   // Reversed into search order, so the entry the merged name table would name is the one that answers.
   assert_eq!(
     archive_paths(&deep, &deep_root),
-    vec![Path::new("db\\textures\\textures.db0"), Path::new("db\\files.db0")]
+    vec![declared("db\\textures\\textures.db0"), declared("db\\files.db0")]
   );
   assert!(
     deep
