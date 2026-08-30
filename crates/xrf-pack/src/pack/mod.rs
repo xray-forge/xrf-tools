@@ -3,6 +3,7 @@ pub(crate) mod archive_descriptor_table;
 pub(crate) mod archive_pack_config;
 pub(crate) mod archive_pack_config_rules;
 pub(crate) mod archive_pack_config_write;
+pub(crate) mod archive_pack_options;
 pub(crate) mod archive_pack_result;
 pub(crate) mod archive_pack_source;
 pub(crate) mod archive_packer;

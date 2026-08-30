@@ -17,6 +17,8 @@ import { PackerOutputSection } from "@/applications/archives-packer/components/s
 import { PackerSelectionSection } from "@/applications/archives-packer/components/sections/PackerSelectionSection";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveOutputPath, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
@@ -41,6 +43,8 @@ export function ArchivesPackerApplication(): ReactElement {
 
   const config: Nullable<ArchivePackConfig> = packerService.config;
   const isBusy: boolean = packerService.isBusy;
+
+  const job: Nullable<IJobState> = packerService.job;
 
   const source: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_PACKER,
@@ -160,6 +164,8 @@ export function ArchivesPackerApplication(): ReactElement {
       <Box sx={{ flexGrow: 1, minWidth: 0, overflowY: "auto", p: 3 }}>
         <Stack spacing={2} sx={{ maxWidth: 860 }}>
           {packerService.error ? <Alert severity={"error"}>{packerService.error}</Alert> : null}
+
+          {job ? <JobProgressView job={job} onCancel={packerService.cancel} /> : null}
 
           {packerService.section === EPackerSection.OUTPUT ? (
             <PackerOutputSection

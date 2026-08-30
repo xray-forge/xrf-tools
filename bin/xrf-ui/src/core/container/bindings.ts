@@ -1,5 +1,6 @@
 import { Binding } from "@wirestate/core";
 
+import { JobsService } from "@/core/jobs/services/jobs";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
 import { PathsService } from "@/core/settings/services/paths";
@@ -13,4 +14,5 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   SettingsService,
   NotificationsService,
   ErrorCaptureService,
+  JobsService,
 ];

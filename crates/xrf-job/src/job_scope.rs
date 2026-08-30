@@ -68,7 +68,7 @@ impl JobScope {
   }
 
   /// How far this level has got, which is what a caller reporting its own result asks for.
-  pub fn completed(&self) -> u64 {
+  pub fn get_completed(&self) -> u64 {
     self.level.completed.load(Ordering::Relaxed)
   }
 }

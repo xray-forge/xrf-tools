@@ -1,5 +1,7 @@
 import { jest } from "@jest/globals";
 
+import { Optional } from "@/lib/types/general";
+
 export type InvokeHandler = (args?: Record<string, unknown>) => unknown;
 
 /** Whether tests are running in the mocked desktop runtime. */
@@ -93,3 +95,61 @@ export const mockInvoke = jest.fn(async (command: string, args?: Record<string, 
 
   return handler ?? null;
 });
+
+/**
+ * Channels constructed since the last reset, in creation order.
+ *
+ * A test drives progress by taking the channel a command was handed and calling its `onmessage`, which is exactly what
+ * the backend does through the real transport.
+ */
+const channelState: { created: Array<MockChannel<unknown>> } = { created: [] };
+
+/**
+ * Stand-in for the Tauri IPC channel.
+ *
+ * Carries the same two members production code touches - an id assigned on construction and a settable `onmessage` -
+ * so a service that builds one, hands it over, and routes what arrives behaves here as it does in the desktop app.
+ */
+export class MockChannel<T> {
+  public static nextId: number = 0;
+
+  public id: number;
+  public onmessage: (message: T) => void = () => {};
+
+  public constructor(onmessage?: (message: T) => void) {
+    this.id = ++MockChannel.nextId;
+
+    if (onmessage) {
+      this.onmessage = onmessage;
+    }
+
+    channelState.created.push(this as MockChannel<unknown>);
+  }
+}
+
+/**
+ * @returns Channels constructed since the last reset, in creation order.
+ */
+export function getMockChannels(): Array<MockChannel<unknown>> {
+  return channelState.created;
+}
+
+/**
+ * Delivers a message through the most recently constructed channel.
+ *
+ * @param message - Payload to deliver.
+ */
+export function emitMockChannelMessage(message: unknown): void {
+  const channel: Optional<MockChannel<unknown>> = channelState.created.at(-1);
+
+  if (!channel) {
+    throw new Error("No channel has been constructed to deliver a message through.");
+  }
+
+  channel.onmessage(message);
+}
+
+/** Forgets every channel a test constructed. */
+export function resetMockChannels(): void {
+  channelState.created = [];
+}

@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
+import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import {
@@ -10,6 +10,7 @@ import {
   ArchiveProjectReadPolicy,
   ProjectReadResult,
 } from "@/core/bindings/types/xrf-archive";
+import { JobProgress } from "@/core/bindings/types/xrf-job";
 import {
   ArchiveExtractDirectoryResult,
   ArchiveExtractResult,
@@ -111,10 +112,21 @@ export const archivesCommands = {
    *
    * Takes the whole configuration rather than a file path, so the editor packs exactly what is on screen
    * without having to save it first.
+   *
+   * Holds its destination exclusively for the whole run, so a second request for the same output set is refused rather
+   * than allowed to truncate the volumes this one is writing. A cancelled run answers with a result naming every volume
+   * path it opened: those files exist and are incomplete, and nothing removes them.
    */
-  packDirectory: (config: ArchivePackConfig) =>
-    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config }),
+  packDirectory: (config: ArchivePackConfig, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config, jobId, progress }),
   readFile: (path: string) => __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { path }),
-  unpackDirectory: (from: string, destination: string) =>
-    __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { from, destination }),
+  /**
+   * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
+   *
+   * A cancelled run answers with a result rather than an error. It leaves the files it had already written where they
+   * are — deleting them is not an option, because the destination may have held the user's own files and nothing here
+   * can tell those apart from this run's — so the caller needs the counts to say what is now on disk.
+   */
+  unpackDirectory: (from: string, destination: string, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { from, destination, jobId, progress }),
 };

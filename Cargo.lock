@@ -7163,6 +7163,7 @@ dependencies = [
  "xrf-error",
  "xrf-export",
  "xrf-gamedata",
+ "xrf-job",
  "xrf-ltx",
  "xrf-output",
  "xrf-pack",
@@ -7291,6 +7292,8 @@ dependencies = [
 name = "xrf-job"
 version = "0.1.0"
 dependencies = [
+ "criterion",
+ "log",
  "serde",
  "specta",
  "xrf-error",
@@ -7348,6 +7351,7 @@ dependencies = [
  "walkdir",
  "xrf-archive",
  "xrf-error",
+ "xrf-job",
  "xrf-ltx",
  "xrf-lzhuf",
  "xrf-test-utils",

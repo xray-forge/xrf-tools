@@ -17,10 +17,11 @@ let config: ArchivePackConfig = ArchivePackConfig::new("C:\\work\\gamedata", "C:
   .with_ltx_file("C:\\work\\pack.ltx")?;
 let packed = ArchivePacker::pack(&config)?;
 
-// Unpack a volume set back into a directory. Unpacking is synchronous and builds a pool of the given size, so a
-// caller on an async executor runs the whole call on a blocking thread. One worker is a sequential run.
+// Unpack a volume set back into a directory. Unpacking is synchronous and builds a pool of its own, so a caller on an
+// async executor runs the whole call on a blocking thread. `unpack_opt` bounds the pool, reports progress, and makes
+// the run cancellable; one worker is a sequential run.
 let project: ArchiveProject = ArchiveProject::new("C:\\Games\\Anomaly\\db")?;
-let unpacked = ArchiveUnpacker::unpack(&project, "C:\\work\\unpacked", ArchiveUnpacker::get_default_concurrency())?;
+let unpacked = ArchiveUnpacker::unpack(&project, "C:\\work\\unpacked")?;
 
 println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.archives.len());
 # Ok(())

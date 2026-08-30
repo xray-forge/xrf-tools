@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use xrf_archive::ArchiveProject;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
-use crate::ArchiveUnpacker;
+use crate::{ArchiveUnpackOptions, ArchiveUnpacker};
 
 /// One worker: the smallest pool that runs at all, and the sequential unpack the crate no longer spells separately.
 const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
@@ -25,7 +25,7 @@ fn unpack_preserves_empty_files_and_directories() {
   );
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
+  ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).expect("unpack");
 
   assert!(out.join("configs").join("empty").is_dir());
   assert_eq!(
@@ -65,7 +65,8 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   });
 
   let out: PathBuf = directory.join(OsStr::from_bytes(b"out\xff"));
-  let result: ArchiveUnpackResult = ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
+  let result: ArchiveUnpackResult =
+    ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).expect("unpack");
 
   // The write really did complete: the panic used to happen after this file was already on disk.
   assert_eq!(
@@ -89,7 +90,7 @@ fn unpack_writes_a_file_on_a_single_worker_without_a_runtime() {
   let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack(&project, &out, ONE).expect("unpack");
+  ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).expect("unpack");
 
   assert_eq!(
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
@@ -114,7 +115,7 @@ fn unpack_writes_every_entry_across_several_workers() {
   );
   let out: PathBuf = directory.join("out");
 
-  ArchiveUnpacker::unpack(&project, &out, TWO).expect("unpack");
+  ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(TWO)).expect("unpack");
 
   assert!(out.join("configs").join("empty").is_dir());
   assert_eq!(

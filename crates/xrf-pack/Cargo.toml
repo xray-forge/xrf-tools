@@ -18,6 +18,7 @@ specta = { workspace = true, optional = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-error = { workspace = true }
+xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-lzhuf = { workspace = true }
 xrf-utils = { workspace = true }
@@ -29,7 +30,7 @@ xrf-vfs = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta", "xrf-archive/typescript-bindings"]
+typescript-bindings = ["specta", "xrf-archive/typescript-bindings", "xrf-job/typescript-bindings"]
 
 [lints]
 workspace = true

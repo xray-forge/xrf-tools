@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { JobOutcome } from "@/core/bindings/types/xrf-job";
+
 /** What extracting one archived directory produced. */
 export type ArchiveExtractDirectoryResult = {
   prefix: string;
@@ -78,8 +80,29 @@ export type ArchivePackMode =
 
 /** What one packing run produced. */
 export type ArchivePackResult = {
-  /** Volumes written, in mount order. */
+  /**
+   * Volumes written, in mount order.
+   *
+   * A volume appears here once it has been closed, so on a run that stopped early this is the part of the set that
+   * is structurally complete — not the part that is usable, since a set missing its later volumes is missing entries.
+   */
   volumes: Array<string>;
+  /**
+   * Every volume path this run created, closed or not.
+   *
+   * Wider than `volumes` on purpose. A volume is opened with `File::create`, so it exists — and has replaced whatever
+   * stood at that path — from the moment writing begins. A run that stopped leaves the last one unfinished and absent
+   * from `volumes`, and a caller telling the user what is now on disk needs the paths rather than the successes.
+   */
+  volumesOpened: Array<string>;
+  /**
+   * Whether the run reached the end of its work or was stopped between entries.
+   *
+   * A cancelled pack leaves an unusable partial volume set behind and removes nothing: the paths it opened may well
+   * have held a working archive set before it started, and nothing here can tell what this run created from what it
+   * overwrote. Report `volumes_opened` to whoever has to clean up.
+   */
+  outcome: JobOutcome;
   filesTotal: number;
   /** Files the include, exclude, and skip rules left out. */
   filesSkipped: number;
@@ -98,6 +121,9 @@ export type ArchivePackResult = {
  * The two path fields are rendered for a person through `xrf_utils::format_path`, never addresses: a
  * host name that is not valid Unicode renders lossily rather than failing a run whose files are already
  * on disk. A caller that needs to open the destination uses the path it supplied.
+ *
+ * Every count here describes what the run actually did, not what the project holds. That distinction only becomes
+ * visible when a run stops early, which is exactly when a caller most needs the numbers to be true.
  */
 export type ArchiveUnpackResult = {
   /** Volume files that were read, rendered for display. */
@@ -105,7 +131,19 @@ export type ArchiveUnpackResult = {
   duration: number;
   /** Root the files were written under, rendered for display. */
   destination: string;
+  /**
+   * Whether the run reached the end of its work or was stopped at an entry boundary.
+   *
+   * A cancelled run leaves what it had already written where it is: the files below `destination` are a real but
+   * partial tree, and nothing removes them. Read the counts below as what is on disk, never as a total.
+   */
+  outcome: JobOutcome;
+  /** Entries dealt with, directory rows included, which is what the counts are measured against. */
+  filesTotal: number;
+  /** Files actually written. */
+  filesUnpacked: number;
   prepareDuration: number;
+  /** Bytes written, summed from the entries that were written rather than from the project. */
   unpackedSize: number;
   unpackDuration: number;
 };

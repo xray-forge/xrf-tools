@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect } from "react";
 
 import { ArchivesUnpackResult } from "@/applications/archives-unpacker/components/ArchivesUnpackResult";
-import { archivesCommands } from "@/core/bindings/commands/archives";
-import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
-import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
+import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole, resolveOutputPath } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
@@ -16,20 +16,19 @@ import { Nullable } from "@/lib/types/general";
 
 export function ArchivesUnpackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
-  const notify: TEmitNotification = useEmitNotification();
 
   const pathsService: PathsService = useInjection(PathsService);
+  const unpackerService: UnpackerService = useInjection(UnpackerService);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Nullable<string>>(null);
-  const [result, setResult] = useState<Nullable<ArchiveUnpackResult>>(null);
+  const job: Nullable<IJobState> = unpackerService.job;
+  const isRunning: boolean = Boolean(job);
 
   const source: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_UNPACKER,
     id: "source",
     title: "Select archives directory",
     isDirectory: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolveExistingPathRole(EPathRole.ARCHIVES, pathsService.paths),
   });
 
@@ -39,7 +38,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
     title: "Select output directory",
     isDirectory: true,
     isSave: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolveOutputPath(EApplicationId.ARCHIVES_UNPACKER, pathsService.paths),
   });
 
@@ -51,66 +50,43 @@ export function ArchivesUnpackerApplication(): ReactElement {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setResult(null);
-      setError(null);
+    log.info("Unpacking:", archivesPath);
 
-      log.info("Unpacking:", archivesPath);
+    await unpackerService.unpack(archivesPath, archivesUnpackPath);
+  }, [archivesPath, archivesUnpackPath, log, unpackerService]);
 
-      const result: ArchiveUnpackResult = await archivesCommands.unpackDirectory(archivesPath, archivesUnpackPath);
-
-      log.info("Unpacked:", archivesPath);
-
-      setResult(result);
-
-      notify({
-        details: `${archivesPath}\n${archivesUnpackPath}`,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.ARCHIVES_UNPACKER,
-        title: "Unpacked archives",
-      });
-    } catch (error: unknown) {
-      log.error("Unpack error:", error);
-      setError(String(error));
-
-      notify({
-        details: `${archivesPath}\n${String(error)}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_UNPACKER,
-        title: "Could not unpack archives",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [archivesPath, archivesUnpackPath, log, notify]);
+  const onCancel = useCallback(() => unpackerService.cancel(), [unpackerService]);
 
   // Changing either path invalidates whatever the previous run reported.
   useEffect(() => {
-    setError(null);
-    setResult(null);
-  }, [archivesPath, archivesUnpackPath]);
+    unpackerService.reset();
+  }, [archivesPath, archivesUnpackPath, unpackerService]);
 
   return (
     <PickerForm
-      isLoading={isLoading}
+      isLoading={isRunning}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Unpack game archives"}
       description={"Reads every archive in the source directory and writes its files into the output directory."}
-      error={error ?? undefined}
+      error={unpackerService.error ?? undefined}
       submitLabel={"Unpack"}
-      result={result ? <ArchivesUnpackResult result={result} outputPath={archivesUnpackPath} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      result={
+        unpackerService.result ? (
+          <ArchivesUnpackResult result={unpackerService.result} outputPath={archivesUnpackPath} />
+        ) : null
+      }
       onSubmit={onUnpackArchivesPathClicked}
     >
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Source"}
         description={"Directory holding the packed game archives"}
         field={source}
       />
 
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Output"}
         description={"Directory the archives are unpacked into"}
         field={destination}

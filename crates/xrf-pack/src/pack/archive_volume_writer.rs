@@ -143,6 +143,15 @@ impl<'a> ArchiveVolumeWriter<'a> {
     Ok(self.result)
   }
 
+  /// What was written so far, abandoning the volume in progress.
+  ///
+  /// For a run that stopped between entries. The open volume is deliberately not closed: closing it would write a
+  /// descriptor table and produce a structurally valid archive that is missing entries, which is a worse thing to
+  /// leave behind than an obviously unfinished file.
+  pub(crate) fn abandon(self) -> ArchivePackResult {
+    self.result
+  }
+
   /// Make room in a volume for an entry of this size, closing the current one when that is what it takes.
   ///
   /// Closing is the ordinary answer to a full volume. It is not an answer to an entry no empty volume could hold: the
@@ -178,6 +187,10 @@ impl<'a> ArchiveVolumeWriter<'a> {
     self.path = self.config.destination.join(self.config.volume_name(self.volume_index));
     self.aliases.reset();
     self.descriptors.reset();
+
+    // Recorded before the file is created rather than after it is closed: from here on the path exists and has
+    // replaced whatever stood there, so a run that stops has still touched it.
+    self.result.volumes_opened.push(self.path.clone());
 
     let mut file: BufWriter<File> = BufWriter::new(File::create(&self.path)?);
 

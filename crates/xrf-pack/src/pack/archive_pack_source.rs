@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use walkdir::{DirEntry, Error as WalkError, WalkDir};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobHandle, JobScope};
 use xrf_utils::format_path;
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
@@ -38,6 +39,15 @@ impl ArchivePackSource {
   /// Entries come out sorted by name. xrCompress emitted them in filesystem enumeration order; the
   /// engine indexes by name and does not care, and a stable order makes output reproducible.
   pub(crate) fn collect(config: &ArchivePackConfig) -> XrfResult<Self> {
+    Self::collect_opt(config, &JobHandle::inert().enter("collect", None))
+  }
+
+  /// The same walk, counting what it finds against `collecting`.
+  ///
+  /// The total is unknowable here by definition — the walk is what discovers it — so this reports a rising count with
+  /// no denominator rather than inventing one. That is the honest state for a phase that can take minutes on a large
+  /// source tree and is the reason it is worth reporting at all.
+  pub(crate) fn collect_opt(config: &ArchivePackConfig, collecting: &JobScope) -> XrfResult<Self> {
     let mut source: Self = Self::default();
 
     // A config that names nothing packs the whole tree, which is what xrCompress does when handed a
@@ -62,6 +72,10 @@ impl ArchivePackSource {
 
     source.entries.sort_by(|left, right| left.name.cmp(&right.name));
     source.entries.dedup_by(|left, right| left.name == right.name);
+
+    // Counted once the set is known rather than per file found: the walk deduplicates, so a running count would go
+    // down again, and a progress number that goes backwards is worse than one that arrives late.
+    collecting.advance_by(source.entries.len() as u64);
     source.directories.sort();
     source.directories.dedup();
 

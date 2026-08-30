@@ -9,10 +9,18 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "advance"
+harness = false
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

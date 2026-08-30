@@ -53,7 +53,7 @@ fn a_level_counts_its_own_units() {
 
   assert_eq!(last.levels[0].completed, 2);
   assert_eq!(last.levels[0].total, Some(3));
-  assert_eq!(writing.completed(), 2);
+  assert_eq!(writing.get_completed(), 2);
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn the_interval_bounds_how_often_units_are_reported() {
   }
 
   assert_eq!(sink.list_reported().len(), 1);
-  assert_eq!(writing.completed(), 10_000);
+  assert_eq!(writing.get_completed(), 10_000);
 }
 
 #[test]
@@ -296,7 +296,7 @@ fn a_cancellation_check_yields_an_error_that_breaks_a_loop() {
   assert!(matches!(outcome, Err(xrf_error::XrfError::Cancelled { .. })));
 
   // Four entries were finished before the check refused the fifth, and none was left half done.
-  assert_eq!(writing.completed(), 4);
+  assert_eq!(writing.get_completed(), 4);
 }
 
 #[test]
@@ -308,7 +308,7 @@ fn an_inert_job_counts_without_reporting() {
 
   writing.advance();
 
-  assert_eq!(writing.completed(), 1);
+  assert_eq!(writing.get_completed(), 1);
   assert!(!job.is_cancelled());
   assert_eq!(ids(&job.get_progress().expect("a level is entered")), vec!["write"]);
 }

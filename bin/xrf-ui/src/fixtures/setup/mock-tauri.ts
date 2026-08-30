@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-import { mockAppWindow, mockInvoke, mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { mockAppWindow, MockChannel, mockInvoke, mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 
 /**
  * Registers the Tauri API mocks used by jsdom tests.
@@ -10,6 +10,7 @@ export function mockTauri(): void {
     invoke: mockInvoke,
     convertFileSrc: (path: string) => `asset://${path}`,
     isTauri: mockIsTauri,
+    Channel: MockChannel,
   }));
 
   jest.mock("@tauri-apps/api/window", () => ({

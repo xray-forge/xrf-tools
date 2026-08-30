@@ -155,6 +155,13 @@ impl JobHandle {
   }
 }
 
+impl Default for JobHandle {
+  /// A job that reports nowhere, so a caller assembling options without one is not silently given a watcher.
+  fn default() -> Self {
+    Self::inert()
+  }
+}
+
 impl JobState {
   pub(crate) fn enter(state: &Arc<Self>, id: impl Into<String>, total: Option<u64>) -> JobScope {
     Self::enter_with_unit(state, id, total, ProgressUnit::Items)

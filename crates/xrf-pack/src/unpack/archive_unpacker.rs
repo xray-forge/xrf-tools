@@ -3,7 +3,7 @@ use std::fs;
 use std::fs::File;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::thread::available_parallelism;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -12,35 +12,49 @@ use xrf_archive::ArchiveFileDescriptor;
 use xrf_archive::ArchiveProject;
 use xrf_archive::write_descriptor_contents;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
-use crate::unpack::archive_unpack_progress::ArchiveUnpackProgress;
+use crate::unpack::archive_unpack_options::{ArchiveUnpackOptions, UNPACK_PHASE_PREPARE, UNPACK_PHASE_WRITE};
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 use crate::unpack::rooted_destination::RootedDestination;
+
+/// What one unpack run wrote, counted as it went.
+///
+/// Separate from the job's own counters because a job counts units for whoever is watching, while these are what the
+/// result reports: a watcher may not exist, and the numbers still have to be true.
+#[derive(Default)]
+struct UnpackTally {
+  files: AtomicUsize,
+  bytes: AtomicU64,
+}
 
 /// Writes the contents of an archive project back out to a directory.
 pub struct ArchiveUnpacker;
 
 impl ArchiveUnpacker {
   /// Workers an unpack run uses when its caller states no preference.
-  ///
-  /// The host's own parallelism rather than a fixed number, because the count sizes a real thread pool: a value chosen
-  /// for one machine is idle capacity on a larger one and oversubscription on a smaller one. A host that cannot report
-  /// its parallelism unpacks on a single worker, which is slower but never wrong.
   pub fn get_default_concurrency() -> NonZeroUsize {
-    available_parallelism().unwrap_or(NonZeroUsize::MIN)
+    ArchiveUnpackOptions::get_default_concurrency()
   }
 
-  /// Write every file in the project beneath a destination root, up to `concurrency` entries at a time.
+  /// Write every file in the project beneath a destination root, using the host's own parallelism.
+  ///
+  /// The plain door. A caller that wants to bound the run, watch it, or be able to stop it uses [`Self::unpack_opt`].
+  pub fn unpack<P: AsRef<Path>>(project: &ArchiveProject, destination: P) -> XrfResult<ArchiveUnpackResult> {
+    Self::unpack_opt(project, destination, ArchiveUnpackOptions::default())
+  }
+
+  /// Write every file in the project beneath a destination root, as `options` asks.
   ///
   /// Synchronous, and it owns the pool it runs on: nothing below this performs asynchronous I/O, so a caller on an
   /// executor has to move the whole call to a blocking thread rather than expect it to yield. One worker is a
-  /// sequential run, so this is the only unpack entry point.
+  /// sequential run.
   ///
-  /// The count is non-zero because `ThreadPoolBuilder::num_threads(0)` means "decide for me" to Rayon: a zero would
-  /// quietly become one worker per core, which is the opposite of what a caller asking for a bound wants.
+  /// The worker count is non-zero because `ThreadPoolBuilder::num_threads(0)` means "decide for me" to Rayon: a zero
+  /// would quietly become one worker per core, which is the opposite of what a caller asking for a bound wants.
   ///
   /// Names come from the archive, so every write goes through a [`RootedDestination`] and lands below `destination`
   /// even where that tree already exists and holds links.
@@ -49,36 +63,72 @@ impl ArchiveUnpacker {
   /// errors is returned. Which one is unspecified, because entries are dispatched out of a hash table and finish out
   /// of order. Whatever was written stays on disk and the run is still reported as a failure — a partial tree reported
   /// as a success is worse, because nothing downstream can tell that the missing files were never written.
-  pub fn unpack<P: AsRef<Path>>(
+  ///
+  /// Cancellation is the same shape with a different name: the run stops between entries, keeps what it wrote, and
+  /// answers `Ok` carrying counts of what actually landed. It is not a failure, so it does not lose the description
+  /// of the tree it left behind — which is the only way a caller can tell the user what to clean up.
+  pub fn unpack_opt<P: AsRef<Path>>(
     project: &ArchiveProject,
     destination: P,
-    concurrency: NonZeroUsize,
+    options: ArchiveUnpackOptions,
   ) -> XrfResult<ArchiveUnpackResult> {
     let destination: RootedDestination = RootedDestination::new(destination.as_ref());
-    let mut progress: ArchiveUnpackProgress = ArchiveUnpackProgress::begin(project.files.len());
+    let job = &options.job;
+    let tally: UnpackTally = UnpackTally::default();
 
-    Self::unpack_dirs(project, &destination)?;
-    progress.record_prepared();
+    {
+      let preparing: JobScope = job.enter(UNPACK_PHASE_PREPARE, None);
 
-    Self::build_pool(concurrency)?.install(|| {
-      project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
-        // A directory row carries no payload, and the tree it names was created during preparation. It is counted
-        // anyway, so the progress total stays the entry count the project reports holding.
-        if !descriptor.is_directory {
-          Self::unpack_file(&destination, descriptor)?;
-        }
+      Self::unpack_dirs(project, &destination, &preparing)?;
+    }
 
-        progress.record_unpacked();
+    let prepared_at: Duration = job.elapsed();
 
-        Ok(())
-      })
-    })?;
+    {
+      let writing: JobScope = job.enter(UNPACK_PHASE_WRITE, Some(project.files.len() as u64));
 
-    Ok(Self::describe(
+      let outcome: XrfResult = Self::build_pool(options.concurrency)?.install(|| {
+        project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
+          // Before the write rather than after it: a payload already being written cannot be halved without leaving a
+          // truncated file that is indistinguishable from a short one, so the only safe boundary is this one.
+          job.check_cancelled()?;
+
+          // A directory row carries no payload, and the tree it names was created during preparation. It is counted
+          // anyway, so the progress total stays the entry count the project reports holding.
+          if !descriptor.is_directory {
+            Self::unpack_file(&destination, descriptor)?;
+
+            tally.files.fetch_add(1, Ordering::Relaxed);
+            tally
+              .bytes
+              .fetch_add(u64::from(descriptor.size_real), Ordering::Relaxed);
+          }
+
+          writing.advance();
+
+          Ok(())
+        })
+      });
+
+      // The run's own cancellation is control flow, not a failure. Any other error is the caller's to see.
+      if let Err(error) = outcome
+        && !matches!(error, XrfError::Cancelled { .. })
+      {
+        return Err(error);
+      }
+    }
+
+    Ok(Self::describe_result(
       project,
       destination.get_root(),
-      progress.get_prepared_at(),
-      progress.elapsed(),
+      &tally,
+      if job.is_cancelled() {
+        JobOutcome::Cancelled
+      } else {
+        JobOutcome::Completed
+      },
+      prepared_at,
+      job.elapsed(),
     ))
   }
 
@@ -179,9 +229,11 @@ impl ArchiveUnpacker {
       .map_err(|error| XrfError::new_unexpected_error(format!("cannot start {concurrency} unpack worker(s): {error}")))
   }
 
-  fn describe(
+  fn describe_result(
     project: &ArchiveProject,
     destination: &Path,
+    tally: &UnpackTally,
+    outcome: JobOutcome,
     prepared_at: Duration,
     unpacked_at: Duration,
   ) -> ArchiveUnpackResult {
@@ -193,9 +245,12 @@ impl ArchiveUnpacker {
         .collect(),
       destination: format_path(destination).to_string(),
       duration: unpacked_at,
+      outcome,
+      files_total: project.files.len(),
+      files_unpacked: tally.files.load(Ordering::Relaxed),
       prepare_duration: prepared_at,
       unpack_duration: unpacked_at.saturating_sub(prepared_at),
-      unpacked_size: project.get_real_size(),
+      unpacked_size: tally.bytes.load(Ordering::Relaxed),
     }
   }
 
@@ -217,7 +272,7 @@ impl ArchiveUnpacker {
     )
   }
 
-  fn unpack_dirs(project: &ArchiveProject, destination: &RootedDestination) -> XrfResult {
+  fn unpack_dirs(project: &ArchiveProject, destination: &RootedDestination, preparing: &JobScope) -> XrfResult {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
     for descriptor in project.files.values() {
@@ -236,6 +291,8 @@ impl ArchiveUnpacker {
 
     for path in set {
       destination.create_directory(&path)?;
+
+      preparing.advance();
     }
 
     Ok(())
