@@ -1,26 +1,24 @@
 import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
-import { IJobOutcome } from "@/core/jobs/lib";
-import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
  * What the notification centre says when a pack ends.
  *
  * @param config - Configuration the run was given.
  * @param outcome - How the run ended.
- * @returns The notification to record.
+ * @returns What to record about it.
  */
 export function describePackOutcome(
   config: ArchivePackConfig,
   outcome: IJobOutcome<ArchivePackResult>
-): INotificationPayload {
+): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {
     return {
       details: [config.source, error.message].join("\n"),
       severity: ENotificationSeverity.ERROR,
-      source: EApplicationId.ARCHIVES_PACKER,
       title: "Could not pack archives",
     };
   }
@@ -32,7 +30,6 @@ export function describePackOutcome(
         ...result.volumesOpened,
       ].join("\n"),
       severity: ENotificationSeverity.WARNING,
-      source: EApplicationId.ARCHIVES_PACKER,
       title: "Stopped packing archives",
     };
   }
@@ -40,7 +37,6 @@ export function describePackOutcome(
   return {
     details: [config.source, config.destination].join("\n"),
     severity: ENotificationSeverity.SUCCESS,
-    source: EApplicationId.ARCHIVES_PACKER,
     title: "Packed archives",
   };
 }

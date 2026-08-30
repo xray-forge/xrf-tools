@@ -1,7 +1,6 @@
 import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
-import { IJobOutcome } from "@/core/jobs/lib";
-import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
  * What the notification centre says when an unpack ends.
@@ -15,20 +14,19 @@ import { EApplicationId } from "@/core/routing/application";
  * @param source - Directory the archives were read from.
  * @param destination - Directory they were written into.
  * @param outcome - How the run ended.
- * @returns The notification to record.
+ * @returns What to record about it.
  */
 export function describeUnpackOutcome(
   source: string,
   destination: string,
   outcome: IJobOutcome<ArchiveUnpackResult>
-): INotificationPayload {
+): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {
     return {
       details: [source, error.message].join("\n"),
       severity: ENotificationSeverity.ERROR,
-      source: EApplicationId.ARCHIVES_UNPACKER,
       title: "Could not unpack archives",
     };
   }
@@ -41,7 +39,6 @@ export function describeUnpackOutcome(
         destination,
       ].join("\n"),
       severity: ENotificationSeverity.INFO,
-      source: EApplicationId.ARCHIVES_UNPACKER,
       title: "Stopped unpacking archives",
     };
   }
@@ -49,7 +46,6 @@ export function describeUnpackOutcome(
   return {
     details: [source, destination].join("\n"),
     severity: ENotificationSeverity.SUCCESS,
-    source: EApplicationId.ARCHIVES_UNPACKER,
     title: "Unpacked archives",
   };
 }

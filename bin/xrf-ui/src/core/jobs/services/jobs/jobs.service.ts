@@ -7,7 +7,16 @@ import { JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { transformError } from "@/core/error/lib";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
-import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib/jobs-types";
+import { EJobKind, findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
+import {
+  IJobDescriptor,
+  IJobNotice,
+  IJobOutcome,
+  IJobRun,
+  IJobSettledPayload,
+  IJobState,
+  JOB_SETTLED_EVENT,
+} from "@/core/jobs/lib/jobs-types";
 import { emitNotification } from "@/core/notifications/lib";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -123,7 +132,7 @@ export class JobsService {
    * @param kind - Kind of work to look for.
    * @returns The running job of that kind, or null.
    */
-  public getJobOfKind(kind: string): Nullable<IJobState> {
+  public getJobOfKind(kind: EJobKind): Nullable<IJobState> {
     return this.jobs.find((job: IJobState) => job.kind === kind) ?? null;
   }
 
@@ -313,7 +322,7 @@ export class JobsService {
     this.jobs = this.jobs.filter((it: IJobState) => it.id !== job.id);
     this.attached.delete(job.id);
 
-    emitNotification(this.eventBus, describeAdoptedOutcome(job, conclusion, error));
+    this.announce(job.kind, describeAdoptedOutcome(job, conclusion, error));
 
     this.eventBus.emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: job.id,
@@ -343,9 +352,22 @@ export class JobsService {
 
     this.jobs = this.jobs.filter((it: IJobState) => it.id !== id);
 
-    emitNotification(this.eventBus, {
-      ...descriptor.describe({ isCancelRequested: Boolean(job?.isCancelRequested), result, error }),
-      source: descriptor.source,
-    });
+    const outcome: IJobOutcome<T> = { isCancelRequested: Boolean(job?.isCancelRequested), result, error };
+
+    this.announce(descriptor.kind, descriptor.describe(outcome));
+  }
+
+  /**
+   * Records an outcome against the tool that owns that kind of work.
+   *
+   * @param kind - Kind of work the record is about.
+   * @param notice - What to say about it.
+   */
+  private announce(kind: string, notice: IJobNotice): void {
+    const described: Nullable<IJobKindDescriptor> = findJobKind(kind);
+
+    // A kind this build does not know still gets recorded under its own spelling. The panel shows it verbatim, which
+    // is a worse label than a tool's name and a better one than losing the record.
+    emitNotification(this.eventBus, { ...notice, source: described?.source ?? kind });
   }
 }

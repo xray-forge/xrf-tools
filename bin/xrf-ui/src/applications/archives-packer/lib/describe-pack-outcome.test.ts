@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
-import { IJobOutcome } from "@/core/jobs/lib";
-import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { ENotificationSeverity } from "@/core/notifications/lib";
 
 const CONFIG: ArchivePackConfig = {
   source: "C:\\work\\gamedata",
@@ -21,7 +21,7 @@ function outcome(patch: Partial<IJobOutcome<ArchivePackResult>>): IJobOutcome<Ar
 
 describe("describePackOutcome", () => {
   it("reports a finished pack as a success naming both ends", () => {
-    const notification: INotificationPayload = describePackOutcome(CONFIG, outcome({ result: result() }));
+    const notification: IJobNotice = describePackOutcome(CONFIG, outcome({ result: result() }));
 
     expect(notification.severity).toBe(ENotificationSeverity.SUCCESS);
     expect(notification.details).toContain("C:\\work\\gamedata");
@@ -29,7 +29,7 @@ describe("describePackOutcome", () => {
   });
 
   it("reports a failure with the reason rather than the destination", () => {
-    const notification: INotificationPayload = describePackOutcome(
+    const notification: IJobNotice = describePackOutcome(
       CONFIG,
       outcome({ error: new Error("volume cap refuses particles.xr") })
     );
@@ -41,7 +41,7 @@ describe("describePackOutcome", () => {
   it("warns about a cancelled pack and names every volume it left behind", () => {
     // The contract this exists for. Packing opens each volume by truncating whatever stood there, so a stopped run
     // leaves an unusable set and removes nothing - these paths are the only way the user learns what to clean up.
-    const notification: INotificationPayload = describePackOutcome(
+    const notification: IJobNotice = describePackOutcome(
       CONFIG,
       outcome({
         isCancelRequested: true,
@@ -61,7 +61,7 @@ describe("describePackOutcome", () => {
   it("reads the outcome off the result rather than off the cancel request", () => {
     // Cancelling is a request the run may finish ahead of. A pack that completed after the control was pressed still
     // produced a whole set, and calling that "stopped" would send the user hunting for wreckage that is not there.
-    const notification: INotificationPayload = describePackOutcome(
+    const notification: IJobNotice = describePackOutcome(
       CONFIG,
       outcome({ isCancelRequested: true, result: result() })
     );

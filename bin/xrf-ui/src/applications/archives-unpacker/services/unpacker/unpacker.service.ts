@@ -5,19 +5,20 @@ import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/desc
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import { IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import {
+  EJobKind,
+  IJobNotice,
+  IJobOutcome,
+  IJobRun,
+  IJobSettledPayload,
+  IJobState,
+  JOB_SETTLED_EVENT,
+} from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { INotificationPayload } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * What an unpack calls itself in the jobs registry.
- */
-export const ARCHIVES_UNPACK_JOB_KIND: string = "archives.unpack";
 
 /**
  * The unpacking run and what it produced.
@@ -49,7 +50,7 @@ export class UnpackerService {
    */
   @Computed()
   public get job(): Nullable<IJobState> {
-    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(ARCHIVES_UNPACK_JOB_KIND);
+    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_UNPACK);
   }
 
   /**
@@ -95,10 +96,9 @@ export class UnpackerService {
     // Started through the jobs service rather than invoked here, so the run has an identity the cancel control can
     // reach and survives this view being torn down.
     const run: IJobRun<ArchiveUnpackResult> = this.jobsService.run<ArchiveUnpackResult>({
-      kind: ARCHIVES_UNPACK_JOB_KIND,
-      source: EApplicationId.ARCHIVES_UNPACKER,
+      kind: EJobKind.ARCHIVES_UNPACK,
       invoke: (id: string, progress) => archivesCommands.unpackDirectory(source, destination, id, progress),
-      describe: (outcome: IJobOutcome<ArchiveUnpackResult>): INotificationPayload =>
+      describe: (outcome: IJobOutcome<ArchiveUnpackResult>): IJobNotice =>
         describeUnpackOutcome(source, destination, outcome),
     });
 
@@ -136,7 +136,7 @@ export class UnpackerService {
   public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
     const settled: Nullable<IJobSettledPayload> = event.payload ?? null;
 
-    if (settled?.kind === ARCHIVES_UNPACK_JOB_KIND) {
+    if (settled?.kind === EJobKind.ARCHIVES_UNPACK) {
       this.log.info("Adopting the outcome of an unpack this window did not start:", settled.id, settled.conclusion);
 
       this.result = (settled.result as Nullable<ArchiveUnpackResult>) ?? null;

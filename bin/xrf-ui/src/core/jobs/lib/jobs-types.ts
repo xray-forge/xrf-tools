@@ -3,8 +3,18 @@ import { EventType } from "@wirestate/core";
 
 import { JobConclusion } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
+import { EJobKind } from "@/core/jobs/lib/job-kinds";
 import { INotificationPayload } from "@/core/notifications/lib";
 import { Nullable } from "@/lib/types/general";
+
+/**
+ * What to say about a run that ended, before it is attributed to anything.
+ *
+ * Unattributed on purpose: which tool a run belongs to follows from its kind, and `JOB_KINDS` is where that is
+ * recorded. A describer that also named the tool would be a second answer to a question already answered, free to
+ * disagree with the one the reload path has to use.
+ */
+export type IJobNotice = Omit<INotificationPayload, "source">;
 
 /**
  * How a job ended, as the thing that started it sees it.
@@ -27,9 +37,7 @@ export interface IJobOutcome<T> {
  */
 export interface IJobDescriptor<T> {
   /** What kind of work this is. Also how a tool finds its own run again after its view was torn down. */
-  kind: string;
-  /** Tool the terminal notification is attributed to. */
-  source: string;
+  kind: EJobKind;
   /**
    * Sends the command, with the identity and channel the jobs service minted for it.
    *
@@ -43,7 +51,7 @@ export interface IJobDescriptor<T> {
    * Must be pure over its arguments and must not touch the tool's own state: this outlives the container the tool was
    * bound in, so writing back into it would be writing into a scope that is already gone.
    */
-  describe: (outcome: IJobOutcome<T>) => INotificationPayload;
+  describe: (outcome: IJobOutcome<T>) => IJobNotice;
 }
 
 /**

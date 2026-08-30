@@ -6,20 +6,23 @@ import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-co
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import { IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import {
+  EJobKind,
+  IJobNotice,
+  IJobOutcome,
+  IJobRun,
+  IJobSettledPayload,
+  IJobState,
+  JOB_SETTLED_EVENT,
+} from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { emitNotification, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * What a pack calls itself in the jobs registry.
- */
-export const ARCHIVES_PACK_JOB_KIND: string = "archives.pack";
 
 /** Sections of the packing configuration, in the order they are edited. */
 export enum EPackerSection {
@@ -147,7 +150,7 @@ export class PackerService {
    */
   @Computed()
   public get job(): Nullable<IJobState> {
-    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(ARCHIVES_PACK_JOB_KIND);
+    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_PACK);
   }
 
   public constructor(
@@ -324,10 +327,9 @@ export class PackerService {
     // Started through the jobs service rather than invoked here, so the run has an identity the cancel control can
     // reach and survives this view being torn down. What it answers is still this service's to render.
     const run: IJobRun<ArchivePackResult> = this.jobsService.run<ArchivePackResult>({
-      kind: ARCHIVES_PACK_JOB_KIND,
-      source: EApplicationId.ARCHIVES_PACKER,
+      kind: EJobKind.ARCHIVES_PACK,
       invoke: (id: string, progress) => archivesCommands.packDirectory(config, id, progress),
-      describe: (outcome: IJobOutcome<ArchivePackResult>): INotificationPayload => describePackOutcome(config, outcome),
+      describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
     });
 
     this.jobId = run.id;
@@ -364,7 +366,7 @@ export class PackerService {
   public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
     const settled: Nullable<IJobSettledPayload> = event.payload ?? null;
 
-    if (settled?.kind === ARCHIVES_PACK_JOB_KIND) {
+    if (settled?.kind === EJobKind.ARCHIVES_PACK) {
       this.log.info("Adopting the outcome of a pack this window did not start:", settled.id, settled.conclusion);
 
       this.result = (settled.result as Nullable<ArchivePackResult>) ?? null;

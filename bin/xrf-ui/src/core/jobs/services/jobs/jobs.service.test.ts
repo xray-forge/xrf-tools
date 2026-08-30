@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
 import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { IJobOutcome, IJobState } from "@/core/jobs/lib";
+import { EJobKind, IJobNotice, IJobOutcome, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import {
@@ -36,12 +36,10 @@ function pending(): { descriptor: Parameters<JobsService["run"]>[0]; settle: (va
 
   return {
     descriptor: {
-      kind: "archives.pack",
-      source: "archives-packer",
+      kind: EJobKind.ARCHIVES_PACK,
       invoke: () => promise,
-      describe: (): INotificationPayload => ({
+      describe: (): IJobNotice => ({
         severity: ENotificationSeverity.SUCCESS,
-        source: "archives-packer",
         title: "Packed",
       }),
     } as Parameters<JobsService["run"]>[0],
@@ -159,12 +157,10 @@ describe("JobsService", () => {
     const { service } = mockInjectedService(JobsService);
 
     const run = service.run({
-      kind: "archives.pack",
-      source: "archives-packer",
+      kind: EJobKind.ARCHIVES_PACK,
       invoke: () => Promise.reject(new Error("volume cap refuses particles.xr")),
-      describe: (): INotificationPayload => ({
+      describe: (): IJobNotice => ({
         severity: ENotificationSeverity.ERROR,
-        source: "archives-packer",
         title: "Failed",
       }),
     });
@@ -181,13 +177,13 @@ describe("JobsService", () => {
 
     const run = service.run(descriptor);
 
-    expect(service.getJobOfKind("archives.pack")?.id).toBe(run.id);
-    expect(service.getJobOfKind("archives.unpack")).toBeNull();
+    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)?.id).toBe(run.id);
+    expect(service.getJobOfKind(EJobKind.ARCHIVES_UNPACK)).toBeNull();
 
     settle(null);
     await run.promise;
 
-    expect(service.getJobOfKind("archives.pack")).toBeNull();
+    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)).toBeNull();
   });
 
   it("notifies exactly once, when the job ends and not while it runs", async () => {
@@ -234,8 +230,7 @@ describe("JobsService", () => {
     });
 
     const run = service.run({
-      kind: "archives.pack",
-      source: "archives-packer",
+      kind: EJobKind.ARCHIVES_PACK,
       invoke: () => pendingPromise,
       describe,
     });

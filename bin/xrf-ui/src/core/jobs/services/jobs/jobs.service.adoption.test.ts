@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { EventBus, WireEvent } from "@wirestate/core";
 
 import { JobDescription } from "@/core/bindings/types/xrf-app";
-import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import {
   emitMockChannelMessage,
   resetMockChannels,
@@ -296,7 +297,7 @@ describe("JobsService adoption", () => {
 
     await service.onProvision(1);
 
-    expect(service.getJobOfKind("archives.pack")?.id).toBe("b8f0");
+    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)?.id).toBe("b8f0");
   });
 
   it("follows an adopted job by asking, because its channel died with the page", async () => {
@@ -354,6 +355,23 @@ describe("JobsService adoption", () => {
     await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
 
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("attributes an adopted job to the tool that owns its kind", async () => {
+    // The notification panel resolves a record's source through the application catalog. Attributing it to the kind
+    // string instead left the panel with nothing to look up, and the user with a row labelled `archives.pack`.
+    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
+
+    const { service, raised } = watched();
+
+    await service.onProvision(1);
+
+    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "completed" })], [ATTACH_COMMAND]: true });
+
+    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
+
+    expect(raised[0].source).toBe(EApplicationId.ARCHIVES_PACKER);
+    expect(raised[0].details).toContain("Archive packing");
   });
 
   it("treats a job that left the listing as ended with an unrecorded outcome", async () => {

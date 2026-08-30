@@ -38,8 +38,17 @@ describe("describeAdoptedOutcome", () => {
     expect(notification.details).toContain("no longer recorded");
   });
 
-  it("names the kind, since an adopted job has no tool to attribute it to", () => {
-    // The command answered a page that no longer exists, so the descriptor naming the tool went with it.
-    expect(describeAdoptedOutcome(JOB, "completed", null).source).toBe("archives.pack");
+  it("names the work rather than the kind that addressed it", () => {
+    // The command answered a page that no longer exists, so the run's own description went with it. What the kind is
+    // called outlives both, which is what keeps this record readable beside one the tool wrote itself.
+    expect(describeAdoptedOutcome(JOB, "completed", null).details).toContain("Archive packing");
+  });
+
+  it("falls back to the kind a build does not know", () => {
+    // A window running against a newer backend can be shown work it has never heard of. Its spelling is a poor label
+    // and a better one than dropping the record.
+    const notice = describeAdoptedOutcome({ ...JOB, kind: "levels.compile" }, "completed", null);
+
+    expect(notice.details).toContain("levels.compile");
   });
 });
