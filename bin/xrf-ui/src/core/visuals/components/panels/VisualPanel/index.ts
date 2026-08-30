@@ -1,1 +1,1 @@
-export * from "@/core/visuals/components/panels/VisualPanel/VisualPanel";
+export * from "./VisualPanel";

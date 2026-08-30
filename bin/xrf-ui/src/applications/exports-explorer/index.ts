@@ -1,1 +1,1 @@
-export * from "@/applications/exports-explorer/application";
+export * from "./application";

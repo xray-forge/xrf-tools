@@ -1,1 +1,1 @@
-export * from "@/lib/local-storage/read-write";
+export * from "./read-write";

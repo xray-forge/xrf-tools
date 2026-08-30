@@ -1,1 +1,1 @@
-export * from "@/applications/configs-formatter/application";
+export * from "./application";

@@ -1,1 +1,1 @@
-export * from "@/core/ltx/verify";
+export * from "./verify";

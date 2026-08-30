@@ -1,1 +1,1 @@
-export * from "@/core/assets/services/asset.service";
+export * from "./asset.service";

@@ -1,1 +1,1 @@
-export * from "@/lib/loadable/loadable";
+export * from "./loadable";

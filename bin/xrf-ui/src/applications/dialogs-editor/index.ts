@@ -1,1 +1,1 @@
-export * from "@/applications/dialogs-editor/application";
+export * from "./application";

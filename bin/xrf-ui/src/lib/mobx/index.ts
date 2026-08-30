@@ -1,3 +1,3 @@
-export * from "@/lib/mobx/annotations";
-export * from "@/lib/mobx/flow";
-export * from "@/lib/mobx/observable.plugin";
+export * from "./annotations";
+export * from "./flow";
+export * from "./observable.plugin";

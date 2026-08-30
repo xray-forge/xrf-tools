@@ -1,3 +1,3 @@
-export * from "@/core/theme/cache";
-export * from "@/core/theme/creation";
-export * from "@/core/theme/tokens";
+export * from "./cache";
+export * from "./creation";
+export * from "./tokens";

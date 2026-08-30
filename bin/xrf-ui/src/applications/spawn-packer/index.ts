@@ -1,1 +1,1 @@
-export * from "@/applications/spawn-packer/application";
+export * from "./application";

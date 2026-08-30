@@ -1,2 +1,2 @@
-export * from "@/lib/dom/event/context-menu";
-export * from "@/lib/dom/event/propagation";
+export * from "./context-menu";
+export * from "./propagation";

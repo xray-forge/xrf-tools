@@ -1,1 +1,1 @@
-export * from "@/core/exports/declarations";
+export * from "./declarations";

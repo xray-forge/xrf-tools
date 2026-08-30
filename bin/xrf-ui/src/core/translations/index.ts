@@ -1,2 +1,2 @@
-export * from "@/core/translations/translations-types";
-export * from "@/core/translations/translations.config";
+export * from "./translations-types";
+export * from "./translations.config";

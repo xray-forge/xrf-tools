@@ -1,1 +1,1 @@
-export * from "@/applications/archives-packer/application";
+export * from "./application";

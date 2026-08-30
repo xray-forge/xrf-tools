@@ -1,1 +1,1 @@
-export * from "@/applications/characters-explorer/application";
+export * from "./application";

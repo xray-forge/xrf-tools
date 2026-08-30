@@ -1,1 +1,1 @@
-export * from "@/applications/visuals-sequencer/application";
+export * from "./application";

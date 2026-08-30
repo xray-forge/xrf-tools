@@ -1,1 +1,1 @@
-export * from "@/core/configs/repository.config";
+export * from "./repository.config";

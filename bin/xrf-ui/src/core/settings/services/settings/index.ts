@@ -1,1 +1,1 @@
-export * from "@/core/settings/services/settings/settings.service";
+export * from "./settings.service";

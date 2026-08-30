@@ -1,1 +1,1 @@
-export * from "@/applications/spawn-editor/application";
+export * from "./application";

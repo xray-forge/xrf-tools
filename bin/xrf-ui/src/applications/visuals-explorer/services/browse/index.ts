@@ -1,1 +1,1 @@
-export * from "@/applications/visuals-explorer/services/browse/browse.service";
+export * from "./browse.service";

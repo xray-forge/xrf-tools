@@ -1,1 +1,1 @@
-export * from "@/core/assets/image/convert";
+export * from "./convert";

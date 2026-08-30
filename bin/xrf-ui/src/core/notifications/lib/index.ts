@@ -1,3 +1,3 @@
-export * from "@/core/notifications/lib/emit-notification";
-export * from "@/core/notifications/lib/notifications-types";
-export * from "@/core/notifications/lib/use-emit-notification";
+export * from "./emit-notification";
+export * from "./notifications-types";
+export * from "./use-emit-notification";

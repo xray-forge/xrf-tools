@@ -1,1 +1,1 @@
-export * from "@/applications/equipment-icons-unpacker/application";
+export * from "./application";

@@ -1,1 +1,1 @@
-export * from "@/applications/configs-verifier/application";
+export * from "./application";

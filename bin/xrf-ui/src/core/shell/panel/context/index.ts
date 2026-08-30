@@ -1,3 +1,3 @@
-export * from "@/core/shell/panel/context/editor-panel";
-export * from "@/core/shell/panel/context/EditorPanelsContext";
-export * from "@/core/shell/panel/context/use-editor-panels";
+export * from "./editor-panel";
+export * from "./EditorPanelsContext";
+export * from "./use-editor-panels";

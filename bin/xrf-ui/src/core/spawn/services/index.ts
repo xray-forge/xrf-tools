@@ -1,1 +1,1 @@
-export * from "@/core/spawn/services/spawn-file.service";
+export * from "./spawn-file.service";

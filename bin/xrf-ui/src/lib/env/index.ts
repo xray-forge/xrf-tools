@@ -1,1 +1,1 @@
-export * from "@/lib/env/build-mode";
+export * from "./build-mode";

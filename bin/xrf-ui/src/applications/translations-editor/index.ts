@@ -1,1 +1,1 @@
-export * from "@/applications/translations-editor/application";
+export * from "./application";

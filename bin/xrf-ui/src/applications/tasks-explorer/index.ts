@@ -1,1 +1,1 @@
-export * from "@/applications/tasks-explorer/application";
+export * from "./application";
