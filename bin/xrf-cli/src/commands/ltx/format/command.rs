@@ -8,6 +8,7 @@ use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 /// Names this many declined configs before reporting the remainder count.
 const DECLINED_LIMIT: usize = 20;
@@ -58,7 +59,12 @@ impl GenericCommand for FormatCommand {
 
     let files: Vec<PathBuf> = selection.files;
 
-    let options: LtxFormatOptions = LtxFormatOptions { output: output.clone() };
+    // A live sink rather than an inert job: this walks every config in a project, and a terminal owes the person
+    // watching it some sign of where it has got to. Nothing here cancels.
+    let options: LtxFormatOptions = LtxFormatOptions {
+      output: output.clone(),
+      job: new_logging_job(),
+    };
 
     if is_check {
       let result: LtxProjectFormatResult = LtxFilesFormatter::check_format_opt(&files, options)?;

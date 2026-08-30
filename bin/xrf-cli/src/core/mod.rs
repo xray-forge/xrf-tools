@@ -8,6 +8,7 @@ pub mod command_testing;
 pub mod generic_command;
 pub mod logging;
 pub mod output;
+pub mod progress;
 pub mod reporting;
 pub mod reports;
 pub mod staged_write;

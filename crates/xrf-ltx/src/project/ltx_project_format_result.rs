@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::Serialize;
+use xrf_job::JobOutcome;
 use xrf_utils::format_path;
 
 use crate::LtxFormatOptions;
@@ -10,6 +11,12 @@ use crate::LtxFormatOptions;
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxProjectFormatResult {
+  /// Whether the run reached the end of the set or was stopped between files.
+  ///
+  /// A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
+  /// running it again resolves. Nothing is removed and nothing is half-written.
+  pub outcome: JobOutcome,
+
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
@@ -22,6 +29,7 @@ pub struct LtxProjectFormatResult {
 impl LtxProjectFormatResult {
   pub fn new() -> Self {
     Self {
+      outcome: JobOutcome::Completed,
       duration: Duration::ZERO,
       invalid_files: 0,
       to_format: Vec::new(),

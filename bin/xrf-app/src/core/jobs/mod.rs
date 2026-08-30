@@ -6,6 +6,7 @@ mod job_leases;
 mod job_progress_sink;
 mod job_registry;
 mod job_start;
+mod lease_path;
 
 #[cfg(test)]
 mod tests;
@@ -13,3 +14,4 @@ mod tests;
 pub use job_description::JobDescription;
 pub use job_registry::{JobRegistration, JobRegistry};
 pub use job_start::JobStart;
+pub use lease_path::to_comparable_path;

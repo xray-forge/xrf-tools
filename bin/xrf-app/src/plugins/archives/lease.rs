@@ -4,9 +4,11 @@
 //! Both rules below name a destination, because that is where these operations collide: two runs reading one archive
 //! are harmless, and two runs writing one tree are not.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use xrf_pack::ArchivePackConfig;
+
+use crate::core::jobs::to_comparable_path;
 
 /// What a pack registers itself as, and the prefix of every lease it takes.
 ///
@@ -43,17 +45,6 @@ pub fn to_pack_lease_key(config: &ArchivePackConfig) -> String {
 /// whatever they were asked to extract.
 pub fn to_unpack_lease_key(destination: &Path) -> String {
   format!("{UNPACK_JOB_KIND}:{}", to_comparable_path(destination))
-}
-
-/// One spelling of a path, for comparing two of them.
-///
-/// Lower-cased because the hosts these tools run on treat paths case-insensitively, and a lease that let
-/// `C:\Out` and `c:\out` run at once would be no lease at all. That is wrong on a case-sensitive filesystem, where it
-/// refuses two runs that could have coexisted — the safe direction for an exclusion rule to be wrong in.
-fn to_comparable_path(path: &Path) -> String {
-  let resolved: PathBuf = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-
-  resolved.to_string_lossy().to_lowercase()
 }
 
 #[cfg(test)]

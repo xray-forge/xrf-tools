@@ -4,10 +4,11 @@ use std::time::Instant;
 use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::file::file_configuration::constants::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
-use crate::project::ltx_verify_options::LtxVerifyOptions;
+use crate::project::ltx_verify_options::{LTX_PHASE_VERIFY, LtxVerifyOptions};
 use crate::{Ltx, LtxProject, LtxProjectVerifyResult};
 
 impl LtxProject {
@@ -21,8 +22,22 @@ impl LtxProject {
 
     xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
 
+    let verifying: JobScope = options
+      .job
+      .enter(LTX_PHASE_VERIFY, Some(self.ltx_file_entries.len() as u64));
+
     // For each file entry in the project:
     for entry in &self.ltx_file_entries {
+      // A stopped verification reports the findings it had reached and says it stopped. Without the outcome those
+      // findings read as a complete verdict, which is the one way a partial check can do harm.
+      if options.job.is_cancelled() {
+        result.outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
+      verifying.advance();
+
       // Do not check scheme definitions for scheme files - makes no sense.
       if Self::is_ltx_scheme_path(entry) {
         continue;

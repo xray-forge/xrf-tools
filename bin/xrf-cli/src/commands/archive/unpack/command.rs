@@ -1,12 +1,9 @@
 use std::env;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
-use xrf_job::{JobHandle, LoggingSink};
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_utils::format_path;
@@ -14,12 +11,7 @@ use xrf_utils::format_path;
 use super::report::ArchiveUnpackDryReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-
-/// How often an unpack says where it has got to.
-///
-/// Coarse next to what a window would use: these are log lines in a terminal, and a run reporting ten times a second
-/// would bury whatever it said before it.
-const PROGRESS_INTERVAL: Duration = Duration::from_secs(2);
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct UnpackCommand;
@@ -129,7 +121,7 @@ impl GenericCommand for UnpackCommand {
         &destination,
         ArchiveUnpackOptions::default()
           .with_concurrency(parallel)
-          .with_job(JobHandle::with_interval(Arc::new(LoggingSink), PROGRESS_INTERVAL)),
+          .with_job(new_logging_job()),
       )?;
 
       xrf_output::success!(

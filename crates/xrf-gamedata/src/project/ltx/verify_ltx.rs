@@ -77,8 +77,11 @@ impl GamedataProject {
   fn verify_ltx_format(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<LtxProjectFormatResult> {
     xrf_output::heading!(options.output, "Verify LTX files formatting");
 
+    // todo: Inert until gamedata verification is a job of its own. When it is, this is one of the levels
+    // todo: it nests: the run counts its checks, and this check counts the files it reads.
     self.ltx_project.check_format_all_files_opt(LtxFormatOptions {
       output: options.output.clone(),
+      ..Default::default()
     })
   }
 
@@ -87,6 +90,7 @@ impl GamedataProject {
 
     self.ltx_project.verify_entries_opt(LtxVerifyOptions {
       output: options.output.clone(),
+      ..Default::default()
     })
   }
 }

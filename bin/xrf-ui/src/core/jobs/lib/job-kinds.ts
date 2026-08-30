@@ -10,6 +10,9 @@ import { Nullable } from "@/lib/types/general";
 export enum EJobKind {
   ARCHIVES_PACK = "archives.pack",
   ARCHIVES_UNPACK = "archives.unpack",
+  CONFIGS_CHECK_FORMAT = "configs.check-format",
+  CONFIGS_FORMAT = "configs.format",
+  CONFIGS_VERIFY = "configs.verify",
 }
 
 /**
@@ -41,6 +44,21 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     kind: EJobKind.ARCHIVES_UNPACK,
     source: EApplicationId.ARCHIVES_UNPACKER,
     label: "Archive unpacking",
+  },
+  [EJobKind.CONFIGS_CHECK_FORMAT]: {
+    kind: EJobKind.CONFIGS_CHECK_FORMAT,
+    source: EApplicationId.CONFIGS_FORMATTER,
+    label: "Config format check",
+  },
+  [EJobKind.CONFIGS_FORMAT]: {
+    kind: EJobKind.CONFIGS_FORMAT,
+    source: EApplicationId.CONFIGS_FORMATTER,
+    label: "Config formatting",
+  },
+  [EJobKind.CONFIGS_VERIFY]: {
+    kind: EJobKind.CONFIGS_VERIFY,
+    source: EApplicationId.CONFIGS_VERIFIER,
+    label: "Config verification",
   },
 };
 

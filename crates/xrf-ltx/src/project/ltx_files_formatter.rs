@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::Ltx;
-use crate::project::ltx_format_options::LtxFormatOptions;
+use crate::project::ltx_format_options::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions};
 use crate::project::ltx_project_format_result::LtxProjectFormatResult;
 
 /// Formatter of arbitrary sets of LTX files.
@@ -24,7 +25,20 @@ impl LtxFilesFormatter {
 
     xrf_output::heading!(options.output, "Formatting {} file(s)", files.len());
 
+    let formatting: JobScope = options.job.enter(LTX_PHASE_FORMAT, Some(files.len() as u64));
+
     for file in files {
+      // Between files, never inside one.
+      if options.job.is_cancelled() {
+        result.outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
+      // Sequential, so naming the file being rewritten is meaningful rather than whichever one a worker happens to
+      // hold.
+      options.job.set_detail(Some(format_path(file).to_string()));
+
       if Ltx::format_file(file, true)? {
         result.invalid_files += 1;
         result.to_format.push(file.clone());
@@ -35,7 +49,10 @@ impl LtxFilesFormatter {
       }
 
       result.total_files += 1;
+      formatting.advance();
     }
+
+    options.job.set_detail(None);
 
     result.duration = started_at.elapsed();
 
@@ -61,8 +78,18 @@ impl LtxFilesFormatter {
 
     xrf_output::heading!(options.output, "Checking {} file(s)", files.len());
 
+    let checking: JobScope = options.job.enter(LTX_PHASE_CHECK, Some(files.len() as u64));
+
     for file in files {
+      // A stopped check reports what it had judged so far, and says so: findings read as a complete verdict otherwise.
+      if options.job.is_cancelled() {
+        result.outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
       result.record_checked(file.clone(), Ltx::is_formatted(&fs::read(file)?)?, &options);
+      checking.advance();
     }
 
     result.duration = started_at.elapsed();

@@ -2,6 +2,7 @@ import { default as FormatAlignLeftIcon } from "@mui/icons-material/FormatAlignL
 import { lazy } from "react";
 
 import { CONFIGS_FORMATTER_HELP } from "@/applications/configs-formatter/help";
+import { FormatterService } from "@/applications/configs-formatter/services/formatter";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -13,6 +14,7 @@ export const CONFIGS_FORMATTER_APPLICATION: IApplicationDescriptor = {
   Component: lazy(() =>
     import("./ConfigsFormatterApplication").then((it) => ({ default: it.ConfigsFormatterApplication }))
   ),
+  container: { bindings: [FormatterService] },
   preload: () => import("./ConfigsFormatterApplication"),
   description: "Check or format LTX configuration files",
   group: EApplicationGroupId.CONFIGS,

@@ -1,11 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect } from "react";
 
 import { ConfigsVerifyResult } from "@/applications/configs-verifier/components/ConfigsVerifyResult";
-import { createRoots } from "@/core/assets/lib";
-import { configsCommands } from "@/core/bindings/commands/configs";
-import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
-import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
+import { VerifierService } from "@/applications/configs-verifier/services/verifier";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
@@ -17,85 +16,57 @@ import { Nullable } from "@/lib/types/general";
 
 export function ConfigsVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
-  const notify: TEmitNotification = useEmitNotification();
 
   const pathsService: PathsService = useInjection(PathsService);
+  const verifierService: VerifierService = useInjection(VerifierService);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Nullable<string>>(null);
-  const [result, setResult] = useState<Nullable<LtxProjectVerifyResult>>(null);
+  // The run rather than this view's own flag: a verification survives the window being reloaded, so returning here
+  // finds it again instead of showing an idle form over a project it is still reading.
+  const job: Nullable<IJobState> = verifierService.job;
+  const isRunning: boolean = Boolean(job);
 
   const configs: IPathField = usePathField({
     application: EApplicationId.CONFIGS_VERIFIER,
     id: "directory",
     title: "Select configs directory",
     isDirectory: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolvePathRole(EPathRole.CONFIGS, pathsService.paths),
   });
 
+  const directory: Nullable<string> = configs.value;
+
   const onVerify = useCallback(async () => {
-    if (!configs.value) {
+    if (!directory) {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setResult(null);
-      setError(null);
+    log.info("Verifying:", directory);
 
-      log.info("Verifying:", configs.value);
+    await verifierService.verify(directory);
+  }, [directory, log, verifierService]);
 
-      const verified: LtxProjectVerifyResult = await configsCommands.verifyDirectory(
-        createRoots([configs.value]),
-        null
-      );
-
-      setResult(verified);
-
-      notify({
-        details: String(configs.value),
-        severity: verified.errors.length ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
-        source: EApplicationId.CONFIGS_VERIFIER,
-        title: verified.errors.length
-          ? `Configs did not pass validation: ${verified.errors.length} problem(s)`
-          : "Configs passed validation",
-      });
-    } catch (caught: unknown) {
-      log.error("Verify error:", caught);
-
-      setError(String(caught));
-
-      notify({
-        details: `${configs.value}\n${String(caught)}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.CONFIGS_VERIFIER,
-        title: "Could not verify configs",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [configs.value, log, notify]);
+  const onCancel = useCallback(() => verifierService.cancel(), [verifierService]);
 
   // A different directory invalidates whatever the previous run reported.
   useEffect(() => {
-    setResult(null);
-    setError(null);
-  }, [configs.value]);
+    verifierService.reset();
+  }, [directory, verifierService]);
 
   return (
     <PickerForm
-      isLoading={isLoading}
+      isLoading={isRunning}
       isSubmitDisabled={!configs.isValid}
       title={"Verify LTX configs"}
       description={"Checks every LTX file in the directory. Nothing is written."}
-      error={error ?? undefined}
+      error={verifierService.error ?? undefined}
       submitLabel={"Verify"}
-      result={result ? <ConfigsVerifyResult result={result} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      result={verifierService.result ? <ConfigsVerifyResult result={verifierService.result} /> : null}
       onSubmit={onVerify}
     >
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Configs directory"}
         description={"Directory of LTX files to validate"}
         field={configs}

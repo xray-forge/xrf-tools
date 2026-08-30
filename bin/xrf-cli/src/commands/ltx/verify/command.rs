@@ -11,6 +11,7 @@ use crate::commands::ltx::ltx_installation::mount_installation;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -69,7 +70,10 @@ impl GenericCommand for VerifyCommand {
       None => LtxProject::open_at_path_opt(path, options)?,
     });
 
-    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { output })?;
+    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions {
+      output,
+      job: new_logging_job(),
+    })?;
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
     context.set_result(|| &result)?;
