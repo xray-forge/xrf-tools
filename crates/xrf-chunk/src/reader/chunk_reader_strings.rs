@@ -98,7 +98,8 @@ mod tests {
 
   #[test]
   fn test_read_w1251_string_empty() -> XrfResult {
-    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[])?;
+    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
     assert_eq!(chunk.cursor_pos(), 0, "Expect 0 bytes read");
@@ -191,7 +192,8 @@ mod tests {
 
   #[test]
   fn test_read_w1251_rn_string_empty() -> XrfResult {
-    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[])?;
+    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
     assert_eq!(chunk.cursor_pos(), 0, "Expect 0 bytes read");

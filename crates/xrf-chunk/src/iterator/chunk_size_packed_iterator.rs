@@ -115,8 +115,9 @@ mod tests {
 
   #[test]
   fn test_iterate_empty() -> XrfResult {
+    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
     let mut chunk_reader: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::from_source(InMemoryChunkDataSource::from_buffer(&[]))?;
+      ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     if ChunkSizePackedIterator::from_start(&mut chunk_reader)?.next().is_some() {
       panic!("No iterations expected in empty data");

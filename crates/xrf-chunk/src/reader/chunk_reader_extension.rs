@@ -145,7 +145,10 @@ mod tests {
   fn test_read_remaining() -> XrfResult {
     assert_eq!(ChunkReader::from_bytes(&[0, 1, 2])?.read_remaining()?, vec![0, 1, 2]);
     assert_eq!(ChunkReader::from_bytes(&[0])?.read_remaining()?, vec![0]);
-    assert_eq!(ChunkReader::from_bytes(&[])?.read_remaining()?, Vec::<u8>::new());
+    // Nothing left to read is reached through an empty chunk, since a reader cannot be opened over an empty source.
+    let mut empty: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
+
+    assert_eq!(empty.read_remaining()?, Vec::<u8>::new());
 
     Ok(())
   }

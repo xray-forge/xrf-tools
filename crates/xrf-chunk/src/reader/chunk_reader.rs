@@ -23,7 +23,7 @@ impl ChunkReader<FileSlice> {
   ///
   /// # Errors
   ///
-  /// Returns an error when the slice is empty.
+  /// Returns an error when the slice is empty; see [`Self::from_source`] for the rule.
   pub fn from_slice(slice: FileSlice) -> XrfResult<Self> {
     if slice.is_empty() {
       return Err(XrfError::new_invalid_error("Failed to create chunk from empty source"));
@@ -48,16 +48,12 @@ impl ChunkReader<InMemoryChunkDataSource> {
   ///
   /// # Errors
   ///
-  /// Returns an error when the file cannot be read, or is empty.
+  /// Returns an error when the file cannot be read, or is empty; see [`Self::from_source`] for the rule.
   pub fn from_file(file: File) -> XrfResult<Self> {
     let mut slice: FileSlice = FileSlice::new(file);
     let mut buffer: Vec<u8> = Vec::with_capacity(slice.len());
 
     slice.read_to_end(&mut buffer)?;
-
-    if buffer.is_empty() {
-      return Err(XrfError::new_invalid_error("Failed to create chunk from empty source"));
-    }
 
     Self::from_vec(buffer)
   }
@@ -65,17 +61,39 @@ impl ChunkReader<InMemoryChunkDataSource> {
   /// Creates a reader over a copied in-memory byte buffer.
   ///
   /// Prefer [`Self::from_vec`] when the bytes are already owned — this copies them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the buffer is empty; see [`Self::from_source`] for the rule.
   pub fn from_bytes(buf: &[u8]) -> XrfResult<Self> {
     Self::from_source(InMemoryChunkDataSource::from_buffer(buf))
   }
 
   /// Creates a reader over owned bytes without copying them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes are empty; see [`Self::from_source`] for the rule.
   pub fn from_vec(buf: Vec<u8>) -> XrfResult<Self> {
     Self::from_source(InMemoryChunkDataSource::from_vec(buf))
   }
 
   /// Creates a reader over an in-memory chunk data source.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the source is empty. Every constructor refuses one, whatever the source: the smallest
+  /// well-formed chunked asset is an eight-byte header, so zero bytes describe nothing a reader can be opened over, and
+  /// a rule that held only for the file-backed constructors would make the answer depend on whether the caller reached
+  /// the asset loose or through a `.db` volume. An empty *child* is unaffected — [`ChunkIterator`] cuts children
+  /// directly and a chunk declaring no payload is ordinary.
+  ///
+  /// A zero-byte file is still a legal asset and the VFS resolves one; it is only not a chunked asset.
   pub fn from_source(source: InMemoryChunkDataSource) -> XrfResult<Self> {
+    if source.is_empty() {
+      return Err(XrfError::new_invalid_error("Failed to create chunk from empty source"));
+    }
+
     Ok(Self {
       id: 0,
       size: source.len(),
@@ -233,10 +251,12 @@ mod tests {
   use fileslice::FileSlice;
   use xrf_error::XrfResult;
   use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice, write_generated_test_resource,
+    build_relative_test_sample_file_path, open_generated_test_resource_as_file, open_generated_test_resource_as_slice,
+    write_generated_test_resource,
   };
 
   use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_data_source::ChunkDataSource;
   use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 
   /// Lay out one chunk the way the format does: id, payload length, then the payload.
@@ -250,10 +270,21 @@ mod tests {
     bytes
   }
 
+  /// Every constructor answers this for an empty source, so the wording is asserted once.
+  const EMPTY_SOURCE_ERROR: &str = "Invalid error: Failed to create chunk from empty source";
+
+  /// An in-memory reader is not `Debug`, so a refusal cannot go through `unwrap_err`.
+  fn refusal<T: ChunkDataSource>(result: XrfResult<ChunkReader<T>>) -> String {
+    match result {
+      Ok(_) => panic!("Expected an empty source to be refused"),
+      Err(error) => error.to_string(),
+    }
+  }
+
   #[test]
   fn rejects_an_empty_source() -> XrfResult {
-    // Only `from_slice` and `from_file` refuse an empty source - `from_bytes` hands back a zero-size reader - so this
-    // case is the guard's sole coverage and has to keep a real file behind it.
+    // Kept file-backed so the two empty sources that come off a real handle - the file and a slice of it - stay
+    // covered, rather than only the in-memory buffers the other three constructors take.
     let path: String = build_relative_test_sample_file_path(file!(), "rejects_an_empty_source");
 
     write_generated_test_resource(&path, b"")?;
@@ -263,14 +294,48 @@ mod tests {
     assert_eq!(file.start_pos(), 0);
     assert_eq!(file.end_pos(), 0);
 
-    let result: XrfResult<ChunkReader> = ChunkReader::from_slice(file);
-
-    assert!(result.is_err(), "File should be empty and fail to read data");
     assert_eq!(
-      result.unwrap_err().to_string(),
-      "Invalid error: Failed to create chunk from empty source",
-      "Expect input error"
+      refusal(ChunkReader::from_slice(file)),
+      EMPTY_SOURCE_ERROR,
+      "File should be empty and fail to read data"
     );
+    assert_eq!(
+      refusal(ChunkReader::from_file(open_generated_test_resource_as_file(&path)?)),
+      EMPTY_SOURCE_ERROR,
+      "Expect the file-to-memory path to refuse an empty file"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn rejects_an_empty_in_memory_source() -> XrfResult {
+    // The asymmetry this pins: an archived entry reaches the reader as bytes, so a zero-length volume entry must be
+    // refused exactly as the same asset read loose is.
+    for result in [
+      ChunkReader::from_bytes(&[]),
+      ChunkReader::from_vec(Vec::new()),
+      ChunkReader::from_source(InMemoryChunkDataSource::from_buffer(&[])),
+    ] {
+      assert_eq!(
+        refusal(result),
+        EMPTY_SOURCE_ERROR,
+        "Expect an in-memory constructor to refuse empty bytes"
+      );
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn accepts_a_child_that_declares_no_payload() -> XrfResult {
+    // The guard is about opening a reader over nothing, not about an empty chunk: children are cut by the iterator,
+    // and a chunk with no payload is ordinary in the format.
+    let reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_bytes(&new_chunk_bytes(0, &[]))?.read_child_by_index(0)?;
+
+    assert_eq!(reader.size, 0);
+    assert!(reader.is_ended());
 
     Ok(())
   }
