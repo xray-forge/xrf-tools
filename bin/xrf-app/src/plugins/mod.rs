@@ -10,6 +10,7 @@ pub mod configs;
 pub mod dialogs;
 pub mod equipment_icons;
 pub mod exports;
+pub mod jobs;
 pub mod spawn;
 pub mod system;
 pub mod translations;

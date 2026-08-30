@@ -59,6 +59,12 @@ macro_rules! for_each_tauri_command_domain {
         reopen_sprite => crate::plugins::equipment_icons::commands::reopen_sprite::equipment_icons_reopen_sprite,
         pack_sprite => crate::plugins::equipment_icons::commands::pack_sprite::equipment_icons_pack_sprite,
       }
+      // Running work, whatever domain it belongs to: what is going on, and asking it to stop. A domain of its own
+      // because identity, exclusion and cancellation are the same questions for a pack, a verification, or a build.
+      jobs => "jobs" {
+        cancel => crate::plugins::jobs::commands::cancel::jobs_cancel,
+        list => crate::plugins::jobs::commands::list::jobs_list,
+      }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
         close_file => crate::plugins::spawn::commands::close_file::spawn_close_file,

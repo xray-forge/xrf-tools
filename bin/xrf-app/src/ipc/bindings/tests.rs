@@ -17,6 +17,7 @@ use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
 use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
+use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
@@ -67,6 +68,11 @@ fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
       name: ExportsPlugin::NAME,
       builder: ExportsPlugin::specta_builder::<R>(),
       raw: crate::ipc::registry::exports::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: JobsPlugin::NAME,
+      builder: JobsPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::jobs::RAW_COMMANDS,
     },
     CommandModule {
       name: SpawnPlugin::NAME,

@@ -143,12 +143,15 @@ impl JobHandle {
     self.state.started_at.elapsed()
   }
 
-  /// What a snapshot would say right now, whether or not one is due.
+  /// What a watcher would be told right now, whether or not an emission is due.
   ///
-  /// For tests and for a caller that wants the state without waiting for the interval; the running operation never
-  /// needs it.
-  pub fn snapshot(&self) -> JobProgress {
-    self.state.describe()
+  /// `None` while the job is between levels, which is the same thing the sink is spared: a snapshot with no levels
+  /// describes a run with no phase as though it had one. Lets a listing read a running job's state on demand rather
+  /// than the job having to push every snapshot somewhere a listing can find it.
+  pub fn get_progress(&self) -> Option<JobProgress> {
+    let progress: JobProgress = self.state.describe();
+
+    (!progress.levels.is_empty()).then_some(progress)
   }
 }
 

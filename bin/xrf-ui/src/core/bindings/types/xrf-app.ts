@@ -1,5 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
   ProjectBuildLanguageSummary,
@@ -73,6 +74,46 @@ export type EquipmentSpriteMetadata = {
   name: string;
   systemLtxPath: string;
   equipmentDescriptors: Array<InventorySpriteDescriptor>;
+};
+
+/**
+ * How a job that is no longer running ended.
+ *
+ * Wider than `xrf_job::JobOutcome` on purpose: that one is what an operation reports about its own work, and an
+ * operation that failed reports nothing at all — the failure travels as the command's error. The registry watches
+ * from outside and has to describe that case too, or a job that blew up would sit in the listing looking finished.
+ */
+export type JobConclusion = "completed" | "cancelled" | "failed";
+
+/**
+ * One job as the listing describes it, running or recently finished.
+ *
+ * One shape for both rather than two, because the panel showing them shows one list: a job crossing from running to
+ * finished should change its fields, not its type. `conclusion` is what separates the halves.
+ */
+export type JobDescription = {
+  id: string;
+  /** What kind of work this is, as the command that started it named itself. */
+  kind: string;
+  /** What this job holds exclusively, so a refused start can be explained by pointing at the job that refused it. */
+  leaseKeys: Array<string>;
+  /**
+   * Whether stopping has been asked for. A job can carry this and still be running: cancellation lands at a boundary
+   * the operation chooses, and the gap between asking and stopping is exactly what a reader wants to see.
+   */
+  isCancelRequested: boolean;
+  /**
+   * The job's own progress: live for a running job, as last seen for a finished one.
+   *
+   * Absent for a job registered but not yet reporting — a run holding a lease while it validates its inputs, say.
+   */
+  progress: JobProgress | null;
+  /** Absent while the job is running. */
+  conclusion: JobConclusion | null;
+  /** Why it failed, where it did. */
+  error: string | null;
+  /** How long the job ran, measured by the registry rather than by the operation. */
+  duration: number;
 };
 
 /**

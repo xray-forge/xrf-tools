@@ -2,6 +2,7 @@
 
 pub mod assets;
 pub mod error;
+pub mod jobs;
 pub mod logging;
 pub mod types;
 pub mod webview_extensions;

@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use tauri::Manager;
 use tauri::utils::config::WindowConfig;
 use tauri::webview::WebviewWindowBuilder;
 
 use crate::core::assets::AssetMountState;
+use crate::core::jobs::JobRegistry;
 use crate::core::webview_extensions::DevExtensions;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
@@ -10,6 +13,7 @@ use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
 use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
+use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
@@ -26,6 +30,7 @@ pub fn run() {
     .plugin(ArchivesPlugin::init())
     .plugin(DialogsPlugin::init())
     .plugin(ExportsPlugin::init())
+    .plugin(JobsPlugin::init())
     .plugin(SpawnPlugin::init())
     .plugin(ConfigsPlugin::init())
     .plugin(EquipmentIconsPlugin::init())
@@ -35,6 +40,10 @@ pub fn run() {
     .setup(|app| {
       // Core state before any command can run, so every domain sharing the asset roots finds it managed.
       app.manage(AssetMountState::new());
+
+      // Behind an `Arc` because a registration outlives the command frame that took it: the guard travels onto a
+      // blocking thread and releases its leases there, which a `State` borrow cannot do.
+      app.manage(Arc::new(JobRegistry::new()));
 
       // The window stays described by tauri.conf.json with `create: false` and is built here so a
       // debug build can extend it with locally supplied extensions: their path reaches the webview

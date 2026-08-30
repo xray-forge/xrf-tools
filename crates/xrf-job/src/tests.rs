@@ -154,7 +154,7 @@ fn a_level_can_count_bytes_instead_of_things() {
 
   writing.advance_by(1024);
 
-  let progress: JobProgress = job.snapshot();
+  let progress: JobProgress = job.get_progress().expect("a level is entered");
 
   assert_eq!(progress.levels[0].unit, ProgressUnit::Bytes);
   assert_eq!(progress.levels[0].completed, 1024);
@@ -165,7 +165,10 @@ fn units_default_to_things() {
   let (job, _sink) = recording();
   let _writing: JobScope = job.enter("write", Some(1));
 
-  assert_eq!(job.snapshot().levels[0].unit, ProgressUnit::Items);
+  assert_eq!(
+    job.get_progress().expect("a level is entered").levels[0].unit,
+    ProgressUnit::Items
+  );
 }
 
 #[test]
@@ -229,13 +232,19 @@ fn detail_is_replaced_rather_than_accumulated() {
   let _writing: JobScope = job.enter("write", Some(2));
 
   job.set_detail(Some(String::from("configs\\system.ltx")));
-  assert_eq!(job.snapshot().detail.as_deref(), Some("configs\\system.ltx"));
+  assert_eq!(
+    job.get_progress().expect("a level is entered").detail.as_deref(),
+    Some("configs\\system.ltx")
+  );
 
   job.set_detail(Some(String::from("meshes\\actor.ogf")));
-  assert_eq!(job.snapshot().detail.as_deref(), Some("meshes\\actor.ogf"));
+  assert_eq!(
+    job.get_progress().expect("a level is entered").detail.as_deref(),
+    Some("meshes\\actor.ogf")
+  );
 
   job.set_detail(None);
-  assert_eq!(job.snapshot().detail, None);
+  assert_eq!(job.get_progress().expect("a level is entered").detail, None);
 }
 
 #[test]
@@ -301,7 +310,7 @@ fn an_inert_job_counts_without_reporting() {
 
   assert_eq!(writing.completed(), 1);
   assert!(!job.is_cancelled());
-  assert_eq!(ids(&job.snapshot()), vec!["write"]);
+  assert_eq!(ids(&job.get_progress().expect("a level is entered")), vec!["write"]);
 }
 
 #[test]
@@ -328,5 +337,5 @@ fn a_reported_level_describes_the_counts_at_the_instant_it_was_taken() {
   writing.advance();
 
   assert_eq!(taken[0].completed, 1);
-  assert_eq!(job.snapshot().levels[0].completed, 2);
+  assert_eq!(job.get_progress().expect("a level is entered").levels[0].completed, 2);
 }

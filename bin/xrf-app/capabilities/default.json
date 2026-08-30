@@ -34,6 +34,7 @@
     "dialogs:default",
     "exports:default",
     "equipment-icons:default",
+    "jobs:default",
     "spawn:default",
     "system:default",
     "translations:default",

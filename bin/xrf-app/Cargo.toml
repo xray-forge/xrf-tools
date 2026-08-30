@@ -27,8 +27,10 @@ tauri-specta = { workspace = true, optional = true }
 tauri-plugin-dialog = "2.7.2"
 tauri-plugin-fs = "2.5.1"
 tauri-plugin-shell = "2.3.5"
+uuid = { workspace = true, features = ["serde"] }
 xrf-archive = { workspace = true }
 xrf-build-info = { workspace = true }
+xrf-job = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
 xrf-dds = { workspace = true }
@@ -61,6 +63,7 @@ typescript-bindings = [
     "tauri-specta",
     "xrf-archive/typescript-bindings",
     "xrf-build-info/typescript-bindings",
+    "xrf-job/typescript-bindings",
     "xrf-vfs/typescript-bindings",
     "xrf-db/typescript-bindings",
     "xrf-dialog/typescript-bindings",
