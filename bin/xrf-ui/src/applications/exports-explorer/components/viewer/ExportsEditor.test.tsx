@@ -167,7 +167,7 @@ describe("opened exports editor", () => {
     await waitFor(() => {
       const closeCalls = mockInvoke.mock.calls.filter(([command]) => command === "plugin:exports|close_project");
 
-      expect(closeCalls.length).toBeGreaterThanOrEqual(2);
+      expect(closeCalls).toHaveLength(1);
     });
   });
 

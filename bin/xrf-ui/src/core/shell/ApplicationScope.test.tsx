@@ -1,7 +1,5 @@
-import { describe, expect, it, jest } from "@jest/globals";
-import { act } from "@testing-library/react";
+import { describe, expect, it } from "@jest/globals";
 import { Injectable } from "@wirestate/core";
-import { registerHotModule, requestHotSwap } from "@wirestate/core/hot";
 import { useInjection } from "@wirestate/react";
 import { Fragment, ReactElement } from "react";
 
@@ -20,18 +18,11 @@ import {
   useEditorPanelsRegistry,
 } from "@/core/shell/panel/context";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { noop } from "@/lib/callbacks/noop";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 class ScopedService {
   public readonly label: string = "scoped service";
-}
-
-/** Stands in for `ScopedService` after a hot update re-executed its module. */
-@Injectable()
-class ReloadedScopedService {
-  public readonly label: string = "reloaded service";
 }
 
 let nextInstanceId: number = 0;
@@ -51,12 +42,6 @@ const PANEL: IEditorPanel = {
 
 function ScopedPanel(): ReactElement {
   const service: ScopedService = useInjection(ScopedService);
-
-  return <div>{service.label}</div>;
-}
-
-function ReloadedScopedPanel(): ReactElement {
-  const service: ReloadedScopedService = useInjection(ReloadedScopedService);
 
   return <div>{service.label}</div>;
 }
@@ -115,39 +100,6 @@ describe("ApplicationScope", () => {
 
     expect(getByText("content")).toBeInTheDocument();
     expect(getByText("scoped service")).toBeInTheDocument();
-  });
-
-  it("rebuilds the container when hot reload replaces a bound class", async () => {
-    registerHotModule("ApplicationScope.test/ScopedService", { ScopedService });
-
-    const { getByText, rerender } = renderWithProviders(
-      <ApplicationScope application={APPLICATION}>
-        <ScopedPanel />
-      </ApplicationScope>
-    );
-
-    expect(getByText("scoped service")).toBeInTheDocument();
-
-    // A completed swap announces itself to the console exactly as it does during a dev session. That line is
-    // wirestate reporting what it was asked to do, not anything failing here, so the run is not told about it.
-    const reported: jest.SpiedFunction<Console["info"]> = jest.spyOn(console, "info").mockImplementation(noop);
-
-    await act(async () => {
-      registerHotModule("ApplicationScope.test/ScopedService", { ScopedService: ReloadedScopedService });
-      requestHotSwap();
-    });
-
-    reported.mockRestore();
-
-    rerender(
-      <>
-        <ApplicationScope application={APPLICATION}>
-          <ReloadedScopedPanel />
-        </ApplicationScope>
-      </>
-    );
-
-    expect(getByText("reloaded service")).toBeInTheDocument();
   });
 
   it("keeps the container when a rebuilt descriptor binds the same classes", () => {

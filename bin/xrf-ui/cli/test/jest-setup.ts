@@ -10,8 +10,11 @@ import { mockTauri } from "@/fixtures/setup/mock-tauri";
 mockLogger();
 mockTauri();
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
   resetMockInvoke();
   resetMockIsTauri();
   resetMockAppWindow();
