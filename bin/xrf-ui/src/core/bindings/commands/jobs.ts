@@ -1,11 +1,28 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
+import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobProgress } from "@/core/bindings/types/xrf-job";
 
 /** Commands */
 export const jobsCommands = {
+  /**
+   * Watch a running job this window did not start.
+   *
+   * What makes a reload recoverable: the run kept going, but the channel it was reporting to belonged to the page that
+   * went away, so a new page hands it one of its own. Without this a reloaded window can only ask the listing where the
+   * job has got to, which is both slower than the job reports and noisy — every snapshot the old channel still receives
+   * is a callback the webview cannot find.
+   *
+   * The newest attach is the one that reports. Two windows watching one job is not a case this application has, and the
+   * listing still describes the run for anybody who did not attach.
+   *
+   * Answers whether anything is now reporting to `progress`. `false` means the job is not running — it finished while
+   * the page was loading, or it never started — and the listing is what describes it then.
+   */
+  attach: (id: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<boolean>("plugin:jobs|attach", { id, progress }),
   /**
    * Ask a running job to stop at its next safe boundary.
    *

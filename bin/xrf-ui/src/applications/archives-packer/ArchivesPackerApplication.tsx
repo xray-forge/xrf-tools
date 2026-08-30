@@ -42,9 +42,10 @@ export function ArchivesPackerApplication(): ReactElement {
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
 
   const config: Nullable<ArchivePackConfig> = packerService.config;
-  const isBusy: boolean = packerService.isBusy;
-
   const job: Nullable<IJobState> = packerService.job;
+
+  const isBusy: boolean = packerService.isBusy;
+  const isPacking: boolean = Boolean(job);
 
   const source: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_PACKER,
@@ -130,7 +131,7 @@ export function ArchivesPackerApplication(): ReactElement {
     ...(packerService.result ? [`${packerService.result.volumes.length} volume(s)`] : []),
   ]);
 
-  useEditorBusy(isBusy);
+  useEditorBusy(isBusy || isPacking);
 
   useEditorDirty(packerService.isDirty ? 1 : 0);
 
@@ -151,8 +152,8 @@ export function ArchivesPackerApplication(): ReactElement {
           subtitle={packerService.configName ?? "New configuration"}
           actions={
             <PackerToolbarActions
-              isBusy={isBusy}
-              isPackDisabled={isBusy || !resolved || Boolean(packerService.volumeSizeError)}
+              isBusy={isBusy || isPacking}
+              isPackDisabled={isBusy || isPacking || !resolved || Boolean(packerService.volumeSizeError)}
               onImport={() => void onImport()}
               onExport={() => void onExport()}
               onPack={() => setIsConfirming(true)}

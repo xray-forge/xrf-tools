@@ -4792,6 +4792,7 @@ dependencies = [
  "indexmap 2.14.0",
  "paste",
  "rustc_version",
+ "serde_json",
  "specta-macros",
  "uuid",
 ]
@@ -7072,6 +7073,7 @@ dependencies = [
  "log",
  "percent-encoding",
  "serde",
+ "serde_json",
  "specta",
  "specta-serde",
  "specta-typescript",

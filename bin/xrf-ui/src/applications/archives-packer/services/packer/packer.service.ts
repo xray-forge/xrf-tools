@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
@@ -6,7 +6,7 @@ import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-co
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import { IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
+import { IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -349,6 +349,26 @@ export class PackerService {
       // itself keeps going and reports through the jobs service.
       this.isBusy = false;
       this.jobId = null;
+    }
+  }
+
+  /**
+   * Shows what a pack this window watched rather than started has answered.
+   *
+   * The reload case: the command replied to a page that is gone, so nothing here ever awaited this run. What the
+   * backend retained arrives instead, and the editor renders it exactly as if this service had packed it.
+   *
+   * @param event - Settled job announced by the jobs service.
+   */
+  @OnEvent(JOB_SETTLED_EVENT)
+  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
+    const settled: Nullable<IJobSettledPayload> = event.payload ?? null;
+
+    if (settled?.kind === ARCHIVES_PACK_JOB_KIND) {
+      this.log.info("Adopting the outcome of a pack this window did not start:", settled.id, settled.conclusion);
+
+      this.result = (settled.result as Nullable<ArchivePackResult>) ?? null;
+      this.error = settled.error;
     }
   }
 }

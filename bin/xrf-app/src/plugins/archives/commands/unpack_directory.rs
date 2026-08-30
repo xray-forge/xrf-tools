@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::Serialize;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -9,9 +10,20 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
 use crate::core::error::error_to_string;
-use crate::core::jobs::{ChannelProgressSink, JobRegistration, JobRegistry};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::to_unpack_lease_key;
+
+/// What an unpack was asked to do, for a window that has to describe a run it did not start.
+///
+/// Declared here rather than reusing the command's own parameters because the pair is what a reader needs and the
+/// parameters are `&str` handles to it. Serialized into the job listing and read by nothing on this side.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ArchiveUnpackRequest<'paths> {
+  source: &'paths Path,
+  destination: &'paths Path,
+}
 
 /// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
 ///
@@ -32,15 +44,16 @@ pub async fn archives_unpack_directory(
 
   let source: PathBuf = PathBuf::from(from);
   let destination: PathBuf = PathBuf::from(destination);
-  let job: JobHandle = JobHandle::new(Arc::new(ChannelProgressSink::new(progress)));
-
   // Before the hop, never inside it: registering in the blocking closure leaves a window where a second request sees
   // no holder and both write the same tree.
-  let registration: JobRegistration = registry.register(
-    job_id,
-    "archives.unpack",
-    vec![to_unpack_lease_key(&destination)],
-    job.clone(),
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    JobStart::new(job_id, "archives.unpack")
+      .with_lease_keys(vec![to_unpack_lease_key(&destination)])
+      .with_request(&ArchiveUnpackRequest {
+        source: &source,
+        destination: &destination,
+      })
+      .with_progress(progress),
   )?;
 
   // Off the async worker, indexing included: reading the volumes, decompressing every entry, and writing the tree are

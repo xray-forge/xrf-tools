@@ -1,11 +1,11 @@
-import { inject, Injectable } from "@wirestate/core";
+import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/describe-unpack-outcome";
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import { IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
+import { IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -121,6 +121,26 @@ export class UnpackerService {
       // itself keeps going and reports through the jobs service.
       this.isBusy = false;
       this.jobId = null;
+    }
+  }
+
+  /**
+   * Shows what an unpack this window watched rather than started has answered.
+   *
+   * The reload case: the command replied to a page that is gone, so nothing here ever awaited this run. What the
+   * backend retained arrives instead, including the counts a cancelled run reports about what it left on disk.
+   *
+   * @param event - Settled job announced by the jobs service.
+   */
+  @OnEvent(JOB_SETTLED_EVENT)
+  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
+    const settled: Nullable<IJobSettledPayload> = event.payload ?? null;
+
+    if (settled?.kind === ARCHIVES_UNPACK_JOB_KIND) {
+      this.log.info("Adopting the outcome of an unpack this window did not start:", settled.id, settled.conclusion);
+
+      this.result = (settled.result as Nullable<ArchiveUnpackResult>) ?? null;
+      this.error = settled.error;
     }
   }
 }

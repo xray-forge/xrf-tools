@@ -3,11 +3,16 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Instant;
 
+use serde::Serialize;
+use serde_json::Value;
+use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_job::JobHandle;
+use xrf_job::{JobHandle, JobProgress, ProgressSink};
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
+use crate::core::jobs::job_progress_sink::JobProgressSink;
+use crate::core::jobs::job_start::JobStart;
 use crate::core::types::TauriResult;
 
 /// Finished jobs the listing keeps.
@@ -34,7 +39,23 @@ struct LiveJob {
   /// Reading it here rather than storing snapshots as they are emitted is what keeps the reporting path free of the
   /// registry: progress goes to whoever is watching, and the listing asks the handle when somebody actually looks.
   handle: JobHandle,
+  /// Where this job's snapshots go, kept so a page that reloaded onto a dead channel can point it at a live one.
+  sink: Arc<JobProgressSink>,
+  /// What the job was asked to do, as the command described it. Opaque here, and the only record of it once the page
+  /// that sent it is gone.
+  request: Option<Value>,
   is_cancel_requested: bool,
+}
+
+/// How a job ended, as the run itself reported it.
+struct JobEnding {
+  conclusion: JobConclusion,
+  error: Option<String>,
+  /// What the run answered, serialized by the command that knows its type and never read here.
+  ///
+  /// Retained because a command's answer is delivered to the caller that asked for it, and after a reload that caller
+  /// is gone: without a copy the outcome of a run somebody waited ten minutes for is unrecoverable.
+  result: Option<Value>,
 }
 
 struct RegistryState {
@@ -75,14 +96,28 @@ impl JobRegistry {
   ///
   /// Call this before moving the work onto a blocking thread. Registering inside the closure leaves a window in which
   /// a second request sees no holder and both proceed, which is the race the lease exists to close.
-  pub fn register(
-    self: &Arc<Self>,
-    id: Uuid,
-    kind: impl Into<String>,
-    lease_keys: Vec<String>,
-    handle: JobHandle,
-  ) -> TauriResult<JobRegistration> {
-    let kind: String = kind.into();
+  ///
+  /// The handle is made here rather than by the caller so that every job's transport is one the registry can re-point
+  /// later. A command that built its own sink would produce a job nobody could re-attach to after a reload, and the
+  /// gap would only show up as a frozen bar in front of a user.
+  ///
+  /// What the job carries beyond its identity - what it holds, what it was asked to do, and who is watching - is
+  /// described by `start` rather than passed alongside it, because a command knows all of it at once.
+  pub fn register(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
+    let JobStart {
+      id,
+      kind,
+      lease_keys,
+      request,
+      progress,
+    } = start;
+
+    let sink: Arc<JobProgressSink> = Arc::new(match progress {
+      Some(channel) => JobProgressSink::new(channel),
+      None => JobProgressSink::detached(),
+    });
+    let reporting: Arc<dyn ProgressSink> = Arc::clone(&sink) as Arc<dyn ProgressSink>;
+    let handle: JobHandle = JobHandle::new(reporting);
     let mut state: MutexGuard<RegistryState> = self.lock();
 
     if let Some(taken) = lease_keys.iter().find(|key| state.leases.contains_key(*key)) {
@@ -113,16 +148,40 @@ impl JobRegistry {
         kind,
         lease_keys,
         started_at: Instant::now(),
-        handle,
+        handle: handle.clone(),
+        sink,
+        request,
         is_cancel_requested,
       },
     );
 
-    Ok(JobRegistration {
-      id,
-      conclusion: Mutex::new(None),
-      registry: Arc::clone(self),
-    })
+    Ok((
+      handle,
+      JobRegistration {
+        id,
+        ending: Mutex::new(None),
+        registry: Arc::clone(self),
+      },
+    ))
+  }
+
+  /// Report a running job's progress to `channel` from now on.
+  ///
+  /// What a reloaded page calls once it has found the jobs it is taking over. Until it does, the job is still writing
+  /// snapshots to the channel of a page that no longer exists, which is harmless and noisy in equal measure.
+  ///
+  /// Answers whether anything is now reporting there. `false` means the job is not running: either it finished while
+  /// the page was loading, or it never started, and either way the listing is what describes it.
+  pub fn attach(&self, id: Uuid, channel: Channel<JobProgress>) -> bool {
+    let state: MutexGuard<RegistryState> = self.lock();
+
+    let Some(job) = state.live.get(&id) else {
+      return false;
+    };
+
+    job.sink.attach(channel);
+
+    true
   }
 
   /// Ask a job to stop, whether or not it has registered yet.
@@ -166,10 +225,12 @@ impl JobRegistry {
         id: *id,
         kind: job.kind.clone(),
         lease_keys: job.lease_keys.clone(),
+        request: job.request.clone(),
         is_cancel_requested: job.is_cancel_requested,
         progress: job.handle.get_progress(),
         conclusion: None,
         error: None,
+        result: None,
         duration: job.started_at.elapsed(),
       })
       .collect();
@@ -183,7 +244,7 @@ impl JobRegistry {
   }
 
   /// Release a job's leases and move it into the retained listing.
-  fn finish(&self, id: Uuid, conclusion: JobConclusion, error: Option<String>) {
+  fn finish(&self, id: Uuid, ending: JobEnding) {
     let mut state: MutexGuard<RegistryState> = self.lock();
 
     let Some(job) = state.live.remove(&id) else {
@@ -202,10 +263,12 @@ impl JobRegistry {
       id,
       kind: job.kind,
       lease_keys: job.lease_keys,
+      request: job.request,
       is_cancel_requested: job.is_cancel_requested,
       progress: job.handle.get_progress(),
-      conclusion: Some(conclusion),
-      error,
+      conclusion: Some(ending.conclusion),
+      error: ending.error,
+      result: ending.result,
       duration: job.started_at.elapsed(),
     });
 
@@ -236,7 +299,7 @@ impl Default for JobRegistry {
 pub struct JobRegistration {
   registry: Arc<JobRegistry>,
   id: Uuid,
-  conclusion: Mutex<Option<(JobConclusion, Option<String>)>>,
+  ending: Mutex<Option<JobEnding>>,
 }
 
 impl JobRegistration {
@@ -245,17 +308,47 @@ impl JobRegistration {
   }
 
   /// Record how the job ended, before its leases are released.
+  ///
+  /// For a run with nothing to hand back. Where there is an answer, `conclude_with` keeps it.
   pub fn conclude(&self, conclusion: JobConclusion, error: Option<String>) {
-    *self.conclusion.lock().unwrap_or_else(PoisonError::into_inner) = Some((conclusion, error));
+    self.record(JobEnding {
+      conclusion,
+      error,
+      result: None,
+    });
   }
 
   /// Record the ending a `Result` describes, which is what a command has in hand.
-  pub fn conclude_with<T, E: ToString>(&self, outcome: &Result<T, E>, cancelled: bool) {
-    match outcome {
-      Ok(_) if cancelled => self.conclude(JobConclusion::Cancelled, None),
-      Ok(_) => self.conclude(JobConclusion::Completed, None),
-      Err(error) => self.conclude(JobConclusion::Failed, Some(error.to_string())),
-    }
+  ///
+  /// The success payload is kept as JSON, so a page that was not there when the run finished can still be told what it
+  /// answered. Serialization is the same one the command's own response goes through, and a payload that cannot be
+  /// serialized is dropped rather than failing the job: the run itself succeeded, and its caller is being told so
+  /// through the response either way.
+  pub fn conclude_with<T: Serialize, E: ToString>(&self, outcome: &Result<T, E>, cancelled: bool) {
+    let ending: JobEnding = match outcome {
+      Ok(value) => JobEnding {
+        conclusion: if cancelled {
+          JobConclusion::Cancelled
+        } else {
+          JobConclusion::Completed
+        },
+        error: None,
+        result: serde_json::to_value(value)
+          .inspect_err(|error| log::warn!("Job answer was not retained: {error}"))
+          .ok(),
+      },
+      Err(error) => JobEnding {
+        conclusion: JobConclusion::Failed,
+        error: Some(error.to_string()),
+        result: None,
+      },
+    };
+
+    self.record(ending);
+  }
+
+  fn record(&self, ending: JobEnding) {
+    *self.ending.lock().unwrap_or_else(PoisonError::into_inner) = Some(ending);
   }
 }
 
@@ -273,13 +366,17 @@ impl Drop for JobRegistration {
   /// Failed rather than completed, because the paths that reach here without concluding are the ones that went wrong:
   /// an early return, or a panic unwinding through the command. A job that ended well says so.
   fn drop(&mut self) {
-    let (conclusion, error) = self
-      .conclusion
+    let ending: JobEnding = self
+      .ending
       .lock()
       .unwrap_or_else(PoisonError::into_inner)
       .take()
-      .unwrap_or((JobConclusion::Failed, None));
+      .unwrap_or(JobEnding {
+        conclusion: JobConclusion::Failed,
+        error: None,
+        result: None,
+      });
 
-    self.registry.finish(self.id, conclusion, error);
+    self.registry.finish(self.id, ending);
   }
 }

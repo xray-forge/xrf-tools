@@ -98,6 +98,15 @@ export type JobDescription = {
   /** What this job holds exclusively, so a refused start can be explained by pointing at the job that refused it. */
   leaseKeys: Array<string>;
   /**
+   * What the job was asked to do, as the command that started it described itself.
+   *
+   * JSON for the same reason the answer is: the registry serves every domain and reads none of their argument types.
+   * It is what lets a window that did not start a run still name what is running.
+   *
+   * Absent for a job whose command described nothing.
+   */
+  request: unknown | null;
+  /**
    * Whether stopping has been asked for. A job can carry this and still be running: cancellation lands at a boundary
    * the operation chooses, and the gap between asking and stopping is exactly what a reader wants to see.
    */
@@ -112,6 +121,15 @@ export type JobDescription = {
   conclusion: JobConclusion | null;
   /** Why it failed, where it did. */
   error: string | null;
+  /**
+   * What the run answered, for a job that completed.
+   *
+   * JSON rather than a type, because the registry serves every domain and none of their result types are its
+   * business. The tool that started the work is the one that knows how to read it.
+   *
+   * Absent while the job runs, and for a job that failed or was cancelled before it had an answer.
+   */
+  result: unknown | null;
   /** How long the job ran, measured by the registry rather than by the operation. */
   duration: number;
 };

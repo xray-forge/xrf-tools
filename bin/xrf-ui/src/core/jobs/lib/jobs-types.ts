@@ -1,5 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
+import { EventType } from "@wirestate/core";
 
+import { JobConclusion } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { INotificationPayload } from "@/core/notifications/lib";
 import { Nullable } from "@/lib/types/general";
@@ -52,8 +54,23 @@ export interface IJobState {
   kind: string;
   /** The last snapshot the backend sent, or null before the first one arrives. */
   progress: Nullable<JobProgress>;
+  /**
+   * What the run was asked to do, as the backend retained it, and null for a job this window started.
+   *
+   * A tool that started the job has its own arguments on screen already. One that found the job after a reload has
+   * nothing else to name it by, and untyped for the same reason the answer is: only that tool knows the shape.
+   */
+  request: unknown;
   /** Whether the cancel control has been used. The run stops at a boundary of its own choosing, not immediately. */
   isCancelRequested: boolean;
+  /**
+   * Whether this window found the job already running rather than starting it.
+   *
+   * An adopted job is watched by polling, because its channel belonged to the page that reloaded, and it can never
+   * produce a typed result here — the command answered a caller that no longer exists. A surface that renders a result
+   * has to know the difference, or it will wait for one that is not coming.
+   */
+  isAdopted: boolean;
 }
 
 /**
@@ -62,4 +79,32 @@ export interface IJobState {
 export interface IJobRun<T> {
   id: string;
   promise: Promise<T>;
+}
+
+/**
+ * The event announcing that a job this window was only watching has ended.
+ *
+ * How a tool learns the outcome of a run it never started: the command's answer went to the page that asked for it,
+ * and after a reload that page is gone. What the backend retained arrives here instead.
+ */
+export const JOB_SETTLED_EVENT: EventType = Symbol("@/jobs/settled");
+
+/**
+ * How a watched job ended.
+ */
+export interface IJobSettledPayload {
+  id: string;
+  /** What kind of work it was, which is how a tool decides whether this is its own run. */
+  kind: string;
+  /** How it ended, or null where it left the backend's retained listing before this window looked again. */
+  conclusion: Nullable<JobConclusion>;
+  /** Why it failed, where the backend recorded a reason. */
+  error: Nullable<string>;
+  /**
+   * What the run answered, as the backend retained it.
+   *
+   * Untyped on purpose: the jobs service serves every tool and cannot know what any of their results mean. The tool
+   * that recognises the kind is the one that knows the shape, and is where the cast belongs.
+   */
+  result: unknown;
 }

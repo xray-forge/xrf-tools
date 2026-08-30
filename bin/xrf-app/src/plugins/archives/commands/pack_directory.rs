@@ -8,7 +8,7 @@ use xrf_pack::{ArchivePackConfig, ArchivePackOptions, ArchivePackResult, Archive
 use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
-use crate::core::jobs::{ChannelProgressSink, JobRegistration, JobRegistry};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::to_pack_lease_key;
 
@@ -35,10 +35,12 @@ pub async fn archives_pack_directory(
     config.name
   );
 
-  let job: JobHandle = JobHandle::new(Arc::new(ChannelProgressSink::new(progress)));
-
-  let registration: JobRegistration =
-    registry.register(job_id, "archives.pack", vec![to_pack_lease_key(&config)], job.clone())?;
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    JobStart::new(job_id, "archives.pack")
+      .with_lease_keys(vec![to_pack_lease_key(&config)])
+      .with_request(&config)
+      .with_progress(progress),
+  )?;
 
   // Off the async worker: packing walks the whole source tree, compresses what the engine expects compressed, and
   // writes every volume. An `async fn` alone would leave all of that on an executor thread meant for short requests.
