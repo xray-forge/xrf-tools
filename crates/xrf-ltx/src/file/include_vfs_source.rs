@@ -79,7 +79,9 @@ impl LtxIncludeSource for LtxIncludeVfsSource<'_> {
       .list_children(&prefix)?
       .files
       .into_iter()
-      .filter(|location| LtxIncludeConvertor::matches_wildcard_mask(location.get_logical_path().file_name(), &mask))
+      .filter(|location| {
+        LtxIncludeConvertor::matches_wildcard_mask(location.get_logical_path().file_name().as_bytes(), mask.as_bytes())
+      })
       // The documented crossing back into `PathBuf`: an include source carries logical paths that way for both backends.
       .map(|location| PathBuf::from(location.get_logical_path().as_str()))
       .collect();

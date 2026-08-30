@@ -1,3 +1,4 @@
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
@@ -38,6 +39,10 @@ impl LtxIncludeConvertor {
   /// X-Ray extensions accepts `*` masks such as `w_*.ltx` and loads every matching file
   /// directly from the include directory. Matches are sorted so that section
   /// merging is deterministic across filesystems.
+  ///
+  /// Every directory entry is compared, including one whose name is not valid Unicode: a Unix filename is bytes, and such a
+  /// file is a config the engine would load. The comparison is therefore over encoded bytes rather than `str`, so a name that
+  /// does not decode still matches a mask whose literal parts it carries.
   pub fn resolve_include_paths<P: AsRef<Path>>(directory: P, statement: &str) -> XrfResult<Vec<PathBuf>> {
     let included_path: PathBuf = directory.as_ref().join(Self::statement_to_path(statement));
 
@@ -51,7 +56,7 @@ impl LtxIncludeConvertor {
       )));
     };
 
-    let Some(mask) = included_path.file_name().and_then(|name| name.to_str()) else {
+    let Some(mask) = included_path.file_name().map(OsStr::as_encoded_bytes) else {
       return Err(XrfError::new_convert_error(format!(
         "Failed to resolve wildcard file name for include {statement}"
       )));
@@ -66,12 +71,15 @@ impl LtxIncludeConvertor {
 
     for entry in entries {
       let entry: fs::DirEntry = entry?;
-      let path: PathBuf = entry.path();
-      let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
-        continue;
-      };
+      let file_name: OsString = entry.file_name();
 
-      if path.is_file() && Self::matches_wildcard_mask(file_name, mask) {
+      if !Self::matches_wildcard_mask(file_name.as_encoded_bytes(), mask) {
+        continue;
+      }
+
+      let path: PathBuf = entry.path();
+
+      if path.is_file() {
         resolved_paths.push(path);
       }
     }
@@ -204,16 +212,20 @@ impl LtxIncludeConvertor {
     }
   }
 
-  pub(crate) fn matches_wildcard_mask(file_name: &str, mask: &str) -> bool {
-    let mut remaining: &str = file_name;
+  /// Whether a file name matches a `*` mask, both as encoded bytes.
+  ///
+  /// Bytes rather than `str` because a filename is not required to be valid Unicode. Both encodings are self-synchronizing
+  /// supersets of UTF-8, so searching a mask part cannot match inside a multi-byte sequence.
+  pub(crate) fn matches_wildcard_mask(file_name: &[u8], mask: &[u8]) -> bool {
+    let mut remaining: &[u8] = file_name;
     let mut is_first_part: bool = true;
 
-    for part in mask.split('*').filter(|part| !part.is_empty()) {
-      let Some(position) = remaining.find(part) else {
+    for part in mask.split(|byte| *byte == b'*').filter(|part| !part.is_empty()) {
+      let Some(position) = Self::find_subslice(remaining, part) else {
         return false;
       };
 
-      if is_first_part && !mask.starts_with('*') && position != 0 {
+      if is_first_part && !mask.starts_with(b"*") && position != 0 {
         return false;
       }
 
@@ -221,7 +233,20 @@ impl LtxIncludeConvertor {
       is_first_part = false;
     }
 
-    mask.ends_with('*') || remaining.is_empty()
+    mask.ends_with(b"*") || remaining.is_empty()
+  }
+
+  /// Offset of the first occurrence of `needle`, which an empty one finds at the start.
+  fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() {
+      return Some(0);
+    }
+
+    if needle.len() > haystack.len() {
+      return None;
+    }
+
+    haystack.windows(needle.len()).position(|window| window == needle)
   }
 }
 
@@ -233,6 +258,7 @@ mod tests {
   use xrf_error::XrfResult;
 
   use crate::Ltx;
+  use crate::file::include::LtxIncludeConvertor;
 
   #[test]
   fn loads_each_file_matched_by_wildcard_include() -> XrfResult {
@@ -255,5 +281,50 @@ mod tests {
     fs::remove_dir_all(root)?;
 
     Ok(())
+  }
+
+  /// A Unix filename is bytes, not text, so a config the engine loads can carry a name that is not valid Unicode. The
+  /// wildcard resolver used to convert every directory entry with `to_str` and skip the ones that answered `None`, leaving
+  /// the sections such a file declares silently absent from the merged result.
+  #[test]
+  #[cfg(unix)]
+  fn loads_a_wildcard_match_whose_file_name_is_not_valid_unicode() -> XrfResult {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-wildcard-non-utf8-{}", std::process::id()));
+    let sections: PathBuf = root.join("sections");
+    let root_ltx: PathBuf = root.join("root.ltx");
+    let non_unicode_name: &OsStr = OsStr::from_bytes(b"section_\xffbroken.ltx");
+
+    assert!(non_unicode_name.to_str().is_none());
+
+    fs::create_dir_all(&sections)?;
+    fs::write(&root_ltx, "#include \"sections\\section_*.ltx\"\n")?;
+    fs::write(sections.join("section_readable.ltx"), "[readable]\n")?;
+    fs::write(sections.join(non_unicode_name), "[non_unicode]\n")?;
+
+    let ltx: Ltx = Ltx::read_from_file_included(&root_ltx)?;
+
+    // The readable sibling guards against a regression that drops both instead of neither.
+    assert!(ltx.has_section("readable"));
+    assert!(ltx.has_section("non_unicode"));
+
+    fs::remove_dir_all(root)?;
+
+    Ok(())
+  }
+
+  /// The mask comparison is over bytes, so a name that does not decode is still weighed against the mask instead of being
+  /// dropped. This runs everywhere; the filesystem end of it is Unix-only because Windows cannot hold such a name.
+  #[test]
+  fn matches_a_wildcard_mask_over_bytes_that_are_not_valid_unicode() {
+    // 0xFF cannot appear in UTF-8, so this name is only reachable as bytes.
+    let name: &[u8] = b"section_\xffbroken.ltx";
+
+    assert!(LtxIncludeConvertor::matches_wildcard_mask(name, b"section_*.ltx"));
+    assert!(LtxIncludeConvertor::matches_wildcard_mask(name, b"*broken*"));
+    assert!(!LtxIncludeConvertor::matches_wildcard_mask(name, b"weapon_*.ltx"));
+    assert!(!LtxIncludeConvertor::matches_wildcard_mask(name, b"section_*.xml"));
   }
 }
