@@ -262,6 +262,7 @@ pub fn add_reporting_arguments(command: Command) -> Command {
 
 #[cfg(test)]
 mod tests {
+  use std::fs;
   use std::path::PathBuf;
   use std::time::Duration;
 
@@ -270,6 +271,7 @@ mod tests {
   use xrf_build_info::{BuildInfo, BuildKind};
   use xrf_error::XrfError;
   use xrf_output::OutputVerbosity;
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::{
     CommandEnvelope, CommandOutcome, ReportDestination, ReportingOptions, add_reporting_arguments,
@@ -277,6 +279,7 @@ mod tests {
   };
   use crate::core::command_error::CommandError;
   use crate::core::generic_command::CommandResult;
+  use crate::core::staged_write::faults::fail_next_staged_write;
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
     add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true)).try_get_matches_from(arguments)
@@ -503,6 +506,52 @@ mod tests {
     let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
 
     assert!(envelope.publish(&ReportDestination::None).is_ok());
+  }
+
+  /// A destination of this test's own, since these cases are about what a file holds afterwards.
+  fn report_path(name: &str) -> PathBuf {
+    let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("core/reporting/{name}"));
+
+    fs::create_dir_all(&directory).expect("the report directory to be created");
+
+    directory.join("report.json")
+  }
+
+  #[test]
+  fn replaces_a_report_a_previous_run_wrote() {
+    let path: PathBuf = report_path("replaces");
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+
+    fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
+
+    envelope
+      .publish(&ReportDestination::File(path.clone()))
+      .expect("the report to be published");
+
+    let written: String = fs::read_to_string(&path).expect("the report to be readable");
+
+    assert!(!written.contains("sentinel"), "{written}");
+    assert!(written.contains("\"outcome\": \"success\""), "{written}");
+  }
+
+  /// The contract the staging exists for: a report that could not be delivered destroys nothing.
+  #[test]
+  fn keeps_the_previous_report_when_publication_fails() {
+    let path: PathBuf = report_path("preserves");
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+
+    fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
+    fail_next_staged_write();
+
+    let error: CommandError = envelope
+      .publish(&ReportDestination::File(path.clone()))
+      .expect_err("an undeliverable report to fail the run");
+
+    assert_eq!(error.exit_code(), 1);
+    assert_eq!(
+      fs::read(&path).expect("the report to be readable"),
+      b"{\"sentinel\":true}"
+    );
   }
 
   #[test]

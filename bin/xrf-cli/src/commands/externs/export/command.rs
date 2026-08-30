@@ -15,6 +15,7 @@ use super::report::ExternsExportReport;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::staged_write::write_file_staged;
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]
@@ -172,14 +173,24 @@ impl ExportCommand {
     )))
   }
 
+  /// Publish the artifact through the same staging helper a report goes through.
+  ///
+  /// An extern manifest is a checked-in artifact a later `--check` run and a CI job read back, so a
+  /// write that fails part-way must leave the previous one whole rather than a prefix of this one.
   fn write_output(path: &Path, content: &str) -> Result<(), XrfError> {
     if let Some(parent) = path.parent() {
       fs::create_dir_all(parent)?;
     }
 
-    fs::write(path, content)?;
-
-    Ok(())
+    write_file_staged(path, content.as_bytes()).map_err(|error| {
+      XrfError::new_io_error(
+        format!(
+          "Failed to write the extern artifact to '{}': {error}",
+          format_path(path)
+        ),
+        error.kind(),
+      )
+    })
   }
 
   fn verify_artifact(

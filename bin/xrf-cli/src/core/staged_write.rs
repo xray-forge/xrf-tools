@@ -35,6 +35,11 @@ pub fn write_file_staged(path: &Path, contents: &[u8]) -> IoResult<()> {
 
     staged_file.write_all(contents)?;
 
+    #[cfg(test)]
+    if let Some(error) = faults::take_injected_failure() {
+      return Err(error);
+    }
+
     // Only a replacement inherits permissions; a new artifact takes the platform default.
     if let Ok(metadata) = fs::metadata(path) {
       staged_file.set_permissions(metadata.permissions())?;
@@ -82,6 +87,32 @@ fn get_sibling_path(path: &Path, sequence: u64) -> IoResult<PathBuf> {
   Ok(parent.join(staged_name))
 }
 
+/// The publication seam a test fails on purpose.
+///
+/// Test-only, so the shipped binary carries neither the flag nor the branch reading it.
+#[cfg(test)]
+pub mod faults {
+  use std::cell::Cell;
+  use std::io::{Error as IoError, ErrorKind};
+
+  thread_local! {
+    /// Per-thread, so tests running in parallel cannot arm each other's failure.
+    static NEXT_WRITE_FAILS: Cell<bool> = const { Cell::new(false) };
+  }
+
+  /// Arm the next staged write on this thread to fail as a full device would.
+  pub fn fail_next_staged_write() {
+    NEXT_WRITE_FAILS.with(|armed| armed.set(true));
+  }
+
+  /// Consume the arming, so one call fails and the next publishes normally.
+  pub(super) fn take_injected_failure() -> Option<IoError> {
+    NEXT_WRITE_FAILS
+      .with(|armed| armed.replace(false))
+      .then(|| IoError::new(ErrorKind::StorageFull, "Injected staging failure"))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::fs;
@@ -90,6 +121,7 @@ mod tests {
 
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+  use super::faults::fail_next_staged_write;
   use super::write_file_staged;
 
   /// An empty directory of this run's own, since every case here is about what a destination holds.
@@ -156,6 +188,33 @@ mod tests {
     assert!(write_file_staged(&unreachable, b"{}").is_err());
     assert!(!unreachable.exists(), "a refused write must not create the target");
     assert_eq!(fs::read(&path)?, b"{\"previous\":true}");
+
+    Ok(())
+  }
+
+  #[test]
+  fn keeps_the_previous_artifact_when_the_staged_write_fails() -> IoResult<()> {
+    let directory: PathBuf = get_test_directory("injected")?;
+    let path: PathBuf = directory.join("report.json");
+
+    fs::write(&path, b"{\"previous\":true}")?;
+    fail_next_staged_write();
+
+    assert!(write_file_staged(&path, b"{\"current\":true}").is_err());
+    assert_eq!(fs::read(&path)?, b"{\"previous\":true}");
+
+    // The staged file is removed on the way out, so a failed run leaves the directory as it was.
+    let names: Vec<String> = fs::read_dir(&directory)?
+      .filter_map(Result::ok)
+      .map(|entry| entry.file_name().to_string_lossy().to_string())
+      .collect();
+
+    assert_eq!(names, vec![String::from("report.json")]);
+
+    // The arming is consumed, so the next publication succeeds.
+    write_file_staged(&path, b"{\"current\":true}")?;
+
+    assert_eq!(fs::read(&path)?, b"{\"current\":true}");
 
     Ok(())
   }
