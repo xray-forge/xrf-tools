@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, format_path, open_export_file};
@@ -15,7 +14,7 @@ use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
 use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 
 // c++ CKinematicsAnimated
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OmfFile {
   pub parameters: OmfParametersChunk,
   pub motions: OmfMotionsChunk,

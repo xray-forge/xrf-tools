@@ -1,9 +1,8 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfTextureChunk {
   pub texture_name: String,
   pub shader_name: String,

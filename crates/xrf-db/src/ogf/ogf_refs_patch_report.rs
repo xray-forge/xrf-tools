@@ -1,10 +1,10 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Outcome of a guarded ogf refs patch.
 ///
 /// Returned instead of logging from the processor so callers own their own output format, and so a
 /// dry run can report exactly what a real run would have written.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfRefsPatchReport {
   /// Size of the source file before patching.

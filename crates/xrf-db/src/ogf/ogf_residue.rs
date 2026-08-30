@@ -1,5 +1,4 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkTrailing, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{encode_w1251_bytes_to_string, to_format_size};
@@ -10,7 +9,7 @@ use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 ///
 /// Distinct from trailing bytes, which are merely present: residue is trailing bytes that have been *accounted for*.
 /// Anything unaccounted stays an error, so this type never records "some junk was at the end".
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OgfResidue {
   /// Offset of the first residue byte from the start of the file.
   pub position: u64,
@@ -19,7 +18,7 @@ pub struct OgfResidue {
 }
 
 /// Why residue is inert to the engine, which is the only reason it is tolerated at all.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OgfResidueCause {
   /// Too few bytes to be a chunk header.
   ///

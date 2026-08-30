@@ -1,12 +1,11 @@
 use std::io::Write;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfKinematicsChunk {
   pub source_chunk_id: u32,
   pub motion_refs: Vec<String>,
@@ -17,7 +16,6 @@ pub struct OgfKinematicsChunk {
   /// (`xray-16/src/Layers/xrRender/SkeletonAnimated.cpp:796`, `src/xrCore/FS_impl.h:65`). These bytes are therefore
   /// always inert, whatever they hold — shipped Anomaly visuals carry a fifth motion reference here that the game has
   /// never loaded. Empty for a well-formed chunk.
-  #[serde(default)]
   pub trailing: Vec<u8>,
 }
 

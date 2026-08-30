@@ -1,14 +1,13 @@
 use std::io::Write;
 
 use byteorder::{ByteOrder, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, read_u32_chunk};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, to_format_size};
 
 use crate::data::ogf::ogf_motion::OgfMotion;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OmfMotionsChunk {
   pub motions: Vec<OgfMotion>,
 }

@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -10,8 +9,7 @@ use crate::data::ogf::ogf_joint_limit::OgfJointLimit;
 /// Versioned: `friction` was added after version 0, so an older record simply ends before it
 /// (`SJointIKData::Import` in `Bone.cpp`). The version is stored per bone in the ik data chunk, which is
 /// why reading takes it as an argument rather than inferring it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfJointIkData {
   /// 0 rigid, 1 cloth, 2 joint, 3 wheel, 4 none, 5 slider.
   pub joint_type: u32,

@@ -1,7 +1,6 @@
 use std::io::Write;
 
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, encode_string_to_bytes, new_windows1251_encoder};
@@ -11,7 +10,7 @@ use xrf_utils::{decode_bytes_to_string, encode_string_to_bytes, new_windows1251_
 /// **Not a null terminated string.** `SkeletonCustom.cpp` hands the whole chunk to `CInifile`, so it is
 /// multi-line ini text rather than one terminated string. Kept as raw text here rather than parsed,
 /// because what the keys mean is a game concern, not a format one.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfUserDataChunk {
   pub user_data: String,
 }

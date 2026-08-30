@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -12,8 +11,7 @@ use crate::data::ogf::ogf_sphere::OgfSphere;
 /// All three primitives are always stored, whichever `shape_type` selects. The engine reads the whole
 /// struct as one blob under `#pragma pack(1)`, so the layout is exactly 2 + 2 + 60 + 16 + 32 bytes with
 /// no padding.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfBoneShape {
   /// 0 none, 1 box, 2 sphere, 3 cylinder.
   pub shape_type: u16,

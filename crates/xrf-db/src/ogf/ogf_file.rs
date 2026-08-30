@@ -2,7 +2,6 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{
   ChunkDataSource, ChunkReader, find_one_of_optional_chunk_by_id, find_one_of_required_chunks_by_id,
   find_optional_chunk_by_id, find_required_chunk_by_id,
@@ -34,7 +33,7 @@ use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 /// unknown chunks are skipped entirely. Editing an ogf file therefore never goes through this type,
 /// see [`crate::OgfMotionRefsProcessor`] and [`crate::OgfTextureRefsProcessor`], which patch raw
 /// chunks and copy everything they do not change byte for byte.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfFile {
   pub header: OgfHeaderChunk,
   pub texture: Option<OgfTextureChunk>,
@@ -59,7 +58,6 @@ pub struct OgfFile {
   /// Present only for a visual that is not a well-formed chunk stream and is loaded anyway. Nothing forces a consumer
   /// to look, so a reader answering "did this parse?" gets the same answer it always did; a consumer answering "is this
   /// well-formed?" asks whether this is `None`, and learns what is wrong rather than only that something is.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub residue: Option<OgfResidue>,
 }
 

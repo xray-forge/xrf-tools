@@ -1,5 +1,4 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -10,7 +9,7 @@ use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
 /// The chunk stores one record per bone with no count of its own, so the number of records comes from
 /// the bone names chunk. That is why this cannot implement [`ChunkReadWrite`] and takes the count
 /// explicitly, the same way the kinematics chunk takes its source id.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfIkDataChunk {
   pub bones: Vec<OgfBoneIkData>,
 }

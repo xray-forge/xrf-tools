@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
@@ -25,8 +24,7 @@ const TRANSLATION_KEY_16_SIZE: usize = 6;
 const TRANSLATION_KEY_8_SIZE: usize = 3;
 
 /// A rotation, as the format stores one: a quaternion, dequantised.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Quaternion {
   pub x: f32,
   pub y: f32,
@@ -38,8 +36,7 @@ pub struct Quaternion {
 ///
 /// Both streams carry either one key, when the motion holds the bone still, or one per frame. A consumer samples them
 /// by clamping its frame to the stream length rather than by asking which case it got.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfBoneMotion {
   pub rotations: Vec<Quaternion>,
   pub translations: Vec<Vector3d>,

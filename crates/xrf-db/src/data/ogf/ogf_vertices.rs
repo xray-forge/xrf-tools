@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 use crate::data::ogf::ogf_vertex::OgfVertex;
 
 /// Contents of an OGF vertex chunk: the stored format tag, the vertex count it declares, and the
@@ -9,8 +7,7 @@ use crate::data::ogf::ogf_vertex::OgfVertex;
 /// geometry is the pairing of vertices with indices. The count is retained alongside the vertices
 /// rather than derived from them, so a file whose declared count disagrees with its payload can still
 /// be described rather than rejected.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfVertices {
   pub format: u32,
   pub count: u32,

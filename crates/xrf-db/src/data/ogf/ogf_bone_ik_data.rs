@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -12,8 +11,7 @@ use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
 /// The bind transform is stored as an euler triple and a translation rather than a matrix; the engine
 /// composes it with `setXYZi` then `translate_over` (`SkeletonCustom.cpp`). Kept in the stored form here
 /// so writing it back is exact.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfBoneIkData {
   /// Per bone, and it selects whether the joint record carries a friction value.
   pub version: u16,

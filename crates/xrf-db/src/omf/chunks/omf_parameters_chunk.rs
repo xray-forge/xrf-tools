@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
@@ -7,7 +6,7 @@ use crate::OmfFile;
 use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
 use crate::data::ogf::ogf_part::OgfPart;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OmfParametersChunk {
   pub version: u16,
   pub parts: Vec<OgfPart>,

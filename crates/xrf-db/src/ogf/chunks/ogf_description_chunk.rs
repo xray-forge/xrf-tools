@@ -1,10 +1,9 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 /// ogf_desc c++ class
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfDescriptionChunk {
   pub source_file: String,
   pub convertor: String,

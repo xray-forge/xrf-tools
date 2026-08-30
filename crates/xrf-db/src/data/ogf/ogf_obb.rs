@@ -1,5 +1,4 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -9,8 +8,7 @@ use crate::data::generic::vector_3d::Vector3d;
 ///
 /// Distinct from [`crate::OgfBox`], which is an axis aligned min/max pair. This carries a rotation, so
 /// it is 15 floats rather than 6.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfObb {
   /// Row major 3x3 rotation.
   pub rotate: [Vector3d; 3],

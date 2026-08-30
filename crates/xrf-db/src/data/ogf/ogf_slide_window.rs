@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -10,8 +9,7 @@ use xrf_error::XrfResult;
 /// which is why `FSkinned.cpp` uses `sw[0]` when it wants full geometry.
 ///
 /// Exactly 8 bytes, so the count in the chunk header and the payload length must agree.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfSlideWindow {
   /// Start position in the index buffer.
   pub offset: u32,

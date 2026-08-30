@@ -1,12 +1,11 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
 use crate::OgfFile;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfChildrenChunk {
   pub nested: Vec<OgfFile>,
 }

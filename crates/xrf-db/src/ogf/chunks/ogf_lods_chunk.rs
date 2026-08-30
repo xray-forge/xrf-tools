@@ -1,7 +1,6 @@
 use std::io::Write;
 
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, encode_string_to_bytes, new_windows1251_encoder};
@@ -11,7 +10,7 @@ use xrf_utils::{decode_bytes_to_string, encode_string_to_bytes, new_windows1251_
 /// **Not a null terminated string.** `SkeletonCustom.cpp` reads it with `r_string`, which takes a line
 /// rather than stopping at a null, and files in practice contain the text with no terminator at all. So
 /// the whole payload is taken as text, which is also how the engine treats it.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfLodsChunk {
   pub lods: String,
 }

@@ -1,12 +1,11 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::ogf::ogf_bone::OgfBone;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfBonesChunk {
   pub bones: Vec<OgfBone>,
 }

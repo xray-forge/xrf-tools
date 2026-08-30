@@ -1,19 +1,16 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
 
 use crate::data::generic::vector_3d::Vector3d;
 
 /// One bone a vertex is skinned to, and how strongly.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfVertexLink {
   pub bone: u16,
   pub weight: f32,
 }
 
 /// One vertex of an OGF visual, with its skinning links resolved.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OgfVertex {
   pub position: Vector3d,
   pub normal: Vector3d,

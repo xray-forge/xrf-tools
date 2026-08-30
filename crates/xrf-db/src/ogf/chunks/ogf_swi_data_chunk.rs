@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
@@ -7,8 +6,7 @@ use xrf_utils::to_format_size;
 use crate::data::ogf::ogf_slide_window::OgfSlideWindow;
 
 /// Progressive mesh level of detail table, `OGF_SWIDATA`.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 pub struct OgfSwiDataChunk {
   /// Read and written verbatim, unused by the engine.
   pub reserved: [u32; 4],

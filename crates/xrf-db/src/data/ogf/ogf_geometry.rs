@@ -1,5 +1,4 @@
 use byteorder::{ByteOrder, ReadBytesExt};
-use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 
@@ -11,7 +10,7 @@ use crate::data::ogf::ogf_vertices::OgfVertices;
 /// Geometry can instead be stored in shared vertex or index containers. In
 /// that case the corresponding field remains absent because the container is
 /// outside this OGF file.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct OgfGeometry {
   pub vertex_count: Option<u32>,
   pub indices: Option<Vec<u16>>,
