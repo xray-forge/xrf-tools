@@ -3,9 +3,9 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, Error as WalkError, WalkDir};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, format_path_or};
 
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
@@ -40,7 +40,7 @@ impl ArchiveProject {
   ///
   /// # Errors
   ///
-  /// Returns an error when no archive volume is found or a volume cannot be read.
+  /// Returns an error when the path cannot be walked, no archive volume is found, or a volume cannot be read.
   pub fn new(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::read_to_depth(path.as_ref(), usize::MAX)
   }
@@ -52,7 +52,7 @@ impl ArchiveProject {
   ///
   /// # Errors
   ///
-  /// Returns an error when no archive volume is found or a volume cannot be read.
+  /// Returns an error when the path cannot be walked, no archive volume is found, or a volume cannot be read.
   pub fn new_shallow(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::read_to_depth(path.as_ref(), 1)
   }
@@ -62,27 +62,61 @@ impl ArchiveProject {
   /// Published so a caller mounting the same path as sources of its own reads the identical volume set — the archives
   /// explorer lists a project and then mounts its root to preview an entry, and a shallower discovery there offers a
   /// file the preview cannot reach.
-  pub fn discover_volumes(path: impl AsRef<Path>) -> Vec<PathBuf> {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a descendant of the path cannot be walked.
+  pub fn discover_volumes(path: impl AsRef<Path>) -> XrfResult<Vec<PathBuf>> {
     Self::discover_to_depth(path.as_ref(), usize::MAX)
   }
 
   /// Volume paths at a path, in merge order: a named file is itself, a directory is walked to `depth`.
-  fn discover_to_depth(path: &Path, depth: usize) -> Vec<PathBuf> {
+  fn discover_to_depth(path: &Path, depth: usize) -> XrfResult<Vec<PathBuf>> {
     if path.is_file() {
-      return vec![path.to_path_buf()];
+      return Ok(vec![path.to_path_buf()]);
     }
 
-    let mut volumes: Vec<PathBuf> = WalkDir::new(path)
-      .max_depth(depth)
-      .into_iter()
-      .filter_map(Result::ok)
-      .map(|entry| entry.into_path())
-      .filter(|path| ArchiveDescriptor::is_valid_db_path(path))
-      .collect();
+    Self::collect_volumes(
+      WalkDir::new(path)
+        .max_depth(depth)
+        .into_iter()
+        .map(|entry| entry.map(DirEntry::into_path).map_err(Self::describe_walk_failure)),
+    )
+  }
+
+  /// The volumes among walked entries, in merge order, failing on the first entry the walk could not reach.
+  ///
+  /// Discovery fails closed because an unreachable descendant may hold volumes: dropping the failure would open a
+  /// project silently missing them, while every caller reads a successful open as the complete volume set. A volume the
+  /// walk does reach fails the open in `ArchiveReader`, so both halves of one contract answer the same way.
+  fn collect_volumes(entries: impl IntoIterator<Item = XrfResult<PathBuf>>) -> XrfResult<Vec<PathBuf>> {
+    let mut volumes: Vec<PathBuf> = Vec::new();
+
+    for entry in entries {
+      let path: PathBuf = entry?;
+
+      if ArchiveDescriptor::is_valid_db_path(&path) {
+        volumes.push(path);
+      }
+    }
 
     Self::sort_volumes(&mut volumes);
 
-    volumes
+    Ok(volumes)
+  }
+
+  /// Keeps the failing path and the io kind, which `walkdir` carries only as display text.
+  ///
+  /// The cause is taken from the io error rather than from `error`, whose own rendering repeats the path this already
+  /// names through the one host-path boundary. A failure with no entry to name, such as a directory read that recorded
+  /// none, keeps `walkdir`'s wording instead.
+  fn describe_walk_failure(error: WalkError) -> XrfError {
+    let at: String = format_path_or(error.path(), "an unnamed entry").to_string();
+
+    match error.io_error() {
+      Some(cause) => XrfError::new_io_error(format!("Unable to walk archive path {at}: {cause}"), cause.kind()),
+      None => XrfError::new_read_error(format!("Unable to walk archive path {at}: {error}")),
+    }
   }
 
   fn read_to_depth(path: &Path, depth: usize) -> XrfResult<Self> {
@@ -93,7 +127,7 @@ impl ArchiveProject {
       log::info!("Reading archive directory: {}", format_path(path));
     }
 
-    let volumes: Vec<PathBuf> = Self::discover_to_depth(path, depth);
+    let volumes: Vec<PathBuf> = Self::discover_to_depth(path, depth)?;
     let mut archives: Vec<ArchiveDescriptor> = Vec::with_capacity(volumes.len());
 
     for volume in &volumes {
@@ -191,7 +225,10 @@ impl ArchiveProject {
 
 #[cfg(test)]
 mod tests {
+  use std::io::ErrorKind;
   use std::path::{Path, PathBuf};
+
+  use xrf_error::{XrfError, XrfResult};
 
   use crate::archive_descriptor::ArchiveDescriptor;
 
@@ -233,6 +270,86 @@ mod tests {
     assert!(ArchiveDescriptor::is_valid_db_path(Path::new("mod.xdb1")));
     assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("readme.txt")));
     assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("noextension")));
+  }
+
+  /// A walk failure used to be filtered away, so an unreadable descendant left the project quietly short of the volumes
+  /// below it whenever a readable sibling kept the open succeeding.
+  #[test]
+  fn discovery_fails_on_an_entry_the_walk_cannot_reach() {
+    let entries: [XrfResult<PathBuf>; 3] = [
+      Ok(PathBuf::from("/game/db/configs.db0")),
+      Err(XrfError::new_io_error("locked", ErrorKind::PermissionDenied)),
+      Ok(PathBuf::from("/game/db/textures.db0")),
+    ];
+
+    let error: XrfError = ArchiveProject::collect_volumes(entries).expect_err("walk failure fails discovery");
+
+    assert!(
+      matches!(
+        error,
+        XrfError::Io {
+          kind: ErrorKind::PermissionDenied,
+          ..
+        }
+      ),
+      "walk failure keeps its io kind, got {error}"
+    );
+  }
+
+  #[test]
+  fn discovery_keeps_the_volumes_among_walked_entries() -> XrfResult {
+    let entries: [XrfResult<PathBuf>; 3] = [
+      Ok(PathBuf::from("/game/db/textures.db0")),
+      Ok(PathBuf::from("/game/db/readme.txt")),
+      Ok(PathBuf::from("/game/db/configs.db0")),
+    ];
+
+    assert_eq!(
+      ArchiveProject::collect_volumes(entries)?,
+      vec![
+        PathBuf::from("/game/db/configs.db0"),
+        PathBuf::from("/game/db/textures.db0")
+      ]
+    );
+
+    Ok(())
+  }
+
+  /// The end of the same contract on a real walk: only Unix can make a directory the process cannot enter, and a run as
+  /// root ignores the mode, so the check states what it skipped rather than passing without making it.
+  #[test]
+  #[cfg(unix)]
+  fn discovery_fails_on_an_unreadable_directory() -> XrfResult {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+    let root: PathBuf = build_absolute_generated_test_resource_path("archive_project_unreadable");
+    let locked: PathBuf = root.join("locked");
+
+    fs::create_dir_all(&locked)?;
+    fs::write(root.join("configs.db0"), b"")?;
+    fs::write(locked.join("textures.db0"), b"")?;
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))?;
+
+    let is_enforced: bool = fs::read_dir(&locked).is_err();
+    let discovered: XrfResult<Vec<PathBuf>> = ArchiveProject::discover_volumes(&root);
+
+    // Restored before asserting, or the failure leaves a directory the run cannot clean up.
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o700))?;
+    fs::remove_dir_all(&root)?;
+
+    if is_enforced {
+      assert!(
+        discovered.is_err(),
+        "an unreadable directory fails discovery instead of hiding the volume below it"
+      );
+    } else {
+      eprintln!("skipped: this process reads a 0o000 directory, so the mode enforces nothing");
+    }
+
+    Ok(())
   }
 
   #[test]

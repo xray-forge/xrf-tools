@@ -140,7 +140,7 @@ impl XrayMountPlan {
   ///
   /// # Errors
   ///
-  /// Returns an error when a mount cannot be planned at the root base.
+  /// Returns an error when a descendant of the path cannot be walked, or a mount cannot be planned at the root base.
   pub fn nested_volumes(path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::new().with_volumes_beneath(path.as_ref(), "volumes")
   }
@@ -152,7 +152,7 @@ impl XrayMountPlan {
   fn with_volumes_beneath(self, path: &Path, origin: &str) -> XrfResult<Self> {
     let mut plan: Self = self;
 
-    for volume in ArchiveProject::discover_volumes(path).into_iter().rev() {
+    for volume in ArchiveProject::discover_volumes(path)?.into_iter().rev() {
       plan = plan.with_kind(volume, "", origin, XraySourceKind::Archive)?;
     }
 
