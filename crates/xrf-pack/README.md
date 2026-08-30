@@ -27,6 +27,11 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
 # }
 ```
 
+Bulk extraction is contained. `unpack` and `extract_directory` lay out archive-controlled names, so both write through
+a rooted walk that creates one component at a time and refuses an existing symlink, junction, or other reparse point
+below the destination: an entry that spells no traversal still cannot escape through a link the destination already
+held. `extract_file` is deliberately different, because a caller naming one exact output path may name a linked one.
+
 Volumes are written with a mountable `[header]` by default: a headerless archive not named `xdb` is assumed by the
 engine to be an encrypted Shadow of Chernobyl archive and decrypts into nonsense, so the harmless case is the default.
 

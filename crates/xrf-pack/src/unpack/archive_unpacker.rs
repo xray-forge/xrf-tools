@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
-use std::io::ErrorKind::AlreadyExists;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::thread::available_parallelism;
@@ -19,6 +18,7 @@ use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
 use crate::unpack::archive_unpack_progress::ArchiveUnpackProgress;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
+use crate::unpack::rooted_destination::RootedDestination;
 
 /// Writes the contents of an archive project back out to a directory.
 pub struct ArchiveUnpacker;
@@ -42,6 +42,9 @@ impl ArchiveUnpacker {
   /// The count is non-zero because `ThreadPoolBuilder::num_threads(0)` means "decide for me" to Rayon: a zero would
   /// quietly become one worker per core, which is the opposite of what a caller asking for a bound wants.
   ///
+  /// Names come from the archive, so every write goes through a [`RootedDestination`] and lands below `destination`
+  /// even where that tree already exists and holds links.
+  ///
   /// A failure ends the run: no further entry is started, entries already started run to completion, and one of the
   /// errors is returned. Which one is unspecified, because entries are dispatched out of a hash table and finish out
   /// of order. Whatever was written stays on disk and the run is still reported as a failure — a partial tree reported
@@ -51,10 +54,10 @@ impl ArchiveUnpacker {
     destination: P,
     concurrency: NonZeroUsize,
   ) -> XrfResult<ArchiveUnpackResult> {
-    let destination: &Path = destination.as_ref();
+    let destination: RootedDestination = RootedDestination::new(destination.as_ref());
     let mut progress: ArchiveUnpackProgress = ArchiveUnpackProgress::begin(project.files.len());
 
-    Self::unpack_dirs(project, destination)?;
+    Self::unpack_dirs(project, &destination)?;
     progress.record_prepared();
 
     Self::build_pool(concurrency)?.install(|| {
@@ -62,7 +65,7 @@ impl ArchiveUnpacker {
         // A directory row carries no payload, and the tree it names was created during preparation. It is counted
         // anyway, so the progress total stays the entry count the project reports holding.
         if !descriptor.is_directory {
-          Self::unpack_file(destination, descriptor)?;
+          Self::unpack_file(&destination, descriptor)?;
         }
 
         progress.record_unpacked();
@@ -73,7 +76,7 @@ impl ArchiveUnpacker {
 
     Ok(Self::describe(
       project,
-      destination,
+      destination.get_root(),
       progress.get_prepared_at(),
       progress.elapsed(),
     ))
@@ -85,13 +88,15 @@ impl ArchiveUnpacker {
   /// `C:\out` produces `C:\out\dialogs.xml`, not `C:\out\configs\gameplay\dialogs.xml`. The user picked
   /// the destination for the directory they named, so repeating that directory inside it is surprising.
   ///
-  /// An empty prefix means the whole archive, which is what selecting the tree root does.
+  /// An empty prefix means the whole archive, which is what selecting the tree root does. What lies below the prefix
+  /// is archive-controlled, so it is written through a [`RootedDestination`] rather than joined and opened.
   pub fn extract_directory<P: AsRef<Path>>(
     project: &ArchiveProject,
     prefix: &str,
     destination: P,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
+    let destination: RootedDestination = RootedDestination::new(destination.as_ref());
 
     let mut extracted_count: usize = 0;
     let mut found: bool = false;
@@ -102,21 +107,17 @@ impl ArchiveUnpacker {
         continue;
       };
 
-      let target_path: PathBuf = destination.as_ref().join(to_host_relative(relative)?);
+      let relative: PathBuf = to_host_relative(relative)?;
 
       found = true;
 
       if descriptor.is_directory {
-        fs::create_dir_all(&target_path)?;
+        destination.create_directory(&relative)?;
 
         continue;
       }
 
-      if let Some(parent) = target_path.parent() {
-        fs::create_dir_all(parent)?;
-      }
-
-      write_descriptor_contents(&mut Self::create_target(&target_path)?, descriptor)?;
+      write_descriptor_contents(&mut destination.create_file(&relative)?, descriptor)?;
 
       extracted_count += 1;
       size += descriptor.size_real as u64;
@@ -130,7 +131,7 @@ impl ArchiveUnpacker {
 
     Ok(ArchiveExtractDirectoryResult {
       prefix: normalized,
-      destination: format_path(destination.as_ref()).to_string(),
+      destination: format_path(destination.get_root()).to_string(),
       extracted_count,
       size,
     })
@@ -209,18 +210,18 @@ impl ArchiveUnpacker {
     )
   }
 
-  fn unpack_file<P: AsRef<Path>>(destination: P, descriptor: &ArchiveFileDescriptor) -> XrfResult {
+  fn unpack_file(destination: &RootedDestination, descriptor: &ArchiveFileDescriptor) -> XrfResult {
     write_descriptor_contents(
-      &mut Self::create_target(&Self::build_target_path(destination.as_ref(), descriptor)?)?,
+      &mut destination.create_file(&Self::build_relative_path(descriptor)?)?,
       descriptor,
     )
   }
 
-  fn unpack_dirs<P: AsRef<Path>>(project: &ArchiveProject, destination: P) -> XrfResult {
+  fn unpack_dirs(project: &ArchiveProject, destination: &RootedDestination) -> XrfResult {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
     for descriptor in project.files.values() {
-      let target: PathBuf = Self::build_target_path(destination.as_ref(), descriptor)?;
+      let target: PathBuf = Self::build_relative_path(descriptor)?;
 
       let directory: Option<PathBuf> = if descriptor.is_directory {
         Some(target)
@@ -234,25 +235,22 @@ impl ArchiveUnpacker {
     }
 
     for path in set {
-      match fs::create_dir_all(path) {
-        Ok(_) => {}
-        Err(error) if error.kind() == AlreadyExists => {}
-        Err(error) => return Err(error.into()),
-      }
+      destination.create_directory(&path)?;
     }
 
     Ok(())
   }
 
-  /// Where one archived entry lands below a destination root.
+  /// Where one archived entry lands, relative to a destination root.
   ///
   /// Both halves are engine paths, so both are crossed into host components rather than pushed whole: an entry named
   /// `configs\system.ltx` is a single component to `std::path` on Linux, which unpacks the tree as a flat directory of
   /// files with backslashes in their names.
-  fn build_target_path(destination: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
-    let mut path: PathBuf = destination.into();
+  ///
+  /// Relative rather than already joined, because the destination is only ever reached one component at a time.
+  fn build_relative_path(descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
+    let mut path: PathBuf = to_host_relative(&descriptor.destination.to_string_lossy())?;
 
-    path.push(to_host_relative(&descriptor.destination.to_string_lossy())?);
     path.push(to_host_relative(&descriptor.name)?);
 
     Ok(path)
@@ -273,8 +271,8 @@ mod tests {
       .with_archive_paths(Path::new("textures.db0"), Path::new("gamedata\\"));
 
     assert_eq!(
-      ArchiveUnpacker::build_target_path(Path::new("out"), &descriptor).expect("safe archive path"),
-      PathBuf::from("out").join("gamedata").join("configs").join("system.ltx")
+      ArchiveUnpacker::build_relative_path(&descriptor).expect("safe archive path"),
+      PathBuf::from("gamedata").join("configs").join("system.ltx")
     );
   }
 
