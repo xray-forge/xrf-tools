@@ -1,5 +1,6 @@
 use serde::Serialize;
 use xrf_report::Status;
+use xrf_vfs::XrayPathCollision;
 
 /// One payload that could not be read back.
 #[derive(Debug, Serialize)]
@@ -27,15 +28,23 @@ impl ArchiveVerifyFindingReport {
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveVerifyReport {
   checked: usize,
+  /// Entries the volume set holds that no engine lookup can reach, reported beside the verdict without joining it.
+  ///
+  /// This command judges payloads: whether the bytes an entry names read back. Whether the engine can *address* that
+  /// entry is a different question, and one a mount answers, so it is reported without joining the status —
+  /// `gamedata verify` is where a project's reachability belongs in a verdict. Reporting it at all keeps a clean CRC
+  /// sweep from implying a volume set nothing is wrong with.
+  collisions: Vec<XrayPathCollision>,
   findings: Vec<ArchiveVerifyFindingReport>,
   status: Status,
 }
 
 impl ArchiveVerifyReport {
-  pub fn new(checked: usize, findings: Vec<ArchiveVerifyFindingReport>) -> Self {
+  pub fn new(checked: usize, collisions: Vec<XrayPathCollision>, findings: Vec<ArchiveVerifyFindingReport>) -> Self {
     Self {
       status: Status::from_is_valid(findings.is_empty()),
       checked,
+      collisions,
       findings,
     }
   }

@@ -44,6 +44,20 @@ impl XrayArchiveSource {
     Ok(source)
   }
 
+  /// Files a volume set's fold onto engine identities leaves unreachable, without mounting it.
+  ///
+  /// For a caller holding a volume set it has already read: `archive verify` reads every payload out of an
+  /// [`ArchiveProject`] and then asks which of them no lookup can reach. Mounting the same path through [`Self::read`]
+  /// would read every name table a second time, and discover volumes nonrecursively, so it would answer over a
+  /// different volume set than the one just verified.
+  ///
+  /// The fold stays here rather than in `xrf-archive`, which cannot reach it: an archive keys entries by the name its
+  /// header authored, and what those names fold to is the engine identity this crate's `path` module is the sole owner
+  /// of.
+  pub fn list_collisions_of(project: &ArchiveProject) -> Vec<XrayPathCollision> {
+    Self::index(project).1
+  }
+
   /// Keys an already-read volume set by engine identity.
   ///
   /// Separate from [`Self::read`] because a case-only collision inside one volume cannot exist on a case-insensitive

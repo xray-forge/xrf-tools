@@ -9,6 +9,7 @@ import { ArchivesFileContent } from "@/applications/archives-explorer/components
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
@@ -22,8 +23,10 @@ export function ArchivesEditor(): ReactElement {
 
   const [isClosing, setClosing] = useState<boolean>(false);
   const [closeError, setCloseError] = useState<Nullable<string>>(null);
+  const [isCollisionNoticeDismissed, setCollisionNoticeDismissed] = useState<boolean>(false);
 
   const project: Nullable<ArchiveProject> = archivesService.project.value;
+  const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
 
   const archiveCount: number = project?.archives.length ?? 0;
   const fileCount: number = archivesService.files.length;
@@ -34,6 +37,7 @@ export function ArchivesEditor(): ReactElement {
   // screen nobody could see, and the only signal it was happening was one button in the content area.
   const isExtracting: boolean = archivesService.operation.isLoading;
   const isBusy: boolean = isClosing || isExtracting;
+  const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
 
   const onClose = useCallback(async (): Promise<void> => {
     setClosing(true);
@@ -84,10 +88,25 @@ export function ArchivesEditor(): ReactElement {
         />
       }
       banner={
-        closeError ? (
-          <Alert severity={"error"} onClose={() => setCloseError(null)}>
-            Could not close archives: {closeError}
-          </Alert>
+        closeError || isCollisionNoticeShown ? (
+          <>
+            {closeError ? (
+              <Alert severity={"error"} onClose={() => setCloseError(null)}>
+                Could not close archives: {closeError}
+              </Alert>
+            ) : null}
+
+            {isCollisionNoticeShown ? (
+              <Alert
+                severity={"warning"}
+                closeText={"Dismiss unreachable files notice"}
+                onClose={() => setCollisionNoticeDismissed(true)}
+              >
+                {collisions.length} file(s) here cannot be reached - another entry claims their engine path. See the
+                Unreachable files panel.
+              </Alert>
+            ) : null}
+          </>
         ) : null
       }
     >

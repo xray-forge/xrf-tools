@@ -17,7 +17,7 @@ import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -37,6 +37,16 @@ export class ArchivesService {
 
   @Observable()
   public project: Loadable<Nullable<ArchiveProject>> = createLoadable(null);
+
+  /**
+   * Entries the open volume set holds that no engine lookup can reach.
+   *
+   * Loaded beside the project rather than with it: the project is a name table keyed as authored, and what those names
+   * fold to is the backend's mount layer to answer. A failure here is reported and dropped - a volume set that opened
+   * is still browsable when nobody could tell what is unreachable in it.
+   */
+  @Observable()
+  public collisions: Loadable<Array<XrayPathCollision>> = createLoadable([]);
 
   /** What the explorer points at. Exactly one kind at a time, by construction. */
   @Observable()
@@ -136,6 +146,8 @@ export class ArchivesService {
 
     if (existing) {
       this.project = createLoadable(existing);
+
+      yield* this.loadCollisions();
     }
 
     this.isReady = true;
@@ -147,6 +159,7 @@ export class ArchivesService {
 
     this.clearFileSelection();
     this.project = createLoadable(null);
+    this.collisions = createLoadable([]);
   }
 
   @LatestFlow("project")
@@ -158,12 +171,15 @@ export class ArchivesService {
     try {
       this.clearFileSelection();
       this.project = createLoadable(null, true);
+      this.collisions = createLoadable([]);
 
       const response: ArchiveProject = yield* call(archivesCommands.openProject(path));
 
       this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
 
       this.project = createLoadable(response, false);
+
+      yield* this.loadCollisions();
     } catch (error: unknown) {
       this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
@@ -194,10 +210,33 @@ export class ArchivesService {
 
       this.clearFileSelection();
       this.project = createLoadable(null);
+      this.collisions = createLoadable([]);
     } catch (error: unknown) {
       this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
 
       throw transformError(error);
+    }
+  }
+
+  /**
+   * Loads what the open volume set cannot reach, inside whichever flow opened it.
+   *
+   * Undecorated on purpose: it belongs to the open that asked for it, so a superseding open cancels this with the rest
+   * of its own work instead of racing it from a lane of its own.
+   */
+  private *loadCollisions(): TFlow {
+    try {
+      this.collisions = createLoadable([], true);
+
+      const collisions: Array<XrayPathCollision> = yield* call(archivesCommands.listCollisions());
+
+      this.log.info("Archives project unreachable entries:", collisions.length);
+
+      this.collisions = createLoadable(collisions, false);
+    } catch (error: unknown) {
+      this.log.error("Failed to list archives project collisions:", error);
+
+      this.collisions = createLoadable([], false, transformError(error));
     }
   }
 

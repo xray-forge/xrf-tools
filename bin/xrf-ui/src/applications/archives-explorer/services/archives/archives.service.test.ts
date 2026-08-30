@@ -3,7 +3,8 @@ import { flowResult, isComputedProp } from "@wirestate/mobx";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { createLoadable } from "@/lib/loadable";
@@ -194,5 +195,55 @@ describe("ArchivesService visual preview lifecycle", () => {
     mockArchivesService([]).onDeactivation();
 
     expect(invoked).toEqual(["plugin:archives|close_project", "plugin:visuals|close_model"]);
+  });
+});
+
+describe("ArchivesService reachability", () => {
+  it("asks what the opened volume set cannot reach", async () => {
+    const collision: XrayPathCollision = mockPathCollision();
+
+    setMockInvokeResponses({
+      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|list_collisions"]: [collision],
+    });
+
+    const { service } = mockInjectedService(ArchivesService);
+
+    await service.openProject("C:\\game\\database");
+
+    expect(service.collisions.value).toEqual([collision]);
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions");
+  });
+
+  it("keeps a project browsable when reachability cannot be answered", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|list_collisions"]: () => {
+        throw new Error("fold failed");
+      },
+    });
+
+    const { service } = mockInjectedService(ArchivesService);
+
+    await service.openProject("C:\\game\\database");
+
+    expect(service.project.value).not.toBeNull();
+    expect(service.project.error).toBeNull();
+    expect(service.collisions.error?.message).toBe("fold failed");
+  });
+
+  it("forgets them when the project closes", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|list_collisions"]: [mockPathCollision()],
+      ["plugin:archives|close_project"]: undefined,
+    });
+
+    const { service } = mockInjectedService(ArchivesService);
+
+    await service.openProject("C:\\game\\database");
+    await service.closeProject();
+
+    expect(service.collisions.value).toEqual([]);
   });
 });

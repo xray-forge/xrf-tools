@@ -34,25 +34,6 @@ impl GamedataAssetReport {
   }
 }
 
-/// One file a source holds but cannot reach, because another file in it claims the same identity.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GamedataCollisionReport {
-  kept: String,
-  logical_path: String,
-  unreachable: String,
-}
-
-impl GamedataCollisionReport {
-  fn new(collision: &XrayPathCollision) -> Self {
-    Self {
-      kept: collision.kept.to_portable_string(),
-      logical_path: String::from(collision.logical_path.as_str()),
-      unreachable: collision.unreachable.to_portable_string(),
-    }
-  }
-}
-
 /// One declared source that could not be opened, so the listing does not cover it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +57,8 @@ impl GamedataSkippedMountReport {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GamedataListReport {
-  collisions: Vec<GamedataCollisionReport>,
+  /// Reported as the VFS records it, since one shape answers this wherever it is asked.
+  collisions: Vec<XrayPathCollision>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
   entries: Vec<GamedataAssetReport>,
@@ -92,7 +74,7 @@ pub struct GamedataListReport {
 impl GamedataListReport {
   pub fn new(listing: &AssetListing, is_shadowed_included: bool) -> Self {
     Self {
-      collisions: listing.collisions.iter().map(GamedataCollisionReport::new).collect(),
+      collisions: listing.collisions.clone(),
       duration: listing.duration,
       entries: GamedataAssetReport::list(&listing.entries),
       is_shadowed_included,

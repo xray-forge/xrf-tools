@@ -126,7 +126,7 @@ impl GenericCommand for ListCommand {
       Self::print_shadowed(&output, &listing);
     }
 
-    Self::print_collisions(&output, &listing);
+    crate::core::collisions::print_collisions(&output, &listing.collisions, PRINT_LIMIT);
     Self::print_skipped(&output, &listing);
 
     xrf_output::success!(
@@ -160,40 +160,6 @@ impl ListCommand {
         output,
         "  ... {} more not printed, narrow with --prefix",
         listing.entries.len() - PRINT_LIMIT
-      );
-    }
-  }
-
-  /// Warns about files a mount holds but cannot reach.
-  ///
-  /// Always reported rather than behind a flag: unlike a shadowed entry, which is how an override is meant to work, an
-  /// unreachable file is an authoring mistake nobody asked to see because nobody knew about it.
-  fn print_collisions(output: &OutputOptions, listing: &AssetListing) {
-    if listing.collisions.is_empty() {
-      return;
-    }
-
-    xrf_output::warning!(
-      output,
-      "{} file(s) cannot be reached, another file claims their path:",
-      listing.collisions.len()
-    );
-
-    for collision in listing.collisions.iter().take(PRINT_LIMIT) {
-      xrf_output::warning!(
-        output,
-        "  {} is unreachable, {} answers '{}'",
-        collision.unreachable,
-        collision.kept,
-        collision.logical_path
-      );
-    }
-
-    if listing.collisions.len() > PRINT_LIMIT {
-      xrf_output::warning!(
-        output,
-        "  ... {} more not printed",
-        listing.collisions.len() - PRINT_LIMIT
       );
     }
   }

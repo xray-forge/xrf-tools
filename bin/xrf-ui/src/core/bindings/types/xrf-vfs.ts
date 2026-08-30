@@ -108,6 +108,31 @@ export type XrayMountMode =
   | "containingInstallation";
 
 /**
+ * Two files in one source claiming the same engine identity.
+ *
+ * An authoring error rather than shadowing: shadowing is what happens *between* mounts, where a loose file legitimately
+ * overrides an archived one. Inside one source there is no priority to appeal to, so one file simply cannot be reached.
+ *
+ * Reported rather than fatal, because a tool must be able to open a project and say what is wrong with it — an editor
+ * cannot refuse to load a mod because one texture is authored twice. A consumer that treats a project as invalid
+ * decides that for itself. The engine is not stricter: `CLocatorAPI::Register` folds a name to lower case before its
+ * lookup and overwrites on a hit, so it resolves a collision silently rather than refusing the archive
+ * (`xray-16/src/xrCore/LocatorAPI.cpp`).
+ *
+ * This record is also the reported shape, deposited as it stands by every surface that answers for a mounted world —
+ * `gamedata list`, `archive verify`, and the application's `archives|list_collisions`. Restating it per surface is
+ * what left the condition recorded in one place and told to nobody anywhere else.
+ */
+export type XrayPathCollision = {
+  /** Engine identity both files normalize to. */
+  logicalPath: XrayLogicalPath;
+  /** File the source resolves. */
+  kept: string;
+  /** File no lookup can reach, because `kept` already claims its identity. */
+  unreachable: string;
+};
+
+/**
  * What one reference lookup came to.
  *
  * A fact about a lookup, not about the kind of thing looked up: a texture, a motion set and a level asset all end in

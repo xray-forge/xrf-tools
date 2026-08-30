@@ -11,7 +11,7 @@ import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { EditorPanelsProvider } from "@/core/shell/panel/context";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -224,6 +224,66 @@ describe("opened archives editor", () => {
     expect(await findByText("C:\\game\\database\\configs.db0")).toBeInTheDocument();
     expect(await findByText("0x12345678")).toBeInTheDocument();
     expect(await findByText("Stored")).toBeInTheDocument();
+  });
+
+  it("says nothing about reachability when every entry resolves to a path of its own", async () => {
+    const { findByText, queryByText } = renderEditor();
+
+    expect(await findByText("Select a file to preview")).toBeInTheDocument();
+    expect(queryByText(/cannot be reached/)).not.toBeInTheDocument();
+  });
+
+  it("reports unreachable entries unprompted and names them in its panel", async () => {
+    // The explorer used to show the winner and nothing else, so an entry nobody could reach was indistinguishable
+    // from one nobody packed.
+    setMockInvokeResponses({
+      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|list_collisions"]: [mockPathCollision()],
+    });
+
+    const { findByLabelText, findByText } = renderWithProviders(
+      <EditorBusyProvider>
+        <EditorPanelsProvider>
+          <ApplicationShellFrame>
+            <ArchivesExplorerApplication />
+          </ApplicationShellFrame>
+        </EditorPanelsProvider>
+      </EditorBusyProvider>,
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    );
+
+    expect(await findByText(/1 file\(s\) here cannot be reached/)).toBeInTheDocument();
+
+    await userEvent.click(await findByLabelText("Unreachable files"));
+
+    expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
+    expect(await findByText("C:/game/database/configs.db0::textures/a.dds")).toBeInTheDocument();
+  });
+
+  it("dismisses the reachability notice without hiding the entries themselves", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|list_collisions"]: [mockPathCollision()],
+    });
+
+    const { findByLabelText, findByText, queryByText } = renderWithProviders(
+      <EditorBusyProvider>
+        <EditorPanelsProvider>
+          <ApplicationShellFrame>
+            <ArchivesExplorerApplication />
+          </ApplicationShellFrame>
+        </EditorPanelsProvider>
+      </EditorBusyProvider>,
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    );
+
+    await userEvent.click(await findByLabelText("Dismiss unreachable files notice"));
+
+    await waitFor(() => expect(queryByText(/cannot be reached/)).not.toBeInTheDocument());
+
+    await userEvent.click(await findByLabelText("Unreachable files"));
+
+    expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
   });
 
   it("closes into its own picker rather than navigating away", async () => {

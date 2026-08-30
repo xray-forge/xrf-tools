@@ -4,6 +4,7 @@ import {
   ArchiveProject,
   ArchiveProjectReadPolicy,
 } from "@/core/bindings/types/xrf-archive";
+import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 
 /**
  * Creates an archive read policy fixture.
@@ -81,5 +82,20 @@ export function mockArchivesProject(files?: Array<ArchiveFileDescriptor>): Archi
     readPolicy: mockArchiveReadPolicy(),
     root: "C:\\game\\database",
     sizeReal: descriptors.reduce((total: number, descriptor) => total + descriptor.sizeReal, 0),
+  };
+}
+
+/**
+ * Creates a path collision fixture: two entries folding onto one engine identity.
+ *
+ * @param overrides - Field values to override.
+ * @returns A path collision fixture.
+ */
+export function mockPathCollision(overrides: Partial<XrayPathCollision> = {}): XrayPathCollision {
+  return {
+    kept: "C:/game/database/configs.db0::textures/a.dds",
+    logicalPath: "textures\\a.dds",
+    unreachable: "C:/game/database/patch.db0::Textures/A.DDS",
+    ...overrides,
   };
 }

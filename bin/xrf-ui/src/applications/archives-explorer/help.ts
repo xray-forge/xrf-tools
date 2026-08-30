@@ -17,6 +17,9 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Directory mode merges all volumes into one name table the way the engine does: later volumes override " +
       "earlier entries, and volumes under a directory component named exactly `patches` sort last, so patch " +
       "content wins over everything.",
+    "Entry names fold to the engine's lower-case form, so `Textures\\A.DDS` and `textures\\a.dds` are one path. " +
+      "When two entries fold together only one is reachable; a banner reports how many, and the `Unreachable files` " +
+      "panel names each one as its volume authored it.",
     "Text is decoded as Windows-1251, so Cyrillic configs read correctly.",
     "Previewable types: engine text formats (`ltx`, `script`, `xml`, shader sources, and similar), `dds` images " +
       "(decoded to PNG; the caption still reports the source format and mip count), `ogg` audio (including the " +

@@ -17,7 +17,7 @@ import {
   ArchivePackResult,
   ArchiveUnpackResult,
 } from "@/core/bindings/types/xrf-pack";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {
@@ -94,6 +94,17 @@ export const archivesCommands = {
       sizeReal: number;
     } | null>("plugin:archives|get_project"),
   hasProject: () => __TAURI_INVOKE<boolean>("plugin:archives|has_project"),
+  /**
+   * Entries the open volume set holds that no engine lookup can reach.
+   *
+   * Answered on demand out of the open project rather than stored beside it, so there is one source of truth and no
+   * second slot to keep in step with an open or a close.
+   *
+   * Not part of [`ArchiveProject`]: the project keys entries by the name their volume's header authored, and folding
+   * those onto engine identities is `xrf-vfs`'s to do. Asking the mount layer here is what keeps the explorer's answer
+   * the same one `gamedata list` and `archive verify` give.
+   */
+  listCollisions: () => __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions"),
   openProject: (path: string) => __TAURI_INVOKE<ArchiveProject>("plugin:archives|open_project", { path }),
   /**
    * Pack a directory into archive volumes from a configuration held by the caller.
