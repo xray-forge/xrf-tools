@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -6,6 +7,7 @@ import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/compone
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE, IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import { useIsEditorBusy } from "@/core/shell/EditorBusyContext";
 import { ApplicationCrash } from "@/core/shell/error/ApplicationCrash";
@@ -15,6 +17,7 @@ import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { ApplicationRail } from "@/core/shell/panel/ApplicationRail";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/panel/context";
+import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
 import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
@@ -44,6 +47,7 @@ export function ApplicationShellFrame({
   const { pathname } = useLocation();
 
   const isBusy: boolean = useIsEditorBusy();
+  const settingsService: SettingsService = useInjection(SettingsService);
 
   // The element the routed content portals its toolbar into. Held here rather than in a provider of
   // its own: the frame hands it down and never reads it back.
@@ -53,7 +57,12 @@ export function ApplicationShellFrame({
 
   const leftPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "left");
   const applicationRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "right");
-  const rightPanels: Array<IEditorPanel> = [...applicationRightPanels, NOTIFICATIONS_PANEL];
+  // Registered rather than merely hidden, so a build without dev mode never mounts a panel that polls the backend.
+  const rightPanels: Array<IEditorPanel> = [
+    ...applicationRightPanels,
+    ...(settingsService.isDevModeEnabled ? [JOBS_PANEL] : []),
+    NOTIFICATIONS_PANEL,
+  ];
 
   const leftSelection: IPanelSelection = usePanelSelection("left", leftPanels, application?.id ?? "root");
   const rightSelection: IPanelSelection = usePanelSelection("right", rightPanels, "global");
@@ -119,12 +128,25 @@ export function ApplicationShellFrame({
             panels={applicationRightPanels}
             activePanelId={rightSelection.activePanelId}
             footer={
-              <PanelStripeButton
-                panel={NOTIFICATIONS_PANEL}
-                side={"right"}
-                isActive={rightSelection.activePanelId === NOTIFICATIONS_PANEL.id}
-                onTogglePanel={rightSelection.onTogglePanel}
-              />
+              <>
+                {/* Beside the notification log rather than among the application's own panels: both are the shell's,
+                    and neither belongs to whichever tool happens to be open. */}
+                {settingsService.isDevModeEnabled ? (
+                  <PanelStripeButton
+                    panel={JOBS_PANEL}
+                    side={"right"}
+                    isActive={rightSelection.activePanelId === JOBS_PANEL.id}
+                    onTogglePanel={rightSelection.onTogglePanel}
+                  />
+                ) : null}
+
+                <PanelStripeButton
+                  panel={NOTIFICATIONS_PANEL}
+                  side={"right"}
+                  isActive={rightSelection.activePanelId === NOTIFICATIONS_PANEL.id}
+                  onTogglePanel={rightSelection.onTogglePanel}
+                />
+              </>
             }
             onTogglePanel={rightSelection.onTogglePanel}
           />

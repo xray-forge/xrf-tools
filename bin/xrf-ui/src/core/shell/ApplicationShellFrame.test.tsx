@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { EditorPanelsProvider, useEditorPanels } from "@/core/shell/panel/context";
+import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** Stands in for an editor that publishes one default-open panel, which most of them do. */
@@ -66,6 +67,27 @@ describe("ApplicationShellFrame", () => {
     window.localStorage.clear();
     // The narrowest window the app supports, where the ratio binds and the fixed maximum never did.
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
+  });
+
+  it("offers the jobs listing beside the notification centre in dev mode", async () => {
+    // Reachability rather than rendering: the panel is registered in one list and its button rendered from another, so
+    // a panel can be perfectly correct and still have no way to open it. That is exactly how it shipped invisible.
+    setMockInvokeResponses({ "plugin:jobs|list": [] });
+
+    const { getByLabelText, findByText } = renderFrame(<div>bare editor</div>);
+
+    await userEvent.click(getByLabelText("Jobs"));
+
+    expect(await findByText(/Nothing is running/)).toBeInTheDocument();
+  });
+
+  it("hides the jobs listing outside dev mode, where it answers nothing a person needs", () => {
+    window.localStorage.setItem("xrf-dev-mode", "false");
+
+    const { queryByLabelText } = renderFrame(<div>bare editor</div>);
+
+    expect(queryByLabelText("Jobs")).toBeNull();
+    expect(queryByLabelText("Notifications")).toBeInTheDocument();
   });
 
   it("offers the notification centre even when the active editor declares no panels", () => {
