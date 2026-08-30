@@ -1,27 +1,13 @@
 use std::borrow::Cow;
 use std::io::Write;
 
-use xrf_archive::CHUNK_ID_COMPRESSED_MASK;
+use xrf_archive::{
+  CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FILE_DESCRIPTORS, DESCRIPTOR_ROW_FIELDS_SIZE,
+  DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::compress;
 use xrf_utils::{encode_string_to_w1251_bytes, to_format_size};
-
-use crate::pack::archive_volume_layout::CHUNK_HEADER_SIZE;
-
-/// Chunk carrying the descriptor table.
-const CHUNK_ID_DESCRIPTORS: u32 = 1;
-
-/// The four numeric fields a row carries around its name.
-///
-/// This is what the row's leading size field counts, and it is `archive_file_header::ELEMENTS_SIZE` in
-/// `xray-16/src/xrCore/LocatorAPI.h`, whose comment reads "size of following members": the field excludes itself.
-const ROW_FIELDS_SIZE: usize = 16;
-
-/// Width of that leading field, which a row occupies but does not declare.
-///
-/// The two numbers differ, and confusing them under-reserves every row by two bytes — invisible in a volume whose
-/// table codes well, and a breached cap in one whose table does not.
-const ROW_SIZE_FIELD_SIZE: u64 = 2;
 
 /// A descriptor row's name, encoded once so the row's cost is known before the row is placed.
 ///
@@ -44,24 +30,24 @@ impl DescriptorName {
       ))
     })?;
 
-    let declared_size: u16 = u16::try_from(encoded.len() + ROW_FIELDS_SIZE)
+    let declared_size: u16 = u16::try_from(encoded.len() + usize::from(DESCRIPTOR_ROW_FIELDS_SIZE))
       .map_err(|_| XrfError::new_invalid_error(format!("File name '{name}' is too long for a descriptor row")))?;
 
     Ok(Self { encoded, declared_size })
   }
 
   /// Bytes this name's row costs the table it joins, its leading size field included.
-  pub(crate) fn row_size(&self) -> u64 {
-    ROW_SIZE_FIELD_SIZE + u64::from(self.declared_size)
+  pub(crate) fn get_row_size(&self) -> u64 {
+    u64::from(DESCRIPTOR_ROW_SIZE_FIELD_SIZE) + u64::from(self.declared_size)
   }
 }
 
 /// The descriptor table of one volume: the rows `CLocatorAPI` indexes an archive by.
 ///
 /// Owns the row layout, the encoding the engine reads names as, and how the table becomes chunk 1. It also owns the
-/// number a volume must reserve for it — [`Self::get_size`] measures the plain table, and [`Self::write_to`] never writes
-/// more than that plus a chunk header, which is what lets placement budget a chunk whose coded length it cannot yet
-/// know.
+/// number a volume must reserve for it — [`Self::get_size`] measures the plain table, and [`Self::write_to`] never
+/// writes more than that plus a chunk header, which is what lets placement budget a chunk whose coded length it
+/// cannot yet know.
 pub(crate) struct ArchiveDescriptorTable {
   rows: Vec<u8>,
   /// Length of the directory rows every volume of the set repeats, which [`Self::reset`] rewinds to.
@@ -72,7 +58,7 @@ pub(crate) struct ArchiveDescriptorTable {
 
 impl ArchiveDescriptorTable {
   /// Cheapest row an entry can cost: the leading size field, the numeric fields, and a one-character name.
-  pub(crate) const ROW_SIZE_MIN: u64 = ROW_SIZE_FIELD_SIZE + ROW_FIELDS_SIZE as u64 + 1;
+  pub(crate) const ROW_SIZE_MIN: u64 = DESCRIPTOR_ROW_SIZE_FIELD_SIZE as u64 + DESCRIPTOR_ROW_FIELDS_SIZE as u64 + 1;
 
   /// Seed a table with the zero-payload rows that let any single volume list the whole tree.
   pub(crate) fn of_directories(directories: &[String]) -> XrfResult<Self> {
@@ -142,15 +128,15 @@ impl ArchiveDescriptorTable {
   /// bound rather than an estimate. An empty table stays plain because LZHUF has no coding for an empty source.
   fn to_chunk(&self) -> XrfResult<(u32, Cow<'_, [u8]>)> {
     if self.rows.is_empty() {
-      return Ok((CHUNK_ID_DESCRIPTORS, Cow::Borrowed(&self.rows)));
+      return Ok((CHUNK_ID_FILE_DESCRIPTORS, Cow::Borrowed(&self.rows)));
     }
 
     let coded: Vec<u8> = compress(&self.rows)?;
 
     if coded.len() < self.rows.len() {
-      Ok((CHUNK_ID_DESCRIPTORS | CHUNK_ID_COMPRESSED_MASK, Cow::Owned(coded)))
+      Ok((CHUNK_ID_FILE_DESCRIPTORS | CHUNK_ID_COMPRESSED_MASK, Cow::Owned(coded)))
     } else {
-      Ok((CHUNK_ID_DESCRIPTORS, Cow::Borrowed(&self.rows)))
+      Ok((CHUNK_ID_FILE_DESCRIPTORS, Cow::Borrowed(&self.rows)))
     }
   }
 
@@ -169,10 +155,9 @@ impl ArchiveDescriptorTable {
 mod tests {
   use std::borrow::Cow;
 
-  use xrf_archive::CHUNK_ID_COMPRESSED_MASK;
+  use xrf_archive::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK};
 
   use super::{ArchiveDescriptorTable, DescriptorName};
-  use crate::pack::archive_volume_layout::CHUNK_HEADER_SIZE;
 
   fn table_of(directories: &[&str]) -> ArchiveDescriptorTable {
     ArchiveDescriptorTable::of_directories(&directories.iter().map(|name| String::from(*name)).collect::<Vec<_>>())
@@ -203,8 +188,8 @@ mod tests {
     // The number placement reserves and the number the table grows by must be one number. They were two before
     // `issues/closed/0039`: the row's leading field declares what follows it, so a row is two bytes wider than the
     // size it states, and a volume closed that much past its cap for every entry it held.
-    assert_eq!(table.get_size(), name.row_size());
-    assert_eq!(name.row_size(), "configs\\system.ltx".len() as u64 + 18);
+    assert_eq!(table.get_size(), name.get_row_size());
+    assert_eq!(name.get_row_size(), "configs\\system.ltx".len() as u64 + 18);
   }
 
   #[test]
@@ -220,7 +205,7 @@ mod tests {
     assert_eq!(u64::from(declared), table.get_size() - 2);
     assert_eq!(
       ArchiveDescriptorTable::ROW_SIZE_MIN,
-      name.row_size(),
+      name.get_row_size(),
       "and a one-character name is the cheapest row"
     );
   }
@@ -230,7 +215,7 @@ mod tests {
     // Windows-1251 is single byte, so the row is shorter than the UTF-8 the name arrived as.
     let name: DescriptorName = DescriptorName::encode("configs\\текст.ltx").expect("name encodes");
 
-    assert_eq!(name.row_size(), "configs\\текст.ltx".chars().count() as u64 + 18);
+    assert_eq!(name.get_row_size(), "configs\\текст.ltx".chars().count() as u64 + 18);
   }
 
   #[test]

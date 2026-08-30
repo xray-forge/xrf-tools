@@ -1,14 +1,9 @@
+use xrf_archive::{CHUNK_HEADER_SIZE, CHUNK_SIZE_FIELD_SIZE};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::encode_string_to_w1251_bytes;
 
 use crate::pack::archive_descriptor_table::ArchiveDescriptorTable;
 use crate::pack::archive_pack_config::ArchivePackConfig;
-
-/// Bytes a chunk spends on its id and size before any payload.
-pub(crate) const CHUNK_HEADER_SIZE: u64 = 8;
-
-/// Width of a chunk's size field, which the data chunk leaves blank until its payloads are in.
-const CHUNK_SIZE_FIELD_SIZE: u64 = 4;
 
 /// What every volume of one archive set costs before it holds anything, and the size it must close within.
 pub(crate) struct ArchiveVolumeLayout {

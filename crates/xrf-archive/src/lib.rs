@@ -11,6 +11,9 @@ mod reader;
 
 pub use archive_descriptor::ArchiveDescriptor;
 pub use archive_file_descriptor::ArchiveFileDescriptor;
-pub use constants::CHUNK_ID_COMPRESSED_MASK;
+pub use constants::{
+  CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_DATA, CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_METADATA,
+  CHUNK_SIZE_FIELD_SIZE, DESCRIPTOR_ROW_FIELDS_SIZE, DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
+};
 pub use file_io::write_descriptor_contents;
 pub use project::{ArchiveProject, ArchiveProjectReadPolicy, ProjectReadResult};

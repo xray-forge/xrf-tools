@@ -19,7 +19,8 @@ use crate::archive_file_descriptor::ArchiveFileDescriptor;
 use crate::archive_header::ArchiveHeader;
 use crate::byte_order::XRayByteOrder;
 use crate::constants::{
-  CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_MASK, CHUNK_ID_METADATA, MAXIMUM_ENTRY_NAME_SIZE,
+  CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_MASK, CHUNK_ID_METADATA_READ,
+  DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 use crate::file_io::allocate_declared;
 
@@ -146,12 +147,12 @@ impl ArchiveReader {
       let chunk_id: u32 = raw_chunk_id & CHUNK_ID_MASK;
       let compressed: bool = (raw_chunk_id & CHUNK_ID_COMPRESSED_MASK) != 0;
 
-      if CHUNK_ID_FILE_DESCRIPTORS.contains(&chunk_id) {
+      if CHUNK_ID_FILE_DESCRIPTORS_READ.contains(&chunk_id) {
         let chunk_data: Vec<u8> = Self::read_chunk(&mut self.file, chunk_usize, compressed)?;
         let mut reader: Cursor<&[u8]> = Cursor::new(chunk_data.as_slice());
 
         file_descriptors = Some(Self::read_file_descriptors(&mut reader)?);
-      } else if CHUNK_ID_METADATA.contains(&chunk_id) {
+      } else if CHUNK_ID_METADATA_READ.contains(&chunk_id) {
         let chunk_data: Vec<u8> = Self::read_chunk(&mut self.file, chunk_usize, compressed)?;
 
         root_path = self.read_root_path(chunk_data.as_slice())?.ok_or_else(|| {
@@ -223,9 +224,9 @@ impl ArchiveReader {
       let crc: u32 = reader.read_u32::<XRayByteOrder>()?;
 
       // Checked: a corrupt header smaller than its own fixed prefix must be an error, not an underflow.
-      let name_size: u16 = header_size.checked_sub(16).ok_or_else(|| {
+      let name_size: u16 = header_size.checked_sub(DESCRIPTOR_ROW_FIELDS_SIZE).ok_or_else(|| {
         XrfError::new_read_error(format!(
-          "archive entry header declares {header_size} bytes, less than its fixed 16-byte prefix"
+          "archive entry header declares {header_size} bytes, under its fixed {DESCRIPTOR_ROW_FIELDS_SIZE}-byte prefix"
         ))
       })?;
 

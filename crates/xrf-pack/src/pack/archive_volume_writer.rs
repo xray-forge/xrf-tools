@@ -4,6 +4,7 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 use lzokay::compress::Dict;
+use xrf_archive::{CHUNK_ID_DATA, CHUNK_ID_METADATA};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
@@ -13,12 +14,6 @@ use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackMode};
 use crate::pack::archive_pack_result::ArchivePackResult;
 use crate::pack::archive_pack_source::ArchivePackEntry;
 use crate::pack::archive_volume_layout::ArchiveVolumeLayout;
-
-/// Chunk carrying the `[header]` ini text, which is also what marks an archive as not being ShoC.
-const CHUNK_ID_HEADER: u32 = 666;
-
-/// Chunk carrying file payloads back to back.
-const CHUNK_ID_DATA: u32 = 0;
 
 /// Extensions the engine expects to find compressed; everything else is stored.
 ///
@@ -94,7 +89,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     // An alias costs a row and no payload, but only in the volume holding the payload it points at: moving the entry
     // on turns it back into a copy, so this volume is offered it first.
     if let Some(alias) = self.aliases.find(&contents, size_real, crc)? {
-      if self.fits(0, name.row_size()) {
+      if self.fits(0, name.get_row_size()) {
         self.result.files_aliased += 1;
         self
           .descriptors
@@ -109,7 +104,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     let payload: Vec<u8> = self.compress_payload(entry, &contents)?;
     let size_compressed: u32 = to_format_size(payload.len(), "archive entry payload")?;
 
-    self.make_room_for(&entry.name, payload.len() as u64, name.row_size())?;
+    self.make_room_for(&entry.name, payload.len() as u64, name.get_row_size())?;
 
     let offset: u32 = u32::try_from(self.position).map_err(|_| {
       XrfError::new_invalid_error(format!(
@@ -187,7 +182,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     let mut file: BufWriter<File> = BufWriter::new(File::create(&self.path)?);
 
     if let Some(header) = self.layout.get_header() {
-      file.write_all(&CHUNK_ID_HEADER.to_le_bytes())?;
+      file.write_all(&CHUNK_ID_METADATA.to_le_bytes())?;
       file.write_all(&to_format_size::<u32>(header.len(), "archive header chunk")?.to_le_bytes())?;
       file.write_all(header)?;
     }
