@@ -73,6 +73,14 @@ pub enum XrfError {
     message: String,
     at: Option<String>,
   },
+  /// An operation stopped at a safe boundary because it was asked to.
+  ///
+  /// Control flow rather than a failure: it exists so a cancellation check composes with `?` and can break a parallel
+  /// iterator, which stops on an error and on nothing else. An operation is expected to catch its own and report what
+  /// it completed, so this reaching a caller means one forgot to.
+  #[constructor]
+  #[error("Cancelled: {message}")]
+  Cancelled { message: String },
   #[constructor]
   #[error("Generic error: {message}")]
   Generic { message: String },

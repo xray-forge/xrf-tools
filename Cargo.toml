@@ -13,6 +13,7 @@ members = [
   "crates/xrf-error-derive",
   "crates/xrf-export",
   "crates/xrf-gamedata",
+  "crates/xrf-job",
   "crates/xrf-ltx",
   "crates/xrf-lua",
   "crates/xrf-lzhuf",
@@ -68,6 +69,7 @@ xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
 xrf-export = { path = "crates/xrf-export" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
+xrf-job = { path = "crates/xrf-job" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }

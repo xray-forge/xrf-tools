@@ -1,0 +1,22 @@
+[package]
+name = "xrf-job"
+version = "0.1.0"
+publish = false
+edition = "2024"
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = ["specta"]
+
+[lints]
+workspace = true

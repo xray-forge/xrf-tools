@@ -8,6 +8,7 @@ export type XrfError =
       };
     } & {
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -36,6 +37,7 @@ export type XrfError =
       };
     } & {
       Assertion?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -65,6 +67,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Encoding?: never;
       Format?: never;
@@ -93,6 +96,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -121,6 +125,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -149,6 +154,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -177,6 +183,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -205,6 +212,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -233,6 +241,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -261,6 +270,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -289,6 +299,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -317,6 +328,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Format?: never;
@@ -345,6 +357,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -373,6 +386,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -401,6 +415,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -429,6 +444,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -457,6 +473,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -486,6 +503,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       Convert?: never;
       Encoding?: never;
       Format?: never;
@@ -516,6 +534,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -547,6 +566,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -568,6 +588,42 @@ export type XrfError =
       UnknownLanguage?: never;
       Verify?: never;
     })
+  /**
+   * An operation stopped at a safe boundary because it was asked to.
+   *
+   * Control flow rather than a failure: it exists so a cancellation check composes with `?` and can break a parallel
+   * iterator, which stops on an error and on nothing else. An operation is expected to catch its own and report what
+   * it completed, so this reaching a caller means one forgot to.
+   */
+  | ({
+      Cancelled: {
+        message: string;
+      };
+    } & {
+      Assertion?: never;
+      Asset?: never;
+      ChunkNotEnded?: never;
+      Convert?: never;
+      Encoding?: never;
+      Format?: never;
+      Generic?: never;
+      Invalid?: never;
+      InvalidSource?: never;
+      Io?: never;
+      LtxParse?: never;
+      LtxScheme?: never;
+      NoTerminator?: never;
+      NotFound?: never;
+      NotImplemented?: never;
+      Parsing?: never;
+      Read?: never;
+      Serde?: never;
+      Serialization?: never;
+      TextureProcessing?: never;
+      Unexpected?: never;
+      UnknownLanguage?: never;
+      Verify?: never;
+    })
   | ({
       Generic: {
         message: string;
@@ -575,6 +631,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -603,6 +660,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
@@ -631,6 +689,7 @@ export type XrfError =
     } & {
       Assertion?: never;
       Asset?: never;
+      Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;

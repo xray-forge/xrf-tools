@@ -7286,6 +7286,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-job"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "xrf-error",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-ltx"
 version = "0.1.0"
 dependencies = [
