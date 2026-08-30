@@ -10,6 +10,7 @@ import { MouseEvent, ReactElement, useCallback, useState } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { LAYOUT } from "@/core/theme/tokens";
+import { MotionFrameSlider } from "@/core/visuals/components/preview";
 import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { Nullable } from "@/lib/types/general";
 
@@ -27,10 +28,7 @@ export function SequencerTransport(): ReactElement {
 
   const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
 
-  const onSeek = useCallback(
-    (_: Event, value: number | Array<number>) => service.seek(service.clipIndex, value as number),
-    [service]
-  );
+  const onSeek = useCallback((frame: number) => service.seek(service.clipIndex, frame), [service]);
 
   const onStep = useCallback((offset: number) => service.seek(service.clipIndex + offset, 0), [service]);
 
@@ -96,8 +94,6 @@ export function SequencerTransport(): ReactElement {
         </span>
       </Tooltip>
 
-      {/* Truncated rather than wrapped: with both panels open the bar is narrow, and a motion name growing a second
-          line would push the controls beside it out of reach. The track panel spells the name out in full. */}
       <Typography
         noWrap
         variant={"caption"}
@@ -107,17 +103,12 @@ export function SequencerTransport(): ReactElement {
         {service.clip ? `${service.clipIndex + 1} / ${clips.length} · ${service.clip.motion}` : "Track is empty"}
       </Typography>
 
-      {/* Grown from nothing rather than from its own full width, so the slider takes what is left over instead of
-          squeezing the label and the controls beside it. */}
-      <Slider
-        aria-label={"Clip frame"}
-        size={"small"}
-        min={0}
-        max={Math.max(0, frames - 1)}
-        value={service.frame}
-        disabled={!frames}
+      <MotionFrameSlider
+        ariaLabel={"Clip frame"}
+        frameCount={frames}
+        frame={service.frame}
         sx={{ marginX: 1, flexGrow: 1, flexBasis: 0, minWidth: LAYOUT.toolbarSliderWidth / 4 }}
-        onChange={onSeek}
+        onSeek={onSeek}
       />
 
       <Typography

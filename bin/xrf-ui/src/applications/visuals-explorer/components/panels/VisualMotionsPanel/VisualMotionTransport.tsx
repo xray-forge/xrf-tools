@@ -7,6 +7,7 @@ import { useInjection } from "@wirestate/react";
 import { MouseEvent, ReactElement, useCallback, useState } from "react";
 
 import { LAYOUT } from "@/core/theme/tokens";
+import { MotionFrameSlider } from "@/core/visuals/components/preview";
 import { formatMotionTiming, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -31,8 +32,6 @@ export function VisualMotionTransport({
   const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
   const speed: Nullable<number> = service.posed.value?.bake.speed ?? null;
   const isSampleRate: boolean = service.fps === MOTION_SAMPLE_FPS;
-
-  const onSeek = useCallback((_: Event, value: number | Array<number>) => service.seek(value as number), [service]);
 
   const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
 
@@ -61,15 +60,12 @@ export function VisualMotionTransport({
           </span>
         </Tooltip>
 
-        <Slider
-          aria-label={"Motion frame"}
-          size={"small"}
-          min={0}
-          max={Math.max(0, frames - 1)}
-          value={service.frame}
-          disabled={!frames}
+        <MotionFrameSlider
+          ariaLabel={"Motion frame"}
+          frameCount={frames}
+          frame={service.frame}
           sx={{ marginX: 1 }}
-          onChange={onSeek}
+          onSeek={service.seek}
         />
       </Box>
 

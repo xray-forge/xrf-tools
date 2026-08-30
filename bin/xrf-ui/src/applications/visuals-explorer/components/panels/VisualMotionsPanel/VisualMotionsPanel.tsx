@@ -14,7 +14,6 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-
 export interface IVisualMotionsPanelProps extends BaseComponentProps {}
 
 /**
