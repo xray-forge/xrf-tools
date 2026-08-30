@@ -12,7 +12,6 @@ pub(crate) struct ArchivePackEntry {
   /// Name as the engine will see it: relative to the source root, with X-Ray separators.
   pub(crate) name: String,
   pub(crate) path: PathBuf,
-  pub(crate) size: u64,
 }
 
 /// Everything one packing run will write.
@@ -54,10 +53,11 @@ impl ArchivePackSource {
       let path: PathBuf = config.source.join(name.replace('\\', "/"));
 
       // Listed files bypass the directory rules, exactly as `[include_files]` does in xrCompress, but a
-      // name that does not resolve is a configuration error rather than something to pass over.
-      let size: u64 = path.metadata()?.len();
+      // name that does not resolve is a configuration error rather than something to pass over, which is what this
+      // otherwise unused lookup establishes.
+      path.metadata()?;
 
-      source.entries.push(ArchivePackEntry { name, path, size });
+      source.entries.push(ArchivePackEntry { name, path });
     }
 
     source.entries.sort_by(|left, right| left.name.cmp(&right.name));
@@ -109,7 +109,6 @@ impl ArchivePackSource {
         self.entries.push(ArchivePackEntry {
           name,
           path: path.into(),
-          size: path.metadata()?.len(),
         });
       }
     }
