@@ -35,7 +35,8 @@ pub struct Quaternion {
 /// One bone's animation within one motion, dequantised into renderer-ready values.
 ///
 /// Both streams carry either one key, when the motion holds the bone still, or one per frame. A consumer samples them
-/// by clamping its frame to the stream length rather than by asking which case it got.
+/// by clamping its frame to the stream length rather than by asking which case it got. Neither is ever empty: the
+/// decoder refuses a keyed run on a motion declaring no frames, so a clamped index is always in range.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfBoneMotion {
   pub rotations: Vec<Quaternion>,
@@ -75,7 +76,8 @@ impl OgfMotion {
   ///
   /// # Errors
   ///
-  /// Returns an error when the payload ends early, or when it does not end exactly where the last bone's keys do.
+  /// Returns an error when the payload ends early, when it does not end exactly where the last bone's keys do, or when
+  /// a motion declaring no frames carries keyed streams.
   pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<OgfBoneMotion>> {
     let mut cursor: MotionCursor = MotionCursor::new(&self.remaining);
 
@@ -108,6 +110,8 @@ impl OgfMotion {
       // A held bone stores one key and no checksum: there is nothing to interpolate between.
       vec![cursor.read_rotation::<T>()?]
     } else {
+      self.assert_keyed_frames("rotation keys")?;
+
       // The checksum guards the shared-memory cache the engine keys by it; nothing here needs it.
       cursor.skip(4)?;
 
@@ -131,6 +135,8 @@ impl OgfMotion {
         translations: vec![cursor.read_vector::<T>()?],
       });
     }
+
+    self.assert_keyed_frames("translation keys")?;
 
     cursor.skip(4)?;
 
@@ -172,6 +178,21 @@ impl OgfMotion {
         })
         .collect(),
     })
+  }
+
+  /// Refuses a keyed stream on a motion that declares no frames.
+  ///
+  /// A keyed stream stores one key a frame, so a zero count decodes it to an empty vector that no frame can be sampled
+  /// from, while the baker poses one frame regardless. A held stream stores its single key whatever the count says, so
+  /// it is not in the class and stays valid.
+  fn assert_keyed_frames(&self, what: &str) -> XrfResult {
+    if self.count == 0 {
+      return Err(XrfError::new_parsing_error(format!(
+        "Motion declares zero frames but a bone carries {what}, which store one key a frame"
+      )));
+    }
+
+    Ok(())
   }
 }
 
@@ -466,6 +487,54 @@ mod tests {
       error.contains("ogf motion bones declares 10000 entries"),
       "Unexpected error: {error}"
     );
+  }
+
+  #[test]
+  fn rejects_a_keyed_rotation_stream_on_a_motion_declaring_no_frames() {
+    // Zero frames consume the whole run, leaving empty streams that the clamping accessors would index anyway. The
+    // payload is structurally complete, so nothing later in the decode notices.
+    let motion: OgfMotion = mock_motion(0, vec![BoneRun::animated(0)]);
+
+    let error: String = motion
+      .decode_bone_motions::<LittleEndian>(1)
+      .expect_err("expect a zero frame keyed motion to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("declares zero frames but a bone carries rotation keys"),
+      "Unexpected error: {error}"
+    );
+  }
+
+  #[test]
+  fn rejects_a_keyed_translation_stream_on_a_motion_declaring_no_frames() {
+    // A held rotation passes the first guard, so the translation stream carries its own.
+    let motion: OgfMotion = OgfMotion {
+      label: String::from("test_motion"),
+      count: 0,
+      flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
+      remaining: vec![0; 8 + 4 + 12 + 12],
+    };
+
+    let error: String = motion
+      .decode_bone_motions::<LittleEndian>(1)
+      .expect_err("expect a zero frame keyed motion to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("declares zero frames but a bone carries translation keys"),
+      "Unexpected error: {error}"
+    );
+  }
+
+  #[test]
+  fn accepts_a_held_bone_on_a_motion_declaring_no_frames() {
+    // A held stream stores one key however many frames the motion declares, so the zero frame guard must not reach it.
+    let motion: OgfMotion = mock_motion(0, vec![BoneRun::held()]);
+    let bones: Vec<OgfBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+
+    assert_eq!(bones[0].rotations.len(), 1);
+    assert_eq!(bones[0].translations, vec![crate::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]);
   }
 
   #[test]
