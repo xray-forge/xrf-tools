@@ -7,6 +7,8 @@ rust-version.workspace = true
 
 [build-dependencies]
 xrf-build-info = { workspace = true }
+# Embeds the Windows icon resource. Already in the tree by way of `tauri-build`, and a no-op off Windows.
+embed-resource = "3.0.6"
 
 [dependencies]
 xrf-build-info = { workspace = true }

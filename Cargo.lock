@@ -7152,6 +7152,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "embed-resource",
  "env_logger",
  "log",
  "serde",
