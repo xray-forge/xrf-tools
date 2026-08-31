@@ -247,3 +247,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload --clobber nightly xrf-app-dev.exe
+
+  release-e2e:
+    if: ${{ github.ref_name == 'main' && github.event_name != 'pull_request' }}
+    needs: publish-nightly
+    uses: xray-forge/xrf-tools-e2e/.github/workflows/e2e.yml@main
+    with:
+      e2e_ref: main
