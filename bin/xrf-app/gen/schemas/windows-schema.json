@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -2281,6 +2281,12 @@
           "type": "string",
           "const": "archives:allow-list-collisions",
           "markdownDescription": "Enables the list_collisions command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the list_pack_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-list-pack-volumes",
+          "markdownDescription": "Enables the list_pack_volumes command without any pre-configured scope."
         },
         {
           "description": "Enables the open_project command without any pre-configured scope.",
@@ -2377,6 +2383,12 @@
           "type": "string",
           "const": "archives:deny-list-collisions",
           "markdownDescription": "Denies the list_collisions command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_pack_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-list-pack-volumes",
+          "markdownDescription": "Denies the list_pack_volumes command without any pre-configured scope."
         },
         {
           "description": "Denies the open_project command without any pre-configured scope.",

@@ -7,6 +7,7 @@ pub(crate) mod archive_pack_options;
 pub(crate) mod archive_pack_result;
 pub(crate) mod archive_pack_source;
 pub(crate) mod archive_packer;
+pub(crate) mod archive_published_set;
 pub(crate) mod archive_volume_layout;
 pub(crate) mod archive_volume_writer;
 #[cfg(test)]

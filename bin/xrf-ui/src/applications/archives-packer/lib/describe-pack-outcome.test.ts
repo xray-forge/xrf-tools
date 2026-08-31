@@ -38,9 +38,22 @@ describe("describePackOutcome", () => {
     expect(notification.details).toContain("volume cap refuses particles.xr");
   });
 
-  it("warns about a cancelled pack and names every volume it left behind", () => {
-    // The contract this exists for. Packing opens each volume by truncating whatever stood there, so a stopped run
-    // leaves an unusable set and removes nothing - these paths are the only way the user learns what to clean up.
+  it("warns about a cancelled pack that published nothing without sending anyone looking for residue", () => {
+    // The ordinary stop. A run that was not allowed to replace an existing set takes back the volumes it made, so
+    // there is no wreckage to name and naming some would send the user hunting for files that are not there.
+    const notification: IJobNotice = describePackOutcome(
+      CONFIG,
+      outcome({ isCancelRequested: true, result: result({ outcome: "cancelled" }) })
+    );
+
+    expect(notification.severity).toBe(ENotificationSeverity.WARNING);
+    expect(notification.details).toContain(CONFIG.destination);
+    expect(notification.details).toContain("as it was");
+  });
+
+  it("warns about a cancelled forced pack and names every volume it left behind", () => {
+    // The exception the volume list exists for. A run allowed to publish over an existing set cannot tell its own
+    // output from what it replaced, so it deletes nothing - these paths are how the user learns what to look at.
     const notification: IJobNotice = describePackOutcome(
       CONFIG,
       outcome({

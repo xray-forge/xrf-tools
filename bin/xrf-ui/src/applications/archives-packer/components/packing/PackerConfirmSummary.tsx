@@ -1,4 +1,4 @@
-import { Alert, Stack, Typography } from "@mui/material";
+import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { PackerDirectoryChips } from "@/applications/archives-packer/components/packing/PackerDirectoryChips";
@@ -18,15 +18,25 @@ import { Nullable } from "@/lib/types/general";
 
 interface IPackerConfirmSummaryProps {
   config: ArchivePackConfig;
+  /** Volumes of this set the destination already holds, which packing refuses to replace unasked. */
+  publishedVolumes: Array<string>;
+  isForced: boolean;
+  onForceChange: (isForced: boolean) => void;
 }
 
 /**
  * What a pack run is about to do, read from the configuration it will be given.
  *
- * Shown before packing because the run overwrites volumes and its selection rules are easy to get wrong
- * in ways that only surface as a missing file in game.
+ * Shown before packing because the selection rules are easy to get wrong in ways that only surface as a missing file
+ * in game, and because a destination already holding this set is where the run turns destructive: replacing it is
+ * asked for here rather than assumed.
  */
-export function PackerConfirmSummary({ config }: IPackerConfirmSummaryProps): ReactElement {
+export function PackerConfirmSummary({
+  config,
+  publishedVolumes,
+  isForced,
+  onForceChange,
+}: IPackerConfirmSummaryProps): ReactElement {
   const entryPoint: Nullable<string> = readHeaderValue(config.header, HEADER_ENTRY_POINT);
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
@@ -96,7 +106,27 @@ export function PackerConfirmSummary({ config }: IPackerConfirmSummaryProps): Re
         )}
       </PackerSummaryRow>
 
-      <Alert severity={"warning"}>Volumes named {volumeName} in the output directory are overwritten.</Alert>
+      {publishedVolumes.length ? (
+        <Alert severity={"warning"}>
+          <Stack spacing={0.5}>
+            <Typography variant={"body2"}>
+              The output directory already holds {publishedVolumes.length} volume(s) of {volumeName}. Packing writes
+              over them and cannot put them back if it stops partway.
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size={"small"}
+                  checked={isForced}
+                  onChange={(event) => onForceChange(event.target.checked)}
+                />
+              }
+              label={<Typography variant={"body2"}>Replace them</Typography>}
+            />
+          </Stack>
+        </Alert>
+      ) : null}
 
       {entryPoint || config.volumeExtension === ARCHIVE_VOLUME_EXTENSION.Xdb ? null : (
         <Alert severity={"error"}>

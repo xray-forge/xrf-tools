@@ -25,6 +25,7 @@ macro_rules! for_each_tauri_command_domain {
         get_project => crate::plugins::archives::commands::get_project::archives_get_project,
         has_project => crate::plugins::archives::commands::has_project::archives_has_project,
         list_collisions => crate::plugins::archives::commands::list_collisions::archives_list_collisions,
+        list_pack_volumes => crate::plugins::archives::commands::list_pack_volumes::archives_list_pack_volumes,
         open_project => crate::plugins::archives::commands::open_project::archives_open_project,
         pack_directory => crate::plugins::archives::commands::pack_directory::archives_pack_directory,
         read_file => crate::plugins::archives::commands::read_file::archives_read_file,

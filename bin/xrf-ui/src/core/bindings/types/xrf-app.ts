@@ -269,13 +269,7 @@ export type TranslationParseSummary = {
   findings: Array<TranslationParseFinding>;
 };
 
-/**
- * How a save ended, once its edits were on disk.
- *
- * `Stale` carries no descriptor on purpose. The edits landed either way - they were addressed to the project that
- * began the save - but the tree they refreshed is no longer the one open, and handing it back is how a surface adopts
- * a project it is not showing.
- */
+/** How a save ended, once its edits were on disk. */
 export type TranslationSaveOutcome =
   /** The edits are on disk, and this is the project as it now reads. */
   | { kind: "saved"; project: TranslationProjectDescriptor }

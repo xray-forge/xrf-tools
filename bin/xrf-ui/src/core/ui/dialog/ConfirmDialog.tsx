@@ -11,14 +11,16 @@ import { ReactElement, ReactNode } from "react";
 
 export interface IConfirmDialogProps {
   isOpen: boolean;
+  /** Paints the confirming button as destructive, for commands that overwrite or delete. */
+  isDestructive?: boolean;
+  /** Holds the confirming button back while the description still asks the user for something. */
+  isConfirmDisabled?: boolean;
+  /** Widen it when the description is a summary to read rather than a sentence to acknowledge. */
   title: string;
   /** What the command will do, in terms of what it touches rather than what it is called. */
   description: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Paints the confirming button as destructive, for commands that overwrite or delete. */
-  isDestructive?: boolean;
-  /** Widen it when the description is a summary to read rather than a sentence to acknowledge. */
   maxWidth?: Breakpoint;
   onConfirm: () => void;
   onClose: () => void;
@@ -32,11 +34,12 @@ export interface IConfirmDialogProps {
  */
 export function ConfirmDialog({
   isOpen,
+  isConfirmDisabled,
+  isDestructive,
   title,
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
-  isDestructive,
   maxWidth = "xs",
   onConfirm,
   onClose,
@@ -56,7 +59,13 @@ export function ConfirmDialog({
           {cancelLabel}
         </Button>
 
-        <Button size={"small"} variant={"contained"} color={isDestructive ? "error" : "primary"} onClick={onConfirm}>
+        <Button
+          size={"small"}
+          variant={"contained"}
+          color={isDestructive ? "error" : "primary"}
+          disabled={isConfirmDisabled}
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </Button>
       </DialogActions>

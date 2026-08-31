@@ -21,11 +21,16 @@ export function describePackOutcome(config: ArchivePackConfig, outcome: IJobOutc
   }
 
   if (result?.outcome === "cancelled") {
+    // A stopped run takes back the volumes it made, so ordinarily there is nothing to clean up. A run that was allowed
+    // to replace an existing set is the exception: there the same paths may have held a working archive, deleting them
+    // would compound the loss, and these are the files somebody has to look at.
     return {
-      details: [
-        `Stopped after ${result.volumesOpened.length} volume(s). These files are incomplete and were not removed:`,
-        ...result.volumesOpened,
-      ].join("\n"),
+      details: result.volumesOpened.length
+        ? [
+            `Stopped after ${result.volumesOpened.length} volume(s). These files are incomplete and were not removed:`,
+            ...result.volumesOpened,
+          ].join("\n")
+        : [config.destination, "Nothing was published: the output directory is as it was."].join("\n"),
       severity: ENotificationSeverity.WARNING,
       title: "Stopped packing archives",
     };

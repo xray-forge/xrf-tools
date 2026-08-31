@@ -3,8 +3,11 @@ use std::path::PathBuf;
 
 use clap::parser::ValueSource;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_pack::{ArchivePackConfig, ArchivePackMode, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension};
+use xrf_pack::{
+  ArchivePackConfig, ArchivePackMode, ArchivePackOptions, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension,
+};
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
@@ -81,6 +84,14 @@ impl GenericCommand for PackCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .arg(
+        Arg::new("force")
+          .help("Replace volumes of the same set the destination already holds")
+          .short('f')
+          .long("force")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
   }
 
   /// Pack a directory into xray engine database archives.
@@ -146,7 +157,29 @@ impl GenericCommand for PackCommand {
       );
     }
 
-    let result: ArchivePackResult = ArchivePacker::pack(&config)?;
+    let is_forced: bool = matches.get_flag("force");
+
+    // Asked here as well as inside the pack, so the refusal can name the flag that lifts it. Packing refuses the same
+    // destination regardless; this is the surface's own wording, not its own rule.
+    if !is_forced {
+      let published: Vec<PathBuf> = ArchivePacker::list_published_volumes(&config)?;
+
+      if !published.is_empty() {
+        return Err(
+          XrfError::new_invalid_error(format!(
+            "Destination '{}' already holds {} volume(s) of '{}'. Packing replaces them and cannot put them back if it \
+           fails partway: move them aside, or pass --force to overwrite them.",
+            format_path(&destination),
+            published.len(),
+            config.single_volume_name()
+          ))
+          .into(),
+        );
+      }
+    }
+
+    let result: ArchivePackResult =
+      ArchivePacker::pack_opt(&config, ArchivePackOptions::default().with_force(is_forced))?;
 
     for volume in &result.volumes {
       xrf_output::info!(output, "Wrote {}", format_path(volume));

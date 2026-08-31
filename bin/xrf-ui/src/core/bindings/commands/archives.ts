@@ -114,6 +114,17 @@ export const archivesCommands = {
    * the same one `gamedata list` and `archive verify` give.
    */
   listCollisions: () => __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions"),
+  /**
+   * Volumes of this configuration's set the destination already holds.
+   *
+   * Asked before packing rather than after: the editor puts a pack behind a confirmation, and a run that would replace
+   * an archive the user still has is exactly what that confirmation is for. Packing refuses the same destination on its
+   * own, so this is what the user is shown, not what protects them.
+   *
+   * Cheap enough to answer on the async worker — one directory listing, no file is opened.
+   */
+  listPackVolumes: (config: ArchivePackConfig) =>
+    __TAURI_INVOKE<Array<string>>("plugin:archives|list_pack_volumes", { config }),
   openProject: (path: string) => __TAURI_INVOKE<ArchiveProject>("plugin:archives|open_project", { path }),
   /**
    * Pack a directory into archive volumes from a configuration held by the caller.
@@ -122,11 +133,15 @@ export const archivesCommands = {
    * without having to save it first.
    *
    * Holds its destination exclusively for the whole run, so a second request for the same output set is refused rather
-   * than allowed to truncate the volumes this one is writing. A cancelled run answers with a result naming every volume
-   * path it opened: those files exist and are incomplete, and nothing removes them.
+   * than allowed to truncate the volumes this one is writing.
+   *
+   * `is_forced` is the user answering for a destination that already holds this set; without it such a run is refused
+   * before anything is written. It also decides what a stopped run leaves: an unforced one takes back the volumes it
+   * made and the destination is untouched, while a forced one cannot tell its own output from what it replaced and
+   * answers with a result naming every volume path it opened.
    */
-  packDirectory: (config: ArchivePackConfig, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config, jobId, progress }),
+  packDirectory: (config: ArchivePackConfig, isForced: boolean, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config, isForced, jobId, progress }),
   readFile: (path: string) => __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { path }),
   /**
    * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.

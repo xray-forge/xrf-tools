@@ -79,6 +79,15 @@ export class PackerService {
   @Observable()
   public configPath: Nullable<string> = null;
 
+  /**
+   * Volumes of the configured set the destination already held when it was last looked at.
+   *
+   * What the confirmation shows before a pack that would replace an archive the user still has. A view of the
+   * filesystem at one moment rather than a guarantee: packing refuses such a destination on its own.
+   */
+  @Observable()
+  public publishedVolumes: Array<string> = [];
+
   /** Volume ceiling as typed, in megabytes, empty while the packer's own maximum applies. */
   @Observable()
   public volumeSize: string = "";
@@ -227,6 +236,27 @@ export class PackerService {
   }
 
   /**
+   * Looks at what the destination already holds under the configured set name.
+   *
+   * Its own lane rather than the form's `isBusy`: this runs while the confirmation opens, and disabling the editor
+   * for a directory listing would read as the pack having already started. A failure is logged and read as nothing
+   * found, because packing refuses such a destination itself and a listing that did not answer is no reason to keep
+   * the user from confirming.
+   *
+   * @param config - Configuration with the source and destination filled in.
+   */
+  @LatestFlow()
+  public *checkDestination(config: ArchivePackConfig): TFlow {
+    try {
+      this.publishedVolumes = yield* call(archivesCommands.listPackVolumes(config));
+    } catch (error: unknown) {
+      this.log.error("Could not list the destination:", error);
+
+      this.publishedVolumes = [];
+    }
+  }
+
+  /**
    * Reads a configuration file over the open configuration.
    *
    * @param path - Configuration file to read.
@@ -313,9 +343,10 @@ export class PackerService {
    * editor's pickers and never belong to the configuration itself.
    *
    * @param config - Configuration with the source and destination filled in.
+   * @param isForced - Whether the user agreed to replace volumes the destination already holds.
    */
   @LatestFlow("isBusy")
-  public *pack(config: ArchivePackConfig): TFlow {
+  public *pack(config: ArchivePackConfig, isForced: boolean): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Packing:", config.source);
@@ -328,7 +359,7 @@ export class PackerService {
     // reach and survives this view being torn down. What it answers is still this service's to render.
     const run: IJobRun<ArchivePackResult> = this.jobsService.run<ArchivePackResult>({
       kind: EJobKind.ARCHIVES_PACK,
-      invoke: (id: string, progress) => archivesCommands.packDirectory(config, id, progress),
+      invoke: (id: string, progress) => archivesCommands.packDirectory(config, isForced, id, progress),
       describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
     });
 

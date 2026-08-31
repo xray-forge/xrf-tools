@@ -61,7 +61,7 @@ describe("PackerService editing", () => {
       ["plugin:archives|pack_directory"]: { volumes: ["gamedata.db"], filesTotal: 1 },
     });
 
-    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" });
+    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
 
     expect(service.result).not.toBeNull();
 
@@ -79,7 +79,7 @@ describe("PackerService editing", () => {
       },
     });
 
-    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" });
+    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
 
     expect(service.error).toBe("source is empty");
     expect(service.result).toBeNull();

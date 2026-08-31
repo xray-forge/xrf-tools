@@ -18,11 +18,18 @@ pub const PACK_PHASE_FINALIZE: &str = "finalize";
 pub struct ArchivePackOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: JobHandle,
+  /// Whether the run may publish over volumes of its set that the destination already holds.
+  pub is_forced: bool,
 }
 
 impl ArchivePackOptions {
   /// The same options, reporting to and cancellable through `job`.
   pub fn with_job(self, job: JobHandle) -> Self {
-    Self { job }
+    Self { job, ..self }
+  }
+
+  /// The same options, allowed to replace a set the destination already holds.
+  pub fn with_force(self, is_forced: bool) -> Self {
+    Self { is_forced, ..self }
   }
 }

@@ -9,6 +9,7 @@ pub mod get_project;
 pub mod has_project;
 pub mod import_pack_config;
 pub mod list_collisions;
+pub mod list_pack_volumes;
 pub mod open_project;
 pub mod pack_directory;
 pub mod read_file;

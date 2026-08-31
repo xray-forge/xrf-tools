@@ -41,6 +41,9 @@ export function ArchivesPackerApplication(): ReactElement {
 
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
 
+  /** Whether the user agreed to replace the volumes the destination already holds. Asked again per confirmation. */
+  const [isForced, setIsForced] = useState<boolean>(false);
+
   const config: Nullable<ArchivePackConfig> = packerService.config;
   const job: Nullable<IJobState> = packerService.job;
 
@@ -99,6 +102,18 @@ export function ArchivesPackerApplication(): ReactElement {
     }
   }, [packerService]);
 
+  /** Opens the confirmation and asks what the destination already holds, so the summary can say so. */
+  const onConfirmPack = useCallback(() => {
+    if (!resolved) {
+      return;
+    }
+
+    setIsForced(false);
+    setIsConfirming(true);
+
+    void packerService.checkDestination(resolved);
+  }, [packerService, resolved]);
+
   const onPack = useCallback(async () => {
     if (!resolved) {
       return;
@@ -106,8 +121,8 @@ export function ArchivesPackerApplication(): ReactElement {
 
     setIsConfirming(false);
 
-    await packerService.pack(resolved);
-  }, [packerService, resolved]);
+    await packerService.pack(resolved, isForced);
+  }, [packerService, resolved, isForced]);
 
   // Drawn by the shell beside every other application's navigation, rather than as a column of this
   // application's own. The menu reads the open section from the service, so this registers once.
@@ -156,7 +171,7 @@ export function ArchivesPackerApplication(): ReactElement {
               isPackDisabled={isBusy || isPacking || !resolved || Boolean(packerService.volumeSizeError)}
               onImport={() => void onImport()}
               onExport={() => void onExport()}
-              onPack={() => setIsConfirming(true)}
+              onPack={onConfirmPack}
             />
           }
         />
@@ -212,9 +227,17 @@ export function ArchivesPackerApplication(): ReactElement {
         <ConfirmDialog
           isOpen={isConfirming}
           isDestructive={true}
+          isConfirmDisabled={packerService.publishedVolumes.length > 0 && !isForced}
           maxWidth={"sm"}
           title={"Pack archives?"}
-          description={<PackerConfirmSummary config={resolved} />}
+          description={
+            <PackerConfirmSummary
+              config={resolved}
+              publishedVolumes={packerService.publishedVolumes}
+              isForced={isForced}
+              onForceChange={setIsForced}
+            />
+          }
           confirmLabel={"Pack"}
           onConfirm={() => void onPack()}
           onClose={() => setIsConfirming(false)}

@@ -11,20 +11,24 @@ use xrf_job::JobOutcome;
 pub struct ArchivePackResult {
   /// Volumes written, in mount order.
   ///
-  /// A volume appears here once it has been closed, so on a run that stopped early this is the part of the set that
-  /// is structurally complete — not the part that is usable, since a set missing its later volumes is missing entries.
+  /// A volume appears here once it has been closed. On a forced run that stopped early this is the part of the set
+  /// that is structurally complete — not the part that is usable, since a set missing its later volumes is missing
+  /// entries. On any other run that did not finish it is empty, because such a run publishes nothing.
   pub volumes: Vec<PathBuf>,
   /// Every volume path this run created, closed or not.
   ///
   /// Wider than `volumes` on purpose. A volume is opened with `File::create`, so it exists — and has replaced whatever
-  /// stood at that path — from the moment writing begins. A run that stopped leaves the last one unfinished and absent
-  /// from `volumes`, and a caller telling the user what is now on disk needs the paths rather than the successes.
+  /// stood at that path — from the moment writing begins.
+  ///
+  /// Empty on a run that did not finish and was not forced: such a run began over a destination holding no volume of
+  /// its set, so every file it made was its own and was removed again. A forced run is where this earns its place —
+  /// there the same paths may have held a working set beforehand, deleting them would compound the loss, and the
+  /// caller needs the list to say what is now on disk.
   pub volumes_opened: Vec<PathBuf>,
   /// Whether the run reached the end of its work or was stopped between entries.
   ///
-  /// A cancelled pack leaves an unusable partial volume set behind and removes nothing: the paths it opened may well
-  /// have held a working archive set before it started, and nothing here can tell what this run created from what it
-  /// overwrote. Report `volumes_opened` to whoever has to clean up.
+  /// A cancelled pack publishes nothing and leaves the destination as it found it, unless it was forced — see
+  /// `volumes_opened` for what a forced run leaves behind.
   pub outcome: JobOutcome,
   pub files_total: usize,
   /// Files the include, exclude, and skip rules left out.
