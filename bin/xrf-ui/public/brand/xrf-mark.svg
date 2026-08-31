@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="XRF Tools">
+  <path d="M 128 128 L 185.25 28.84 A 114.5 114.5 0 0 0 70.75 28.84 Z M 128 128 L 13.5 128 A 114.5 114.5 0 0 0 70.75 227.16 Z M 128 128 L 185.25 227.16 A 114.5 114.5 0 0 0 242.5 128 Z" fill="currentColor"/>
+  <circle cx="128" cy="128" r="119" fill="none" stroke="currentColor" stroke-width="12"/>
+  <polygon points="158 128 143 102.019 113 102.019 98 128 113 153.981 143 153.981" fill="#FFA200"/>
+</svg>

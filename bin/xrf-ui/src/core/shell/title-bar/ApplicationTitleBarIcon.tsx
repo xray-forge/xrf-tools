@@ -1,18 +1,12 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
+import { XrfMark } from "@/core/brand/XrfMark";
+
 /**
- * The application icon, where a window's own icon sits.
+ * The application mark, where a window's own icon sits.
+ *
+ * Named rather than decorative: it is the only thing identifying the window, the caption text having been dropped.
  */
 export function ApplicationTitleBarIcon(): ReactElement {
-  return (
-    <Box
-      component={"img"}
-      src={"/icon.png"}
-      alt={"XRF tools"}
-      // Without this the browser's own image drag starts instead of the window moving.
-      draggable={false}
-      sx={{ width: 16, height: 16, marginX: 1, flexShrink: 0 }}
-    />
-  );
+  return <XrfMark data-testid={"application-title-bar-icon"} size={16} title={"XRF tools"} sx={{ marginX: 1 }} />;
 }

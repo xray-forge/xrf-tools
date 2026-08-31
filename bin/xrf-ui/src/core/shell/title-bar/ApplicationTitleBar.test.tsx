@@ -31,7 +31,7 @@ describe("ApplicationTitleBar", () => {
   });
 
   it("keeps the caption draggable outside the controls", () => {
-    const { container, getByLabelText, getByAltText } = renderWithProviders(<ApplicationTitleBar />);
+    const { container, getByLabelText, getByRole } = renderWithProviders(<ApplicationTitleBar />);
 
     // Without a drag region the window has no way to be moved at all, the system frame being gone.
     // It has to be `deep` and not `true`, or only the bar's own padding would drag.
@@ -41,14 +41,17 @@ describe("ApplicationTitleBar", () => {
     // are excluded by carrying no attribute. Adding one here would make the buttons drag the window.
     expect(getByLabelText("Close")).not.toHaveAttribute("data-tauri-drag-region");
 
-    // An image is not clickable to tauri, but it is draggable to the browser, which would win.
-    expect(getByAltText("XRF tools")).toHaveAttribute("draggable", "false");
+    // The mark was an `<img>`, which tauri does not treat as clickable but the browser does treat as
+    // draggable, so it had to carry `draggable="false"` or the image drag won over the window move.
+    // Inlined there is no image to drag, and the svg declares no region, so the deep walk reaches it.
+    expect(getByRole("img", { name: "XRF tools" }).tagName.toLowerCase()).toBe("svg");
+    expect(getByRole("img", { name: "XRF tools" })).not.toHaveAttribute("data-tauri-drag-region");
   });
 
   it("identifies the window by icon rather than by repeating the name below it", () => {
-    const { getByAltText, queryByText } = renderWithProviders(<ApplicationTitleBar />);
+    const { getByRole, queryByText } = renderWithProviders(<ApplicationTitleBar />);
 
-    expect(getByAltText("XRF tools")).toBeInTheDocument();
+    expect(getByRole("img", { name: "XRF tools" })).toBeInTheDocument();
     expect(queryByText("XRF tools")).not.toBeInTheDocument();
   });
 
@@ -80,11 +83,11 @@ describe("ApplicationTitleBar", () => {
   });
 
   it("reserves the space between the icon and the controls", () => {
-    const { getByAltText, getByLabelText } = renderWithProviders(<ApplicationTitleBar />);
+    const { getByRole, getByLabelText } = renderWithProviders(<ApplicationTitleBar />);
 
     // The gap is a real element rather than a margin, so a menu bar can land in it without the
     // controls or the icon moving.
-    const reserved: Element = getByAltText("XRF tools").nextElementSibling as Element;
+    const reserved: Element = getByRole("img", { name: "XRF tools" }).nextElementSibling as Element;
 
     expect(reserved).toBeInTheDocument();
     expect(reserved.contains(getByLabelText("Minimize"))).toBe(false);
