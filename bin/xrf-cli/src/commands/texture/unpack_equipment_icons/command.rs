@@ -12,6 +12,7 @@ use xrf_utils::format_path;
 use super::report::TextureEquipmentUnpackReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct UnpackEquipmentIconsCommand;
@@ -91,6 +92,7 @@ impl GenericCommand for UnpackEquipmentIconsCommand {
     create_dir_all(output)?;
 
     UnpackEquipmentProcessor::unpack_sprites(UnpackEquipmentOptions {
+      job: new_logging_job(),
       ltx: system_ltx,
       source: source_dds,
       output: output_options.clone(),

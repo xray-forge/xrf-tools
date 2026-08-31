@@ -24,6 +24,11 @@ impl UnpackDescriptionProcessor {
 
     xrf_output::info!(options.output, "Unpacking for {} files", selected.len());
 
+    let unpacking: xrf_job::JobScope = options.job.enter(
+      crate::job_phases::TEXTURE_PHASE_UNPACK_DESCRIPTIONS,
+      Some(selected.len() as u64),
+    );
+
     if options.is_parallel {
       // Files are unpacked in parallel, so each one logs into its listed position and the sequence
       // releases them in selection order rather than in the order the workers finished. A file that
@@ -37,6 +42,8 @@ impl UnpackDescriptionProcessor {
           count.fetch_add(1, Ordering::Relaxed);
         }
 
+        unpacking.advance();
+
         Ok::<(), XrfError>(())
       })?;
     } else {
@@ -44,6 +51,8 @@ impl UnpackDescriptionProcessor {
         if Self::unpack_xml_description(&options, &options.output, file)? {
           count.fetch_add(1, Ordering::Relaxed);
         }
+
+        unpacking.advance();
       }
     }
 
@@ -152,6 +161,7 @@ mod tests {
       .join(format!("xrf-texture-missing-description-{}", std::process::id()));
 
     PackDescriptionOptions {
+      job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("source"),
       output: Default::default(),

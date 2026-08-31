@@ -1,3 +1,5 @@
+import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
+
 /** A rectangle in the packed equipment sprite, measured in grid cells. */
 export interface IEquipmentSectionDescriptor {
   /** Configuration section that owns the rectangle. */
@@ -27,11 +29,10 @@ export interface IEquipmentSpriteMetadata {
 /** A selected sprite cell as `[row, column]`. */
 export type TEquipmentCell = [number, number];
 
-export interface IPackEquipmentResult {
-  duration: number;
-  savedAt: string;
-  savedWidth: number;
-  savedHeight: number;
-  packedCount: number;
-  skippedCount: number;
-}
+/**
+ * What packing a sprite sheet produced.
+ *
+ * The generated mirror rather than a hand-written copy of it. The copy had drifted the moment the Rust result gained a
+ * field: it silently lacked `outcome`, so nothing here could tell a finished run from a stopped one.
+ */
+export type IPackEquipmentResult = PackEquipmentResult;

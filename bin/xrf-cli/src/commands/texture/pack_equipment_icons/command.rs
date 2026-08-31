@@ -11,6 +11,7 @@ use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct PackEquipmentIconsCommand;
@@ -100,6 +101,7 @@ impl GenericCommand for PackEquipmentIconsCommand {
     let system_ltx: Ltx = Ltx::read_from_file_full(system_ltx_path)?;
 
     let options = PackEquipmentOptions {
+      job: new_logging_job(),
       ltx: system_ltx,
       source: source.into(),
       output: output_options.clone(),

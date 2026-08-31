@@ -12,7 +12,14 @@ impl UnpackEquipmentProcessor {
   pub fn unpack_sprites(options: UnpackEquipmentOptions) -> XrfResult {
     let mut count: u32 = 0;
 
+    let unpacking: xrf_job::JobScope = options.job.enter(
+      crate::job_phases::TEXTURE_PHASE_UNPACK_SPRITES,
+      Some(options.ltx.sections.len() as u64),
+    );
+
     for (section_name, section) in &options.ltx.sections {
+      unpacking.advance();
+
       if let Some(sprite) = InventorySpriteDescriptor::new_optional_from_section(section_name, section)
         && Self::unpack_sprite(&options, &sprite)?
       {

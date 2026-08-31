@@ -24,7 +24,14 @@ impl PackDescriptionProcessor {
 
     xrf_output::info!(options.output, "Packing for {} files", selected.len());
 
+    let packing: xrf_job::JobScope = options.job.enter(
+      crate::job_phases::TEXTURE_PHASE_PACK_DESCRIPTIONS,
+      Some(selected.len() as u64),
+    );
+
     for file in selected {
+      packing.advance();
+
       if Self::pack_xml_description(options, file)? {
         count += 1;
       }

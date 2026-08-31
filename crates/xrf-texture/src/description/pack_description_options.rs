@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use xrf_dds::ImageFormat;
 
 pub struct PackDescriptionOptions {
+  /// Where progress goes, and for packing, where cancellation comes from.
+  pub job: xrf_job::JobHandle,
   pub description: PathBuf,
   pub base: PathBuf,
   pub output: xrf_output::OutputOptions,

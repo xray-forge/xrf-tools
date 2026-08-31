@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 use super::report::TextureDescriptionReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct PackTextureDescriptionCommand;
@@ -89,6 +90,7 @@ impl GenericCommand for PackTextureDescriptionCommand {
     let output_options: OutputOptions = context.get_output().clone();
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
+      job: new_logging_job(),
       description: description.clone(),
       base: base.clone(),
       output: output_options,

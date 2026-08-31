@@ -237,6 +237,7 @@ mod tests {
       std::env::temp_dir().join(format!("xrf-texture-invalid-description-{}.xml", std::process::id()));
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
+      job: Default::default(),
       description: path.clone(),
       base: PathBuf::new(),
       output: Default::default(),
@@ -280,6 +281,7 @@ mod select_files_tests {
 
   fn options_for(files: &[&str]) -> PackDescriptionOptions {
     PackDescriptionOptions {
+      job: Default::default(),
       description: PathBuf::from("ui_actor_upgrades.xml"),
       base: PathBuf::new(),
       output: Default::default(),

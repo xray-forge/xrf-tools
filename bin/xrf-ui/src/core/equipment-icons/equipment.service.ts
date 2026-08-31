@@ -3,8 +3,9 @@ import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
+import { describePackSpriteOutcome } from "@/applications/equipment-icons-packer/lib/describe-pack-sprite-outcome";
 import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
 import { equipmentIconsCommands } from "@/core/bindings/commands/equipment-icons";
@@ -15,6 +16,8 @@ import {
 } from "@/core/equipment-icons/equipment";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { EJobKind, IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
+import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { createLoadable, Loadable } from "@/lib/loadable";
@@ -60,9 +63,14 @@ export class EquipmentService {
   @Observable()
   public repackedAt: Nullable<number> = null;
 
+  /** The sprite pack this service started, while it runs. */
+  @Observable()
+  public packJobId: Nullable<string> = null;
+
   public constructor(
     private readonly assetService: AssetService = inject(AssetService),
-    private readonly eventBus: EventBus = inject(EventBus)
+    private readonly eventBus: EventBus = inject(EventBus),
+    private readonly jobsService: JobsService = inject(JobsService)
   ) {}
 
   @OnProvision()
@@ -297,6 +305,17 @@ export class EquipmentService {
     }
   }
 
+  /**
+   * Draws every declared icon into one sprite sheet.
+   *
+   * Started through the jobs service rather than invoked here: reading `system.ltx` pulls in the whole include tree and
+   * every icon is decoded, so the run wants an identity, a lease over the sheet it writes, and a way to stop it.
+   *
+   * @param sourcePath - Directory of individual icon files.
+   * @param outputPath - File the sheet is written to.
+   * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
+   * @returns What the run produced.
+   */
   public async packEquipmentSprite(
     sourcePath: string,
     outputPath: string,
@@ -304,11 +323,43 @@ export class EquipmentService {
   ): Promise<IPackEquipmentResult> {
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
+    const run: IJobRun<IPackEquipmentResult> = this.jobsService.run<IPackEquipmentResult>({
+      kind: EJobKind.EQUIPMENT_ICONS_PACK,
+      invoke: (id: string, progress) =>
+        equipmentIconsCommands.packSprite(sourcePath, outputPath, systemLtxPath, id, progress),
+      describe: (outcome: IJobOutcome<IPackEquipmentResult>): IJobNotice =>
+        describePackSpriteOutcome(outputPath, outcome),
+    });
+
+    this.packJobId = run.id;
+
     try {
-      return await equipmentIconsCommands.packSprite(sourcePath, outputPath, systemLtxPath);
+      return await run.promise;
     } catch (error) {
       this.log.error("Failed to pack equipment editor:", error);
       throw error;
+    } finally {
+      this.packJobId = null;
+    }
+  }
+
+  /**
+   * @returns The sprite pack currently running, whether this service started it or found it again.
+   */
+  @Computed()
+  public get packJob(): Nullable<IJobState> {
+    return this.packJobId
+      ? this.jobsService.getJob(this.packJobId)
+      : this.jobsService.getJobOfKind(EJobKind.EQUIPMENT_ICONS_PACK);
+  }
+
+  /** Stops the running sprite pack. Nothing has been written yet, so nothing is left behind. */
+  @BoundAction()
+  public cancelPackEquipmentSprite(): void {
+    const job: Nullable<IJobState> = this.packJob;
+
+    if (job) {
+      this.jobsService.cancel(job.id);
     }
   }
 

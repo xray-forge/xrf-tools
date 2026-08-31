@@ -3,6 +3,7 @@ mod crop;
 mod data;
 mod description;
 mod equipment;
+pub mod job_phases;
 mod utils;
 
 pub use utils::fit_image_into_bounds;

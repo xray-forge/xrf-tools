@@ -24,6 +24,7 @@ impl PackEquipmentProcessor {
     let started_at: Instant = Instant::now();
 
     let mut count: u32 = 0;
+    let mut outcome: xrf_job::JobOutcome = xrf_job::JobOutcome::Completed;
     let mut skipped_sections: Vec<&str> = Vec::new();
     let mut image: ImageBuffer<Rgba<u8>, Vec<u8>> =
       InventorySpriteDescriptor::create_equipment_sprite_base_for_ltx(&options.ltx)?;
@@ -32,7 +33,22 @@ impl PackEquipmentProcessor {
     // grid position, so several sections legitimately share one slot with inheritance.
     let mut occupied_slots: HashMap<(u32, u32), (String, Vec<u8>)> = HashMap::new();
 
+    let packing: xrf_job::JobScope = options.job.enter(
+      crate::job_phases::TEXTURE_PHASE_PACK_SPRITES,
+      Some(options.ltx.sections.len() as u64),
+    );
+
     for (section_name, section) in &options.ltx.sections {
+      // Between sections: the sheet is one image written once at the end, so stopping here leaves nothing on disk
+      // rather than a half-drawn sprite atlas.
+      if options.job.is_cancelled() {
+        outcome = xrf_job::JobOutcome::Cancelled;
+
+        break;
+      }
+
+      packing.advance();
+
       let Some(sprite_descriptor) = InventorySpriteDescriptor::new_optional_from_section(section_name, section) else {
         continue;
       };
@@ -93,6 +109,7 @@ impl PackEquipmentProcessor {
     );
 
     Ok(PackEquipmentResult {
+      outcome,
       duration: started_at.elapsed(),
       saved_at: options.output_path.clone(),
       saved_width: image.width(),

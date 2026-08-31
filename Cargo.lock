@@ -7408,6 +7408,7 @@ dependencies = [
  "specta",
  "xrf-dds",
  "xrf-error",
+ "xrf-job",
  "xrf-ltx",
  "xrf-output",
  "xrf-test-utils",
