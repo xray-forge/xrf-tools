@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::time::Instant;
 
 use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
@@ -18,9 +17,12 @@ impl LtxProject {
   /// - All the inherited sections are valid and declared before inherit attempt
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
-    let started_at: Instant = Instant::now();
 
     xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
+
+    // Captured where the per-file work begins, so what came before it - mounting, indexing, assembling this project -
+    // is named rather than lost.
+    result.startup_duration = options.job.elapsed();
 
     let verifying: JobScope = options
       .job
@@ -158,7 +160,7 @@ impl LtxProject {
       }
     }
 
-    result.duration = started_at.elapsed();
+    result.duration = options.job.elapsed();
 
     for error in &result.errors {
       xrf_output::error!(options.output, "{error}");
@@ -210,6 +212,68 @@ mod tests {
 
   use super::*;
   use crate::{LtxProjectOptions, LtxVerifyOptions};
+
+  #[test]
+  fn the_total_covers_the_work_done_before_the_first_file_was_read() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/tests/ltx_project_verify/condlist");
+
+    // Created before the project opens, exactly as the desktop command and the command line both do.
+    let job: xrf_job::JobHandle = xrf_job::JobHandle::inert();
+
+    let project = LtxProject::open_at_path_opt(
+      &root,
+      LtxProjectOptions {
+        is_with_schemes_check: true,
+        ..Default::default()
+      },
+    )
+    .expect("Expected test project to open");
+
+    let opened_at: std::time::Duration = job.elapsed();
+
+    let result = project
+      .verify_entries_opt(LtxVerifyOptions {
+        job: job.clone(),
+        ..Default::default()
+      })
+      .expect("Expected test project verification to complete");
+
+    // What the old shape could not say: opening the project is inside the total.
+    assert!(
+      result.startup_duration >= opened_at,
+      "startup ({:?}) has to contain the project opening already measured ({opened_at:?})",
+      result.startup_duration
+    );
+
+    // And the total contains the startup, so the per-file phase is the difference rather than the whole answer.
+    assert!(
+      result.duration >= result.startup_duration,
+      "total ({:?}) has to contain startup ({:?})",
+      result.duration,
+      result.startup_duration
+    );
+  }
+
+  /// A handle made at the call site measures only what it wrapped, which is the honest reading for a caller that did
+  /// not want its own setup counted - `xrf-gamedata` verifying LTX as one of its checks, for instance.
+  #[test]
+  fn a_handle_made_at_the_call_site_reports_almost_no_startup() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/tests/ltx_project_verify/condlist");
+    let project = LtxProject::open_at_path_opt(
+      &root,
+      LtxProjectOptions {
+        is_with_schemes_check: true,
+        ..Default::default()
+      },
+    )
+    .expect("Expected test project to open");
+
+    let result = project
+      .verify_entries_opt(LtxVerifyOptions { ..Default::default() })
+      .expect("Expected test project verification to complete");
+
+    assert!(result.duration >= result.startup_duration);
+  }
 
   #[test]
   fn validates_condlists_from_project_schemes() {

@@ -15,9 +15,18 @@ pub struct LtxProjectVerifyResult {
   pub outcome: JobOutcome,
   pub checked_fields: usize,
   pub checked_sections: usize,
+  /// Everything the run took, measured from when its caller created the job handle.
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
+  /// How much of `duration` had already passed when the per-file work began.
+  ///
+  /// Mounting the roots, indexing the virtual filesystem, assembling the project and resolving its includes all happen
+  /// before a single file is read, and on a cold filesystem they dominate: a run reporting only its own loop told the
+  /// user one second where they had waited fifteen. Named rather than folded away, so the split stays readable.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub startup_duration: Duration,
   pub errors: Vec<XrfError>,
   pub invalid_sections: usize,
   pub skipped_sections: usize,
@@ -33,6 +42,7 @@ impl LtxProjectVerifyResult {
       checked_fields: 0,
       checked_sections: 0,
       duration: Duration::ZERO,
+      startup_duration: Duration::ZERO,
       errors: Vec::new(),
       invalid_sections: 0,
       skipped_sections: 0,

@@ -11,7 +11,16 @@ export type LtxProjectFormatResult = {
    * running it again resolves. Nothing is removed and nothing is half-written.
    */
   outcome: JobOutcome;
+  /** Everything the run took, measured from when its caller created the job handle. */
   duration: number;
+  /**
+   * How much of `duration` had already passed when the per-file work began.
+   *
+   * Mounting the roots, indexing the virtual filesystem, assembling the project and resolving its includes all happen
+   * before a single file is read, and on a cold filesystem they dominate: a run reporting only its own loop told the
+   * user one second where they had waited fifteen. Named rather than folded away, so the split stays readable.
+   */
+  startupDuration: number;
   invalidFiles: number;
   toFormat: Array<string>;
   totalFiles: number;
@@ -28,7 +37,16 @@ export type LtxProjectVerifyResult = {
   outcome: JobOutcome;
   checkedFields: number;
   checkedSections: number;
+  /** Everything the run took, measured from when its caller created the job handle. */
   duration: number;
+  /**
+   * How much of `duration` had already passed when the per-file work began.
+   *
+   * Mounting the roots, indexing the virtual filesystem, assembling the project and resolving its includes all happen
+   * before a single file is read, and on a cold filesystem they dominate: a run reporting only its own loop told the
+   * user one second where they had waited fifteen. Named rather than folded away, so the split stays readable.
+   */
+  startupDuration: number;
   errors: Array<XrfError>;
   invalidSections: number;
   skippedSections: number;

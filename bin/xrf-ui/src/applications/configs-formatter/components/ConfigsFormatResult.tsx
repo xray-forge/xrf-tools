@@ -29,6 +29,7 @@ export function ConfigsFormatResult({ isCheck, result }: IConfigsFormatResultPro
         tone: result.invalidFiles ? (isCheck ? "error" : "warning") : "success",
       },
       { label: "elapsed", value: formatDuration(result.duration) },
+      { label: "opening", value: formatDuration(result.startupDuration) },
     ],
     [isCheck, result]
   );

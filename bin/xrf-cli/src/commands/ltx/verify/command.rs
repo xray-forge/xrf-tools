@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
+use xrf_job::JobHandle;
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -56,6 +57,10 @@ impl GenericCommand for VerifyCommand {
       is_strict_check: true,
     };
 
+    // Created before the project is opened, because its clock is what the result reports as the total: mounting and
+    // indexing a cold installation is most of the wait.
+    let job: JobHandle = new_logging_job();
+
     // Verification only reads, so an installation is verified over every declared source. Narrowing it to loose configs
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
@@ -70,10 +75,7 @@ impl GenericCommand for VerifyCommand {
       None => LtxProject::open_at_path_opt(path, options)?,
     });
 
-    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions {
-      output,
-      job: new_logging_job(),
-    })?;
+    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { output, job })?;
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
     context.set_result(|| &result)?;

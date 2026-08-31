@@ -16,10 +16,18 @@ pub struct LtxProjectFormatResult {
   /// A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
   /// running it again resolves. Nothing is removed and nothing is half-written.
   pub outcome: JobOutcome,
-
+  /// Everything the run took, measured from when its caller created the job handle.
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
+  /// How much of `duration` had already passed when the per-file work began.
+  ///
+  /// Mounting the roots, indexing the virtual filesystem, assembling the project and resolving its includes all happen
+  /// before a single file is read, and on a cold filesystem they dominate: a run reporting only its own loop told the
+  /// user one second where they had waited fifteen. Named rather than folded away, so the split stays readable.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub startup_duration: Duration,
   pub invalid_files: usize,
   pub to_format: Vec<PathBuf>,
   pub total_files: usize,
@@ -31,6 +39,7 @@ impl LtxProjectFormatResult {
     Self {
       outcome: JobOutcome::Completed,
       duration: Duration::ZERO,
+      startup_duration: Duration::ZERO,
       invalid_files: 0,
       to_format: Vec::new(),
       total_files: 0,

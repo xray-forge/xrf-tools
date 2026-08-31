@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use xrf_job::JobHandle;
 use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult};
 use xrf_output::OutputOptions;
 
@@ -53,17 +54,19 @@ impl GenericCommand for FormatCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
+    // Created before the files are discovered, because its clock is what the result reports as the total: selecting
+    // them over a large tree is part of the wait.
+    let job: JobHandle = new_logging_job();
+
     let selection: LtxFormatSelection = LtxFormatSelection::select(&paths)?;
 
     Self::report_selection(&output, &selection, is_check, paths.len());
 
     let files: Vec<PathBuf> = selection.files;
 
-    // A live sink rather than an inert job: this walks every config in a project, and a terminal owes the person
-    // watching it some sign of where it has got to. Nothing here cancels.
     let options: LtxFormatOptions = LtxFormatOptions {
       output: output.clone(),
-      job: new_logging_job(),
+      job,
     };
 
     if is_check {

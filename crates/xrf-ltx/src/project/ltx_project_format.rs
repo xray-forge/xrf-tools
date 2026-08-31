@@ -1,10 +1,11 @@
 use std::path::PathBuf;
-use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_job::{JobOutcome, JobScope};
 use xrf_vfs::require_writable_path;
 
 use crate::project::ltx_files_formatter::LtxFilesFormatter;
+use crate::project::ltx_format_options::LTX_PHASE_CHECK;
 use crate::project::ltx_project_format_result::LtxProjectFormatResult;
 use crate::{Ltx, LtxFormatOptions, LtxProject};
 
@@ -27,17 +28,30 @@ impl LtxProject {
   /// Returns an error when a config cannot be read or parsed.
   pub fn check_format_all_files_opt(&self, options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
-    let started_at: Instant = Instant::now();
 
     xrf_output::heading!(options.output, "Checking {} file(s)", self.ltx_files.len());
 
+    // Its own loop rather than `LtxFilesFormatter::check_format_opt`, because it reads through the project's virtual
+    // filesystem where that one reads host files. The two therefore have to be instrumented separately.
+    result.startup_duration = options.job.elapsed();
+
+    let checking: JobScope = options.job.enter(LTX_PHASE_CHECK, Some(self.ltx_files.len() as u64));
+
     for logical_path in &self.ltx_files {
+      // A stopped check reports what it had judged so far, and says so: findings read as a complete verdict otherwise.
+      if options.job.is_cancelled() {
+        result.outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
       let contents: Vec<u8> = self.vfs().scoped(self.scope()).read_bytes(logical_path.as_str())?;
 
       result.record_checked(self.path_of(logical_path), Ltx::is_formatted(&contents)?, &options);
+      checking.advance();
     }
 
-    result.duration = started_at.elapsed();
+    result.duration = options.job.elapsed();
 
     LtxFilesFormatter::report_check(&result, &options);
 

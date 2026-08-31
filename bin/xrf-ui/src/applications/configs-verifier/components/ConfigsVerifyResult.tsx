@@ -33,6 +33,7 @@ export function ConfigsVerifyResult({ result }: IConfigsVerifyResultProps): Reac
       { label: "skipped", value: result.skippedSections },
       { label: "invalid", value: result.invalidSections, tone: result.invalidSections ? "error" : "success" },
       { label: "elapsed", value: formatDuration(result.duration) },
+      { label: "opening", value: formatDuration(result.startupDuration) },
     ],
     [result]
   );

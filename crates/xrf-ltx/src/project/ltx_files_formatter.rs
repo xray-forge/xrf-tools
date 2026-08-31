@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
@@ -21,9 +20,10 @@ impl LtxFilesFormatter {
   /// Returns an error when a file cannot be read, parsed, or rewritten.
   pub fn format_opt(files: &[PathBuf], options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
-    let started_at: Instant = Instant::now();
 
     xrf_output::heading!(options.output, "Formatting {} file(s)", files.len());
+
+    result.startup_duration = options.job.elapsed();
 
     let formatting: JobScope = options.job.enter(LTX_PHASE_FORMAT, Some(files.len() as u64));
 
@@ -54,7 +54,7 @@ impl LtxFilesFormatter {
 
     options.job.set_detail(None);
 
-    result.duration = started_at.elapsed();
+    result.duration = options.job.elapsed();
 
     xrf_output::info!(
       options.output,
@@ -74,9 +74,10 @@ impl LtxFilesFormatter {
   /// Returns an error when a file cannot be read or parsed.
   pub fn check_format_opt(files: &[PathBuf], options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
-    let started_at: Instant = Instant::now();
 
     xrf_output::heading!(options.output, "Checking {} file(s)", files.len());
+
+    result.startup_duration = options.job.elapsed();
 
     let checking: JobScope = options.job.enter(LTX_PHASE_CHECK, Some(files.len() as u64));
 
@@ -92,7 +93,7 @@ impl LtxFilesFormatter {
       checking.advance();
     }
 
-    result.duration = started_at.elapsed();
+    result.duration = options.job.elapsed();
 
     Self::report_check(&result, &options);
 
