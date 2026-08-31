@@ -30,6 +30,19 @@ pub struct XrayPlannedMount {
   pub ignored: Vec<String>,
 }
 
+/// What listing a declared directory said about the archive volumes it holds directly.
+///
+/// The third arm is the whole point: `false` cannot mean both "holds no volumes" and "could not be asked".
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum VolumeScan {
+  /// The listing named at least one volume.
+  Present,
+  /// The listing succeeded and named none.
+  Absent,
+  /// The directory could not be listed, so what it holds is unknown.
+  Unreadable,
+}
+
 /// An ordered list of sources to mount, highest priority first.
 ///
 /// Constructors cover explicit or inferred installations, explicit or inferred asset roots, and partial subtrees.
@@ -207,12 +220,24 @@ impl XrayMountPlan {
       // Still gated on the volumes the directory holds itself, which is cheap. Asking whether any recursive alias has
       // a volume somewhere beneath it would walk each declared gamedata subtree on every mount, and such an alias is
       // already absent from the plan for holding no volumes at all.
-      if Self::holds_volumes(&path) {
-        plan = if declaration.is_recursive {
-          plan.with_volumes_beneath(&path, &declaration.alias)?
-        } else {
-          plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?
-        };
+      match Self::scan_volumes(&path) {
+        VolumeScan::Present => {
+          plan = if declaration.is_recursive {
+            plan.with_volumes_beneath(&path, &declaration.alias)?
+          } else {
+            plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?
+          };
+        }
+        // The fsgame norm: most declared aliases resolve inside gamedata or name writable state, and a real installation
+        // omits some twenty of them. Recording those would make every healthy project report incomplete coverage.
+        VolumeScan::Absent => {}
+        // Planned as one archive despite the failed listing, so opening it fails where the omission is recorded and
+        // reported rather than here, where nothing but the log would ever say the source went unread. Never the
+        // recursive branch: discovering volumes beneath a directory that cannot be listed is the same failure, and
+        // raising it would cost the caller the rest of the installation.
+        VolumeScan::Unreadable => {
+          plan = plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?;
+        }
       }
     }
 
@@ -308,12 +333,33 @@ impl XrayMountPlan {
   /// Only the immediate contents count, because fsgame declares each volume directory separately and the engine scans them
   /// non-recursively. Mounting such a directory as a loose source instead would register `textures.db0` as an addressable
   /// asset.
+  ///
+  /// A directory that cannot be listed answers `false`, which is the honest answer to this question and the wrong one to
+  /// plan from. Callers deciding whether to mount use [`Self::scan_volumes`] instead.
   pub fn holds_volumes(path: impl AsRef<Path>) -> bool {
-    Self::holds_volumes_at(path.as_ref())
+    matches!(Self::scan_volumes(path.as_ref()), VolumeScan::Present)
   }
 
-  fn holds_volumes_at(path: &Path) -> bool {
-    fs::read_dir(path).is_ok_and(|entries| entries.flatten().any(|entry| Self::is_volume(entry.path())))
+  /// Classifies what listing a declared directory said about the volumes it holds directly.
+  ///
+  /// Three-way rather than a predicate, because a directory that cannot be listed is not a directory holding no volumes:
+  /// collapsing the two omits an unreadable `db\` from the plan exactly as it omits `$logs$`, and nothing downstream can
+  /// then tell that an installation's whole archive set went unread.
+  fn scan_volumes(path: &Path) -> VolumeScan {
+    let entries: fs::ReadDir = match fs::read_dir(path) {
+      Ok(entries) => entries,
+      Err(error) => {
+        log::warn!("Cannot list declared directory {}: {error}", format_path(path));
+
+        return VolumeScan::Unreadable;
+      }
+    };
+
+    if entries.flatten().any(|entry| Self::is_volume(entry.path())) {
+      VolumeScan::Present
+    } else {
+      VolumeScan::Absent
+    }
   }
 
   /// Whether a file is an archive volume, asked of the crate that owns the format.
@@ -329,5 +375,67 @@ impl XrayMountPlan {
   /// every mesh twice - once as `meshes\x.ogf` and once as `x.ogf`.
   fn is_gamedata_root(fsgame: &FsgameFile, path: &Path) -> bool {
     fsgame.resolve("$game_data$").is_some_and(|gamedata| gamedata == path)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+  use super::{VolumeScan, XrayMountPlan};
+
+  fn directory(name: &str, files: &[&str]) -> PathBuf {
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_plan/{name}"));
+
+    let _ = fs::remove_dir_all(&root);
+
+    fs::create_dir_all(&root).expect("scan root");
+
+    for file in files {
+      fs::write(root.join(file), []).expect("scanned file");
+    }
+
+    root
+  }
+
+  /// A declared directory holding volumes is an archive source, and one holding none is the fsgame norm.
+  ///
+  /// Separated from `Unreadable` because only the first two are a decision about content; the third is a decision about
+  /// whether the question was answered at all, and a plan that cannot tell them apart drops an unreadable `db\` as
+  /// quietly as it drops `$logs$`.
+  #[test]
+  fn classifies_what_a_declared_directory_holds() {
+    let with_volume: PathBuf = directory("scan_present", &["gamedata.db0", "readme.txt"]);
+    let without: PathBuf = directory("scan_absent", &["readme.txt"]);
+
+    assert_eq!(XrayMountPlan::scan_volumes(&with_volume), VolumeScan::Present);
+    assert!(XrayMountPlan::holds_volumes(&with_volume));
+
+    assert_eq!(XrayMountPlan::scan_volumes(&without), VolumeScan::Absent);
+    assert!(!XrayMountPlan::holds_volumes(&without));
+
+    fs::remove_dir_all(with_volume).expect("cleanup");
+    fs::remove_dir_all(without).expect("cleanup");
+  }
+
+  /// A directory the host refuses to list is the case the predicate cannot express.
+  ///
+  /// Driven through a path that cannot be listed at all, because a permission-denied directory is not portable to
+  /// arrange; the planner reaches this arm only through a genuine I/O failure, since a path that is not a directory is
+  /// already excluded before the scan.
+  #[test]
+  fn reports_a_directory_it_cannot_list_as_unknown_rather_than_empty() {
+    let absent: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/scan_unreadable");
+
+    let _ = fs::remove_dir_all(&absent);
+
+    assert_eq!(XrayMountPlan::scan_volumes(&absent), VolumeScan::Unreadable);
+    assert!(
+      !XrayMountPlan::holds_volumes(&absent),
+      "the predicate still answers honestly for its own question"
+    );
   }
 }

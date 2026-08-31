@@ -26,33 +26,14 @@ impl GamedataProject {
       checks.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n  -")
     );
 
-    // Stated before any result, because every count below is measured over what actually mounted: a source that failed
-    // to open makes its assets look missing rather than unread.
-    if !self.skipped_mounts().is_empty() {
-      xrf_output::warning!(
-        options.output,
-        "{} declared source(s) could not be opened, so results below do not cover them:",
-        self.skipped_mounts().len()
-      );
-
-      for skipped in self.skipped_mounts() {
-        xrf_output::warning!(
-          options.output,
-          "  - {} at {}: {}",
-          skipped.origin,
-          format_path(&skipped.path),
-          skipped.reason
-        );
-      }
-    }
-
     xrf_output::info!(options.output, "");
 
     let started_at: Instant = Instant::now();
     let mut result: GamedataVerificationReport = GamedataVerificationReport::default();
 
-    // First, and outside the progress scope below: reachability is not one of the kinds a caller selects,
-    // and it is decided by what mounting already indexed rather than by work worth counting.
+    // First, and outside the progress scope below: neither coverage nor reachability is one of the kinds a caller
+    // selects, and both are decided by what mounting already did rather than by work worth counting.
+    result.add_report(GamedataVerificationType::Coverage.run(self, options));
     result.add_report(GamedataVerificationType::Collisions.run(self, options));
 
     // One level over the selected checks, and each check that reports its own work nests inside it: the LTX checks
@@ -92,7 +73,9 @@ mod tests {
   use xrf_vfs::XrayLookupScope;
 
   use super::GamedataProject;
-  use crate::{GamedataProjectVerifyOptions, GamedataVerificationStatus, GamedataVerificationType};
+  use crate::{
+    GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationStatus, GamedataVerificationType,
+  };
 
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
   fn empty_project() -> GamedataProject {
@@ -116,18 +99,21 @@ mod tests {
       .verify(&options)
       .expect("Expected level verification to complete");
 
-    // The always-run collisions check, then the selection deduplicated to one entry.
-    assert_eq!(report.get_checks().len(), 2);
+    // Both always-run checks, then the selection deduplicated to one entry.
     assert_eq!(
-      report.get_checks()[0].get_verification_type(),
-      GamedataVerificationType::Collisions
+      report
+        .get_checks()
+        .iter()
+        .map(GamedataVerificationCheckReport::get_verification_type)
+        .collect::<Vec<_>>(),
+      vec![
+        GamedataVerificationType::Coverage,
+        GamedataVerificationType::Collisions,
+        GamedataVerificationType::Levels,
+      ]
     );
-    assert_eq!(
-      report.get_checks()[1].get_verification_type(),
-      GamedataVerificationType::Levels
-    );
-    // The test project ships no spawn file, so the level roster is unknown and nothing is checked; nothing collides
-    // either, so the collisions check leaves that verdict alone.
+    // The test project ships no spawn file, so the level roster is unknown and nothing is checked; nothing collides and
+    // nothing was skipped either, so neither always-run check touches that verdict.
     assert_eq!(report.get_status(), GamedataVerificationStatus::Skipped);
   }
 }

@@ -5,7 +5,9 @@ use serde::Serialize;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayCacheStats, XrayReadTraceSummary};
+use xrf_vfs::{XrayCacheStats, XrayReadTraceSummary, XraySkippedMount};
+
+use crate::core::reports::SkippedMountReport;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +20,8 @@ pub struct GamedataVerificationReportOutput {
   /// What the sweep physically read, present only when `--trace-reads` asked for the account.
   #[serde(skip_serializing_if = "Option::is_none")]
   reads: Option<XrayReadTraceSummary>,
+  /// Declared sources that never opened, which is what the `incomplete` status is about.
+  skipped_mounts: Vec<SkippedMountReport>,
   status: String,
 }
 
@@ -47,6 +51,7 @@ struct GamedataVerificationFindingOutput {
 pub struct GamedataVerificationReportPayload<'a> {
   root: &'a Path,
   report: &'a GamedataVerificationResult,
+  skipped: &'a [XraySkippedMount],
   cache: XrayCacheStats,
   reads: Option<XrayReadTraceSummary>,
 }
@@ -55,12 +60,14 @@ impl<'a> GamedataVerificationReportPayload<'a> {
   pub fn new(
     root: &'a Path,
     report: &'a GamedataVerificationResult,
+    skipped: &'a [XraySkippedMount],
     cache: XrayCacheStats,
     reads: Option<XrayReadTraceSummary>,
   ) -> Self {
     Self {
       root,
       report,
+      skipped,
       cache,
       reads,
     }
@@ -79,6 +86,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       checks,
       duration: self.report.get_duration(),
       reads: self.reads.clone(),
+      skipped_mounts: SkippedMountReport::list(self.skipped),
       status: self.report.get_status().to_string(),
     }
   }
@@ -127,7 +135,7 @@ mod tests {
     Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
   };
   use xrf_report::RuleId;
-  use xrf_vfs::{XrayCacheStats, XrayReadTraceHotPath, XrayReadTraceSummary};
+  use xrf_vfs::{XrayCacheStats, XrayReadTraceHotPath, XrayReadTraceSummary, XraySkippedMount};
 
   use super::GamedataVerificationReportPayload;
 
@@ -203,7 +211,7 @@ mod tests {
     };
 
     let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache, None).build()).unwrap();
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, &[], cache, None).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -232,7 +240,7 @@ mod tests {
     };
 
     let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, cache, None).build()).unwrap();
+      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, &[], cache, None).build()).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -269,7 +277,7 @@ mod tests {
     };
 
     let json: serde_json::Value = serde_json::to_value(
-      GamedataVerificationReportPayload::new(&root, &report, XrayCacheStats::default(), Some(reads)).build(),
+      GamedataVerificationReportPayload::new(&root, &report, &[], XrayCacheStats::default(), Some(reads)).build(),
     )
     .unwrap();
 
@@ -281,5 +289,51 @@ mod tests {
     assert_eq!(json["reads"]["uniqueBytes"], 1040);
     assert_eq!(json["reads"]["hottest"][0]["path"], "anims\\shared.omf");
     assert_eq!(json["reads"]["hottest"][0]["reads"], 3);
+  }
+
+  /// What a script reads to learn the run did not cover everything, without parsing a finding message.
+  #[test]
+  fn reports_every_declared_source_that_never_opened() {
+    let root: PathBuf = temporary_gamedata_root();
+    let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
+    let skipped: Vec<XraySkippedMount> = vec![XraySkippedMount {
+      origin: String::from("$arch_dir$"),
+      path: root.join("db"),
+      reason: String::from("Failed to read archive volumes"),
+    }];
+
+    let json: serde_json::Value = serde_json::to_value(
+      GamedataVerificationReportPayload::new(&root, &report, &skipped, XrayCacheStats::default(), None).build(),
+    )
+    .unwrap();
+
+    fs::remove_dir_all(&root).unwrap();
+
+    // The whole address, not a root-relative one: a source that never opened may sit outside the verified root, and a
+    // reader has to be able to find the path the plan named.
+    assert_eq!(
+      json["skippedMounts"][0],
+      serde_json::json!({
+        "origin": "$arch_dir$",
+        "path": xrf_utils::to_portable_path_string(root.join("db")),
+        "reason": "Failed to read archive volumes",
+      })
+    );
+  }
+
+  /// Empty rather than absent, or a consumer cannot tell "nothing skipped" from "this build does not report it".
+  #[test]
+  fn reports_full_coverage_as_an_empty_list() {
+    let root: PathBuf = temporary_gamedata_root();
+    let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
+
+    let json: serde_json::Value = serde_json::to_value(
+      GamedataVerificationReportPayload::new(&root, &report, &[], XrayCacheStats::default(), None).build(),
+    )
+    .unwrap();
+
+    fs::remove_dir_all(&root).unwrap();
+
+    assert_eq!(json["skippedMounts"], serde_json::json!([]));
   }
 }

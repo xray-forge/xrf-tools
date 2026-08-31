@@ -139,6 +139,7 @@ impl GenericCommand for VerifyCommand {
       GamedataVerificationReportPayload::new(
         &root,
         &verify_result,
+        project.skipped_mounts(),
         project.get_cache_stats(),
         project.get_read_trace_summary(HOTTEST_READ_PATHS_REPORTED),
       )

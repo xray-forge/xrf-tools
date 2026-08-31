@@ -14,6 +14,8 @@ pub enum GamedataVerificationRule {
   CheckExecution,
   #[display("collisions.unreachable")]
   CollisionsUnreachable,
+  #[display("coverage.skipped-mount")]
+  CoverageSkippedMount,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]

@@ -2,9 +2,10 @@ use std::path::Path;
 use std::time::Duration;
 
 use serde::Serialize;
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayPathCollision, XraySkippedMount};
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayPathCollision};
 
 use crate::commands::gamedata::list::asset_lister::AssetListing;
+use crate::core::reports::SkippedMountReport;
 
 /// One asset a mount resolved: its engine identity and the container that answered for it.
 #[derive(Debug, Serialize)]
@@ -34,25 +35,6 @@ impl GamedataAssetReport {
   }
 }
 
-/// One declared source that could not be opened, so the listing does not cover it.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GamedataSkippedMountReport {
-  origin: String,
-  path: String,
-  reason: String,
-}
-
-impl GamedataSkippedMountReport {
-  fn new(skipped: &XraySkippedMount) -> Self {
-    Self {
-      origin: skipped.origin.clone(),
-      path: xrf_utils::to_portable_path_string(&skipped.path),
-      reason: skipped.reason.clone(),
-    }
-  }
-}
-
 /// What `gamedata list` resolved out of the roots it was given.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -67,7 +49,7 @@ pub struct GamedataListReport {
   mounts: Vec<String>,
   origin: String,
   shadowed: Vec<GamedataAssetReport>,
-  skipped: Vec<GamedataSkippedMountReport>,
+  skipped: Vec<SkippedMountReport>,
   total: usize,
 }
 
@@ -81,7 +63,7 @@ impl GamedataListReport {
       mounts: listing.mounts.clone(),
       origin: listing.origin.clone(),
       shadowed: GamedataAssetReport::list(&listing.shadowed),
-      skipped: listing.skipped.iter().map(GamedataSkippedMountReport::new).collect(),
+      skipped: SkippedMountReport::list(&listing.skipped),
       total: listing.entries.len(),
     }
   }

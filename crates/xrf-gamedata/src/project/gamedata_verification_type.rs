@@ -13,6 +13,9 @@ pub enum GamedataVerificationType {
   /// from the game whichever kinds a caller asked about, and [`GamedataProject::verify`] runs this on every run.
   #[display("collisions")]
   Collisions,
+  /// Declared sources the run could not open, rather than anything authored inside the ones it did.
+  #[display("coverage")]
+  Coverage,
   #[display("animations")]
   Animations,
   #[display("levels")]
@@ -44,8 +47,8 @@ pub enum GamedataVerificationType {
 impl GamedataVerificationType {
   /// Every check a caller can select, which is every kind of authored asset.
   ///
-  /// [`Self::Collisions`] is absent on purpose; it judges the project's own inputs rather than a kind, and
-  /// always runs.
+  /// [`Self::Collisions`] and [`Self::Coverage`] are absent on purpose; they judge the project's own inputs
+  /// rather than a kind, and always run.
   pub const ALL: [Self; 13] = [
     Self::Animations,
     Self::Levels,
@@ -73,6 +76,7 @@ impl GamedataVerificationType {
   ) -> GamedataVerificationCheckReport {
     match self {
       Self::Collisions => Self::check_report(self, project.verify_collisions(options)),
+      Self::Coverage => Self::check_report(self, project.verify_coverage(options)),
       Self::Animations => Self::check_report(self, project.verify_animations(options)),
       Self::Levels => Self::check_report(self, project.verify_levels(options)),
       Self::Ltx => Self::check_report(self, project.verify_ltx(options)),
@@ -129,10 +133,12 @@ mod tests {
     }
   }
 
-  /// The always-run check is not a selection, so naming it is a usage error rather than a redundant request.
+  /// An always-run check is not a selection, so naming it is a usage error rather than a redundant request.
   #[test]
-  fn refuses_the_always_run_collisions_check_as_a_selection() {
-    assert!(!GamedataVerificationType::ALL.contains(&GamedataVerificationType::Collisions));
-    assert!("collisions".parse::<GamedataVerificationType>().is_err());
+  fn refuses_the_always_run_checks_as_a_selection() {
+    for always_run in [GamedataVerificationType::Collisions, GamedataVerificationType::Coverage] {
+      assert!(!GamedataVerificationType::ALL.contains(&always_run));
+      assert!(always_run.to_string().parse::<GamedataVerificationType>().is_err());
+    }
   }
 }

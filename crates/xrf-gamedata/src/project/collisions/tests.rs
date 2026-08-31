@@ -196,10 +196,11 @@ fn fails_a_run_whose_selected_check_is_unrelated() {
   assert_eq!(
     checks,
     vec![
+      (GamedataVerificationType::Coverage, GamedataVerificationStatus::Skipped),
       (GamedataVerificationType::Collisions, GamedataVerificationStatus::Failed),
       (GamedataVerificationType::Ltx, GamedataVerificationStatus::Passed),
     ],
-    "the collisions check runs first and beside the selection rather than inside it"
+    "the collisions check runs before the selection rather than inside it"
   );
 
   assert_eq!(
@@ -211,9 +212,9 @@ fn fails_a_run_whose_selected_check_is_unrelated() {
 
   let shared = report.to_report();
 
-  assert_eq!(shared.checks()[0].id().as_str(), "collisions");
+  assert_eq!(shared.checks()[1].id().as_str(), "collisions");
   assert_eq!(
-    shared.checks()[0].findings()[0].rule_id().as_str(),
+    shared.checks()[1].findings()[0].rule_id().as_str(),
     "collisions.unreachable"
   );
   assert_eq!(shared.status(), GamedataVerificationStatus::Failed);
@@ -234,8 +235,8 @@ fn reports_the_collisions_check_on_a_clean_run() {
 
   assert_eq!(report.get_status(), GamedataVerificationStatus::Passed);
   assert_eq!(
-    report.get_checks()[0].get_verification_type(),
+    report.get_checks()[1].get_verification_type(),
     GamedataVerificationType::Collisions
   );
-  assert_eq!(report.get_checks()[0].get_summary(), "No unreachable files");
+  assert_eq!(report.get_checks()[1].get_summary(), "No unreachable files");
 }
