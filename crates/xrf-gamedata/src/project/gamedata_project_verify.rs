@@ -51,6 +51,10 @@ impl GamedataProject {
     let started_at: Instant = Instant::now();
     let mut result: GamedataVerificationReport = GamedataVerificationReport::default();
 
+    // First, and outside the progress scope below: reachability is not one of the kinds a caller selects,
+    // and it is decided by what mounting already indexed rather than by work worth counting.
+    result.add_report(GamedataVerificationType::Collisions.run(self, options));
+
     // One level over the selected checks, and each check that reports its own work nests inside it: the LTX checks
     // enter their own file-level scopes on this same handle, so a run reads as `checks 3/11` above `verify 400/2000`
     // rather than as one bar that sits still for minutes. This is the first consumer to nest across two crates.
@@ -112,12 +116,18 @@ mod tests {
       .verify(&options)
       .expect("Expected level verification to complete");
 
-    assert_eq!(report.get_checks().len(), 1);
+    // The always-run collisions check, then the selection deduplicated to one entry.
+    assert_eq!(report.get_checks().len(), 2);
     assert_eq!(
       report.get_checks()[0].get_verification_type(),
+      GamedataVerificationType::Collisions
+    );
+    assert_eq!(
+      report.get_checks()[1].get_verification_type(),
       GamedataVerificationType::Levels
     );
-    // The test project ships no spawn file, so the level roster is unknown and nothing is checked.
+    // The test project ships no spawn file, so the level roster is unknown and nothing is checked; nothing collides
+    // either, so the collisions check leaves that verdict alone.
     assert_eq!(report.get_status(), GamedataVerificationStatus::Skipped);
   }
 }

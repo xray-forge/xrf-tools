@@ -12,6 +12,8 @@ pub enum GamedataVerificationRule {
   AnimationsPlayerHud,
   #[display("checks.execution")]
   CheckExecution,
+  #[display("collisions.unreachable")]
+  CollisionsUnreachable,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]

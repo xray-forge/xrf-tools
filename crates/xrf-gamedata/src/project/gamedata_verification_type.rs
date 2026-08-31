@@ -7,6 +7,12 @@ use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions, 
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display)]
 pub enum GamedataVerificationType {
+  /// Files one source holds but the engine cannot reach, rather than any kind of asset authored inside them.
+  ///
+  /// Outside [`Self::ALL`], so `--checks` neither offers nor parses it: an unreachable file is missing
+  /// from the game whichever kinds a caller asked about, and [`GamedataProject::verify`] runs this on every run.
+  #[display("collisions")]
+  Collisions,
   #[display("animations")]
   Animations,
   #[display("levels")]
@@ -36,6 +42,10 @@ pub enum GamedataVerificationType {
 }
 
 impl GamedataVerificationType {
+  /// Every check a caller can select, which is every kind of authored asset.
+  ///
+  /// [`Self::Collisions`] is absent on purpose; it judges the project's own inputs rather than a kind, and
+  /// always runs.
   pub const ALL: [Self; 13] = [
     Self::Animations,
     Self::Levels,
@@ -62,6 +72,7 @@ impl GamedataVerificationType {
     options: &GamedataProjectVerifyOptions,
   ) -> GamedataVerificationCheckReport {
     match self {
+      Self::Collisions => Self::check_report(self, project.verify_collisions(options)),
       Self::Animations => Self::check_report(self, project.verify_animations(options)),
       Self::Levels => Self::check_report(self, project.verify_levels(options)),
       Self::Ltx => Self::check_report(self, project.verify_ltx(options)),
@@ -116,5 +127,12 @@ mod tests {
 
       assert_eq!(parsed, verification_type);
     }
+  }
+
+  /// The always-run check is not a selection, so naming it is a usage error rather than a redundant request.
+  #[test]
+  fn refuses_the_always_run_collisions_check_as_a_selection() {
+    assert!(!GamedataVerificationType::ALL.contains(&GamedataVerificationType::Collisions));
+    assert!("collisions".parse::<GamedataVerificationType>().is_err());
   }
 }

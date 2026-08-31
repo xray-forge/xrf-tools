@@ -38,6 +38,8 @@ impl GamedataProjectVerifyOptions {
       .checks
       .iter()
       .copied()
+      // The collisions check always runs, so a caller naming it programmatically must not run it a second time.
+      .filter(|check| *check != GamedataVerificationType::Collisions)
       .filter(|check| seen.insert(*check))
       .collect()
   }
