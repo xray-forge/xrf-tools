@@ -1,4 +1,5 @@
 pub(crate) mod archive;
+pub(crate) mod dds;
 pub(crate) mod dialog;
 pub(crate) mod docs;
 pub(crate) mod externs;
@@ -9,6 +10,6 @@ pub(crate) mod omf;
 pub(crate) mod particle;
 pub(crate) mod profile;
 pub(crate) mod spawn;
-pub(crate) mod texture;
+pub(crate) mod sprite;
 pub(crate) mod thm;
 pub(crate) mod translation;

@@ -1,5 +1,5 @@
 use crate::commands::{
-  archive, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, profile, spawn, texture, thm, translation,
+  archive, dds, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, profile, spawn, sprite, thm, translation,
 };
 use crate::core::generic_command::{CommandGroup, GenericCommand};
 
@@ -19,6 +19,12 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
         archive::unpack::UnpackCommand::new_box(),
         archive::verify::VerifyCommand::new_box(),
       ],
+    },
+    CommandGroup {
+      slug: "dds",
+      label: "DDS",
+      about: "DDS texture file tools",
+      commands: vec![dds::crop::CropCommand::new_box(), dds::info::InfoCommand::new_box()],
     },
     CommandGroup {
       slug: "dialog",
@@ -111,17 +117,15 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       ],
     },
     CommandGroup {
-      slug: "texture",
-      label: "Texture",
-      about: "Texture asset tools",
+      slug: "sprite",
+      label: "Sprite",
+      about: "Sprite sheet tools",
       commands: vec![
-        texture::crop_dds::CropDdsCommand::new_box(),
-        texture::info_dds::InfoDdsCommand::new_box(),
-        texture::pack_equipment_icons::PackEquipmentIconsCommand::new_box(),
-        texture::pack_texture_description::PackTextureDescriptionCommand::new_box(),
-        texture::unpack_equipment_icons::UnpackEquipmentIconsCommand::new_box(),
-        texture::unpack_texture_description::UnpackTextureDescriptionCommand::new_box(),
-        texture::verify_equipment_icons::VerifyEquipmentIconsCommand::new_box(),
+        sprite::pack_description::PackDescriptionCommand::new_box(),
+        sprite::pack_equipment::PackEquipmentCommand::new_box(),
+        sprite::unpack_description::UnpackDescriptionCommand::new_box(),
+        sprite::unpack_equipment::UnpackEquipmentCommand::new_box(),
+        sprite::verify_equipment::VerifyEquipmentCommand::new_box(),
       ],
     },
     CommandGroup {

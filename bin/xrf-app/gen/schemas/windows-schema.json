@@ -4641,72 +4641,6 @@
           "markdownDescription": "Denies the open_project command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-sprite`\n- `allow-get-sprite`\n- `allow-open-sprite`\n- `allow-reopen-sprite`\n- `allow-pack-sprite`",
-          "type": "string",
-          "const": "equipment-icons:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-sprite`\n- `allow-get-sprite`\n- `allow-open-sprite`\n- `allow-reopen-sprite`\n- `allow-pack-sprite`"
-        },
-        {
-          "description": "Enables the close_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:allow-close-sprite",
-          "markdownDescription": "Enables the close_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the get_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:allow-get-sprite",
-          "markdownDescription": "Enables the get_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the open_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:allow-open-sprite",
-          "markdownDescription": "Enables the open_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the pack_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:allow-pack-sprite",
-          "markdownDescription": "Enables the pack_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the reopen_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:allow-reopen-sprite",
-          "markdownDescription": "Enables the reopen_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the close_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:deny-close-sprite",
-          "markdownDescription": "Denies the close_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the get_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:deny-get-sprite",
-          "markdownDescription": "Denies the get_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the open_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:deny-open-sprite",
-          "markdownDescription": "Denies the open_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the pack_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:deny-pack-sprite",
-          "markdownDescription": "Denies the pack_sprite command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the reopen_sprite command without any pre-configured scope.",
-          "type": "string",
-          "const": "equipment-icons:deny-reopen-sprite",
-          "markdownDescription": "Denies the reopen_sprite command without any pre-configured scope."
-        },
-        {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-open-project`\n- `allow-get-project`\n- `allow-get-source`",
           "type": "string",
           "const": "exports:default",
@@ -6823,6 +6757,72 @@
           "type": "string",
           "const": "spawn:deny-unpack-file",
           "markdownDescription": "Denies the unpack_file command without any pre-configured scope."
+        },
+        {
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-sprite`\n- `allow-get-sprite`\n- `allow-open-sprite`\n- `allow-reopen-sprite`\n- `allow-pack-sprite`",
+          "type": "string",
+          "const": "sprite-equipment:default",
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-sprite`\n- `allow-get-sprite`\n- `allow-open-sprite`\n- `allow-reopen-sprite`\n- `allow-pack-sprite`"
+        },
+        {
+          "description": "Enables the close_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:allow-close-sprite",
+          "markdownDescription": "Enables the close_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:allow-get-sprite",
+          "markdownDescription": "Enables the get_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:allow-open-sprite",
+          "markdownDescription": "Enables the open_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pack_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:allow-pack-sprite",
+          "markdownDescription": "Enables the pack_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the reopen_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:allow-reopen-sprite",
+          "markdownDescription": "Enables the reopen_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the close_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:deny-close-sprite",
+          "markdownDescription": "Denies the close_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:deny-get-sprite",
+          "markdownDescription": "Denies the get_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:deny-open-sprite",
+          "markdownDescription": "Denies the open_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pack_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:deny-pack-sprite",
+          "markdownDescription": "Denies the pack_sprite command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the reopen_sprite command without any pre-configured scope.",
+          "type": "string",
+          "const": "sprite-equipment:deny-reopen-sprite",
+          "markdownDescription": "Denies the reopen_sprite command without any pre-configured scope."
         },
         {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`",

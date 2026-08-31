@@ -15,11 +15,11 @@ use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
-use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
+use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
@@ -61,11 +61,6 @@ fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
       raw: crate::ipc::registry::dialogs::RAW_COMMANDS,
     },
     CommandModule {
-      name: EquipmentIconsPlugin::NAME,
-      builder: EquipmentIconsPlugin::specta_builder::<R>(),
-      raw: crate::ipc::registry::equipment_icons::RAW_COMMANDS,
-    },
-    CommandModule {
       name: ExportsPlugin::NAME,
       builder: ExportsPlugin::specta_builder::<R>(),
       raw: crate::ipc::registry::exports::RAW_COMMANDS,
@@ -84,6 +79,11 @@ fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
       name: SpawnPlugin::NAME,
       builder: SpawnPlugin::specta_builder::<R>(),
       raw: crate::ipc::registry::spawn::RAW_COMMANDS,
+    },
+    CommandModule {
+      name: SpriteEquipmentPlugin::NAME,
+      builder: SpriteEquipmentPlugin::specta_builder::<R>(),
+      raw: crate::ipc::registry::sprite_equipment::RAW_COMMANDS,
     },
     CommandModule {
       name: SystemPlugin::NAME,

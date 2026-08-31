@@ -11,11 +11,11 @@ use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
-use crate::plugins::equipment_icons::plugin::EquipmentIconsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
+use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
@@ -35,7 +35,7 @@ pub fn run() {
     .plugin(JobsPlugin::init())
     .plugin(SpawnPlugin::init())
     .plugin(ConfigsPlugin::init())
-    .plugin(EquipmentIconsPlugin::init())
+    .plugin(SpriteEquipmentPlugin::init())
     .plugin(SystemPlugin::init())
     .plugin(TranslationsPlugin::init())
     .plugin(VisualsPlugin::init())

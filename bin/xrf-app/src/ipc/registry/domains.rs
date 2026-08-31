@@ -52,13 +52,6 @@ macro_rules! for_each_tauri_command_domain {
         get_project => crate::plugins::exports::commands::get_project::exports_get_project,
         get_source => crate::plugins::exports::commands::get_source::exports_get_source,
       }
-      equipment_icons => "equipment-icons" {
-        close_sprite => crate::plugins::equipment_icons::commands::close_sprite::equipment_icons_close_sprite,
-        get_sprite => crate::plugins::equipment_icons::commands::get_sprite::equipment_icons_get_sprite,
-        open_sprite => crate::plugins::equipment_icons::commands::open_sprite::equipment_icons_open_sprite,
-        reopen_sprite => crate::plugins::equipment_icons::commands::reopen_sprite::equipment_icons_reopen_sprite,
-        pack_sprite => crate::plugins::equipment_icons::commands::pack_sprite::equipment_icons_pack_sprite,
-      }
       // Running work, whatever domain it belongs to: what is going on, and asking it to stop. A domain of its own
       // because identity, exclusion and cancellation are the same questions for a pack, a verification, or a build.
       gamedata => "gamedata" {
@@ -85,6 +78,13 @@ macro_rules! for_each_tauri_command_domain {
         pack_file => crate::plugins::spawn::commands::pack_file::spawn_pack_file,
         save_file => crate::plugins::spawn::commands::save_file::spawn_save_file,
         unpack_file => crate::plugins::spawn::commands::unpack_file::spawn_unpack_file,
+      }
+      sprite_equipment => "sprite-equipment" {
+        close_sprite => crate::plugins::sprite_equipment::commands::close_sprite::sprite_equipment_close_sprite,
+        get_sprite => crate::plugins::sprite_equipment::commands::get_sprite::sprite_equipment_get_sprite,
+        open_sprite => crate::plugins::sprite_equipment::commands::open_sprite::sprite_equipment_open_sprite,
+        reopen_sprite => crate::plugins::sprite_equipment::commands::reopen_sprite::sprite_equipment_reopen_sprite,
+        pack_sprite => crate::plugins::sprite_equipment::commands::pack_sprite::sprite_equipment_pack_sprite,
       }
       system => "system" {
         get_build_info => crate::plugins::system::commands::get_build_info::system_get_build_info,

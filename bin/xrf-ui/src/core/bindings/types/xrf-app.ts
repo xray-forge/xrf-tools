@@ -76,13 +76,7 @@ export type EquipmentSpriteMetadata = {
   equipmentDescriptors: Array<InventorySpriteDescriptor>;
 };
 
-/**
- * One check's verdict, as the desktop surface shows it.
- *
- * The findings behind a check are deliberately not carried: a full run over an installation produces tens of
- * thousands of them, and a card that has to render all of them to say "meshes failed" is a card that never appears.
- * The count and the summary are what a person reads first; the detail belongs to a surface built to page through it.
- */
+/** One check's verdict, as the desktop surface shows it. */
 export type GamedataCheckSummary = {
   /** The check that ran, spelled as the command line spells it. */
   check: string;

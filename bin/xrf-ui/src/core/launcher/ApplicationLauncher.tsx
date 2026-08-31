@@ -131,7 +131,8 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
   const search: IUseRankedSearch<TCatalogEntry> = useRankedSearch({
     items: searchable,
     toSearchText: ([application]: TCatalogEntry) => application.label,
-    // The group name matches too, so "icons" finds the six tools that never say it in their own label.
+    // The description and the group name match too, so "icons" still finds the six sprite tools whose labels
+    // only say "sprite".
     toSecondaryText: ([application, group]: TCatalogEntry) => `${application.description} ${group.label}`,
     onSelect: onSelectResult,
   });

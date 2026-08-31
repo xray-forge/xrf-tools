@@ -34,9 +34,9 @@
     "dialogs:default",
     "exports:default",
     "gamedata:default",
-    "equipment-icons:default",
     "jobs:default",
     "spawn:default",
+    "sprite-equipment:default",
     "system:default",
     "translations:default",
     "visuals:default"

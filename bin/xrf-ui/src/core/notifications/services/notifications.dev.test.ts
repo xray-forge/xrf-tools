@@ -6,7 +6,7 @@ import { NotificationsService } from "@/core/notifications/services/notification
 import { EApplicationId } from "@/core/routing/application";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-const SOURCE: EApplicationId = EApplicationId.EQUIPMENT_ICONS_EDITOR;
+const SOURCE: EApplicationId = EApplicationId.SPRITE_EQUIPMENT_EDITOR;
 
 describe("NotificationsService dev traces", () => {
   it("keeps traces out of the list real outcomes live in", () => {

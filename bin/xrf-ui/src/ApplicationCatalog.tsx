@@ -16,19 +16,19 @@ import { CHARACTERS_EXPLORER_APPLICATION } from "@/applications/characters-explo
 import { CONFIGS_EXPLORER_APPLICATION } from "@/applications/configs-explorer";
 import { CONFIGS_FORMATTER_APPLICATION } from "@/applications/configs-formatter";
 import { CONFIGS_VERIFIER_APPLICATION } from "@/applications/configs-verifier";
-import { DESCRIPTION_ICONS_EDITOR_APPLICATION } from "@/applications/description-icons-editor";
-import { DESCRIPTION_ICONS_PACKER_APPLICATION } from "@/applications/description-icons-packer";
-import { DESCRIPTION_ICONS_UNPACKER_APPLICATION } from "@/applications/description-icons-unpacker";
 import { DIALOGS_EDITOR_APPLICATION } from "@/applications/dialogs-editor";
-import { EQUIPMENT_ICONS_EDITOR_APPLICATION } from "@/applications/equipment-icons-editor";
-import { EQUIPMENT_ICONS_PACKER_APPLICATION } from "@/applications/equipment-icons-packer";
-import { EQUIPMENT_ICONS_UNPACKER_APPLICATION } from "@/applications/equipment-icons-unpacker";
 import { EXPORTS_EXPLORER_APPLICATION } from "@/applications/exports-explorer";
 import { GAMEDATA_VERIFIER_APPLICATION } from "@/applications/gamedata-verifier";
 import { INFO_PORTIONS_EXPLORER_APPLICATION } from "@/applications/info-portions-explorer";
 import { SPAWN_EDITOR_APPLICATION } from "@/applications/spawn-editor";
 import { SPAWN_PACKER_APPLICATION } from "@/applications/spawn-packer";
 import { SPAWN_UNPACKER_APPLICATION } from "@/applications/spawn-unpacker";
+import { SPRITE_DESCRIPTION_EDITOR_APPLICATION } from "@/applications/sprite-description-editor";
+import { SPRITE_DESCRIPTION_PACKER_APPLICATION } from "@/applications/sprite-description-packer";
+import { SPRITE_DESCRIPTION_UNPACKER_APPLICATION } from "@/applications/sprite-description-unpacker";
+import { SPRITE_EQUIPMENT_EDITOR_APPLICATION } from "@/applications/sprite-equipment-editor";
+import { SPRITE_EQUIPMENT_PACKER_APPLICATION } from "@/applications/sprite-equipment-packer";
+import { SPRITE_EQUIPMENT_UNPACKER_APPLICATION } from "@/applications/sprite-equipment-unpacker";
 import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
@@ -61,15 +61,15 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     CHARACTERS_EXPLORER_APPLICATION,
     INFO_PORTIONS_EXPLORER_APPLICATION,
     TASKS_EXPLORER_APPLICATION,
-    EQUIPMENT_ICONS_EDITOR_APPLICATION,
-    EQUIPMENT_ICONS_PACKER_APPLICATION,
-    EQUIPMENT_ICONS_UNPACKER_APPLICATION,
-    DESCRIPTION_ICONS_EDITOR_APPLICATION,
-    DESCRIPTION_ICONS_PACKER_APPLICATION,
-    DESCRIPTION_ICONS_UNPACKER_APPLICATION,
     SPAWN_EDITOR_APPLICATION,
     SPAWN_PACKER_APPLICATION,
     SPAWN_UNPACKER_APPLICATION,
+    SPRITE_EQUIPMENT_EDITOR_APPLICATION,
+    SPRITE_EQUIPMENT_PACKER_APPLICATION,
+    SPRITE_EQUIPMENT_UNPACKER_APPLICATION,
+    SPRITE_DESCRIPTION_EDITOR_APPLICATION,
+    SPRITE_DESCRIPTION_PACKER_APPLICATION,
+    SPRITE_DESCRIPTION_UNPACKER_APPLICATION,
     TRANSLATIONS_EDITOR_APPLICATION,
     TRANSLATIONS_PARSER_APPLICATION,
     TRANSLATIONS_BUILDER_APPLICATION,
@@ -115,16 +115,16 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       icon: <SportsEsportsIcon />,
     },
     {
-      accent: { light: "#7b4aa3", dark: "#c291e7" },
-      id: EApplicationGroupId.ICONS,
-      label: "Icons",
-      icon: <ImageIcon />,
-    },
-    {
       accent: { light: "#677516", dark: "#afcb54" },
       id: EApplicationGroupId.SPAWNS,
       label: "Spawns",
       icon: <MapIcon />,
+    },
+    {
+      accent: { light: "#7b4aa3", dark: "#c291e7" },
+      id: EApplicationGroupId.SPRITES,
+      label: "Sprites",
+      icon: <ImageIcon />,
     },
     {
       accent: { light: "#217414", dark: "#60c85c" },

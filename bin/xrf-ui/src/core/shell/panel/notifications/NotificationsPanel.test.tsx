@@ -115,10 +115,10 @@ describe("NotificationsPanel", () => {
 
   it("hides dev traces while dev mode is off", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.DEV, source: EApplicationId.EQUIPMENT_ICONS_EDITOR, title: "grid recomputed" },
+      { severity: ENotificationSeverity.DEV, source: EApplicationId.SPRITE_EQUIPMENT_EDITOR, title: "grid recomputed" },
       {
         severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.EQUIPMENT_ICONS_EDITOR,
+        source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
         title: "Packed sprite",
       },
     ]);
@@ -132,7 +132,7 @@ describe("NotificationsPanel", () => {
       [
         {
           severity: ENotificationSeverity.DEV,
-          source: EApplicationId.EQUIPMENT_ICONS_EDITOR,
+          source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
           title: "grid recomputed",
         },
       ],
@@ -150,7 +150,7 @@ describe("NotificationsPanel", () => {
       [
         {
           severity: ENotificationSeverity.SUCCESS,
-          source: EApplicationId.EQUIPMENT_ICONS_EDITOR,
+          source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
           title: "Packed sprite",
         },
       ],

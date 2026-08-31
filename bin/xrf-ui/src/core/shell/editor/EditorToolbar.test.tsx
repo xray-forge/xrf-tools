@@ -18,7 +18,7 @@ describe("EditorToolbar", () => {
     const cases: Array<[string, string]> = [
       ["/archives-explorer", "Archives explorer"],
       ["/archives-unpacker", "Archives unpacker"],
-      ["/equipment-icons-editor", "Equipment icons editor"],
+      ["/sprite-equipment-editor", "Sprite equipment editor"],
       ["/visuals-explorer", "Visuals explorer"],
       ["/translations-editor", "Translations editor"],
     ];
