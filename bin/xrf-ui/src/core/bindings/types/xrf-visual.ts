@@ -134,6 +134,14 @@ export type VisualGeometry = {
  */
 export type VisualMotionBake = {
   name: string;
+  /**
+   * Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares.
+   *
+   * The two agree whenever any bone is keyed, because a keyed stream stores one key a frame. They part only for a
+   * motion of nothing but held bones, which is constant however many frames it declares and so bakes to the one
+   * frame that answers all of them. `duration` follows the frames baked rather than the frames declared, as it
+   * already does for a motion declaring none.
+   */
   frameCount: number;
   boneCount: number;
   /**

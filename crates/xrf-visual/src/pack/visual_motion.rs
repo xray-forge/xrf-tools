@@ -17,6 +17,12 @@ use crate::pack::visual_transform::BindTransform;
 #[serde(rename_all = "camelCase")]
 pub struct VisualMotionBake {
   pub name: String,
+  /// Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares.
+  ///
+  /// The two agree whenever any bone is keyed, because a keyed stream stores one key a frame. They part only for a
+  /// motion of nothing but held bones, which is constant however many frames it declares and so bakes to the one
+  /// frame that answers all of them. `duration` follows the frames baked rather than the frames declared, as it
+  /// already does for a motion declaring none.
   pub frame_count: u32,
   pub bone_count: u32,
   /// Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
@@ -100,7 +106,7 @@ pub fn bake_motion(
     .map(|it| BindTransform::from_bind(&it.bind_rotation, &it.bind_position))
     .collect();
 
-  let frame_count: usize = motion.count.max(1) as usize;
+  let frame_count: usize = posed_frame_count(&runs);
   let mut transforms: Vec<f32> = Vec::with_capacity(frame_count * bones.len() * FLOATS_PER_BONE);
 
   for frame in 0..frame_count {
@@ -138,6 +144,20 @@ pub fn bake_motion(
     },
     transforms,
   })
+}
+
+/// Frames the decoded runs can tell apart, which is how many distinct poses the payload paid for.
+///
+/// Every stream holds either one key or one a frame, so the longest of them is the motion's real resolution, and the
+/// decoder has already proven a keyed stream against the bytes that follow it. [`OgfMotion::count`] carries no such
+/// proof: a held bone costs twenty bytes however many frames the motion declares, so a payload of held bones balances
+/// against any count at all. Reserving by the declared count would ask for a buffer that payload never paid for.
+fn posed_frame_count(runs: &[OgfBoneMotion]) -> usize {
+  runs
+    .iter()
+    .map(|it| it.rotations.len().max(it.translations.len()))
+    .max()
+    .unwrap_or(1)
 }
 
 /// Bones the partitions name in total, which is how many key runs the payload holds.
