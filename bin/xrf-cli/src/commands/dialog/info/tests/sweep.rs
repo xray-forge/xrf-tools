@@ -8,8 +8,8 @@ use xrf_error::XrfResult;
 use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::commands::dialog::parse::command::ParseCommand;
-use crate::commands::dialog::parse::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
+use crate::commands::dialog::info::command::InfoCommand;
+use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
 use crate::core::command_error::CommandError;
 use crate::core::command_testing::run_command_for_result;
 use crate::core::generic_command::CommandResult;
@@ -20,7 +20,7 @@ fn roots(root: &Path) -> XrayRoots {
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-parse-dialog-sweep-{name}-{}", std::process::id()));
+  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-info-dialog-sweep-{name}-{}", std::process::id()));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;
@@ -38,9 +38,9 @@ fn run(path: &Path, extra: &[&str]) -> CommandResult {
 
 /// Run the command and read back the structured result it deposited.
 fn run_for_result(path: &Path, extra: &[&str]) -> CommandResult<Option<Value>> {
-  let command: ParseCommand = ParseCommand;
+  let command: InfoCommand = InfoCommand;
   let mut arguments: Vec<String> = vec![
-    String::from("parse"),
+    String::from("info"),
     String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
@@ -259,7 +259,7 @@ fn refuses_a_path_that_does_not_exist() -> XrfResult {
   // A typo must not report success, which is the same guard `ogf patch-texture-refs` carries. A missing
   // path now mounts an empty roots rather than failing outright, so the assertion is on the class of
   // failure rather than on wording the mount layer owns.
-  let missing: PathBuf = std::env::temp_dir().join("xrf-cli-parse-dialog-missing-root");
+  let missing: PathBuf = std::env::temp_dir().join("xrf-cli-info-dialog-missing-root");
 
   match run(&missing, &["--source", "directory"]) {
     Err(error @ CommandError::Execution(_)) => assert_eq!(error.exit_code(), 1),

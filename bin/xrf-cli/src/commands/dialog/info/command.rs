@@ -6,7 +6,7 @@ use xrf_output::OutputOptions;
 use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
-use crate::commands::dialog::parse::dialog_sweep::{
+use crate::commands::dialog::info::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
 };
 use crate::core::command_context::CommandContext;
@@ -14,11 +14,11 @@ use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ParseCommand;
+pub struct InfoCommand;
 
-impl GenericCommand for ParseCommand {
+impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
-    "parse"
+    "info"
   }
 
   fn init(&self) -> Command {
@@ -129,7 +129,7 @@ impl GenericCommand for ParseCommand {
   }
 }
 
-impl ParseCommand {
+impl InfoCommand {
   fn print_census(output: &OutputOptions, result: &DialogSweepResult) {
     let census: &DialogSweepCensus = &result.census;
 

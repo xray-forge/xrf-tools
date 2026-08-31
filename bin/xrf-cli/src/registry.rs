@@ -29,8 +29,8 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
     CommandGroup {
       slug: "dialog",
       label: "Dialog",
-      about: "Dialog parsing tools",
-      commands: vec![dialog::parse::ParseCommand::new_box()],
+      about: "Dialog inspection tools",
+      commands: vec![dialog::info::InfoCommand::new_box()],
     },
     CommandGroup {
       slug: "docs",

@@ -93,7 +93,7 @@ impl GenericCommand for ParseCommand {
 
   /// Import one language's raw string tables into json sources.
   ///
-  /// Reporting is the default and answers success, matching `dialog parse`: a file this could not read
+  /// Reporting is the default and answers success, matching `dialog info`: a file this could not read
   /// costs that file, and an import over somebody else's mod is expected to meet a few. `--strict` is
   /// the mode that judges, and it is the one a build step uses.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
