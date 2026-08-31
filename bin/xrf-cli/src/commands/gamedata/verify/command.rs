@@ -13,6 +13,7 @@ use super::verification_report::GamedataVerificationReportPayload;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 /// How many of the most-read paths `--trace-reads` names individually.
 ///
@@ -113,10 +114,12 @@ impl GenericCommand for VerifyCommand {
       is_tracing_reads: matches.get_flag("trace-reads"),
     };
 
+    // Created before the project opens, so the reported total covers mounting and indexing.
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
       output,
       is_strict,
       checks,
+      job: new_logging_job(),
     };
 
     xrf_output::heading!(open_options.output, "Opening gamedata project");

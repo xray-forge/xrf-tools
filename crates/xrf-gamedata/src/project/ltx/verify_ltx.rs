@@ -90,7 +90,7 @@ impl GamedataProject {
 
     self.ltx_project.verify_entries_opt(LtxVerifyOptions {
       output: options.output.clone(),
-      ..Default::default()
+      job: options.job.clone(),
     })
   }
 }

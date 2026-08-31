@@ -13,10 +13,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  * @param outcome - How the run ended.
  * @returns What to record about it.
  */
-export function describePackSpriteOutcome(
-  output: string,
-  outcome: IJobOutcome<PackEquipmentResult>
-): IJobNotice {
+export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<PackEquipmentResult>): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {

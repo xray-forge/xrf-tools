@@ -15,6 +15,7 @@ export enum EJobKind {
   CONFIGS_FORMAT = "configs.format",
   CONFIGS_VERIFY = "configs.verify",
   EQUIPMENT_ICONS_PACK = "equipment-icons.pack",
+  GAMEDATA_VERIFY = "gamedata.verify",
   TRANSLATIONS_BUILD = "translations.build",
   TRANSLATIONS_PARSE = "translations.parse",
   TRANSLATIONS_VERIFY = "translations.verify",
@@ -89,6 +90,11 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     kind: EJobKind.EQUIPMENT_ICONS_PACK,
     source: EApplicationId.EQUIPMENT_ICONS_PACKER,
     label: "Equipment sprite packing",
+  },
+  [EJobKind.GAMEDATA_VERIFY]: {
+    kind: EJobKind.GAMEDATA_VERIFY,
+    source: EApplicationId.GAMEDATA_VERIFIER,
+    label: "Gamedata verification",
   },
 };
 

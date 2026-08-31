@@ -19,6 +19,7 @@ pub struct GamedataVerificationCheckReport {
 pub struct GamedataVerificationReport {
   checks: Vec<GamedataVerificationCheckReport>,
   duration: Duration,
+  outcome: xrf_job::JobOutcome,
 }
 
 pub type GamedataVerificationResult = GamedataVerificationReport;
@@ -37,6 +38,18 @@ impl GamedataVerificationReport {
 
   pub fn get_checks(&self) -> &[GamedataVerificationCheckReport] {
     &self.checks
+  }
+
+  /// Whether every selected check ran, or the run was stopped between them.
+  ///
+  /// What separates a clean verdict from a partial one: the checks that never ran report nothing, and nothing about
+  /// their silence says they would have passed.
+  pub const fn get_outcome(&self) -> xrf_job::JobOutcome {
+    self.outcome
+  }
+
+  pub(crate) fn set_outcome(&mut self, outcome: xrf_job::JobOutcome) {
+    self.outcome = outcome;
   }
 
   pub const fn get_duration(&self) -> Duration {

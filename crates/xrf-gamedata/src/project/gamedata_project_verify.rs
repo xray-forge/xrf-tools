@@ -3,6 +3,7 @@ use std::time::Instant;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
+use crate::project::job_phases::GAMEDATA_PHASE_CHECKS;
 use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationReport, GamedataVerificationType};
 
 impl GamedataProject {
@@ -50,9 +51,28 @@ impl GamedataProject {
     let started_at: Instant = Instant::now();
     let mut result: GamedataVerificationReport = GamedataVerificationReport::default();
 
+    // One level over the selected checks, and each check that reports its own work nests inside it: the LTX checks
+    // enter their own file-level scopes on this same handle, so a run reads as `checks 3/11` above `verify 400/2000`
+    // rather than as one bar that sits still for minutes. This is the first consumer to nest across two crates.
+    let verifying: xrf_job::JobScope = options.job.enter(GAMEDATA_PHASE_CHECKS, Some(checks.len() as u64));
+
     for check in checks {
+      // Between checks. A check already running is left to finish: they parallelise internally and have no boundary of
+      // their own, so the only safe place to stop is where one ends and the next has not begun.
+      if options.job.is_cancelled() {
+        result.set_outcome(xrf_job::JobOutcome::Cancelled);
+
+        break;
+      }
+
+      // Sequential here, so naming the check being run is meaningful.
+      options.job.set_detail(Some(check.to_string()));
+
       result.add_report(check.run(self, options));
+      verifying.advance();
     }
+
+    options.job.set_detail(None);
 
     result.set_duration(started_at.elapsed());
 

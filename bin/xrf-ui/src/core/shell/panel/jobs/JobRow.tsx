@@ -47,10 +47,7 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
       </Box>
 
       {job.conclusion ? null : (
-        <LinearProgress
-          variant={percent === null ? "indeterminate" : "determinate"}
-          value={percent ?? undefined}
-        />
+        <LinearProgress variant={percent === null ? "indeterminate" : "determinate"} value={percent ?? undefined} />
       )}
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>

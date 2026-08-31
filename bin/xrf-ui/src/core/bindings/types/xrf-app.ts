@@ -77,6 +77,49 @@ export type EquipmentSpriteMetadata = {
 };
 
 /**
+ * One check's verdict, as the desktop surface shows it.
+ *
+ * The findings behind a check are deliberately not carried: a full run over an installation produces tens of
+ * thousands of them, and a card that has to render all of them to say "meshes failed" is a card that never appears.
+ * The count and the summary are what a person reads first; the detail belongs to a surface built to page through it.
+ */
+export type GamedataCheckSummary = {
+  /** The check that ran, spelled as the command line spells it. */
+  check: string;
+  /** `passed`, `failed`, `incomplete`, or `skipped`. */
+  status: string;
+  /** The check's own one-line verdict. */
+  summary: string;
+  findings: number;
+  /** How long this check took, where it measured itself. */
+  duration: number | null;
+};
+
+/** What a verification was asked to do. */
+export type GamedataVerifyRequest = {
+  /** Gamedata root to verify. */
+  root: string;
+  /** Checks to run, or nothing for every one this build knows. */
+  checks: Array<string> | null;
+  /** Whether a check that would warn should fail instead. */
+  isStrict: boolean;
+};
+
+/** What a whole verification reports back to the desktop surface. */
+export type GamedataVerifySummary = {
+  /**
+   * Whether every selected check ran, or the run was stopped between them.
+   *
+   * A stopped run's checks are real verdicts; its silence about the rest is not one.
+   */
+  outcome: JobOutcome;
+  /** The aggregate verdict over the checks that ran. */
+  status: string;
+  checks: Array<GamedataCheckSummary>;
+  duration: number;
+};
+
+/**
  * How a job that is no longer running ended.
  *
  * Wider than `xrf_job::JobOutcome` on purpose: that one is what an operation reports about its own work, and an

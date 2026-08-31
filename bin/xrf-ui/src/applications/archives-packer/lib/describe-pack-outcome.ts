@@ -9,10 +9,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  * @param outcome - How the run ended.
  * @returns What to record about it.
  */
-export function describePackOutcome(
-  config: ArchivePackConfig,
-  outcome: IJobOutcome<ArchivePackResult>
-): IJobNotice {
+export function describePackOutcome(config: ArchivePackConfig, outcome: IJobOutcome<ArchivePackResult>): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {

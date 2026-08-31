@@ -1,4 +1,5 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
+import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
 import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { default as MapIcon } from "@mui/icons-material/Map";
@@ -23,6 +24,7 @@ import { EQUIPMENT_ICONS_EDITOR_APPLICATION } from "@/applications/equipment-ico
 import { EQUIPMENT_ICONS_PACKER_APPLICATION } from "@/applications/equipment-icons-packer";
 import { EQUIPMENT_ICONS_UNPACKER_APPLICATION } from "@/applications/equipment-icons-unpacker";
 import { EXPORTS_EXPLORER_APPLICATION } from "@/applications/exports-explorer";
+import { GAMEDATA_VERIFIER_APPLICATION } from "@/applications/gamedata-verifier";
 import { INFO_PORTIONS_EXPLORER_APPLICATION } from "@/applications/info-portions-explorer";
 import { SPAWN_EDITOR_APPLICATION } from "@/applications/spawn-editor";
 import { SPAWN_PACKER_APPLICATION } from "@/applications/spawn-packer";
@@ -55,6 +57,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     CONFIGS_FORMATTER_APPLICATION,
     DIALOGS_EDITOR_APPLICATION,
     EXPORTS_EXPLORER_APPLICATION,
+    GAMEDATA_VERIFIER_APPLICATION,
     CHARACTERS_EXPLORER_APPLICATION,
     INFO_PORTIONS_EXPLORER_APPLICATION,
     TASKS_EXPLORER_APPLICATION,
@@ -98,6 +101,12 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.EXPORTS,
       label: "Exports",
       icon: <SwapHorizIcon />,
+    },
+    {
+      accent: { light: "#2f6d4f", dark: "#6cc79a" },
+      id: EApplicationGroupId.GAMEDATA,
+      label: "Gamedata",
+      icon: <FactCheckIcon />,
     },
     {
       accent: { light: "#a8442a", dark: "#ef8a68" },

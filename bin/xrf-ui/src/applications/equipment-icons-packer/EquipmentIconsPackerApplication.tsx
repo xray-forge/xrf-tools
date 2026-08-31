@@ -104,12 +104,7 @@ export function EquipmentIconsPackerApplication(): ReactElement {
         field={source}
       />
 
-      <PathFormRow
-        isDisabled={isRunning}
-        label={"Output"}
-        description={"The *.dds sprite to write"}
-        field={output}
-      />
+      <PathFormRow isDisabled={isRunning} label={"Output"} description={"The *.dds sprite to write"} field={output} />
 
       <PathFormRow
         isDisabled={isRunning}

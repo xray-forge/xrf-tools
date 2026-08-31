@@ -6513,6 +6513,24 @@
           "markdownDescription": "This enables all file write related commands without any pre-configured accessible paths."
         },
         {
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-verify-project`",
+          "type": "string",
+          "const": "gamedata:default",
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-verify-project`"
+        },
+        {
+          "description": "Enables the verify_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "gamedata:allow-verify-project",
+          "markdownDescription": "Enables the verify_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the verify_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "gamedata:deny-verify-project",
+          "markdownDescription": "Denies the verify_project command without any pre-configured scope."
+        },
+        {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-attach`\n- `allow-cancel`\n- `allow-list`",
           "type": "string",
           "const": "jobs:default",

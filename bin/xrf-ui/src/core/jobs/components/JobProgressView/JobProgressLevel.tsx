@@ -30,10 +30,7 @@ export function JobProgressLevel({ level }: IJobProgressLevelProps): ReactElemen
         </Typography>
       </Box>
 
-      <LinearProgress
-        variant={percent === null ? "indeterminate" : "determinate"}
-        value={percent ?? undefined}
-      />
+      <LinearProgress variant={percent === null ? "indeterminate" : "determinate"} value={percent ?? undefined} />
     </Box>
   );
 }

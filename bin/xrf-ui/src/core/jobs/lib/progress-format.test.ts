@@ -65,9 +65,7 @@ describe("describeActiveProgress", () => {
 
   it("names the levels too deep to draw", () => {
     expect(
-      describeActiveProgress(
-        progress([level("verify", 2, 7), level("textures", 1, 3), level("assets", 400, 40000)])
-      )
+      describeActiveProgress(progress([level("verify", 2, 7), level("textures", 1, 3), level("assets", 400, 40000)]))
     ).toBe("assets");
   });
 

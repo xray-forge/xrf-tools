@@ -33,6 +33,7 @@
     "configs:default",
     "dialogs:default",
     "exports:default",
+    "gamedata:default",
     "equipment-icons:default",
     "jobs:default",
     "spawn:default",

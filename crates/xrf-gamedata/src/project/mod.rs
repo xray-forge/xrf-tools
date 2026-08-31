@@ -7,6 +7,7 @@ pub(crate) mod gamedata_project_verify;
 pub(crate) mod gamedata_verification_result;
 pub(crate) mod gamedata_verification_rule;
 pub(crate) mod gamedata_verification_type;
+pub(crate) mod job_phases;
 pub(crate) mod levels;
 pub(crate) mod ltx;
 pub(crate) mod meshes;

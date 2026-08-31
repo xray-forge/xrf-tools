@@ -12,10 +12,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  * @param outcome - How the run ended.
  * @returns What to record about it.
  */
-export function describeVerifyOutcome(
-  directory: string,
-  outcome: IJobOutcome<LtxProjectVerifyResult>
-): IJobNotice {
+export function describeVerifyOutcome(directory: string, outcome: IJobOutcome<LtxProjectVerifyResult>): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {

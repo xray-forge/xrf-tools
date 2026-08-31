@@ -61,6 +61,9 @@ macro_rules! for_each_tauri_command_domain {
       }
       // Running work, whatever domain it belongs to: what is going on, and asking it to stop. A domain of its own
       // because identity, exclusion and cancellation are the same questions for a pack, a verification, or a build.
+      gamedata => "gamedata" {
+        verify_project => crate::plugins::gamedata::commands::verify_project::gamedata_verify_project,
+      }
       jobs => "jobs" {
         attach => crate::plugins::jobs::commands::attach::jobs_attach,
         cancel => crate::plugins::jobs::commands::cancel::jobs_cancel,

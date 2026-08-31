@@ -38,6 +38,7 @@ xrf-dds = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-error = { workspace = true }
 xrf-export = { workspace = true }
+xrf-gamedata = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-output = { workspace = true }
 xrf-sound = { workspace = true }

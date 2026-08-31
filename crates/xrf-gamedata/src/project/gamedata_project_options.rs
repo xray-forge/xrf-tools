@@ -21,6 +21,11 @@ pub struct GamedataProjectReadOptions {
 #[derive(Default)]
 pub struct GamedataProjectVerifyOptions {
   pub output: OutputOptions,
+  /// Where progress goes and where cancellation comes from.
+  ///
+  /// Handed down into the checks that report their own work, so a run reads as `checks 3/11` over `verify 400/2000`
+  /// rather than as one bar that sits still for minutes.
+  pub job: xrf_job::JobHandle,
   pub is_strict: bool,
   pub checks: Vec<GamedataVerificationType>,
 }

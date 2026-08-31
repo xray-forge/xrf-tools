@@ -13,6 +13,7 @@ xrf-chunk = { workspace = true }
 xrf-db = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-error = { workspace = true }
+xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-lua = { workspace = true }
 xrf-output = { workspace = true }
