@@ -2,6 +2,7 @@ import { default as BuildIcon } from "@mui/icons-material/Build";
 import { lazy } from "react";
 
 import { TRANSLATIONS_BUILDER_HELP } from "@/applications/translations-builder/help";
+import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -13,6 +14,7 @@ export const TRANSLATIONS_BUILDER_APPLICATION: IApplicationDescriptor = {
   Component: lazy(() =>
     import("./TranslationsBuilderApplication").then((it) => ({ default: it.TranslationsBuilderApplication }))
   ),
+  container: { bindings: [TranslationsBuilderService] },
   preload: () => import("./TranslationsBuilderApplication"),
   description: "Build per-language string tables from translation sources",
   group: EApplicationGroupId.TRANSLATIONS,

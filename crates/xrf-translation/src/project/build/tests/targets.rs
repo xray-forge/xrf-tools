@@ -15,6 +15,7 @@ const SOURCE_JSON: &str = r#"{"st_test":{"eng":"text"}}"#;
 
 fn options(output_dir: PathBuf) -> ProjectBuildOptions {
   ProjectBuildOptions {
+    job: Default::default(),
     is_sorted: false,
     output: xrf_output::OutputOptions::default(),
     language: TranslationLanguage::English,

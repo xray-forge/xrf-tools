@@ -10,6 +10,7 @@ use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 
 fn options(language: TranslationLanguage) -> ProjectBuildOptions {
   ProjectBuildOptions {
+    job: Default::default(),
     is_sorted: false,
     output: xrf_output::OutputOptions::default(),
     output_dir: PathBuf::from("output"),

@@ -1,12 +1,15 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
+import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import {
+  TranslationBuildRequest,
   TranslationBuildSummary,
+  TranslationParseRequest,
   TranslationParseSummary,
   TranslationVerifySummary,
 } from "@/core/bindings/types/xrf-app";
+import { JobProgress } from "@/core/bindings/types/xrf-job";
 import {
   TranslationEdit,
   TranslationFile,
@@ -27,14 +30,8 @@ export const translationsCommands = {
    *
    * Refuses an output directory inside any of the source roots before writing anything.
    */
-  buildProject: (roots: XrayRoots, prefix: string | null, language: string, outputDir: string, isSorted: boolean) =>
-    __TAURI_INVOKE<TranslationBuildSummary>("plugin:translations|build_project", {
-      roots,
-      prefix,
-      language,
-      outputDir,
-      isSorted,
-    }),
+  buildProject: (request: TranslationBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TranslationBuildSummary>("plugin:translations|build_project", { request, jobId, progress }),
   closeProject: () => __TAURI_INVOKE<null>("plugin:translations|close_project"),
   /**
    * Report which layout roots look like, for the open form to preselect.
@@ -83,24 +80,8 @@ export const translationsCommands = {
   openProject: (roots: XrayRoots, mode: TranslationProjectMode, prefix: string | null) =>
     __TAURI_INVOKE<TranslationProjectDescriptor>("plugin:translations|open_project", { roots, mode, prefix }),
   /** Import one language's raw XML string tables into JSON sources. */
-  parseProject: (
-    roots: XrayRoots,
-    language: string,
-    prefix: string | null,
-    outputDir: string,
-    file: string | null,
-    isOverwrite: boolean,
-    isDryRun: boolean
-  ) =>
-    __TAURI_INVOKE<TranslationParseSummary>("plugin:translations|parse_project", {
-      roots,
-      language,
-      prefix,
-      outputDir,
-      file,
-      isOverwrite,
-      isDryRun,
-    }),
+  parseProject: (request: TranslationParseRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TranslationParseSummary>("plugin:translations|parse_project", { request, jobId, progress }),
   /**
    * Write one logical file's pending edits, grouped by the language each belongs to.
    *
@@ -131,6 +112,18 @@ export const translationsCommands = {
    *
    * Reads only. Nothing here writes, so an installation is a legitimate subject rather than a refusal.
    */
-  verifyProject: (roots: XrayRoots, prefix: string | null, language: string) =>
-    __TAURI_INVOKE<TranslationVerifySummary>("plugin:translations|verify_project", { roots, prefix, language }),
+  verifyProject: (
+    roots: XrayRoots,
+    prefix: string | null,
+    language: string,
+    jobId: string,
+    progress: Channel<JobProgress>
+  ) =>
+    __TAURI_INVOKE<TranslationVerifySummary>("plugin:translations|verify_project", {
+      roots,
+      prefix,
+      language,
+      jobId,
+      progress,
+    }),
 };

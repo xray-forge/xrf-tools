@@ -35,9 +35,6 @@ export const configsCommands = {
    *
    * Read-only, so it goes through the roots and covers archived configs too. `xrf-ltx` draws the same
    * line: its read-only check reads through the VFS where its rewrite refuses archived winners.
-   *
-   * Takes no lease for the same reason: two readers of one project have nothing to collide over. It is still a job,
-   * because verifying an installation is minutes of work that a person may want to watch or call off.
    */
   verifyDirectory: (roots: XrayRoots, prefix: string | null, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { roots, prefix, jobId, progress }),

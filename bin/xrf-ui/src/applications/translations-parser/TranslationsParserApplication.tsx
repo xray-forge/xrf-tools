@@ -3,10 +3,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsParseResult } from "@/applications/translations-parser/components/TranslationsParseResult";
-import { translationsCommands } from "@/core/bindings/commands/translations";
-import { TranslationParseSummary } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
+import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
@@ -16,18 +15,16 @@ import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
-import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function TranslationsParserApplication(): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-  const notify: TEmitNotification = useEmitNotification();
-
   const pathsService: PathsService = useInjection(PathsService);
+  const parserService: TranslationsParserService = useInjection(TranslationsParserService);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Nullable<string>>(null);
-  const [result, setResult] = useState<Nullable<TranslationParseSummary>>(null);
+  // The run rather than this view's own flag: an import survives the window being reloaded.
+  const job: Nullable<IJobState> = parserService.job;
+  const isRunning: boolean = Boolean(job);
+
   const [isOverwrite, setIsOverwrite] = useState<boolean>(false);
 
   // The language is remembered, because it says which translations are being worked on. The overwrite
@@ -44,7 +41,7 @@ export function TranslationsParserApplication(): ReactElement {
     id: "source",
     title: "Select translations source",
     isDirectory: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolveExistingPathRole(EPathRole.BUILT_TRANSLATIONS, pathsService.paths),
   });
 
@@ -54,7 +51,7 @@ export function TranslationsParserApplication(): ReactElement {
     title: "Select output directory",
     isDirectory: true,
     isSave: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
@@ -67,49 +64,12 @@ export function TranslationsParserApplication(): ReactElement {
         return;
       }
 
-      try {
-        setIsLoading(true);
-        setResult(null);
-        setError(null);
-
-        log.info("Parsing translations:", sourcePath, language, isDryRun ? "(preview)" : "");
-
-        const roots: XrayRoots = { asset: null, roots: [{ path: sourcePath, mode: "containingInstallation" }] };
-
-        const summary: TranslationParseSummary = await translationsCommands.parseProject(
-          roots,
-          language,
-          null,
-          outputPath,
-          null,
-          isOverwrite,
-          isDryRun
-        );
-
-        setResult(summary);
-
-        notify({
-          details: `${sourcePath}\n${outputPath}`,
-          severity: ENotificationSeverity.SUCCESS,
-          source: EApplicationId.TRANSLATIONS_PARSER,
-          title: isDryRun ? "Previewed translations import" : "Imported translations",
-        });
-      } catch (error: unknown) {
-        log.error("Parse error:", error);
-        setError(String(error));
-
-        notify({
-          details: `${sourcePath}\n${String(error)}`,
-          severity: ENotificationSeverity.ERROR,
-          source: EApplicationId.TRANSLATIONS_PARSER,
-          title: "Could not import translations",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      await parserService.parse(sourcePath, language, outputPath, isOverwrite, isDryRun);
     },
-    [sourcePath, outputPath, language, isOverwrite, log, notify]
+    [isOverwrite, language, outputPath, parserService, sourcePath]
   );
+
+  const onCancel = useCallback(() => parserService.cancel(), [parserService]);
 
   const onPreviewClicked = useCallback(() => void onRun(true), [onRun]);
 
@@ -124,34 +84,36 @@ export function TranslationsParserApplication(): ReactElement {
 
   // Changing anything the run depends on invalidates whatever the previous one reported.
   useEffect(() => {
-    setError(null);
-    setResult(null);
-  }, [sourcePath, outputPath, language, isOverwrite]);
+    parserService.reset();
+  }, [sourcePath, outputPath, language, isOverwrite, parserService]);
 
   return (
     <PickerForm
-      isLoading={isLoading}
+      isLoading={isRunning}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Parse translations"}
       description={
         "Reads one language's raw XML string tables and merges them into JSON sources, filling gaps with placeholders."
       }
-      error={error ?? undefined}
+      error={parserService.error ?? undefined}
       submitLabel={"Import"}
       secondaryActions={
         <Button
           variant={"outlined"}
-          disabled={isLoading || !source.isValid || !destination.isValid}
+          disabled={isRunning || !source.isValid || !destination.isValid}
           onClick={onPreviewClicked}
         >
           Preview
         </Button>
       }
-      result={result ? <TranslationsParseResult result={result} outputPath={outputPath} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      result={
+        parserService.result ? <TranslationsParseResult result={parserService.result} outputPath={outputPath} /> : null
+      }
       onSubmit={onImportClicked}
     >
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Source"}
         description={"Mod folder, gamedata tree, or game installation holding the XML string tables"}
         field={source}
@@ -167,7 +129,7 @@ export function TranslationsParserApplication(): ReactElement {
           id={"translations-parser-language"}
           size={"small"}
           value={language}
-          disabled={isLoading}
+          disabled={isRunning}
           onChange={onLanguageChanged}
         >
           {TRANSLATION_LANGUAGES.map((it) => (
@@ -179,7 +141,7 @@ export function TranslationsParserApplication(): ReactElement {
       </FormRow>
 
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Output"}
         description={"Directory the JSON sources are written to, merging with any already there"}
         field={destination}
@@ -196,7 +158,7 @@ export function TranslationsParserApplication(): ReactElement {
           id={"translations-parser-overwrite"}
           size={"small"}
           checked={isOverwrite}
-          disabled={isLoading}
+          disabled={isRunning}
           onChange={(event) => setIsOverwrite(event.target.checked)}
         />
       </FormRow>

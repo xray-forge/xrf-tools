@@ -8,11 +8,15 @@ import { Nullable } from "@/lib/types/general";
  * and decides which tool an outcome is attributed to. A constant per tool would let those drift apart silently.
  */
 export enum EJobKind {
+  ARCHIVES_EXTRACT = "archives.extract",
   ARCHIVES_PACK = "archives.pack",
   ARCHIVES_UNPACK = "archives.unpack",
   CONFIGS_CHECK_FORMAT = "configs.check-format",
   CONFIGS_FORMAT = "configs.format",
   CONFIGS_VERIFY = "configs.verify",
+  TRANSLATIONS_BUILD = "translations.build",
+  TRANSLATIONS_PARSE = "translations.parse",
+  TRANSLATIONS_VERIFY = "translations.verify",
 }
 
 /**
@@ -35,6 +39,11 @@ export interface IJobKindDescriptor {
  * it, which is how an adopted pack came to be announced as `archives.pack` rather than as the packer's work.
  */
 export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
+  [EJobKind.ARCHIVES_EXTRACT]: {
+    kind: EJobKind.ARCHIVES_EXTRACT,
+    source: EApplicationId.ARCHIVES_EXPLORER,
+    label: "Archive extraction",
+  },
   [EJobKind.ARCHIVES_PACK]: {
     kind: EJobKind.ARCHIVES_PACK,
     source: EApplicationId.ARCHIVES_PACKER,
@@ -59,6 +68,21 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     kind: EJobKind.CONFIGS_VERIFY,
     source: EApplicationId.CONFIGS_VERIFIER,
     label: "Config verification",
+  },
+  [EJobKind.TRANSLATIONS_BUILD]: {
+    kind: EJobKind.TRANSLATIONS_BUILD,
+    source: EApplicationId.TRANSLATIONS_BUILDER,
+    label: "Translation build",
+  },
+  [EJobKind.TRANSLATIONS_PARSE]: {
+    kind: EJobKind.TRANSLATIONS_PARSE,
+    source: EApplicationId.TRANSLATIONS_PARSER,
+    label: "Translation import",
+  },
+  [EJobKind.TRANSLATIONS_VERIFY]: {
+    kind: EJobKind.TRANSLATIONS_VERIFY,
+    source: EApplicationId.TRANSLATIONS_VERIFIER,
+    label: "Translation check",
   },
 };
 

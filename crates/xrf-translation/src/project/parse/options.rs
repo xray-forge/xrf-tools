@@ -6,6 +6,8 @@ use crate::language::TranslationLanguage;
 
 /// What one import run was asked to do.
 pub struct ProjectParseOptions {
+  /// Where progress goes and where cancellation comes from.
+  pub job: xrf_job::JobHandle,
   pub output: xrf_output::OutputOptions,
   /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
   pub roots: XrayRoots,

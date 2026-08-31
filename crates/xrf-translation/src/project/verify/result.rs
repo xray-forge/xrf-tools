@@ -23,6 +23,8 @@ pub struct ProjectVerifyLanguageSummary {
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectVerifyResult {
+  /// Whether the run checked every source or was stopped between them.
+  pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
   pub duration: Duration,
   pub checked_translations_count: u32,

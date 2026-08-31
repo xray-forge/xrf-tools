@@ -6,6 +6,8 @@ import { JobOutcome } from "@/core/bindings/types/xrf-job";
 export type ArchiveExtractDirectoryResult = {
   prefix: string;
   destination: string;
+  /** Whether the run reached the end of what it selected or was stopped between entries. */
+  outcome: JobOutcome;
   extractedCount: number;
   size: number;
 };

@@ -3,10 +3,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsBuildResult } from "@/applications/translations-builder/components/TranslationsBuildResult";
-import { createRoots } from "@/core/assets/lib";
-import { translationsCommands } from "@/core/bindings/commands/translations";
-import { TranslationBuildSummary } from "@/core/bindings/types/xrf-app";
-import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
+import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
@@ -16,21 +15,19 @@ import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
-import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /** Every language at once, which is the ordinary build. */
 const LANGUAGE_CHOICES: ReadonlyArray<string> = [ALL_TRANSLATION_LANGUAGES, ...TRANSLATION_LANGUAGES];
 
 export function TranslationsBuilderApplication(): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-  const notify: TEmitNotification = useEmitNotification();
-
   const pathsService: PathsService = useInjection(PathsService);
+  const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Nullable<string>>(null);
-  const [result, setResult] = useState<Nullable<TranslationBuildSummary>>(null);
+  // The run rather than this view's own flag: a build survives the window being reloaded.
+  const job: Nullable<IJobState> = builderService.job;
+  const isRunning: boolean = Boolean(job);
+
   const [isSorted, setIsSorted] = useState<boolean>(true);
   const [language, setLanguage] = useRememberedValue({
     application: EApplicationId.TRANSLATIONS_BUILDER,
@@ -44,7 +41,7 @@ export function TranslationsBuilderApplication(): ReactElement {
     id: "sources",
     title: "Select translations sources",
     isDirectory: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
@@ -54,7 +51,7 @@ export function TranslationsBuilderApplication(): ReactElement {
     title: "Select output directory",
     isDirectory: true,
     isSave: true,
-    isDisabled: isLoading,
+    isDisabled: isRunning,
     seed: () => resolvePathRole(EPathRole.GAMEDATA, pathsService.paths),
   });
 
@@ -66,43 +63,10 @@ export function TranslationsBuilderApplication(): ReactElement {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setResult(null);
-      setError(null);
+    await builderService.build(sourcesPath, language, outputPath, isSorted);
+  }, [builderService, isSorted, language, outputPath, sourcesPath]);
 
-      log.info("Building translations:", sourcesPath, language, "sorted:", isSorted);
-
-      const built: TranslationBuildSummary = await translationsCommands.buildProject(
-        createRoots([sourcesPath]),
-        null,
-        language,
-        outputPath,
-        isSorted
-      );
-
-      setResult(built);
-
-      notify({
-        details: `${sourcesPath}\n${outputPath}`,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.TRANSLATIONS_BUILDER,
-        title: `Built ${built.files} string table(s)`,
-      });
-    } catch (caught: unknown) {
-      log.error("Build error:", caught);
-      setError(String(caught));
-
-      notify({
-        details: `${sourcesPath}\n${String(caught)}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.TRANSLATIONS_BUILDER,
-        title: "Could not build translations",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sourcesPath, outputPath, language, isSorted, log, notify]);
+  const onCancel = useCallback(() => builderService.cancel(), [builderService]);
 
   const onLanguageChanged = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -113,23 +77,27 @@ export function TranslationsBuilderApplication(): ReactElement {
 
   // Anything the build depends on invalidates whatever the previous run reported.
   useEffect(() => {
-    setResult(null);
-    setError(null);
-  }, [sourcesPath, outputPath, language, isSorted]);
+    builderService.reset();
+  }, [sourcesPath, outputPath, language, isSorted, builderService]);
 
   return (
     <PickerForm
-      isLoading={isLoading}
+      isLoading={isRunning}
       isSubmitDisabled={!sources.isValid || !destination.isValid}
       title={"Build translations"}
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}
-      error={error ?? undefined}
+      error={builderService.error ?? undefined}
       submitLabel={"Build"}
-      result={result ? <TranslationsBuildResult result={result} outputPath={outputPath} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      result={
+        builderService.result ? (
+          <TranslationsBuildResult result={builderService.result} outputPath={outputPath} />
+        ) : null
+      }
       onSubmit={onBuild}
     >
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Sources"}
         description={"Translations directory, project, or installation holding the JSON sources"}
         field={sources}
@@ -145,7 +113,7 @@ export function TranslationsBuilderApplication(): ReactElement {
           id={"translations-builder-language"}
           size={"small"}
           value={language}
-          disabled={isLoading}
+          disabled={isRunning}
           onChange={onLanguageChanged}
         >
           {LANGUAGE_CHOICES.map((it) => (
@@ -157,7 +125,7 @@ export function TranslationsBuilderApplication(): ReactElement {
       </FormRow>
 
       <PathFormRow
-        isDisabled={isLoading}
+        isDisabled={isRunning}
         label={"Output"}
         description={"Directory the string tables are written to, as <output>/<language>/<name>.xml"}
         field={destination}
@@ -174,7 +142,7 @@ export function TranslationsBuilderApplication(): ReactElement {
           id={"translations-builder-sort"}
           size={"small"}
           checked={isSorted}
-          disabled={isLoading}
+          disabled={isRunning}
           onChange={(event) => setIsSorted(event.target.checked)}
         />
       </FormRow>

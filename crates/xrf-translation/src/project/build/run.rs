@@ -73,8 +73,24 @@ pub fn build_roots_in(
 
   xrf_output::info!(options.output, "Building {} translation source(s)", assets.len());
 
+  let building: xrf_job::JobScope = options.job.enter(
+    crate::project::job_phases::TRANSLATION_PHASE_BUILD,
+    Some(assets.len() as u64),
+  );
+
   for asset in &assets {
+    // Between sources: each string table is written whole, so stopping here leaves the ones already built valid and
+    // the rest simply absent.
+    if options.job.is_cancelled() {
+      result.outcome = xrf_job::JobOutcome::Cancelled;
+
+      break;
+    }
+
     let logical_path: &str = asset.get_logical_path().as_str();
+
+    options.job.set_detail(Some(logical_path.to_owned()));
+
     let parsed: TranslationJson = scoped
       .read_asset_bytes(asset)
       .and_then(|data| parse_json(logical_path, &data))?;
@@ -82,7 +98,11 @@ pub fn build_roots_in(
     result.sources += 1;
 
     build_parsed(logical_path, &parsed, options, &mut result)?;
+
+    building.advance();
   }
+
+  options.job.set_detail(None);
 
   result.duration = started_at.elapsed();
 

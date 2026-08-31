@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use crate::language::TranslationLanguage;
 
 pub struct ProjectBuildOptions {
+  /// Where progress goes and where cancellation comes from.
+  pub job: xrf_job::JobHandle,
   pub output: xrf_output::OutputOptions,
   pub is_sorted: bool,
   /// Where the string tables are written, which is always a host directory.

@@ -89,9 +89,30 @@ pub fn parse_translations_in(vfs: &XrayVfs, options: &ProjectParseOptions) -> Xr
     )));
   }
 
+  let parsing: xrf_job::JobScope = options.job.enter(
+    crate::project::job_phases::TRANSLATION_PHASE_PARSE,
+    Some(assets.len() as u64),
+  );
+
   for asset in &assets {
+    // Between tables: each source is written whole through a staged replace, so stopping leaves the ones already
+    // written complete and the rest untouched.
+    if options.job.is_cancelled() {
+      result.outcome = xrf_job::JobOutcome::Cancelled;
+
+      break;
+    }
+
+    options
+      .job
+      .set_detail(Some(asset.get_logical_path().as_str().to_owned()));
+
     import_asset(&scoped, asset, &scope, &language, options, &mut result)?;
+
+    parsing.advance();
   }
+
+  options.job.set_detail(None);
 
   result.finalize(started_at.elapsed());
 

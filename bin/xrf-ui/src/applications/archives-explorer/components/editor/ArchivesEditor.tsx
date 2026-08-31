@@ -10,6 +10,8 @@ import { ArchivesMenu } from "@/applications/archives-explorer/components/editor
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
@@ -33,11 +35,17 @@ export function ArchivesEditor(): ReactElement {
   const totalSize: number = project?.sizeReal ?? 0;
   const projectRoot: string = project?.root ?? "";
 
+  // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
+  // finds it again instead of showing an idle tree over files it is still writing.
+  const job: Nullable<IJobState> = archivesService.job;
+
   // Extraction writes to disk outside the archive. Walking away mid-write left it running against a
   // screen nobody could see, and the only signal it was happening was one button in the content area.
   const isExtracting: boolean = archivesService.operation.isLoading;
   const isBusy: boolean = isClosing || isExtracting;
   const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
+
+  const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
 
   const onClose = useCallback(async (): Promise<void> => {
     setClosing(true);
@@ -67,7 +75,7 @@ export function ArchivesEditor(): ReactElement {
     [archivesService]
   );
 
-  useEditorBusy(isBusy);
+  useEditorBusy(isBusy || Boolean(job));
 
   useEditorStatus([`${archiveCount} archives`, `${fileCount} files`, formatBytes(totalSize)]);
 
@@ -88,8 +96,14 @@ export function ArchivesEditor(): ReactElement {
         />
       }
       banner={
-        closeError || isCollisionNoticeShown ? (
+        job || closeError || isCollisionNoticeShown ? (
           <>
+            {job ? (
+              <Box sx={{ paddingX: 2, paddingY: 1 }}>
+                <JobProgressView job={job} onCancel={onCancelExtraction} />
+              </Box>
+            ) : null}
+
             {closeError ? (
               <Alert severity={"error"} onClose={() => setCloseError(null)}>
                 Could not close archives: {closeError}

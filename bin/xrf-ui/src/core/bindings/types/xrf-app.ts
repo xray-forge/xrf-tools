@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { JobProgress } from "@/core/bindings/types/xrf-job";
+import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
   ProjectBuildLanguageSummary,
@@ -151,12 +151,34 @@ export type SelectedVisualDescription = {
 };
 
 /**
+ * What a build was asked to do.
+ *
+ * One argument rather than five, because a Tauri command's parameters are its wire signature and five of them plus a
+ * job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
+ * this run after a reload sees the request rather than a summary of it.
+ */
+export type TranslationBuildRequest = {
+  /** Where the sources are read from, through the VFS. */
+  roots: XrayRoots;
+  /** Where inside those roots to look, or nothing for the whole set. */
+  prefix: string | null;
+  /** The language to build, or `all`. */
+  language: string;
+  /** Directory the string tables are written into, which is always a host path. */
+  outputDir: string;
+  /** Whether to sort entries within each table. */
+  isSorted: boolean;
+};
+
+/**
  * What a build reports back to the desktop surface.
  *
  * A row per language rather than the 272 files behind a full run, which is the natural grain of a
  * build whose job is one string table per language.
  */
 export type TranslationBuildSummary = {
+  /** Whether the run compiled every source or was stopped between them. */
+  outcome: JobOutcome;
   /** The language built, or `all`. */
   language: string;
   /** Sources read. */
@@ -173,8 +195,34 @@ export type TranslationParseFinding = {
   message: string;
 };
 
+/**
+ * What an import was asked to do.
+ *
+ * One argument rather than seven, because a Tauri command's parameters are its wire signature and seven of them plus
+ * a job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
+ * this run after a reload sees the request rather than a summary of it.
+ */
+export type TranslationParseRequest = {
+  /** Roots holding the raw XML, read through the VFS so an installation imports like a loose tree. */
+  roots: XrayRoots;
+  /** The language every entry this run reads is filed under. Never `all`. */
+  language: string;
+  /** Where inside those roots to look, or nothing to let the run resolve it. */
+  prefix: string | null;
+  /** Directory the JSON sources are written to, which may already hold some. */
+  outputDir: string;
+  /** Restrict the run to one table, by the file name it has in the scope. */
+  file: string | null;
+  /** Let incoming text replace existing text that differs, instead of keeping what is there. */
+  isOverwrite: boolean;
+  /** Do everything except write, so a caller can see what a run would change. */
+  isDryRun: boolean;
+};
+
 /** What an import run reports back to the desktop surface. */
 export type TranslationParseSummary = {
+  /** Whether the run read every table or was stopped between them. */
+  outcome: JobOutcome;
   /** The language every entry this run read was filed under. */
   language: string;
   /** Whether the run computed its answer without writing it. */
@@ -185,6 +233,12 @@ export type TranslationParseSummary = {
 
 /** What a completeness check reports back to the desktop surface. */
 export type TranslationVerifySummary = {
+  /**
+   * Whether the run checked every source or was stopped between them.
+   *
+   * A stopped check reports the rows it reached; its silence about the rest is not a verdict.
+   */
+  outcome: JobOutcome;
   /** The language the check was narrowed to, or `all`. */
   language: string;
   /** Ids checked across every source. */

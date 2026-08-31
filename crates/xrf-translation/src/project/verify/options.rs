@@ -1,6 +1,8 @@
 use crate::language::TranslationLanguage;
 
 pub struct ProjectVerifyOptions {
+  /// Where progress goes and where cancellation comes from.
+  pub job: xrf_job::JobHandle,
   pub is_strict: bool,
   pub output: xrf_output::OutputOptions,
   pub language: TranslationLanguage,

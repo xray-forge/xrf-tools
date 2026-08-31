@@ -73,10 +73,18 @@ export const archivesCommands = {
    * Write every archived file under one directory into a destination root.
    *
    * An empty prefix means the whole archive, so this also covers extracting everything without needing
-   * a separate command.
+   * a separate command — which is why it is a job rather than a quick read.
+   *
+   * Holds the destination tree exclusively, sharing that lease with an unpack: both lay the archive's own layout into
+   * the root, so two runs there overlap whatever each was asked for, even where their prefixes differ.
    */
-  extractDirectory: (prefix: string, destination: string) =>
-    __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", { prefix, destination }),
+  extractDirectory: (prefix: string, destination: string, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", {
+      prefix,
+      destination,
+      jobId,
+      progress,
+    }),
   getProject: () =>
     __TAURI_INVOKE<{
       /**

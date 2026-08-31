@@ -36,10 +36,12 @@ describe("ArchivesService directory extraction", () => {
 
     await service.extractArchiveDirectory("configs", "C:\\out");
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|extract_directory", {
-      prefix: "configs",
-      destination: "C:\\out",
-    });
+    // The identity and the channel are minted per run, so this names what the caller chose and lets the job's own two
+    // arguments be whatever the jobs service made them.
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "plugin:archives|extract_directory",
+      expect.objectContaining({ prefix: "configs", destination: "C:\\out" })
+    );
     expect(extractedDirectory(service)?.extractedCount).toBe(12);
   });
 
@@ -52,10 +54,10 @@ describe("ArchivesService directory extraction", () => {
 
     await service.extractArchiveDirectory("", "C:\\out");
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|extract_directory", {
-      prefix: "",
-      destination: "C:\\out",
-    });
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "plugin:archives|extract_directory",
+      expect.objectContaining({ prefix: "", destination: "C:\\out" })
+    );
   });
 
   it("reports a refused extraction instead of staying loading", async () => {

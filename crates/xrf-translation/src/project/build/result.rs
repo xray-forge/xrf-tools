@@ -21,6 +21,11 @@ pub struct ProjectBuildLanguageSummary {
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectBuildResult {
+  /// Whether the run compiled every source or was stopped between them.
+  ///
+  /// A stopped build leaves the string tables it had already written valid and the rest simply absent, which is a
+  /// state running it again resolves.
+  pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
   pub duration: Duration,
   /// Sources read, whatever they built into.

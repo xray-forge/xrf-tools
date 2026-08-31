@@ -13,6 +13,7 @@ use crate::project::tests::{roots, table};
 
 fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> ProjectParseOptions {
   ProjectParseOptions {
+    job: Default::default(),
     output: xrf_output::OutputOptions::default(),
     roots: roots(root),
     prefix: None,

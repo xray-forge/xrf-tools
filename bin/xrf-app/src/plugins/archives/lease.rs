@@ -17,8 +17,20 @@ use crate::core::jobs::to_comparable_path;
 /// frontend spells the same strings in `EJobKind`, which is the wire contract this side owns.
 pub const PACK_JOB_KIND: &str = "archives.pack";
 
-/// What an unpack registers itself as, and the prefix of every lease it takes.
+/// What an unpack registers itself as.
 pub const UNPACK_JOB_KIND: &str = "archives.unpack";
+
+/// What extracting one archived directory registers itself as.
+///
+/// Its own kind, because it is its own work to watch and attribute — but not its own lease: it writes into the same
+/// tree an unpack does, and the two collide there.
+pub const EXTRACT_JOB_KIND: &str = "archives.extract";
+
+/// Prefix of every lease over a destination tree.
+///
+/// Named for what it protects rather than for who takes it. An unpack and a directory extraction write the same layout
+/// into the same root, so a key spelled after either one would have to be taken by the other and read as a lie.
+const DESTINATION_TREE_LEASE: &str = "archives.tree";
 
 /// The destination a pack would publish to, as a lease key.
 ///
@@ -39,12 +51,12 @@ pub fn to_pack_lease_key(config: &ArchivePackConfig) -> String {
   )
 }
 
-/// The tree an unpack would write into, as a lease key.
+/// The tree a run would write into, as a lease key.
 ///
-/// The root alone: an unpack writes the whole archive layout beneath it, so two runs sharing a destination overlap
-/// whatever they were asked to extract.
-pub fn to_unpack_lease_key(destination: &Path) -> String {
-  format!("{UNPACK_JOB_KIND}:{}", to_comparable_path(destination))
+/// The root alone: both writers lay the archive's own layout beneath it, so two runs sharing a destination overlap
+/// whatever each was asked to extract — even where their prefixes differ, since either may still reach the same file.
+pub fn to_destination_tree_lease_key(destination: &Path) -> String {
+  format!("{DESTINATION_TREE_LEASE}:{}", to_comparable_path(destination))
 }
 
 #[cfg(test)]
@@ -53,7 +65,7 @@ mod tests {
 
   use xrf_pack::ArchivePackConfig;
 
-  use super::{to_pack_lease_key, to_unpack_lease_key};
+  use super::{to_destination_tree_lease_key, to_pack_lease_key};
 
   fn config(destination: &str, name: &str) -> ArchivePackConfig {
     ArchivePackConfig::new(PathBuf::from("C:\\src"), PathBuf::from(destination), name)
@@ -93,15 +105,25 @@ mod tests {
     // writes a tree into it. Sharing a key would refuse a pair that has no conflict.
     assert_ne!(
       to_pack_lease_key(&config("C:\\out", "gamedata")),
-      to_unpack_lease_key(Path::new("C:\\out"))
+      to_destination_tree_lease_key(Path::new("C:\\out"))
+    );
+  }
+
+  #[test]
+  fn an_extraction_and_an_unpack_share_one_destination_tree() {
+    // Both lay the archive's layout into the root, so they overlap whatever each was asked for. The key is named after
+    // the tree rather than either operation for exactly this reason.
+    assert_eq!(
+      to_destination_tree_lease_key(Path::new("C:\\out")),
+      to_destination_tree_lease_key(Path::new("c:\\OUT"))
     );
   }
 
   #[test]
   fn two_unpacks_into_one_tree_collide() {
     assert_eq!(
-      to_unpack_lease_key(Path::new("C:\\out\\gamedata")),
-      to_unpack_lease_key(Path::new("C:\\Out\\GameData"))
+      to_destination_tree_lease_key(Path::new("C:\\out\\gamedata")),
+      to_destination_tree_lease_key(Path::new("C:\\Out\\GameData"))
     );
   }
 }

@@ -10,6 +10,7 @@ use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct BuildCommand;
@@ -93,6 +94,7 @@ impl GenericCommand for BuildCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: ProjectBuildOptions = ProjectBuildOptions {
+      job: new_logging_job(),
       is_sorted,
       output,
       output_dir: output_dir.clone(),

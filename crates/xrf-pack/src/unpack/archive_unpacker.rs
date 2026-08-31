@@ -16,6 +16,7 @@ use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::path::{relative_to_prefix, to_host_relative};
+use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_WRITE};
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
 use crate::unpack::archive_unpack_options::{ArchiveUnpackOptions, UNPACK_PHASE_PREPARE, UNPACK_PHASE_WRITE};
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
@@ -145,43 +146,76 @@ impl ArchiveUnpacker {
     prefix: &str,
     destination: P,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
+    Self::extract_directory_opt(project, prefix, destination, ArchiveExtractOptions::default())
+  }
+
+  /// Write every archived file under one directory to a destination root, as `options` asks.
+  ///
+  /// Keeps the layout below the prefix but not the prefix itself: extracting `configs\gameplay` into
+  /// `C:\out` produces `C:\out\dialogs.xml`, not `C:\out\configs\gameplay\dialogs.xml`. The user picked
+  /// the destination for the directory they named, so repeating that directory inside it is surprising.
+  ///
+  /// An empty prefix means the whole archive, which is what selecting the tree root does. What lies below the prefix
+  /// is archive-controlled, so it is written through a [`RootedDestination`] rather than joined and opened.
+  ///
+  /// Cancellation lands between entries and keeps what it wrote, the same way an unpack does: the destination may hold
+  /// the caller's own files, and nothing here can tell those from this run's.
+  pub fn extract_directory_opt<P: AsRef<Path>>(
+    project: &ArchiveProject,
+    prefix: &str,
+    destination: P,
+    options: ArchiveExtractOptions,
+  ) -> XrfResult<ArchiveExtractDirectoryResult> {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
     let destination: RootedDestination = RootedDestination::new(destination.as_ref());
+    let job = &options.job;
 
-    let mut extracted_count: usize = 0;
-    let mut found: bool = false;
-    let mut size: u64 = 0;
+    // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
+    // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
+    let selected: Vec<(&ArchiveFileDescriptor, PathBuf)> = project
+      .files
+      .values()
+      .filter_map(|descriptor| relative_to_prefix(&descriptor.name, &normalized).map(|relative| (descriptor, relative)))
+      .map(|(descriptor, relative)| to_host_relative(relative).map(|relative| (descriptor, relative)))
+      .collect::<XrfResult<Vec<(&ArchiveFileDescriptor, PathBuf)>>>()?;
 
-    for descriptor in project.files.values() {
-      let Some(relative) = relative_to_prefix(&descriptor.name, &normalized) else {
-        continue;
-      };
-
-      let relative: PathBuf = to_host_relative(relative)?;
-
-      found = true;
-
-      if descriptor.is_directory {
-        destination.create_directory(&relative)?;
-
-        continue;
-      }
-
-      write_descriptor_contents(&mut destination.create_file(&relative)?, descriptor)?;
-
-      extracted_count += 1;
-      size += descriptor.size_real as u64;
-    }
-
-    if !found {
+    if selected.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
         "Cannot extract '{normalized}' - no files in the archive are under it."
       )));
     }
 
+    let mut extracted_count: usize = 0;
+    let mut size: u64 = 0;
+    let mut outcome: JobOutcome = JobOutcome::Completed;
+
+    let extracting: JobScope = job.enter(EXTRACT_PHASE_WRITE, Some(selected.len() as u64));
+
+    for (descriptor, relative) in &selected {
+      // Before the write rather than after it: a payload already being written cannot be halved without leaving a
+      // truncated file indistinguishable from a short one.
+      if job.is_cancelled() {
+        outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
+      if descriptor.is_directory {
+        destination.create_directory(relative)?;
+      } else {
+        write_descriptor_contents(&mut destination.create_file(relative)?, descriptor)?;
+
+        extracted_count += 1;
+        size += descriptor.size_real as u64;
+      }
+
+      extracting.advance();
+    }
+
     Ok(ArchiveExtractDirectoryResult {
       prefix: normalized,
       destination: format_path(destination.get_root()).to_string(),
+      outcome,
       extracted_count,
       size,
     })

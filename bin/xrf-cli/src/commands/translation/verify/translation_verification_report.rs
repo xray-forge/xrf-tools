@@ -118,6 +118,7 @@ mod tests {
     let translation_path: PathBuf = root.join("dialogs.json");
     let options: ProjectVerifyOptions = ProjectVerifyOptions {
       is_strict: false,
+      job: Default::default(),
       output: xrf_output::OutputOptions::default(),
       language: TranslationLanguage::Ukrainian,
       is_detailed: true,

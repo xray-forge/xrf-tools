@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// How a job stopped, carried by whatever result the operation reports.
 ///
@@ -8,7 +8,7 @@ use serde::Serialize;
 /// from. The trade is that a `Cancelled` result carries the same fields as a completed one, so its counts describe what
 /// happened before the stop and nothing downstream may read them as a finished total.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum JobOutcome {
   /// The operation ran to the end of its work.

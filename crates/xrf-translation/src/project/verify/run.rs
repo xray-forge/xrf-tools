@@ -61,13 +61,29 @@ pub fn verify_roots_in(
   // what it pointed at, and repeating a prefix it chose tells it nothing it did not just type.
   xrf_output::info!(options.output, "Verifying {} translation source(s)", assets.len());
 
+  let verifying: xrf_job::JobScope = options.job.enter(
+    crate::project::job_phases::TRANSLATION_PHASE_VERIFY,
+    Some(assets.len() as u64),
+  );
+
   for asset in &assets {
+    // A stopped verification reports what it had judged and says so. Its silence about the rest is not a verdict.
+    if options.job.is_cancelled() {
+      result.outcome = xrf_job::JobOutcome::Cancelled;
+
+      break;
+    }
+
     let logical_path: &str = asset.get_logical_path().as_str();
+
+    options.job.set_detail(Some(logical_path.to_owned()));
+
     let parsed: TranslationJson = scoped
       .read_asset_bytes(asset)
       .and_then(|data| parse_json(logical_path, &data))?;
 
     result.merge(verify_parsed(logical_path, &parsed, options));
+    verifying.advance();
   }
 
   result.duration = started_at.elapsed();

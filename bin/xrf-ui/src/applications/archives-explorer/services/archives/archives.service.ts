@@ -1,6 +1,7 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
+import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
   createArchiveRoots,
   getArchivePreviewSupport,
@@ -20,6 +21,8 @@ import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { EJobKind, IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
+import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
@@ -103,7 +106,37 @@ export class ArchivesService {
     return this.operation.isLoading;
   }
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
+  /** The extraction this service started, while it runs. */
+  @Observable()
+  public jobId: Nullable<string> = null;
+
+  public constructor(
+    private readonly eventBus: EventBus = inject(EventBus),
+    private readonly jobsService: JobsService = inject(JobsService)
+  ) {}
+
+  /**
+   * @returns The extraction currently running, whether this service started it or found it again.
+   */
+  @Computed()
+  public get job(): Nullable<IJobState> {
+    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_EXTRACT);
+  }
+
+  /**
+   * Stops the running extraction, if there is one.
+   *
+   * What it has already written stays: the destination may hold the user's own files, and nothing here can tell those
+   * from this run's.
+   */
+  @BoundAction()
+  public cancelExtraction(): void {
+    const job: Nullable<IJobState> = this.job;
+
+    if (job) {
+      this.jobsService.cancel(job.id);
+    }
+  }
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
@@ -332,39 +365,30 @@ export class ArchivesService {
     try {
       this.operation = createLoadable(null, true);
 
-      const result: ArchiveExtractDirectoryResult = yield* call(archivesCommands.extractDirectory(prefix, destination));
+      // Started through the jobs service rather than invoked here: an empty prefix extracts the whole archive, so this
+      // writes as much as an unpack does and wants the same identity, lease, and cancel control.
+      const run: IJobRun<ArchiveExtractDirectoryResult> = this.jobsService.run<ArchiveExtractDirectoryResult>({
+        kind: EJobKind.ARCHIVES_EXTRACT,
+        invoke: (id: string, progress) => archivesCommands.extractDirectory(prefix, destination, id, progress),
+        describe: (outcome: IJobOutcome<ArchiveExtractDirectoryResult>): IJobNotice =>
+          describeExtractOutcome(prefix, destination, outcome),
+      });
+
+      this.jobId = run.id;
+
+      const result: ArchiveExtractDirectoryResult = yield* call(run.promise);
 
       this.log.info("Archive directory extracted in:", formatDuration(timer.elapsed()));
 
       this.operation = createLoadable({ kind: "extract-directory", result });
-
-      // Reported without a count rather than not at all: a response the parser did not fill in is no
-      // reason to turn a write that happened into a thrown error.
-      const extractedCount: Nullable<number> = result?.extractedCount ?? null;
-      const extractedFrom: string = prefix || "the archive root";
-
-      emitNotification(this.eventBus, {
-        details: destination,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title:
-          extractedCount === null
-            ? `Extracted ${extractedFrom}`
-            : `Extracted ${extractedCount} file(s) from ${extractedFrom}`,
-      });
     } catch (error: unknown) {
       this.log.error("Failed to extract archive directory after:", formatDuration(timer.elapsed()), error);
 
       this.operation = createLoadable(null, false, transformError(error));
 
-      emitNotification(this.eventBus, {
-        details: `${destination}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title: `Could not extract ${prefix || "the archive root"}`,
-      });
-
       throw transformError(error);
+    } finally {
+      this.jobId = null;
     }
   }
 

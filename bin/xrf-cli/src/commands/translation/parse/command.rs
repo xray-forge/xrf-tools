@@ -9,6 +9,7 @@ use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct ParseCommand;
@@ -119,6 +120,7 @@ impl GenericCommand for ParseCommand {
     );
 
     let options: ProjectParseOptions = ProjectParseOptions {
+      job: new_logging_job(),
       output: output.clone(),
       roots,
       prefix: matches.get_one::<String>("prefix").cloned(),

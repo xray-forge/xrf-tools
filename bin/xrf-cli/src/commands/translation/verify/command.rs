@@ -12,6 +12,7 @@ use super::translation_verification_report::TranslationVerificationReportPayload
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -84,6 +85,7 @@ impl GenericCommand for VerifyCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: ProjectVerifyOptions = ProjectVerifyOptions {
+      job: new_logging_job(),
       is_strict,
       output,
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,

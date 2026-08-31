@@ -13,6 +13,11 @@ use xrf_utils::to_portable_path_string;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectParseResult {
+  /// Whether the run read every table or was stopped between them.
+  ///
+  /// Each source is written whole through a staged replace, so a stopped import leaves the ones already written
+  /// complete and the rest untouched.
+  pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
   pub duration: Duration,
   /// The language this run filed every entry under.
@@ -67,6 +72,7 @@ pub struct ProjectParseCensus {
 impl ProjectParseResult {
   pub fn new(language: &str, is_dry_run: bool) -> Self {
     Self {
+      outcome: xrf_job::JobOutcome::Completed,
       duration: Duration::ZERO,
       language: language.to_owned(),
       is_dry_run,

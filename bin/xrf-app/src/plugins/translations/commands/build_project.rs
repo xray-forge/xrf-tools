@@ -1,7 +1,12 @@
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use tauri::State;
+use tauri::ipc::Channel;
+use uuid::Uuid;
+use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{
   ProjectBuildLanguageSummary, ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_roots,
 };
@@ -9,7 +14,30 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
+use crate::plugins::translations::lease::{BUILD_JOB_KIND, to_output_lease_key};
+
+/// What a build was asked to do.
+///
+/// One argument rather than five, because a Tauri command's parameters are its wire signature and five of them plus a
+/// job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
+/// this run after a reload sees the request rather than a summary of it.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationBuildRequest {
+  /// Where the sources are read from, through the VFS.
+  pub roots: XrayRoots,
+  /// Where inside those roots to look, or nothing for the whole set.
+  pub prefix: Option<String>,
+  /// The language to build, or `all`.
+  pub language: String,
+  /// Directory the string tables are written into, which is always a host path.
+  pub output_dir: PathBuf,
+  /// Whether to sort entries within each table.
+  pub is_sorted: bool,
+}
 
 /// What a build reports back to the desktop surface.
 ///
@@ -19,6 +47,8 @@ use crate::core::types::TauriResult;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationBuildSummary {
+  /// Whether the run compiled every source or was stopped between them.
+  pub outcome: xrf_job::JobOutcome,
   /// The language built, or `all`.
   pub language: String,
   /// Sources read.
@@ -38,22 +68,39 @@ pub struct TranslationBuildSummary {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "build_project"))]
 #[tauri::command(rename = "build_project")]
 pub async fn translations_build_project(
-  roots: XrayRoots,
-  prefix: Option<String>,
-  language: String,
-  output_dir: PathBuf,
-  is_sorted: bool,
+  registry: State<'_, Arc<JobRegistry>>,
+  request: TranslationBuildRequest,
+  job_id: Uuid,
+  progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationBuildSummary> {
   // `all` is accepted: compiling every language at once is the ordinary build.
-  let language: TranslationLanguage = TranslationLanguage::from_str(&language)?;
+  let language: TranslationLanguage = TranslationLanguage::from_str(&request.language)?;
 
   log::info!(
     "Building translations: {} root(s), '{language}', into {}",
-    roots.roots.len(),
-    format_path(&output_dir)
+    request.roots.roots.len(),
+    format_path(&request.output_dir)
   );
 
+  // The request travels whole rather than as a hand-picked subset, so a window that adopts this job after a reload can
+  // say what it was actually asked to do rather than a summary somebody chose in advance.
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    JobStart::new(job_id, BUILD_JOB_KIND)
+      .with_lease_keys(vec![to_output_lease_key(&request.output_dir)])
+      .with_request(&request)
+      .with_progress(progress),
+  )?;
+
+  let TranslationBuildRequest {
+    roots,
+    prefix,
+    output_dir,
+    is_sorted,
+    ..
+  } = request;
+
   let options: ProjectBuildOptions = ProjectBuildOptions {
+    job: job.clone(),
     is_sorted,
     output: xrf_output::OutputOptions::default(),
     output_dir,
@@ -62,22 +109,30 @@ pub async fn translations_build_project(
 
   // Off the async worker: a full build compiles every source into eight string tables and writes all
   // of them, which is not work an IPC executor should be holding.
-  let result: ProjectBuildResult =
+  // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
+  // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
+  let outcome: TauriResult<TranslationBuildSummary> =
     tauri::async_runtime::spawn_blocking(move || build_roots(&roots, prefix.as_deref(), &options))
       .await
       .map_err(|error| format!("Translation build did not finish: {error}"))?
-      .map_err(error_to_string)?;
+      .map_err(error_to_string)
+      .map(|result: ProjectBuildResult| TranslationBuildSummary {
+        language: language.to_string(),
+        outcome: result.outcome,
+        sources: result.sources,
+        files: result.files,
+        languages: result.languages,
+      });
 
-  log::info!(
-    "Built {} string table(s) from {} source(s)",
-    result.files,
-    result.sources
-  );
+  registration.conclude_with(&outcome, job.is_cancelled());
 
-  Ok(TranslationBuildSummary {
-    language: language.to_string(),
-    sources: result.sources,
-    files: result.files,
-    languages: result.languages,
-  })
+  if let Ok(summary) = &outcome {
+    log::info!(
+      "Built {} string table(s) from {} source(s)",
+      summary.files,
+      summary.sources
+    );
+  }
+
+  outcome
 }
