@@ -250,6 +250,7 @@ mod tests {
     let original: Vec<OgfMotionDefinition> = vec![
       OgfMotionDefinition::new_mock(vec![OgfMotionMark {
         name: String::from("Left"),
+        terminator: String::from("\r\n"),
         intervals: vec![(0.1, 0.2)],
       }]),
       OgfMotionDefinition::new_mock(Vec::new()),
@@ -277,6 +278,7 @@ mod tests {
 
     let definition: OgfMotionDefinition = OgfMotionDefinition::new_mock(vec![OgfMotionMark {
       name: String::from("Left"),
+      terminator: String::from("\r\n"),
       intervals: vec![(0.1, 0.2)],
     }]);
 

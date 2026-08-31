@@ -10,6 +10,7 @@ pub(crate) mod writer;
 pub use crate::chunk_trait::{ChunkReadWrite, ChunkReadWriteList, ChunkReadWriteOptional};
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
+pub use crate::reader::chunk_line::ChunkLine;
 pub use crate::reader::chunk_reader::ChunkReader;
 pub use crate::reader::chunk_trailing::ChunkTrailing;
 pub use crate::source::chunk_data_source::ChunkDataSource;
