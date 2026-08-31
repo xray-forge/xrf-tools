@@ -1,24 +1,33 @@
 [tasks.clean]
+description = "Remove workspace build artifacts."
+category = "Maintenance"
 command = "cargo"
 args = ["clean"]
 
 [tasks.test]
+description = "Run Cargo Make's workspace test flow."
+category = "Verification"
 
 [tasks.doc]
+description = "Generate Rust documentation for workspace members."
+category = "Documentation"
 
 [tasks.format]
 description = "Format rust codebase."
+category = "Verification"
 command = "cargo"
 args = ["fmt"]
 
 [tasks.format-check]
 description = "Check format of rust codebase."
+category = "Verification"
 workspace = false
 command = "cargo"
 args = ["fmt", "--all", "--", "--check"]
 
 [tasks.lint]
 description = "Lint rust codebase with clippy tool."
+category = "Verification"
 workspace = false
 command = "cargo"
 args = [
@@ -35,6 +44,7 @@ args = [
 
 [tasks.test-workspace]
 description = "Run workspace tests and verify the generated frontend bindings."
+category = "Verification"
 workspace = false
 command = "cargo"
 args = [
@@ -49,12 +59,14 @@ args = [
 
 [tasks.test-error-derive]
 description = "Run the derive macro diagnostics snapshots."
+category = "Verification"
 workspace = false
 command = "cargo"
 args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
 
 [tasks.verify-ui]
 description = "Install frontend dependencies, then typecheck, test and lint the UI."
+category = "Verification"
 workspace = false
 cwd = "bin/xrf-ui"
 script_runner = "@shell"
@@ -63,6 +75,7 @@ script = 'pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test 
 # Pre-push gate: every check .github/workflows/build_and_test.yml gates on.
 [tasks.verify]
 description = "Run every check CI gates on."
+category = "Verification"
 workspace = false
 dependencies = [
   "format-check",
@@ -74,6 +87,7 @@ dependencies = [
 
 [tasks.build-cli]
 description = "Build CLI application in debug mode."
+category = "Build"
 workspace = false
 dependencies = [
   { name = "build", path = "bin/xrf-cli" },
@@ -81,6 +95,7 @@ dependencies = [
 
 [tasks.build-cli-release]
 description = "Build CLI application in release mode."
+category = "Build"
 workspace = false
 dependencies = [
   { name = "build-release", path = "bin/xrf-cli" },
@@ -88,6 +103,7 @@ dependencies = [
 
 [tasks.build-app]
 description = "Build UI application in debug mode."
+category = "Build"
 workspace = false
 dependencies = [
   { name = "build", path = "bin/xrf-app" },
@@ -95,6 +111,7 @@ dependencies = [
 
 [tasks.build-app-release]
 description = "Build UI application in release mode."
+category = "Build"
 workspace = false
 dependencies = [
   { name = "build-release", path = "bin/xrf-app" },
@@ -102,6 +119,7 @@ dependencies = [
 
 [tasks.dev-app]
 description = "Run UI application backend and frontend in watch mode."
+category = "Development"
 workspace = false
 dependencies = [
   { name = "dev", path = "bin/xrf-app" },
@@ -109,6 +127,7 @@ dependencies = [
 
 [tasks.serve-backend]
 description = "Run UI application backend in watch mode."
+category = "Development"
 workspace = false
 dependencies = [
   { name = "serve-backend", path = "bin/xrf-app" },
@@ -116,6 +135,7 @@ dependencies = [
 
 [tasks.serve-ui]
 description = "Run UI application frontend in watch mode."
+category = "Development"
 workspace = false
 dependencies = [
   { name = "serve-ui", path = "bin/xrf-app" },
@@ -123,12 +143,14 @@ dependencies = [
 
 [tasks.docs-cli]
 description = "Generate CLI command reference from clap definitions."
+category = "Documentation"
 workspace = false
 command = "cargo"
 args = ["run", "-p", "xrf-cli", "--", "docs", "generate", "--output", "target/doc-commands"]
 
 [tasks.generate-typescript-bindings]
 description = "Emit Specta-generated frontend types and Tauri command bindings."
+category = "Code generation"
 workspace = false
 command = "cargo"
 args = [
@@ -146,6 +168,7 @@ args = [
 
 [tasks.format-typescript-bindings]
 description = "Apply frontend formatting and lint rules to generated mirrors."
+category = "Code generation"
 workspace = false
 cwd = "bin/xrf-ui"
 script_runner = "@shell"
@@ -153,5 +176,6 @@ script = 'pnpm run format:bindings'
 
 [tasks.generate-typescript]
 description = "Regenerate and format the frontend mirrors of serialized Rust types."
+category = "Code generation"
 workspace = false
 dependencies = ["generate-typescript-bindings", "format-typescript-bindings"]
