@@ -8,7 +8,5 @@ use crate::plugins::translations::state::TranslationProjectState;
 pub async fn translations_close_project(state: State<'_, TranslationProjectState>) -> TauriResult {
   log::info!("Closing translations project");
 
-  *state.project.lock().unwrap() = None;
-
-  Ok(())
+  state.close_project()
 }

@@ -7,6 +7,7 @@ import {
   TranslationBuildSummary,
   TranslationParseRequest,
   TranslationParseSummary,
+  TranslationSaveOutcome,
   TranslationVerifySummary,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
@@ -95,9 +96,13 @@ export const translationsCommands = {
    *
    * A language served out of an archive is refused by name rather than skipped, because a save that
    * silently drops one language's edits looks identical to one that succeeded.
+   *
+   * Answers `stale` when another project was opened or the project was closed while the edits were being written. The
+   * edits are on disk in either case; what a stale answer withholds is the refreshed tree, which belongs to a project
+   * the application is no longer showing.
    */
   saveFile: (file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
-    __TAURI_INVOKE<TranslationProjectDescriptor>("plugin:translations|save_file", { file, edits }),
+    __TAURI_INVOKE<TranslationSaveOutcome>("plugin:translations|save_file", { file, edits }),
   /**
    * Report the first character a language cannot hold, or nothing when the value is writable.
    *

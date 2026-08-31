@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use tauri::State;
 use xrf_translation::{
-  TranslationEdit, TranslationFile, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
-  apply_edits_to_asset, read_gamedata_in, read_source_in,
+  TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource, apply_edits_to_asset,
+  read_gamedata_in, read_source_in,
 };
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
-use crate::plugins::translations::state::TranslationProjectState;
+use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
 
 /// Write one logical file's pending edits, grouped by the language each belongs to.
 ///
@@ -23,47 +23,54 @@ use crate::plugins::translations::state::TranslationProjectState;
 ///
 /// A language served out of an archive is refused by name rather than skipped, because a save that
 /// silently drops one language's edits looks identical to one that succeeded.
+///
+/// Answers `stale` when another project was opened or the project was closed while the edits were being written. The
+/// edits are on disk in either case; what a stale answer withholds is the refreshed tree, which belongs to a project
+/// the application is no longer showing.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
 #[tauri::command(rename = "save_file")]
 pub async fn translations_save_file(
   file: &str,
   edits: HashMap<String, Vec<TranslationEdit>>,
   state: State<'_, TranslationProjectState>,
+) -> TauriResult<TranslationSaveOutcome> {
+  save_into_open_project(&state, file, &edits)
+}
+
+/// Write `edits` into whichever project is open, and adopt what they left on disk while it still is.
+pub(in crate::plugins::translations) fn save_into_open_project(
+  state: &TranslationProjectState,
+  file: &str,
+  edits: &HashMap<String, Vec<TranslationEdit>>,
+) -> TauriResult<TranslationSaveOutcome> {
+  let plan: TranslationSavePlan = state.begin_save(file)?;
+  let refreshed: TranslationProjectDescriptor = write_edits(&plan, edits)?;
+
+  state.commit_save(&plan, refreshed)
+}
+
+/// Apply `edits` to the files `plan` names and read the project back, touching no state at all.
+pub(in crate::plugins::translations) fn write_edits(
+  plan: &TranslationSavePlan,
+  edits: &HashMap<String, Vec<TranslationEdit>>,
 ) -> TauriResult<TranslationProjectDescriptor> {
-  let (roots, prefix, mode, sources) = {
-    let lock = state.project.lock().unwrap();
-    let descriptor: &TranslationProjectDescriptor = lock
-      .as_ref()
-      .ok_or_else(|| String::from("No translations project is open"))?;
-    let entry: &TranslationFile = descriptor
-      .files
-      .get(file)
-      .ok_or_else(|| format!("Translations file '{file}' is not part of the open project"))?;
-
-    (
-      descriptor.roots.clone(),
-      descriptor.prefix.clone(),
-      descriptor.mode,
-      entry.sources.clone(),
-    )
-  };
-
   // Mounted once and kept for the re-read below. Edits replace files in place, so nothing the mount
   // indexed moves, and the default cache policy retains nothing for a stale read to come back from.
-  let vfs: XrayVfs = roots.open().map_err(error_to_string)?;
+  let vfs: XrayVfs = plan.roots.open().map_err(error_to_string)?;
   let scope: XrayLookupScope = XrayLookupScope::all()
-    .with_optional_prefix(Some(&prefix))
+    .with_optional_prefix(Some(&plan.prefix))
     .map_err(error_to_string)?;
   let scoped: XrayScopedVfs = vfs.scoped(&scope);
 
-  for (language, language_edits) in &edits {
+  for (language, language_edits) in edits {
     if language_edits.is_empty() {
       continue;
     }
 
-    let source: &TranslationSource = sources
+    let source: &TranslationSource = plan
+      .sources
       .get(language)
-      .ok_or_else(|| format!("Translations file '{file}' has nothing on disk for '{language}'"))?;
+      .ok_or_else(|| format!("Translations file '{}' has nothing on disk for '{language}'", plan.file))?;
 
     let asset: XrayAsset = scoped
       .find(&source.logical_path)
@@ -87,13 +94,9 @@ pub async fn translations_save_file(
 
   // Re-read rather than patch the cached copy: what is on disk now is the only version worth showing,
   // and a write can add or drop entries the caller did not predict.
-  let refreshed: TranslationProjectDescriptor = match mode {
-    TranslationProjectMode::Source => read_source_in(&vfs, &roots, &prefix),
-    TranslationProjectMode::Gamedata => read_gamedata_in(&vfs, &roots, &prefix),
+  match plan.mode {
+    TranslationProjectMode::Source => read_source_in(&vfs, &plan.roots, &plan.prefix),
+    TranslationProjectMode::Gamedata => read_gamedata_in(&vfs, &plan.roots, &plan.prefix),
   }
-  .map_err(error_to_string)?;
-
-  *state.project.lock().unwrap() = Some(refreshed.clone());
-
-  Ok(refreshed)
+  .map_err(error_to_string)
 }

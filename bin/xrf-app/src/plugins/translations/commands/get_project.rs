@@ -1,5 +1,3 @@
-use std::sync::MutexGuard;
-
 use tauri::State;
 use xrf_translation::TranslationProjectDescriptor;
 
@@ -13,7 +11,5 @@ pub async fn translations_get_project(
 ) -> TauriResult<Option<TranslationProjectDescriptor>> {
   log::info!("Getting translations project");
 
-  let lock: MutexGuard<Option<TranslationProjectDescriptor>> = state.project.lock().unwrap();
-
-  Ok(lock.clone())
+  state.get_project()
 }

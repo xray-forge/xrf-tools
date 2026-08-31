@@ -3,6 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib/roots";
 import { translationsCommands } from "@/core/bindings/commands/translations";
+import { TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
 import {
   TranslationEdit,
   TranslationProjectDescriptor,
@@ -220,19 +221,30 @@ ${transformError(error).message}`,
     this.savingFile = file;
 
     try {
-      const response: TranslationProjectDescriptor = yield* call(translationsCommands.saveFile(file, edits));
+      const response: TranslationSaveOutcome = yield* call(translationsCommands.saveFile(file, edits));
 
-      this.project = createLoadable(response);
-      this.savingFile = null;
-
-      // Only cleared once the write came back: a failed save has to leave the work where it was.
+      // Only cleared once the write came back: a failed save has to leave the work where it was. A stale save wrote
+      // just as much, so the pending work is gone either way - what it does not get to do is say what is open.
       this.discardFile(file);
+
+      if (response.kind === "stale") {
+        this.log.warn("Translations file saved into a project that is no longer open:", file);
+
+        emitNotification(this.eventBus, {
+          details: `${file}\nThe edits were written, but another project was opened while saving.`,
+          severity: ENotificationSeverity.WARNING,
+          source: EApplicationId.TRANSLATIONS_EDITOR,
+          title: "Saved into a project that is no longer open",
+        });
+
+        return false;
+      }
+
+      this.project = createLoadable(response.project);
 
       return true;
     } catch (error) {
       this.log.error("Failed to save translations file:", error);
-
-      this.savingFile = null;
 
       emitNotification(this.eventBus, {
         details: `${file}\n${transformError(error).message}`,
@@ -242,6 +254,10 @@ ${transformError(error).message}`,
       });
 
       return false;
+    } finally {
+      // Every path, cancellation included: this lane cancels a save the moment an open supersedes it, and the marker
+      // would otherwise be left on a file nothing is writing any more.
+      this.savingFile = null;
     }
   }
 

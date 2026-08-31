@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_translation::{TranslationProjectDescriptor, find_unwritable_character};
+use xrf_translation::find_unwritable_character;
 
 use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
@@ -17,10 +17,5 @@ pub async fn translations_validate_text(
   text: &str,
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult<Option<String>> {
-  let lock = state.project.lock().unwrap();
-  let descriptor: &TranslationProjectDescriptor = lock
-    .as_ref()
-    .ok_or_else(|| String::from("No translations project is open"))?;
-
-  find_unwritable_character(descriptor, language, text).map_err(error_to_string)
+  state.with_project(|descriptor| find_unwritable_character(descriptor, language, text).map_err(error_to_string))
 }

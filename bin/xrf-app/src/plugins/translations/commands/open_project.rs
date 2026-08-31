@@ -44,7 +44,8 @@ pub async fn translations_open_project(
     descriptor.is_editable
   );
 
-  *state.project.lock().unwrap() = Some(descriptor.clone());
+  // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
+  state.open_project(descriptor.clone())?;
 
   Ok(descriptor)
 }
