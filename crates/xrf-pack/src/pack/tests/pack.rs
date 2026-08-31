@@ -81,7 +81,7 @@ fn a_named_volume_is_searched_as_a_root() {
   // Searched the way the asset commands search: a probe plan over the roots, not a plain mount.
   fn find(root: &Path, logical_path: &str) -> bool {
     let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XrayProbeStep> = XrayRoots::one(root.display().to_string(), XrayMountMode::Auto)
+    let steps: Vec<XrayProbeStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Auto)
       .to_probe_plan()
       .expect("roots plan")
       .mount_into(&mut vfs)
@@ -131,7 +131,7 @@ fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
   assert_eq!(project.root, destination);
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayRoots::one(project.root.display().to_string(), XrayMountMode::Volumes)
+  let steps: Vec<XrayProbeStep> = XrayRoots::one(project.root.clone(), XrayMountMode::Volumes)
     .to_probe_plan()
     .expect("roots plan")
     .mount_into(&mut vfs)

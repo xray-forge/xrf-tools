@@ -13,7 +13,7 @@ const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
-  XrayRoots::one(root.display().to_string(), XrayMountMode::Directory)
+  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {

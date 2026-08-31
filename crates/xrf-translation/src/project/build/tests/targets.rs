@@ -25,7 +25,7 @@ fn options(output_dir: PathBuf) -> ProjectBuildOptions {
 
 fn roots(root: &str) -> XrayRoots {
   XrayRoots::one(
-    build_absolute_generated_test_resource_path(root).display().to_string(),
+    build_absolute_generated_test_resource_path(root),
     XrayMountMode::Directory,
   )
 }
@@ -136,8 +136,8 @@ fn builds_reject_output_inside_any_source_root() -> XrfResult {
   write_generated_test_resource(&format!("{test_root}/other/common.json"), SOURCE_JSON)?;
 
   let layered: XrayRoots = XrayRoots::new([
-    xrf_vfs::XrayRoot::new(other_root.display().to_string(), XrayMountMode::Directory),
-    xrf_vfs::XrayRoot::new(source_root.display().to_string(), XrayMountMode::Directory),
+    xrf_vfs::XrayRoot::new(other_root.clone(), XrayMountMode::Directory),
+    xrf_vfs::XrayRoot::new(source_root.clone(), XrayMountMode::Directory),
   ]);
 
   let error = ensure_output_outside_roots(&layered, &source_root.join("built")).unwrap_err();

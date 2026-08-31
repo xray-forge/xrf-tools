@@ -179,6 +179,7 @@ export type XrayResolution =
 
 /** One place to read from, and how that place becomes mounts. */
 export type XrayRoot = {
+  /** Native host address, retained without rendering it as text. */
   path: string;
   /** How this path becomes mounts. `Auto` unless the caller says otherwise. */
   mode?: XrayMountMode;
@@ -230,10 +231,13 @@ export type XrayRootProbe = {
  *
  * Callers do not assemble mounts from this themselves. They hand it to whatever owns mounting and
  * receive a VFS or a probe back, so one place decides what a declaration means.
+ *
+ * Serde keeps the existing string wire shape for Unicode paths and refuses a non-Unicode address
+ * instead of substituting characters into it.
  */
 export type XrayRoots = {
   /**
-   * Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
+   * Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
    *
    * This is what finds a texture shipped beside a model rather than in the shared tree.
    */

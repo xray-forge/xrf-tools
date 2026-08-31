@@ -53,7 +53,7 @@ fn create_source(name: &str) -> XrfResult<PathBuf> {
 
 /// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
-  XrayRoots::one(root.display().to_string(), XrayMountMode::Directory)
+  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
 }
 
 fn open(root: &Path, mode: DialogProjectMode) -> XrfResult<DialogProject> {

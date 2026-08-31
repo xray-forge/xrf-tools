@@ -57,7 +57,7 @@ fn create_gamedata(name: &str) -> XrfResult<PathBuf> {
 
 fn open(root: &Path) -> XrfResult<DialogProject> {
   DialogProject::open(
-    &XrayRoots::one(root.display().to_string(), XrayMountMode::Directory),
+    &XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory),
     &DialogProjectLayout::new(DialogProjectMode::Gamedata),
   )
 }

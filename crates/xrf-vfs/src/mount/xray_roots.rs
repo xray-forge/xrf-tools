@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
+use xrf_utils::format_path;
 
 use crate::mount::xray_mount_mode::XrayMountMode;
 use crate::mount::xray_mount_plan::XrayMountPlan;
@@ -13,18 +14,16 @@ use crate::vfs::XrayVfs;
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrayRoot {
-  pub path: String,
+  /// Native host address, retained without rendering it as text.
+  pub path: PathBuf,
   /// How this path becomes mounts. `Auto` unless the caller says otherwise.
   #[serde(default)]
   pub mode: XrayMountMode,
 }
 
 impl XrayRoot {
-  pub fn new(path: impl Into<String>, mode: XrayMountMode) -> Self {
-    Self {
-      path: path.into(),
-      mode,
-    }
+  pub fn new(path: PathBuf, mode: XrayMountMode) -> Self {
+    Self { path, mode }
   }
 }
 
@@ -40,21 +39,24 @@ impl XrayRoot {
 ///
 /// Callers do not assemble mounts from this themselves. They hand it to whatever owns mounting and
 /// receive a VFS or a probe back, so one place decides what a declaration means.
+///
+/// Serde keeps the existing string wire shape for Unicode paths and refuses a non-Unicode address
+/// instead of substituting characters into it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrayRoots {
-  /// Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
+  /// Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
   ///
   /// This is what finds a texture shipped beside a model rather than in the shared tree.
-  pub asset: Option<String>,
+  pub asset: Option<PathBuf>,
   /// Roots searched after the asset's own, in the order given.
   pub roots: Vec<XrayRoot>,
 }
 
 impl XrayRoots {
   /// One root, read the given way.
-  pub fn one(path: impl Into<String>, mode: XrayMountMode) -> Self {
+  pub fn one(path: PathBuf, mode: XrayMountMode) -> Self {
     Self {
       asset: None,
       roots: vec![XrayRoot::new(path, mode)],
@@ -76,10 +78,7 @@ impl XrayRoots {
   /// searched.
   pub fn centred_on(&self, asset: Option<&Path>) -> Self {
     Self {
-      asset: self
-        .asset
-        .clone()
-        .or_else(|| asset.map(|path| path.display().to_string())),
+      asset: self.asset.clone().or_else(|| asset.map(Path::to_path_buf)),
       roots: self.roots.clone(),
     }
   }
@@ -96,7 +95,7 @@ impl XrayRoots {
   pub fn describe(&self) -> String {
     if self.roots.is_empty() {
       return match &self.asset {
-        Some(asset) => asset.clone(),
+        Some(asset) => format_path(asset).to_string(),
         None => String::from("<no roots>"),
       };
     }
@@ -104,7 +103,7 @@ impl XrayRoots {
     self
       .roots
       .iter()
-      .map(|root| root.path.clone())
+      .map(|root| format_path(&root.path).to_string())
       .collect::<Vec<String>>()
       .join(", ")
   }
@@ -120,7 +119,7 @@ impl XrayRoots {
   /// `fsgame.ltx` that cannot be read.
   pub fn to_mount_plan(&self) -> XrfResult<XrayMountPlan> {
     let mut plan: XrayMountPlan = match &self.asset {
-      Some(asset) => XrayMountPlan::implied(Path::new(asset))?,
+      Some(asset) => XrayMountPlan::implied(asset)?,
       None => XrayMountPlan::new(),
     };
 
@@ -147,7 +146,7 @@ impl XrayRoots {
     }
 
     for root in &self.roots {
-      plan = plan.with_root_mode(root.path.clone(), &root.path, root.mode)?;
+      plan = plan.with_root_mode(format_path(&root.path).to_string(), &root.path, root.mode)?;
     }
 
     Ok(plan)

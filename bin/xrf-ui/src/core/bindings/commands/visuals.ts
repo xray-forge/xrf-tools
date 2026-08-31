@@ -26,7 +26,7 @@ export const visualsCommands = {
   getBrowse: () =>
     __TAURI_INVOKE<{
       /**
-       * Asset whose own X-Ray root and installation are searched first, when the read is centred on one.
+       * Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
        *
        * This is what finds a texture shipped beside a model rather than in the shared tree.
        */

@@ -17,7 +17,7 @@ pub(crate) fn table(id: &str, text: &str) -> String {
 /// search upward for one would make the test depend on whatever sits above the build directory.
 pub(crate) fn roots(root: &str) -> XrayRoots {
   XrayRoots::one(
-    build_absolute_generated_test_resource_path(root).display().to_string(),
+    build_absolute_generated_test_resource_path(root),
     XrayMountMode::Directory,
   )
 }

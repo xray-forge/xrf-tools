@@ -119,7 +119,7 @@ pub(crate) fn target_languages_for_source(source: &str, options: &ProjectBuildOp
 /// Returns an invalid error naming the root the output would sit inside.
 pub(crate) fn ensure_output_outside_roots(roots: &XrayRoots, output: &Path) -> XrfResult {
   for root in &roots.roots {
-    let source: &Path = Path::new(&root.path);
+    let source: &Path = &root.path;
 
     if !source.is_dir() {
       continue;

@@ -31,7 +31,7 @@ pub fn to_format_lease_key(roots: &XrayRoots, prefix: Option<&str>) -> String {
   let paths: String = roots
     .roots
     .iter()
-    .map(|root: &XrayRoot| to_comparable_path(root.path.as_ref()))
+    .map(|root: &XrayRoot| to_comparable_path(&root.path))
     .collect::<Vec<String>>()
     .join(";");
 
@@ -43,12 +43,18 @@ pub fn to_format_lease_key(roots: &XrayRoots, prefix: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
   use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
   use super::to_format_lease_key;
 
   fn roots(paths: &[&str]) -> XrayRoots {
-    XrayRoots::new(paths.iter().map(|path| XrayRoot::new(*path, XrayMountMode::Auto)))
+    XrayRoots::new(
+      paths
+        .iter()
+        .map(|path| XrayRoot::new(PathBuf::from(*path), XrayMountMode::Auto)),
+    )
   }
 
   #[test]

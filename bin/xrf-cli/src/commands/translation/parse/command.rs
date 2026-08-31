@@ -113,11 +113,7 @@ impl GenericCommand for ParseCommand {
 
     // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
     // installation exactly as the desktop app does it.
-    let roots: XrayRoots = XrayRoots::new(
-      paths
-        .iter()
-        .map(|path| XrayRoot::new(path.display().to_string(), source)),
-    );
+    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
 
     let options: ProjectParseOptions = ProjectParseOptions {
       job: new_logging_job(),

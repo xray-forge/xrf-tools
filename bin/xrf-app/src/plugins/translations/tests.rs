@@ -29,7 +29,7 @@ fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
   .map_err(|error| error.to_string())?;
 
   Ok(XrayRoots::one(
-    build_absolute_generated_test_resource_path(name).display().to_string(),
+    build_absolute_generated_test_resource_path(name),
     XrayMountMode::Directory,
   ))
 }

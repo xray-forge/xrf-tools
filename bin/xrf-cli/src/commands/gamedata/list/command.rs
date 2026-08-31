@@ -98,7 +98,7 @@ impl GenericCommand for ListCommand {
     )?;
 
     // One vocabulary for naming roots, so a loose tree can be listed in front of an installation.
-    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.display().to_string(), mode)));
+    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), mode)));
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
