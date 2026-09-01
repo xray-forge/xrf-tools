@@ -9,11 +9,11 @@ use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::json;
 use crate::json::read::parse_json;
+use crate::json::write::{CanonicalRender, render_canonical, write_canonical};
 use crate::project::parse::merge::{MergeOutcome, merge_entries};
 use crate::project::parse::options::ProjectParseOptions;
 use crate::project::parse::result::ProjectParseResult;
 use crate::project::parse::scope::{ResolvedParseScope, resolve};
-use crate::staged_write::{write_file_staged, write_new_file};
 use crate::types::TranslationJson;
 use crate::xml;
 use crate::xml::encoding::TranslationIdentity;
@@ -184,7 +184,7 @@ fn import_asset(
 
   outcome.record(&mut result.census);
 
-  write_merged(&target, &merged, &outcome, options, result)
+  write_merged(&target, &merged, options, result)
 }
 
 /// Keep the last of a repeated id, which is the one `CStringTable::Load` leaves in the table.
@@ -284,16 +284,19 @@ fn read_existing(target: &Path, result: &mut ProjectParseResult) -> XrfResult<Tr
 }
 
 /// Write the merged document, unless nothing changed or the run was told not to.
+///
+/// What counts as changed is the canonical bytes against the bytes on disk, so a file whose records this run left alone
+/// but whose formatting was not canonical is normalized too. That is one definition shared with `translation format`
+/// rather than a second opinion about the same question.
 fn write_merged(
   target: &Path,
   merged: &TranslationJson,
-  outcome: &MergeOutcome,
   options: &ProjectParseOptions,
   result: &mut ProjectParseResult,
 ) -> XrfResult {
-  let is_existing: bool = target.exists();
+  let render: CanonicalRender = render_canonical(target, merged, None)?;
 
-  if !outcome.is_changed {
+  if !render.is_changed() {
     result.census.files_unchanged += 1;
 
     xrf_output::verbose!(options.output, "Unchanged {}", format_path(target));
@@ -301,10 +304,12 @@ fn write_merged(
     return Ok(());
   }
 
-  if is_existing {
-    result.census.files_updated += 1;
-  } else {
+  let is_new: bool = render.is_new();
+
+  if is_new {
     result.census.files_created += 1;
+  } else {
+    result.census.files_updated += 1;
   }
 
   xrf_output::info!(
@@ -312,10 +317,10 @@ fn write_merged(
     "{} {}",
     if options.is_dry_run {
       "Would write"
-    } else if is_existing {
-      "Updating"
-    } else {
+    } else if is_new {
       "Creating"
+    } else {
+      "Updating"
     },
     format_path(target)
   );
@@ -324,22 +329,7 @@ fn write_merged(
     return Ok(());
   }
 
-  let mut serialized: Vec<u8> = serde_json::to_vec_pretty(merged).map_err(|error| {
-    XrfError::new_serialization_error(format!(
-      "Failed to serialize parsed translation JSON '{}': {error}",
-      format_path(target)
-    ))
-  })?;
+  write_canonical(target, &render)?;
 
-  // A new file gets one, an existing file keeps whatever convention it already had, which is what
-  // `apply_edits` does — so the editor and the importer do not fight over it on alternate saves.
-  if !is_existing || fs::read(target).is_ok_and(|original| original.ends_with(b"\n")) {
-    serialized.push(b'\n');
-  }
-
-  if is_existing {
-    write_file_staged(target, &serialized)
-  } else {
-    write_new_file(target, &serialized)
-  }
+  Ok(())
 }

@@ -111,8 +111,10 @@ macro_rules! for_each_tauri_command_domain {
       }
       translations => "translations" {
         build_project => crate::plugins::translations::commands::build_project::translations_build_project,
+        check_project_format => crate::plugins::translations::commands::check_project_format::translations_check_project_format,
         close_project => crate::plugins::translations::commands::close_project::translations_close_project,
         detect_mode => crate::plugins::translations::commands::detect_mode::translations_detect_mode,
+        format_project => crate::plugins::translations::commands::format_project::translations_format_project,
         get_project => crate::plugins::translations::commands::get_project::translations_get_project,
         open_project => crate::plugins::translations::commands::open_project::translations_open_project,
         parse_project => crate::plugins::translations::commands::parse_project::translations_parse_project,

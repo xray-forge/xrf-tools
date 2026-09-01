@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use crate::json::normalize::sort_document;
 use crate::project::parse::result::ProjectParseCensus;
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 
@@ -14,11 +15,6 @@ pub(crate) struct MergeOutcome {
   pub unchanged: u32,
   pub conflicted: u32,
   pub placeholders_added: u32,
-  /// Whether the merged document differs from the one that was read.
-  ///
-  /// Tracked rather than derived from the counts, because sorting alone can change a file that gained
-  /// no entry — which is exactly what normalizes a tree somebody hand-edited out of order.
-  pub is_changed: bool,
 }
 
 impl MergeOutcome {
@@ -46,8 +42,7 @@ pub(crate) fn merge_entries(
   language: &str,
   is_overwrite: bool,
 ) -> (TranslationJson, MergeOutcome) {
-  let original: TranslationJson = existing;
-  let mut merged: TranslationJson = original.clone();
+  let mut merged: TranslationJson = existing;
   let mut outcome: MergeOutcome = MergeOutcome::default();
 
   for (id, text) in incoming {
@@ -84,36 +79,11 @@ pub(crate) fn merge_entries(
 
   outcome.placeholders_added = add_placeholders(&mut merged);
 
+  // Whether this changed the file is not decided here. The caller renders the document through the canonical writer and
+  // compares bytes, which also catches a file whose records were already right and whose formatting was not.
   sort_document(&mut merged);
 
-  outcome.is_changed = !is_same_document(&original, &merged);
-
   (merged, outcome)
-}
-
-/// Whether two documents would serialize identically, order included.
-///
-/// `IndexMap` compares as a map, so `==` answers true for two documents holding the same pairs in
-/// different orders — which is exactly the change a re-sort makes and nothing else does. Using `==`
-/// here meant a file somebody hand-edited out of order was detected as unchanged and left that way.
-fn is_same_document(left: &TranslationJson, right: &TranslationJson) -> bool {
-  left.len() == right.len()
-    && left
-      .iter()
-      .zip(right.iter())
-      .all(|((left_id, left_entry), (right_id, right_entry))| {
-        left_id == right_id && is_same_entry(left_entry, right_entry)
-      })
-}
-
-fn is_same_entry(left: &TranslationEntry, right: &TranslationEntry) -> bool {
-  left.len() == right.len()
-    && left
-      .iter()
-      .zip(right.iter())
-      .all(|((left_language, left_value), (right_language, right_value))| {
-        left_language == right_language && left_value == right_value
-      })
 }
 
 /// Give every record an explicit `null` for each language the file carries but it does not have.
@@ -139,19 +109,6 @@ fn add_placeholders(document: &mut TranslationJson) -> u32 {
   }
 
   added
-}
-
-/// Sort ids and language keys, so output does not depend on the order the languages were run in.
-///
-/// The whole workflow is "run once per language and merge", so a file whose shape remembered which
-/// run touched it first would churn a diff for nothing. It also matches every hand-authored source in
-/// the engine, which are sorted both ways already.
-fn sort_document(document: &mut TranslationJson) {
-  document.sort_keys();
-
-  for entry in document.values_mut() {
-    entry.sort_keys();
-  }
 }
 
 /// Read one string table value as the JSON form that keeps its structure.
@@ -185,7 +142,6 @@ mod tests {
     );
 
     assert_eq!(outcome.inserted, 1);
-    assert!(outcome.is_changed);
     assert_eq!(
       merged["st_a"]["eng"],
       Some(TranslationVariant::String(String::from("A")))
@@ -219,7 +175,6 @@ mod tests {
     );
 
     assert_eq!(kept.1.conflicted, 1);
-    assert!(!kept.1.is_changed);
     assert_eq!(
       kept.0["st_a"]["eng"],
       Some(TranslationVariant::String(String::from("Mine")))
@@ -233,7 +188,6 @@ mod tests {
     );
 
     assert_eq!(replaced.1.conflicted, 1);
-    assert!(replaced.1.is_changed);
     assert_eq!(
       replaced.0["st_a"]["eng"],
       Some(TranslationVariant::String(String::from("Theirs")))
@@ -308,30 +262,32 @@ mod tests {
   }
 
   #[test]
-  fn sorting_alone_counts_as_a_change() {
-    // A tree somebody added records to by hand is normalized by the next run that touches the file,
-    // even when that run merges nothing new into it.
-    let (merged, outcome) = merge_entries(
+  fn a_hand_edited_file_is_sorted_even_when_nothing_merges_into_it() {
+    // A tree somebody added records to by hand is normalized by the next run that touches the file, even when that run
+    // merges nothing new into it.
+    let (merged, _) = merge_entries(
       document(r#"{"st_b":{"eng":"B"},"st_a":{"eng":"A"}}"#),
       &[],
       "eng",
       false,
     );
 
-    assert!(outcome.is_changed);
     assert_eq!(merged.keys().collect::<Vec<_>>(), vec!["st_a", "st_b"]);
   }
 
   #[test]
-  fn an_already_sorted_and_complete_file_is_left_alone() {
-    let (_, outcome) = merge_entries(
+  fn text_that_already_matches_is_counted_rather_than_replaced() {
+    let (merged, outcome) = merge_entries(
       document(r#"{"st_a":{"eng":"A"}}"#),
       &[(String::from("st_a"), String::from("A"))],
       "eng",
       false,
     );
 
-    assert!(!outcome.is_changed);
     assert_eq!(outcome.unchanged, 1);
+    assert_eq!(
+      merged["st_a"]["eng"],
+      Some(TranslationVariant::String(String::from("A")))
+    );
   }
 }

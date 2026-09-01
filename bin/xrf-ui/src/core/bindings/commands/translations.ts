@@ -12,6 +12,7 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import {
+  ProjectFormatResult,
   TranslationEdit,
   TranslationFile,
   TranslationFinding,
@@ -33,6 +34,21 @@ export const translationsCommands = {
    */
   buildProject: (request: TranslationBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationBuildSummary>("plugin:translations|build_project", { request, jobId, progress }),
+  /**
+   * Report which JSON translation sources under a directory are not normalized.
+   *
+   * Read-only, so no lease is taken and no open editor session is refused: two readers of one tree have nothing to
+   * collide over, and a check that leaves every file exactly as it found it cannot make a buffer stale. A separate kind
+   * from the rewrite it reports on, because they are different work with different consequences — one answers a
+   * question, the other changes the files.
+   */
+  checkProjectFormat: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ProjectFormatResult>("plugin:translations|check_project_format", {
+      directory,
+      lineEndings,
+      jobId,
+      progress,
+    }),
   closeProject: () => __TAURI_INVOKE<null>("plugin:translations|close_project"),
   /**
    * Report which layout roots look like, for the open form to preselect.
@@ -43,6 +59,25 @@ export const translationsCommands = {
    */
   detectMode: (roots: XrayRoots) =>
     __TAURI_INVOKE<TranslationProjectMode>("plugin:translations|detect_mode", { roots }),
+  /**
+   * Normalize the JSON translation sources under a directory.
+   *
+   * A host directory rather than mounted roots, because this rewrites its sources in place and there is nowhere to
+   * put a file inside an archive volume. `configs format_directory` takes roots because an LTX project is a VFS
+   * notion — winning configs, an include graph, archived entries it declines — and none of that applies to flat JSON.
+   *
+   * Holds the directory exclusively for the whole run, under the same lease a build and an import take, so a second
+   * writer over the same tree is refused rather than allowed to read files this one is midway through replacing. A
+   * cancelled run leaves the sources it had already formatted formatted and the rest untouched: each is rewritten
+   * through a staged replace, so nothing is half-written and running it again resolves the difference.
+   */
+  formatProject: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ProjectFormatResult>("plugin:translations|format_project", {
+      directory,
+      lineEndings,
+      jobId,
+      progress,
+    }),
   getProject: () =>
     __TAURI_INVOKE<{
       mode: TranslationProjectMode;

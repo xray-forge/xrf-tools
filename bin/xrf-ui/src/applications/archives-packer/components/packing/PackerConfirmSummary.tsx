@@ -116,11 +116,7 @@ export function PackerConfirmSummary({
 
             <FormControlLabel
               control={
-                <Checkbox
-                  size={"small"}
-                  checked={isForced}
-                  onChange={(event) => onForceChange(event.target.checked)}
-                />
+                <Checkbox size={"small"} checked={isForced} onChange={(event) => onForceChange(event.target.checked)} />
               }
               label={<Typography variant={"body2"}>Replace them</Typography>}
             />

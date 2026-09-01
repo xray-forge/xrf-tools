@@ -3,6 +3,9 @@
 /// Phase a build reports while it compiles sources into string tables.
 pub const TRANSLATION_PHASE_BUILD: &str = "build";
 
+/// Phase a formatting run reports while it normalizes sources in place.
+pub const TRANSLATION_PHASE_FORMAT: &str = "format";
+
 /// Phase an import reports while it reads raw tables and writes sources.
 pub const TRANSLATION_PHASE_PARSE: &str = "parse";
 

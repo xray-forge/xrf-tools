@@ -140,6 +140,7 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       about: "Translation file tools",
       commands: vec![
         translation::build::BuildCommand::new_box(),
+        translation::format::FormatCommand::new_box(),
         translation::initialize::InitializeCommand::new_box(),
         translation::parse::ParseCommand::new_box(),
         translation::verify::VerifyCommand::new_box(),

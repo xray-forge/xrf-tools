@@ -32,6 +32,7 @@ import { SPRITE_EQUIPMENT_UNPACKER_APPLICATION } from "@/applications/sprite-equ
 import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
+import { TRANSLATIONS_FORMATTER_APPLICATION } from "@/applications/translations-formatter";
 import { TRANSLATIONS_PARSER_APPLICATION } from "@/applications/translations-parser";
 import { TRANSLATIONS_VERIFIER_APPLICATION } from "@/applications/translations-verifier";
 import { VISUALS_EXPLORER_APPLICATION } from "@/applications/visuals-explorer";
@@ -74,6 +75,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     TRANSLATIONS_PARSER_APPLICATION,
     TRANSLATIONS_BUILDER_APPLICATION,
     TRANSLATIONS_VERIFIER_APPLICATION,
+    TRANSLATIONS_FORMATTER_APPLICATION,
     VISUALS_EXPLORER_APPLICATION,
     VISUALS_SEQUENCER_APPLICATION,
   ],

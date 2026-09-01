@@ -4,6 +4,7 @@ pub(crate) mod build;
 pub(crate) mod constants;
 pub(crate) mod descriptor;
 pub(crate) mod edit;
+pub(crate) mod format;
 pub(crate) mod gamedata_read;
 pub(crate) mod initialize;
 pub(crate) mod job_phases;

@@ -1,7 +1,9 @@
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
 use xrf_translation::{TranslationFile, TranslationProjectDescriptor};
 
+use crate::core::jobs::to_comparable_path;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::translation_save_outcome::TranslationSaveOutcome;
 use crate::plugins::translations::state::translation_save_plan::TranslationSavePlan;
@@ -98,10 +100,54 @@ impl TranslationProjectState {
     })
   }
 
+  /// Refuse `directory` while an open editor session overlaps it.
+  ///
+  /// The editor holds buffers in memory, and a lease does not cover them because a session is not a job. Rewriting the
+  /// files under an open project would leave those buffers stale, and the next `save_file` would put the pre-format
+  /// content back — undoing the formatting without anybody being told. Closing the project is one click, so refusing
+  /// is cheap and losing a translator's view of a file is not.
+  ///
+  /// Overlap is containment either way: formatting a parent of the open root reaches its files, and formatting a
+  /// subtree of it reaches some of them.
+  pub fn require_no_open_session_over(&self, directory: &Path) -> TauriResult<()> {
+    let session: MutexGuard<TranslationSession> = self.lock("check the open translations project")?;
+
+    let Some(project) = session.project.as_ref() else {
+      return Ok(());
+    };
+
+    let target: String = to_comparable_path(directory);
+
+    for root in &project.roots.roots {
+      let open: String = to_comparable_path(&root.path);
+
+      if is_within(&target, &open) || is_within(&open, &target) {
+        return Err(format!(
+          "Close the open translations project at '{}' before formatting '{}': the editor holds unsaved views of those files.",
+          root.path.display(),
+          directory.display()
+        ));
+      }
+    }
+
+    Ok(())
+  }
+
   fn lock(&self, action: &str) -> TauriResult<MutexGuard<'_, TranslationSession>> {
     self
       .session
       .lock()
       .map_err(|error| format!("Failed to {action} - translations state is unavailable: {error}"))
   }
+}
+
+/// Whether `inner` names the same place as `outer` or something beneath it.
+///
+/// Compared on the comparable spelling both sides already use for leases, and on separator boundaries so `c:\gamedata`
+/// does not read as containing `c:\gamedata-backup`.
+fn is_within(inner: &str, outer: &str) -> bool {
+  inner == outer
+    || inner
+      .strip_prefix(outer)
+      .is_some_and(|rest| rest.starts_with('\\') || rest.starts_with('/'))
 }

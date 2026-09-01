@@ -1,6 +1,8 @@
-//! Pins what a save commits back, when the project it began in is no longer the open one.
+//! Pins what a save commits back, when the project it began in is no longer the open one, and what an open project
+//! refuses to let a formatting run rewrite underneath it.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
 use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
@@ -176,6 +178,41 @@ fn a_save_needs_an_open_project_holding_the_file() -> TauriResult<()> {
     state.begin_save("st_missing.json").unwrap_err(),
     "Translations file 'st_missing.json' is not part of the open project"
   );
+
+  Ok(())
+}
+
+#[test]
+fn formatting_is_refused_while_a_project_is_open_over_the_same_tree() -> TauriResult<()> {
+  let state: TranslationProjectState = TranslationProjectState::new();
+  let roots: XrayRoots = write_project("translations_state/open_session", "before")?;
+  let root: PathBuf = roots.roots[0].path.clone();
+
+  // Nothing open, nothing to protect.
+  state.require_no_open_session_over(&root)?;
+
+  open_project(&state, &roots)?;
+
+  // The root itself, and the subtree the sources actually live in: the editor holds buffers over both, and a rewrite
+  // under either would be undone by the next save.
+  let error: String = state
+    .require_no_open_session_over(&root)
+    .expect_err("an open project to refuse a format over its own root");
+
+  assert!(error.contains("Close the open translations project"), "{error}");
+  assert!(
+    state.require_no_open_session_over(&root.join(PREFIX)).is_err(),
+    "a subtree of the open root is reached by the same rewrite"
+  );
+
+  // A sibling tree is not the open one, and a name that merely starts the same is not beneath it.
+  let sibling: XrayRoots = write_project("translations_state/open_session_other", "before")?;
+
+  state.require_no_open_session_over(&sibling.roots[0].path)?;
+
+  // Closing releases it.
+  state.close_project()?;
+  state.require_no_open_session_over(&root)?;
 
   Ok(())
 }

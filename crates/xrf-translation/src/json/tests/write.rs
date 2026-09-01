@@ -86,7 +86,10 @@ fn an_entry_with_no_languages_left_goes_entirely() -> XrfResult {
 }
 
 #[test]
-fn a_file_without_a_trailing_newline_does_not_gain_one() -> XrfResult {
+fn a_file_without_a_trailing_newline_gains_one() -> XrfResult {
+  // Every writer in this crate goes through the canonical serializer, which appends one unconditionally. Preserving
+  // its absence was one of three answers the crate used to give: the importer and this editor kept whatever a file
+  // had, and the initializer silently dropped it.
   let path = write_generated_test_resource(
     "json_write/no_newline.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}",
@@ -94,7 +97,7 @@ fn a_file_without_a_trailing_newline_does_not_gain_one() -> XrfResult {
 
   apply_edits(&path, "eng", &[set("st_a", "B")])?;
 
-  assert!(!fs::read(&path)?.ends_with(b"\n"));
+  assert!(fs::read(&path)?.ends_with(b"\n"));
 
   Ok(())
 }

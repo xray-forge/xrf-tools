@@ -1,6 +1,8 @@
 pub mod build_project;
+pub mod check_project_format;
 pub mod close_project;
 pub mod detect_mode;
+pub mod format_project;
 pub mod get_project;
 pub mod open_project;
 pub mod parse_project;

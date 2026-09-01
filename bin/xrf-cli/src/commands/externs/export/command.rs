@@ -4,12 +4,9 @@ use std::str::FromStr;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
-use xrf_export::{
-  ExternFormat, ExternManifest, ExternManifestParser, LineEndings, ParsedExternManifest, normalize_line_endings,
-  render_extern_manifest,
-};
+use xrf_export::{ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest};
 use xrf_output::OutputOptions;
-use xrf_utils::format_path;
+use xrf_utils::{LineEndings, format_path, normalize_line_endings};
 
 use super::report::ExternsExportReport;
 use crate::core::command_context::CommandContext;

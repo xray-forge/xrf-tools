@@ -22,6 +22,9 @@ pub use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };
 pub use crate::project::edit::{apply_edits, apply_edits_to_asset, find_unwritable_character};
+pub use crate::project::format::options::ProjectFormatOptions;
+pub use crate::project::format::result::ProjectFormatResult;
+pub use crate::project::format::run::format_sources;
 pub use crate::project::gamedata_read::{read_gamedata, read_gamedata_in};
 pub use crate::project::initialize::options::ProjectInitializeOptions;
 pub use crate::project::initialize::result::ProjectInitializeResult;

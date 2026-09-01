@@ -6,11 +6,11 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::json::read::read_json;
+use crate::json::write::write_canonical_document;
 use crate::language::TranslationLanguage;
 use crate::project::initialize::options::ProjectInitializeOptions;
 use crate::project::initialize::result::ProjectInitializeResult;
 use crate::source_file_name::is_json_source;
-use crate::staged_write::write_file_staged;
 use crate::types::TranslationJson;
 
 /// Initialize every translation source in a directory.
@@ -74,7 +74,9 @@ pub fn initialize_file<P: AsRef<Path>>(
 /// Give every id an explicit null for each language it has no text for.
 ///
 /// The file is only replaced when something was actually added, so running this over an already
-/// complete project rewrites nothing.
+/// complete project rewrites nothing. Deliberately narrower than a rewrite through the canonical writer would be: this
+/// scaffolds languages and does not reorder or reformat, which is `translation format`'s job and is why that command
+/// exists separately.
 ///
 /// # Errors
 ///
@@ -109,15 +111,10 @@ pub fn initialize_json_file<P: AsRef<Path>>(
     }
   }
 
+  // Through the canonical writer, which is also how the trailing newline this used to drop survives: it serialized
+  // with `to_vec_pretty` and appended nothing, so every file it touched lost the one it came with.
   if initialized_count > 0 {
-    let serialized: Vec<u8> = serde_json::to_vec_pretty(&parsed).map_err(|error| {
-      XrfError::new_serialization_error(format!(
-        "Failed to serialize initialized translation JSON '{}': {error}",
-        path_display
-      ))
-    })?;
-
-    write_file_staged(path.as_ref(), &serialized)?;
+    write_canonical_document(path.as_ref(), &parsed, None)?;
   }
 
   result.duration = started_at.elapsed();

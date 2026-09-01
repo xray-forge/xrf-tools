@@ -6879,16 +6879,22 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-check-project-format`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-format-project`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
           "type": "string",
           "const": "translations:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-check-project-format`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-format-project`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`"
         },
         {
           "description": "Enables the build_project command without any pre-configured scope.",
           "type": "string",
           "const": "translations:allow-build-project",
           "markdownDescription": "Enables the build_project command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the check_project_format command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:allow-check-project-format",
+          "markdownDescription": "Enables the check_project_format command without any pre-configured scope."
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -6901,6 +6907,12 @@
           "type": "string",
           "const": "translations:allow-detect-mode",
           "markdownDescription": "Enables the detect_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the format_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:allow-format-project",
+          "markdownDescription": "Enables the format_project command without any pre-configured scope."
         },
         {
           "description": "Enables the get_project command without any pre-configured scope.",
@@ -6945,6 +6957,12 @@
           "markdownDescription": "Denies the build_project command without any pre-configured scope."
         },
         {
+          "description": "Denies the check_project_format command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:deny-check-project-format",
+          "markdownDescription": "Denies the check_project_format command without any pre-configured scope."
+        },
+        {
           "description": "Denies the close_project command without any pre-configured scope.",
           "type": "string",
           "const": "translations:deny-close-project",
@@ -6955,6 +6973,12 @@
           "type": "string",
           "const": "translations:deny-detect-mode",
           "markdownDescription": "Denies the detect_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the format_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "translations:deny-format-project",
+          "markdownDescription": "Denies the format_project command without any pre-configured scope."
         },
         {
           "description": "Denies the get_project command without any pre-configured scope.",

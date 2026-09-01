@@ -1,5 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { JobOutcome } from "@/core/bindings/types/xrf-job";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** What one language's build produced. */
@@ -14,6 +15,41 @@ export type ProjectBuildLanguageSummary = {
    * this counts what the tables hold rather than what was translated.
    */
   entries: number;
+};
+
+/**
+ * What one formatting run judged and changed.
+ *
+ * Field for field what `LtxProjectFormatResult` reports, so the two `format --check` commands answer a consumer in one
+ * shape. Its own type rather than that one: a crate deposits its own result, and reaching into `xrf-ltx` for a shape
+ * would tie a translation run's wire contract to an unrelated format's.
+ *
+ * No findings array, unlike this crate's parse and verify results. A formatter's answer is the list of files to fix,
+ * and a finding would spend a subject, a rule id and a message carrying one bit each over a single rule.
+ */
+export type ProjectFormatResult = {
+  /**
+   * Whether the run reached the end of the set or was stopped between files.
+   *
+   * A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
+   * running it again resolves. Nothing is removed and nothing is half-written.
+   */
+  outcome: JobOutcome;
+  /** Everything the run took, measured from when its caller created the job handle. */
+  duration: number;
+  /**
+   * How much of `duration` had already passed when the per-file work began.
+   *
+   * Walking the paths and selecting sources out of them happens before a single file is read, and on a cold filesystem
+   * or a large tree that is most of the wait. Named rather than folded away, so the split stays readable.
+   */
+  startupDuration: number;
+  /** Sources that were not canonical: rewritten by a normal run, reported by a check. */
+  invalidFiles: number;
+  /** Which ones, in selection order. */
+  toFormat: Array<string>;
+  totalFiles: number;
+  validFiles: number;
 };
 
 /** How much one import run moved. */

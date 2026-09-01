@@ -17,6 +17,8 @@ export enum EJobKind {
   SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
   GAMEDATA_VERIFY = "gamedata.verify",
   TRANSLATIONS_BUILD = "translations.build",
+  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
+  TRANSLATIONS_FORMAT = "translations.format",
   TRANSLATIONS_PARSE = "translations.parse",
   TRANSLATIONS_VERIFY = "translations.verify",
 }
@@ -75,6 +77,16 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     kind: EJobKind.TRANSLATIONS_BUILD,
     source: EApplicationId.TRANSLATIONS_BUILDER,
     label: "Translation build",
+  },
+  [EJobKind.TRANSLATIONS_CHECK_FORMAT]: {
+    kind: EJobKind.TRANSLATIONS_CHECK_FORMAT,
+    source: EApplicationId.TRANSLATIONS_FORMATTER,
+    label: "Translation format check",
+  },
+  [EJobKind.TRANSLATIONS_FORMAT]: {
+    kind: EJobKind.TRANSLATIONS_FORMAT,
+    source: EApplicationId.TRANSLATIONS_FORMATTER,
+    label: "Translation formatting",
   },
   [EJobKind.TRANSLATIONS_PARSE]: {
     kind: EJobKind.TRANSLATIONS_PARSE,
