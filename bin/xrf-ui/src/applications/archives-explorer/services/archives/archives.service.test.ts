@@ -61,7 +61,7 @@ describe("ArchivesService file selection", () => {
   });
 
   it("selects unsupported files without invoking the read command", async () => {
-    const descriptor = mockArchiveFileDescriptor({ extension: "ogf", name: "meshes\\actor.ogf" });
+    const descriptor = mockArchiveFileDescriptor({ name: "meshes\\actor.ogf" });
     const service: ArchivesService = mockArchivesService([descriptor]);
 
     await service.selectArchiveFile(descriptor);
@@ -126,7 +126,7 @@ describe("ArchivesService file selection", () => {
   });
 
   it("clears file state when the project closes", async () => {
-    const descriptor = mockArchiveFileDescriptor({ extension: "dds", name: "textures\\ui.dds" });
+    const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
     setMockInvokeResponses({ ["plugin:archives|close_project"]: undefined });
 
@@ -140,7 +140,7 @@ describe("ArchivesService file selection", () => {
   });
 
   it("clears file state when the project is reset", async () => {
-    const descriptor = mockArchiveFileDescriptor({ extension: "dds", name: "textures\\ui.dds" });
+    const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
     const service: ArchivesService = mockArchivesService([descriptor]);
 
     await service.selectArchiveFile(descriptor);
@@ -151,7 +151,7 @@ describe("ArchivesService file selection", () => {
   });
 
   it("preserves the open project and selection when closing fails", async () => {
-    const descriptor = mockArchiveFileDescriptor({ extension: "dds", name: "textures\\ui.dds" });
+    const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
     setMockInvokeResponses({
       ["plugin:archives|close_project"]: () => {

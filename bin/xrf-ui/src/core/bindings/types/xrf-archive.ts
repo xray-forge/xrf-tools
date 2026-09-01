@@ -1,17 +1,35 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/** One volume's parsed header: its entry table and the gamedata-relative root its `[header] entry_point` declares. */
+/**
+ * One volume of a set: where it is, where it mounts, and what it holds, counted at read time.
+ *
+ * The entries themselves live in [`crate::ArchiveProject::files`] and nowhere else. Retaining a per-volume copy cost
+ * one full duplicate of every descriptor in the set, and the only thing that ever read it back was these three
+ * totals.
+ */
 export type ArchiveDescriptor = {
   /** Volume file creation time in Unix milliseconds, when the filesystem reports one. */
   createdAt: number | null;
   /** Volume file modification time in Unix milliseconds, when the filesystem reports one. */
   modifiedAt: number | null;
-  /** Entries keyed by their authored name, exactly as the name table records them. */
-  files: { [key in string]: ArchiveFileDescriptor };
-  /** Root the volume unpacks under, from `[header] entry_point` with its alias stripped. */
+  /** Entries this volume's name table holds, before any merge shadows one of them. */
+  entries: number;
+  /**
+   * Root the volume unpacks under, from `[header] entry_point` with its alias stripped.
+   *
+   * The same allocation every entry of this volume carries as its `destination`.
+   */
   outputRootPath: string;
-  /** The volume file this descriptor was read from. */
+  /**
+   * The volume file this descriptor was read from.
+   *
+   * The same allocation every entry of this volume carries as its `source`.
+   */
   path: string;
+  /** Bytes this volume's entries occupy as stored, summed while its name table was read. */
+  sizeCompressed: number;
+  /** Bytes this volume's entries occupy once unpacked, summed while its name table was read. */
+  sizeReal: number;
 };
 
 /**
@@ -22,12 +40,19 @@ export type ArchiveDescriptor = {
 export type ArchiveFileDescriptor = {
   /** CRC32 of the unpacked payload, recorded by the packer and verified on decompression. */
   crc: number;
-  /** The volume file holding the payload. */
+  /**
+   * The volume file holding the payload.
+   *
+   * Shared with the volume's own descriptor rather than copied: a set has a handful of volumes and tens of thousands
+   * of entries, and every entry of one volume names the same file. Serializes as the path it points at.
+   */
   source: string;
-  /** Root the entry unpacks under, from its volume's header. */
+  /**
+   * Root the entry unpacks under, from its volume's header.
+   *
+   * Shared for the same reason as [`Self::source`].
+   */
   destination: string;
-  /** Lower-cased extension derived from [`Self::name`], empty when the name has none. */
-  extension: string;
   /**
    * Whether the entry names a directory rather than a file with bytes.
    *

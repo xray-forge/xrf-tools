@@ -17,7 +17,6 @@ export function mockArchiveFile(overrides: Partial<ArchiveFileDescriptor> = {}):
   return mockArchiveFileDescriptor({
     crc: 123456,
     destination: "gamedata\\config\\system.ltx",
-    extension: "ltx",
     name: "system.ltx",
     offset: 0,
     sizeCompressed: 512,
@@ -36,10 +35,12 @@ export function mockArchiveFile(overrides: Partial<ArchiveFileDescriptor> = {}):
 export function mockArchiveDescriptor(overrides: Partial<ArchiveDescriptor> = {}): ArchiveDescriptor {
   return {
     createdAt: null,
+    entries: 0,
     modifiedAt: null,
-    files: {},
     outputRootPath: "unpacked",
     path: "db\\db0",
+    sizeCompressed: 0,
+    sizeReal: 0,
     ...overrides,
   };
 }
@@ -60,7 +61,6 @@ export function mockArchivesProject(overrides: Partial<ArchiveProject> = {}): Ar
         destination: "gamedata\\config\\weapons\\wpn_ak74.ltx",
       }),
       "meshes\\dynamics\\weapons\\wpn_ak74.ogf": mockArchiveFile({
-        extension: "ogf",
         name: "wpn_ak74.ogf",
         destination: "gamedata\\meshes\\dynamics\\weapons\\wpn_ak74.ogf",
       }),

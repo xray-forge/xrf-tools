@@ -12,7 +12,6 @@ import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
-  extension: "xml",
   name: "configs\\gameplay\\dialogs.xml",
 });
 

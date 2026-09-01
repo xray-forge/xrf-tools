@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
@@ -82,7 +82,11 @@ impl ArchiveReader {
   /// Returns an error when the volume cannot be read, declares chunk or entry sizes its bytes cannot hold, or contains
   /// no file descriptors chunk. Malformed volumes are errors, never panics: a corrupt `.db` must become a skipped or
   /// reported mount rather than aborting the tool.
-  pub(crate) fn read_archive(&mut self) -> XrfResult<ArchiveDescriptor> {
+  /// Returns the volume alongside its entries, which the project merges and then owns alone.
+  ///
+  /// Separate halves rather than one nested value: a set's merged table is the only place an entry needs to live, and
+  /// handing the map over lets the project move it in instead of cloning out of a copy it would then retain.
+  pub(crate) fn read_archive(&mut self) -> XrfResult<(ArchiveDescriptor, HashMap<String, ArchiveFileDescriptor>)> {
     let header: ArchiveHeader = self.read_archive_header()?.ok_or_else(|| {
       XrfError::new_read_error(format!(
         "archive {} holds no file descriptors chunk",
@@ -90,24 +94,35 @@ impl ArchiveReader {
       ))
     })?;
     let metadata = self.file.metadata()?;
+
+    // Made once per volume, then handed to every entry as a refcount. Building them per entry is what used to put one
+    // full copy of the volume path in each of tens of thousands of descriptors.
+    let source: Arc<Path> = Arc::from(header.archive_path);
+    let destination: Arc<Path> = Arc::from(header.output_root_path);
+
     let files: HashMap<String, ArchiveFileDescriptor> = header
       .files
       .into_iter()
-      .map(|(name, descriptor)| {
-        (
-          name,
-          descriptor.with_archive_paths(&header.archive_path, &header.output_root_path),
-        )
-      })
+      .map(|(name, descriptor)| (name, descriptor.with_archive_paths(&source, &destination)))
       .collect();
 
-    Ok(ArchiveDescriptor {
-      created_at: Self::timestamp_millis(metadata.created().ok()),
+    // Summed here because this is the last point the volume's own entries are known: after the merge a later volume
+    // may shadow one of them, and a per-volume total counts what the volume holds rather than what survives.
+    let size_compressed: u64 = files.values().map(|file| u64::from(file.size_compressed)).sum();
+    let size_real: u64 = files.values().map(|file| u64::from(file.size_real)).sum();
+
+    Ok((
+      ArchiveDescriptor {
+        created_at: Self::timestamp_millis(metadata.created().ok()),
+        entries: files.len(),
+        modified_at: Self::timestamp_millis(metadata.modified().ok()),
+        output_root_path: destination,
+        path: source,
+        size_compressed,
+        size_real,
+      },
       files,
-      modified_at: Self::timestamp_millis(metadata.modified().ok()),
-      output_root_path: header.output_root_path,
-      path: header.archive_path,
-    })
+    ))
   }
 
   fn timestamp_millis(timestamp: Option<SystemTime>) -> Option<u64> {

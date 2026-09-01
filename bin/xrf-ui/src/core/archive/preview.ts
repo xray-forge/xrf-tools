@@ -1,4 +1,5 @@
 import { ArchiveFileDescriptor, ArchiveProjectReadPolicy } from "@/core/bindings/types/xrf-archive";
+import { getFileExtension } from "@/lib/path/extension";
 
 export type ArchivePreviewSupport =
   | { kind: "supported" }
@@ -15,7 +16,7 @@ export type ArchivePreviewSupport =
  * @returns Whether the descriptor names a model.
  */
 export function isArchiveModel(descriptor: ArchiveFileDescriptor): boolean {
-  return descriptor.extension.toLowerCase() === "ogf";
+  return getFileExtension(descriptor.name) === "ogf";
 }
 
 /**
@@ -26,7 +27,7 @@ export function isArchiveModel(descriptor: ArchiveFileDescriptor): boolean {
  * @returns Whether the descriptor extension supports audio preview.
  */
 export function isArchiveAudio(descriptor: ArchiveFileDescriptor, policy: ArchiveProjectReadPolicy): boolean {
-  const extension: string = descriptor.extension.toLowerCase();
+  const extension: string = getFileExtension(descriptor.name);
 
   return policy.audioExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
 }
@@ -42,7 +43,7 @@ export function isArchiveAudio(descriptor: ArchiveFileDescriptor, policy: Archiv
  * @returns Whether the descriptor extension supports image preview.
  */
 export function isArchiveImage(descriptor: ArchiveFileDescriptor, policy: ArchiveProjectReadPolicy): boolean {
-  const extension: string = descriptor.extension.toLowerCase();
+  const extension: string = getFileExtension(descriptor.name);
 
   return policy.imageExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
 }
@@ -77,8 +78,10 @@ export function getArchivePreviewSupport(
       : { kind: "image" };
   }
 
-  if (!policy.extensions.some((candidate: string) => candidate === descriptor.extension)) {
-    return { kind: "unsupported-extension", extension: descriptor.extension };
+  const extension: string = getFileExtension(descriptor.name);
+
+  if (!policy.extensions.some((candidate: string) => candidate === extension)) {
+    return { kind: "unsupported-extension", extension };
   }
 
   if (descriptor.sizeReal > policy.maximumSize) {

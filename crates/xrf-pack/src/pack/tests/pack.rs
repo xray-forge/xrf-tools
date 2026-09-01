@@ -5,8 +5,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAsset, XrayMountMode, XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
@@ -53,7 +54,7 @@ fn opening_one_volume_opens_only_that_volume() {
   let project: ArchiveProject = open(&first);
 
   assert_eq!(project.archives.len(), 1);
-  assert_eq!(project.archives[0].path, first);
+  assert_eq!(project.archives[0].path.as_ref(), first);
 
   // The root is what a caller mounts to read an entry back out. Left as the parent directory it would reach the
   // sibling volume too, and an entry both hold would answer out of whichever one sorted last.
@@ -383,7 +384,7 @@ fn carries_the_header_the_engine_mounts_by() {
   let project: ArchiveProject = open(&destination);
 
   // The reader takes the mount root out of that header, so reading it back proves the chunk landed.
-  assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
+  assert_eq!(project.archives[0].output_root_path.as_ref(), Path::new("gamedata\\"));
 }
 
 #[test]
@@ -512,4 +513,43 @@ fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
       .exists(),
     "and writes nothing beside it"
   );
+}
+
+/// Every entry of a volume points at that volume's own path allocation rather than carrying a copy of it.
+///
+/// This is the property the index's size rests on: a set has a handful of volumes and tens of thousands of entries,
+/// so a copy per entry is most of what an opened project costs. A clone slipping back into the read path would fail
+/// no behavioural test - it would only make the project quietly expensive again - so the sharing is asserted here.
+#[test]
+fn entries_share_their_volume_path_allocation() {
+  let destination: PathBuf = pack_volume(
+    "entries_share_their_volume_path_allocation",
+    "shared",
+    &[
+      ("configs\\system.ltx", CONFIG),
+      ("configs\\weapons\\w_ak74.ltx", CONFIG),
+      ("textures\\wall.dds", BINARY),
+    ],
+  );
+  let project: ArchiveProject = open(&destination);
+  let volume: &ArchiveDescriptor = project.archives.first().expect("one volume");
+
+  assert_eq!(project.archives.len(), 1);
+  assert!(
+    project.files.len() >= 3,
+    "the entries and their directory records are read"
+  );
+
+  for descriptor in project.files.values() {
+    assert!(
+      Arc::ptr_eq(&descriptor.source, &volume.path),
+      "'{}' owns a copy of its volume path instead of sharing it",
+      descriptor.name
+    );
+    assert!(
+      Arc::ptr_eq(&descriptor.destination, &volume.output_root_path),
+      "'{}' owns a copy of its unpack root instead of sharing it",
+      descriptor.name
+    );
+  }
 }

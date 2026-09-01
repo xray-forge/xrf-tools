@@ -62,7 +62,7 @@ impl GenericCommand for InfoCommand {
           output,
           "  {}: {} entry(s), {compressed} compressed, {unpacked} unpacked, root {}",
           format_path(&archive.path),
-          archive.files.len(),
+          archive.entries,
           format_path(&archive.output_root_path),
         );
       }

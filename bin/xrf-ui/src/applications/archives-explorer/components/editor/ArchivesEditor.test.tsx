@@ -18,14 +18,12 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 const TEXT_FILE = mockArchiveFileDescriptor({ name: "readme.ltx", sizeReal: 1024, sizeCompressed: 1024 });
 
 const BINARY_FILE = mockArchiveFileDescriptor({
-  extension: "dds",
   name: "texture.dds",
   sizeReal: 2048,
   sizeCompressed: 2048,
 });
 
 const MESH_FILE = mockArchiveFileDescriptor({
-  extension: "omf",
   name: "actor.omf",
   sizeReal: 4096,
   sizeCompressed: 4096,

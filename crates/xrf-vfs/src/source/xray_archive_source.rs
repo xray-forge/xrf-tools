@@ -91,7 +91,7 @@ impl XrayArchiveSource {
       .archives
       .iter()
       .enumerate()
-      .map(|(rank, archive)| (archive.path.as_path(), rank))
+      .map(|(rank, archive)| (archive.path.as_ref(), rank))
       .collect();
 
     let mut entries: HashMap<String, String> = HashMap::with_capacity(project.files.len());
@@ -142,7 +142,7 @@ impl XrayArchiveSource {
 
   /// Which volume of the set holds an entry, as a position in merge order.
   fn get_rank_of(ranks: &HashMap<&Path, usize>, descriptor: &ArchiveFileDescriptor) -> usize {
-    ranks.get(descriptor.source.as_path()).copied().unwrap_or_default()
+    ranks.get(descriptor.source.as_ref()).copied().unwrap_or_default()
   }
 
   /// What decides between two entries folding to one identity: volume order first, then the authored name.
@@ -162,7 +162,7 @@ impl XrayArchiveSource {
       volume: project
         .files
         .get(name)
-        .map(|descriptor| descriptor.source.clone())
+        .map(|descriptor| descriptor.source.to_path_buf())
         .unwrap_or_default(),
     }
   }
@@ -268,8 +268,8 @@ impl XrayAssetSource for XrayArchiveSource {
 
 #[cfg(test)]
 mod tests {
-  use std::collections::HashMap;
   use std::path::{Path, PathBuf};
+  use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
 
@@ -291,10 +291,12 @@ mod tests {
         .iter()
         .map(|volume| ArchiveDescriptor {
           created_at: None,
-          files: HashMap::new(),
+          entries: 0,
           modified_at: None,
-          output_root_path: PathBuf::from("gamedata"),
-          path: PathBuf::from(volume),
+          output_root_path: Arc::from(Path::new("gamedata")),
+          path: Arc::from(Path::new(*volume)),
+          size_compressed: 0,
+          size_real: 0,
         })
         .collect(),
       files: files
@@ -303,7 +305,7 @@ mod tests {
           (
             (*name).to_owned(),
             ArchiveFileDescriptor::new(0, (*name).to_owned(), 0, *size, *size)
-              .with_archive_paths(Path::new(volume), Path::new("gamedata")),
+              .with_archive_paths(&Arc::from(Path::new(*volume)), &Arc::from(Path::new("gamedata"))),
           )
         })
         .collect(),

@@ -34,7 +34,6 @@ export function mockArchiveFileDescriptor(overrides: Partial<ArchiveFileDescript
   const descriptor: ArchiveFileDescriptor = {
     crc: 0x12345678,
     destination: "gamedata",
-    extension: "ltx",
     isDirectory: false,
     name: "configs\\system.ltx",
     offset: 4096,
@@ -62,7 +61,6 @@ export function mockArchivesProject(files?: Array<ArchiveFileDescriptor>): Archi
   const descriptors: Array<ArchiveFileDescriptor> = files ?? [
     mockArchiveFileDescriptor(),
     mockArchiveFileDescriptor({
-      extension: "script",
       name: "scripts\\actor.script",
       sizeReal: 1024,
       sizeCompressed: 1024,
@@ -70,10 +68,12 @@ export function mockArchivesProject(files?: Array<ArchiveFileDescriptor>): Archi
   ];
   const archive: ArchiveDescriptor = {
     createdAt: null,
+    entries: 0,
     modifiedAt: null,
-    files: {},
     outputRootPath: "gamedata",
     path: "C:\\game\\database\\configs.db0",
+    sizeCompressed: 0,
+    sizeReal: 0,
   };
 
   return {

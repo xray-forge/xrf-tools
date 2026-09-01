@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Error as IoError, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crc32fast::hash;
 use xrf_archive::ArchiveFileDescriptor;
@@ -63,7 +64,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
       entry.contents.len() as u32,
     );
 
-    descriptor.source = source.clone();
+    descriptor.source = Arc::from(source.as_path());
 
     files.insert(entry.name.into(), descriptor);
   }

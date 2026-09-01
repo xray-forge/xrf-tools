@@ -384,6 +384,7 @@ impl ArchiveUnpacker {
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
+  use std::sync::Arc;
 
   use xrf_archive::ArchiveFileDescriptor;
 
@@ -392,7 +393,10 @@ mod tests {
   #[test]
   fn an_entry_lands_under_its_volumes_root_as_a_real_tree() {
     let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, String::from("configs\\system.ltx"), 0, 0, 0)
-      .with_archive_paths(Path::new("textures.db0"), Path::new("gamedata\\"));
+      .with_archive_paths(
+        &Arc::from(Path::new("textures.db0")),
+        &Arc::from(Path::new("gamedata\\")),
+      );
 
     assert_eq!(
       ArchiveUnpacker::build_relative_path(&descriptor).expect("safe archive path"),

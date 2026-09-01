@@ -133,7 +133,12 @@ impl ArchiveProject {
     for volume in &volumes {
       log::info!("Reading archive file: {}", format_path(volume));
 
-      archives.push(ArchiveReader::from_path(volume)?.read_archive()?);
+      let (descriptor, entries) = ArchiveReader::from_path(volume)?.read_archive()?;
+
+      // Moved in, not cloned out: volumes are read in merge order, so a later one overwrites the name a earlier one
+      // claimed, and nothing retains a second copy of what it inserted.
+      files.extend(entries);
+      archives.push(descriptor);
     }
 
     if archives.is_empty() {
@@ -141,12 +146,6 @@ impl ArchiveProject {
         "Unable to read archives at location {}",
         format_path(path)
       )));
-    }
-
-    for archive in &archives {
-      for (name, descriptor) in &archive.files {
-        files.insert(name.clone(), descriptor.clone());
-      }
     }
 
     // A named volume is its own root. Its parent would be a wider path than the project, and mounting that to read an

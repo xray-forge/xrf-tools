@@ -82,7 +82,7 @@ pub fn write_descriptor_contents(target: &mut File, descriptor: &ArchiveFileDesc
 
 /// Open the volume holding an entry, positioned at its payload.
 fn open_at_descriptor(descriptor: &ArchiveFileDescriptor) -> XrfResult<File> {
-  let mut source: File = File::open(descriptor.source.as_path())?;
+  let mut source: File = File::open(&descriptor.source)?;
   let volume_size: u64 = source.metadata()?.len();
   let end: u64 = u64::from(descriptor.offset) + u64::from(descriptor.size_compressed);
 

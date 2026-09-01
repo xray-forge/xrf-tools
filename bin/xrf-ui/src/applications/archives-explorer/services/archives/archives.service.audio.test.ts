@@ -11,13 +11,12 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 import { createLoadable } from "@/lib/loadable";
 
 const SOUND: ArchiveFileDescriptor = mockArchiveFileDescriptor({
-  extension: "ogg",
   name: "sounds\\ambient\\wind.ogg",
   sizeCompressed: 4096,
   sizeReal: 8192,
 });
 
-const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ extension: "dds", name: "textures\\ui.dds" });
+const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
 const DESCRIPTOR: AudioDescriptor = {
   channels: 2,

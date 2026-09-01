@@ -9,13 +9,13 @@ const READ_POLICY: ArchiveProjectReadPolicy = mockArchiveReadPolicy();
 describe("archive preview support", () => {
   it.each(READ_POLICY.extensions)("accepts uncompressed .%s files within the backend limit", (extension: string) => {
     expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ extension, name: `preview.${extension}` }), READ_POLICY)
+      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: `preview.${extension}` }), READ_POLICY)
     ).toEqual({ kind: "supported" });
   });
 
   it("accepts the normalized extension regardless of filename casing", () => {
     expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ extension: "script", name: "actor.SCRIPT" }), READ_POLICY)
+      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "actor.SCRIPT" }), READ_POLICY)
     ).toEqual({ kind: "supported" });
   });
 
@@ -25,7 +25,6 @@ describe("archive preview support", () => {
     expect(
       getArchivePreviewSupport(
         mockArchiveFileDescriptor({
-          extension: "ogf",
           name: "meshes\\actor.ogf",
           sizeReal: READ_POLICY.maximumSize + 1,
         }),
@@ -36,7 +35,7 @@ describe("archive preview support", () => {
 
   it("identifies each unsupported reason before a backend read", () => {
     expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ extension: "omf", name: "meshes\\actor.omf" }), READ_POLICY)
+      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "meshes\\actor.omf" }), READ_POLICY)
     ).toEqual({
       kind: "unsupported-extension",
       extension: "omf",
@@ -52,22 +51,22 @@ describe("archive preview support", () => {
   it("routes textures to the image path, compressed or not", () => {
     expect(
       getArchivePreviewSupport(
-        mockArchiveFileDescriptor({ extension: "dds", name: "textures\\ui.dds", sizeReal: 2048, sizeCompressed: 512 }),
+        mockArchiveFileDescriptor({ name: "textures\\ui.dds", sizeReal: 2048, sizeCompressed: 512 }),
         READ_POLICY
       )
     ).toEqual({ kind: "image" });
 
     expect(
       getArchivePreviewSupport(
-        mockArchiveFileDescriptor({ extension: "dds", sizeReal: READ_POLICY.maximumImageSize + 1 }),
+        mockArchiveFileDescriptor({ name: "textures\\ui.dds", sizeReal: READ_POLICY.maximumImageSize + 1 }),
         READ_POLICY
       )
     ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumImageSize });
   });
 
-  it("uses the extension supplied by the archive descriptor", () => {
+  it("reads the extension from the entry name rather than from a directory above it", () => {
     expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ extension: "script", name: "actor.bin" }), READ_POLICY)
+      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "configs\\v1.5\\system.ltx" }), READ_POLICY)
     ).toEqual({ kind: "supported" });
   });
 
@@ -79,7 +78,7 @@ describe("archive preview support", () => {
 
     expect(
       getArchivePreviewSupport(
-        mockArchiveFileDescriptor({ extension: "xml", name: "preview.xml", sizeReal: 1024, sizeCompressed: 512 }),
+        mockArchiveFileDescriptor({ name: "preview.xml", sizeReal: 1024, sizeCompressed: 512 }),
         policy
       )
     ).toEqual({ kind: "supported" });

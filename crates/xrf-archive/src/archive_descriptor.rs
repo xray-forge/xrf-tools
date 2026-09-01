@@ -1,11 +1,13 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::archive_file_descriptor::ArchiveFileDescriptor;
-
-/// One volume's parsed header: its entry table and the gamedata-relative root its `[header] entry_point` declares.
+/// One volume of a set: where it is, where it mounts, and what it holds, counted at read time.
+///
+/// The entries themselves live in [`crate::ArchiveProject::files`] and nowhere else. Retaining a per-volume copy cost
+/// one full duplicate of every descriptor in the set, and the only thing that ever read it back was these three
+/// totals.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,12 +16,20 @@ pub struct ArchiveDescriptor {
   pub created_at: Option<u64>,
   /// Volume file modification time in Unix milliseconds, when the filesystem reports one.
   pub modified_at: Option<u64>,
-  /// Entries keyed by their authored name, exactly as the name table records them.
-  pub files: HashMap<String, ArchiveFileDescriptor>,
+  /// Entries this volume's name table holds, before any merge shadows one of them.
+  pub entries: usize,
   /// Root the volume unpacks under, from `[header] entry_point` with its alias stripped.
-  pub output_root_path: PathBuf,
+  ///
+  /// The same allocation every entry of this volume carries as its `destination`.
+  pub output_root_path: Arc<Path>,
   /// The volume file this descriptor was read from.
-  pub path: PathBuf,
+  ///
+  /// The same allocation every entry of this volume carries as its `source`.
+  pub path: Arc<Path>,
+  /// Bytes this volume's entries occupy as stored, summed while its name table was read.
+  pub size_compressed: u64,
+  /// Bytes this volume's entries occupy once unpacked, summed while its name table was read.
+  pub size_real: u64,
 }
 
 impl ArchiveDescriptor {
@@ -41,11 +51,11 @@ impl ArchiveDescriptor {
 
   /// Bytes this volume's entries occupy once unpacked.
   pub fn get_real_size(&self) -> u64 {
-    self.files.values().map(|file| u64::from(file.size_real)).sum()
+    self.size_real
   }
 
   /// Bytes this volume's entries occupy as stored.
   pub fn get_compressed_size(&self) -> u64 {
-    self.files.values().map(|file| u64::from(file.size_compressed)).sum()
+    self.size_compressed
   }
 }

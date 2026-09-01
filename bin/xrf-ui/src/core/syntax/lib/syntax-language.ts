@@ -1,4 +1,5 @@
 import { ESyntaxLanguage } from "@/core/syntax/lib/syntax.types";
+import { getFileExtension } from "@/lib/path/extension";
 
 /**
  * Extension to grammar, for the file kinds a game archive holds.
@@ -34,13 +35,5 @@ const SYNTAX_LANGUAGE_BY_EXTENSION: Record<string, ESyntaxLanguage> = {
  * @returns The grammar to colour it with, or `PLAIN` when its extension means nothing here.
  */
 export function getSyntaxLanguage(filename: string): ESyntaxLanguage {
-  // Reduced to the last segment first, so a dot in a directory name is not read as the extension.
-  const name: string = filename.slice(Math.max(filename.lastIndexOf("\\"), filename.lastIndexOf("/")) + 1);
-  const dot: number = name.lastIndexOf(".");
-
-  if (dot < 1) {
-    return ESyntaxLanguage.PLAIN;
-  }
-
-  return SYNTAX_LANGUAGE_BY_EXTENSION[name.slice(dot + 1).toLowerCase()] ?? ESyntaxLanguage.PLAIN;
+  return SYNTAX_LANGUAGE_BY_EXTENSION[getFileExtension(filename)] ?? ESyntaxLanguage.PLAIN;
 }

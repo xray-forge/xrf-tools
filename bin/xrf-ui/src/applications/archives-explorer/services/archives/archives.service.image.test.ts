@@ -11,7 +11,6 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 import { createLoadable } from "@/lib/loadable";
 
 const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
-  extension: "dds",
   name: "textures\\ui\\wall.dds",
   sizeCompressed: 512,
   sizeReal: 2048,

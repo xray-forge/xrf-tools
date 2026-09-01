@@ -8,6 +8,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { Logger, useLogger } from "@/lib/logging";
+import { getFileExtension } from "@/lib/path/extension";
 import { Nullable } from "@/lib/types/general";
 
 export interface IArchiveFileExtractActionProps {
@@ -28,12 +29,11 @@ export function ArchiveFileExtractAction({ descriptor }: IArchiveFileExtractActi
     // The archived name is a full logical path; only its leaf is a file name.
     const suggested: string = splitLogicalPath(descriptor.name).name;
 
+    const extension: string = getFileExtension(descriptor.name);
     const destination: Nullable<string> = await dialog.save({
       title: "Extract file",
       defaultPath: suggested,
-      filters: descriptor.extension
-        ? [{ name: `${descriptor.extension.toUpperCase()} file`, extensions: [descriptor.extension] }]
-        : undefined,
+      filters: extension ? [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }] : undefined,
     });
 
     if (!destination) {
