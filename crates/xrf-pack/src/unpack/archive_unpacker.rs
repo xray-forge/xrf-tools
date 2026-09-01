@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::num::NonZeroUsize;
@@ -77,11 +78,13 @@ impl ArchiveUnpacker {
     let job = &options.job;
     let tally: UnpackTally = UnpackTally::default();
 
-    {
+    destination.create_root()?;
+
+    let prepared: HashMap<PathBuf, PathBuf> = {
       let preparing: JobScope = job.enter(UNPACK_PHASE_PREPARE, None);
 
-      Self::unpack_dirs(project, &destination, &preparing)?;
-    }
+      Self::unpack_dirs(project, &destination, &preparing)?
+    };
 
     let prepared_at: Duration = job.elapsed();
 
@@ -97,7 +100,7 @@ impl ArchiveUnpacker {
           // A directory row carries no payload, and the tree it names was created during preparation. It is counted
           // anyway, so the progress total stays the entry count the project reports holding.
           if !descriptor.is_directory {
-            Self::unpack_file(&destination, descriptor)?;
+            Self::unpack_file(&destination, &prepared, descriptor)?;
 
             tally.files.fetch_add(1, Ordering::Relaxed);
             tally
@@ -169,6 +172,8 @@ impl ArchiveUnpacker {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
     let destination: RootedDestination = RootedDestination::new(destination.as_ref());
     let job = &options.job;
+
+    destination.create_root()?;
 
     // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
     // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
@@ -299,14 +304,39 @@ impl ArchiveUnpacker {
     )
   }
 
-  fn unpack_file(destination: &RootedDestination, descriptor: &ArchiveFileDescriptor) -> XrfResult {
-    write_descriptor_contents(
-      &mut destination.create_file(&Self::build_relative_path(descriptor)?)?,
-      descriptor,
-    )
+  /// Writes one entry, reusing the parent directory the preparation phase already verified.
+  ///
+  /// `prepared` holds every directory the entries named, so the lookup normally hits and the walk down is skipped. The
+  /// miss path is kept because it costs nothing and is the only thing standing between a future change in what
+  /// preparation collects and an entry that never reaches disk.
+  fn unpack_file(
+    destination: &RootedDestination,
+    prepared: &HashMap<PathBuf, PathBuf>,
+    descriptor: &ArchiveFileDescriptor,
+  ) -> XrfResult {
+    let relative: PathBuf = Self::build_relative_path(descriptor)?;
+    let verified: Option<(&PathBuf, &OsStr)> = relative
+      .parent()
+      .and_then(|parent| prepared.get(parent))
+      .zip(relative.file_name());
+
+    let mut target: File = match verified {
+      Some((parent, name)) => destination.create_file_in(parent, name)?,
+      None => destination.create_file(&relative)?,
+    };
+
+    write_descriptor_contents(&mut target, descriptor)
   }
 
-  fn unpack_dirs(project: &ArchiveProject, destination: &RootedDestination, preparing: &JobScope) -> XrfResult {
+  /// Creates every directory the entries need, and returns where each one landed.
+  ///
+  /// The map is what stops the write phase walking the same components again for every file in a directory: it holds
+  /// one verified host path per relative directory, keyed the way [`Self::build_relative_path`] spells it.
+  fn unpack_dirs(
+    project: &ArchiveProject,
+    destination: &RootedDestination,
+    preparing: &JobScope,
+  ) -> XrfResult<HashMap<PathBuf, PathBuf>> {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
     for descriptor in project.files.values() {
@@ -323,13 +353,16 @@ impl ArchiveUnpacker {
       }
     }
 
-    for path in set {
-      destination.create_directory(&path)?;
+    let mut created: HashMap<PathBuf, PathBuf> = HashMap::with_capacity(set.len());
 
+    for path in set {
+      let host: PathBuf = destination.create_directory(&path)?;
+
+      created.insert(path, host);
       preparing.advance();
     }
 
-    Ok(())
+    Ok(created)
   }
 
   /// Where one archived entry lands, relative to a destination root.

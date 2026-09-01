@@ -1,5 +1,6 @@
 //! The boundary bulk extraction writes through: one destination root that only ever grows downwards.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::{File, Metadata};
 use std::io::ErrorKind;
@@ -29,6 +30,20 @@ impl RootedDestination {
     Self { root: root.into() }
   }
 
+  /// Creates the root itself, once, before anything is written below it.
+  ///
+  /// Separate from [`Self::create_directory`] because that one runs per entry, and creating a directory that already
+  /// exists is still a syscall. The root is not inspected for links, for the reason the type's own documentation gives.
+  ///
+  /// # Errors
+  ///
+  /// Returns an IO error when the root cannot be created.
+  pub(crate) fn create_root(&self) -> XrfResult {
+    fs::create_dir_all(&self.root)?;
+
+    Ok(())
+  }
+
   pub(crate) fn get_root(&self) -> &Path {
     &self.root
   }
@@ -42,8 +57,6 @@ impl RootedDestination {
   /// Returns an invalid error naming the component that is a link or is not a directory.
   pub(crate) fn create_directory(&self, relative: &Path) -> XrfResult<PathBuf> {
     let mut path: PathBuf = self.root.clone();
-
-    fs::create_dir_all(&path)?;
 
     for component in relative.components() {
       path.push(Self::descend(component, relative)?);
@@ -67,9 +80,29 @@ impl RootedDestination {
       )));
     };
 
-    let path: PathBuf = self
-      .create_directory(relative.parent().unwrap_or(Path::new("")))?
-      .join(name);
+    self.create_file_in(
+      &self.create_directory(relative.parent().unwrap_or(Path::new("")))?,
+      name,
+    )
+  }
+
+  /// Opens `name` inside a parent directory this run already walked down to.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error when `parent` is not below the root, or when a link already occupies the file's name.
+  pub(crate) fn create_file_in(&self, parent: &Path, name: &OsStr) -> XrfResult<File> {
+    // Lexical, and no syscall: the guarantee this type exists for is that nothing writes outside the root, so a parent
+    // reaching it from anywhere else is refused rather than trusted.
+    if !parent.starts_with(&self.root) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Refusing to write into '{}': it is not below the destination root '{}'",
+        format_path(parent),
+        format_path(&self.root)
+      )));
+    }
+
+    let path: PathBuf = parent.join(name);
 
     // Overwriting a file already there is ordinary, following a link that took its place is not.
     match fs::symlink_metadata(&path) {

@@ -10,7 +10,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
 
+use std::ffi::OsStr;
+
+use xrf_error::XrfError;
+
 use super::fixtures::{Entry, create_project, create_temporary_directory, link_directory, link_file};
+use crate::unpack::rooted_destination::RootedDestination;
 use crate::{ArchiveUnpackOptions, ArchiveUnpacker};
 
 const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
@@ -146,4 +151,38 @@ fn unpack_writes_into_a_destination_tree_that_already_exists() {
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
     "[section]"
   );
+}
+
+/// A parent handed in from outside the root is refused rather than trusted.
+///
+/// `create_file_in` skips the walk down because its caller already verified the parent this run. That shortcut is only
+/// sound while the type still owns containment, so the one thing it must not do is accept any path a caller offers.
+#[test]
+fn create_file_in_refuses_a_parent_outside_the_root() {
+  let directory: PathBuf = create_temporary_directory("rooted-parent-outside");
+  let root: PathBuf = directory.join("out");
+  let outside: PathBuf = directory.join("elsewhere");
+
+  fs::create_dir_all(&outside).expect("a directory beside the root");
+
+  let destination: RootedDestination = RootedDestination::new(&root);
+
+  destination.create_root().expect("the root is created once");
+
+  let error: XrfError = destination
+    .create_file_in(&outside, OsStr::new("system.ltx"))
+    .expect_err("a parent outside the root is refused");
+
+  assert!(matches!(error, XrfError::Invalid { .. }), "{error}");
+  assert!(
+    !outside.join("system.ltx").exists(),
+    "a refused parent must not have been written into"
+  );
+
+  // The root itself is a parent this type owns, so the same call through it succeeds.
+  destination
+    .create_file_in(&root, OsStr::new("system.ltx"))
+    .expect("a parent below the root is accepted");
+
+  assert!(root.join("system.ltx").is_file());
 }

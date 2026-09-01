@@ -24,11 +24,16 @@ xrf-lzhuf = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 # Reading a serialized configuration back is how the wire contract's compatibility is checked.
 serde_json = { workspace = true }
 # Only the pack-then-mount integration test reads volumes back through the VFS.
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }
+
+[[bench]]
+name = "archive_unpack"
+harness = false
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
