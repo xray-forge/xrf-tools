@@ -85,6 +85,8 @@ Run the complete local check suite before contributing a change:
 cargo make verify
 ```
 
+CLI e2e tests live in the [xrf-tools-e2e repository](https://github.com/xray-forge/xrf-tools-e2e).
+
 ## Documentation and support
 
 - [XRF Book](https://xray-forge.github.io/xrf-book/tools/tools.html) — guides for the application and CLI.
