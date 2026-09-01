@@ -3,10 +3,10 @@
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
-  ProjectBuildLanguageSummary,
-  ProjectParseCensus,
-  ProjectVerifyLanguageSummary,
+  TranslationBuildLanguageSummary,
+  TranslationParseCensus,
   TranslationProjectDescriptor,
+  TranslationVerifyLanguageSummary,
 } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
@@ -223,7 +223,7 @@ export type TranslationBuildSummary = {
   sources: number;
   /** String tables written, across every language. */
   files: number;
-  languages: Array<ProjectBuildLanguageSummary>;
+  languages: Array<TranslationBuildLanguageSummary>;
 };
 
 /** One thing worth reporting about a file the run met. */
@@ -265,7 +265,7 @@ export type TranslationParseSummary = {
   language: string;
   /** Whether the run computed its answer without writing it. */
   isDryRun: boolean;
-  census: ProjectParseCensus;
+  census: TranslationParseCensus;
   findings: Array<TranslationParseFinding>;
 };
 
@@ -290,7 +290,7 @@ export type TranslationVerifySummary = {
   checked: number;
   /** Ids with no text, counted once per language that lacks them. */
   missing: number;
-  languages: Array<ProjectVerifyLanguageSummary>;
+  languages: Array<TranslationVerifyLanguageSummary>;
 };
 
 /**

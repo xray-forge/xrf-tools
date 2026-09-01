@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_translation::{ProjectParseOptions, ProjectParseResult, TranslationLanguage, parse_translations};
+use xrf_translation::{TranslationLanguage, TranslationParseOptions, TranslationParseResult, TranslationParser};
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::core::command_context::CommandContext;
@@ -115,7 +115,7 @@ impl GenericCommand for ParseCommand {
     // installation exactly as the desktop app does it.
     let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
 
-    let options: ProjectParseOptions = ProjectParseOptions {
+    let options: TranslationParseOptions = TranslationParseOptions {
       job: new_logging_job(),
       output: output.clone(),
       roots,
@@ -136,7 +136,7 @@ impl GenericCommand for ParseCommand {
     };
 
     let is_strict: bool = matches.get_flag("strict");
-    let result: ProjectParseResult = parse_translations(&options)?;
+    let result: TranslationParseResult = TranslationParser::parse(&options)?;
 
     Self::print_census(&output, &result);
 
@@ -152,7 +152,7 @@ impl GenericCommand for ParseCommand {
 }
 
 impl ParseCommand {
-  fn print_census(output: &OutputOptions, result: &ProjectParseResult) {
+  fn print_census(output: &OutputOptions, result: &TranslationParseResult) {
     let census = &result.census;
 
     xrf_output::info!(

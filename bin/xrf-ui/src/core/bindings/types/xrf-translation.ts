@@ -4,7 +4,7 @@ import { JobOutcome } from "@/core/bindings/types/xrf-job";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** What one language's build produced. */
-export type ProjectBuildLanguageSummary = {
+export type TranslationBuildLanguageSummary = {
   language: string;
   /** String tables written for this language, one per source. */
   files: number;
@@ -15,82 +15,6 @@ export type ProjectBuildLanguageSummary = {
    * this counts what the tables hold rather than what was translated.
    */
   entries: number;
-};
-
-/**
- * What one formatting run judged and changed.
- *
- * Field for field what `LtxProjectFormatResult` reports, so the two `format --check` commands answer a consumer in one
- * shape. Its own type rather than that one: a crate deposits its own result, and reaching into `xrf-ltx` for a shape
- * would tie a translation run's wire contract to an unrelated format's.
- *
- * No findings array, unlike this crate's parse and verify results. A formatter's answer is the list of files to fix,
- * and a finding would spend a subject, a rule id and a message carrying one bit each over a single rule.
- */
-export type ProjectFormatResult = {
-  /**
-   * Whether the run reached the end of the set or was stopped between files.
-   *
-   * A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
-   * running it again resolves. Nothing is removed and nothing is half-written.
-   */
-  outcome: JobOutcome;
-  /** Everything the run took, measured from when its caller created the job handle. */
-  duration: number;
-  /**
-   * How much of `duration` had already passed when the per-file work began.
-   *
-   * Walking the paths and selecting sources out of them happens before a single file is read, and on a cold filesystem
-   * or a large tree that is most of the wait. Named rather than folded away, so the split stays readable.
-   */
-  startupDuration: number;
-  /** Sources that were not canonical: rewritten by a normal run, reported by a check. */
-  invalidFiles: number;
-  /** Which ones, in selection order. */
-  toFormat: Array<string>;
-  totalFiles: number;
-  validFiles: number;
-};
-
-/** How much one import run moved. */
-export type ProjectParseCensus = {
-  /** String tables read out of the scope. */
-  filesRead: number;
-  /** JSON sources created because nothing was there yet. */
-  filesCreated: number;
-  /** JSON sources rewritten because merging changed something in them. */
-  filesUpdated: number;
-  /** JSON sources left alone because merging changed nothing. */
-  filesUnchanged: number;
-  /** Files skipped without being read, because they are not string tables or hold no entries. */
-  filesSkipped: number;
-  /** Entries read out of the XML, before any merging. */
-  entriesRead: number;
-  /** Ids this run introduced to their file. */
-  entriesInserted: number;
-  /** Placeholders this run replaced with text. */
-  entriesFilled: number;
-  /** Ids whose text already matched what was read. */
-  entriesUnchanged: number;
-  /**
-   * Ids whose existing text differed from what was read.
-   *
-   * Kept unless the run was told to overwrite, in which case this counts what was replaced.
-   */
-  entriesConflicted: number;
-  /** `null` placeholders added for languages a file carries but a record did not. */
-  placeholdersAdded: number;
-};
-
-/** What one language is missing from one file. */
-export type ProjectVerifyLanguageSummary = {
-  /** The source this counts, as the project addresses it. */
-  file: string;
-  language: string;
-  /** Ids the file holds, which is the same for every language of that file. */
-  checked: number;
-  /** Ids with no text for this language, counting an explicit `null` as missing. */
-  missing: number;
 };
 
 /**
@@ -130,6 +54,71 @@ export type TranslationFinding = {
   rule: string;
   subject: string | null;
   message: string;
+};
+
+/**
+ * What one formatting run judged and changed.
+ *
+ * Field for field what `LtxProjectFormatResult` reports, so the two `format --check` commands answer a consumer in one
+ * shape. Its own type rather than that one: a crate deposits its own result, and reaching into `xrf-ltx` for a shape
+ * would tie a translation run's wire contract to an unrelated format's.
+ *
+ * No findings array, unlike this crate's parse and verify results. A formatter's answer is the list of files to fix,
+ * and a finding would spend a subject, a rule id and a message carrying one bit each over a single rule.
+ */
+export type TranslationFormatResult = {
+  /**
+   * Whether the run reached the end of the set or was stopped between files.
+   *
+   * A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
+   * running it again resolves. Nothing is removed and nothing is half-written.
+   */
+  outcome: JobOutcome;
+  /** Everything the run took, measured from when its caller created the job handle. */
+  duration: number;
+  /**
+   * How much of `duration` had already passed when the per-file work began.
+   *
+   * Walking the paths and selecting sources out of them happens before a single file is read, and on a cold filesystem
+   * or a large tree that is most of the wait. Named rather than folded away, so the split stays readable.
+   */
+  startupDuration: number;
+  /** Sources that were not canonical: rewritten by a normal run, reported by a check. */
+  invalidFiles: number;
+  /** Which ones, in selection order. */
+  toFormat: Array<string>;
+  totalFiles: number;
+  validFiles: number;
+};
+
+/** How much one import run moved. */
+export type TranslationParseCensus = {
+  /** String tables read out of the scope. */
+  filesRead: number;
+  /** JSON sources created because nothing was there yet. */
+  filesCreated: number;
+  /** JSON sources rewritten because merging changed something in them. */
+  filesUpdated: number;
+  /** JSON sources left alone because merging changed nothing. */
+  filesUnchanged: number;
+  /** Files skipped without being read, because they are not string tables or hold no entries. */
+  filesSkipped: number;
+  /** Entries read out of the XML, before any merging. */
+  entriesRead: number;
+  /** Ids this run introduced to their file. */
+  entriesInserted: number;
+  /** Placeholders this run replaced with text. */
+  entriesFilled: number;
+  /** Ids whose text already matched what was read. */
+  entriesUnchanged: number;
+  /**
+   * Ids whose existing text differed from what was read.
+   *
+   * Kept unless the run was told to overwrite, in which case this counts what was replaced.
+   */
+  entriesConflicted: number;
+  /** `null` placeholders added for languages a file carries but a record did not. */
+  placeholdersAdded: number;
 };
 
 /** An opened translations root, whichever layout it turned out to have. */
@@ -188,3 +177,14 @@ export type TranslationSource = {
 
 /** One translation's text, which is a single line or a run of them joined on build. */
 export type TranslationVariant = string | Array<string>;
+
+/** What one language is missing from one file. */
+export type TranslationVerifyLanguageSummary = {
+  /** The source this counts, as the project addresses it. */
+  file: string;
+  language: string;
+  /** Ids the file holds, which is the same for every language of that file. */
+  checked: number;
+  /** Ids with no text for this language, counting an explicit `null` as missing. */
+  missing: number;
+};

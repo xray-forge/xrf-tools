@@ -1,8 +1,8 @@
-//! Filling translation sources with a placeholder for every language, so gaps are visible.
+//! Scaffolding every language a project ships into the sources that lack them.
 
-pub(crate) mod options;
-pub(crate) mod result;
-pub(crate) mod run;
+pub(crate) mod translation_initialize_options;
+pub(crate) mod translation_initialize_result;
+pub(crate) mod translation_initializer;
 
 #[cfg(test)]
 mod tests;

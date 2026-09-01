@@ -5,26 +5,20 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 use xrf_utils::LineEndings;
 
-use crate::project::format::options::ProjectFormatOptions;
-use crate::project::format::result::ProjectFormatResult;
-use crate::project::format::run::format_sources;
+use crate::project::format::translation_format_options::TranslationFormatOptions;
+use crate::project::format::translation_format_result::TranslationFormatResult;
+use crate::project::format::translation_formatter::TranslationFormatter;
 
-fn options(paths: Vec<PathBuf>, is_check: bool, line_endings: Option<LineEndings>) -> ProjectFormatOptions {
-  ProjectFormatOptions {
-    job: Default::default(),
-    output: Default::default(),
-    paths,
-    is_check,
-    line_endings,
-  }
+fn endings(line_endings: LineEndings) -> TranslationFormatOptions {
+  TranslationFormatOptions::default().with_line_endings(Some(line_endings))
 }
 
-fn format(path: &Path) -> XrfResult<ProjectFormatResult> {
-  format_sources(&options(vec![path.to_path_buf()], false, None))
+fn format(path: &Path) -> XrfResult<TranslationFormatResult> {
+  TranslationFormatter::format(std::slice::from_ref(&path.to_path_buf()))
 }
 
-fn check(path: &Path) -> XrfResult<ProjectFormatResult> {
-  format_sources(&options(vec![path.to_path_buf()], true, None))
+fn check(path: &Path) -> XrfResult<TranslationFormatResult> {
+  TranslationFormatter::check_format(std::slice::from_ref(&path.to_path_buf()))
 }
 
 fn read(path: &Path) -> String {
@@ -38,7 +32,7 @@ fn sorts_ids_naturally_rather_than_by_byte() -> XrfResult {
     "{\n  \"st_a10\": {\n    \"eng\": \"A\"\n  },\n  \"st_a2\": {\n    \"eng\": \"B\"\n  }\n}\n",
   )?;
 
-  let result: ProjectFormatResult = format(&path)?;
+  let result: TranslationFormatResult = format(&path)?;
 
   assert_eq!(result.invalid_files, 1);
   assert_eq!(result.to_format, vec![path.clone()]);
@@ -76,7 +70,7 @@ fn adds_a_trailing_newline() -> XrfResult {
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}",
   )?;
 
-  let result: ProjectFormatResult = format(&path)?;
+  let result: TranslationFormatResult = format(&path)?;
 
   assert_eq!(result.invalid_files, 1);
   assert!(read(&path).ends_with("}\n"));
@@ -103,7 +97,7 @@ fn leaves_a_canonical_source_untouched() -> XrfResult {
   )?;
 
   let before: std::time::SystemTime = fs::metadata(&path)?.modified()?;
-  let result: ProjectFormatResult = format(&path)?;
+  let result: TranslationFormatResult = format(&path)?;
 
   assert_eq!(result.invalid_files, 0);
   assert_eq!(result.valid_files, 1);
@@ -144,12 +138,12 @@ fn a_check_over_a_file_with_other_line_endings_passes_unless_endings_were_asked_
 
   assert_eq!(check(&path)?.invalid_files, 0);
   assert_eq!(
-    format_sources(&options(vec![path.clone()], true, Some(LineEndings::Crlf)))?.invalid_files,
+    TranslationFormatter::check_format_opt(std::slice::from_ref(&path), endings(LineEndings::Crlf))?.invalid_files,
     0
   );
   // Asserting the other spelling arms the check on it.
   assert_eq!(
-    format_sources(&options(vec![path.clone()], true, Some(LineEndings::Lf)))?.invalid_files,
+    TranslationFormatter::check_format_opt(std::slice::from_ref(&path), endings(LineEndings::Lf))?.invalid_files,
     1
   );
 
@@ -163,7 +157,7 @@ fn an_asserted_ending_is_written() -> XrfResult {
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;
 
-  format_sources(&options(vec![path.clone()], false, Some(LineEndings::Crlf)))?;
+  TranslationFormatter::format_opt(std::slice::from_ref(&path), endings(LineEndings::Crlf))?;
 
   assert_eq!(read(&path), "{\r\n  \"st_a\": {\r\n    \"eng\": \"A\"\r\n  }\r\n}\r\n");
 
@@ -175,7 +169,7 @@ fn a_check_reports_without_writing() -> XrfResult {
   let source: &str = "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
   let path: PathBuf = write_generated_test_resource("translation_format/check.json", source)?;
 
-  let result: ProjectFormatResult = check(&path)?;
+  let result: TranslationFormatResult = check(&path)?;
 
   assert_eq!(result.invalid_files, 1);
   assert_eq!(result.to_format, vec![path.clone()]);
@@ -191,7 +185,7 @@ fn the_value_shape_is_left_alone() -> XrfResult {
   let source: &str = "{\n  \"st_a\": {\n    \"eng\": [\n      \"one\"\n    ],\n    \"rus\": null\n  }\n}\n";
   let path: PathBuf = write_generated_test_resource("translation_format/shapes.json", source)?;
 
-  let result: ProjectFormatResult = format(&path)?;
+  let result: TranslationFormatResult = format(&path)?;
 
   assert_eq!(result.invalid_files, 0);
   assert_eq!(read(&path), source);
@@ -208,7 +202,7 @@ fn a_malformed_source_stops_the_run() -> XrfResult {
   )?;
 
   let directory: &Path = broken.parent().expect("Expected a parent directory");
-  let error = format_sources(&options(vec![directory.to_path_buf()], false, None))
+  let error = TranslationFormatter::format(std::slice::from_ref(&directory.to_path_buf()))
     .expect_err("Expected a malformed source to stop the run");
 
   assert!(error.to_string().contains("a_broken.json"), "{error}");

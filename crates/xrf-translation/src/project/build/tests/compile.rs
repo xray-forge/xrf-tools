@@ -5,11 +5,11 @@ use xrf_utils::encode_string_to_bytes;
 
 use crate::language::TranslationLanguage;
 use crate::project::build::compile::compile_by_language;
-use crate::project::build::options::ProjectBuildOptions;
+use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 
-fn options(language: TranslationLanguage) -> ProjectBuildOptions {
-  ProjectBuildOptions {
+fn options(language: TranslationLanguage) -> TranslationBuildOptions {
+  TranslationBuildOptions {
     job: Default::default(),
     is_sorted: false,
     output: xrf_output::OutputOptions::default(),

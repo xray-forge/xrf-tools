@@ -12,10 +12,10 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import {
-  ProjectFormatResult,
   TranslationEdit,
   TranslationFile,
   TranslationFinding,
+  TranslationFormatResult,
   TranslationProjectDescriptor,
   TranslationProjectMode,
 } from "@/core/bindings/types/xrf-translation";
@@ -43,7 +43,7 @@ export const translationsCommands = {
    * question, the other changes the files.
    */
   checkProjectFormat: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ProjectFormatResult>("plugin:translations|check_project_format", {
+    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", {
       directory,
       lineEndings,
       jobId,
@@ -72,7 +72,7 @@ export const translationsCommands = {
    * through a staged replace, so nothing is half-written and running it again resolves the difference.
    */
   formatProject: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ProjectFormatResult>("plugin:translations|format_project", {
+    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", {
       directory,
       lineEndings,
       jobId,

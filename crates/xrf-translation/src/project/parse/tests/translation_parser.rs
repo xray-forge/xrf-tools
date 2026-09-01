@@ -5,14 +5,14 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
 use xrf_utils::encode_string_to_bytes;
 
-use super::super::options::ProjectParseOptions;
-use super::super::result::ProjectParseResult;
-use super::super::run::parse_translations;
+use super::super::translation_parse_options::TranslationParseOptions;
+use super::super::translation_parse_result::TranslationParseResult;
+use super::super::translation_parser::TranslationParser;
 use crate::language::TranslationLanguage;
 use crate::project::tests::{roots, table};
 
-fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> ProjectParseOptions {
-  ProjectParseOptions {
+fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> TranslationParseOptions {
+  TranslationParseOptions {
     job: Default::default(),
     output: xrf_output::OutputOptions::default(),
     roots: roots(root),
@@ -67,8 +67,8 @@ fn imports_one_language_into_a_new_source() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
-  let result: ProjectParseResult =
-    parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let result: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert_eq!(result.census.files_read, 1);
   assert_eq!(result.census.files_created, 1);
@@ -104,13 +104,13 @@ fn a_second_language_merges_into_the_same_file() -> XrfResult {
     "Хлеб",
   )?;
 
-  parse_translations(&options(
+  TranslationParser::parse(&options(
     &format!("{root}/eng"),
     TranslationLanguage::English,
     output_dir.clone(),
   ))?;
 
-  let second: ProjectParseResult = parse_translations(&options(
+  let second: TranslationParseResult = TranslationParser::parse(&options(
     &format!("{root}/rus"),
     TranslationLanguage::Russian,
     output_dir.clone(),
@@ -138,9 +138,10 @@ fn running_the_same_import_twice_writes_nothing_the_second_time() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
-  parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
-  let again: ProjectParseResult = parse_translations(&options(root, TranslationLanguage::English, output_dir))?;
+  let again: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir))?;
 
   assert_eq!(again.census.files_unchanged, 1);
   assert_eq!(again.census.files_updated, 0);
@@ -162,7 +163,8 @@ fn existing_text_survives_unless_overwrite_is_asked_for() -> XrfResult {
     r#"{"st_medkit":{"eng":"First aid kit"}}"#,
   )?;
 
-  let kept: ProjectParseResult = parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let kept: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert_eq!(kept.census.entries_conflicted, 1);
   assert!(read(&output_dir.join("st_items.json")).contains("First aid kit"));
@@ -171,7 +173,7 @@ fn existing_text_survives_unless_overwrite_is_asked_for() -> XrfResult {
 
   overwriting.is_overwrite = true;
 
-  let replaced: ProjectParseResult = parse_translations(&overwriting)?;
+  let replaced: TranslationParseResult = TranslationParser::parse(&overwriting)?;
 
   assert_eq!(replaced.census.entries_conflicted, 1);
   assert!(read(&output_dir.join("st_items.json")).contains("Medkit"));
@@ -190,7 +192,7 @@ fn a_dry_run_reports_what_it_would_have_written_and_writes_nothing() -> XrfResul
 
   dry.is_dry_run = true;
 
-  let result: ProjectParseResult = parse_translations(&dry)?;
+  let result: TranslationParseResult = TranslationParser::parse(&dry)?;
 
   assert!(result.is_dry_run);
   assert_eq!(result.census.files_created, 1);
@@ -209,7 +211,7 @@ fn nested_sources_keep_their_directories_apart() -> XrfResult {
   write_generated_test_resource(&format!("{root}/eng/one/common.xml"), table("st_one", "One"))?;
   write_generated_test_resource(&format!("{root}/eng/two/common.xml"), table("st_two", "Two"))?;
 
-  parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert!(output_dir.join("one/common.json").is_file());
   assert!(output_dir.join("two/common.json").is_file());
@@ -229,7 +231,7 @@ fn a_single_table_can_be_selected_by_name() -> XrfResult {
 
   selected.file = Some(String::from("st_items.xml"));
 
-  let result: ProjectParseResult = parse_translations(&selected)?;
+  let result: TranslationParseResult = TranslationParser::parse(&selected)?;
 
   assert_eq!(result.census.files_read, 1);
   assert!(output_dir.join("st_items.json").is_file());
@@ -246,8 +248,8 @@ fn an_unreadable_table_costs_its_own_strings_and_not_the_import() -> XrfResult {
   write_generated_test_resource(&format!("{root}/eng/st_good.xml"), table("st_medkit", "Medkit"))?;
   write_generated_test_resource(&format!("{root}/eng/st_bad.xml"), "<string_table><string id=")?;
 
-  let result: ProjectParseResult =
-    parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let result: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert_eq!(result.census.files_read, 1);
   assert_eq!(result.census.files_skipped, 1);
@@ -271,8 +273,8 @@ fn xml_that_is_not_a_string_table_is_skipped_rather_than_written_empty() -> XrfR
 
   write_generated_test_resource(&format!("{root}/eng/openxray.xml"), "<openxray></openxray>")?;
 
-  let result: ProjectParseResult =
-    parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let result: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert_eq!(result.census.files_read, 0);
   assert_eq!(result.census.files_skipped, 1);
@@ -294,8 +296,8 @@ fn a_repeated_id_keeps_the_last_and_says_so() -> XrfResult {
      </string_table>",
   )?;
 
-  let result: ProjectParseResult =
-    parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let result: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   // What `CStringTable::Load` leaves in the table is the last one.
   assert!(read(&output_dir.join("st_items.json")).contains("second"));
@@ -316,7 +318,7 @@ fn multi_line_text_is_imported_as_an_array() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_a", "first\\nsecond"))?;
 
-  parse_translations(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   let written: serde_json::Value = serde_json::from_str(&read(&output_dir.join("st_items.json"))).unwrap();
 
@@ -335,7 +337,7 @@ fn a_scope_holding_no_string_tables_is_refused() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/eng/notes.txt"), "not a translation")?;
 
-  let error = parse_translations(&options(root, TranslationLanguage::English, output_dir)).unwrap_err();
+  let error = TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir)).unwrap_err();
 
   assert!(error.to_string().contains("No string tables to import"));
 
@@ -353,7 +355,7 @@ fn a_file_selector_that_names_nothing_is_refused() -> XrfResult {
 
   selected.file = Some(String::from("st_absent.xml"));
 
-  let error = parse_translations(&selected).unwrap_err();
+  let error = TranslationParser::parse(&selected).unwrap_err();
 
   assert!(error.to_string().contains("st_absent.xml"));
 

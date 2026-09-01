@@ -5,7 +5,7 @@ use xrf_utils::format_path;
 use xrf_xml::serialize_xml;
 
 use crate::language::{TranslationLanguage, find_unencodable_character};
-use crate::project::build::options::ProjectBuildOptions;
+use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::types::{TranslationJson, TranslationVariant};
 use crate::xml::compiled::{TranslationCompiledXml, TranslationEntryCompiled};
 
@@ -22,7 +22,7 @@ pub(crate) fn compile_by_language(
   path: &Path,
   source: &TranslationJson,
   language: &TranslationLanguage,
-  options: &ProjectBuildOptions,
+  options: &TranslationBuildOptions,
 ) -> XrfResult<String> {
   let mut buffer: String = format!(
     "<?xml version=\"1.0\" encoding=\"{}\" ?>\n\n",

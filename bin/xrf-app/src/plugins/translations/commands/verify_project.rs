@@ -8,7 +8,8 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{
-  ProjectVerifyLanguageSummary, ProjectVerifyOptions, ProjectVerifyResult, TranslationLanguage, verify_roots,
+  TranslationLanguage, TranslationVerifier, TranslationVerifyLanguageSummary, TranslationVerifyOptions,
+  TranslationVerifyResult,
 };
 use xrf_vfs::XrayRoots;
 
@@ -32,7 +33,7 @@ pub struct TranslationVerifySummary {
   pub checked: u32,
   /// Ids with no text, counted once per language that lacks them.
   pub missing: u32,
-  pub languages: Vec<ProjectVerifyLanguageSummary>,
+  pub languages: Vec<TranslationVerifyLanguageSummary>,
 }
 
 /// Report which translations are missing from which languages.
@@ -60,7 +61,7 @@ pub async fn translations_verify_project(
       .with_progress(progress),
   )?;
 
-  let options: ProjectVerifyOptions = ProjectVerifyOptions {
+  let options: TranslationVerifyOptions = TranslationVerifyOptions {
     job: job.clone(),
     is_strict: false,
     output: xrf_output::OutputOptions::default(),
@@ -74,18 +75,19 @@ pub async fn translations_verify_project(
   // Anomaly-sized import and not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationVerifySummary> =
-    tauri::async_runtime::spawn_blocking(move || verify_roots(&roots, prefix.as_deref(), &options))
-      .await
-      .map_err(|error| format!("Translation check did not finish: {error}"))?
-      .map_err(error_to_string)
-      .map(|result: ProjectVerifyResult| TranslationVerifySummary {
-        language: language.to_string(),
-        outcome: result.outcome,
-        checked: result.checked_translations_count,
-        missing: result.missing_translations_count,
-        languages: result.languages,
-      });
+  let outcome: TauriResult<TranslationVerifySummary> = tauri::async_runtime::spawn_blocking(move || {
+    TranslationVerifier::verify_roots(&roots, prefix.as_deref(), &options)
+  })
+  .await
+  .map_err(|error| format!("Translation check did not finish: {error}"))?
+  .map_err(error_to_string)
+  .map(|result: TranslationVerifyResult| TranslationVerifySummary {
+    language: language.to_string(),
+    outcome: result.outcome,
+    checked: result.checked_translations_count,
+    missing: result.missing_translations_count,
+    languages: result.languages,
+  });
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

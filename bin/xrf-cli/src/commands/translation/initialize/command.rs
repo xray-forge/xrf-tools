@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_translation::{ProjectInitializeOptions, ProjectInitializeResult, initialize_dir, initialize_file};
+use xrf_translation::{TranslationInitializeOptions, TranslationInitializeResult, TranslationInitializer};
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
@@ -37,23 +37,22 @@ impl GenericCommand for InitializeCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Verifying translation {}", format_path(path));
+    xrf_output::info!(output, "Initializing translations at {}", format_path(path));
 
-    let options: ProjectInitializeOptions = ProjectInitializeOptions {
-      output,
-      path: path.clone(),
-    };
-
-    let result: ProjectInitializeResult = if path.is_dir() {
-      initialize_dir(path, &options)?
-    } else {
-      initialize_file(path, &options)?
-    };
+    // A file and a directory are both the operation's business: it walks one or reads the other, and the command has
+    // no reason to know which it was handed.
+    let result: TranslationInitializeResult = TranslationInitializer::initialize_opt(
+      path,
+      TranslationInitializeOptions::default().with_output(output.clone()),
+    )?;
 
     xrf_output::info!(
-      options.output,
-      "Initialized translation files in {}",
+      output,
+      "Initialized {}/{} translation source(s) in {}, {} key(s) added",
+      result.files_initialized,
+      result.files_read,
       xrf_utils::format_duration(result.duration),
+      result.keys_added
     );
 
     context.set_result(|| &result)?;

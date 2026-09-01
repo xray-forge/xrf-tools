@@ -4,7 +4,7 @@ use std::str::FromStr;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_translation::{ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_file, build_roots};
+use xrf_translation::{TranslationBuildOptions, TranslationBuildResult, TranslationBuilder, TranslationLanguage};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
@@ -93,7 +93,7 @@ impl GenericCommand for BuildCommand {
     let is_sorted: bool = matches.get_flag("sort");
     let output: OutputOptions = context.get_output().clone();
 
-    let options: ProjectBuildOptions = ProjectBuildOptions {
+    let options: TranslationBuildOptions = TranslationBuildOptions {
       job: new_logging_job(),
       is_sorted,
       output,
@@ -103,7 +103,7 @@ impl GenericCommand for BuildCommand {
 
     // A single source keeps working through the path-taking reader: a VFS mounts a directory, never a
     // file, and one source with no mounted roots is the case that convenience exists for.
-    let result: ProjectBuildResult = if paths.len() == 1 && paths[0].is_file() {
+    let result: TranslationBuildResult = if paths.len() == 1 && paths[0].is_file() {
       xrf_output::info!(
         options.output,
         "Building translation {}, language - {}, sorted - {}",
@@ -112,7 +112,7 @@ impl GenericCommand for BuildCommand {
         is_sorted
       );
 
-      build_file(paths[0], &options)?
+      TranslationBuilder::build_file(paths[0], &options)?
     } else {
       let source: XrayMountMode = XrayMountMode::try_from(
         matches
@@ -134,7 +134,7 @@ impl GenericCommand for BuildCommand {
         is_sorted
       );
 
-      build_roots(
+      TranslationBuilder::build_roots(
         &roots,
         matches.get_one::<String>("prefix").map(String::as_str),
         &options,

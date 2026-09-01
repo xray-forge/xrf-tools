@@ -1,4 +1,4 @@
-import { ProjectFormatResult } from "@/core/bindings/types/xrf-translation";
+import { TranslationFormatResult } from "@/core/bindings/types/xrf-translation";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
@@ -13,7 +13,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 export function describeFormatOutcome(
   directory: string,
   isCheck: boolean,
-  outcome: IJobOutcome<ProjectFormatResult>
+  outcome: IJobOutcome<TranslationFormatResult>
 ): IJobNotice {
   const { result, error } = outcome;
 

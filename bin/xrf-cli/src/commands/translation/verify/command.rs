@@ -4,7 +4,7 @@ use std::str::FromStr;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
-use xrf_translation::{ProjectVerifyOptions, ProjectVerifyResult, TranslationLanguage, verify_file, verify_roots};
+use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions, TranslationVerifyResult};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
@@ -84,7 +84,7 @@ impl GenericCommand for VerifyCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    let options: ProjectVerifyOptions = ProjectVerifyOptions {
+    let options: TranslationVerifyOptions = TranslationVerifyOptions {
       job: new_logging_job(),
       is_strict,
       output,
@@ -95,7 +95,7 @@ impl GenericCommand for VerifyCommand {
 
     // A single file keeps working through the path-taking reader: a VFS mounts a directory, never a
     // file, and one source with no mounted roots is the case that convenience exists for.
-    let verify_result: XrfResult<ProjectVerifyResult> = if paths.len() == 1 && paths[0].is_file() {
+    let verify_result: XrfResult<TranslationVerifyResult> = if paths.len() == 1 && paths[0].is_file() {
       xrf_output::info!(
         options.output,
         "Verifying translation file {}, language - {}",
@@ -103,7 +103,7 @@ impl GenericCommand for VerifyCommand {
         language
       );
 
-      verify_file(paths[0], &options)
+      TranslationVerifier::verify_file(paths[0], &options)
     } else {
       let source: XrayMountMode = XrayMountMode::try_from(
         matches
@@ -124,14 +124,14 @@ impl GenericCommand for VerifyCommand {
         language
       );
 
-      verify_roots(
+      TranslationVerifier::verify_roots(
         &roots,
         matches.get_one::<String>("prefix").map(String::as_str),
         &options,
       )
     };
 
-    let result: ProjectVerifyResult = match verify_result {
+    let result: TranslationVerifyResult = match verify_result {
       Ok(result) => result,
       // An unreadable source is an execution failure; only judged content is a check failure.
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),

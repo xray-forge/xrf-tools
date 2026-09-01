@@ -1,1 +1,1 @@
-mod result;
+mod translation_verify_result;

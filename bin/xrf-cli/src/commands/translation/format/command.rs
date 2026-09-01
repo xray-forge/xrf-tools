@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_translation::{ProjectFormatOptions, ProjectFormatResult, format_sources};
+use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
 use xrf_utils::LineEndings;
 
 use crate::core::command_context::CommandContext;
@@ -68,17 +68,19 @@ impl GenericCommand for FormatCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    let options: ProjectFormatOptions = ProjectFormatOptions {
+    let options: TranslationFormatOptions = TranslationFormatOptions::default()
       // Created before the sources are discovered, because its clock is what the result reports as the total:
       // selecting them over a large tree is part of the wait.
-      job: new_logging_job(),
-      output,
-      paths,
-      is_check,
-      line_endings,
-    };
+      .with_job(new_logging_job())
+      .with_output(output)
+      .with_line_endings(line_endings);
 
-    let result: ProjectFormatResult = format_sources(&options)?;
+    // Two doors rather than a flag, so the call site says whether this run rewrites the tree.
+    let result: TranslationFormatResult = if is_check {
+      TranslationFormatter::check_format_opt(&paths, options)?
+    } else {
+      TranslationFormatter::format_opt(&paths, options)?
+    };
     let invalid_files: usize = result.invalid_files;
 
     context.set_result(|| &result)?;

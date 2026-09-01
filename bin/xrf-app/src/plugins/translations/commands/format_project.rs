@@ -7,7 +7,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
-use xrf_translation::{ProjectFormatOptions, ProjectFormatResult, format_sources};
+use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
 use xrf_utils::LineEndings;
 
 use crate::core::error::error_to_string;
@@ -35,7 +35,7 @@ pub async fn translations_format_project(
   line_endings: Option<String>,
   job_id: Uuid,
   progress: Channel<JobProgress>,
-) -> TauriResult<ProjectFormatResult> {
+) -> TauriResult<TranslationFormatResult> {
   log::info!("Formatting translation sources in {}", directory.display());
 
   // Before the job exists, because this is a refusal rather than a failed run: the editor's in-memory buffers are not
@@ -49,7 +49,7 @@ pub async fn translations_format_project(
       .with_progress(progress),
   )?;
 
-  let outcome: TauriResult<ProjectFormatResult> = run(job.clone(), directory, line_endings, false).await;
+  let outcome: TauriResult<TranslationFormatResult> = run(job.clone(), directory, line_endings, false).await;
 
   registration.conclude_with(&outcome, job.is_cancelled());
 
@@ -57,12 +57,15 @@ pub async fn translations_format_project(
 }
 
 /// Walk and judge the sources off the async worker, which is where every blocking crate call belongs.
+///
+/// `is_check` picks which of the formatter's two doors is opened, rather than being handed to one door that decides
+/// for itself: whether this call rewrites the tree is the difference between the two commands above.
 pub(super) async fn run(
   job: JobHandle,
   directory: PathBuf,
   line_endings: Option<String>,
   is_check: bool,
-) -> TauriResult<ProjectFormatResult> {
+) -> TauriResult<TranslationFormatResult> {
   let line_endings: Option<LineEndings> = line_endings
     .as_deref()
     .map(LineEndings::from_str)
@@ -70,13 +73,16 @@ pub(super) async fn run(
     .map_err(error_to_string)?;
 
   tauri::async_runtime::spawn_blocking(move || {
-    format_sources(&ProjectFormatOptions {
-      job,
-      output: Default::default(),
-      paths: vec![directory],
-      is_check,
-      line_endings,
-    })
+    let paths: Vec<PathBuf> = vec![directory];
+    let options: TranslationFormatOptions = TranslationFormatOptions::default()
+      .with_job(job)
+      .with_line_endings(line_endings);
+
+    if is_check {
+      TranslationFormatter::check_format_opt(&paths, options)
+    } else {
+      TranslationFormatter::format_opt(&paths, options)
+    }
   })
   .await
   .map_err(|error| format!("Translations formatting did not finish: {error}"))?

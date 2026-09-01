@@ -2,7 +2,7 @@ import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { TranslationBuildSummary } from "@/core/bindings/types/xrf-app";
-import { ProjectBuildLanguageSummary } from "@/core/bindings/types/xrf-translation";
+import { TranslationBuildLanguageSummary } from "@/core/bindings/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
@@ -10,7 +10,7 @@ import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-type TLanguageRow = ProjectBuildLanguageSummary & { id: string };
+type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 
 export interface ITranslationsBuildResultProps extends BaseComponentProps {
   result: TranslationBuildSummary;

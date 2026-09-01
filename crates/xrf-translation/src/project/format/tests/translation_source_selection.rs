@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use crate::project::format::selection::select_sources;
+use crate::project::format::translation_source_selection::select_sources;
 
 const SOURCE: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
 

@@ -3,7 +3,7 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeFormatOutcome } from "@/applications/translations-formatter/lib/describe-format-outcome";
 import { translationsCommands } from "@/core/bindings/commands/translations";
-import { ProjectFormatResult } from "@/core/bindings/types/xrf-translation";
+import { TranslationFormatResult } from "@/core/bindings/types/xrf-translation";
 import { transformError } from "@/core/error/lib";
 import {
   EJobKind,
@@ -34,7 +34,7 @@ export class TranslationsFormatterService {
   public error: Nullable<string> = null;
 
   @Observable()
-  public result: Nullable<ProjectFormatResult> = null;
+  public result: Nullable<TranslationFormatResult> = null;
 
   /** The run this service started, while it runs. Null once it settles, and after a reload until re-attach. */
   @Observable()
@@ -100,20 +100,20 @@ export class TranslationsFormatterService {
     this.result = null;
     this.error = null;
 
-    const run: IJobRun<ProjectFormatResult> = this.jobsService.run<ProjectFormatResult>({
+    const run: IJobRun<TranslationFormatResult> = this.jobsService.run<TranslationFormatResult>({
       kind: isCheck ? EJobKind.TRANSLATIONS_CHECK_FORMAT : EJobKind.TRANSLATIONS_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
           ? translationsCommands.checkProjectFormat(directory, null, id, progress)
           : translationsCommands.formatProject(directory, null, id, progress),
-      describe: (outcome: IJobOutcome<ProjectFormatResult>): IJobNotice =>
+      describe: (outcome: IJobOutcome<TranslationFormatResult>): IJobNotice =>
         describeFormatOutcome(directory, isCheck, outcome),
     });
 
     this.jobId = run.id;
 
     try {
-      const answered: ProjectFormatResult = yield* call(run.promise);
+      const answered: TranslationFormatResult = yield* call(run.promise);
 
       this.log.info("Translations formatting finished in:", formatDuration(timer.elapsed()));
 
@@ -145,7 +145,7 @@ export class TranslationsFormatterService {
     if (settled?.kind === EJobKind.TRANSLATIONS_FORMAT || settled?.kind === EJobKind.TRANSLATIONS_CHECK_FORMAT) {
       this.log.info("Adopting the outcome of a run this window did not start:", settled.id, settled.conclusion);
 
-      this.result = (settled.result as Nullable<ProjectFormatResult>) ?? null;
+      this.result = (settled.result as Nullable<TranslationFormatResult>) ?? null;
       this.error = settled.error;
     }
   }

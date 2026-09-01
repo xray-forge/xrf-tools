@@ -12,7 +12,7 @@ use xrf_utils::to_portable_path_string;
 /// finding is what makes a per-file breakdown unnecessary.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectParseResult {
+pub struct TranslationParseResult {
   /// Whether the run read every table or was stopped between them.
   ///
   /// Each source is written whole through a staged replace, so a stopped import leaves the ones already written
@@ -27,10 +27,10 @@ pub struct ProjectParseResult {
   /// A dry run's whole result is what it would have written, so the counts below mean "would" rather
   /// than "did" whenever this is set.
   pub is_dry_run: bool,
-  pub census: ProjectParseCensus,
+  pub census: TranslationParseCensus,
   /// The findings, in the shape every other XRF command reports them in.
   ///
-  /// Sealed by [`ProjectParseResult::finalize`] once the run is over, so the crate's own result is
+  /// Sealed by `finalize` once the run is over, so the crate's own result is
   /// what both the CLI and the desktop app deposit — neither has to restate the shape, and they
   /// cannot drift apart by restating it differently.
   pub report: Report,
@@ -42,7 +42,7 @@ pub struct ProjectParseResult {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectParseCensus {
+pub struct TranslationParseCensus {
   /// String tables read out of the scope.
   pub files_read: u32,
   /// JSON sources created because nothing was there yet.
@@ -69,14 +69,14 @@ pub struct ProjectParseCensus {
   pub placeholders_added: u32,
 }
 
-impl ProjectParseResult {
+impl TranslationParseResult {
   pub fn new(language: &str, is_dry_run: bool) -> Self {
     Self {
       outcome: xrf_job::JobOutcome::Completed,
       duration: Duration::ZERO,
       language: language.to_owned(),
       is_dry_run,
-      census: ProjectParseCensus::default(),
+      census: TranslationParseCensus::default(),
       report: Report::new(Vec::new()),
       findings: Vec::new(),
     }

@@ -15,7 +15,7 @@ use xrf_job::JobOutcome;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectFormatResult {
+pub struct TranslationFormatResult {
   /// Whether the run reached the end of the set or was stopped between files.
   ///
   /// A stopped rewrite leaves the files it had already formatted formatted and the rest untouched, which is a state
@@ -40,7 +40,7 @@ pub struct ProjectFormatResult {
   pub valid_files: usize,
 }
 
-impl ProjectFormatResult {
+impl TranslationFormatResult {
   pub fn new() -> Self {
     Self {
       outcome: JobOutcome::Completed,

@@ -6,7 +6,9 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
-use xrf_translation::{ProjectParseCensus, ProjectParseOptions, ProjectParseResult, TranslationLanguage};
+use xrf_translation::{
+  TranslationLanguage, TranslationParseCensus, TranslationParseOptions, TranslationParseResult, TranslationParser,
+};
 use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
@@ -51,7 +53,7 @@ pub struct TranslationParseSummary {
   pub language: String,
   /// Whether the run computed its answer without writing it.
   pub is_dry_run: bool,
-  pub census: ProjectParseCensus,
+  pub census: TranslationParseCensus,
   pub findings: Vec<TranslationParseFinding>,
 }
 
@@ -103,7 +105,7 @@ pub async fn translations_parse_project(
     ..
   } = request;
 
-  let options: ProjectParseOptions = ProjectParseOptions {
+  let options: TranslationParseOptions = TranslationParseOptions {
     job: job.clone(),
     output: xrf_output::OutputOptions::default(),
     roots,
@@ -120,11 +122,11 @@ pub async fn translations_parse_project(
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
   let outcome: TauriResult<TranslationParseSummary> =
-    tauri::async_runtime::spawn_blocking(move || xrf_translation::parse_translations(&options))
+    tauri::async_runtime::spawn_blocking(move || TranslationParser::parse(&options))
       .await
       .map_err(|error| format!("Translation import did not finish: {error}"))?
       .map_err(error_to_string)
-      .map(|result: ProjectParseResult| TranslationParseSummary {
+      .map(|result: TranslationParseResult| TranslationParseSummary {
         language: result.language.clone(),
         outcome: result.outcome,
         is_dry_run: result.is_dry_run,

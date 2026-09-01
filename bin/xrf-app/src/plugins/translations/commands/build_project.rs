@@ -8,7 +8,8 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{
-  ProjectBuildLanguageSummary, ProjectBuildOptions, ProjectBuildResult, TranslationLanguage, build_roots,
+  TranslationBuildLanguageSummary, TranslationBuildOptions, TranslationBuildResult, TranslationBuilder,
+  TranslationLanguage,
 };
 use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
@@ -55,7 +56,7 @@ pub struct TranslationBuildSummary {
   pub sources: u32,
   /// String tables written, across every language.
   pub files: u32,
-  pub languages: Vec<ProjectBuildLanguageSummary>,
+  pub languages: Vec<TranslationBuildLanguageSummary>,
 }
 
 /// Compile translation sources into per-language string tables.
@@ -99,7 +100,7 @@ pub async fn translations_build_project(
     ..
   } = request;
 
-  let options: ProjectBuildOptions = ProjectBuildOptions {
+  let options: TranslationBuildOptions = TranslationBuildOptions {
     job: job.clone(),
     is_sorted,
     output: xrf_output::OutputOptions::default(),
@@ -112,11 +113,11 @@ pub async fn translations_build_project(
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
   let outcome: TauriResult<TranslationBuildSummary> =
-    tauri::async_runtime::spawn_blocking(move || build_roots(&roots, prefix.as_deref(), &options))
+    tauri::async_runtime::spawn_blocking(move || TranslationBuilder::build_roots(&roots, prefix.as_deref(), &options))
       .await
       .map_err(|error| format!("Translation build did not finish: {error}"))?
       .map_err(error_to_string)
-      .map(|result: ProjectBuildResult| TranslationBuildSummary {
+      .map(|result: TranslationBuildResult| TranslationBuildSummary {
         language: language.to_string(),
         outcome: result.outcome,
         sources: result.sources,

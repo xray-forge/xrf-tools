@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::json::normalize::sort_document;
-use crate::project::parse::result::ProjectParseCensus;
+use crate::project::parse::translation_parse_result::TranslationParseCensus;
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 
 /// The engine reads this literal pair of characters in a string table as a line break.
@@ -18,7 +18,7 @@ pub(crate) struct MergeOutcome {
 }
 
 impl MergeOutcome {
-  pub(crate) fn record(&self, census: &mut ProjectParseCensus) {
+  pub(crate) fn record(&self, census: &mut TranslationParseCensus) {
     census.entries_inserted += self.inserted;
     census.entries_filled += self.filled;
     census.entries_unchanged += self.unchanged;

@@ -7,7 +7,7 @@ use xrf_utils::{format_path, to_absolute_path, to_portable_path_string};
 use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
-use crate::project::build::options::ProjectBuildOptions;
+use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::source_file_name::parse_json_source_stem;
 use crate::xml;
 
@@ -16,7 +16,7 @@ use crate::xml;
 /// # Errors
 ///
 /// Returns an IO error when the target cannot be created.
-pub(crate) fn prepare_target_file(target: &Path, options: &ProjectBuildOptions) -> XrfResult<File> {
+pub(crate) fn prepare_target_file(target: &Path, options: &TranslationBuildOptions) -> XrfResult<File> {
   xrf_output::verbose!(options.output, "Writing file {}", format_path(target));
 
   let target_parent: &Path = target.parent().ok_or_else(|| {
@@ -64,7 +64,7 @@ pub(crate) fn target_path(source: &str, destination: &Path, language: &Translati
 /// # Errors
 ///
 /// Returns an invalid error naming both sources and the target they collide on.
-pub(crate) fn validate_targets(sources: &[String], options: &ProjectBuildOptions) -> XrfResult {
+pub(crate) fn validate_targets(sources: &[String], options: &TranslationBuildOptions) -> XrfResult {
   let mut target_sources: HashMap<String, &str> = HashMap::new();
 
   for source in sources {
@@ -92,7 +92,7 @@ pub(crate) fn validate_targets(sources: &[String], options: &ProjectBuildOptions
 ///
 /// A JSON source carries all of them, so it builds for whichever the run asked for - one, or all
 /// eight. Anything that is not a source builds for none.
-pub(crate) fn target_languages_for_source(source: &str, options: &ProjectBuildOptions) -> Vec<TranslationLanguage> {
+pub(crate) fn target_languages_for_source(source: &str, options: &TranslationBuildOptions) -> Vec<TranslationLanguage> {
   if Path::new(source).file_name().and_then(parse_json_source_stem).is_none() {
     return Vec::new();
   }

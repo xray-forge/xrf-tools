@@ -6,7 +6,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
-use xrf_translation::ProjectFormatResult;
+use xrf_translation::TranslationFormatResult;
 
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
@@ -27,7 +27,7 @@ pub async fn translations_check_project_format(
   line_endings: Option<String>,
   job_id: Uuid,
   progress: Channel<JobProgress>,
-) -> TauriResult<ProjectFormatResult> {
+) -> TauriResult<TranslationFormatResult> {
   log::info!("Checking translation source format in {}", directory.display());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
@@ -36,7 +36,7 @@ pub async fn translations_check_project_format(
       .with_progress(progress),
   )?;
 
-  let outcome: TauriResult<ProjectFormatResult> = run(job.clone(), directory, line_endings, true).await;
+  let outcome: TauriResult<TranslationFormatResult> = run(job.clone(), directory, line_endings, true).await;
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

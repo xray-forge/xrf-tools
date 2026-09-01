@@ -5,7 +5,7 @@ use xrf_vfs::XrayRoots;
 use crate::language::TranslationLanguage;
 
 /// What one import run was asked to do.
-pub struct ProjectParseOptions {
+pub struct TranslationParseOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub output: xrf_output::OutputOptions,

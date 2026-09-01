@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_report::{CheckReport, Finding, Report};
-use xrf_translation::{ProjectVerifyLanguageSummary, ProjectVerifyResult};
+use xrf_translation::{TranslationVerifyLanguageSummary, TranslationVerifyResult};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,11 +47,11 @@ struct TranslationVerificationFindingOutput {
 
 /// Builds what a `translation verify` run reports to a machine.
 pub struct TranslationVerificationReportPayload<'a> {
-  result: &'a ProjectVerifyResult,
+  result: &'a TranslationVerifyResult,
 }
 
 impl<'a> TranslationVerificationReportPayload<'a> {
-  pub fn new(result: &'a ProjectVerifyResult) -> Self {
+  pub fn new(result: &'a TranslationVerifyResult) -> Self {
     Self { result }
   }
 
@@ -69,7 +69,7 @@ impl<'a> TranslationVerificationReportPayload<'a> {
     }
   }
 
-  fn language_output(summary: &ProjectVerifyLanguageSummary) -> TranslationVerificationLanguageOutput {
+  fn language_output(summary: &TranslationVerifyLanguageSummary) -> TranslationVerificationLanguageOutput {
     TranslationVerificationLanguageOutput {
       checked: summary.checked,
       file: summary.file.clone(),
@@ -102,7 +102,7 @@ mod tests {
   use std::path::PathBuf;
   use std::sync::atomic::{AtomicU64, Ordering};
 
-  use xrf_translation::{ProjectVerifyOptions, TranslationLanguage, verify_file};
+  use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions};
 
   use super::TranslationVerificationReportPayload;
 
@@ -116,7 +116,7 @@ mod tests {
       std::process::id()
     ));
     let translation_path: PathBuf = root.join("dialogs.json");
-    let options: ProjectVerifyOptions = ProjectVerifyOptions {
+    let options: TranslationVerifyOptions = TranslationVerifyOptions {
       is_strict: false,
       job: Default::default(),
       output: xrf_output::OutputOptions::default(),
@@ -127,7 +127,7 @@ mod tests {
     fs::create_dir_all(&root).unwrap();
     fs::write(&translation_path, r#"{"st_dialog_hello":{"ukr":null}}"#).unwrap();
 
-    let result = verify_file(&translation_path, &options).unwrap();
+    let result = TranslationVerifier::verify_file(&translation_path, &options).unwrap();
 
     let json: serde_json::Value =
       serde_json::to_value(TranslationVerificationReportPayload::new(&result).build()).unwrap();

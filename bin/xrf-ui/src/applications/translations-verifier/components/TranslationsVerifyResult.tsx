@@ -2,12 +2,12 @@ import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { TranslationVerifySummary } from "@/core/bindings/types/xrf-app";
-import { ProjectVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
+import { TranslationVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-type TLanguageRow = ProjectVerifyLanguageSummary & { id: string; complete: number };
+type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
 
 export interface ITranslationsVerifyResultProps extends BaseComponentProps {
   result: TranslationVerifySummary;

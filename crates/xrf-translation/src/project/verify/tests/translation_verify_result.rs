@@ -2,11 +2,11 @@ use std::path::Path;
 
 use xrf_report::Status;
 
-use crate::project::verify::result::{ProjectVerifyLanguageSummary, ProjectVerifyResult};
+use crate::project::verify::translation_verify_result::{TranslationVerifyLanguageSummary, TranslationVerifyResult};
 
 #[test]
 fn reports_missing_translations_as_findings() {
-  let mut result: ProjectVerifyResult = ProjectVerifyResult::new();
+  let mut result: TranslationVerifyResult = TranslationVerifyResult::new();
 
   result.record_missing_translation(Path::new("translations/dialogs.json"), "st_dialog_hello", "ukr", true);
 
@@ -27,7 +27,7 @@ fn reports_missing_translations_as_findings() {
 
 #[test]
 fn a_project_with_nothing_missing_passes() {
-  let result: ProjectVerifyResult = ProjectVerifyResult::new();
+  let result: TranslationVerifyResult = TranslationVerifyResult::new();
 
   assert_eq!(result.status(), Status::Passed);
   assert!(result.findings().is_empty());
@@ -35,8 +35,8 @@ fn a_project_with_nothing_missing_passes() {
 
 #[test]
 fn merging_accumulates_counts_and_findings() {
-  let mut first: ProjectVerifyResult = ProjectVerifyResult::new();
-  let mut second: ProjectVerifyResult = ProjectVerifyResult::new();
+  let mut first: TranslationVerifyResult = TranslationVerifyResult::new();
+  let mut second: TranslationVerifyResult = TranslationVerifyResult::new();
 
   first.checked_translations_count = 2;
   first.record_missing_translation(Path::new("a.json"), "st_a", "ukr", true);
@@ -55,7 +55,7 @@ fn merging_accumulates_counts_and_findings() {
 fn counting_without_detail_leaves_the_findings_out() {
   // A desktop run wants the aggregate. Building 149,979 findings on the way to discarding them is the
   // cost this switch exists to avoid, so the count has to move without them.
-  let mut result: ProjectVerifyResult = ProjectVerifyResult::new();
+  let mut result: TranslationVerifyResult = TranslationVerifyResult::new();
 
   result.record_missing_translation(Path::new("a.json"), "st_a", "ukr", false);
 
@@ -68,9 +68,9 @@ fn counting_without_detail_leaves_the_findings_out() {
 fn a_language_summary_is_kept_for_a_complete_language_too() {
   // "0 missing" is an answer. A table that only listed failures could not tell a finished language
   // from one the project does not carry at all.
-  let mut result: ProjectVerifyResult = ProjectVerifyResult::new();
+  let mut result: TranslationVerifyResult = TranslationVerifyResult::new();
 
-  result.record_language_summary(ProjectVerifyLanguageSummary {
+  result.record_language_summary(TranslationVerifyLanguageSummary {
     file: String::from("a.json"),
     language: String::from("eng"),
     checked: 3,
@@ -84,16 +84,16 @@ fn a_language_summary_is_kept_for_a_complete_language_too() {
 
 #[test]
 fn merging_keeps_one_row_per_file_and_language() {
-  let mut first: ProjectVerifyResult = ProjectVerifyResult::new();
-  let mut second: ProjectVerifyResult = ProjectVerifyResult::new();
+  let mut first: TranslationVerifyResult = TranslationVerifyResult::new();
+  let mut second: TranslationVerifyResult = TranslationVerifyResult::new();
 
-  first.record_language_summary(ProjectVerifyLanguageSummary {
+  first.record_language_summary(TranslationVerifyLanguageSummary {
     file: String::from("a.json"),
     language: String::from("eng"),
     checked: 2,
     missing: 1,
   });
-  second.record_language_summary(ProjectVerifyLanguageSummary {
+  second.record_language_summary(TranslationVerifyLanguageSummary {
     file: String::from("b.json"),
     language: String::from("eng"),
     checked: 3,

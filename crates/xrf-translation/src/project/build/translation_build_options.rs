@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::language::TranslationLanguage;
 
-pub struct ProjectBuildOptions {
+pub struct TranslationBuildOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub output: xrf_output::OutputOptions,

@@ -6,15 +6,15 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_g
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::language::TranslationLanguage;
-use crate::project::build::options::ProjectBuildOptions;
-use crate::project::build::run::build_roots;
 use crate::project::build::targets::{ensure_output_outside_roots, target_path, validate_targets};
+use crate::project::build::translation_build_options::TranslationBuildOptions;
+use crate::project::build::translation_builder::TranslationBuilder;
 
 /// The one source every target test builds from; what it contains is never the point.
 const SOURCE_JSON: &str = r#"{"st_test":{"eng":"text"}}"#;
 
-fn options(output_dir: PathBuf) -> ProjectBuildOptions {
-  ProjectBuildOptions {
+fn options(output_dir: PathBuf) -> TranslationBuildOptions {
+  TranslationBuildOptions {
     job: Default::default(),
     is_sorted: false,
     output: xrf_output::OutputOptions::default(),
@@ -61,7 +61,7 @@ fn directory_builds_preserve_relative_source_paths() -> XrfResult {
     write_generated_test_resource(&format!("{test_root}/source/{relative_path}"), SOURCE_JSON)?;
   }
 
-  let result = build_roots(
+  let result = TranslationBuilder::build_roots(
     &roots(&format!("{test_root}/source")),
     None,
     &options(output_root.clone()),
@@ -95,7 +95,7 @@ fn builds_report_one_row_per_language() -> XrfResult {
 
   all.language = TranslationLanguage::All;
 
-  let result = build_roots(&roots(&format!("{test_root}/source")), None, &all)?;
+  let result = TranslationBuilder::build_roots(&roots(&format!("{test_root}/source")), None, &all)?;
 
   // One string table per language, whatever the source carries: a missing translation compiles to the
   // id itself, which is the engine's own fallback.

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectBuildLanguageSummary {
+pub struct TranslationBuildLanguageSummary {
   pub language: String,
   /// String tables written for this language, one per source.
   pub files: u32,
@@ -20,7 +20,7 @@ pub struct ProjectBuildLanguageSummary {
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectBuildResult {
+pub struct TranslationBuildResult {
   /// Whether the run compiled every source or was stopped between them.
   ///
   /// A stopped build leaves the string tables it had already written valid and the rest simply absent, which is a
@@ -33,12 +33,12 @@ pub struct ProjectBuildResult {
   /// String tables written, across every language.
   pub files: u32,
   /// Per language, in build order.
-  pub languages: Vec<ProjectBuildLanguageSummary>,
+  pub languages: Vec<TranslationBuildLanguageSummary>,
   #[serde(skip_serializing)]
   language_index: IndexMap<String, usize>,
 }
 
-impl ProjectBuildResult {
+impl TranslationBuildResult {
   pub fn new() -> Self {
     Self::default()
   }
@@ -49,14 +49,14 @@ impl ProjectBuildResult {
 
     match self.language_index.get(language) {
       Some(&index) => {
-        let summary: &mut ProjectBuildLanguageSummary = &mut self.languages[index];
+        let summary: &mut TranslationBuildLanguageSummary = &mut self.languages[index];
 
         summary.files += 1;
         summary.entries += entries;
       }
       None => {
         self.language_index.insert(language.to_owned(), self.languages.len());
-        self.languages.push(ProjectBuildLanguageSummary {
+        self.languages.push(TranslationBuildLanguageSummary {
           language: language.to_owned(),
           files: 1,
           entries,
@@ -73,7 +73,7 @@ impl ProjectBuildResult {
     for summary in other.languages {
       match self.language_index.get(&summary.language) {
         Some(&index) => {
-          let existing: &mut ProjectBuildLanguageSummary = &mut self.languages[index];
+          let existing: &mut TranslationBuildLanguageSummary = &mut self.languages[index];
 
           existing.files += summary.files;
           existing.entries += summary.entries;

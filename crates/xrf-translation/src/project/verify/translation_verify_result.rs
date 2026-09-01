@@ -10,7 +10,7 @@ use xrf_utils::to_portable_path_string;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectVerifyLanguageSummary {
+pub struct TranslationVerifyLanguageSummary {
   /// The source this counts, as the project addresses it.
   pub file: String,
   pub language: String,
@@ -22,7 +22,7 @@ pub struct ProjectVerifyLanguageSummary {
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProjectVerifyResult {
+pub struct TranslationVerifyResult {
   /// Whether the run checked every source or was stopped between them.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
@@ -30,7 +30,7 @@ pub struct ProjectVerifyResult {
   pub checked_translations_count: u32,
   pub missing_translations_count: u32,
   /// Per file and language, in discovery order.
-  pub languages: Vec<ProjectVerifyLanguageSummary>,
+  pub languages: Vec<TranslationVerifyLanguageSummary>,
   #[serde(skip_serializing)]
   findings: Vec<Finding>,
   /// Keyed by file and language so repeated calls for one file accumulate into one row.
@@ -38,7 +38,7 @@ pub struct ProjectVerifyResult {
   summary_index: IndexMap<(String, String), usize>,
 }
 
-impl ProjectVerifyResult {
+impl TranslationVerifyResult {
   pub fn new() -> Self {
     Self::default()
   }
@@ -75,12 +75,12 @@ impl ProjectVerifyResult {
   /// A complete language is worth a row: "0 missing" is the answer somebody is looking for as often as
   /// a number, and a table that only lists failures cannot distinguish a language that is finished from
   /// one the project does not carry at all.
-  pub(crate) fn record_language_summary(&mut self, summary: ProjectVerifyLanguageSummary) {
+  pub(crate) fn record_language_summary(&mut self, summary: TranslationVerifyLanguageSummary) {
     let key: (String, String) = (summary.file.clone(), summary.language.clone());
 
     match self.summary_index.get(&key) {
       Some(&index) => {
-        let existing: &mut ProjectVerifyLanguageSummary = &mut self.languages[index];
+        let existing: &mut TranslationVerifyLanguageSummary = &mut self.languages[index];
 
         existing.checked += summary.checked;
         existing.missing += summary.missing;

@@ -1,17 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { describeFormatOutcome } from "@/applications/translations-formatter/lib/describe-format-outcome";
-import { ProjectFormatResult } from "@/core/bindings/types/xrf-translation";
+import { TranslationFormatResult } from "@/core/bindings/types/xrf-translation";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 const DIRECTORY: string = "C:\\work\\xrf-engine\\src\\engine\\translations";
 
-function result(patch: Partial<ProjectFormatResult> = {}): ProjectFormatResult {
-  return { outcome: "completed", totalFiles: 34, invalidFiles: 0, toFormat: [], ...patch } as ProjectFormatResult;
+function result(patch: Partial<TranslationFormatResult> = {}): TranslationFormatResult {
+  return { outcome: "completed", totalFiles: 34, invalidFiles: 0, toFormat: [], ...patch } as TranslationFormatResult;
 }
 
-function outcome(patch: Partial<IJobOutcome<ProjectFormatResult>>): IJobOutcome<ProjectFormatResult> {
+function outcome(patch: Partial<IJobOutcome<TranslationFormatResult>>): IJobOutcome<TranslationFormatResult> {
   return { isCancelRequested: false, result: null, error: null, ...patch };
 }
 
