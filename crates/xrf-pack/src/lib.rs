@@ -9,7 +9,7 @@ pub(crate) mod path;
 pub(crate) mod unpack;
 
 pub use crate::pack::archive_pack_config::{
-  ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_MAX,
+  ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
 };
 pub use crate::pack::archive_pack_options::{
   ArchivePackOptions, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,

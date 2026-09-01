@@ -9,6 +9,15 @@ use crate::path::validate_host_file_name;
 /// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
 pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
 
+/// Smallest volume size a caller may ask for.
+///
+/// A floor on what a person requests, not on what the format allows: every volume repeats the header text and the
+/// directory rows of what it holds, so a cap of a few kilobytes spends most of a set restating itself, and the engine
+/// mounts each volume it produces. `ArchiveVolumeLayout` still refuses a cap the actual header and table cannot open
+/// within, which is the only limit derived from content, and a test setting `max_volume_size` directly stays free to
+/// exercise a split at any size.
+pub const VOLUME_SIZE_MIN: u64 = xrf_utils::BYTES_PER_MEGABYTE;
+
 /// Where a packed `gamedata` tree mounts, which is what nearly every archive is.
 pub const DEFAULT_ENTRY_POINT: &str = "$fs_root$\\gamedata\\";
 
@@ -170,15 +179,30 @@ impl ArchivePackConfig {
     Ok(self)
   }
 
-  /// Clamp an explicit volume size the way `SetMaxVolumeSize` does, refusing zero outright.
+  /// Take an explicit volume size, refusing one outside the range the engine can mount.
+  ///
+  /// `SetMaxVolumeSize` warns and clamps to `XRP_MAX_SIZE` instead. Clamping is wrong for a request typed by a
+  /// person: they asked for volumes of one size, and a set silently split at another is not what they would have
+  /// asked for had they known. The number came from a command line or a form, so the answer belongs where it was
+  /// entered.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error when the size is outside `VOLUME_SIZE_MIN..=VOLUME_SIZE_MAX`.
   pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
-    if size == 0 {
-      return Err(XrfError::new_invalid_error(
-        "Archive volume size must be greater than zero".to_string(),
-      ));
+    if size < VOLUME_SIZE_MIN {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive volume size must be at least {VOLUME_SIZE_MIN} bytes, got {size}"
+      )));
     }
 
-    self.max_volume_size = size.min(VOLUME_SIZE_MAX);
+    if size > VOLUME_SIZE_MAX {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes, got {size}"
+      )));
+    }
+
+    self.max_volume_size = size;
 
     Ok(self)
   }
@@ -237,7 +261,7 @@ impl ArchivePackConfig {
 mod tests {
   use xrf_ltx::Ltx;
 
-  use super::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_MAX};
+  use super::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN};
 
   fn config_from_ltx(source: &str) -> ArchivePackConfig {
     ArchivePackConfig::new("gamedata", "db", "configs")
@@ -304,16 +328,23 @@ mod tests {
   }
 
   #[test]
-  fn clamps_an_oversized_volume_and_refuses_an_empty_one() {
-    let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
-      .with_max_volume_size(VOLUME_SIZE_MAX * 4)
-      .expect("oversized size clamps");
+  fn refuses_a_volume_size_outside_the_range_the_engine_mounts() {
+    // Neither bound is clamped: an accepted size is the size that was asked for.
+    for size in [VOLUME_SIZE_MIN, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN + 1] {
+      let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
+        .with_max_volume_size(size)
+        .expect("a size within range is taken as given");
 
-    assert_eq!(config.max_volume_size, VOLUME_SIZE_MAX);
-    assert!(
-      ArchivePackConfig::new("gamedata", "db", "configs")
-        .with_max_volume_size(0)
-        .is_err()
-    );
+      assert_eq!(config.max_volume_size, size);
+    }
+
+    for size in [0, 1, VOLUME_SIZE_MIN - 1, VOLUME_SIZE_MAX + 1, VOLUME_SIZE_MAX * 4] {
+      assert!(
+        ArchivePackConfig::new("gamedata", "db", "configs")
+          .with_max_volume_size(size)
+          .is_err(),
+        "{size} bytes is refused rather than clamped"
+      );
+    }
   }
 }

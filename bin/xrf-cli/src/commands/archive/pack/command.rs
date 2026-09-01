@@ -1,4 +1,3 @@
-use std::env;
 use std::path::PathBuf;
 
 use clap::parser::ValueSource;
@@ -7,6 +6,7 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_pack::{
   ArchivePackConfig, ArchivePackMode, ArchivePackOptions, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension,
+  VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
 };
 use xrf_utils::format_path;
 
@@ -65,7 +65,11 @@ impl GenericCommand for PackCommand {
       )
       .arg(
         Arg::new("max-size")
-          .help("Maximum volume size in megabytes")
+          .help(format!(
+            "Maximum volume size in megabytes, from {} to {}",
+            VOLUME_SIZE_MIN / xrf_utils::BYTES_PER_MEGABYTE,
+            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+          ))
           .long("max-size")
           .required(false)
           .value_parser(value_parser!(u64).range(1..)),
@@ -96,19 +100,17 @@ impl GenericCommand for PackCommand {
 
   /// Pack a directory into xray engine database archives.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid source path to be provided");
+    let path: PathBuf = xrf_utils::to_absolute_path(
+      matches
+        .get_one::<PathBuf>("path")
+        .expect("Expected valid source path to be provided"),
+    )?;
 
-    let destination: &PathBuf = matches
-      .get_one::<_>("dest")
-      .expect("Expected valid output path to be provided");
-
-    let destination: PathBuf = if destination.is_relative() {
-      env::current_dir()?.join(destination)
-    } else {
-      destination.clone()
-    };
+    let destination: PathBuf = xrf_utils::to_absolute_path(
+      matches
+        .get_one::<PathBuf>("dest")
+        .expect("Expected valid output path to be provided"),
+    )?;
 
     let name: &String = matches
       .get_one::<_>("name")
@@ -116,7 +118,7 @@ impl GenericCommand for PackCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    let mut config: ArchivePackConfig = ArchivePackConfig::new(path, &destination, name);
+    let mut config: ArchivePackConfig = ArchivePackConfig::new(&path, &destination, name);
 
     // The configuration file supplies defaults; anything named on the command line wins over it.
     if let Some(ltx) = matches.get_one::<PathBuf>("ltx") {
@@ -144,7 +146,7 @@ impl GenericCommand for PackCommand {
       config = config.with_max_volume_size(xrf_utils::megabytes_to_bytes(*size))?;
     }
 
-    xrf_output::info!(output, "Pack source: {}", format_path(path));
+    xrf_output::info!(output, "Pack source: {}", format_path(&path));
     xrf_output::info!(output, "Pack destination: {}", format_path(&destination));
 
     // A headerless archive is not neutral to the engine: unless it is named `xdb`, the loader assumes it

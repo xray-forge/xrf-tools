@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_portable_path_string};
+use xrf_utils::{format_path, to_absolute_path, to_portable_path_string};
 use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
@@ -140,8 +140,8 @@ pub(crate) fn ensure_output_outside_roots(roots: &XrayRoots, output: &Path) -> X
 ///
 /// Returns an invalid error when the output directory is inside the source directory.
 pub(crate) fn ensure_output_outside_source(source: &Path, output: &Path) -> XrfResult {
-  let source_lexical: PathBuf = normalize_absolute_path(source)?;
-  let output_lexical: PathBuf = normalize_absolute_path(output)?;
+  let source_lexical: PathBuf = to_absolute_path(source)?;
+  let output_lexical: PathBuf = to_absolute_path(output)?;
   let source_resolved: PathBuf = fs::canonicalize(source).unwrap_or_else(|_| source_lexical.clone());
   let output_resolved: PathBuf = fs::canonicalize(output).unwrap_or_else(|_| output_lexical.clone());
 
@@ -154,27 +154,6 @@ pub(crate) fn ensure_output_outside_source(source: &Path, output: &Path) -> XrfR
   }
 
   Ok(())
-}
-
-fn normalize_absolute_path(path: &Path) -> XrfResult<PathBuf> {
-  let absolute: PathBuf = if path.is_absolute() {
-    path.to_path_buf()
-  } else {
-    std::env::current_dir()?.join(path)
-  };
-  let mut normalized: PathBuf = PathBuf::new();
-
-  for component in absolute.components() {
-    match component {
-      Component::CurDir => {}
-      Component::ParentDir => {
-        normalized.pop();
-      }
-      _ => normalized.push(component.as_os_str()),
-    }
-  }
-
-  Ok(normalized)
 }
 
 /// Whether `path` sits at or below `parent`, compared component by component.

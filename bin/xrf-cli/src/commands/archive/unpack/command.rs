@@ -1,4 +1,3 @@
-use std::env;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
@@ -58,19 +57,16 @@ impl GenericCommand for UnpackCommand {
 
   /// Unpack xray engine database archive.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
-
-    let destination: &PathBuf = matches
-      .get_one::<_>("dest")
-      .expect("Expected valid output path to be provided");
-
-    let destination: PathBuf = if destination.is_relative() {
-      env::current_dir()?.join(destination)
-    } else {
-      destination.clone()
-    };
+    let path: PathBuf = xrf_utils::to_absolute_path(
+      matches
+        .get_one::<PathBuf>("path")
+        .expect("Expected valid path to be provided"),
+    )?;
+    let destination: PathBuf = xrf_utils::to_absolute_path(
+      matches
+        .get_one::<PathBuf>("dest")
+        .expect("Expected valid output path to be provided"),
+    )?;
 
     // Resolved here rather than by clap: the default is what this host can actually run, which is not a string the
     // parser could carry.
@@ -87,10 +83,10 @@ impl GenericCommand for UnpackCommand {
       xrf_output::info!(output, "Unpack in dry mode");
     }
 
-    xrf_output::info!(output, "Unpack source: {}", format_path(path));
+    xrf_output::info!(output, "Unpack source: {}", format_path(&path));
     xrf_output::info!(output, "Unpack destination: {}", format_path(&destination));
 
-    let archive_project: Box<ArchiveProject> = Box::new(ArchiveProject::new(path)?);
+    let archive_project: Box<ArchiveProject> = Box::new(ArchiveProject::new(&path)?);
 
     let (compressed_size, real_size): (String, String) =
       xrf_utils::format_bytes_pair(archive_project.get_compressed_size(), archive_project.get_real_size());
@@ -111,7 +107,7 @@ impl GenericCommand for UnpackCommand {
       context.set_result(|| {
         ArchiveUnpackDryReport::new(
           &archive_project,
-          &format_path(path).to_string(),
+          &format_path(&path).to_string(),
           &format_path(&destination).to_string(),
         )
       })?;

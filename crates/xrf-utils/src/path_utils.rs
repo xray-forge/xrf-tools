@@ -1,5 +1,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
+
+use xrf_error::XrfResult;
 
 struct HostPath<'a> {
   path: Option<&'a Path>,
@@ -56,11 +58,46 @@ pub fn to_portable_path_string<T: AsRef<Path>>(path: T) -> String {
   path.as_ref().to_string_lossy().replace('\\', "/")
 }
 
+/// Resolve a host path to an absolute one, against the current directory and without consulting the filesystem.
+///
+/// Lexical on purpose. `canonicalize` refuses a path that does not exist yet, which a destination typically does not,
+/// and on Windows it answers the verbatim `\\?\` form that no person typed and few tools accept. Folding `.` and `..`
+/// by component gives the one spelling a person can act on for a path that may still be about to be created.
+///
+/// A symlink is therefore not followed, so the result names where the path says it goes rather than where it lands.
+/// Canonicalize instead where that difference matters.
+///
+/// # Errors
+///
+/// Returns an IO error when the path is relative and the current directory cannot be read.
+pub fn to_absolute_path<T: AsRef<Path>>(path: T) -> XrfResult<PathBuf> {
+  let path: &Path = path.as_ref();
+  let absolute: PathBuf = if path.is_absolute() {
+    path.to_path_buf()
+  } else {
+    std::env::current_dir()?.join(path)
+  };
+  let mut normalized: PathBuf = PathBuf::new();
+
+  for component in absolute.components() {
+    match component {
+      Component::CurDir => {}
+      // A root has no parent, so `pop` leaves it alone rather than climbing past it.
+      Component::ParentDir => {
+        normalized.pop();
+      }
+      _ => normalized.push(component.as_os_str()),
+    }
+  }
+
+  Ok(normalized)
+}
+
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{format_path, format_path_or, to_portable_path_string};
+  use super::{format_path, format_path_or, to_absolute_path, to_portable_path_string};
 
   #[test]
   fn renders_separators_the_same_way_on_every_platform() {
@@ -100,6 +137,50 @@ mod tests {
     );
     assert_eq!(format_path_or(None::<&Path>, "virtual").to_string(), "virtual");
     assert_eq!(format_path_or(None::<&Path>, "").to_string(), "");
+  }
+
+  #[test]
+  fn resolves_a_relative_path_against_the_current_directory() {
+    let current: PathBuf = std::env::current_dir().expect("a current directory");
+
+    assert_eq!(to_absolute_path("packed").expect("resolves"), current.join("packed"));
+    assert_eq!(to_absolute_path("").expect("resolves"), current);
+  }
+
+  #[test]
+  fn folds_the_components_that_only_name_a_place_indirectly() {
+    let current: PathBuf = std::env::current_dir().expect("a current directory");
+
+    assert_eq!(
+      to_absolute_path(Path::new(".").join("out").join("..").join("packed")).expect("resolves"),
+      current.join("packed")
+    );
+  }
+
+  #[test]
+  fn keeps_an_absolute_path_absolute_without_touching_the_filesystem() {
+    let root: PathBuf = std::env::current_dir()
+      .expect("a current directory")
+      .ancestors()
+      .last()
+      .expect("a root")
+      .to_path_buf();
+    let absent: PathBuf = root.join("no_such_directory").join("gamedata");
+
+    assert!(!absent.exists(), "the case worth covering is a path that is not there");
+    assert_eq!(to_absolute_path(&absent).expect("resolves"), absent);
+  }
+
+  #[test]
+  fn never_climbs_past_the_root() {
+    let root: PathBuf = std::env::current_dir()
+      .expect("a current directory")
+      .ancestors()
+      .last()
+      .expect("a root")
+      .to_path_buf();
+
+    assert_eq!(to_absolute_path(root.join("..").join("..")).expect("resolves"), root);
   }
 
   /// A Unix filename is bytes, not text, so it can be a valid path and still not be valid Unicode.
