@@ -75,6 +75,16 @@ impl GenericCommand for PackCommand {
           .value_parser(value_parser!(u64).range(1..)),
       )
       .arg(
+        Arg::new("oversized-volumes")
+          .help(format!(
+            "Let --max-size exceed {} MB, which only an engine fork that raised XRP_MAX_SIZE can mount",
+            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+          ))
+          .long("oversized-volumes")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
         Arg::new("xdb")
           .help("Write volumes with the xdb extension")
           .long("xdb")
@@ -139,15 +149,46 @@ impl GenericCommand for PackCommand {
       config.is_with_skip_list = false;
     }
 
+    // Before the size it lifts the bound for, which is the order `with_max_volume_size` reads them in.
+    let is_oversized_allowed: bool = matches.get_flag("oversized-volumes");
+
+    config = config.with_oversized_volumes(is_oversized_allowed);
+
     if matches.value_source("max-size") == Some(ValueSource::CommandLine)
       && let Some(size) = matches.get_one::<u64>("max-size")
     {
       // `--max-size` is given in megabytes, matching the `-max_size` unit of xrCompress.
-      config = config.with_max_volume_size(xrf_utils::megabytes_to_bytes(*size))?;
+      let size: u64 = xrf_utils::megabytes_to_bytes(*size);
+
+      // Asked here as well as in the configuration, so the refusal can name the flag that lifts it. The
+      // configuration refuses the same size regardless; this is the surface's own wording, not its own rule.
+      if size > VOLUME_SIZE_MAX && !is_oversized_allowed {
+        return Err(
+          XrfError::new_invalid_error(format!(
+            "Volume size {} is past the {} MB the engine mounts. Pass --oversized-volumes to publish \
+             volumes only a fork that raised XRP_MAX_SIZE can open.",
+            xrf_utils::format_bytes(size),
+            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+          ))
+          .into(),
+        );
+      }
+
+      config = config.with_max_volume_size(size)?;
     }
 
     xrf_output::info!(output, "Pack source: {}", format_path(&path));
     xrf_output::info!(output, "Pack destination: {}", format_path(&destination));
+
+    if config.max_volume_size > VOLUME_SIZE_MAX {
+      xrf_output::warning!(
+        output,
+        "Volumes are capped at {}, past the {} MB no unmodified engine mounts. These volumes load only in \
+         a fork that raised XRP_MAX_SIZE.",
+        xrf_utils::format_bytes(config.max_volume_size),
+        VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+      );
+    }
 
     // A headerless archive is not neutral to the engine: unless it is named `xdb`, the loader assumes it
     // is an encrypted Shadow of Chernobyl archive and decrypts it into nonsense.

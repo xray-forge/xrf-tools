@@ -55,6 +55,13 @@ export type ArchivePackConfig = {
    * than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
    */
   maxVolumeSize: number;
+  /**
+   * Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`.
+   *
+   * Defaulted rather than required, because this shape is also a configuration file on disk: one written before the
+   * field existed reads back as the safe answer instead of failing to parse.
+   */
+  isWithOversizedVolumes?: boolean;
   volumeExtension: ArchiveVolumeExtension;
 };
 

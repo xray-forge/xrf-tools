@@ -18,6 +18,14 @@ pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
 /// exercise a split at any size.
 pub const VOLUME_SIZE_MIN: u64 = xrf_utils::BYTES_PER_MEGABYTE;
 
+/// Ceiling no configuration may pass, whatever it allows.
+///
+/// Nothing about the archive format stops here — this is a typo guard. A volume size is entered in megabytes, so one
+/// stray digit asks for a volume larger than the disk, and a run that only discovers it after walking the source has
+/// already cost what it took to get there. Far enough above `VOLUME_SIZE_MAX` that no fork raising `XRP_MAX_SIZE` has
+/// any reason to reach it, and low enough that a mistyped number lands past it.
+pub const VOLUME_SIZE_HARD_MAX: u64 = 32 * xrf_utils::BYTES_PER_GIGABYTE;
+
 /// Where a packed `gamedata` tree mounts, which is what nearly every archive is.
 pub const DEFAULT_ENTRY_POINT: &str = "$fs_root$\\gamedata\\";
 
@@ -109,6 +117,12 @@ pub struct ArchivePackConfig {
   /// they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
   /// than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
   pub max_volume_size: u64,
+  /// Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`.
+  ///
+  /// Defaulted rather than required, because this shape is also a configuration file on disk: one written before the
+  /// field existed reads back as the safe answer instead of failing to parse.
+  #[serde(default)]
+  pub is_with_oversized_volumes: bool,
   pub volume_extension: ArchiveVolumeExtension,
 }
 
@@ -126,6 +140,7 @@ impl ArchivePackConfig {
       header: Some(default_header()),
       mode: ArchivePackMode::default(),
       max_volume_size: VOLUME_SIZE_MAX,
+      is_with_oversized_volumes: false,
       volume_extension: ArchiveVolumeExtension::default(),
     }
   }
@@ -186,9 +201,13 @@ impl ArchivePackConfig {
   /// asked for had they known. The number came from a command line or a form, so the answer belongs where it was
   /// entered.
   ///
+  /// The upper bound is the one [`Self::with_oversized_volumes`] lifts, so a caller wanting both applies that first.
+  /// In the other order this refuses, naming it — `validate_for_packing` is the gate that cannot be ordered wrong.
+  ///
   /// # Errors
   ///
-  /// Returns an invalid error when the size is outside `VOLUME_SIZE_MIN..=VOLUME_SIZE_MAX`.
+  /// Returns an invalid error below `VOLUME_SIZE_MIN`, or above `VOLUME_SIZE_MAX` unless oversized volumes are
+  /// allowed.
   pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
     if size < VOLUME_SIZE_MIN {
       return Err(XrfError::new_invalid_error(format!(
@@ -196,15 +215,37 @@ impl ArchivePackConfig {
       )));
     }
 
-    if size > VOLUME_SIZE_MAX {
+    if size > VOLUME_SIZE_HARD_MAX {
       return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes, got {size}"
+        "Archive volume size must not exceed {VOLUME_SIZE_HARD_MAX} bytes, got {size}. Nothing lifts this bound; \
+         check the number for a stray digit."
+      )));
+    }
+
+    if size > VOLUME_SIZE_MAX && !self.is_with_oversized_volumes {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes, got {size}. No unmodified engine mounts \
+         a larger volume; allow oversized volumes to pack one anyway."
       )));
     }
 
     self.max_volume_size = size;
 
     Ok(self)
+  }
+
+  /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
+  ///
+  /// The archive stays well-formed — nothing about the format stops at 1900 MB. What stops there is `xrCompress` and
+  /// the loader, so a set packed this way is not a S.T.A.L.K.E.R. archive any shipped build will mount, and the
+  /// failure surfaces at load time in the engine rather than here. Off by default, and no configuration file turns it
+  /// on by accident: `with_ltx` does not read it, because the xrCompress dialect has no such key.
+  ///
+  /// `VOLUME_SIZE_HARD_MAX` still stands: this lifts an engine limit, not the guard against a mistyped number.
+  pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
+    self.is_with_oversized_volumes = is_allowed;
+
+    self
   }
 
   /// Reject a configuration that cannot produce an engine-mountable archive, or that would publish outside the
@@ -221,7 +262,13 @@ impl ArchivePackConfig {
       ));
     }
 
-    if self.max_volume_size > VOLUME_SIZE_MAX {
+    if self.max_volume_size > VOLUME_SIZE_HARD_MAX {
+      return Err(XrfError::new_invalid_error(format!(
+        "Archive volume size must not exceed {VOLUME_SIZE_HARD_MAX} bytes"
+      )));
+    }
+
+    if self.max_volume_size > VOLUME_SIZE_MAX && !self.is_with_oversized_volumes {
       return Err(XrfError::new_invalid_error(format!(
         "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes"
       )));
@@ -259,9 +306,12 @@ impl ArchivePackConfig {
 
 #[cfg(test)]
 mod tests {
+  use xrf_error::XrfError;
   use xrf_ltx::Ltx;
 
-  use super::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN};
+  use super::{
+    ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
+  };
 
   fn config_from_ltx(source: &str) -> ArchivePackConfig {
     ArchivePackConfig::new("gamedata", "db", "configs")
@@ -325,6 +375,72 @@ mod tests {
     config.volume_extension = ArchiveVolumeExtension::Xdb;
 
     assert_eq!(config.volume_name(0), "levels.xdb0");
+  }
+
+  #[test]
+  fn packs_an_oversized_volume_only_when_that_is_asked_for_explicitly() {
+    let oversized: u64 = VOLUME_SIZE_MAX + 1;
+
+    // The escape hatch is applied first, and the size it lifts the bound for is then taken as given.
+    let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
+      .with_oversized_volumes(true)
+      .with_max_volume_size(oversized)
+      .expect("an allowed oversized size is taken as given");
+
+    assert_eq!(config.max_volume_size, oversized);
+    assert!(config.validate_for_packing().is_ok(), "the gate honours the same flag");
+
+    // The other order refuses, and says what would have allowed it.
+    let error: XrfError = ArchivePackConfig::new("gamedata", "db", "configs")
+      .with_max_volume_size(oversized)
+      .expect_err("the bound still stands until it is lifted");
+
+    assert!(error.to_string().contains("oversized volumes"), "{error}");
+
+    // Lifting the bound is not lifting the floor: only the maximum is a fork's business.
+    assert!(
+      ArchivePackConfig::new("gamedata", "db", "configs")
+        .with_oversized_volumes(true)
+        .with_max_volume_size(VOLUME_SIZE_MIN - 1)
+        .is_err()
+    );
+  }
+
+  #[test]
+  fn keeps_the_typo_guard_above_everything_the_fork_flag_lifts() {
+    let mistyped: u64 = VOLUME_SIZE_HARD_MAX + 1;
+    let error: XrfError = ArchivePackConfig::new("gamedata", "db", "configs")
+      .with_oversized_volumes(true)
+      .with_max_volume_size(mistyped)
+      .expect_err("the hard bound is not the one the flag lifts");
+
+    assert!(error.to_string().contains("stray digit"), "{error}");
+
+    // Nor can the field be set past it directly: the gate before any write says the same thing.
+    let mut config: ArchivePackConfig =
+      ArchivePackConfig::new("gamedata", "db", "configs").with_oversized_volumes(true);
+
+    config.max_volume_size = mistyped;
+
+    assert!(config.validate_for_packing().is_err());
+
+    // The bound itself is allowed, so the refusal is a ceiling rather than an off-by-one.
+    config.max_volume_size = VOLUME_SIZE_HARD_MAX;
+
+    assert!(config.validate_for_packing().is_ok());
+  }
+
+  #[test]
+  fn reads_a_configuration_written_before_the_oversized_flag_existed() {
+    // The shape is a file on disk as well as a wire contract, so an older one must still load, safe side up.
+    let config: ArchivePackConfig = serde_json::from_str(
+      r#"{"source":"gamedata","destination":"db","name":"configs","includeFiles":[],"includeDirectories":[],
+          "excludeDirectories":[],"excludeExtensions":[],"isWithSkipList":true,"header":null,"mode":"Compress",
+          "maxVolumeSize":1024,"volumeExtension":"Db"}"#,
+    )
+    .expect("a configuration without the field parses");
+
+    assert!(!config.is_with_oversized_volumes);
   }
 
   #[test]

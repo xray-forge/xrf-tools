@@ -7353,6 +7353,7 @@ dependencies = [
  "lzokay",
  "rayon",
  "serde",
+ "serde_json",
  "specta",
  "walkdir",
  "xrf-archive",
