@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{LineEndings, apply_line_endings, format_path};
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
 use crate::extern_manifest::{ExternCallable, ExternExport, ExternManifest, ExternParameter};
@@ -63,27 +63,6 @@ impl FromStr for ExternFormat {
   }
 }
 
-/// Physical line endings used for generated artifacts.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum LineEndings {
-  Lf,
-  Crlf,
-}
-
-impl FromStr for LineEndings {
-  type Err = XrfError;
-
-  fn from_str(value: &str) -> XrfResult<Self> {
-    match value {
-      "lf" => Ok(Self::Lf),
-      "crlf" => Ok(Self::Crlf),
-      _ => Err(XrfError::new_invalid_error(format!(
-        "Unsupported line endings '{value}'. Expected lf or crlf."
-      ))),
-    }
-  }
-}
-
 /// Renders an extern manifest and terminates it with the selected line ending.
 ///
 /// When `line_endings` is `None`, JSON uses CRLF and XML/HTML use LF.
@@ -104,21 +83,6 @@ pub fn render_extern_manifest(
   let ending: LineEndings = line_endings.unwrap_or_else(|| format.default_line_endings());
 
   Ok(apply_line_endings(&format!("{content}\n"), ending))
-}
-
-/// Converts CRLF and bare CR sequences to LF.
-///
-/// This is used when comparing generated XML or HTML without treating host-specific line endings
-/// as content changes.
-pub fn normalize_line_endings(content: &str) -> String {
-  content.replace("\r\n", "\n").replace('\r', "\n")
-}
-
-fn apply_line_endings(content: &str, line_endings: LineEndings) -> String {
-  match line_endings {
-    LineEndings::Lf => normalize_line_endings(content),
-    LineEndings::Crlf => normalize_line_endings(content).replace('\n', "\r\n"),
-  }
 }
 
 fn render_xml(manifest: &ExternManifest) -> String {
