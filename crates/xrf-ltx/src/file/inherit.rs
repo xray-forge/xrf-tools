@@ -212,11 +212,11 @@ mod reported_path_test {
     Ok(())
   }
 
-  /// A Unix filename is bytes, not text, so a valid path can still not be valid Unicode. Rendering the
+  /// Linux filenames are bytes, not text, so a valid path can still not be valid Unicode. Rendering the
   /// inheritance diagnostic used to unwrap `Path::to_str` on it and abort the process instead of
   /// returning the error the caller asked for.
   #[test]
-  #[cfg(unix)]
+  #[cfg(target_os = "linux")]
   fn returns_an_inheritance_error_for_a_file_whose_name_is_not_valid_unicode() -> XrfResult {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;

@@ -346,7 +346,7 @@ fn does_not_read_a_recursively_excluded_subtree() {
 /// writer already refuses a name it cannot encode as windows-1251; this one never reached it, because a host path
 /// that is not valid Unicode produced no name to refuse.
 #[test]
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn refuses_a_source_file_whose_host_name_is_not_valid_unicode() {
   use std::ffi::OsStr;
   use std::os::unix::ffi::OsStrExt;

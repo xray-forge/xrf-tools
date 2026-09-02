@@ -283,11 +283,11 @@ mod tests {
     Ok(())
   }
 
-  /// A Unix filename is bytes, not text, so a config the engine loads can carry a name that is not valid Unicode. The
+  /// Linux filenames are bytes, not text, so a config the engine loads can carry a name that is not valid Unicode. The
   /// wildcard resolver used to convert every directory entry with `to_str` and skip the ones that answered `None`, leaving
   /// the sections such a file declares silently absent from the merged result.
   #[test]
-  #[cfg(unix)]
+  #[cfg(target_os = "linux")]
   fn loads_a_wildcard_match_whose_file_name_is_not_valid_unicode() -> XrfResult {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;

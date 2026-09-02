@@ -146,7 +146,7 @@ fn opens_what_it_planned() {
   assert!(vfs.read_bytes(r"configs\system.ltx").is_ok());
 }
 
-#[cfg(any(unix, windows))]
+#[cfg(any(target_os = "linux", windows))]
 #[test]
 fn opens_a_non_unicode_root_without_changing_its_address() {
   let base: PathBuf = build_absolute_generated_test_resource_path("xray_roots/non-unicode-address");

@@ -41,7 +41,7 @@ fn unpack_preserves_empty_files_and_directories() {
 /// Unicode. Summarising a finished run used to `to_str().unwrap()` both halves, turning a completed
 /// extraction into a panic; the result renders lossily instead and stays a success.
 #[test]
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   use std::ffi::OsStr;
   use std::os::unix::ffi::OsStrExt;
