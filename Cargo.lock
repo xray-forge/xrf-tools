@@ -7299,7 +7299,9 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "log",
+ "rayon",
  "serde",
+ "serde_json",
  "specta",
  "xrf-error",
  "xrf-utils",

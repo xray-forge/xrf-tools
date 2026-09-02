@@ -1,6 +1,9 @@
 #![doc = include_str!("../README.md")]
 
 mod emission_gate;
+mod execution_origin;
+mod execution_plan;
+mod execution_request;
 mod job_handle;
 mod job_outcome;
 mod job_progress;
@@ -13,6 +16,9 @@ mod progress_unit;
 #[cfg(test)]
 mod tests;
 
+pub use crate::execution_origin::ExecutionOrigin;
+pub use crate::execution_plan::ExecutionPlan;
+pub use crate::execution_request::ExecutionRequest;
 pub use crate::job_handle::{DEFAULT_PROGRESS_INTERVAL, JobHandle};
 pub use crate::job_outcome::JobOutcome;
 pub use crate::job_progress::JobProgress;

@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 log = { workspace = true }
+rayon = { workspace = true, optional = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-error = { workspace = true }
@@ -17,12 +18,16 @@ xrf-utils = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+serde_json = { workspace = true }
 
 [[bench]]
 name = "advance"
 harness = false
 
 [features]
+# Builds the thread pool an `ExecutionPlan` describes. Named for the dependency rather than for the capability, unlike
+# `typescript-bindings`, because it puts `rayon` types in the public interface rather than only deriving on private ones.
+rayon = ["dep:rayon"]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta"]
 

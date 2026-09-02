@@ -36,7 +36,7 @@ args = [
   "--all-targets",
   "--locked",
   "--features",
-  "xrf-app/typescript-bindings",
+  "xrf-app/typescript-bindings,xrf-job/rayon",
   "--",
   "-D",
   "warnings",
@@ -54,7 +54,7 @@ args = [
   "--bins",
   "--locked",
   "--features",
-  "xrf-app/typescript-bindings",
+  "xrf-app/typescript-bindings,xrf-job/rayon",
 ]
 
 [tasks.test-error-derive]
