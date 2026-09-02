@@ -1,8 +1,10 @@
 use std::fs;
+use std::fs::File;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveVolumeReaders};
+use xrf_error::XrfError;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
 use crate::{ArchiveUnpackOptions, ArchiveUnpacker};
@@ -126,4 +128,32 @@ fn unpack_writes_every_entry_across_several_workers() {
     fs::read(out.join("configs").join("alife.ltx")).expect("written file"),
     COMPRESSIBLE
   );
+}
+
+/// A descriptor belonging to some other set is refused rather than read out of whichever volume happens to be open.
+///
+/// The readers open exactly what their own project's entries name, so an entry from elsewhere has no volume here.
+/// Serving it anyway would mean reading whatever its offset landed in, which is how one archive's bytes end up
+/// written out under another archive's name.
+#[test]
+fn readers_refuse_an_entry_from_another_set() {
+  let directory: PathBuf = create_temporary_directory("readers-foreign-entry");
+  let mine_at: PathBuf = directory.join("mine");
+  let theirs_at: PathBuf = directory.join("theirs");
+
+  fs::create_dir_all(&mine_at).expect("one set");
+  fs::create_dir_all(&theirs_at).expect("another set");
+
+  let mine: ArchiveProject = create_project(&mine_at, &[Entry::stored("configs\\system.ltx", b"[section]")]);
+  let theirs: ArchiveProject = create_project(&theirs_at, &[Entry::stored("configs\\other.ltx", b"[other]")]);
+
+  let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(&mine).expect("volumes open");
+  let foreign: &ArchiveFileDescriptor = theirs.files.values().next().expect("an entry");
+  let mut target: File = File::create(directory.join("out.bin")).expect("target file");
+
+  let error: XrfError = readers
+    .write_descriptor_contents(&mut target, foreign)
+    .expect_err("an entry from another set has no volume here");
+
+  assert!(matches!(error, XrfError::Read { .. }), "{error}");
 }

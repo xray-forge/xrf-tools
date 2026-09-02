@@ -11,7 +11,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use xrf_archive::ArchiveFileDescriptor;
 use xrf_archive::ArchiveProject;
-use xrf_archive::write_descriptor_contents;
+use xrf_archive::{ArchiveVolumeReaders, write_descriptor_contents};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
@@ -80,6 +80,10 @@ impl ArchiveUnpacker {
 
     destination.create_root()?;
 
+    // Opened before the write phase and shared by reference: every worker reads by position, so one handle per volume
+    // serves the whole run without a cursor to race for.
+    let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(project)?;
+
     let prepared: HashMap<PathBuf, PathBuf> = {
       let preparing: JobScope = job.enter(UNPACK_PHASE_PREPARE, None);
 
@@ -100,7 +104,7 @@ impl ArchiveUnpacker {
           // A directory row carries no payload, and the tree it names was created during preparation. It is counted
           // anyway, so the progress total stays the entry count the project reports holding.
           if !descriptor.is_directory {
-            Self::unpack_file(&destination, &prepared, descriptor)?;
+            Self::unpack_file(&destination, &readers, &prepared, descriptor)?;
 
             tally.files.fetch_add(1, Ordering::Relaxed);
             tally
@@ -175,6 +179,9 @@ impl ArchiveUnpacker {
 
     destination.create_root()?;
 
+    // One handle per volume here too: a directory extraction writes many entries of the same set.
+    let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(project)?;
+
     // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
     // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
     let selected: Vec<(&ArchiveFileDescriptor, PathBuf)> = project
@@ -208,7 +215,7 @@ impl ArchiveUnpacker {
       if descriptor.is_directory {
         destination.create_directory(relative)?;
       } else {
-        write_descriptor_contents(&mut destination.create_file(relative)?, descriptor)?;
+        readers.write_descriptor_contents(&mut destination.create_file(relative)?, descriptor)?;
 
         extracted_count += 1;
         size += descriptor.size_real as u64;
@@ -311,6 +318,7 @@ impl ArchiveUnpacker {
   /// preparation collects and an entry that never reaches disk.
   fn unpack_file(
     destination: &RootedDestination,
+    readers: &ArchiveVolumeReaders,
     prepared: &HashMap<PathBuf, PathBuf>,
     descriptor: &ArchiveFileDescriptor,
   ) -> XrfResult {
@@ -325,7 +333,7 @@ impl ArchiveUnpacker {
       None => destination.create_file(&relative)?,
     };
 
-    write_descriptor_contents(&mut target, descriptor)
+    readers.write_descriptor_contents(&mut target, descriptor)
   }
 
   /// Creates every directory the entries need, and returns where each one landed.
