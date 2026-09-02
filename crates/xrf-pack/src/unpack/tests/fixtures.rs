@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{Error as IoError, Result as IoResult, Write};
+use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 
 use crc32fast::hash;
@@ -128,6 +128,7 @@ pub(crate) fn link_file(target: &Path, link: &Path) -> bool {
 /// One raw argument, because `cmd` re-parses the line and both paths may hold spaces.
 #[cfg(windows)]
 fn link_junction(target: &Path, link: &Path) -> IoResult<()> {
+  use std::io::Error as IoError;
   use std::os::windows::process::CommandExt;
   use std::process::{Command, Stdio};
 

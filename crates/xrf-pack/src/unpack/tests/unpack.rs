@@ -43,28 +43,21 @@ fn unpack_preserves_empty_files_and_directories() {
 #[test]
 #[cfg(unix)]
 fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
-  use std::collections::HashMap;
   use std::ffi::OsStr;
   use std::os::unix::ffi::OsStrExt;
-
-  use xrf_archive::ArchiveDescriptor;
 
   use crate::ArchiveUnpackResult;
 
   let directory: PathBuf = create_temporary_directory("non-utf8");
   let root: String = directory.display().to_string();
 
-  let mut project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
+  // The volume really lives under a name that is not valid Unicode, rather than a record pointing at one: a project
+  // holds only volumes it read, and unpacking opens every one of them before it writes anything.
+  let volumes: PathBuf = directory.join(OsStr::from_bytes(b"vol\xff"));
 
-  // The fixture builds no volume records, and the summary names them, so one has to be added here.
-  project.archives.push(ArchiveDescriptor {
-    created_at: None,
-    modified_at: None,
-    files: HashMap::new(),
-    output_root_path: PathBuf::new(),
-    path: directory.join(OsStr::from_bytes(b"broken\xff.db0")),
-  });
+  fs::create_dir_all(&volumes).expect("a directory whose name is not valid Unicode");
 
+  let project: ArchiveProject = create_project(&volumes, &[Entry::stored("configs\\system.ltx", b"[section]")]);
   let out: PathBuf = directory.join(OsStr::from_bytes(b"out\xff"));
   let result: ArchiveUnpackResult =
     ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).expect("unpack");
@@ -76,7 +69,7 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   );
 
   assert_eq!(result.destination, format!("{root}/out\u{FFFD}"));
-  assert_eq!(result.archives, vec![format!("{root}/broken\u{FFFD}.db0")]);
+  assert_eq!(result.archives, vec![format!("{root}/vol\u{FFFD}/files.db0")]);
 }
 
 /// A plain test, deliberately not an async one: unpacking drives its own pool and must not need an ambient executor.

@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Error as IoError, ErrorKind, Result as IoResult};
+use std::io::Result as IoResult;
 
 /// Reads exactly `buffer.len()` bytes from `offset` without moving the file's own cursor.
 ///
@@ -22,6 +22,7 @@ pub fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> IoResult<()
 
 #[cfg(windows)]
 pub fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> IoResult<()> {
+  use std::io::{Error as IoError, ErrorKind};
   use std::os::windows::fs::FileExt;
 
   let mut read: usize = 0;
