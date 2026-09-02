@@ -92,13 +92,7 @@ export const archivesCommands = {
        * search them in reverse to resolve an entry to the bytes this project's table names.
        */
       archives: Array<ArchiveDescriptor>;
-      /**
-       * Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
-       *
-       * The key is shared inside the process and a plain string on the wire. Sharing is an ownership choice about a table
-       * held for a session; a report describes one run, so the boundary states the key as what it serializes to rather
-       * than letting the choice reach the bindings.
-       */
+      /** Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`. */
       files: { [key in string]: ArchiveFileDescriptor };
       readPolicy: ArchiveProjectReadPolicy;
       /**

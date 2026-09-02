@@ -2,6 +2,7 @@ use std::io;
 use std::path::Path;
 use std::process::Command;
 
+#[cfg(target_os = "windows")]
 use xrf_utils::format_path;
 
 use crate::core::types::TauriResult;
