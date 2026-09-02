@@ -8,6 +8,7 @@ pub(crate) mod line_ending_utils;
 pub(crate) mod path_utils;
 pub(crate) mod size_utils;
 pub(crate) mod sort_utils;
+pub(crate) mod staged_write_utils;
 pub(crate) mod string_utils;
 
 pub use crate::assertion_utils::*;
@@ -20,4 +21,5 @@ pub use crate::line_ending_utils::*;
 pub use crate::path_utils::*;
 pub use crate::size_utils::*;
 pub use crate::sort_utils::*;
+pub use crate::staged_write_utils::*;
 pub use crate::string_utils::*;

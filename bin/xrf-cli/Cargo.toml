@@ -43,6 +43,8 @@ xrf-pack = { workspace = true }
 [dev-dependencies]
 xrf-chunk = { workspace = true }
 xrf-test-utils = { workspace = true }
+# Publication tests arm a staged write to fail; the feature reaches no normal build.
+xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [lints]
 workspace = true

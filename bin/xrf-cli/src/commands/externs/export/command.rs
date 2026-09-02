@@ -6,13 +6,12 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_export::{ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest};
 use xrf_output::OutputOptions;
-use xrf_utils::{LineEndings, format_path, normalize_line_endings};
+use xrf_utils::{LineEndings, format_path, normalize_line_endings, write_file_staged};
 
 use super::report::ExternsExportReport;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::staged_write::write_file_staged;
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]

@@ -10,7 +10,7 @@ use crate::commands::externs::export::command::ExportCommand;
 use crate::core::command_error::CommandError;
 use crate::core::command_testing::run_command_with_result;
 use crate::core::generic_command::CommandResult;
-use crate::core::staged_write::faults::fail_next_staged_write;
+use xrf_utils::staging_faults::fail_next_staged_write;
 
 const PREVIOUS: &str = "{\n  \"exports\": { \"sentinel\": true }\n}\n";
 

@@ -8,8 +8,8 @@ use xrf_utils::{LineEndings, format_path};
 use crate::edit::TranslationEdit;
 use crate::json::normalize::{resolve_line_endings, to_canonical_bytes};
 use crate::json::read::read_json;
-use crate::staged_write::{write_file_staged, write_new_file};
 use crate::types::TranslationJson;
+use xrf_utils::{write_file_staged, write_new_file_staged};
 
 /// What a canonical rewrite of one source would produce, beside what is there now.
 pub(crate) struct CanonicalRender {
@@ -74,7 +74,7 @@ pub(crate) fn write_canonical(path: &Path, render: &CanonicalRender) -> XrfResul
   }
 
   if render.is_new() {
-    write_new_file(path, &render.bytes)?;
+    write_new_file_staged(path, &render.bytes)?;
   } else {
     write_file_staged(path, &render.bytes)?;
   }

@@ -8,9 +8,9 @@ use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_tex
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
-use crate::staged_write::write_file_staged;
 use crate::xml::encoding::{DecodedTranslation, read_decoded};
 use crate::xml::layout::{XmlLayout, removal_range};
+use xrf_utils::write_file_staged;
 
 /// Apply edits to one string table file, leaving every untouched byte as it was found.
 ///
@@ -36,7 +36,7 @@ pub fn apply_edits(path: &Path, edits: &[TranslationEdit]) -> XrfResult {
 
   written.extend(encode_string_to_bytes(&edited, encoding)?);
 
-  write_file_staged(path, &written)
+  Ok(write_file_staged(path, &written)?)
 }
 
 /// Takes the source by value because the ranges it produces only address that exact string, and the

@@ -8,11 +8,18 @@ rust-version.workspace = true
 [dependencies]
 base64 = "0.23.1"
 encoding_rs = "0.8.35"
+log = { workspace = true }
 serde = { workspace = true }
 xrf-error = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+xrf-test-utils = { workspace = true }
+
+[features]
+# Lets a dependent crate arm a staged write to fail, so publication can be tested without a full device.
+# Nothing in a normal build turns this on.
+staging-faults = []
 
 [lints]
 workspace = true

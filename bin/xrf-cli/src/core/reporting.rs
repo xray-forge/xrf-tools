@@ -10,12 +10,11 @@ use xrf_build_info::BuildInfo;
 use xrf_error::XrfError;
 use xrf_job::ExecutionPlan;
 use xrf_output::{OutputOptions, OutputVerbosity};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, write_file_staged};
 
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::CommandResult;
 use crate::core::output::TerminalOutput;
-use crate::core::staged_write::write_file_staged;
 
 const SILENT_ARGUMENT: &str = "silent";
 const VERBOSE_ARGUMENT: &str = "verbose";
@@ -302,7 +301,7 @@ mod tests {
   };
   use crate::core::command_error::CommandError;
   use crate::core::generic_command::CommandResult;
-  use crate::core::staged_write::faults::fail_next_staged_write;
+  use xrf_utils::staging_faults::fail_next_staged_write;
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
     Command::new("xrf-cli")

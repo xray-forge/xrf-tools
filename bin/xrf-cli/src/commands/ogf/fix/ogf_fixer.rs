@@ -12,10 +12,9 @@ use walkdir::{DirEntry, WalkDir};
 use xrf_db::{OgfNormalization, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, write_file_staged};
 
 use crate::commands::ogf::fix::report::{OgfFixFileReport, OgfFixFindingReport, OgfFixOutcome, OgfFixReport};
-use crate::core::staged_write::write_file_staged;
 
 const OGF_EXTENSION: &str = "ogf";
 
