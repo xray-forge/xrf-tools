@@ -22,6 +22,7 @@ export interface IJobProgressViewProps extends BaseComponentProps {
  */
 export function JobProgressView({ "data-testid": dataTestId, job, onCancel }: IJobProgressViewProps): ReactElement {
   const levels: Array<ProgressLevel> = job.progress?.levels ?? [];
+  const detail: string = describeActiveProgress(job.progress);
 
   return (
     <Box data-testid={dataTestId} sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
@@ -35,8 +36,8 @@ export function JobProgressView({ "data-testid": dataTestId, job, onCancel }: IJ
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant={"caption"} color={"text.secondary"} noWrap={true}>
-            {describeActiveProgress(job.progress)}
+          <Typography variant={"caption"} color={"text.secondary"} noWrap={true} title={detail}>
+            {detail}
           </Typography>
         </Box>
 

@@ -72,6 +72,13 @@ export function createApplicationTheme(): Theme {
           root: { backgroundImage: "none" },
         },
       },
+      // `caption`, `button` and `overline` render as a span, and MUI's own `noWrap` rules do nothing to an inline
+      // box: such a line ran past its container and was clipped by an ancestor instead of ending in an ellipsis.
+      MuiTypography: {
+        styleOverrides: {
+          noWrap: { display: "block" },
+        },
+      },
       // Neutral command bar instead of material's filled accent bar.
       MuiAppBar: {
         defaultProps: { color: "default", elevation: 0 },
