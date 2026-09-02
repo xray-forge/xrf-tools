@@ -3,6 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
 use crate::project::levels::level_engine_constants::{AI_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION};
 use crate::project::levels::tests::fixtures::*;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
@@ -361,10 +363,9 @@ fn skips_empty_shader_table_entries_like_the_renderer() {
 #[test]
 fn fails_the_check_when_the_game_graph_cannot_be_read() {
   let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
-  let root: PathBuf = std::env::temp_dir().join(format!(
-    "xrf-gamedata-levels-unreadable-{}-{unique}",
-    std::process::id()
-  ));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("levels/unreadable-graph-{unique}"));
+
+  let _ = fs::remove_dir_all(&root);
 
   fs::create_dir_all(root.join("configs").join("$scheme")).unwrap();
   fs::write(root.join("configs").join("system.ltx"), "").unwrap();

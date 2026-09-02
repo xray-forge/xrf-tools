@@ -10,6 +10,7 @@ use xrf_db::{
   GraphCrossTable, GraphHeader, GraphLevel, LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry,
   LevelShadersChunk, SpawnGraphsChunk, Vector3d,
 };
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, CFORM_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION,
@@ -219,7 +220,7 @@ impl GamedataFixture {
     let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
 
     Self {
-      root: std::env::temp_dir().join(format!("xrf-gamedata-levels-test-{}-{unique}", std::process::id())),
+      root: build_absolute_generated_test_resource_path(&format!("levels/fixture-{unique}")),
       bundles: vec![LevelBundleFixture::valid("zaton")],
       spawn: Some(spawn_graph_bytes(
         &[("zaton", 108, ZATON_GUID)],
@@ -252,6 +253,10 @@ impl GamedataFixture {
 
   pub(crate) fn verify(self) -> GamedataLevelsVerificationResult {
     let configs: PathBuf = self.root.join("configs");
+
+    // A fixture describes a whole tree, so `without` and `without_texture` only mean what they say while nothing
+    // survives an earlier occupant of this root.
+    let _ = fs::remove_dir_all(&self.root);
 
     fs::create_dir_all(configs.join("$scheme")).unwrap();
     fs::write(configs.join("system.ltx"), "").unwrap();
@@ -299,6 +304,20 @@ impl GamedataFixture {
       .verify_levels(&GamedataProjectVerifyOptions::default())
       .expect("Expected level verification to complete")
   }
+}
+
+/// A root that outlived its run once handed one test another test's tree, so `without` kept the very file it claims to
+/// remove and the suite failed about one run in ten.
+#[test]
+fn a_fixture_ignores_what_an_earlier_occupant_left_in_its_root() {
+  let fixture: GamedataFixture =
+    GamedataFixture::new().with_bundles(vec![LevelBundleFixture::valid("zaton").without("level.geom")]);
+
+  LevelBundleFixture::valid("zaton")
+    .with("level.details", vec![1])
+    .write(&fixture.root);
+
+  assert_only_rule(&fixture.verify(), "levels.missing-file");
 }
 
 pub(crate) fn rule_ids(result: &GamedataLevelsVerificationResult) -> BTreeSet<String> {
