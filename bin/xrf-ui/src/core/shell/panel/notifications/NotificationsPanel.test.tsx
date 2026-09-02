@@ -91,18 +91,121 @@ describe("NotificationsPanel", () => {
   it("keeps details out of the way until they are asked for", async () => {
     const { render } = renderPanel([
       {
-        details: "C:\\out\\system.ltx",
+        details: "Read 4128 entries\nC:\\gamedata\\gamedata.db0",
+        severity: ENotificationSeverity.INFO,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: "Opened archive",
+      },
+    ]);
+
+    expect(render.queryByText(/gamedata\.db0/)).not.toBeInTheDocument();
+
+    await userEvent.click(render.getByLabelText("Show details"));
+
+    expect(render.getByText(/gamedata\.db0/)).toBeInTheDocument();
+  });
+
+  it("states why a failure failed without being asked", async () => {
+    const { render } = renderPanel([
+      {
+        details: "Access denied\nC:\\out\\system.ltx",
         severity: ENotificationSeverity.ERROR,
         source: EApplicationId.ARCHIVES_EXPLORER,
         title: "Could not extract",
       },
     ]);
 
-    expect(render.queryByText("C:\\out\\system.ltx")).not.toBeInTheDocument();
+    // The first line of a refusal is the reason for it, which is the one line worth spending unprompted,
+    // and the ellipsis says there is more behind it.
+    expect(render.getByText("Access denied …")).toBeInTheDocument();
+    expect(render.queryByText(/system\.ltx/)).not.toBeInTheDocument();
 
     await userEvent.click(render.getByLabelText("Show details"));
 
-    expect(render.getByText("C:\\out\\system.ltx")).toBeInTheDocument();
+    expect(render.getByText(/system\.ltx/)).toBeInTheDocument();
+  });
+
+  it("cuts a long body off with an ellipsis until the rest is asked for", async () => {
+    const lines: Array<string> = Array.from({ length: 12 }, (_, index: number) => `line ${index + 1}`);
+    const { render } = renderPanel([
+      {
+        details: lines.join("\n"),
+        severity: ENotificationSeverity.INFO,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: "Read archive",
+      },
+    ]);
+
+    await userEvent.click(render.getByLabelText("Show details"));
+
+    // A body that fills the panel buries the records around it, so it stops and says that it stopped.
+    expect(render.getByText(/…/)).toBeInTheDocument();
+    expect(render.queryByText(/line 9/)).not.toBeInTheDocument();
+
+    await userEvent.click(render.getByRole("button", { name: "Show all 12 lines" }));
+
+    expect(render.getByText(/line 12/)).toBeInTheDocument();
+  });
+
+  it("spends no line previewing a routine outcome", () => {
+    const { render } = renderPanel([
+      {
+        details: "Wrote 214 files",
+        severity: ENotificationSeverity.SUCCESS,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: "Extracted textures",
+      },
+    ]);
+
+    expect(render.queryByText("Wrote 214 files")).not.toBeInTheDocument();
+  });
+
+  it("keeps one record open at a time", async () => {
+    const { render } = renderPanel([
+      {
+        details: "Older body",
+        severity: ENotificationSeverity.INFO,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: "Older",
+      },
+      {
+        details: "Newer body",
+        severity: ENotificationSeverity.INFO,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: "Newer",
+      },
+    ]);
+
+    await userEvent.click(render.getAllByLabelText("Show details")[0]);
+
+    expect(render.getByText("Newer body")).toBeInTheDocument();
+
+    await userEvent.click(render.getAllByLabelText("Show details")[0]);
+
+    // Two open traces in a panel this narrow leave no room for the outcomes around them.
+    expect(render.queryByText("Newer body")).not.toBeInTheDocument();
+    expect(render.getByText("Older body")).toBeInTheDocument();
+  });
+
+  it("collapses a repeated outcome into one counted row", () => {
+    const { render } = renderPanel([
+      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+    ]);
+
+    expect(render.getAllByText("Rebuilt index")).toHaveLength(1);
+    expect(render.getByText("×3")).toBeInTheDocument();
+  });
+
+  it("names the tool on every record, however long the run from it", () => {
+    const { render } = renderPanel([
+      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Older" },
+      { severity: ENotificationSeverity.SUCCESS, source: EApplicationId.ARCHIVES_EXPLORER, title: "Newer" },
+    ]);
+
+    // Which tool reported an outcome is never the thing to drop: a log that hides it reads as one tool.
+    expect(render.getAllByText("Archives explorer")).toHaveLength(2);
   });
 
   it("offers no expander for a record with nothing more to say", () => {
@@ -142,7 +245,9 @@ describe("NotificationsPanel", () => {
     // The point of recording them regardless: the switch is useful after something odd happened, not
     // only before it.
     expect(render.getByText("grid recomputed")).toBeInTheDocument();
-    expect(render.getByText("DEV")).toBeInTheDocument();
+    // A trace states what it is through the terminal icon and the monospace face, not a badge that
+    // would cost a line of its own in a panel that is mostly traces once the switch is on.
+    expect(render.getByTestId("TerminalIcon")).toBeInTheDocument();
   });
 
   it("does not mark a real outcome as a dev trace", () => {
@@ -157,7 +262,7 @@ describe("NotificationsPanel", () => {
       true
     );
 
-    expect(render.queryByText("DEV")).not.toBeInTheDocument();
+    expect(render.queryByTestId("TerminalIcon")).not.toBeInTheDocument();
   });
 
   it("clears the log on request", async () => {

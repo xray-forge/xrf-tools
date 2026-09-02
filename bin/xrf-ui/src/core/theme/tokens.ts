@@ -53,6 +53,8 @@ export const LAYOUT = {
 export const TREE = {
   /** Row height, dense enough that a mesh directory is scannable without becoming a hit-target problem. */
   rowHeight: 28,
+  /** A panel row's own controls, one step below the severity icon so they do not read as part of the outcome. */
+  actionIconSize: 16,
   /** Expand and collapse chevron column. */
   iconWidth: 18,
   iconSize: 17,
@@ -70,6 +72,8 @@ export const PANEL = {
   maxWidth: 640,
   /** Share of the window every open panel may occupy together, so the content keeps the rest. */
   maxWidthRatio: 0.5,
+  /** A panel row's own controls, one step below the severity icon so they do not read as part of the outcome. */
+  actionIconSize: 16,
 } as const;
 
 /**

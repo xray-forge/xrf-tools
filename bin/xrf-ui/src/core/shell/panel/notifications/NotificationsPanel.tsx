@@ -1,26 +1,37 @@
-import { Box, Button, Typography } from "@mui/material";
+import { default as ClearAllIcon } from "@mui/icons-material/ClearAll";
+import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
 import { SettingsService } from "@/core/settings/services/settings";
+import { INotificationEntry, toNotificationEntries } from "@/core/shell/panel/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panel/notifications/NotificationRow";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * The notification centre panel.
  *
- * Newest first, flat and unfiltered. The cap is what keeps it readable for now - filters and grouping
- * are worth adding once a real run proves the list is too long to scan, not before.
+ * Newest first, flat and unfiltered. The cap is what keeps it readable for now - filters and day
+ * separators are worth adding once a session runs long enough to need them, not before.
  */
 export function NotificationsPanel(): ReactElement {
   const notificationsService: NotificationsService = useInjection(NotificationsService);
   const settingsService: SettingsService = useInjection(SettingsService);
 
+  const [expandedId, setExpandedId] = useState<Nullable<string>>(null);
+
   const notifications: Array<INotification> = settingsService.isDevModeEnabled
     ? notificationsService.allNotifications
     : notificationsService.notifications;
   const unreadCount: number = notificationsService.unreadCount;
+  const entries: Array<INotificationEntry> = toNotificationEntries(notifications);
+
+  // One record open at a time: two expanded traces leave no room for the outcomes around them.
+  const onToggleExpanded = useCallback((id: string) => {
+    setExpandedId((it: Nullable<string>) => (it === id ? null : id));
+  }, []);
 
   // Anything visible is read, including what arrives while the panel is open - otherwise the badge
   // counts records the user is looking at, and nothing can dismiss it.
@@ -37,22 +48,36 @@ export function NotificationsPanel(): ReactElement {
           justifyContent: "space-between",
           gap: 1,
           paddingX: 1.5,
-          paddingY: 1,
+          paddingY: 0.5,
           borderBottom: 1,
           borderColor: "divider",
         }}
       >
         <Typography variant={"subtitle2"}>Notifications</Typography>
 
-        <Button disabled={!notifications.length} size={"small"} onClick={notificationsService.clear}>
-          Clear all
-        </Button>
+        <Tooltip describeChild title={"Clear all"} placement={"left"}>
+          <span>
+            <IconButton
+              aria-label={"Clear all"}
+              disabled={!notifications.length}
+              size={"small"}
+              onClick={notificationsService.clear}
+            >
+              <ClearAllIcon fontSize={"small"} />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Box>
 
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
-        {notifications.length ? (
-          notifications.map((notification: INotification) => (
-            <NotificationRow key={notification.id} notification={notification} />
+        {entries.length ? (
+          entries.map((entry: INotificationEntry) => (
+            <NotificationRow
+              key={entry.notification.id}
+              entry={entry}
+              isExpanded={entry.notification.id === expandedId}
+              onToggleExpanded={onToggleExpanded}
+            />
           ))
         ) : (
           <Typography variant={"caption"} sx={{ display: "block", padding: 2, color: "text.secondary" }}>
