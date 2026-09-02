@@ -80,12 +80,12 @@ pub use crate::ogf::chunks::{
   ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,
   ogf_swi_data_chunk::OgfSwiDataChunk, ogf_texture_chunk::OgfTextureChunk,
 };
-pub use crate::ogf::ogf_chunks_processor::*;
 pub use crate::ogf::ogf_file::*;
 pub use crate::ogf::ogf_motion_refs_processor::*;
 pub use crate::ogf::ogf_refs_patch_report::*;
 pub use crate::ogf::ogf_texture_refs_processor::*;
 pub use crate::ogf::residue::*;
+pub use crate::ogf::survey::*;
 pub use crate::omf::omf_file::*;
 pub use crate::omf::omf_motions_processor::*;
 pub use crate::particles::particles_file::*;

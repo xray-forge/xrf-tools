@@ -3,9 +3,9 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
-use crate::ogf::ogf_chunks_processor::OgfChunksProcessor;
 use crate::ogf::ogf_file::OgfFile;
 use crate::ogf::residue::{OgfNormalization, OgfResidueCause};
+use crate::ogf::survey::OgfChunksProcessor;
 use crate::ogf::tests::fixtures;
 
 #[test]

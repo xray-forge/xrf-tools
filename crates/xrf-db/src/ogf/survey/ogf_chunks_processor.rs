@@ -18,34 +18,12 @@ use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
 use crate::ogf::residue::OgfResidue;
+use crate::ogf::survey::ogf_chunk_entry::OgfChunkEntry;
+use crate::ogf::survey::ogf_chunk_survey::OgfChunkSurvey;
 use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
 use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
-/// One chunk found while walking an ogf file.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OgfChunkEntry {
-  pub id: u32,
-  /// 0 for a chunk of the root object, 1 for a chunk of a direct child, and so on.
-  pub depth: usize,
-  pub size: u64,
-}
-
-/// What a walk of an ogf file found, including what it could not walk.
-///
-/// Residue travels with the entries rather than being dropped, because a survey that quietly tolerated unread bytes
-/// would answer "parsing is complete" for a file where it is not — which is the one question this survey exists to
-/// answer honestly.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OgfChunkSurvey {
-  pub entries: Vec<OgfChunkEntry>,
-  pub residue: Option<OgfResidue>,
-}
-
 /// Walks the chunk tree of an ogf file without interpreting payloads.
-///
-/// Separate from [`crate::OgfFile`] on purpose: the file type stays a plain description of the chunks
-/// the reader understands, while surveying what a file *actually* contains is a distinct job. It exists
-/// to answer whether parsing is complete, rather than assuming it is because nothing crashed.
 pub struct OgfChunksProcessor {}
 
 impl OgfChunksProcessor {
