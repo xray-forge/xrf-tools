@@ -144,12 +144,13 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_error::XrfResult;
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use crate::project::ltx_files_formatter::LtxFilesFormatter;
   use crate::project::ltx_project_format_result::LtxProjectFormatResult;
 
   fn create_root(name: &str) -> XrfResult<PathBuf> {
-    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-format-{name}-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("format/{name}"));
 
     if root.exists() {
       fs::remove_dir_all(&root)?;

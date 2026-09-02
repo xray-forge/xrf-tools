@@ -265,6 +265,7 @@ mod tests {
   use std::path::{Path, PathBuf};
 
   use xrf_error::{XrfError, XrfResult};
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_vfs::{XrayLookupScope, XrayVfs};
 
   use super::{SHADERS_DIRECTORY, ShadersVerifier};
@@ -378,7 +379,7 @@ mod tests {
   /// The verifier looks under the logical `shaders` directory, so the tree has to sit where a real one does rather than
   /// being the root itself.
   fn create_gamedata_root(test_name: &str) -> XrfResult<PathBuf> {
-    let root: PathBuf = std::env::temp_dir().join("xrf-gamedata-shader-tests").join(test_name);
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("shaders/{test_name}"));
 
     if root.exists() {
       fs::remove_dir_all(&root)?;

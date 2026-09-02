@@ -4,13 +4,14 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::commands::ltx::format::command::FormatCommand;
 use crate::core::command_testing::run_command;
 use crate::core::generic_command::CommandResult;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-format-ltx-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_format/formatting/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;

@@ -100,21 +100,15 @@ impl<'a> TranslationVerificationReportPayload<'a> {
 mod tests {
   use std::fs;
   use std::path::PathBuf;
-  use std::sync::atomic::{AtomicU64, Ordering};
 
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions};
 
   use super::TranslationVerificationReportPayload;
 
-  static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
-
   #[test]
   fn reports_missing_translations_as_structured_findings() {
-    let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
-    let root: PathBuf = std::env::temp_dir().join(format!(
-      "xrf-cli-translation-verification-report-test-{}-{unique}",
-      std::process::id()
-    ));
+    let root: PathBuf = build_absolute_generated_test_resource_path("translation_verify/report");
     let translation_path: PathBuf = root.join("dialogs.json");
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
       is_strict: false,
@@ -123,6 +117,8 @@ mod tests {
       language: TranslationLanguage::Ukrainian,
       is_detailed: true,
     };
+
+    let _ = fs::remove_dir_all(&root);
 
     fs::create_dir_all(&root).unwrap();
     fs::write(&translation_path, r#"{"st_dialog_hello":{"ukr":null}}"#).unwrap();

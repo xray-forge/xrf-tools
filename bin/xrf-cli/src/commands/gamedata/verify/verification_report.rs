@@ -135,6 +135,7 @@ mod tests {
     Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
   };
   use xrf_report::RuleId;
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_vfs::{XrayCacheStats, XrayReadTraceHotPath, XrayReadTraceSummary, XraySkippedMount};
 
   use super::GamedataVerificationReportPayload;
@@ -166,10 +167,10 @@ mod tests {
 
   fn temporary_gamedata_root() -> PathBuf {
     let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
-    let root: PathBuf = std::env::temp_dir().join(format!(
-      "xrf-cli-verification-report-test-{}-{unique}",
-      std::process::id()
-    ));
+    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("gamedata_verify/report-{unique}"));
+
+    // Nothing removes these roots when a test ends, so each one starts from what this run wrote and nothing else.
+    let _ = fs::remove_dir_all(&root);
 
     fs::create_dir_all(root.join("textures")).unwrap();
     fs::write(root.join("textures").join("a.dds"), []).unwrap();

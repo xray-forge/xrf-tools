@@ -319,7 +319,7 @@ mod tests {
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
     build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
+    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file, write_generated_test_resource,
   };
 
   use crate::data::alife::alife_object::AlifeObject;
@@ -344,8 +344,7 @@ mod tests {
     spawn_data_writer.write_all(&object_data_writer.flush_raw_into_buffer()?)?;
 
     let bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
-    let path: PathBuf = std::env::temp_dir().join(format!("xrf-db-unknown-clsid-{}.chunk", std::process::id()));
-    fs::write(&path, bytes)?;
+    let path: PathBuf = write_generated_test_resource("alife_object/unknown_clsid.chunk", bytes)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_file(File::open(&path)?)?;
     let result: XrfResult<AlifeObject> = AlifeObject::read::<XRayByteOrder, _>(&mut reader);

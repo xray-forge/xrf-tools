@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
@@ -12,7 +13,7 @@ use crate::project::mode::DialogProjectMode;
 const DIALOG: &str = r#"<game_dialogs><dialog id="d" priority="-5"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-dialog-project-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;

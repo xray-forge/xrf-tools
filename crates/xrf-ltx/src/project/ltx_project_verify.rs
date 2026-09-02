@@ -210,6 +210,8 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
   use super::*;
   use crate::{LtxProjectOptions, LtxVerifyOptions};
 
@@ -305,7 +307,10 @@ mod tests {
 
   #[test]
   fn skips_schema_less_sections() -> XrfResult {
-    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-project-verify-test-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/schema_less");
+
+    let _ = fs::remove_dir_all(&root);
+
     fs::create_dir_all(&root)?;
     fs::write(root.join("array_sections.ltx"), "[array@one]\nvalue = 1\n")?;
 
@@ -330,8 +335,10 @@ mod tests {
 
   #[test]
   fn skips_inheritance_for_entry_with_header_metadata() -> XrfResult {
-    let root: PathBuf =
-      std::env::temp_dir().join(format!("xrf-ltx-project-skip-inheritance-test-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/skip_inheritance");
+
+    let _ = fs::remove_dir_all(&root);
+
     fs::create_dir_all(&root)?;
     fs::write(
       root.join("disabled.ltx"),
@@ -354,7 +361,9 @@ mod tests {
   fn reports_an_unreadable_entry_and_keeps_verifying_the_rest() -> XrfResult {
     // A real installation holds orphan configs that inherit sections only the rest of the tree defines. Ending the run at
     // the first one would leave every later config unverified.
-    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-project-unreadable-test-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/unreadable");
+
+    let _ = fs::remove_dir_all(&root);
 
     fs::create_dir_all(&root)?;
     fs::write(root.join("broken.ltx"), "[child]:missing\n")?;

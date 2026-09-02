@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayLogicalPath;
 
 use super::verify_weathers_result::GamedataWeathersVerificationResult;
@@ -42,11 +43,11 @@ fn semantic_weather_project_files_with_system(
   system_ltx: &str,
 ) -> (PathBuf, GamedataProject) {
   let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
-  let root: PathBuf = std::env::temp_dir().join(format!(
-    "xrf-gamedata-semantic-weather-test-{}-{unique}",
-    std::process::id()
-  ));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("weathers/fixture-{unique}"));
   let configs: PathBuf = root.join("configs");
+
+  // A panicking test never reaches its own cleanup below, so the project must not open on what it left.
+  let _ = fs::remove_dir_all(&root);
 
   fs::create_dir_all(configs.join("$scheme")).unwrap();
   fs::create_dir_all(configs.join("environment").join("weathers")).unwrap();

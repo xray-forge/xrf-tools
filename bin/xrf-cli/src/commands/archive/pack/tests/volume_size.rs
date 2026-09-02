@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_pack::{VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX};
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::commands::archive::pack::command::PackCommand;
 use crate::core::command_testing::run_command;
@@ -12,7 +13,7 @@ use crate::core::generic_command::CommandResult;
 
 /// A source tree holding one small file, and a destination beside it that packing creates.
 fn create_roots(name: &str) -> XrfResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-pack-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_pack/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;

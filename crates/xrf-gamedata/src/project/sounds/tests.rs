@@ -6,11 +6,13 @@
 use std::fs;
 use std::path::PathBuf;
 
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
 use super::sounds_verification_result::GamedataSoundsVerificationResult;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 fn open_project(name: &str, config: &str) -> (PathBuf, GamedataProject) {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-gamedata-sound-references-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("sounds/{name}"));
   let configs: PathBuf = root.join("configs");
 
   let _ = fs::remove_dir_all(&root);

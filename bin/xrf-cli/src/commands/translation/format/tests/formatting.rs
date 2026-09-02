@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::commands::translation::format::command::FormatCommand;
 use crate::core::command_testing::{run_command, run_command_with_result};
@@ -14,7 +15,7 @@ const UNSORTED: &str = "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": 
 const CANONICAL: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  },\n  \"st_b\": {\n    \"eng\": \"B\"\n  }\n}\n";
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-format-translation-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("translation_format/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;

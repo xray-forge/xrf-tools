@@ -256,15 +256,19 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_error::XrfResult;
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use crate::Ltx;
   use crate::file::include::LtxIncludeConvertor;
 
   #[test]
   fn loads_each_file_matched_by_wildcard_include() -> XrfResult {
-    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-wildcard-include-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path("include/wildcard");
     let sections: PathBuf = root.join("sections");
     let root_ltx: PathBuf = root.join("root.ltx");
+
+    // The include is a wildcard, so a section file an earlier run left behind would join this run's matches.
+    let _ = fs::remove_dir_all(&root);
 
     fs::create_dir_all(&sections)?;
     fs::write(&root_ltx, "#include \"sections\\section_*.ltx\"\n")?;
@@ -292,12 +296,14 @@ mod tests {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
 
-    let root: PathBuf = std::env::temp_dir().join(format!("xrf-ltx-wildcard-non-utf8-{}", std::process::id()));
+    let root: PathBuf = build_absolute_generated_test_resource_path("include/wildcard_non_utf8");
     let sections: PathBuf = root.join("sections");
     let root_ltx: PathBuf = root.join("root.ltx");
     let non_unicode_name: &OsStr = OsStr::from_bytes(b"section_\xffbroken.ltx");
 
     assert!(non_unicode_name.to_str().is_none());
+
+    let _ = fs::remove_dir_all(&root);
 
     fs::create_dir_all(&sections)?;
     fs::write(&root_ltx, "#include \"sections\\section_*.ltx\"\n")?;

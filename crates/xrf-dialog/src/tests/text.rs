@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::project::descriptor::DialogDescriptor;
@@ -31,7 +32,7 @@ fn table(entries: &[(&str, &str)]) -> String {
 
 /// A gamedata tree whose text sits under `configs\text\<language>`, as the engine ships it.
 fn create_gamedata(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-dialog-text-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("text/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;
@@ -167,7 +168,7 @@ fn reports_what_the_text_tree_offered_on_the_project() -> XrfResult {
 fn opens_without_a_text_tree_and_says_so() -> XrfResult {
   // A dialogs root whose text sits somewhere this layout does not look. Refusing to open would leave
   // the structure unreadable over text that is not needed to read it.
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-dialog-text-none-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path("text/none");
   let gameplay: PathBuf = root.join("configs").join("gameplay");
 
   if root.exists() {

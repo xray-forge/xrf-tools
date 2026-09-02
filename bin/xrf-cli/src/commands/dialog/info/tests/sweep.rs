@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_report::Status;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::command::InfoCommand;
@@ -14,13 +15,13 @@ use crate::core::command_error::CommandError;
 use crate::core::command_testing::run_command_for_result;
 use crate::core::generic_command::CommandResult;
 
-/// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
+/// A generated root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
   XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-info-dialog-sweep-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialog_info/sweep/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;
@@ -259,7 +260,8 @@ fn refuses_a_path_that_does_not_exist() -> XrfResult {
   // A typo must not report success, which is the same guard `ogf patch-texture-refs` carries. A missing
   // path now mounts an empty roots rather than failing outright, so the assertion is on the class of
   // failure rather than on wording the mount layer owns.
-  let missing: PathBuf = std::env::temp_dir().join("xrf-cli-info-dialog-missing-root");
+  // Never created, so the path names a root that is absent rather than one that happens to be empty.
+  let missing: PathBuf = build_absolute_generated_test_resource_path("dialog_info/sweep/absent");
 
   match run(&missing, &["--source", "directory"]) {
     Err(error @ CommandError::Execution(_)) => assert_eq!(error.exit_code(), 1),

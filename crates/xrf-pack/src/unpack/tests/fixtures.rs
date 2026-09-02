@@ -11,6 +11,7 @@ use crc32fast::hash;
 use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
 use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::unpack::archive_unpack_options::ArchiveUnpackOptions;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
@@ -97,7 +98,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
 }
 
 pub(crate) fn create_temporary_directory(name: &str) -> PathBuf {
-  let directory: PathBuf = std::env::temp_dir().join(format!("xrf-archive-{name}"));
+  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("unpack/{name}"));
 
   let _ = fs::remove_dir_all(&directory);
 

@@ -5,19 +5,20 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult};
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
-/// A loose temp root declares no installation, so name the mode rather than letting Auto search upward.
+/// A generated root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
   XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-cli-info-dialog-{name}-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialog_info/selection/{name}"));
 
   if root.exists() {
     fs::remove_dir_all(&root)?;

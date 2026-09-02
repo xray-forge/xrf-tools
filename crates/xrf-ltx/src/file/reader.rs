@@ -136,9 +136,6 @@ impl Ltx {
 
 #[cfg(test)]
 mod test {
-  use std::env::temp_dir;
-  use std::fs::File;
-  use std::io::Write;
   use std::path::PathBuf;
 
   use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
@@ -148,13 +145,11 @@ mod test {
 
   #[test]
   fn load_from_file() {
-    let file_name = temp_dir().join("rust_ini_load_from_file");
-    let file_content = b"[test]\nKey=Value\n";
-
-    {
-      let mut file: File = File::create(&file_name).expect("create");
-      file.write_all(file_content).expect("write");
-    }
+    let file_name: PathBuf = write_generated_test_resource(
+      &build_relative_test_sample_file_path(file!(), "load_from_file.ltx"),
+      b"[test]\nKey=Value\n",
+    )
+    .expect("generated LTX input to be written");
 
     let ltx: Ltx = Ltx::read_from_path(&file_name).unwrap();
     assert_eq!(ltx.get_from("test", "Key"), Some("Value"));
@@ -361,13 +356,11 @@ value3 ; another comment
 
   #[test]
   fn load_no_includes_from_file() {
-    let file_name: PathBuf = temp_dir().join("rust_ini_load_no_includes");
-    let file_content = b"[test]Key=Value\n";
-
-    {
-      let mut file: File = File::create(&file_name).expect("create");
-      file.write_all(file_content).expect("write");
-    }
+    let file_name: PathBuf = write_generated_test_resource(
+      &build_relative_test_sample_file_path(file!(), "load_no_includes.ltx"),
+      b"[test]Key=Value\n",
+    )
+    .expect("generated LTX input to be written");
 
     let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
     assert_eq!(includes, Vec::<String>::new());
@@ -375,13 +368,11 @@ value3 ; another comment
 
   #[test]
   fn load_few_includes_from_file() {
-    let file_name: PathBuf = temp_dir().join("rust_ini_load_from_file_without_bom");
-    let file_content = b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\"";
-
-    {
-      let mut file: File = File::create(&file_name).expect("create");
-      file.write_all(file_content).expect("write");
-    }
+    let file_name: PathBuf = write_generated_test_resource(
+      &build_relative_test_sample_file_path(file!(), "load_few_includes.ltx"),
+      b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\"",
+    )
+    .expect("generated LTX input to be written");
 
     let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
     assert_eq!(includes, vec!("first.ltx", "second.ltx"));

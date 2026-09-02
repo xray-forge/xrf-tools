@@ -227,6 +227,7 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_dds::ImageFormat;
+  use xrf_test_utils::utils::write_generated_test_resource;
 
   use super::XmlDescriptionCollection;
   use crate::PackDescriptionOptions;
@@ -234,7 +235,7 @@ mod tests {
   #[test]
   fn returns_an_error_for_invalid_xml_in_strict_mode() {
     let path: PathBuf =
-      std::env::temp_dir().join(format!("xrf-texture-invalid-description-{}.xml", std::process::id()));
+      write_generated_test_resource("xml_description/invalid.xml", "<w>").expect("generated description to be written");
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
       job: Default::default(),
@@ -246,8 +247,6 @@ mod tests {
       files: Vec::new(),
       is_strict: true,
     };
-
-    fs::write(&path, "<w>").unwrap();
 
     let result = XmlDescriptionCollection::get_description(&options, &path);
 
