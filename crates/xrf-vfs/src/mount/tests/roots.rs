@@ -165,6 +165,9 @@ fn opens_a_non_unicode_root_without_changing_its_address() {
       .expect("the declared root remains addressable"),
     b"payload"
   );
+
+  // Not left behind: the CI cache archives `target/` with tar, which cannot read a name that is not valid Unicode.
+  fs::remove_dir_all(&base).expect("non-Unicode root removal");
 }
 
 #[cfg(any(unix, windows))]
