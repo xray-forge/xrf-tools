@@ -64,6 +64,14 @@ workspace = false
 command = "cargo"
 args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
 
+[tasks.test-ui]
+description = "Run UI application typescript tests."
+category = "Development"
+workspace = false
+cwd = "bin/xrf-ui"
+script_runner = "@shell"
+script = 'pnpm run test'
+
 [tasks.verify-ui]
 description = "Install frontend dependencies, then typecheck, test and lint the UI."
 category = "Verification"

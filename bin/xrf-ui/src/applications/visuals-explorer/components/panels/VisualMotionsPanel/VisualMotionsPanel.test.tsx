@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
+import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { VisualMotionsPanel } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionsPanel";
@@ -77,7 +77,13 @@ async function renderPanel(
 
   await container.get(VisualsService).openFile("C:\\gamedata\\meshes\\stalker.ogf");
 
-  return { container, listCalls: () => listed, render: renderWithProviders(<VisualMotionsPanel />, { container }) };
+  const render: RenderResult = renderWithProviders(<VisualMotionsPanel />, { container });
+
+  if (motions.length) {
+    await act(async () => await container.get(VisualMotionService).list());
+  }
+
+  return { container, listCalls: () => listed, render };
 }
 
 describe("VisualMotionsPanel", () => {
