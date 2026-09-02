@@ -19,3 +19,16 @@ pub enum ExecutionOrigin {
   /// Named by the caller, as a worker count or as a share of the machine.
   Requested,
 }
+
+impl ExecutionOrigin {
+  /// The one word a report and a console line both say.
+  ///
+  /// Shared rather than spelled twice so a person reading `Workers: 8 (auto)` on a terminal and a tool reading
+  /// `"origin": "auto"` from the same run are reading the same fact, and neither can drift from the other.
+  pub const fn as_str(&self) -> &'static str {
+    match self {
+      Self::Auto => "auto",
+      Self::Requested => "requested",
+    }
+  }
+}

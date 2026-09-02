@@ -4,8 +4,11 @@ use std::time::{Duration, Instant};
 use clap::error::ErrorKind;
 use clap::{ArgMatches, Command};
 use xrf_build_info::{BuildInfo, build_info};
+use xrf_job::{ExecutionPlan, ExecutionRequest};
 
 use crate::core::command_context::CommandContext;
+use crate::core::command_error::CommandError;
+use crate::core::execution::{report_execution_plan, requested_execution};
 use crate::core::generic_command::{CommandGroup, CommandResult};
 use crate::core::reporting::{CommandEnvelope, ReportingOptions, add_reporting_arguments, find_conflicting_selection};
 use crate::registry::setup_command_groups;
@@ -71,8 +74,24 @@ pub fn run() -> ExitCode {
   let reporting: ReportingOptions = ReportingOptions::from_matches(arguments);
   let mut context: CommandContext = CommandContext::new(&reporting);
 
+  // Every command runs inside a pool, including the ones that declare no `--jobs`. A command with no
+  // parallel work of its own does not stop having any: `image` reaches for Rayon underneath the DDS
+  // and sprite work, and anything reaching the global pool is bounded by nothing. Installing here is
+  // what makes the count an upper bound provable in one place rather than a convention every command
+  // has to remember; a command that offers no say simply gets what the machine offers.
+  let requested: Option<ExecutionRequest> = requested_execution(arguments);
+  let plan: ExecutionPlan = requested.unwrap_or(ExecutionRequest::Auto).resolve();
+
+  if requested.is_some() {
+    report_execution_plan(&reporting.output, &plan);
+  }
+
   let started_at: Instant = Instant::now();
-  let outcome: CommandResult = command.execute(arguments, &mut context);
+  // A pool that cannot start is the command failing to run, not the command failing: it is reported
+  // as an execution error and the command never sees it.
+  let outcome: CommandResult = plan
+    .install(|| command.execute(arguments, &mut context))
+    .unwrap_or_else(|error| Err(CommandError::Execution(error)));
   let duration: Duration = started_at.elapsed();
 
   let envelope: CommandEnvelope = CommandEnvelope::new(
@@ -80,6 +99,7 @@ pub fn run() -> ExitCode {
     vec![String::from(domain), String::from(operation)],
     &outcome,
     duration,
+    plan,
     context.take_result(),
   );
 

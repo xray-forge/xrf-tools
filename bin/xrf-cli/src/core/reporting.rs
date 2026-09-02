@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 use xrf_build_info::BuildInfo;
 use xrf_error::XrfError;
+use xrf_job::ExecutionPlan;
 use xrf_output::{OutputOptions, OutputVerbosity};
 use xrf_utils::format_path;
 
@@ -94,6 +95,8 @@ pub struct CommandEnvelope {
   duration: Duration,
   error: Option<String>,
   exit_code: u8,
+  /// The width this run was bounded to, and whether anybody chose it.
+  jobs: ExecutionPlan,
   outcome: CommandOutcome,
   result: Option<Value>,
 }
@@ -104,6 +107,7 @@ impl CommandEnvelope {
     command: Vec<String>,
     outcome: &CommandResult,
     duration: Duration,
+    jobs: ExecutionPlan,
     result: Option<Value>,
   ) -> Self {
     Self {
@@ -112,6 +116,7 @@ impl CommandEnvelope {
       duration,
       error: outcome.as_ref().err().map(CommandError::message),
       exit_code: outcome.as_ref().err().map_or(0, CommandError::exit_code),
+      jobs,
       outcome: CommandOutcome::of(outcome),
       result,
     }
@@ -266,10 +271,13 @@ mod tests {
   use std::path::PathBuf;
   use std::time::Duration;
 
+  use std::num::NonZeroUsize;
+
   use clap::{ArgMatches, Command};
   use serde_json::{Value, json};
   use xrf_build_info::{BuildInfo, BuildKind};
   use xrf_error::XrfError;
+  use xrf_job::{ExecutionPlan, ExecutionRequest};
   use xrf_output::OutputVerbosity;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
@@ -283,6 +291,11 @@ mod tests {
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
     add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true)).try_get_matches_from(arguments)
+  }
+
+  /// The plan a test envelope carries, where the width is not what the test is about.
+  fn plan() -> ExecutionPlan {
+    ExecutionRequest::Workers(NonZeroUsize::new(1).expect("one is not zero")).resolve()
   }
 
   /// A build that recorded nothing beyond its own version, so an expectation names only what it set.
@@ -302,26 +315,32 @@ mod tests {
     }
   }
 
-  /// The envelope as a document, less the identity block covered by its own test.
+  /// The envelope as a document, less the two fields that describe the run rather than its outcome.
   ///
-  /// Removing it rather than restating it in every expectation keeps each test about the field it
-  /// names, and the removal doubles as the assertion that every envelope carries one.
+  /// Removing them rather than restating them in every expectation keeps each test about the field it
+  /// names, and each removal doubles as the assertion that every envelope carries one.
   fn envelope(outcome: CommandResult, result: Option<Value>) -> Value {
     let envelope: CommandEnvelope = CommandEnvelope::new(
       build(),
       vec![String::from("archive"), String::from("info")],
       &outcome,
       Duration::from_millis(1200),
+      plan(),
       result,
     );
 
     let mut document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
 
-    document
+    let fields = document
       .as_object_mut()
-      .expect("the envelope to serialize as an object")
+      .expect("the envelope to serialize as an object");
+
+    fields
       .remove("build")
       .expect("every envelope to carry the build that produced it");
+    fields
+      .remove("jobs")
+      .expect("every envelope to carry the width the run was bounded to");
 
     document
   }
@@ -458,6 +477,25 @@ mod tests {
     );
   }
 
+  /// The same argument as the build block: a report outlives its run, and comparing two of them means knowing how wide
+  /// each one ran. Nothing else in the envelope, and nothing in the exit contract, can answer that afterwards.
+  #[test]
+  fn records_the_width_the_run_was_bounded_to() {
+    let envelope: CommandEnvelope = CommandEnvelope::new(
+      build(),
+      vec![String::from("gamedata"), String::from("verify")],
+      &Ok(()),
+      Duration::from_millis(1200),
+      ExecutionRequest::Workers(NonZeroUsize::new(4).expect("four is not zero")).resolve(),
+      None,
+    );
+    let document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
+
+    // Carried by every run, including the commands that declare no `--jobs` of their own, because every command runs
+    // inside a pool whether or not it offers a say in how wide that pool is.
+    assert_eq!(document["jobs"], json!({ "workers": 4, "origin": "requested" }));
+  }
+
   /// A report outlives its run, and nothing else in the envelope says which binary wrote it.
   #[test]
   fn records_the_binary_that_produced_the_run() {
@@ -466,6 +504,7 @@ mod tests {
       vec![String::from("archive"), String::from("info")],
       &Ok(()),
       Duration::from_millis(1200),
+      plan(),
       None,
     );
     let document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
@@ -503,7 +542,7 @@ mod tests {
 
   #[test]
   fn publishes_nothing_when_no_report_was_asked_for() {
-    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
 
     assert!(envelope.publish(&ReportDestination::None).is_ok());
   }
@@ -520,7 +559,7 @@ mod tests {
   #[test]
   fn replaces_a_report_a_previous_run_wrote() {
     let path: PathBuf = report_path("replaces");
-    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
 
     fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
 
@@ -538,7 +577,7 @@ mod tests {
   #[test]
   fn keeps_the_previous_report_when_publication_fails() {
     let path: PathBuf = report_path("preserves");
-    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
 
     fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
     fail_next_staged_write();
@@ -556,7 +595,7 @@ mod tests {
 
   #[test]
   fn fails_the_run_when_a_requested_report_cannot_be_written() {
-    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, None);
+    let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
     let destination: ReportDestination = ReportDestination::File(PathBuf::from("missing-directory/report.json"));
 
     let error: CommandError = envelope

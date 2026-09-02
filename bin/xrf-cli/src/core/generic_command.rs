@@ -29,7 +29,8 @@ impl CommandGroup {
   }
 }
 
-pub trait GenericCommand {
+/// One CLI operation.
+pub trait GenericCommand: Sync {
   fn new() -> Self
   where
     Self: Sized + Default,
