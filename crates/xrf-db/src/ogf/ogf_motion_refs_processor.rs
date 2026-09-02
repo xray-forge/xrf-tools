@@ -12,7 +12,7 @@ use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_file::OgfFile;
 use crate::ogf::ogf_raw_patch::OgfRawPatch;
 use crate::ogf::ogf_refs_patch_report::OgfRefsPatchReport;
-use crate::ogf::ogf_residue::{OgfResidue, normalize_ogf_bytes};
+use crate::ogf::residue::{OgfNormalization, OgfResidue};
 
 /// Editing operations over the motion refs of an ogf file.
 pub struct OgfMotionRefsProcessor {}
@@ -43,7 +43,7 @@ impl OgfMotionRefsProcessor {
       patched_count: 1,
       discarded_size: original
         .len()
-        .saturating_sub(normalize_ogf_bytes::<T>(&original)?.len()),
+        .saturating_sub(OgfNormalization::normalize_bytes::<T>(&original)?.len()),
       is_dry_run,
     };
 
@@ -69,7 +69,7 @@ impl OgfMotionRefsProcessor {
   /// Rewrite motion refs of an ogf file, copying every other chunk verbatim.
   ///
   /// The result is well formed even when the source was not: bytes the engine's loader never reads are discarded
-  /// rather than carried over. See [`crate::normalize_ogf_bytes`] for what that covers and why the discarded path is
+  /// rather than carried over. See [`crate::OgfNormalization::normalize_bytes`] for what that covers and why the discarded path is
   /// reported before it goes.
   pub fn write_motion_refs_to_buffer<T: ByteOrder>(file: File, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
     let (mut chunks, _) =

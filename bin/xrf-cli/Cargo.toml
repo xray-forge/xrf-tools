@@ -19,6 +19,7 @@ env_logger = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+rayon = { workspace = true }
 walkdir = { workspace = true }
 sysinfo = { workspace = true }
 xrf-archive = { workspace = true }
@@ -40,6 +41,7 @@ xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
 
 [dev-dependencies]
+xrf-chunk = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [lints]

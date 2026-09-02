@@ -13,7 +13,7 @@ use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::ogf_file::OgfFile;
 use crate::ogf::ogf_raw_patch::OgfRawPatch;
 use crate::ogf::ogf_refs_patch_report::OgfRefsPatchReport;
-use crate::ogf::ogf_residue::{OgfResidue, normalize_ogf_bytes};
+use crate::ogf::residue::{OgfNormalization, OgfResidue};
 
 /// Editing operations over the texture refs of an ogf file.
 pub struct OgfTextureRefsProcessor {}
@@ -55,7 +55,7 @@ impl OgfTextureRefsProcessor {
       patched_count,
       discarded_size: original
         .len()
-        .saturating_sub(normalize_ogf_bytes::<T>(&original)?.len()),
+        .saturating_sub(OgfNormalization::normalize_bytes::<T>(&original)?.len()),
       is_dry_run,
     };
 

@@ -5,7 +5,7 @@ use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generate
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_chunks_processor::OgfChunksProcessor;
 use crate::ogf::ogf_file::OgfFile;
-use crate::ogf::ogf_residue::{OgfResidueCause, normalize_ogf_bytes};
+use crate::ogf::residue::{OgfNormalization, OgfResidueCause};
 use crate::ogf::tests::fixtures;
 
 #[test]
@@ -113,13 +113,13 @@ fn normalizes_only_what_the_engine_ignores() -> XrfResult {
   let well_formed: Vec<u8> = fixtures::well_formed()?;
 
   assert_eq!(
-    normalize_ogf_bytes::<XRayByteOrder>(&well_formed)?,
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&well_formed)?,
     well_formed,
     "Expect a well-formed visual to normalize to itself byte for byte, which is what keeps the patch guard unchanged"
   );
 
   let split: Vec<u8> = fixtures::split_motion_ref()?;
-  let normalized: Vec<u8> = normalize_ogf_bytes::<XRayByteOrder>(&split)?;
+  let normalized: Vec<u8> = OgfNormalization::normalize_bytes::<XRayByteOrder>(&split)?;
 
   assert_eq!(
     normalized.len(),
@@ -133,14 +133,17 @@ fn normalizes_only_what_the_engine_ignores() -> XrfResult {
 
   let fragment: Vec<u8> = fixtures::trailing_fragment()?;
 
-  assert_eq!(normalize_ogf_bytes::<XRayByteOrder>(&fragment)?, well_formed);
+  assert_eq!(
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&fragment)?,
+    well_formed
+  );
 
   Ok(())
 }
 
 #[test]
 fn normalized_bytes_still_read_as_the_same_visual() -> XrfResult {
-  let normalized: Vec<u8> = normalize_ogf_bytes::<XRayByteOrder>(&fixtures::split_motion_ref()?)?;
+  let normalized: Vec<u8> = OgfNormalization::normalize_bytes::<XRayByteOrder>(&fixtures::split_motion_ref()?)?;
   let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(normalized)?;
 
   assert_eq!(
@@ -156,7 +159,7 @@ fn normalized_bytes_still_read_as_the_same_visual() -> XrfResult {
 #[test]
 fn refuses_to_normalize_what_it_cannot_account_for() -> XrfResult {
   assert!(
-    normalize_ogf_bytes::<XRayByteOrder>(&fixtures::unexplained_residue()?).is_err(),
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&fixtures::unexplained_residue()?).is_err(),
     "Expect normalization to refuse a file the reader refuses, rather than truncate it to the last good chunk"
   );
 

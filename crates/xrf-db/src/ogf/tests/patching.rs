@@ -14,8 +14,8 @@ use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generate
 use crate::ogf::ogf_file::OgfFile;
 use crate::ogf::ogf_motion_refs_processor::OgfMotionRefsProcessor;
 use crate::ogf::ogf_refs_patch_report::OgfRefsPatchReport;
-use crate::ogf::ogf_residue::normalize_ogf_bytes;
 use crate::ogf::ogf_texture_refs_processor::OgfTextureRefsProcessor;
+use crate::ogf::residue::OgfNormalization;
 use crate::ogf::tests::fixtures;
 
 fn write_fixture(name: &str, bytes: Vec<u8>) -> XrfResult<PathBuf> {
@@ -40,7 +40,7 @@ fn rewriting_existing_refs_lands_on_the_normalized_source() -> XrfResult {
   );
   assert_eq!(
     rewritten,
-    normalize_ogf_bytes::<XRayByteOrder>(&source)?,
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&source)?,
     "Expect the rewrite to agree with the guard's target byte for byte"
   );
 
@@ -126,7 +126,7 @@ fn renaming_a_texture_also_normalizes_the_motion_refs_chunk() -> XrfResult {
   assert_eq!(patched_count, 0, "Expect no texture reference in this fixture");
   assert_eq!(
     rewritten,
-    normalize_ogf_bytes::<XRayByteOrder>(&source)?,
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&source)?,
     "Expect both raw patchers to produce the same normalized bytes for the same source"
   );
 

@@ -67,6 +67,7 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       label: "OGF",
       about: "OGF model tools",
       commands: vec![
+        ogf::fix::FixCommand::new_box(),
         ogf::info::InfoCommand::new_box(),
         ogf::patch_motion_refs::PatchMotionRefsCommand::new_box(),
         ogf::patch_texture_refs::PatchTextureRefsCommand::new_box(),

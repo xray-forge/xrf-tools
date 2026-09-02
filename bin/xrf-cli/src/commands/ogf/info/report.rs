@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{OgfBox, OgfFile, OgfResidueCause, OgfSphere};
+use xrf_db::{OgfBox, OgfFile, OgfSphere};
 
 /// A bounding volume, reported as the numbers the file carries rather than as debug text.
 #[derive(Debug, Serialize)]
@@ -117,14 +117,8 @@ impl OgfInfoReport {
         .map_or_else(Vec::new, |kinematics| kinematics.motion_refs.clone()),
       progressive_lods: file.swi_data.as_ref().map_or(0, |swi| swi.windows.len()),
       residue: file.residue.as_ref().map(|residue| OgfResidueReport {
-        cause: String::from(match residue.cause {
-          OgfResidueCause::TrailingFragment => "trailing-fragment",
-          OgfResidueCause::SplitMotionRef { .. } => "split-motion-ref",
-        }),
-        discarded_reference: match &residue.cause {
-          OgfResidueCause::SplitMotionRef { path } => Some(path.clone()),
-          OgfResidueCause::TrailingFragment => None,
-        },
+        cause: String::from(residue.cause.as_str()),
+        discarded_reference: residue.cause.get_discarded_path().map(String::from),
         position: residue.position,
         size: residue.bytes.len()
           + file

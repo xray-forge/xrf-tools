@@ -17,7 +17,7 @@ use crate::ogf::chunks::ogf_lods_chunk::OgfLodsChunk;
 use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
-use crate::ogf::ogf_residue::OgfResidue;
+use crate::ogf::residue::OgfResidue;
 use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
 use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 

@@ -8,7 +8,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
-use crate::ogf::ogf_residue::normalize_ogf_bytes;
+use crate::ogf::residue::OgfNormalization;
 
 /// Machinery both raw ogf patchers need, held once so they cannot drift apart.
 ///
@@ -33,7 +33,7 @@ impl OgfRawPatch {
   /// everything outside the edited payload. It proves two things at once: the serializer round trips for the chunk that
   /// was rebuilt from parsed values, and framing is reproduced for every chunk copied verbatim.
   ///
-  /// The target is [`normalize_ogf_bytes`] rather than the source itself because a patch drops what the engine never
+  /// The target is [`OgfNormalization::normalize_bytes`] rather than the source itself because a patch drops what the engine never
   /// reads, so byte-identical output is impossible by construction for a malformed visual. For a well-formed one the
   /// two are the same bytes and this is the guard it has always been. The target is byte surgery on the source, never a
   /// second run of the writer, so a serializer bug still shows up here as a mismatch.
@@ -43,7 +43,7 @@ impl OgfRawPatch {
     reverted: &[u8],
     identity: &str,
   ) -> XrfResult {
-    let expected: Vec<u8> = normalize_ogf_bytes::<T>(original)?;
+    let expected: Vec<u8> = OgfNormalization::normalize_bytes::<T>(original)?;
 
     if reverted != expected {
       return Err(XrfError::new_verify_error(format!(
@@ -73,7 +73,7 @@ impl OgfRawPatch {
   /// Payload of a motion refs chunk with the bytes the count never reaches removed.
   ///
   /// A patcher that copies this chunk verbatim would carry those bytes into a file that is otherwise well-formed, and
-  /// then disagree with [`normalize_ogf_bytes`] about what a rewrite should produce.
+  /// then disagree with [`OgfNormalization::normalize_bytes`] about what a rewrite should produce.
   pub(crate) fn read_normalized_kinematics_payload<T: ByteOrder, D: ChunkDataSource>(
     chunk: &ChunkReader<D>,
   ) -> XrfResult<Vec<u8>> {
