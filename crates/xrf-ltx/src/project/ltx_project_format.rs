@@ -60,7 +60,7 @@ impl LtxProject {
 
   /// Returns physical paths for every project file, refusing when one is not loose.
   ///
-  /// Formatting rewrites a file in place, which an archived config cannot do. Refusing by name is deliberate: a project
+  /// Formatting rewrites a file in place, which an archived config cannot do. Refusing by name is intentional: a project
   /// spanning an installation would otherwise format the loose handful and report success over thousands it never touched.
   /// A caller that needs the loose subset must select it explicitly.
   fn writable_files(&self) -> XrfResult<Vec<PathBuf>> {

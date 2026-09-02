@@ -168,7 +168,7 @@ args = [
   "--features",
   "typescript-bindings",
   "--",
-  # Ignored so a plain workspace test run only verifies the mirrors; rewriting them is deliberate.
+  # Ignored so a plain workspace test run only verifies the mirrors; rewriting them is intentional.
   "--ignored",
   "--exact",
   "ipc::bindings::tests::export_typescript_bindings",

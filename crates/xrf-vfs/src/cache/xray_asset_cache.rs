@@ -70,14 +70,6 @@ impl XrayAssetCache {
   /// retained. Two threads missing the same retained key produce one load and the counters of the sequential pair that
   /// would have run instead — one miss and one hit — so a report describes the inputs rather than the schedule.
   ///
-  /// A kind the policy will not retain is deliberately left uncoordinated. Nothing would be published for a second
-  /// requester to find, so waiting could only turn its miss into a hit and reintroduce the scheduling dependence this
-  /// exists to remove. Every requester of such a kind loads and misses exactly as it would in sequence.
-  ///
-  /// Counter equality with a sequential run holds while the policy carries no byte budget. A budget makes retention
-  /// depend on which other values happen to be alive, through `Arc::strong_count`, which no coordination here can make
-  /// schedule-independent. See [`XrayCachePolicy::with_budget`].
-  ///
   /// # Errors
   ///
   /// Returns whatever `load` answers with. Failures are not retained and are never shared: a waiter whose owner failed
@@ -151,9 +143,6 @@ impl XrayAssetCache {
   }
 
   /// Drops everything retained for one logical path, whatever type or scope held it.
-  ///
-  /// Called when a write changes that path's bytes. Deliberately blunt: only a resolve per scope could say which scopes
-  /// were serving the mount that was written, and a write is rare where a parse is not.
   pub fn forget(&self, logical_path: &str) -> usize {
     self.drop_entries(|key, _| key.get_path() != logical_path)
   }

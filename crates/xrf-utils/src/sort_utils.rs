@@ -109,7 +109,7 @@ mod tests {
 
   #[test]
   fn matches_what_rustfmt_emits_for_a_mixed_list() {
-    // Pinned against `rustfmt --edition 2024` over the same identifiers, so a change here is a deliberate divergence
+    // Pinned against `rustfmt --edition 2024` over the same identifiers, so a change here is an intentional divergence
     // from the ordering the workspace's own Rust sources are formatted with.
     assert_eq!(
       sorted(&[

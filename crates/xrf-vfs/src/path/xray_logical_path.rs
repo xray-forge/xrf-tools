@@ -239,7 +239,7 @@ pub(crate) fn normalize_host_relative(path: &Path) -> XrfResult<String> {
 
 /// Converts an engine identity into a host path relative to a source root.
 ///
-/// The deliberate crossing out of the engine domain, and the inverse of [`normalize_host_relative`]. Built from
+/// The intentional crossing out of the engine domain, and the inverse of [`normalize_host_relative`]. Built from
 /// components so the platform inserts its own separator: a `\`-joined literal is one component on Linux, which is how a
 /// created file lands with a backslash in its name instead of in a subdirectory.
 pub(crate) fn to_host_relative(logical_path: &str) -> PathBuf {

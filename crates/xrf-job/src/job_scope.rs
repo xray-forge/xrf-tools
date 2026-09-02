@@ -50,13 +50,13 @@ impl JobScope {
   /// Deciding emission here rather than in the caller is what keeps one rule over every operation.
   pub fn advance(&self) {
     self.level.completed.fetch_add(1, Ordering::Relaxed);
-    self.state.on_unit();
+    self.state.report_if_due();
   }
 
   /// Count `units` at once, for a level whose steps are not all one unit — bytes written by a single copy, say.
   pub fn advance_by(&self, units: u64) {
     self.level.completed.fetch_add(units, Ordering::Relaxed);
-    self.state.on_unit();
+    self.state.report_if_due();
   }
 
   /// Enter a level inside this one.
@@ -76,7 +76,7 @@ impl JobScope {
 impl Drop for JobScope {
   /// Leaves the level, counting it against its parent.
   ///
-  /// Two emissions rather than one, and deliberately: the first shows this level at its final count, which is the only
+  /// Two emissions rather than one, and intentionally: the first shows this level at its final count, which is the only
   /// moment a finished child is visible at all, and the second shows the parent with that child counted. A boundary is
   /// rare enough that the pair costs nothing, and collapsing them would lose whichever half a reader was watching.
   fn drop(&mut self) {

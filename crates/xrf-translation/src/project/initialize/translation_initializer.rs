@@ -32,7 +32,7 @@ impl TranslationInitializer {
   /// before choosing an entry point — that decision belongs to the operation that knows what it does with either.
   ///
   /// Only a source that gained something is rewritten, so running this over an already complete project writes
-  /// nothing. It deliberately neither reorders nor reformats: that is `TranslationFormatter`'s job, and is why the two
+  /// nothing. It intentionally neither reorders nor reformats: that is `TranslationFormatter`'s job, and is why the two
   /// commands exist separately.
   ///
   /// # Errors

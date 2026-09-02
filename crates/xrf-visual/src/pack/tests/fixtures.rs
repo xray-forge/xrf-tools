@@ -256,7 +256,7 @@ pub(crate) fn kinematics(motion_refs: &[&str]) -> OgfKinematicsChunk {
 
 /// The two chunks a self-animated visual embeds, which a visual carries together or not at all.
 ///
-/// Payload labels are deliberately not the motion names: a bank is named by its definitions, and real files carry
+/// Payload labels are intentionally not the motion names: a bank is named by its definitions, and real files carry
 /// stale or non-text labels beside them.
 pub(crate) fn embedded_motions(names: &[&str]) -> (SkeletonMotionsChunk, SkeletonMotionParametersChunk) {
   (

@@ -150,7 +150,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
   /// What was written so far, abandoning the volume in progress.
   ///
-  /// For a run that stopped between entries. The open volume is deliberately not closed: closing it would write a
+  /// For a run that stopped between entries. The open volume is intentionally not closed: closing it would write a
   /// descriptor table and produce a structurally valid archive that is missing entries, which is a worse thing to
   /// leave behind than an obviously unfinished file.
   pub(crate) fn abandon(self) -> ArchivePackResult {

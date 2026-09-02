@@ -143,6 +143,18 @@ impl JobHandle {
   /// `None` while the job is between levels, which is the same thing the sink is spared: a snapshot with no levels
   /// describes a run with no phase as though it had one. Lets a listing read a running job's state on demand rather
   /// than the job having to push every snapshot somewhere a listing can find it.
+  /// Says where this job has got to, if it has not said so recently.
+  ///
+  /// The same rule a completed unit goes through, for a caller that has no unit to report: a phase doing real work
+  /// with nothing countable in it — mounting roots, indexing a tree, assembling a project — otherwise says nothing
+  /// for as long as it lasts, and a window watching it shows an elapsed time that never moves.
+  ///
+  /// Asking rather than telling, because when a job last spoke is the job's own business. A caller that sent a
+  /// snapshot itself would double what a reporting phase says and would have to keep its own idea of the interval.
+  pub fn report_if_due(&self) {
+    self.state.report_if_due();
+  }
+
   pub fn get_progress(&self) -> Option<JobProgress> {
     let progress: JobProgress = self.state.describe();
 
@@ -207,7 +219,7 @@ impl JobState {
   }
 
   /// One unit was counted somewhere; report it where the gate says this thread is the one to.
-  pub(crate) fn on_unit(&self) {
+  pub(crate) fn report_if_due(&self) {
     if !self.is_reporting {
       return;
     }

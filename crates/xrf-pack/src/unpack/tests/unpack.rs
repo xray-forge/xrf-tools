@@ -70,7 +70,7 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   assert_eq!(result.archives, vec![format!("{root}/vol\u{FFFD}/files.db0")]);
 }
 
-/// A plain test, deliberately not an async one: unpacking drives its own pool and must not need an ambient executor.
+/// A plain test, intentionally not an async one: unpacking drives its own pool and must not need an ambient executor.
 /// While this ran on a Tokio join set the same call panicked with "there is no reactor running" outside a runtime, and
 /// inside one it put every blocking write onto an executor worker.
 ///

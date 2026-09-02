@@ -104,7 +104,7 @@ impl OgfTextureResolver {
 
   /// Resolves one reference in the visual's own tree and then in the named roots.
   ///
-  /// A named root is planned in `Auto` mode, so an installation brings its archives with it. What this deliberately
+  /// A named root is planned in `Auto` mode, so an installation brings its archives with it. What this intentionally
   /// does not do is read those archives: an archived hit is reported located rather than inspected, because a header
   /// read there means decompressing a whole entry to look at 148 bytes.
   fn locate(&mut self, root: &Path, reference: &str) -> Option<XrayResolution> {

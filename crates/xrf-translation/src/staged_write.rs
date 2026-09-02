@@ -86,7 +86,7 @@ pub(crate) fn write_new_file(path: &Path, contents: &[u8]) -> XrfResult {
 
 /// Flush the directory entry the rename produced, so the replacement survives a power loss too.
 ///
-/// Best effort, and deliberately not an error: the bytes are already durable by this point, so a
+/// Best effort, and intentionally not an error: the bytes are already durable by this point, so a
 /// directory that cannot be synced costs at most the file reverting to its previous contents — while
 /// failing here would report a save that did happen as one that did not.
 ///

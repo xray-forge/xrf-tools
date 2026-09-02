@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -7,11 +8,18 @@ use xrf_job::{JobHandle, JobProgress, JobScope};
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
+use crate::core::jobs::job_phases::JOB_PHASE_PREPARE;
 use crate::core::jobs::job_registry::{JobRegistration, JobRegistry};
 use crate::core::jobs::job_start::JobStart;
 
 fn registry() -> Arc<JobRegistry> {
   Arc::new(JobRegistry::new())
+}
+
+/// A registry whose jobs report at `interval`, so what a watcher was told is decided by the test rather than by a
+/// clock. Zero reports every time it is asked; an hour never does.
+fn registry_reporting_every(interval: Duration) -> Arc<JobRegistry> {
+  Arc::new(JobRegistry::with_interval(interval))
 }
 
 fn keys(keys: &[&str]) -> Vec<String> {
@@ -495,4 +503,103 @@ fn a_job_that_described_nothing_carries_nothing() {
     .expect("nothing is held");
 
   assert_eq!(registry.list()[0].request, None);
+}
+
+#[test]
+fn reports_a_running_job_that_has_emitted_nothing_of_its_own() {
+  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+
+  let (job, _running): (JobHandle, JobRegistration) = registry
+    .register(JobStart::new(Uuid::new_v4(), "configs.verify").with_progress(channel))
+    .expect("the job registers");
+
+  // Entering emits once, which is the snapshot a phase gets for free. Everything after this is the registry asking.
+  let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+  let entered: usize = received.lock().expect("recorded sends").len();
+
+  registry.report_live();
+  registry.report_live();
+
+  let sent: Vec<String> = received.lock().expect("recorded sends").clone();
+
+  assert_eq!(sent.len(), entered + 2, "each ask reaches the watcher");
+  assert!(
+    sent.last().expect("a snapshot was sent").contains(JOB_PHASE_PREPARE),
+    "the snapshot names the phase the job is in: {sent:?}"
+  );
+}
+
+/// A job that is already reporting units answers nothing here, because it has just spoken. The registry asks rather
+/// than sends, so how often a job speaks stays the job's own rule and a watcher is not told the same thing twice.
+#[test]
+fn does_not_report_a_job_that_has_spoken_recently() {
+  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::from_secs(3600));
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+
+  let (job, _running): (JobHandle, JobRegistration) = registry
+    .register(JobStart::new(Uuid::new_v4(), "configs.verify").with_progress(channel))
+    .expect("the job registers");
+
+  let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+  let entered: usize = received.lock().expect("recorded sends").len();
+
+  registry.report_live();
+
+  assert_eq!(
+    received.lock().expect("recorded sends").len(),
+    entered,
+    "the job had spoken within its interval, so the ask added nothing"
+  );
+}
+
+/// A job between phases has nothing truthful to say, and saying it anyway would describe a run with no phase as though
+/// it had one.
+#[test]
+fn reports_nothing_for_a_job_that_is_between_phases() {
+  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+
+  let (_job, _running): (JobHandle, JobRegistration) = registry
+    .register(JobStart::new(Uuid::new_v4(), "configs.verify").with_progress(channel))
+    .expect("the job registers");
+
+  registry.report_live();
+
+  assert!(received.lock().expect("recorded sends").is_empty());
+}
+
+/// A concluded job is no longer live, so nothing keeps reporting into a page that has already been told the answer.
+#[test]
+fn stops_reporting_a_job_that_has_finished() {
+  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+
+  let (job, running): (JobHandle, JobRegistration) = registry
+    .register(JobStart::new(Uuid::new_v4(), "configs.verify").with_progress(channel))
+    .expect("the job registers");
+
+  let preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+
+  drop(preparing);
+  running.conclude(JobConclusion::Completed, None);
+
+  let settled: usize = received.lock().expect("recorded sends").len();
+
+  registry.report_live();
+
+  assert_eq!(received.lock().expect("recorded sends").len(), settled);
+}
+
+/// Two threads asking the same jobs would tell every watcher everything twice, and a second entry point that did not
+/// know the first had started is how that happens. An hour-long interval keeps whatever thread starts here from ever
+/// ticking, so what this pins is the claim rather than the reporting.
+#[test]
+fn starting_reporting_twice_leaves_one_reporter() {
+  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::from_secs(3600)).start_reporting();
+
+  assert!(
+    Arc::ptr_eq(&registry, &Arc::clone(&registry).start_reporting()),
+    "the second start answers with the registry it was given"
+  );
 }

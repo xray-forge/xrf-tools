@@ -80,7 +80,7 @@ impl OutputSequence {
 
   /// Writes each position from `next` that has arrived, stopping at the first that has not.
   ///
-  /// Writing happens under the lock deliberately. Releasing outside it would let two threads that
+  /// Writing happens under the lock intentionally. Releasing outside it would let two threads that
   /// each completed a run interleave their writes, which is the one thing a sequence exists to
   /// prevent.
   fn release(&self, state: &mut SequenceState) {
@@ -253,7 +253,7 @@ mod tests {
 
             crate::info!(slot.get_output(), "position {index}");
 
-            // Later positions deliberately finish first.
+            // Later positions intentionally finish first.
             thread::sleep(Duration::from_millis((16 - index as u64) * 2));
           });
         }

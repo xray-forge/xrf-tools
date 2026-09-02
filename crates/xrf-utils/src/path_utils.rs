@@ -24,9 +24,6 @@ impl Display for HostPath<'_> {
 /// rather than at every call site. It answers a different question than `to_portable_path_string`,
 /// which is a deterministic wire or report key, and than `XrayLogicalPath`, which is an engine
 /// identity. Rendering, never a write address: resolve a path to write through the VFS instead.
-///
-/// The returned type is deliberately opaque, so the rendering can change without breaking signatures,
-/// and it borrows rather than allocating, which is what a format argument needs.
 #[inline]
 pub fn format_path<P: AsRef<Path> + ?Sized>(path: &P) -> impl Display + '_ {
   HostPath {

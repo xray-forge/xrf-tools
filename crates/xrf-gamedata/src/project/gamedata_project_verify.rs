@@ -72,7 +72,7 @@ impl GamedataProject {
       OutputVerbosity::Normal | OutputVerbosity::Verbose => CHECK_WINDOW,
     };
 
-    // Waves rather than all at once, and the outer loop is deliberately sequential: a wave finishes before the next
+    // Waves rather than all at once, and the outer loop is intentionally sequential: a wave finishes before the next
     // starts, so the positions it holds are released together and a run says something every second or so instead of
     // saying nothing and then everything.
     let mut reports: Vec<Option<GamedataVerificationCheckReport>> = Vec::with_capacity(checks.len());

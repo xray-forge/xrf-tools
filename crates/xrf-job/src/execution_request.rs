@@ -27,7 +27,7 @@ impl ExecutionRequest {
   /// The largest worker count a caller may name.
   ///
   /// A guard against a typo, not against a machine: it exists so `--jobs 100000` is a usage error rather than an
-  /// attempt to start a hundred thousand threads. Deliberately a fixed number rather than a multiple of what the host
+  /// attempt to start a hundred thousand threads. Intentionally a fixed number rather than a multiple of what the host
   /// reports, because a host-derived limit would make one command line valid on one machine and a usage error on
   /// another, which breaks a reproducible bug report and a recorded test alike.
   ///

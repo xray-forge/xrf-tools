@@ -75,7 +75,7 @@ impl XrayAssetType {
 
   /// Where this kind lives, for the kinds with one canonical home.
   ///
-  /// `None` covers two different cases, and both are deliberate rather than gaps to fill in speculatively: a kind whose
+  /// `None` covers two different cases, and both are intentional rather than gaps to fill in speculatively: a kind whose
   /// home is not one directory — `Level` names a directory per level, `Shader` loads a dozen extensions — and a kind no
   /// caller resolves by reference yet. Add a row when a consumer needs one, with evidence from a real tree.
   pub fn get_rules(self) -> Option<XrayAssetRules> {

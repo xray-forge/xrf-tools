@@ -218,7 +218,7 @@ impl ArchivePacker {
   /// What a run that stopped has to say for itself.
   ///
   /// The counts describe what was reached, never what was asked for: `files_total` is the size of the job, and the
-  /// volume lists are what is actually on disk. Naming the set is deliberately skipped — a single volume keeps its
+  /// volume lists are what is actually on disk. Naming the set is intentionally skipped — a single volume keeps its
   /// index, because renaming it would dress an incomplete set as a finished one.
   fn describe_cancelled(
     mut result: ArchivePackResult,

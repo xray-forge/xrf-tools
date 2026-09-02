@@ -20,7 +20,7 @@ pub enum TranslationProjectMode {
 impl TranslationProjectMode {
   /// Logical prefix this layout keeps its string tables under.
   ///
-  /// The same two prefixes `DialogProjectMode` resolves dialog text with, and deliberately so: a
+  /// The same two prefixes `DialogProjectMode` resolves dialog text with, and intentionally so: a
   /// dialog's `<text>` key is looked up in exactly these files, so the two crates disagreeing about
   /// where they live would make a phrase resolve in one tool and not the other.
   pub const fn get_prefix(&self) -> &'static str {

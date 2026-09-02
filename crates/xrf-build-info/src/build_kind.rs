@@ -9,7 +9,7 @@ pub enum BuildKind {
   Local,
   /// Continuous integration artifact, built for turnaround rather than size.
   Development,
-  /// Deliberate release build, carrying the full optimisation the release profile describes.
+  /// Release build, carrying the full optimisation the release profile describes.
   Optimized,
 }
 

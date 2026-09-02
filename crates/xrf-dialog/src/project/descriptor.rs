@@ -35,9 +35,6 @@ impl DialogFinding {
 
 /// One dialog, as the project index lists it.
 ///
-/// Enough to draw a tree and pick something to open, and deliberately not the phrases: 502 dialogs
-/// of those is a payload nobody reads, so a dialog is fetched when it is selected.
-///
 /// Named for the reduction it is. A descriptor carrying a domain type's own name mirrors that type —
 /// [`DialogDescriptor`] mirrors `Dialog` — so a summary of one has to say so.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

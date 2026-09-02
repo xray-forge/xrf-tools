@@ -63,7 +63,7 @@ impl XrayVfs {
 
   /// Accounts for every physical read this world performs from here on.
   ///
-  /// Off by default and deliberately opt-in: the account is a lock taken on the read path, which is where a sweep
+  /// Off by default and intentionally opt-in: the account is a lock taken on the read path, which is where a sweep
   /// spends its time. A run that wants the numbers pays for them; every other run pays a null check.
   pub fn with_read_trace(mut self) -> Self {
     self.trace = Some(XrayReadTrace::default());

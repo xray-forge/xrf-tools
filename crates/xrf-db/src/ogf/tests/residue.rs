@@ -98,8 +98,6 @@ fn refuses_trailing_bytes_that_belong_to_nothing() -> XrfResult {
 
 #[test]
 fn refuses_a_counted_reference_cut_by_the_declared_size() -> XrfResult {
-  // Out of scope for this seam and deliberately pinned: the residue completes a path the engine reads in full, so
-  // accounting for it as ignorable would truncate a reference the visual really uses.
   assert!(
     OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::split_counted_ref()?).is_err(),
     "Expect a counted reference crossing the chunk boundary to keep failing rather than read short"

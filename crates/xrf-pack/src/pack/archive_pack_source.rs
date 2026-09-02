@@ -186,7 +186,7 @@ fn walk_error(root: &Path, error: WalkError) -> XrfError {
 /// Whether a directory can be dropped without descending into it.
 ///
 /// A recursive exclusion covers everything below the directory it names, so nothing inside can be selected and
-/// reading it would only turn a deliberately excluded corner of the tree into a packing failure. A plain exclusion
+/// reading it would only turn a intentionally excluded corner of the tree into a packing failure. A plain exclusion
 /// drops the directory alone while its contents still pack, so it must not prune. A directory whose name cannot be
 /// expressed is kept, so the walk reports it instead of losing it here.
 fn is_pruned_directory(config: &ArchivePackConfig, entry: &DirEntry) -> bool {

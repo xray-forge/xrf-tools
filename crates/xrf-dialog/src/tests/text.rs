@@ -50,7 +50,6 @@ fn create_gamedata(name: &str) -> XrfResult<PathBuf> {
     english.join("st_dialogs.xml"),
     table(&[("trader_hello", "Hello, stalker")]),
   )?;
-  // Deliberately missing `trader_hello`, so one language is behind the other.
   fs::write(russian.join("st_dialogs.xml"), table(&[("other_key", "Other")]))?;
 
   Ok(root)

@@ -80,10 +80,6 @@ impl CommandOutcome {
 }
 
 /// One run of one command, as a machine reads it.
-///
-/// Deliberately small and unversioned. Everything here is something the CLI already promises through
-/// its exit contract, so nothing in it can drift from what the process does; anything a command
-/// wants to say beyond that lives in `result`, which is the command's own shape.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandEnvelope {

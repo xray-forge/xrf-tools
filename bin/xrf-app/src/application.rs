@@ -47,7 +47,7 @@ pub fn run() {
 
       // Behind an `Arc` because a registration outlives the command frame that took it: the guard travels onto a
       // blocking thread and releases its leases there, which a `State` borrow cannot do.
-      app.manage(Arc::new(JobRegistry::new()));
+      app.manage(Arc::new(JobRegistry::new()).start_reporting());
 
       // One pool for the process, started before any command can reach for it. `Auto` because nothing here asks the
       // user how much of their machine an application may use; the width is stated rather than chosen, and the plan is

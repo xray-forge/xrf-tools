@@ -21,7 +21,7 @@ use crate::source_file_name::is_json_source;
 /// # Errors
 ///
 /// Returns a not-found error for a path that does not exist, a read error when a directory cannot be walked, and an
-/// invalid error when the paths together select nothing. The last one is deliberate and differs from `ltx format`,
+/// invalid error when the paths together select nothing. The last one is intentional and differs from `ltx format`,
 /// which formats an empty set successfully: a run that found nothing and a run that found everything already canonical
 /// both exit 0 over an empty count, and the dangerous version of that is a renamed directory quietly making a check
 /// gate vacuous.

@@ -1,13 +1,15 @@
 use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_job::{JobHandle, JobProgress, ProgressSink};
+use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobProgress, ProgressSink};
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
@@ -99,10 +101,23 @@ struct RegistryState {
 /// questions whatever the work is, and a second copy of them is a second set of rules to keep in step.
 pub struct JobRegistry {
   state: Mutex<RegistryState>,
+  /// How often a running job is asked where it has got to, and the interval its handles report at.
+  interval: Duration,
+  /// Whether a thread is already asking, so a second request for reporting is not a second thread.
+  is_reporting: AtomicBool,
 }
 
 impl JobRegistry {
+  /// A registry whose jobs report at the interval `xrf-job` chose.
   pub fn new() -> Self {
+    Self::with_interval(DEFAULT_PROGRESS_INTERVAL)
+  }
+
+  /// A registry whose jobs report at `interval`.
+  ///
+  /// Mirrors [`JobHandle::with_interval`], and for the same reason: a test asserting what a watcher was told cannot
+  /// wait out a production interval, and a rate that varies by build is worse than one a test can state.
+  pub fn with_interval(interval: Duration) -> Self {
     Self {
       state: Mutex::new(RegistryState {
         live: HashMap::new(),
@@ -110,6 +125,8 @@ impl JobRegistry {
         finished: VecDeque::new(),
         tombstones: VecDeque::new(),
       }),
+      interval,
+      is_reporting: AtomicBool::new(false),
     }
   }
 
@@ -142,7 +159,7 @@ impl JobRegistry {
       None => JobProgressSink::detached(),
     });
     let reporting: Arc<dyn ProgressSink> = Arc::clone(&sink) as Arc<dyn ProgressSink>;
-    let handle: JobHandle = JobHandle::new(reporting);
+    let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
     let mut state: MutexGuard<RegistryState> = self.lock();
 
     if let Some(taken) = state.leases.get_taken(&lease_keys) {
@@ -238,6 +255,59 @@ impl JobRegistry {
     false
   }
 
+  /// Starts asking running jobs where they have got to, and answers with the registry now doing it.
+  ///
+  /// Starting twice changes nothing: two threads asking the same jobs would tell every watcher everything twice, and
+  /// a second entry point that did not know the first had started is the way that happens.
+  ///
+  /// The thread holds a weak reference and stops when the registry does, so nothing has to remember to shut it down
+  /// and a registry dropped in a test takes its thread with it. Dropping the registry this answers with therefore ends
+  /// the reporting it just started.
+  ///
+  /// A plain thread rather than a task: it sleeps for almost all of its life and the work it wakes for is
+  /// synchronous, so putting it on the executor would occupy a worker meant for short requests.
+  pub fn start_reporting(self: Arc<Self>) -> Arc<Self> {
+    if self.is_reporting.swap(true, Ordering::Relaxed) {
+      return self;
+    }
+
+    let registry: Weak<Self> = Arc::downgrade(&self);
+    let interval: Duration = self.interval;
+
+    thread::spawn(move || {
+      loop {
+        match registry.upgrade() {
+          Some(registry) => registry.report_live(),
+          None => break,
+        }
+
+        thread::sleep(interval);
+      }
+    });
+
+    self
+  }
+
+  /// Asks every running job to say where it has got to.
+  ///
+  /// Asks rather than sends: a handle emits on phase entry, exit and unit advancement, and it already owns the rule
+  /// for how often that is worth doing. A job reporting real units answers nothing here, because it has just spoken;
+  /// a phase with nothing countable in it answers, which is the case this exists for.
+  ///
+  /// Handles are collected under the lock and asked outside it, because reporting reaches a webview and holding the
+  /// registry across that would make every other job's registration wait on one page.
+  pub(super) fn report_live(&self) {
+    let live: Vec<JobHandle> = {
+      let state: MutexGuard<RegistryState> = self.lock();
+
+      state.live.values().map(|job| job.handle.clone()).collect()
+    };
+
+    for handle in live {
+      handle.report_if_due();
+    }
+  }
+
   /// Every job, running first and newest finished after them.
   pub fn list(&self) -> Vec<JobDescription> {
     let state: MutexGuard<RegistryState> = self.lock();
@@ -284,7 +354,7 @@ impl Default for JobRegistry {
 ///
 /// The leases are released by dropping this rather than by a call at the end of the command, so a path that returns
 /// early — a refused input, an error, a panic — cannot leave a destination owned by a job that is no longer running.
-/// Holding it past the work is deliberate too: a cancelled pack keeps its destination until whatever it wrote has been
+/// Holding it past the work is intentional too: a cancelled pack keeps its destination until whatever it wrote has been
 /// discarded or promoted.
 pub struct JobRegistration {
   registry: Arc<JobRegistry>,

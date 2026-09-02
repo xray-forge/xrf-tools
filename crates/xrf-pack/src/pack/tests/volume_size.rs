@@ -101,7 +101,7 @@ fn keeps_a_cap_its_descriptors_and_header_nearly_fill() {
   let files: Vec<(String, Vec<u8>)> = (0..12u8)
     .map(|index| {
       (
-        format!("textures\\a_deliberately_long_entry_name_{index}.dds"),
+        format!("textures\\a_intentionally_long_entry_name_{index}.dds"),
         vec![b'a' + index; 4],
       )
     })

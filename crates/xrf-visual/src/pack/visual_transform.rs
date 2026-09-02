@@ -263,7 +263,7 @@ mod tests {
     // k = (-1, 0, 0), so +x goes to +z. Asserting the whole basis rather than one mapped vector is what would catch a
     // transposition, which is still a valid rotation and so survives every numeric invariant.
     //
-    // Deliberately the opposite direction to the euler test above, and not a contradiction: `setXYZi` negates its
+    // Intentionally the opposite direction to the euler test above, and not a contradiction: `setXYZi` negates its
     // arguments (`setHPB(-y, -x, -z)`), so `setXYZi(0, pi/2, 0)` turns the other way. Expecting the two paths to agree
     // for the same nominal angle is the trap here.
     let half: f32 = FRAC_PI_2 / 2.0;

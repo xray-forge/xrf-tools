@@ -4,13 +4,13 @@ use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_job::{JobHandle, JobProgress};
+use xrf_job::{JobHandle, JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
@@ -42,15 +42,23 @@ pub async fn configs_verify_directory(
   let verifying: JobHandle = job.clone();
   let outcome: TauriResult<LtxProjectVerifyResult> = execution
     .run_blocking("Configs verification", move || {
-      let project: LtxProject = open_ltx_project(
-        &roots,
-        prefix.as_deref(),
-        LtxProjectOptions {
-          is_with_schemes_check: true,
-          // todo: Probably should be provided as parameter.
-          is_strict_check: false,
-        },
-      )?;
+      let project: LtxProject = {
+        // Opening mounts every root, indexes the trees and assembles the project, and none of it reports a unit —
+        // so without a phase around it a window shows an indeterminate bar and an elapsed time of zero for the whole
+        // of it, then jumps to the total. The phase says what is happening; the registry's heartbeat is what makes
+        // the time advance while it does (`issues/0109`).
+        let _preparing: JobScope = verifying.enter(JOB_PHASE_PREPARE, None);
+
+        open_ltx_project(
+          &roots,
+          prefix.as_deref(),
+          LtxProjectOptions {
+            is_with_schemes_check: true,
+            // todo: Probably should be provided as parameter.
+            is_strict_check: false,
+          },
+        )?
+      };
 
       project.verify_entries_opt(LtxVerifyOptions::default().with_job(verifying))
     })
