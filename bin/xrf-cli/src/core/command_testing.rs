@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::reporting::{ReportingOptions, add_reporting_arguments};
+use crate::core::reporting::{ReportingArguments, ReportingOptions};
 
 /// Parses `arguments` and runs `command` over them exactly as `application::run` would.
 ///
@@ -32,7 +32,7 @@ pub fn run_command_for_result<T: GenericCommand>(command: &T, arguments: &[Strin
 /// The pair is what a failing check needs: findings are deposited before the verdict becomes an
 /// outcome, so a helper that carries only the result drops them on the one path they exist for.
 pub fn run_command_with_result<T: GenericCommand>(command: &T, arguments: &[String]) -> (CommandResult, Option<Value>) {
-  let matches: ArgMatches = match add_reporting_arguments(command.init()).try_get_matches_from(arguments) {
+  let matches: ArgMatches = match command.init().with_reporting().try_get_matches_from(arguments) {
     Ok(matches) => matches,
     Err(error) => return (Err(error.into()), None),
   };

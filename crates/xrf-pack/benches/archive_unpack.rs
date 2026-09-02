@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 use criterion::{BatchSize, BenchmarkId, Criterion, criterion_group, criterion_main};
 use xrf_archive::ArchiveProject;
+use xrf_job::ExecutionRequest;
 use xrf_pack::{ArchivePackConfig, ArchivePacker, ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
@@ -105,12 +106,17 @@ fn bench_unpack(criterion: &mut Criterion) {
       bencher.iter_batched(
         || reset_destination(scope),
         |destination: PathBuf| {
-          let result: ArchiveUnpackResult = ArchiveUnpacker::unpack_opt(
-            &project,
-            black_box::<&Path>(&destination),
-            ArchiveUnpackOptions::default().with_concurrency(one_worker()),
-          )
-          .expect("a synthetic archive unpacks");
+          let result: ArchiveUnpackResult = ExecutionRequest::Workers(one_worker())
+            .resolve()
+            .install(|| {
+              ArchiveUnpacker::unpack_opt(
+                &project,
+                black_box::<&Path>(&destination),
+                ArchiveUnpackOptions::default(),
+              )
+            })
+            .expect("the pool starts")
+            .expect("a synthetic archive unpacks");
 
           // Nothing here is optimized away while the run's own count is what proves it did the work.
           assert_eq!(result.files_unpacked, ENTRY_COUNT, "every entry was written");

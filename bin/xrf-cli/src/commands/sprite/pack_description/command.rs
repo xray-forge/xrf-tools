@@ -58,13 +58,6 @@ impl GenericCommand for PackDescriptionCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("parallel")
-          .help("Turn on parallel mode for pack operations")
-          .long("parallel")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
   }
 
   /// Pack texture descriptions file as single dds sprite.
@@ -85,8 +78,6 @@ impl GenericCommand for PackDescriptionCommand {
       .unwrap_or_default();
 
     let is_strict: bool = matches.get_flag("strict");
-    let is_parallel: bool = matches.get_flag("parallel");
-
     let output_options: OutputOptions = context.get_output().clone();
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
@@ -98,7 +89,6 @@ impl GenericCommand for PackDescriptionCommand {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files,
       is_strict,
-      is_parallel,
     };
 
     log::info!("Packing texture descriptions from: {}", format_path(description));

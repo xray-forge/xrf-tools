@@ -63,10 +63,12 @@ mod tests {
   use xrf_output::OutputVerbosity;
 
   use super::CommandContext;
-  use crate::core::reporting::{ReportingOptions, add_reporting_arguments};
+  use crate::core::reporting::{ReportingArguments, ReportingOptions};
 
   fn context(arguments: &[&str]) -> CommandContext {
-    let matches = add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true))
+    let matches = Command::new("xrf-cli")
+      .no_binary_name(true)
+      .with_reporting()
       .try_get_matches_from(arguments)
       .expect("reporting arguments to parse");
 

@@ -2,24 +2,40 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 use xrf_output::OutputOptions;
 
-pub const JOBS_ARGUMENT: &str = "jobs";
+const JOBS_ARGUMENT: &str = "jobs";
 
-/// Declares `--jobs` on a command that has parallel work to bound.
+/// Declares the execution arguments on a command, in the builder style clap itself uses.
 ///
-/// `-j` follows every other tool that has the flag. Adding one is therefore a claim: this command's work is bounded by
-/// the plan the caller gets, wherever it fans out.
-pub fn add_execution_arguments(command: Command) -> Command {
-  command.arg(
-    Arg::new(JOBS_ARGUMENT)
-      .help("How much of the machine to use: 'auto', a worker count, or a share such as '50%'")
-      .short('j')
-      .long(JOBS_ARGUMENT)
-      .required(false)
-      .value_name("JOBS")
-      .num_args(1)
-      .default_value("auto")
-      .value_parser(value_parser!(ExecutionRequest)),
-  )
+/// An extension rather than a wrapping function, so a command reads as one uninterrupted chain and declaring the flag
+/// costs one line at the end of it rather than a level of nesting around the whole builder.
+pub trait ExecutionArguments {
+  /// Declares `--jobs` on a command that has parallel work to bound.
+  ///
+  /// Per command rather than global, unlike the reporting flags. Those describe the run itself and mean the same thing
+  /// everywhere; this one describes work, and a command with none has nothing to say about it. The generated reference
+  /// is published, so a flag advertised on every page and honoured on three would be a documentation defect at scale
+  /// rather than a harmless convenience.
+  ///
+  /// `-j` follows every other tool that has the flag. Adding one is therefore a claim: this command's work is bounded
+  /// by the plan the caller gets, wherever it fans out.
+  #[must_use]
+  fn with_jobs(self) -> Self;
+}
+
+impl ExecutionArguments for Command {
+  fn with_jobs(self) -> Self {
+    self.arg(
+      Arg::new(JOBS_ARGUMENT)
+        .help("How much of the machine to use: 'auto', a worker count, or a share such as '50%'")
+        .short('j')
+        .long(JOBS_ARGUMENT)
+        .required(false)
+        .value_name("JOBS")
+        .num_args(1)
+        .default_value("auto")
+        .value_parser(value_parser!(ExecutionRequest)),
+    )
+  }
 }
 
 /// What this command was asked for, or `None` where it offers no say in the matter.
@@ -53,10 +69,13 @@ mod tests {
   use clap::{ArgMatches, Command};
   use xrf_job::{ExecutionOrigin, ExecutionRequest};
 
-  use super::{add_execution_arguments, requested_execution};
+  use super::{ExecutionArguments, requested_execution};
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
-    add_execution_arguments(Command::new("verify").no_binary_name(true)).try_get_matches_from(arguments)
+    Command::new("verify")
+      .no_binary_name(true)
+      .with_jobs()
+      .try_get_matches_from(arguments)
   }
 
   fn parsed(arguments: &[&str]) -> Option<ExecutionRequest> {

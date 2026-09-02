@@ -245,7 +245,6 @@ mod tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
       is_strict: true,
-      is_parallel: false,
     };
 
     fs::write(&path, "<w>").unwrap();
@@ -289,7 +288,6 @@ mod select_files_tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: files.iter().map(|it| String::from(*it)).collect(),
       is_strict: false,
-      is_parallel: false,
     }
   }
 

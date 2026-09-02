@@ -29,32 +29,22 @@ impl UnpackDescriptionProcessor {
       Some(selected.len() as u64),
     );
 
-    if options.is_parallel {
-      // Files are unpacked in parallel, so each one logs into its listed position and the sequence
-      // releases them in selection order rather than in the order the workers finished. A file that
-      // fails still takes its turn, because the slot commits as the error unwinds past it.
-      let sequence: OutputSequence = OutputSequence::new(&options.output, selected.len());
+    // Each file logs into its listed position and the sequence releases them in selection order rather than in the
+    // order the workers finished. A file that fails still takes its turn, because the slot commits as the error
+    // unwinds past it — which is what keeps output identical however wide the run is.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, selected.len());
 
-      selected.par_iter().enumerate().try_for_each(|(index, file)| {
-        let slot: OutputSlot = sequence.new_slot(index);
+    selected.par_iter().enumerate().try_for_each(|(index, file)| {
+      let slot: OutputSlot = sequence.new_slot(index);
 
-        if Self::unpack_xml_description(&options, slot.get_output(), file)? {
-          count.fetch_add(1, Ordering::Relaxed);
-        }
-
-        unpacking.advance();
-
-        Ok::<(), XrfError>(())
-      })?;
-    } else {
-      for file in selected {
-        if Self::unpack_xml_description(&options, &options.output, file)? {
-          count.fetch_add(1, Ordering::Relaxed);
-        }
-
-        unpacking.advance();
+      if Self::unpack_xml_description(&options, slot.get_output(), file)? {
+        count.fetch_add(1, Ordering::Relaxed);
       }
-    }
+
+      unpacking.advance();
+
+      Ok::<(), XrfError>(())
+    })?;
 
     xrf_output::info!(options.output, "Unpacked {} files", count.load(Ordering::Relaxed));
 
@@ -169,7 +159,6 @@ mod tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
       is_strict,
-      is_parallel: false,
     }
   }
 

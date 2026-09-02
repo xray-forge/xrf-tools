@@ -3,11 +3,18 @@
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Result as IoResult, Write};
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crc32fast::hash;
 use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
+use xrf_error::XrfResult;
+use xrf_job::ExecutionRequest;
+
+use crate::unpack::archive_unpack_options::ArchiveUnpackOptions;
+use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
+use crate::unpack::archive_unpacker::ArchiveUnpacker;
 
 pub(crate) struct Entry {
   name: &'static str,
@@ -158,4 +165,21 @@ fn report_link(result: IoResult<()>, link: &Path) -> bool {
       false
     }
   }
+}
+
+/// Unpacks bounded to `workers`, the way a binary bounds itself.
+///
+/// The unpack owns no pool of its own, so a test that needs a known width installs one around the call rather than
+/// passing a number in. That is not test scaffolding for its own sake — it is the same thing the CLI and the desktop
+/// application do, so these tests exercise the arrangement the bound actually relies on instead of one that exists
+/// only here.
+pub(crate) fn unpack_with<P: AsRef<Path> + Send>(
+  workers: NonZeroUsize,
+  project: &ArchiveProject,
+  destination: P,
+) -> XrfResult<ArchiveUnpackResult> {
+  ExecutionRequest::Workers(workers)
+    .resolve()
+    .install(|| ArchiveUnpacker::unpack_opt(project, destination, ArchiveUnpackOptions::default()))
+    .expect("the pool starts")
 }

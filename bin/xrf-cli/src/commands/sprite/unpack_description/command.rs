@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 
 use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;
 use crate::core::command_context::CommandContext;
+use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 use crate::core::progress::new_logging_job;
 
@@ -58,13 +59,7 @@ impl GenericCommand for UnpackDescriptionCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
-      .arg(
-        Arg::new("parallel")
-          .help("Turn on parallel unpack mode")
-          .long("parallel")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
+      .with_jobs()
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -84,23 +79,19 @@ impl GenericCommand for UnpackDescriptionCommand {
       .unwrap_or_default();
 
     let is_strict: bool = matches.get_flag("strict");
-    let is_parallel: bool = matches.get_flag("parallel");
-
     let output: OutputOptions = context.get_output().clone();
 
     let started_at: Instant = Instant::now();
 
     log::info!("Unpacking texture descriptions from: {}", format_path(description));
     log::info!("Paths: base {}, output {}", format_path(base), format_path(output_path));
-    log::info!("Parallel mode: {}", is_parallel);
 
     xrf_output::info!(
       output,
-      "Unpacking texture descriptions: {}, from {} to {}, parallel - {}",
+      "Unpacking texture descriptions: {}, from {} to {}",
       format_path(description),
       format_path(base),
-      format_path(output_path),
-      is_parallel
+      format_path(output_path)
     );
 
     let options: PackDescriptionOptions = PackDescriptionOptions {
@@ -112,7 +103,6 @@ impl GenericCommand for UnpackDescriptionCommand {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files,
       is_strict,
-      is_parallel,
     };
 
     // The payload is what the run was pointed at, so it is deposited before the work rather than

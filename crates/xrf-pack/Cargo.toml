@@ -27,6 +27,8 @@ xrf-utils = { workspace = true }
 criterion = { workspace = true }
 # Reading a serialized configuration back is how the wire contract's compatibility is checked.
 serde_json = { workspace = true }
+# Tests and benches bound themselves the way a binary does, by installing a plan around the call.
+xrf-job = { workspace = true, features = ["rayon"] }
 # Only the pack-then-mount integration test reads volumes back through the VFS.
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }

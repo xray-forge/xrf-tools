@@ -17,10 +17,10 @@ use crate::core::generic_command::CommandResult;
 use crate::core::output::TerminalOutput;
 use crate::core::staged_write::write_file_staged;
 
-pub const SILENT_ARGUMENT: &str = "silent";
-pub const VERBOSE_ARGUMENT: &str = "verbose";
-pub const JSON_ARGUMENT: &str = "json";
-pub const REPORT_ARGUMENT: &str = "report";
+const SILENT_ARGUMENT: &str = "silent";
+const VERBOSE_ARGUMENT: &str = "verbose";
+const JSON_ARGUMENT: &str = "json";
+const REPORT_ARGUMENT: &str = "report";
 
 /// Where a run's machine-readable account of itself goes.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -227,42 +227,57 @@ fn get_verbosity(is_silent: bool, is_verbose: bool) -> OutputVerbosity {
 /// and drifting - per command. `-s` and `-v` are theirs across the whole CLI; a command wanting a
 /// short for something else picks another letter. `--json` and `--report` take none at all, since
 /// the callers that reach for them are scripts, which spell flags out.
-pub fn add_reporting_arguments(command: Command) -> Command {
-  command
-    .arg(
-      Arg::new(SILENT_ARGUMENT)
-        .help("Turn off logging")
-        .short('s')
-        .long(SILENT_ARGUMENT)
-        .global(true)
-        .conflicts_with(VERBOSE_ARGUMENT)
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new(VERBOSE_ARGUMENT)
-        .help("Turn on verbose logging")
-        .short('v')
-        .long(VERBOSE_ARGUMENT)
-        .global(true)
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new(JSON_ARGUMENT)
-        .help("Write the run's JSON report to stdout, moving human output to stderr")
-        .long(JSON_ARGUMENT)
-        .global(true)
-        .conflicts_with(REPORT_ARGUMENT)
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new(REPORT_ARGUMENT)
-        .help("Write the run's JSON report to a file")
-        .long(REPORT_ARGUMENT)
-        .global(true)
-        .value_name("PATH")
-        .num_args(1)
-        .value_parser(value_parser!(PathBuf)),
-    )
+/// Declares the reporting arguments on a command, in the builder style clap itself uses.
+///
+/// The counterpart to `ExecutionArguments`, so there is one way to attach a named group of arguments to a command
+/// rather than one idiom per group.
+pub trait ReportingArguments {
+  /// Declares the verbosity and machine-readable-output flags.
+  ///
+  /// Global, unlike `--jobs`: these describe the run rather than the work, so they mean the same thing on every
+  /// command and are declared once on the root.
+  #[must_use]
+  fn with_reporting(self) -> Self;
+}
+
+impl ReportingArguments for Command {
+  fn with_reporting(self) -> Self {
+    self
+      .arg(
+        Arg::new(SILENT_ARGUMENT)
+          .help("Turn off logging")
+          .short('s')
+          .long(SILENT_ARGUMENT)
+          .global(true)
+          .conflicts_with(VERBOSE_ARGUMENT)
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new(VERBOSE_ARGUMENT)
+          .help("Turn on verbose logging")
+          .short('v')
+          .long(VERBOSE_ARGUMENT)
+          .global(true)
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new(JSON_ARGUMENT)
+          .help("Write the run's JSON report to stdout, moving human output to stderr")
+          .long(JSON_ARGUMENT)
+          .global(true)
+          .conflicts_with(REPORT_ARGUMENT)
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new(REPORT_ARGUMENT)
+          .help("Write the run's JSON report to a file")
+          .long(REPORT_ARGUMENT)
+          .global(true)
+          .value_name("PATH")
+          .num_args(1)
+          .value_parser(value_parser!(PathBuf)),
+      )
+  }
 }
 
 #[cfg(test)]
@@ -282,7 +297,7 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::{
-    CommandEnvelope, CommandOutcome, ReportDestination, ReportingOptions, add_reporting_arguments,
+    CommandEnvelope, CommandOutcome, ReportDestination, ReportingArguments, ReportingOptions,
     find_conflicting_selection, get_verbosity,
   };
   use crate::core::command_error::CommandError;
@@ -290,7 +305,10 @@ mod tests {
   use crate::core::staged_write::faults::fail_next_staged_write;
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
-    add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true)).try_get_matches_from(arguments)
+    Command::new("xrf-cli")
+      .no_binary_name(true)
+      .with_reporting()
+      .try_get_matches_from(arguments)
   }
 
   /// The plan a test envelope carries, where the width is not what the test is about.
@@ -370,7 +388,9 @@ mod tests {
   /// The operation's own matches, from a root that carries the globals - the shape `application.rs`
   /// dispatches on, and the only place a pair written at two levels meets.
   fn parse_nested(root: &[&str], operation: &[&str]) -> ArgMatches {
-    let matches: ArgMatches = add_reporting_arguments(Command::new("xrf-cli").no_binary_name(true))
+    let matches: ArgMatches = Command::new("xrf-cli")
+      .no_binary_name(true)
+      .with_reporting()
       .subcommand(Command::new("info"))
       .try_get_matches_from(root.iter().chain(["info"].iter()).chain(operation.iter()))
       .expect("a pair written at two levels to satisfy clap");

@@ -14,9 +14,9 @@ use std::ffi::OsStr;
 
 use xrf_error::XrfError;
 
-use super::fixtures::{Entry, create_project, create_temporary_directory, link_directory, link_file};
+use super::fixtures::{Entry, create_project, create_temporary_directory, link_directory, link_file, unpack_with};
+use crate::ArchiveUnpacker;
 use crate::unpack::rooted_destination::RootedDestination;
-use crate::{ArchiveUnpackOptions, ArchiveUnpacker};
 
 const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
 
@@ -57,7 +57,7 @@ fn unpack_refuses_a_directory_link_below_the_destination() {
   }
 
   assert!(
-    ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).is_err(),
+    unpack_with(ONE, &project, &out).is_err(),
     "unpacking through a link must fail rather than follow it"
   );
   assert_sentinel_untouched(&sentinel);
@@ -78,7 +78,7 @@ fn unpack_refuses_a_file_link_in_place_of_an_entry() {
   }
 
   assert!(
-    ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).is_err(),
+    unpack_with(ONE, &project, &out).is_err(),
     "writing an entry over a link must fail rather than follow it"
   );
   assert_sentinel_untouched(&sentinel);
@@ -145,7 +145,7 @@ fn unpack_writes_into_a_destination_tree_that_already_exists() {
   fs::create_dir_all(out.join("configs")).expect("destination");
   fs::write(out.join("configs").join("system.ltx"), b"stale").expect("previous unpack");
 
-  ArchiveUnpacker::unpack_opt(&project, &out, ArchiveUnpackOptions::default().with_concurrency(ONE)).expect("unpack");
+  unpack_with(ONE, &project, &out).expect("unpack");
 
   assert_eq!(
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),

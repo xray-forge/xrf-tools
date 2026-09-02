@@ -9,7 +9,6 @@ pub struct SpriteDescriptionReport {
   description: String,
   destination: String,
   files: Vec<String>,
-  is_parallel: bool,
   is_strict: bool,
 }
 
@@ -20,7 +19,6 @@ impl SpriteDescriptionReport {
       description: xrf_utils::to_portable_path_string(&options.description),
       destination: xrf_utils::to_portable_path_string(&options.output_path),
       files: options.files.clone(),
-      is_parallel: options.is_parallel,
       is_strict: options.is_strict,
     }
   }

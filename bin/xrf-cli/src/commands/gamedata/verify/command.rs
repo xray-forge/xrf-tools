@@ -12,7 +12,7 @@ use xrf_utils::format_path;
 use super::verification_report::GamedataVerificationReportPayload;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
-use crate::core::execution::add_execution_arguments;
+use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 use crate::core::progress::new_logging_job;
 
@@ -32,7 +32,8 @@ impl GenericCommand for VerifyCommand {
 
   /// Create command to verify gamedata.
   fn init(&self) -> Command {
-    add_execution_arguments(Command::new(self.operation()).about("Command to verify gamedata"))
+    Command::new(self.operation())
+      .about("Command to verify gamedata")
       .arg(
         Arg::new("root")
           .help("Path to assembled gamedata root")
@@ -73,6 +74,7 @@ impl GenericCommand for VerifyCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .with_jobs()
   }
 
   /// Unpack xray engine database archive.

@@ -2,13 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
-use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use xrf_archive::ArchiveFileDescriptor;
 use xrf_archive::ArchiveOpenVolumes;
 use xrf_archive::ArchiveProject;
@@ -37,26 +35,17 @@ struct UnpackTally {
 pub struct ArchiveUnpacker;
 
 impl ArchiveUnpacker {
-  /// Workers an unpack run uses when its caller states no preference.
-  pub fn get_default_concurrency() -> NonZeroUsize {
-    ArchiveUnpackOptions::get_default_concurrency()
-  }
-
-  /// Write every file in the project beneath a destination root, using the host's own parallelism.
+  /// Write every file in the project beneath a destination root.
   ///
-  /// The plain door. A caller that wants to bound the run, watch it, or be able to stop it uses [`Self::unpack_opt`].
+  /// The plain door. A caller that wants to watch the run or be able to stop it uses [`Self::unpack_opt`].
   pub fn unpack<P: AsRef<Path>>(project: &ArchiveProject, destination: P) -> XrfResult<ArchiveUnpackResult> {
     Self::unpack_opt(project, destination, ArchiveUnpackOptions::default())
   }
 
   /// Write every file in the project beneath a destination root, as `options` asks.
   ///
-  /// Synchronous, and it owns the pool it runs on: nothing below this performs asynchronous I/O, so a caller on an
-  /// executor has to move the whole call to a blocking thread rather than expect it to yield. One worker is a
-  /// sequential run.
-  ///
-  /// The worker count is non-zero because `ThreadPoolBuilder::num_threads(0)` means "decide for me" to Rayon: a zero
-  /// would quietly become one worker per core, which is the opposite of what a caller asking for a bound wants.
+  /// Synchronous: nothing below this performs asynchronous I/O, so a caller on an executor has to move the whole call
+  /// to a blocking thread rather than expect it to yield.
   ///
   /// Names come from the archive, so every write goes through a [`RootedDestination`] and lands below `destination`
   /// even where that tree already exists and holds links.
@@ -95,27 +84,25 @@ impl ArchiveUnpacker {
     {
       let writing: JobScope = job.enter(UNPACK_PHASE_WRITE, Some(project.files.len() as u64));
 
-      let outcome: XrfResult = Self::build_pool(options.concurrency)?.install(|| {
-        project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
-          // Before the write rather than after it: a payload already being written cannot be halved without leaving a
-          // truncated file that is indistinguishable from a short one, so the only safe boundary is this one.
-          job.check_cancelled()?;
+      let outcome: XrfResult = project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
+        // Before the write rather than after it: a payload already being written cannot be halved without leaving a
+        // truncated file that is indistinguishable from a short one, so the only safe boundary is this one.
+        job.check_cancelled()?;
 
-          // A directory row carries no payload, and the tree it names was created during preparation. It is counted
-          // anyway, so the progress total stays the entry count the project reports holding.
-          if !descriptor.is_directory {
-            Self::unpack_file(&destination, &volumes, &prepared, descriptor)?;
+        // A directory row carries no payload, and the tree it names was created during preparation. It is counted
+        // anyway, so the progress total stays the entry count the project reports holding.
+        if !descriptor.is_directory {
+          Self::unpack_file(&destination, &volumes, &prepared, descriptor)?;
 
-            tally.files.fetch_add(1, Ordering::Relaxed);
-            tally
-              .bytes
-              .fetch_add(u64::from(descriptor.size_real), Ordering::Relaxed);
-          }
+          tally.files.fetch_add(1, Ordering::Relaxed);
+          tally
+            .bytes
+            .fetch_add(u64::from(descriptor.size_real), Ordering::Relaxed);
+        }
 
-          writing.advance();
+        writing.advance();
 
-          Ok(())
-        })
+        Ok(())
       });
 
       // The run's own cancellation is control flow, not a failure. Any other error is the caller's to see.
@@ -267,18 +254,6 @@ impl ArchiveUnpacker {
     })
   }
 
-  /// A pool built for one run, never the process-wide one.
-  ///
-  /// Installing onto the global pool would make one command's chosen worker count everything else's too, and the
-  /// caller asked to bound this unpack rather than the process it happens to run in.
-  fn build_pool(concurrency: NonZeroUsize) -> XrfResult<ThreadPool> {
-    ThreadPoolBuilder::new()
-      .num_threads(concurrency.get())
-      .thread_name(|index| format!("xrf-unpack-{index}"))
-      .build()
-      .map_err(|error| XrfError::new_unexpected_error(format!("cannot start {concurrency} unpack worker(s): {error}")))
-  }
-
   fn describe_result(
     project: &ArchiveProject,
     destination: &Path,
@@ -412,12 +387,5 @@ mod tests {
       ArchiveUnpacker::build_relative_path(Path::new("gamedata\\"), &descriptor).expect("safe archive path"),
       PathBuf::from("gamedata").join("configs").join("system.ltx")
     );
-  }
-
-  /// The default is handed straight to a pool builder, so it has to be a usable worker count without further checking.
-  /// A host that cannot report its own parallelism still has to unpack rather than fail or stall on zero workers.
-  #[test]
-  fn the_default_concurrency_is_always_a_usable_worker_count() {
-    assert!(ArchiveUnpacker::get_default_concurrency().get() >= 1);
   }
 }

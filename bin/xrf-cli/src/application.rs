@@ -10,7 +10,7 @@ use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::execution::{report_execution_plan, requested_execution};
 use crate::core::generic_command::{CommandGroup, CommandResult};
-use crate::core::reporting::{CommandEnvelope, ReportingOptions, add_reporting_arguments, find_conflicting_selection};
+use crate::core::reporting::{CommandEnvelope, ReportingArguments, ReportingOptions, find_conflicting_selection};
 use crate::registry::setup_command_groups;
 
 /// Assemble the CLI from the registered commands and run the one the caller asked for.
@@ -25,13 +25,12 @@ pub fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
   let groups: Vec<CommandGroup> = setup_command_groups();
 
-  let mut application: Command = add_reporting_arguments(
-    Command::new("xrf-cli")
-      .about("XRF forge CLI tools application")
-      .version(get_short_version(&build))
-      .long_version(build.to_string())
-      .arg_required_else_help(true),
-  );
+  let mut application: Command = Command::new("xrf-cli")
+    .about("XRF forge CLI tools application")
+    .version(get_short_version(&build))
+    .long_version(build.to_string())
+    .arg_required_else_help(true)
+    .with_reporting();
 
   for group in &groups {
     application = application.subcommand(group.init());
