@@ -10,6 +10,7 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{EXTRACT_JOB_KIND, to_destination_tree_lease_key};
@@ -25,6 +26,7 @@ use crate::plugins::archives::state::ArchiveProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "extract_directory"))]
 #[tauri::command(rename = "extract_directory")]
 pub async fn archives_extract_directory(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   state: State<'_, ArchiveProjectState>,
   prefix: &str,
@@ -47,17 +49,17 @@ pub async fn archives_extract_directory(
 
   // Off the async worker: an empty prefix means the whole archive, so this is a full unpack in everything but name.
   let extracting: JobHandle = job.clone();
-  let outcome: TauriResult<ArchiveExtractDirectoryResult> = tauri::async_runtime::spawn_blocking(move || {
-    ArchiveUnpacker::extract_directory_opt(
-      &project,
-      &prefix,
-      &destination,
-      ArchiveExtractOptions::default().with_job(extracting),
-    )
-  })
-  .await
-  .map_err(|error| format!("Archive directory extraction did not finish: {error}"))?
-  .map_err(error_to_string);
+  let outcome: TauriResult<ArchiveExtractDirectoryResult> = execution
+    .run_blocking("Archive directory extraction", move || {
+      ArchiveUnpacker::extract_directory_opt(
+        &project,
+        &prefix,
+        &destination,
+        ArchiveExtractOptions::default().with_job(extracting),
+      )
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

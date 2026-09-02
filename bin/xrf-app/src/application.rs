@@ -3,8 +3,10 @@ use std::sync::Arc;
 use tauri::Manager;
 use tauri::utils::config::WindowConfig;
 use tauri::webview::WebviewWindowBuilder;
+use xrf_job::ExecutionRequest;
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::core::webview_extensions::DevExtensions;
 use crate::plugins::archives::plugin::ArchivesPlugin;
@@ -46,6 +48,21 @@ pub fn run() {
       // Behind an `Arc` because a registration outlives the command frame that took it: the guard travels onto a
       // blocking thread and releases its leases there, which a `State` borrow cannot do.
       app.manage(Arc::new(JobRegistry::new()));
+
+      // One pool for the process, started before any command can reach for it. `Auto` because nothing here asks the
+      // user how much of their machine an application may use; the width is stated rather than chosen, and the plan is
+      // what every bounded job shares rather than each taking its own.
+      let execution: ExecutionState = ExecutionState::new(ExecutionRequest::Auto)?;
+
+      // Said once at startup for the reason the CLI says it per run: the width is the first thing a report of "it was
+      // slow" or "it used the whole machine" needs, and the last thing anyone thinks to record.
+      log::info!(
+        "Execution: {} worker(s) ({})",
+        execution.get_plan().get_workers(),
+        execution.get_plan().get_origin().as_str()
+      );
+
+      app.manage(execution);
 
       // The window stays described by tauri.conf.json with `create: false` and is built here so a
       // debug build can extend it with locally supplied extensions: their path reaches the webview

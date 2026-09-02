@@ -15,6 +15,7 @@ use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::gamedata::lease::VERIFY_JOB_KIND;
@@ -74,6 +75,7 @@ pub struct GamedataVerifyRequest {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
 #[tauri::command(rename = "verify_project")]
 pub async fn gamedata_verify_project(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: GamedataVerifyRequest,
   job_id: Uuid,
@@ -101,24 +103,24 @@ pub async fn gamedata_verify_project(
   let is_strict: bool = request.is_strict;
   let root: PathBuf = request.root;
 
-  let outcome: TauriResult<GamedataVerifySummary> = tauri::async_runtime::spawn_blocking(move || {
-    let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
-      root,
-      is_strict,
-      ..Default::default()
-    })?;
+  let outcome: TauriResult<GamedataVerifySummary> = execution
+    .run_blocking("Gamedata verification", move || {
+      let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
+        root,
+        is_strict,
+        ..Default::default()
+      })?;
 
-    project.verify(&GamedataProjectVerifyOptions {
-      is_strict,
-      checks,
-      job: verifying.clone(),
-      ..Default::default()
+      project.verify(&GamedataProjectVerifyOptions {
+        is_strict,
+        checks,
+        job: verifying.clone(),
+        ..Default::default()
+      })
     })
-  })
-  .await
-  .map_err(|error| format!("Gamedata verification did not finish: {error}"))?
-  .map_err(error_to_string)
-  .map(|report: GamedataVerificationReport| to_summary(&report, job.elapsed()));
+    .await?
+    .map_err(error_to_string)
+    .map(|report: GamedataVerificationReport| to_summary(&report, job.elapsed()));
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

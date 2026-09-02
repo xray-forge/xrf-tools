@@ -15,6 +15,7 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{BUILD_JOB_KIND, to_output_lease_key};
@@ -69,6 +70,7 @@ pub struct TranslationBuildSummary {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "build_project"))]
 #[tauri::command(rename = "build_project")]
 pub async fn translations_build_project(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationBuildRequest,
   job_id: Uuid,
@@ -112,18 +114,19 @@ pub async fn translations_build_project(
   // of them, which is not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationBuildSummary> =
-    tauri::async_runtime::spawn_blocking(move || TranslationBuilder::build_roots(&roots, prefix.as_deref(), &options))
-      .await
-      .map_err(|error| format!("Translation build did not finish: {error}"))?
-      .map_err(error_to_string)
-      .map(|result: TranslationBuildResult| TranslationBuildSummary {
-        language: language.to_string(),
-        outcome: result.outcome,
-        sources: result.sources,
-        files: result.files,
-        languages: result.languages,
-      });
+  let outcome: TauriResult<TranslationBuildSummary> = execution
+    .run_blocking("Translation build", move || {
+      TranslationBuilder::build_roots(&roots, prefix.as_deref(), &options)
+    })
+    .await?
+    .map_err(error_to_string)
+    .map(|result: TranslationBuildResult| TranslationBuildSummary {
+      language: language.to_string(),
+      outcome: result.outcome,
+      sources: result.sources,
+      files: result.files,
+      languages: result.languages,
+    });
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

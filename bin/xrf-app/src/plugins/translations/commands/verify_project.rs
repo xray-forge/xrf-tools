@@ -14,6 +14,7 @@ use xrf_translation::{
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::VERIFY_JOB_KIND;
@@ -42,6 +43,7 @@ pub struct TranslationVerifySummary {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
 #[tauri::command(rename = "verify_project")]
 pub async fn translations_verify_project(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   roots: XrayRoots,
   prefix: Option<String>,
@@ -75,19 +77,19 @@ pub async fn translations_verify_project(
   // Anomaly-sized import and not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationVerifySummary> = tauri::async_runtime::spawn_blocking(move || {
-    TranslationVerifier::verify_roots(&roots, prefix.as_deref(), &options)
-  })
-  .await
-  .map_err(|error| format!("Translation check did not finish: {error}"))?
-  .map_err(error_to_string)
-  .map(|result: TranslationVerifyResult| TranslationVerifySummary {
-    language: language.to_string(),
-    outcome: result.outcome,
-    checked: result.checked_translations_count,
-    missing: result.missing_translations_count,
-    languages: result.languages,
-  });
+  let outcome: TauriResult<TranslationVerifySummary> = execution
+    .run_blocking("Translation check", move || {
+      TranslationVerifier::verify_roots(&roots, prefix.as_deref(), &options)
+    })
+    .await?
+    .map_err(error_to_string)
+    .map(|result: TranslationVerifyResult| TranslationVerifySummary {
+      language: language.to_string(),
+      outcome: result.outcome,
+      checked: result.checked_translations_count,
+      missing: result.missing_translations_count,
+      languages: result.languages,
+    });
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

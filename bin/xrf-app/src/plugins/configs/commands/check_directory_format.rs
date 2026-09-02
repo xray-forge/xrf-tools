@@ -9,6 +9,7 @@ use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::CHECK_FORMAT_JOB_KIND;
@@ -22,6 +23,7 @@ use crate::plugins::configs::ltx_roots::open_ltx_project;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_directory_format"))]
 #[tauri::command(rename = "check_directory_format")]
 pub async fn configs_check_directory_format(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   roots: XrayRoots,
   prefix: Option<String>,
@@ -38,14 +40,14 @@ pub async fn configs_check_directory_format(
 
   // Off the async worker: this mounts every root and reads every config it holds.
   let checking: JobHandle = job.clone();
-  let outcome: TauriResult<LtxProjectFormatResult> = tauri::async_runtime::spawn_blocking(move || {
-    let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
+  let outcome: TauriResult<LtxProjectFormatResult> = execution
+    .run_blocking("Configs format check", move || {
+      let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
 
-    project.check_format_all_files_opt(LtxFormatOptions::default().with_job(checking))
-  })
-  .await
-  .map_err(|error| format!("Configs format check did not finish: {error}"))?
-  .map_err(error_to_string);
+      project.check_format_all_files_opt(LtxFormatOptions::default().with_job(checking))
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

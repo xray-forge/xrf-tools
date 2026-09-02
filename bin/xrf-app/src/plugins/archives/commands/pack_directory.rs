@@ -8,6 +8,7 @@ use xrf_pack::{ArchivePackConfig, ArchivePackOptions, ArchivePackResult, Archive
 use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
@@ -27,6 +28,7 @@ use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_directory"))]
 #[tauri::command(rename = "pack_directory")]
 pub async fn archives_pack_directory(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   config: ArchivePackConfig,
   is_forced: bool,
@@ -50,15 +52,15 @@ pub async fn archives_pack_directory(
   // Off the async worker: packing walks the whole source tree, compresses what the engine expects compressed, and
   // writes every volume. An `async fn` alone would leave all of that on an executor thread meant for short requests.
   let packing: JobHandle = job.clone();
-  let outcome: TauriResult<ArchivePackResult> = tauri::async_runtime::spawn_blocking(move || {
-    ArchivePacker::pack_opt(
-      &config,
-      ArchivePackOptions::default().with_job(packing).with_force(is_forced),
-    )
-  })
-  .await
-  .map_err(|error| format!("Archive pack did not finish: {error}"))?
-  .map_err(error_to_string);
+  let outcome: TauriResult<ArchivePackResult> = execution
+    .run_blocking("Archive pack", move || {
+      ArchivePacker::pack_opt(
+        &config,
+        ArchivePackOptions::default().with_job(packing).with_force(is_forced),
+      )
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

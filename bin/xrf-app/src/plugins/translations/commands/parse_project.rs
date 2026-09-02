@@ -13,6 +13,7 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{PARSE_JOB_KIND, to_output_lease_key};
@@ -71,6 +72,7 @@ pub struct TranslationParseFinding {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "parse_project"))]
 #[tauri::command(rename = "parse_project")]
 pub async fn translations_parse_project(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: TranslationParseRequest,
   job_id: Uuid,
@@ -121,26 +123,25 @@ pub async fn translations_parse_project(
   // an Anomaly-sized import, which is not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationParseSummary> =
-    tauri::async_runtime::spawn_blocking(move || TranslationParser::parse(&options))
-      .await
-      .map_err(|error| format!("Translation import did not finish: {error}"))?
-      .map_err(error_to_string)
-      .map(|result: TranslationParseResult| TranslationParseSummary {
-        language: result.language.clone(),
-        outcome: result.outcome,
-        is_dry_run: result.is_dry_run,
-        census: result.census.clone(),
-        findings: result
-          .get_findings()
-          .iter()
-          .map(|finding| TranslationParseFinding {
-            rule: finding.rule_id().to_string(),
-            subject: finding.subject().map(String::from),
-            message: finding.message().to_string(),
-          })
-          .collect(),
-      });
+  let outcome: TauriResult<TranslationParseSummary> = execution
+    .run_blocking("Translation import", move || TranslationParser::parse(&options))
+    .await?
+    .map_err(error_to_string)
+    .map(|result: TranslationParseResult| TranslationParseSummary {
+      language: result.language.clone(),
+      outcome: result.outcome,
+      is_dry_run: result.is_dry_run,
+      census: result.census.clone(),
+      findings: result
+        .get_findings()
+        .iter()
+        .map(|finding| TranslationParseFinding {
+          rule: finding.rule_id().to_string(),
+          subject: finding.subject().map(String::from),
+          message: finding.message().to_string(),
+        })
+        .collect(),
+    });
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

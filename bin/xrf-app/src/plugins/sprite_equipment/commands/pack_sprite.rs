@@ -12,6 +12,7 @@ use xrf_output::OutputOptions;
 use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_sprite_lease_key};
@@ -24,6 +25,7 @@ use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_spri
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_sprite"))]
 #[tauri::command(rename = "pack_sprite")]
 pub async fn sprite_equipment_pack_sprite(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   source_path: &str,
   output_path: &str,
@@ -49,23 +51,23 @@ pub async fn sprite_equipment_pack_sprite(
   // Off the async worker: reading the include tree, decoding every icon, and encoding one sheet is not work an IPC
   // executor should be holding. It was on that executor until this became a job.
   let packing: JobHandle = job.clone();
-  let outcome: TauriResult<PackEquipmentResult> = tauri::async_runtime::spawn_blocking(move || {
-    let options: PackEquipmentOptions = PackEquipmentOptions {
-      job: packing,
-      ltx: Ltx::read_from_file_full(&system_ltx)?,
-      source,
-      output: OutputOptions::default(),
-      output_path: output,
-      gamedata: None,
-      dds_compression_format: ImageFormat::BC3RgbaUnorm,
-      is_strict: false,
-    };
+  let outcome: TauriResult<PackEquipmentResult> = execution
+    .run_blocking("Equipment sprite pack", move || {
+      let options: PackEquipmentOptions = PackEquipmentOptions {
+        job: packing,
+        ltx: Ltx::read_from_file_full(&system_ltx)?,
+        source,
+        output: OutputOptions::default(),
+        output_path: output,
+        gamedata: None,
+        dds_compression_format: ImageFormat::BC3RgbaUnorm,
+        is_strict: false,
+      };
 
-    PackEquipmentProcessor::pack_sprites(options)
-  })
-  .await
-  .map_err(|error| format!("Equipment sprite pack did not finish: {error}"))?
-  .map_err(error_to_string);
+      PackEquipmentProcessor::pack_sprites(options)
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

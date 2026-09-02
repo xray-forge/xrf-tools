@@ -8,6 +8,7 @@ use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::TranslationFormatResult;
 
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::format_project::run;
@@ -22,6 +23,7 @@ use crate::plugins::translations::lease::CHECK_FORMAT_JOB_KIND;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_project_format"))]
 #[tauri::command(rename = "check_project_format")]
 pub async fn translations_check_project_format(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   directory: PathBuf,
   line_endings: Option<String>,
@@ -36,7 +38,7 @@ pub async fn translations_check_project_format(
       .with_progress(progress),
   )?;
 
-  let outcome: TauriResult<TranslationFormatResult> = run(job.clone(), directory, line_endings, true).await;
+  let outcome: TauriResult<TranslationFormatResult> = run(&execution, job.clone(), directory, line_endings, true).await;
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

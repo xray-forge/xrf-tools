@@ -10,6 +10,7 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{UNPACK_JOB_KIND, to_destination_tree_lease_key};
@@ -33,6 +34,7 @@ struct ArchiveUnpackRequest<'paths> {
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "unpack_directory"))]
 #[tauri::command(rename = "unpack_directory")]
 pub async fn archives_unpack_directory(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   from: &str,
   destination: &str,
@@ -57,20 +59,20 @@ pub async fn archives_unpack_directory(
   )?;
 
   // Off the async worker, indexing included: reading the volumes, decompressing every entry, and writing the tree are
-  // all synchronous, and the unpacker drives a pool of its own rather than yielding to this one.
+  // all synchronous, and none of it yields to this one.
   let unpacking: JobHandle = job.clone();
-  let outcome: TauriResult<ArchiveUnpackResult> = tauri::async_runtime::spawn_blocking(move || {
-    let project: ArchiveProject = ArchiveProject::new(&source)?;
+  let outcome: TauriResult<ArchiveUnpackResult> = execution
+    .run_blocking("Archive unpack", move || {
+      let project: ArchiveProject = ArchiveProject::new(&source)?;
 
-    ArchiveUnpacker::unpack_opt(
-      &project,
-      &destination,
-      ArchiveUnpackOptions::default().with_job(unpacking),
-    )
-  })
-  .await
-  .map_err(|error| format!("Archive unpack did not finish: {error}"))?
-  .map_err(error_to_string);
+      ArchiveUnpacker::unpack_opt(
+        &project,
+        &destination,
+        ArchiveUnpackOptions::default().with_job(unpacking),
+      )
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

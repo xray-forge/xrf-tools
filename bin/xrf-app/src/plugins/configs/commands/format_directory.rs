@@ -9,6 +9,7 @@ use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::{FORMAT_JOB_KIND, to_format_lease_key};
@@ -26,6 +27,7 @@ use crate::plugins::configs::ltx_roots::open_ltx_project;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_directory"))]
 #[tauri::command(rename = "format_directory")]
 pub async fn configs_format_directory(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   roots: XrayRoots,
   prefix: Option<String>,
@@ -43,14 +45,14 @@ pub async fn configs_format_directory(
 
   // Off the async worker: this mounts every root, reads every config, and rewrites the ones that need it.
   let formatting: JobHandle = job.clone();
-  let outcome: TauriResult<LtxProjectFormatResult> = tauri::async_runtime::spawn_blocking(move || {
-    let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
+  let outcome: TauriResult<LtxProjectFormatResult> = execution
+    .run_blocking("Configs formatting", move || {
+      let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
 
-    project.format_all_files_opt(LtxFormatOptions::default().with_job(formatting))
-  })
-  .await
-  .map_err(|error| format!("Configs formatting did not finish: {error}"))?
-  .map_err(error_to_string);
+      project.format_all_files_opt(LtxFormatOptions::default().with_job(formatting))
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

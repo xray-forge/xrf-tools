@@ -9,6 +9,7 @@ use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOp
 use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::VERIFY_JOB_KIND;
@@ -21,6 +22,7 @@ use crate::plugins::configs::ltx_roots::open_ltx_project;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_directory"))]
 #[tauri::command(rename = "verify_directory")]
 pub async fn configs_verify_directory(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   roots: XrayRoots,
   prefix: Option<String>,
@@ -38,22 +40,22 @@ pub async fn configs_verify_directory(
   // Off the async worker: opening the project mounts every root and reads every config it holds, and the check then
   // walks all of them. An `async fn` alone would leave that on an executor thread meant for short requests.
   let verifying: JobHandle = job.clone();
-  let outcome: TauriResult<LtxProjectVerifyResult> = tauri::async_runtime::spawn_blocking(move || {
-    let project: LtxProject = open_ltx_project(
-      &roots,
-      prefix.as_deref(),
-      LtxProjectOptions {
-        is_with_schemes_check: true,
-        // todo: Probably should be provided as parameter.
-        is_strict_check: false,
-      },
-    )?;
+  let outcome: TauriResult<LtxProjectVerifyResult> = execution
+    .run_blocking("Configs verification", move || {
+      let project: LtxProject = open_ltx_project(
+        &roots,
+        prefix.as_deref(),
+        LtxProjectOptions {
+          is_with_schemes_check: true,
+          // todo: Probably should be provided as parameter.
+          is_strict_check: false,
+        },
+      )?;
 
-    project.verify_entries_opt(LtxVerifyOptions::default().with_job(verifying))
-  })
-  .await
-  .map_err(|error| format!("Configs verification did not finish: {error}"))?
-  .map_err(error_to_string);
+      project.verify_entries_opt(LtxVerifyOptions::default().with_job(verifying))
+    })
+    .await?
+    .map_err(error_to_string);
 
   registration.conclude_with(&outcome, job.is_cancelled());
 

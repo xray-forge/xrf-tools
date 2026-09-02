@@ -4,6 +4,7 @@ use tauri::State;
 use xrf_archive::ArchiveProject;
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
 
+use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -17,16 +18,20 @@ use crate::plugins::archives::state::ArchiveProjectState;
 /// the same one `gamedata list` and `archive verify` give.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_collisions"))]
 #[tauri::command(rename = "list_collisions")]
-pub async fn archives_list_collisions(state: State<'_, ArchiveProjectState>) -> TauriResult<Vec<XrayPathCollision>> {
+pub async fn archives_list_collisions(
+  execution: State<'_, ExecutionState>,
+  state: State<'_, ArchiveProjectState>,
+) -> TauriResult<Vec<XrayPathCollision>> {
   log::info!("Listing archive project collisions");
 
   let project: Arc<ArchiveProject> = state.require("list collisions")?;
 
   // Off the async worker: the fold walks the merged name table, which an installation sizes rather than a gesture.
-  let collisions: Vec<XrayPathCollision> =
-    tauri::async_runtime::spawn_blocking(move || XrayArchiveSource::list_collisions_of(&project))
-      .await
-      .map_err(|error| format!("Listing the archive project collisions did not finish: {error}"))?;
+  let collisions: Vec<XrayPathCollision> = execution
+    .run_blocking("Listing the archive project collisions", move || {
+      XrayArchiveSource::list_collisions_of(&project)
+    })
+    .await?;
 
   log::info!("Listed {} unreachable archive entries", collisions.len());
 

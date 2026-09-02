@@ -11,6 +11,7 @@ use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, Transla
 use xrf_utils::LineEndings;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{FORMAT_JOB_KIND, to_output_lease_key};
@@ -29,6 +30,7 @@ use crate::plugins::translations::state::TranslationProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_project"))]
 #[tauri::command(rename = "format_project")]
 pub async fn translations_format_project(
+  execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   project: State<'_, TranslationProjectState>,
   directory: PathBuf,
@@ -49,7 +51,8 @@ pub async fn translations_format_project(
       .with_progress(progress),
   )?;
 
-  let outcome: TauriResult<TranslationFormatResult> = run(job.clone(), directory, line_endings, false).await;
+  let outcome: TauriResult<TranslationFormatResult> =
+    run(&execution, job.clone(), directory, line_endings, false).await;
 
   registration.conclude_with(&outcome, job.is_cancelled());
 
@@ -61,6 +64,7 @@ pub async fn translations_format_project(
 /// `is_check` picks which of the formatter's two doors is opened, rather than being handed to one door that decides
 /// for itself: whether this call rewrites the tree is the difference between the two commands above.
 pub(super) async fn run(
+  execution: &ExecutionState,
   job: JobHandle,
   directory: PathBuf,
   line_endings: Option<String>,
@@ -72,19 +76,19 @@ pub(super) async fn run(
     .transpose()
     .map_err(error_to_string)?;
 
-  tauri::async_runtime::spawn_blocking(move || {
-    let paths: Vec<PathBuf> = vec![directory];
-    let options: TranslationFormatOptions = TranslationFormatOptions::default()
-      .with_job(job)
-      .with_line_endings(line_endings);
+  execution
+    .run_blocking("Translations formatting", move || {
+      let paths: Vec<PathBuf> = vec![directory];
+      let options: TranslationFormatOptions = TranslationFormatOptions::default()
+        .with_job(job)
+        .with_line_endings(line_endings);
 
-    if is_check {
-      TranslationFormatter::check_format_opt(&paths, options)
-    } else {
-      TranslationFormatter::format_opt(&paths, options)
-    }
-  })
-  .await
-  .map_err(|error| format!("Translations formatting did not finish: {error}"))?
-  .map_err(error_to_string)
+      if is_check {
+        TranslationFormatter::check_format_opt(&paths, options)
+      } else {
+        TranslationFormatter::format_opt(&paths, options)
+      }
+    })
+    .await?
+    .map_err(error_to_string)
 }
