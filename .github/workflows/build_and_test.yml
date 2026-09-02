@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: bin/xrf-ui/package.json
           run_install: false
@@ -86,7 +86,7 @@ jobs:
 
       - name: Restore frontend tool state
         id: frontend-tools
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             bin/xrf-ui/target/jest-cache
@@ -112,7 +112,7 @@ jobs:
 
       - name: Save frontend tool state
         if: ${{ github.ref == 'refs/heads/main' && steps.frontend-tools.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             bin/xrf-ui/target/jest-cache
@@ -127,7 +127,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: bin/xrf-ui/package.json
           run_install: false

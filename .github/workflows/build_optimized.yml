@@ -34,7 +34,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
 
-      # Deliberately not sharing a cache with the routine jobs: their artifacts are built under relaxed
+      # Not sharing a cache with the routine jobs: their artifacts are built under relaxed
       # profile settings, so restoring them here would mean recompiling everything anyway.
       - uses: Swatinem/rust-cache@v2
         with:
