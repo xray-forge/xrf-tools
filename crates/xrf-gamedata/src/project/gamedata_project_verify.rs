@@ -1,10 +1,16 @@
 use std::time::Instant;
 
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
+use xrf_output::{OutputSequence, OutputSlot};
 use xrf_utils::format_path;
 
+use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
 use crate::project::job_phases::GAMEDATA_PHASE_CHECKS;
-use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationReport, GamedataVerificationType};
+use crate::{
+  GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationReport,
+  GamedataVerificationType,
+};
 
 impl GamedataProject {
   pub fn verify(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataVerificationReport> {
@@ -41,20 +47,54 @@ impl GamedataProject {
     // rather than as one bar that sits still for minutes. This is the first consumer to nest across two crates.
     let verifying: xrf_job::JobScope = options.job.enter(GAMEDATA_PHASE_CHECKS, Some(checks.len() as u64));
 
-    for check in checks {
-      // Between checks. A check already running is left to finish: they parallelise internally and have no boundary of
-      // their own, so the only safe place to stop is where one ends and the next has not begun.
-      if options.job.is_cancelled() {
-        result.set_outcome(xrf_job::JobOutcome::Cancelled);
+    // Checks run together on whatever pool the caller installed, because most of them cannot use one on their own:
+    // eight of the fifteen are strictly serial, and on Anomaly they account for 6.7 of the 15 seconds a sweep takes.
+    // Overlapping them lets that time hide inside the checks that do fan out, rather than being added to them.
+    //
+    // Their output does not run together. Each check writes into its listed position and the sequence releases those
+    // positions in selection order, so a sweep says the same things in the same order however its workers were
+    // scheduled — which is the contract `--jobs` states and what the reports are compared on.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, checks.len());
+    let schedule: GamedataCheckSchedule = GamedataCheckSchedule::default();
 
-        break;
-      }
+    let reports: Vec<Option<GamedataVerificationCheckReport>> = checks
+      .par_iter()
+      .enumerate()
+      .map(|(index, check)| {
+        // Before a check starts, never inside one. A check already running is left to finish: they parallelise
+        // internally and have no boundary of their own, so the only safe place to stop is where one has not begun.
+        if options.job.is_cancelled() {
+          return None;
+        }
 
-      // Sequential here, so naming the check being run is meaningful.
-      options.job.set_detail(Some(check.to_string()));
+        let slot: OutputSlot = sequence.new_slot(index);
 
-      result.add_report(check.run(self, options));
-      verifying.advance();
+        schedule.enter(&options.job, index, *check);
+
+        let report: GamedataVerificationCheckReport = check.run(
+          self,
+          &GamedataProjectVerifyOptions {
+            output: slot.get_output().clone(),
+            job: options.job.clone(),
+            is_strict: options.is_strict,
+            checks: Vec::new(),
+          },
+        );
+
+        schedule.leave(&options.job, index);
+        verifying.advance();
+
+        Some(report)
+      })
+      .collect();
+
+    // In selection order whatever order they finished in, so the report describes the request rather than the schedule.
+    if reports.iter().any(Option::is_none) {
+      result.set_outcome(xrf_job::JobOutcome::Cancelled);
+    }
+
+    for report in reports.into_iter().flatten() {
+      result.add_report(report);
     }
 
     options.job.set_detail(None);

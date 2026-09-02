@@ -2,6 +2,7 @@ pub(crate) mod animations;
 pub(crate) mod collisions;
 pub(crate) mod coverage;
 pub(crate) mod gamedata_check_result;
+pub(crate) mod gamedata_check_schedule;
 pub(crate) mod gamedata_finding_factory;
 pub(crate) mod gamedata_project;
 pub(crate) mod gamedata_project_options;
