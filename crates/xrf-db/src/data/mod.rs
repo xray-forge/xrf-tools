@@ -6,3 +6,4 @@ pub(crate) mod meta;
 pub(crate) mod ogf;
 pub(crate) mod particles;
 pub(crate) mod patrols;
+pub(crate) mod skeleton;

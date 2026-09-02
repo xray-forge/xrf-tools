@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use xrf_utils::{assert_length, to_format_size};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct OgfMotionMark {
+pub struct SkeletonMotionMark {
   pub name: String,
   /// The line terminator that closed the name in the file, written back as read.
   ///
@@ -15,7 +15,7 @@ pub struct OgfMotionMark {
   pub intervals: Vec<(f32, f32)>,
 }
 
-impl OgfMotionMark {
+impl SkeletonMotionMark {
   /// The shortest line terminator an empty name can carry, and the interval count.
   pub const MIN_SERIALIZED_SIZE: u64 = 1 + 4;
 
@@ -23,13 +23,13 @@ impl OgfMotionMark {
   pub const MIN_INTERVAL_SIZE: u64 = 4 + 4;
 }
 
-impl ChunkReadWrite for OgfMotionMark {
+impl ChunkReadWrite for SkeletonMotionMark {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: ChunkLine = reader.read_w1251_line()?;
 
     let count: u32 = reader.read_u32::<T>()?;
     let mut intervals: Vec<(f32, f32)> =
-      reader.new_bounded_vec(count.into(), Self::MIN_INTERVAL_SIZE, "ogf motion mark intervals")?;
+      reader.new_bounded_vec(count.into(), Self::MIN_INTERVAL_SIZE, "skeleton motion mark intervals")?;
 
     for _ in 0..count {
       intervals.push((reader.read_f32::<T>()?, reader.read_f32::<T>()?));
@@ -38,7 +38,7 @@ impl ChunkReadWrite for OgfMotionMark {
     assert_length(
       &intervals,
       count as usize,
-      "Expected correct count of OGF mark intervals to be read",
+      "Expected correct count of skeleton mark intervals to be read",
     )?;
 
     Ok(Self {
@@ -50,7 +50,7 @@ impl ChunkReadWrite for OgfMotionMark {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_line(&self.name, &self.terminator)?;
-    writer.write_u32::<T>(to_format_size(self.intervals.len(), "ogf motion mark intervals")?)?;
+    writer.write_u32::<T>(to_format_size(self.intervals.len(), "skeleton motion mark intervals")?)?;
 
     for (from, to) in &self.intervals {
       writer.write_f32::<T>(*from)?;
@@ -71,14 +71,14 @@ mod tests {
     overwrite_generated_test_resource_as_file,
   };
 
-  use crate::data::ogf::ogf_motion_mark::OgfMotionMark;
+  use crate::data::skeleton::skeleton_motion_mark::SkeletonMotionMark;
 
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
 
-    let original: OgfMotionMark = OgfMotionMark {
+    let original: SkeletonMotionMark = SkeletonMotionMark {
       name: String::from("Left"),
       terminator: String::from("\r\n"),
       intervals: vec![(0.25, 0.75), (1.5, 2.0)],
@@ -94,7 +94,7 @@ mod tests {
     let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(OgfMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
 
     Ok(())
   }
@@ -104,7 +104,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = build_relative_test_sample_file_path(file!(), "read_write_without_intervals.chunk");
 
-    let original: OgfMotionMark = OgfMotionMark {
+    let original: SkeletonMotionMark = SkeletonMotionMark {
       name: String::from("Right"),
       terminator: String::from("\r\n"),
       intervals: Vec::new(),
@@ -117,7 +117,7 @@ mod tests {
     let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(OgfMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
 
     Ok(())
   }
@@ -135,11 +135,11 @@ mod tests {
     .concat();
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-    let mark: OgfMotionMark = OgfMotionMark::read::<XRayByteOrder, _>(&mut reader)?;
+    let mark: SkeletonMotionMark = SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?;
 
     assert_eq!(
       mark,
-      OgfMotionMark {
+      SkeletonMotionMark {
         name: String::from("toggle"),
         terminator: String::from("\n"),
         intervals: vec![(0.5, 1.0)],
@@ -160,12 +160,12 @@ mod tests {
     // An empty name and its terminator, then a count no payload can satisfy.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[13, 10, 255, 255, 255, 255])?;
 
-    let error: String = OgfMotionMark::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)
       .expect_err("expect the declared interval count to exceed the chunk")
       .to_string();
 
     assert!(
-      error.contains("ogf motion mark intervals declares 4294967295 entries"),
+      error.contains("skeleton motion mark intervals declares 4294967295 entries"),
       "Unexpected error: {error}"
     );
 

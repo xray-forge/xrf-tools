@@ -3,7 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
 use crate::data::generic::vector_3d::Vector3d;
-use crate::data::ogf::ogf_motion::OgfMotion;
+use crate::data::skeleton::skeleton_motion::SkeletonMotion;
 
 /// Divisor the format quantises rotation components by, from `SkeletonMotionDefs.hpp:11`.
 const KEY_QUANT: f32 = 32767.0;
@@ -38,12 +38,12 @@ pub struct Quaternion {
 /// by clamping its frame to the stream length rather than by asking which case it got. Neither is ever empty: the
 /// decoder refuses a keyed run on a motion declaring no frames, so a clamped index is always in range.
 #[derive(Clone, Debug, PartialEq)]
-pub struct OgfBoneMotion {
+pub struct SkeletonBoneMotion {
   pub rotations: Vec<Quaternion>,
   pub translations: Vec<Vector3d>,
 }
 
-impl OgfBoneMotion {
+impl SkeletonBoneMotion {
   /// The rotation at a frame, clamped to what the stream holds.
   pub fn get_rotation(&self, frame: usize) -> Quaternion {
     self.rotations[frame.min(self.rotations.len().saturating_sub(1))]
@@ -55,11 +55,11 @@ impl OgfBoneMotion {
   }
 }
 
-impl OgfMotion {
+impl SkeletonMotion {
   /// How many seconds the motion's frames span at the format's fixed sample rate.
   ///
   /// Not how long playing it takes: the engine divides this by the speed its definition declares, which is the other
-  /// half of the pair. See [`crate::OgfMotionDefinition::get_playback_speed`].
+  /// half of the pair. See [`crate::SkeletonMotionDefinition::get_playback_speed`].
   pub fn get_duration_seconds(&self) -> f32 {
     self.count as f32 / SAMPLE_FPS
   }
@@ -71,19 +71,19 @@ impl OgfMotion {
   /// bone count, and a count that disagrees with the payload shows up as bytes left over rather than as silently
   /// misaligned keys.
   ///
-  /// [`OgfMotion::flags`] is the first bone's flags byte, not a motion-level flag: the reader takes it before the
+  /// [`SkeletonMotion::flags`] is the first bone's flags byte, not a motion-level flag: the reader takes it before the
   /// remainder so that writing the chunk back is byte exact, and this puts it back where it belongs.
   ///
   /// # Errors
   ///
   /// Returns an error when the payload ends early, when it does not end exactly where the last bone's keys do, or when
   /// a motion declaring no frames carries keyed streams.
-  pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<OgfBoneMotion>> {
+  pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<SkeletonBoneMotion>> {
     let mut cursor: MotionCursor = MotionCursor::new(&self.remaining);
 
     // The bone count comes from the skeleton rather than the payload, so it is bounded by the keys that remain.
-    let mut bones: Vec<OgfBoneMotion> =
-      new_bounded_vec(bone_count as u64, cursor.remaining() as u64, 1, "ogf motion bones")?;
+    let mut bones: Vec<SkeletonBoneMotion> =
+      new_bounded_vec(bone_count as u64, cursor.remaining() as u64, 1, "skeleton motion bones")?;
 
     for index in 0..bone_count {
       // Every bone but the first reads its own flags; the first one's was taken by the chunk reader.
@@ -104,7 +104,7 @@ impl OgfMotion {
     Ok(bones)
   }
 
-  fn decode_bone<T: ByteOrder>(&self, cursor: &mut MotionCursor, flags: u8) -> XrfResult<OgfBoneMotion> {
+  fn decode_bone<T: ByteOrder>(&self, cursor: &mut MotionCursor, flags: u8) -> XrfResult<SkeletonBoneMotion> {
     let count: usize = self.count as usize;
     let rotations: Vec<Quaternion> = if flags & FL_R_KEY_ABSENT != 0 {
       // A held bone stores one key and no checksum: there is nothing to interpolate between.
@@ -120,7 +120,7 @@ impl OgfMotion {
         count as u64,
         cursor.remaining() as u64,
         ROTATION_KEY_SIZE as u64,
-        "ogf motion rotation keys",
+        "skeleton motion rotation keys",
       )?;
 
       (0..count)
@@ -130,7 +130,7 @@ impl OgfMotion {
 
     if flags & FL_T_KEY_PRESENT == 0 {
       // No stream at all: the bone sits at its initial offset for the whole motion.
-      return Ok(OgfBoneMotion {
+      return Ok(SkeletonBoneMotion {
         rotations,
         translations: vec![cursor.read_vector::<T>()?],
       });
@@ -151,7 +151,7 @@ impl OgfMotion {
       count as u64,
       cursor.remaining() as u64,
       translation_key_size as u64,
-      "ogf motion translation keys",
+      "skeleton motion translation keys",
     )?;
 
     let quantised: Vec<[f32; 3]> = match is_16_bit {
@@ -167,7 +167,7 @@ impl OgfMotion {
     let size: Vector3d = cursor.read_vector::<T>()?;
     let initial: Vector3d = cursor.read_vector::<T>()?;
 
-    Ok(OgfBoneMotion {
+    Ok(SkeletonBoneMotion {
       rotations,
       translations: quantised
         .into_iter()
@@ -287,8 +287,8 @@ impl<'a> MotionCursor<'a> {
 mod tests {
   use byteorder::{LittleEndian, WriteBytesExt};
 
-  use super::{FL_R_KEY_ABSENT, FL_T_KEY_16_IS_BIT, FL_T_KEY_PRESENT, KEY_QUANT, OgfBoneMotion};
-  use crate::data::ogf::ogf_motion::OgfMotion;
+  use super::{FL_R_KEY_ABSENT, FL_T_KEY_16_IS_BIT, FL_T_KEY_PRESENT, KEY_QUANT, SkeletonBoneMotion};
+  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
 
   /// Builds one bone's key run the way the format lays it out, so a test states bytes rather than trusting the reader.
   struct BoneRun {
@@ -353,7 +353,7 @@ mod tests {
   }
 
   /// Assembles a motion from bone runs, moving the first bone's flags where the chunk reader takes it.
-  fn mock_motion(count: u32, runs: Vec<BoneRun>) -> OgfMotion {
+  fn mock_motion(count: u32, runs: Vec<BoneRun>) -> SkeletonMotion {
     let mut remaining: Vec<u8> = Vec::new();
     let mut first: u8 = 0;
 
@@ -367,7 +367,7 @@ mod tests {
       remaining.extend(run.bytes);
     }
 
-    OgfMotion {
+    SkeletonMotion {
       label: String::from("test_motion"),
       count,
       flags: first,
@@ -377,8 +377,8 @@ mod tests {
 
   #[test]
   fn decodes_a_rotation_stream_by_dequantising_every_component() {
-    let motion: OgfMotion = mock_motion(2, vec![BoneRun::animated(2)]);
-    let bones: Vec<OgfBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 2);
     assert_eq!(bones[0].rotations[0].x, 1.0 / KEY_QUANT);
@@ -390,8 +390,8 @@ mod tests {
   #[test]
   fn scales_and_offsets_every_translation_key() {
     // `T = key * size + init`, with scale and offset read after the stream they apply to.
-    let motion: OgfMotion = mock_motion(2, vec![BoneRun::animated(2)]);
-    let bones: Vec<OgfBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].translations.len(), 2);
     assert_eq!(
@@ -416,8 +416,8 @@ mod tests {
   fn a_held_bone_carries_one_key_and_its_offset() {
     // No checksum precedes a held rotation, and no stream precedes the offset. Reading either would misalign the
     // bones that follow, which is what the exhaustion check catches.
-    let motion: OgfMotion = mock_motion(4, vec![BoneRun::held()]);
-    let bones: Vec<OgfBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let motion: SkeletonMotion = mock_motion(4, vec![BoneRun::held()]);
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
     assert_eq!(bones[0].translations, vec![crate::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]);
@@ -432,8 +432,8 @@ mod tests {
   fn reads_each_bones_flags_after_the_first() {
     // The chunk reader takes the first bone's flags byte, so every later bone reads its own. Getting this wrong
     // shifts every stream after the first by a byte.
-    let motion: OgfMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held(), BoneRun::animated(2)]);
-    let bones: Vec<OgfBoneMotion> = motion
+    let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held(), BoneRun::animated(2)]);
+    let bones: Vec<SkeletonBoneMotion> = motion
       .decode_bone_motions::<LittleEndian>(3)
       .expect("three bones decode");
 
@@ -446,7 +446,7 @@ mod tests {
   fn refuses_a_bone_count_the_payload_does_not_match() {
     // The payload carries no bone count of its own, so a wrong one is only detectable as bytes left over. Accepting
     // it would hand back keys assigned to the wrong bones.
-    let motion: OgfMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held()]);
+    let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held()]);
 
     let error: String = motion
       .decode_bone_motions::<LittleEndian>(1)
@@ -461,7 +461,7 @@ mod tests {
 
   #[test]
   fn refuses_a_payload_that_ends_early() {
-    let mut motion: OgfMotion = mock_motion(2, vec![BoneRun::animated(2)]);
+    let mut motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
 
     motion.remaining.truncate(4);
 
@@ -476,7 +476,7 @@ mod tests {
 
   #[test]
   fn rejects_a_bone_count_larger_than_the_payload_before_reserving_it() {
-    let motion: OgfMotion = mock_motion(1, vec![BoneRun::held()]);
+    let motion: SkeletonMotion = mock_motion(1, vec![BoneRun::held()]);
 
     let error: String = motion
       .decode_bone_motions::<LittleEndian>(10_000)
@@ -484,7 +484,7 @@ mod tests {
       .to_string();
 
     assert!(
-      error.contains("ogf motion bones declares 10000 entries"),
+      error.contains("skeleton motion bones declares 10000 entries"),
       "Unexpected error: {error}"
     );
   }
@@ -493,7 +493,7 @@ mod tests {
   fn rejects_a_keyed_rotation_stream_on_a_motion_declaring_no_frames() {
     // Zero frames consume the whole run, leaving empty streams that the clamping accessors would index anyway. The
     // payload is structurally complete, so nothing later in the decode notices.
-    let motion: OgfMotion = mock_motion(0, vec![BoneRun::animated(0)]);
+    let motion: SkeletonMotion = mock_motion(0, vec![BoneRun::animated(0)]);
 
     let error: String = motion
       .decode_bone_motions::<LittleEndian>(1)
@@ -509,7 +509,7 @@ mod tests {
   #[test]
   fn rejects_a_keyed_translation_stream_on_a_motion_declaring_no_frames() {
     // A held rotation passes the first guard, so the translation stream carries its own.
-    let motion: OgfMotion = OgfMotion {
+    let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: 0,
       flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
@@ -530,8 +530,8 @@ mod tests {
   #[test]
   fn accepts_a_held_bone_on_a_motion_declaring_no_frames() {
     // A held stream stores one key however many frames the motion declares, so the zero frame guard must not reach it.
-    let motion: OgfMotion = mock_motion(0, vec![BoneRun::held()]);
-    let bones: Vec<OgfBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let motion: SkeletonMotion = mock_motion(0, vec![BoneRun::held()]);
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
     assert_eq!(bones[0].translations, vec![crate::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]);
@@ -540,7 +540,7 @@ mod tests {
   #[test]
   fn rejects_a_rotation_frame_count_larger_than_the_payload_before_reserving_it() {
     // Collecting the frame range reserves its whole length up front, so a held payload must not declare one.
-    let motion: OgfMotion = OgfMotion {
+    let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: u32::MAX,
       flags: 0,
@@ -553,14 +553,14 @@ mod tests {
       .to_string();
 
     assert!(
-      error.contains("ogf motion rotation keys declares 4294967295 entries"),
+      error.contains("skeleton motion rotation keys declares 4294967295 entries"),
       "Unexpected error: {error}"
     );
   }
 
   #[test]
   fn rejects_a_translation_frame_count_larger_than_the_payload_before_reserving_it() {
-    let motion: OgfMotion = OgfMotion {
+    let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: u32::MAX,
       flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
@@ -573,7 +573,7 @@ mod tests {
       .to_string();
 
     assert!(
-      error.contains("ogf motion translation keys declares 4294967295 entries"),
+      error.contains("skeleton motion translation keys declares 4294967295 entries"),
       "Unexpected error: {error}"
     );
   }

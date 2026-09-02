@@ -18,8 +18,8 @@ use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
 use crate::ogf::ogf_residue::OgfResidue;
-use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
 /// One chunk found while walking an ogf file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,8 +64,8 @@ impl OgfChunksProcessor {
     OgfLodsChunk::CHUNK_ID,
     OgfIkDataChunk::CHUNK_ID,
     OgfSwiDataChunk::CHUNK_ID,
-    OmfMotionsChunk::CHUNK_ID,
-    OmfParametersChunk::CHUNK_ID,
+    SkeletonMotionsChunk::CHUNK_ID,
+    SkeletonMotionParametersChunk::CHUNK_ID,
   ];
 
   pub fn collect_chunks_from_path<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<OgfChunkSurvey> {

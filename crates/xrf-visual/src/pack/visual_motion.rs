@@ -1,6 +1,7 @@
 use serde::Serialize;
 use xrf_db::{
-  OgfBone, OgfBoneIkData, OgfBoneMotion, OgfMotion, OgfMotionDefinition, OgfPart, SAMPLE_FPS, XRayByteOrder,
+  OgfBone, OgfBoneIkData, SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart,
+  XRayByteOrder,
 };
 use xrf_error::{XrfError, XrfResult};
 
@@ -34,7 +35,7 @@ pub struct VisualMotionBake {
   /// The playback speed the motion's definition declares, as stored.
   ///
   /// A value that is not positive is not what `duration` was divided by; see
-  /// [`OgfMotionDefinition::get_playback_speed`].
+  /// [`SkeletonMotionDefinition::get_playback_speed`].
   pub speed: f32,
   /// How many bones the motion actually drives, the rest holding their bind pose.
   pub animated_bone_count: u32,
@@ -79,9 +80,9 @@ pub const FLOATS_PER_BONE: usize = 12;
 pub fn bake_motion(
   bones: &[OgfBone],
   binds: &[OgfBoneIkData],
-  parts: &[OgfPart],
-  definition: &OgfMotionDefinition,
-  motion: &OgfMotion,
+  parts: &[SkeletonPart],
+  definition: &SkeletonMotionDefinition,
+  motion: &SkeletonMotion,
 ) -> XrfResult<VisualMotionPose> {
   if binds.len() != bones.len() {
     return Err(XrfError::new_parsing_error(format!(
@@ -92,7 +93,7 @@ pub fn bake_motion(
     )));
   }
 
-  let runs: Vec<OgfBoneMotion> = motion
+  let runs: Vec<SkeletonBoneMotion> = motion
     .decode_bone_motions::<XRayByteOrder>(total_part_bones(parts))
     .map_err(|error| XrfError::new_parsing_error(format!("Motion '{}' cannot be posed: {error}", definition.name)))?;
 
@@ -149,10 +150,10 @@ pub fn bake_motion(
 /// Frames the decoded runs can tell apart, which is how many distinct poses the payload paid for.
 ///
 /// Every stream holds either one key or one a frame, so the longest of them is the motion's real resolution, and the
-/// decoder has already proven a keyed stream against the bytes that follow it. [`OgfMotion::count`] carries no such
+/// decoder has already proven a keyed stream against the bytes that follow it. [`SkeletonMotion::count`] carries no such
 /// proof: a held bone costs twenty bytes however many frames the motion declares, so a payload of held bones balances
 /// against any count at all. Reserving by the declared count would ask for a buffer that payload never paid for.
-fn posed_frame_count(runs: &[OgfBoneMotion]) -> usize {
+fn posed_frame_count(runs: &[SkeletonBoneMotion]) -> usize {
   runs
     .iter()
     .map(|it| it.rotations.len().max(it.translations.len()))
@@ -161,7 +162,7 @@ fn posed_frame_count(runs: &[OgfBoneMotion]) -> usize {
 }
 
 /// Bones the partitions name in total, which is how many key runs the payload holds.
-pub fn total_part_bones(parts: &[OgfPart]) -> usize {
+pub fn total_part_bones(parts: &[SkeletonPart]) -> usize {
   parts.iter().map(|it| it.bones.len()).sum()
 }
 
@@ -170,7 +171,7 @@ pub fn total_part_bones(parts: &[OgfPart]) -> usize {
 /// Indexed by bone rather than by run, because that is the order a pose is composed in. A partition naming a bone the
 /// skeleton does not have contributes nothing rather than failing: an omf shared between similar models is normal, and
 /// the bones it does match still animate.
-fn resolve_animated_bones(bones: &[OgfBone], parts: &[OgfPart], run_count: usize) -> Vec<Option<usize>> {
+fn resolve_animated_bones(bones: &[OgfBone], parts: &[SkeletonPart], run_count: usize) -> Vec<Option<usize>> {
   let mut animated: Vec<Option<usize>> = vec![None; bones.len()];
 
   for part in parts {

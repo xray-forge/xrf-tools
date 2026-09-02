@@ -1,6 +1,6 @@
 //! Holds what a baked motion reports about itself: the frames it poses, and how long playing them takes.
 
-use xrf_db::{OgfBone, OgfBoneIkData, OgfMotion, OgfMotionDefinition, OgfPart, SAMPLE_FPS};
+use xrf_db::{OgfBone, OgfBoneIkData, SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_error::XrfResult;
 
 use crate::pack::tests::fixtures::{bind, bones, vector};
@@ -27,7 +27,7 @@ fn keyed_run(count: u32) -> (u8, Vec<u8>) {
 }
 
 /// Assembles bone runs into a motion, moving the first bone's flags where the chunk reader takes them.
-fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> OgfMotion {
+fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> SkeletonMotion {
   let mut remaining: Vec<u8> = Vec::new();
   let mut first: u8 = 0;
 
@@ -41,7 +41,7 @@ fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> OgfMotion {
     remaining.extend(bytes);
   }
 
-  OgfMotion {
+  SkeletonMotion {
     label: String::from("stale_label"),
     count,
     flags: first,
@@ -49,8 +49,8 @@ fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> OgfMotion {
   }
 }
 
-fn definition(name: &str, speed: f32) -> OgfMotionDefinition {
-  OgfMotionDefinition {
+fn definition(name: &str, speed: f32) -> SkeletonMotionDefinition {
+  SkeletonMotionDefinition {
     name: String::from(name),
     flags: 0,
     bone_or_part: 0,
@@ -64,13 +64,13 @@ fn definition(name: &str, speed: f32) -> OgfMotionDefinition {
 }
 
 /// Poses a motion onto a flat skeleton of the named bones, one partition naming them in order.
-fn try_bake(motion: &OgfMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
+fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
   let skeleton: Vec<OgfBone> = bones(&names.iter().map(|it| (*it, "")).collect::<Vec<(&str, &str)>>()).bones;
   let binds: Vec<OgfBoneIkData> = names
     .iter()
     .map(|_| bind(vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)))
     .collect();
-  let parts: Vec<OgfPart> = vec![OgfPart {
+  let parts: Vec<SkeletonPart> = vec![SkeletonPart {
     name: String::from("default"),
     bones: names
       .iter()

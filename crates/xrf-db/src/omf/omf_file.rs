@@ -8,16 +8,16 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_b
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, format_path, open_export_file};
 
-use crate::data::ogf::ogf_motion::OgfMotion;
-use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+use crate::data::skeleton::skeleton_motion::SkeletonMotion;
+use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
 // c++ CKinematicsAnimated
 #[derive(Debug)]
 pub struct OmfFile {
-  pub parameters: OmfParametersChunk,
-  pub motions: OmfMotionsChunk,
+  pub parameters: SkeletonMotionParametersChunk,
+  pub motions: SkeletonMotionsChunk,
 }
 
 impl OmfFile {
@@ -54,11 +54,12 @@ impl OmfFile {
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     assert_equal(chunks.len(), 2, "Unexpected chunks count in omf file, expected 2")?;
 
-    let parameters: OmfParametersChunk = find_required_chunk_by_id(chunks, OmfParametersChunk::CHUNK_ID)?
-      .read_xr::<T, _>()
-      .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF parameters: {error}")))?;
+    let parameters: SkeletonMotionParametersChunk =
+      find_required_chunk_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
+        .read_xr::<T, _>()
+        .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF parameters: {error}")))?;
 
-    let motions: OmfMotionsChunk = find_required_chunk_by_id(chunks, OmfMotionsChunk::CHUNK_ID)?
+    let motions: SkeletonMotionsChunk = find_required_chunk_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
       .read_xr::<T, _>()
       .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF motions: {error}")))?;
 
@@ -99,11 +100,11 @@ impl OmfFile {
 
     let mut motions_writer: ChunkWriter = ChunkWriter::new();
     motions_writer.write_xr::<T, _>(&self.motions)?;
-    motions_writer.flush_chunk_into::<T>(writer, OmfMotionsChunk::CHUNK_ID)?;
+    motions_writer.flush_chunk_into::<T>(writer, SkeletonMotionsChunk::CHUNK_ID)?;
 
     let mut parameters_writer: ChunkWriter = ChunkWriter::new();
     parameters_writer.write_xr::<T, _>(&self.parameters)?;
-    parameters_writer.flush_chunk_into::<T>(writer, OmfParametersChunk::CHUNK_ID)?;
+    parameters_writer.flush_chunk_into::<T>(writer, SkeletonMotionParametersChunk::CHUNK_ID)?;
 
     Ok(())
   }
@@ -119,14 +120,14 @@ impl OmfFile {
   ///
   /// `motions_value::load` maps every definition name to its ordinal, then loads payload chunk `n + 1` into ordinal
   /// `n` (`xray-16/src/xrCore/Animation/SkeletonMotions.cpp`). Neither the payload label nor
-  /// [`OgfMotionDefinition::motion`] joins the two, so ordinal position is the only pairing there is. Read and write
+  /// [`SkeletonMotionDefinition::motion`] joins the two, so ordinal position is the only pairing there is. Read and write
   /// both reject a file whose two lists disagree in length, so every definition here has a payload.
-  pub fn get_motions(&self) -> impl Iterator<Item = (&OgfMotionDefinition, &OgfMotion)> {
+  pub fn get_motions(&self) -> impl Iterator<Item = (&SkeletonMotionDefinition, &SkeletonMotion)> {
     self.parameters.motions.iter().zip(self.motions.motions.iter())
   }
 
   /// The motion a name resolves to, with the payload at its ordinal.
-  pub fn get_motion_by_name(&self, name: &str) -> Option<(&OgfMotionDefinition, &OgfMotion)> {
+  pub fn get_motion_by_name(&self, name: &str) -> Option<(&SkeletonMotionDefinition, &SkeletonMotion)> {
     self.get_motions().find(|(definition, _)| definition.name == name)
   }
 
@@ -170,35 +171,35 @@ mod tests {
     open_generated_test_resource_as_slice,
   };
 
-  use crate::data::ogf::ogf_motion::OgfMotion;
-  use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-  use crate::data::ogf::ogf_part::OgfPart;
-  use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-  use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
+  use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+  use crate::data::skeleton::skeleton_part::SkeletonPart;
   use crate::omf::omf_file::OmfFile;
+  use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+  use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
   fn new_mock(version: u16) -> OmfFile {
     OmfFile {
-      parameters: OmfParametersChunk {
+      parameters: SkeletonMotionParametersChunk {
         version,
-        parts: vec![OgfPart {
+        parts: vec![SkeletonPart {
           name: String::from("default"),
           bones: vec![(String::from("bip01"), 0)],
         }],
         motions: vec![
-          OgfMotionDefinition::new_mock(Vec::new()),
-          OgfMotionDefinition::new_mock(Vec::new()),
+          SkeletonMotionDefinition::new_mock(Vec::new()),
+          SkeletonMotionDefinition::new_mock(Vec::new()),
         ],
       },
-      motions: OmfMotionsChunk {
+      motions: SkeletonMotionsChunk {
         motions: vec![
-          OgfMotion {
+          SkeletonMotion {
             label: String::from("ak74_draw"),
             count: 2,
             flags: 1,
             remaining: vec![9, 8, 7],
           },
-          OgfMotion {
+          SkeletonMotion {
             label: String::from("ak74_idle"),
             count: 4,
             flags: 0,

@@ -6,9 +6,9 @@
 
 use xrf_db::{
   OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
-  OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfMotion, OgfMotionDefinition,
-  OgfObb, OgfPart, OgfSlideWindow, OgfSphere, OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink,
-  OmfMotionsChunk, OmfParametersChunk, Vector3d,
+  OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfObb, OgfSlideWindow, OgfSphere,
+  OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink, SkeletonMotion, SkeletonMotionDefinition,
+  SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart, Vector3d,
 };
 
 pub(crate) const MODEL_TYPE_SKELETON_ANIM: u8 = 3;
@@ -258,13 +258,13 @@ pub(crate) fn kinematics(motion_refs: &[&str]) -> OgfKinematicsChunk {
 ///
 /// Payload labels are deliberately not the motion names: a bank is named by its definitions, and real files carry
 /// stale or non-text labels beside them.
-pub(crate) fn embedded_motions(names: &[&str]) -> (OmfMotionsChunk, OmfParametersChunk) {
+pub(crate) fn embedded_motions(names: &[&str]) -> (SkeletonMotionsChunk, SkeletonMotionParametersChunk) {
   (
-    OmfMotionsChunk {
+    SkeletonMotionsChunk {
       motions: names
         .iter()
         .enumerate()
-        .map(|(ordinal, _)| OgfMotion {
+        .map(|(ordinal, _)| SkeletonMotion {
           label: format!("stale_label_{ordinal}"),
           count: 0,
           flags: 0,
@@ -272,16 +272,16 @@ pub(crate) fn embedded_motions(names: &[&str]) -> (OmfMotionsChunk, OmfParameter
         })
         .collect(),
     },
-    OmfParametersChunk {
+    SkeletonMotionParametersChunk {
       version: 4,
-      parts: vec![OgfPart {
+      parts: vec![SkeletonPart {
         name: String::from("default"),
         bones: vec![(String::from("wpn_body"), 0)],
       }],
       motions: names
         .iter()
         .enumerate()
-        .map(|(ordinal, name)| OgfMotionDefinition {
+        .map(|(ordinal, name)| SkeletonMotionDefinition {
           name: String::from(*name),
           flags: 0,
           bone_or_part: 0,

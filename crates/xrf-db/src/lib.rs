@@ -7,6 +7,7 @@ pub(crate) mod ogf;
 pub(crate) mod omf;
 pub(crate) mod particles;
 pub(crate) mod shader_library;
+pub(crate) mod skeleton;
 pub(crate) mod spawn;
 pub(crate) mod thm;
 pub(crate) mod types;
@@ -21,15 +22,15 @@ pub use crate::data::ogf::ogf_cylinder::OgfCylinder;
 pub use crate::data::ogf::ogf_geometry::*;
 pub use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
 pub use crate::data::ogf::ogf_joint_limit::OgfJointLimit;
-pub use crate::data::ogf::ogf_motion::*;
-pub use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-pub use crate::data::ogf::ogf_motion_keys::{OgfBoneMotion, Quaternion, SAMPLE_FPS};
 pub use crate::data::ogf::ogf_obb::OgfObb;
-pub use crate::data::ogf::ogf_part::OgfPart;
 pub use crate::data::ogf::ogf_slide_window::*;
 pub use crate::data::ogf::ogf_sphere::*;
 pub use crate::data::ogf::ogf_vertex::*;
 pub use crate::data::ogf::ogf_vertices::*;
+pub use crate::data::skeleton::skeleton_motion::*;
+pub use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+pub use crate::data::skeleton::skeleton_motion_keys::{Quaternion, SAMPLE_FPS, SkeletonBoneMotion};
+pub use crate::data::skeleton::skeleton_part::SkeletonPart;
 pub use crate::data::{
   alife::{
     alife_object::AlifeObject,
@@ -85,12 +86,12 @@ pub use crate::ogf::ogf_motion_refs_processor::*;
 pub use crate::ogf::ogf_refs_patch_report::*;
 pub use crate::ogf::ogf_residue::*;
 pub use crate::ogf::ogf_texture_refs_processor::*;
-pub use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-pub use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
 pub use crate::omf::omf_file::*;
 pub use crate::omf::omf_motions_processor::*;
 pub use crate::particles::particles_file::*;
 pub use crate::shader_library::shader_library_file::*;
+pub use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+pub use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 pub use crate::spawn::chunks::{
   spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk, spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk,
   spawn_graphs_chunk::SpawnGraphsChunk, spawn_header_chunk::SpawnHeaderChunk, spawn_patrols_chunk::SpawnPatrolsChunk,

@@ -5,18 +5,18 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, read_
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, to_format_size};
 
-use crate::data::ogf::ogf_motion::OgfMotion;
+use crate::data::skeleton::skeleton_motion::SkeletonMotion;
 
 #[derive(Debug)]
-pub struct OmfMotionsChunk {
-  pub motions: Vec<OgfMotion>,
+pub struct SkeletonMotionsChunk {
+  pub motions: Vec<SkeletonMotion>,
 }
 
-impl OmfMotionsChunk {
+impl SkeletonMotionsChunk {
   pub const CHUNK_ID: u32 = 14; // 0x1A, 0xE
 }
 
-impl ChunkReadWrite for OmfMotionsChunk {
+impl ChunkReadWrite for SkeletonMotionsChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::info!("Reading motions chunk: {} bytes", reader.read_bytes_remain());
 
@@ -24,17 +24,17 @@ impl ChunkReadWrite for OmfMotionsChunk {
 
     let (count_chunk, motion_chunks): (&mut ChunkReader<D>, &mut [ChunkReader<D>]) = chunks
       .split_first_mut()
-      .ok_or_else(|| XrfError::new_read_error("OMF motions chunk has no count definition"))?;
+      .ok_or_else(|| XrfError::new_read_error("Skeleton motions chunk has no count definition"))?;
 
     let bones_motions_count: u32 = read_u32_chunk::<T, _>(count_chunk)?;
 
     assert_equal(
       bones_motions_count as usize,
       motion_chunks.len(),
-      "Expect matching OMF motions chunks count and count definition",
+      "Expect matching skeleton motions chunks count and count definition",
     )?;
 
-    let mut motions: Vec<OgfMotion> = Vec::new();
+    let mut motions: Vec<SkeletonMotion> = Vec::new();
 
     for chunk in motion_chunks {
       motions.push(chunk.read_xr::<T, _>()?);
@@ -42,7 +42,7 @@ impl ChunkReadWrite for OmfMotionsChunk {
 
     assert!(
       reader.is_ended(),
-      "Expect omf motions chunk to be ended, {} remain",
+      "Expect skeleton motions chunk to be ended, {} remain",
       reader.read_bytes_remain()
     );
 
@@ -54,7 +54,7 @@ impl ChunkReadWrite for OmfMotionsChunk {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(to_format_size(self.motions.len(), "omf motions")?)?;
+    count_writer.write_u32::<T>(to_format_size(self.motions.len(), "skeleton motions")?)?;
     writer.write_all(count_writer.flush_chunk_into_buffer::<T>(0)?.as_slice())?;
 
     for (index, motion) in self.motions.iter().enumerate() {
@@ -64,7 +64,7 @@ impl ChunkReadWrite for OmfMotionsChunk {
 
       writer.write_all(
         motion_writer
-          .flush_chunk_into_buffer::<T>(to_format_size(index + 1, "omf motion chunk id")?)?
+          .flush_chunk_into_buffer::<T>(to_format_size(index + 1, "skeleton motion chunk id")?)?
           .as_slice(),
       )?;
     }

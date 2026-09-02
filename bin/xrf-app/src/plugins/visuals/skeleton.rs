@@ -1,4 +1,4 @@
-use xrf_db::{OgfBone, OgfBoneIkData, OgfFile, OgfMotion, OgfMotionDefinition, OgfPart};
+use xrf_db::{OgfBone, OgfBoneIkData, OgfFile, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 /// What posing a visual needs from its file, kept beside the selection so a motion costs no re-read.
 ///
@@ -9,13 +9,13 @@ pub struct SelectedSkeleton {
   pub bones: Vec<OgfBone>,
   pub binds: Vec<OgfBoneIkData>,
   /// Partitions of the motions this file embeds, empty when it animates only from referenced omf files.
-  pub embedded_parts: Vec<OgfPart>,
+  pub embedded_parts: Vec<SkeletonPart>,
   /// Motions the file carries itself, each definition with the key payload at its own ordinal.
   ///
   /// Held rather than re-read for the same reason the packed geometry is: the file has already been read once, and a
   /// self-animated visual is a prop or a weapon rather than a character, so its key payload is small. The pair is kept
   /// whole because a payload's own label is not the motion's name - only the definition names it.
-  pub embedded_motions: Vec<(OgfMotionDefinition, OgfMotion)>,
+  pub embedded_motions: Vec<(SkeletonMotionDefinition, SkeletonMotion)>,
 }
 
 impl SelectedSkeleton {

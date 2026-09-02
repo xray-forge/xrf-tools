@@ -156,7 +156,7 @@ export type VisualMotionBake = {
    * The playback speed the motion's definition declares, as stored.
    *
    * A value that is not positive is not what `duration` was divided by; see
-   * [`OgfMotionDefinition::get_playback_speed`].
+   * [`SkeletonMotionDefinition::get_playback_speed`].
    */
   speed: number | null;
   /** How many bones the motion actually drives, the rest holding their bind pose. */

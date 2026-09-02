@@ -10,8 +10,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::data::ogf::ogf_geometry::OgfGeometry;
-use crate::data::ogf::ogf_motion::OgfMotion;
-use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
+use crate::data::skeleton::skeleton_motion::SkeletonMotion;
+use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
 use crate::ogf::chunks::ogf_bones_chunk::OgfBonesChunk;
 use crate::ogf::chunks::ogf_children_chunk::OgfChildrenChunk;
 use crate::ogf::chunks::ogf_description_chunk::OgfDescriptionChunk;
@@ -23,8 +23,8 @@ use crate::ogf::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 use crate::ogf::chunks::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf::chunks::ogf_user_data_chunk::OgfUserDataChunk;
 use crate::ogf::ogf_residue::OgfResidue;
-use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
 /// FMesh in c++ codebase.
 ///
@@ -51,8 +51,8 @@ pub struct OgfFile {
   ///
   /// Self-animated models embed the same two chunks an omf carries, under the same ids, so the omf
   /// types are reused verbatim.
-  pub motions: Option<OmfMotionsChunk>,
-  pub motion_parameters: Option<OmfParametersChunk>,
+  pub motions: Option<SkeletonMotionsChunk>,
+  pub motion_parameters: Option<SkeletonMotionParametersChunk>,
   /// Bytes past the last root chunk that the engine's loader never reads.
   ///
   /// Present only for a visual that is not a well-formed chunk stream and is loaded anyway. Nothing forces a consumer
@@ -107,13 +107,14 @@ impl OgfFile {
     };
 
     // Read ahead of the record so the two embedded motion chunks can be checked against each other.
-    let motions: Option<OmfMotionsChunk> = match find_optional_chunk_by_id(chunks, OmfMotionsChunk::CHUNK_ID) {
+    let motions: Option<SkeletonMotionsChunk> = match find_optional_chunk_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)
+    {
       Some(mut it) => Some(it.read_xr::<T, _>()?),
       None => None,
     };
 
-    let motion_parameters: Option<OmfParametersChunk> =
-      match find_optional_chunk_by_id(chunks, OmfParametersChunk::CHUNK_ID) {
+    let motion_parameters: Option<SkeletonMotionParametersChunk> =
+      match find_optional_chunk_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       };
@@ -223,8 +224,8 @@ impl OgfFile {
   /// therefore describes a visual the engine cannot animate, and would silently drop motions from every ordinal pair
   /// this file hands out. `OmfFile` guards its own copies of the same two chunks the same way.
   fn assert_motions_are_paired(
-    motions: &Option<OmfMotionsChunk>,
-    motion_parameters: &Option<OmfParametersChunk>,
+    motions: &Option<SkeletonMotionsChunk>,
+    motion_parameters: &Option<SkeletonMotionParametersChunk>,
   ) -> XrfResult {
     match (motions, motion_parameters) {
       (Some(motions), Some(parameters)) if motions.motions.len() != parameters.motions.len() => {
@@ -250,7 +251,7 @@ impl OgfFile {
   ///
   /// Empty for a visual that animates only from referenced omf files. A self-animated one carries both chunks, which
   /// [`OgfFile::read_from_chunks`] requires and checks for equal length, so every definition here has a payload.
-  pub fn get_motions(&self) -> impl Iterator<Item = (&OgfMotionDefinition, &OgfMotion)> {
+  pub fn get_motions(&self) -> impl Iterator<Item = (&SkeletonMotionDefinition, &SkeletonMotion)> {
     self
       .motion_parameters
       .as_ref()
@@ -268,7 +269,7 @@ impl OgfFile {
   }
 
   /// The embedded motion a name resolves to, with the payload at its ordinal.
-  pub fn get_motion_by_name(&self, name: &str) -> Option<(&OgfMotionDefinition, &OgfMotion)> {
+  pub fn get_motion_by_name(&self, name: &str) -> Option<(&SkeletonMotionDefinition, &SkeletonMotion)> {
     self.get_motions().find(|(definition, _)| definition.name == name)
   }
 
@@ -288,14 +289,14 @@ mod tests {
 
   use crate::data::generic::vector_3d::Vector3d;
   use crate::data::ogf::ogf_box::OgfBox;
-  use crate::data::ogf::ogf_motion::OgfMotion;
-  use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-  use crate::data::ogf::ogf_part::OgfPart;
   use crate::data::ogf::ogf_sphere::OgfSphere;
+  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
+  use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+  use crate::data::skeleton::skeleton_part::SkeletonPart;
   use crate::ogf::chunks::ogf_header_chunk::OgfHeaderChunk;
   use crate::ogf::ogf_file::OgfFile;
-  use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-  use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+  use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+  use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
   fn new_chunk_bytes<C: ChunkReadWrite>(id: u32, value: &C) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
@@ -326,10 +327,10 @@ mod tests {
 
   fn new_motions_bytes(count: usize) -> XrfResult<Vec<u8>> {
     new_chunk_bytes(
-      OmfMotionsChunk::CHUNK_ID,
-      &OmfMotionsChunk {
+      SkeletonMotionsChunk::CHUNK_ID,
+      &SkeletonMotionsChunk {
         motions: (0..count)
-          .map(|ordinal| OgfMotion {
+          .map(|ordinal| SkeletonMotion {
             label: format!("embedded_{ordinal}"),
             count: 2,
             flags: 0,
@@ -342,10 +343,10 @@ mod tests {
 
   fn new_parameters_bytes(names: &[&str]) -> XrfResult<Vec<u8>> {
     new_chunk_bytes(
-      OmfParametersChunk::CHUNK_ID,
-      &OmfParametersChunk {
+      SkeletonMotionParametersChunk::CHUNK_ID,
+      &SkeletonMotionParametersChunk {
         version: 4,
-        parts: vec![OgfPart {
+        parts: vec![SkeletonPart {
           name: String::from("default"),
           bones: vec![(String::from("bip01"), 0)],
         }],
@@ -353,7 +354,7 @@ mod tests {
           .iter()
           .enumerate()
           .map(|(ordinal, name)| {
-            let mut definition: OgfMotionDefinition = OgfMotionDefinition::new_mock(Vec::new());
+            let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
 
             definition.name = String::from(*name);
             definition.motion = ordinal as u16;

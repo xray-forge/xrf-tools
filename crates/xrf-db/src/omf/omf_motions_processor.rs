@@ -173,20 +173,20 @@ mod tests {
 
   use xrf_error::XrfResult;
 
-  use crate::data::ogf::ogf_motion::OgfMotion;
-  use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-  use crate::data::ogf::ogf_part::OgfPart;
-  use crate::omf::chunks::omf_motions_chunk::OmfMotionsChunk;
-  use crate::omf::chunks::omf_parameters_chunk::OmfParametersChunk;
+  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
+  use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+  use crate::data::skeleton::skeleton_part::SkeletonPart;
   use crate::omf::omf_file::OmfFile;
   use crate::omf::omf_motions_processor::OmfMotionsProcessor;
+  use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
+  use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
   /// Build a file whose motions are named after the provided list.
   fn new_named_mock(names: &[&str]) -> OmfFile {
     OmfFile {
-      parameters: OmfParametersChunk {
+      parameters: SkeletonMotionParametersChunk {
         version: 4,
-        parts: vec![OgfPart {
+        parts: vec![SkeletonPart {
           name: String::from("default"),
           bones: vec![(String::from("bip01"), 0)],
         }],
@@ -194,7 +194,7 @@ mod tests {
           .iter()
           .enumerate()
           .map(|(ordinal, name)| {
-            let mut definition: OgfMotionDefinition = OgfMotionDefinition::new_mock(Vec::new());
+            let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
 
             definition.name = String::from(*name);
             definition.motion = ordinal as u16;
@@ -202,10 +202,10 @@ mod tests {
           })
           .collect(),
       },
-      motions: OmfMotionsChunk {
+      motions: SkeletonMotionsChunk {
         motions: names
           .iter()
-          .map(|name| OgfMotion {
+          .map(|name| SkeletonMotion {
             label: String::from(*name),
             count: 1,
             flags: 0,

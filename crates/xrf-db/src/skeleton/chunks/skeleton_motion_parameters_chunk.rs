@@ -3,17 +3,17 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::OmfFile;
-use crate::data::ogf::ogf_motion_definition::OgfMotionDefinition;
-use crate::data::ogf::ogf_part::OgfPart;
+use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
+use crate::data::skeleton::skeleton_part::SkeletonPart;
 
 #[derive(Debug)]
-pub struct OmfParametersChunk {
+pub struct SkeletonMotionParametersChunk {
   pub version: u16,
-  pub parts: Vec<OgfPart>,
-  pub motions: Vec<OgfMotionDefinition>,
+  pub parts: Vec<SkeletonPart>,
+  pub motions: Vec<SkeletonMotionDefinition>,
 }
 
-impl OmfParametersChunk {
+impl SkeletonMotionParametersChunk {
   pub const CHUNK_ID: u32 = 15; // 0x14, 0xF
 
   pub fn get_bones_count(&self) -> usize {
@@ -21,7 +21,7 @@ impl OmfParametersChunk {
   }
 }
 
-impl ChunkReadWrite for OmfParametersChunk {
+impl ChunkReadWrite for SkeletonMotionParametersChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let version: u16 = reader.read_u16::<T>()?;
 
@@ -33,14 +33,14 @@ impl ChunkReadWrite for OmfParametersChunk {
       )));
     }
 
-    let parts: Vec<OgfPart> = reader
+    let parts: Vec<SkeletonPart> = reader
       .read_xr_list::<T, _>()
-      .map_err(|error| XrfError::new_read_error(format!("Failed to read ogf parts: {}", error)))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton parts: {}", error)))?;
 
-    let motions: Vec<OgfMotionDefinition> = OgfMotionDefinition::read_list::<T, _>(reader, version)
-      .map_err(|error| XrfError::new_read_error(format!("Failed to read ogf motion definitions: {}", error)))?;
+    let motions: Vec<SkeletonMotionDefinition> = SkeletonMotionDefinition::read_list::<T, _>(reader, version)
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion definitions: {}", error)))?;
 
-    reader.assert_read("Expect all data to be read from omf parameters chunk")?;
+    reader.assert_read("Expect all data to be read from skeleton motion parameters chunk")?;
 
     Ok(Self {
       version,
@@ -62,10 +62,11 @@ impl ChunkReadWrite for OmfParametersChunk {
 
     writer
       .write_xr_list::<T, _>(&self.parts)
-      .map_err(|error| XrfError::new_serialization_error(format!("Failed to write ogf parts: {error}")))?;
+      .map_err(|error| XrfError::new_serialization_error(format!("Failed to write skeleton parts: {error}")))?;
 
-    OgfMotionDefinition::write_list::<T>(writer, &self.motions, self.version)
-      .map_err(|error| XrfError::new_serialization_error(format!("Failed to write ogf motion definitions: {error}")))?;
+    SkeletonMotionDefinition::write_list::<T>(writer, &self.motions, self.version).map_err(|error| {
+      XrfError::new_serialization_error(format!("Failed to write skeleton motion definitions: {error}"))
+    })?;
 
     Ok(())
   }
