@@ -1,8 +1,10 @@
 use std::time::{Duration, Instant};
 
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, Section};
+use xrf_output::{OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType;
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -23,45 +25,58 @@ impl GamedataProject {
     let system_ltx: Ltx = self.ltx_project.system_ltx()?;
     let system_ltx_path = self.ltx_project.system_ltx_report_path()?;
 
-    let mut checked_weapons_count: u32 = 0;
-    let mut findings: Vec<Finding> = Vec::new();
-    let mut invalid_weapons_count: u32 = 0;
+    // Selected before the sweep rather than filtered inside it, because a parallel run needs to know how many positions
+    // it is releasing output through before the first of them says anything.
+    let weapons: Vec<(&String, &Section)> = system_ltx
+      .sections
+      .iter()
+      .filter(|(_, section)| is_weapon_section(section))
+      .collect();
 
-    for (section_name, section) in &system_ltx.sections {
-      if is_weapon_section(section) {
-        checked_weapons_count += 1;
-      } else {
-        continue;
-      }
+    let checked_weapons_count: u32 = weapons.len() as u32;
 
-      match self.verify_ltx_weapon(options, &system_ltx, section_name, section) {
-        Ok(is_valid) => {
-          if !is_valid {
-            xrf_output::error!(options.output, "Invalid weapon section: [{section_name}]");
+    // Sections are independent once `system.ltx` is assembled: each reads its own visuals, sounds and animations and
+    // writes nothing back. This was the longest strictly serial workload in a sweep, and once the checks themselves
+    // began to overlap it was what the whole run waited on.
+    let sequence: OutputSequence = OutputSequence::new(&options.output, weapons.len());
 
-            findings.push(GamedataFindingFactory::for_asset(
+    let mut findings: Vec<Finding> = weapons
+      .par_iter()
+      .enumerate()
+      .flat_map(|(index, (section_name, section))| {
+        let slot: OutputSlot = sequence.new_slot(index);
+        let scoped: GamedataProjectVerifyOptions = options.with_output(slot.get_output().clone());
+
+        match self.verify_ltx_weapon(&scoped, &system_ltx, section_name, section) {
+          Ok(true) => None,
+          Ok(false) => {
+            xrf_output::error!(scoped.output, "Invalid weapon section: [{section_name}]");
+
+            Some(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::WeaponsValidation,
               &system_ltx_path,
               format!("Weapon section [{section_name}] is invalid"),
-            ));
-            invalid_weapons_count += 1;
+            ))
+          }
+          Err(error) => {
+            xrf_output::error!(
+              scoped.output,
+              "Invalid weapon section: [{section_name}], failure: {error:?}"
+            );
+
+            Some(GamedataFindingFactory::for_asset(
+              GamedataVerificationRule::WeaponsValidation,
+              &system_ltx_path,
+              format!("Weapon section [{section_name}] failed verification: {error}"),
+            ))
           }
         }
-        Err(error) => {
-          xrf_output::error!(
-            options.output,
-            "Invalid weapon section: [{section_name}], failure: {error:?}"
-          );
+      })
+      .collect();
 
-          findings.push(GamedataFindingFactory::for_asset(
-            GamedataVerificationRule::WeaponsValidation,
-            &system_ltx_path,
-            format!("Weapon section [{section_name}] failed verification: {error}"),
-          ));
-          invalid_weapons_count += 1;
-        }
-      }
-    }
+    // One finding per invalid section, so the count is what the sweep collected rather than a second tally that could
+    // disagree with it.
+    let invalid_weapons_count: u32 = findings.len() as u32;
 
     let duration: Duration = started_at.elapsed();
 

@@ -18,7 +18,7 @@ pub struct GamedataProjectReadOptions {
   pub is_tracing_reads: bool,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct GamedataProjectVerifyOptions {
   pub output: OutputOptions,
   /// Where progress goes and where cancellation comes from.
@@ -31,6 +31,15 @@ pub struct GamedataProjectVerifyOptions {
 }
 
 impl GamedataProjectVerifyOptions {
+  /// The same options, saying what this worker says through `output`.
+  ///
+  /// How parallel work keeps its output in the order the work was listed: a worker is handed a slot of an
+  /// [`xrf_output::OutputSequence`] rather than the shared sink, so what it says is released in its listed position
+  /// instead of when it happened to finish.
+  pub fn with_output(&self, output: OutputOptions) -> Self {
+    Self { output, ..self.clone() }
+  }
+
   pub fn selected_checks(&self) -> Vec<GamedataVerificationType> {
     let mut seen: HashSet<GamedataVerificationType> = HashSet::with_capacity(self.checks.len());
 

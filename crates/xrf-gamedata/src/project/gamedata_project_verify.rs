@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
-use xrf_output::{OutputSequence, OutputSlot};
+use xrf_output::{OutputSequence, OutputSlot, OutputVerbosity};
 use xrf_utils::format_path;
 
 use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
@@ -11,6 +11,14 @@ use crate::{
   GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationReport,
   GamedataVerificationType,
 };
+
+/// How many checks may be working at once while somebody is reading.
+///
+/// Not a bound on the machine — the plan already is one — but on how far ahead of the console a sweep may get. Output
+/// is released in selection order, so a slow early check holds everything behind it: with all fifteen started at once
+/// an Anomaly sweep said nothing for six seconds and then said all three thousand lines at once. In waves of this size
+/// it starts speaking after two.
+const CHECK_WINDOW: usize = 6;
 
 impl GamedataProject {
   pub fn verify(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataVerificationReport> {
@@ -57,36 +65,47 @@ impl GamedataProject {
     let sequence: OutputSequence = OutputSequence::new(&options.output, checks.len());
     let schedule: GamedataCheckSchedule = GamedataCheckSchedule::default();
 
-    let reports: Vec<Option<GamedataVerificationCheckReport>> = checks
-      .par_iter()
-      .enumerate()
-      .map(|(index, check)| {
-        // Before a check starts, never inside one. A check already running is left to finish: they parallelise
-        // internally and have no boundary of their own, so the only safe place to stop is where one has not begun.
-        if options.job.is_cancelled() {
-          return None;
-        }
+    // A silent run has no reader to release output to, so it pays nothing for one: the window buys responsiveness, and
+    // where nobody is watching that is not worth a slower sweep. A scripted or piped run is exactly this case.
+    let window: usize = match options.output.get_verbosity() {
+      OutputVerbosity::Silent => checks.len(),
+      OutputVerbosity::Normal | OutputVerbosity::Verbose => CHECK_WINDOW,
+    };
 
-        let slot: OutputSlot = sequence.new_slot(index);
+    // Waves rather than all at once, and the outer loop is deliberately sequential: a wave finishes before the next
+    // starts, so the positions it holds are released together and a run says something every second or so instead of
+    // saying nothing and then everything.
+    let mut reports: Vec<Option<GamedataVerificationCheckReport>> = Vec::with_capacity(checks.len());
 
-        schedule.enter(&options.job, index, *check);
+    for (wave, released_together) in checks.chunks(window).enumerate() {
+      let mut released: Vec<Option<GamedataVerificationCheckReport>> = released_together
+        .par_iter()
+        .enumerate()
+        .map(|(offset, check)| {
+          let index: usize = wave * window + offset;
 
-        let report: GamedataVerificationCheckReport = check.run(
-          self,
-          &GamedataProjectVerifyOptions {
-            output: slot.get_output().clone(),
-            job: options.job.clone(),
-            is_strict: options.is_strict,
-            checks: Vec::new(),
-          },
-        );
+          // Before a check starts, never inside one. A check already running is left to finish: they parallelise
+          // internally and have no boundary of their own, so the only safe place to stop is where one has not begun.
+          if options.job.is_cancelled() {
+            return None;
+          }
 
-        schedule.leave(&options.job, index);
-        verifying.advance();
+          let slot: OutputSlot = sequence.new_slot(index);
 
-        Some(report)
-      })
-      .collect();
+          schedule.enter(&options.job, index, *check);
+
+          let report: GamedataVerificationCheckReport =
+            check.run(self, &options.with_output(slot.get_output().clone()));
+
+          schedule.leave(&options.job, index);
+          verifying.advance();
+
+          Some(report)
+        })
+        .collect();
+
+      reports.append(&mut released);
+    }
 
     // In selection order whatever order they finished in, so the report describes the request rather than the schedule.
     if reports.iter().any(Option::is_none) {
