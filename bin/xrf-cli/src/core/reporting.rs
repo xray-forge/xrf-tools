@@ -94,9 +94,13 @@ pub struct CommandEnvelope {
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
   error: Option<String>,
-  exit_code: u8,
   /// The width this run was bounded to, and whether anybody chose it.
-  jobs: ExecutionPlan,
+  ///
+  /// Named for the policy rather than for the `--jobs` flag that sets it: a `job` in this workspace is a tracked unit
+  /// of work with progress and cancellation, and a field called `jobs` holding a worker count would be that word
+  /// meaning something else in the one document both concepts could appear in.
+  execution: ExecutionPlan,
+  exit_code: u8,
   outcome: CommandOutcome,
   result: Option<Value>,
 }
@@ -107,7 +111,7 @@ impl CommandEnvelope {
     command: Vec<String>,
     outcome: &CommandResult,
     duration: Duration,
-    jobs: ExecutionPlan,
+    execution: ExecutionPlan,
     result: Option<Value>,
   ) -> Self {
     Self {
@@ -115,8 +119,8 @@ impl CommandEnvelope {
       command,
       duration,
       error: outcome.as_ref().err().map(CommandError::message),
+      execution,
       exit_code: outcome.as_ref().err().map_or(0, CommandError::exit_code),
-      jobs,
       outcome: CommandOutcome::of(outcome),
       result,
     }
@@ -357,7 +361,7 @@ mod tests {
       .remove("build")
       .expect("every envelope to carry the build that produced it");
     fields
-      .remove("jobs")
+      .remove("execution")
       .expect("every envelope to carry the width the run was bounded to");
 
     document
@@ -513,7 +517,7 @@ mod tests {
 
     // Carried by every run, including the commands that declare no `--jobs` of their own, because every command runs
     // inside a pool whether or not it offers a say in how wide that pool is.
-    assert_eq!(document["jobs"], json!({ "workers": 4, "origin": "requested" }));
+    assert_eq!(document["execution"], json!({ "workers": 4, "origin": "requested" }));
   }
 
   /// A report outlives its run, and nothing else in the envelope says which binary wrote it.
