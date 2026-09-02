@@ -54,6 +54,19 @@ impl XrayCachePolicy {
   }
 
   /// Caps retained bytes, measured as the source length of everything held.
+  ///
+  /// # Determinism
+  ///
+  /// A budget gives up schedule-independent cache statistics, so set one only where that is worth trading. Refusal
+  /// depends on what is retained at the moment of an insert, and what a run can drop first depends on which values
+  /// other threads still hold, through `Arc::strong_count`. Two runs over identical inputs can therefore refuse
+  /// different values and report different `entries`, `bytes` and `refused`.
+  ///
+  /// Without a budget those counters describe the inputs alone, which is what lets a verification report be compared
+  /// across runs and across worker counts. Nothing else in the store reintroduces the dependence: concurrent misses of
+  /// one retained key are coordinated into a single load by [`XrayAssetCache::get_or_load`].
+  ///
+  /// [`XrayAssetCache::get_or_load`]: crate::XrayAssetCache::get_or_load
   pub fn with_budget(mut self, bytes: u64) -> Self {
     self.budget = Some(bytes);
 

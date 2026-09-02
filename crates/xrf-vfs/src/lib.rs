@@ -6,7 +6,7 @@
 //!
 //! - [`path`] — what an engine identity is, and the only place separators and case are decided.
 //! - [`asset`] — what a resolved asset is, plus the per-kind rules that turn a reference into one.
-//! - [`cache`] — what a mounted world keeps after parsing an asset, and the policy deciding what is kept.
+//! - [`cache`] — what a mounted world keeps after parsing an asset, the policy deciding what is kept, and the coordination that keeps two readers from parsing one asset twice.
 //! - [`source`] — the mountable surface, and the two sources the engine itself has.
 //! - [`mount`] — composing sources into a searchable order, and planning one from a path.
 //! - [`vfs`] — resolving and reading through that order, one scope at a time or as an ordered probe.

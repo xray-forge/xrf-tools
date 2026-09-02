@@ -71,29 +71,27 @@ impl XrayScopedVfs<'_> {
   /// whole-entry decompression before the parse even begins. Whether the result is retained is the policy's business,
   /// not this call site's: an excluded kind reads, parses and returns exactly as it would have without a cache.
   ///
+  /// Concurrent readers of one retained path share a single read and parse rather than each performing their own, which
+  /// is what keeps a sweep's reported cache counters describing its inputs instead of its schedule. The coordination
+  /// and its limits belong to the store: see [`XrayAssetCache::get_or_load`].
+  ///
   /// # Errors
   ///
   /// Returns whatever reading the asset or parsing it answers with. Failures are not retained, so a broken asset is
   /// re-read by each caller and each reports the real error rather than a copy of the first one.
+  ///
+  /// [`XrayAssetCache::get_or_load`]: crate::XrayAssetCache::get_or_load
   pub fn read_parsed<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
     F: FnOnce(Vec<u8>) -> XrfResult<T>,
   {
-    if let Some(retained) = self.vfs.get_cache().get::<T>(self.scope, logical_path) {
-      return Ok(retained);
-    }
+    self.vfs.get_cache().get_or_load(self.scope, logical_path, kind, || {
+      let bytes: Vec<u8> = self.read_bytes(logical_path)?;
+      let length: u64 = bytes.len() as u64;
 
-    let bytes: Vec<u8> = self.read_bytes(logical_path)?;
-    let length: u64 = bytes.len() as u64;
-    let value: Arc<T> = Arc::new(parse(bytes)?);
-
-    self
-      .vfs
-      .get_cache()
-      .insert(self.scope, logical_path, kind, length, Arc::clone(&value));
-
-    Ok(value)
+      Ok((parse(bytes)?, length))
+    })
   }
 
   /// Like [`XrayVfs::read_size`], within this view's scope.
