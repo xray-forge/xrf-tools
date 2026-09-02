@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -86,7 +87,7 @@ impl ArchiveReader {
   ///
   /// Separate halves rather than one nested value: a set's merged table is the only place an entry needs to live, and
   /// handing the map over lets the project move it in instead of cloning out of a copy it would then retain.
-  pub(crate) fn read_archive(&mut self) -> XrfResult<(ArchiveDescriptor, HashMap<String, ArchiveFileDescriptor>)> {
+  pub(crate) fn read_archive(&mut self) -> XrfResult<(ArchiveDescriptor, HashMap<Arc<str>, ArchiveFileDescriptor>)> {
     let header: ArchiveHeader = self.read_archive_header()?.ok_or_else(|| {
       XrfError::new_read_error(format!(
         "archive {} holds no file descriptors chunk",
@@ -94,7 +95,7 @@ impl ArchiveReader {
       ))
     })?;
     let metadata = self.file.metadata()?;
-    let files: HashMap<String, ArchiveFileDescriptor> = header.files;
+    let files: HashMap<Arc<str>, ArchiveFileDescriptor> = header.files;
 
     // Summed here because this is the last point the volume's own entries are known: after the merge a later volume
     // may shadow one of them, and a per-volume total counts what the volume holds rather than what survives.
@@ -213,8 +214,8 @@ impl ArchiveReader {
     if compressed { decompress(&buffer) } else { Ok(buffer) }
   }
 
-  fn read_file_descriptors<T: Read>(reader: &mut T) -> XrfResult<HashMap<String, ArchiveFileDescriptor>> {
-    let mut file_descriptors: HashMap<String, ArchiveFileDescriptor> = HashMap::new();
+  fn read_file_descriptors<T: Read>(reader: &mut T) -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
+    let mut file_descriptors: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
     let mut name_buf: [u8; MAXIMUM_ENTRY_NAME_SIZE] = [0u8; MAXIMUM_ENTRY_NAME_SIZE];
 
     loop {
@@ -244,10 +245,13 @@ impl ArchiveReader {
       };
 
       let offset: u32 = reader.read_u32::<XRayByteOrder>()?;
-      let name: String = decode_bytes_to_string_without_bom_handling(name_bytes, Self::header_encoding())?;
+      let name: Arc<str> = Arc::from(decode_bytes_to_string_without_bom_handling(
+        name_bytes,
+        Self::header_encoding(),
+      )?);
 
       file_descriptors.insert(
-        name.clone(),
+        Arc::clone(&name),
         ArchiveFileDescriptor::new(crc, name, offset, size_compressed, size_real),
       );
     }

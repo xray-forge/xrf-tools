@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crc32fast::hash;
 use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
@@ -38,7 +39,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
   let source: PathBuf = directory.join("files.db0");
 
   let mut payload: Vec<u8> = Vec::new();
-  let mut files: HashMap<String, ArchiveFileDescriptor> = HashMap::new();
+  let mut files: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
 
   for entry in entries {
     let offset: u32 = payload.len() as u32;

@@ -23,7 +23,7 @@ impl ArchiveEntryReport {
   pub fn new(project: &ArchiveProject, entry: &ArchiveFileDescriptor) -> Self {
     Self {
       is_directory: entry.is_directory,
-      name: entry.name.clone(),
+      name: entry.name.to_string(),
       size_compressed: u64::from(entry.size_compressed),
       size_real: u64::from(entry.size_real),
       // An entry names its volume by position, so the set it belongs to is what turns that back into a path a reader

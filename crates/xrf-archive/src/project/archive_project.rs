@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::Serialize;
 use walkdir::{DirEntry, Error as WalkError, WalkDir};
@@ -26,7 +27,9 @@ pub struct ArchiveProject {
   /// Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
   /// search them in reverse to resolve an entry to the bytes this project's table names.
   pub archives: Vec<ArchiveDescriptor>,
-  pub files: HashMap<String, ArchiveFileDescriptor>,
+  /// Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
+  #[cfg_attr(feature = "typescript-bindings", specta(type = HashMap<String, ArchiveFileDescriptor>))]
+  pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
   pub read_policy: ArchiveProjectReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
@@ -120,7 +123,7 @@ impl ArchiveProject {
   }
 
   fn read_to_depth(path: &Path, depth: usize) -> XrfResult<Self> {
-    let mut files: HashMap<String, ArchiveFileDescriptor> = HashMap::new();
+    let mut files: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
     let is_single_volume: bool = path.is_file();
 
     if !is_single_volume {

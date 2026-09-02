@@ -261,7 +261,7 @@ impl ArchiveUnpacker {
       .write_contents(&mut Self::create_target(destination.as_ref())?, descriptor)?;
 
     Ok(ArchiveExtractResult {
-      name: descriptor.name.clone(),
+      name: descriptor.name.to_string(),
       destination: format_path(destination.as_ref()).to_string(),
       size: descriptor.size_real as u64,
     })
@@ -406,7 +406,7 @@ mod tests {
 
   #[test]
   fn an_entry_lands_under_its_volumes_root_as_a_real_tree() {
-    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, String::from("configs\\system.ltx"), 0, 0, 0);
+    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, "configs\\system.ltx".into(), 0, 0, 0);
 
     assert_eq!(
       ArchiveUnpacker::build_relative_path(Path::new("gamedata\\"), &descriptor).expect("safe archive path"),

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
@@ -71,6 +72,10 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// Place one entry in a volume and write it there.
   ///
   /// Reads as it decides: measure the entry, offer it to the volume holding its twin, make room for it, write it.
+  ///
+  /// The payload borrows the bytes that were read whenever it is stored rather than compressed, which is every entry
+  /// the engine does not expect compressed. Copying them would double the largest entry's cost in memory and memcpy
+  /// the whole archive on the way past.
   pub(crate) fn write_entry(&mut self, entry: &ArchivePackEntry) -> XrfResult<()> {
     let contents: Vec<u8> = fs::read(&entry.path)?;
     let size_real: u32 = u32::try_from(contents.len()).map_err(|_| {
@@ -101,7 +106,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
       self.start_next_volume()?;
     }
 
-    let payload: Vec<u8> = self.compress_payload(entry, &contents)?;
+    let payload: Cow<'_, [u8]> = self.compress_payload(entry, &contents)?;
     let size_compressed: u32 = to_format_size(payload.len(), "archive entry payload")?;
 
     self.make_room_for(&entry.name, payload.len() as u64, name.get_row_size())?;
@@ -242,7 +247,11 @@ impl<'a> ArchiveVolumeWriter<'a> {
   }
 
   /// Compress a payload when the engine expects it compressed and the result is actually smaller.
-  fn compress_payload(&mut self, entry: &ArchivePackEntry, contents: &[u8]) -> XrfResult<Vec<u8>> {
+  fn compress_payload<'contents>(
+    &mut self,
+    entry: &ArchivePackEntry,
+    contents: &'contents [u8],
+  ) -> XrfResult<Cow<'contents, [u8]>> {
     let is_compressible: bool = self.config.mode == ArchivePackMode::Compress
       && !contents.is_empty()
       && entry
@@ -253,7 +262,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     if !is_compressible {
       self.result.files_stored += 1;
 
-      return Ok(contents.to_vec());
+      return Ok(Cow::Borrowed(contents));
     }
 
     let compressed: Vec<u8> = lzokay::compress::compress_with_dict(contents, &mut self.dict)
@@ -264,11 +273,11 @@ impl<'a> ArchiveVolumeWriter<'a> {
     if compressed.len() + COMPRESSION_MARGIN >= contents.len() {
       self.result.files_stored += 1;
 
-      return Ok(contents.to_vec());
+      return Ok(Cow::Borrowed(contents));
     }
 
     self.result.files_compressed += 1;
 
-    Ok(compressed)
+    Ok(Cow::Owned(compressed))
   }
 }

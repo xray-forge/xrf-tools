@@ -39,7 +39,15 @@ export type ArchiveFileDescriptor = {
    * trailing separator; a zero-length entry without one is an empty file.
    */
   isDirectory: boolean;
-  /** Entry name as authored, which the engine registers verbatim. */
+  /**
+   * Entry name as authored, which the engine registers verbatim.
+   *
+   * Shared rather than owned outright: the merged name table keys entries by this same name and a mounted archive
+   * maps its engine identity back to it, so an owned copy per structure meant three allocations for one name.
+   *
+   * Sharing is an ownership choice about a table held for a session; the boundary states the field as the string a
+   * report carries, so the choice does not reach the bindings.
+   */
   name: string;
   /** Byte offset of the payload inside its volume. */
   offset: number;
@@ -75,6 +83,13 @@ export type ArchiveProject = {
    * search them in reverse to resolve an entry to the bytes this project's table names.
    */
   archives: Array<ArchiveDescriptor>;
+  /**
+   * Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
+   *
+   * The key is shared inside the process and a plain string on the wire. Sharing is an ownership choice about a table
+   * held for a session; a report describes one run, so the boundary states the key as what it serializes to rather
+   * than letting the choice reach the bindings.
+   */
   files: { [key in string]: ArchiveFileDescriptor };
   readPolicy: ArchiveProjectReadPolicy;
   /**

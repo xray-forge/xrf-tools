@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
+use std::sync::Arc;
 
 use xrf_archive::ArchiveProject;
 use xrf_error::{XrfError, XrfResult};
@@ -25,7 +26,12 @@ pub struct XrayArchiveSource {
   /// Normalized logical path to the key `project.files` stores.
   ///
   /// Archive headers keep names as authored, so the normalized form is derived once here rather than per lookup.
-  entries: HashMap<String, String>,
+  /// Engine identity to the authored name it folds from.
+  ///
+  /// The key is this source's own value: a normalized logical path exists nowhere else. The value is the archive's
+  /// name for the same entry, shared with the descriptor that owns it rather than cloned, since it is only ever used
+  /// to address that descriptor again.
+  entries: HashMap<String, Arc<str>>,
   collisions: Vec<XrayPathCollision>,
 }
 
@@ -86,8 +92,8 @@ impl XrayArchiveSource {
   /// A collision is recorded rather than refused: a person has to be able to open a volume set to learn what is wrong
   /// with it, and the engine does not refuse it either.
   // todo: Header order is dropped by the reader, so the within-volume rule is an approximation.
-  fn index(project: &ArchiveProject) -> (HashMap<String, String>, Vec<XrayPathCollision>) {
-    let mut entries: HashMap<String, String> = HashMap::with_capacity(project.files.len());
+  fn index(project: &ArchiveProject) -> (HashMap<String, Arc<str>>, Vec<XrayPathCollision>) {
+    let mut entries: HashMap<String, Arc<str>> = HashMap::with_capacity(project.files.len());
     let mut collisions: Vec<XrayPathCollision> = Vec::new();
 
     for (name, descriptor) in &project.files {
@@ -103,18 +109,17 @@ impl XrayArchiveSource {
 
       match entries.entry(normalized) {
         Entry::Vacant(slot) => {
-          slot.insert(name.clone());
+          slot.insert(Arc::clone(name));
         }
         Entry::Occupied(mut slot) => {
-          let incumbent: String = slot.get().clone();
+          let incumbent: Arc<str> = Arc::clone(slot.get());
           let logical_path: XrayLogicalPath = XrayLogicalPath::from_normalized(slot.key().clone());
-          let is_replacing: bool =
-            (descriptor.volume as usize, name.as_str()) > Self::get_precedence(project, &incumbent);
+          let is_replacing: bool = (descriptor.volume as usize, &**name) > Self::get_precedence(project, &incumbent);
 
           let (kept, unreachable) = if is_replacing {
-            (name.as_str(), incumbent.as_str())
+            (&**name, &*incumbent)
           } else {
-            (incumbent.as_str(), name.as_str())
+            (&*incumbent, &**name)
           };
 
           collisions.push(XrayPathCollision {
@@ -124,7 +129,7 @@ impl XrayArchiveSource {
           });
 
           if is_replacing {
-            slot.insert(name.clone());
+            slot.insert(Arc::clone(name));
           }
         }
       }
@@ -261,6 +266,7 @@ impl XrayAssetSource for XrayArchiveSource {
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
+  use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
 
@@ -300,9 +306,11 @@ mod tests {
             .position(|candidate| candidate == volume)
             .expect("an entry names a volume of its own set") as u32;
 
+          let name: Arc<str> = Arc::from(*name);
+
           (
-            (*name).to_owned(),
-            ArchiveFileDescriptor::new(0, (*name).to_owned(), 0, *size, *size).in_volume(index),
+            Arc::clone(&name),
+            ArchiveFileDescriptor::new(0, name, 0, *size, *size).in_volume(index),
           )
         })
         .collect(),
