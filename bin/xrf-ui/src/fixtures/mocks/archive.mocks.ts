@@ -33,13 +33,12 @@ export function mockArchiveReadPolicy(overrides: Partial<ArchiveProjectReadPolic
 export function mockArchiveFileDescriptor(overrides: Partial<ArchiveFileDescriptor> = {}): ArchiveFileDescriptor {
   const descriptor: ArchiveFileDescriptor = {
     crc: 0x12345678,
-    destination: "gamedata",
     isDirectory: false,
     name: "configs\\system.ltx",
     offset: 4096,
     sizeCompressed: 2048,
     sizeReal: 2048,
-    source: "C:\\game\\database\\configs.db0",
+    volume: 0,
     ...overrides,
   };
 

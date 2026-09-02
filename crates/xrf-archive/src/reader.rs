@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
@@ -11,7 +11,8 @@ use regex::Regex;
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::decompress;
 use xrf_utils::{
-  XRayEncoding, assert, decode_bytes_to_string_without_bom_handling, format_path, new_windows1251_encoder,
+  XRayEncoding, assert, decode_bytes_to_string_without_bom_handling, format_path, new_declared_vec,
+  new_windows1251_encoder,
 };
 
 use crate::archive_descriptor::ArchiveDescriptor;
@@ -22,7 +23,6 @@ use crate::constants::{
   CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_MASK, CHUNK_ID_METADATA_READ,
   DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
-use crate::file_io::allocate_declared;
 
 /// Patterns of the `[header]` metadata chunk, compiled once.
 ///
@@ -94,17 +94,7 @@ impl ArchiveReader {
       ))
     })?;
     let metadata = self.file.metadata()?;
-
-    // Made once per volume, then handed to every entry as a refcount. Building them per entry is what used to put one
-    // full copy of the volume path in each of tens of thousands of descriptors.
-    let source: Arc<Path> = Arc::from(header.archive_path);
-    let destination: Arc<Path> = Arc::from(header.output_root_path);
-
-    let files: HashMap<String, ArchiveFileDescriptor> = header
-      .files
-      .into_iter()
-      .map(|(name, descriptor)| (name, descriptor.with_archive_paths(&source, &destination)))
-      .collect();
+    let files: HashMap<String, ArchiveFileDescriptor> = header.files;
 
     // Summed here because this is the last point the volume's own entries are known: after the merge a later volume
     // may shadow one of them, and a per-volume total counts what the volume holds rather than what survives.
@@ -116,8 +106,8 @@ impl ArchiveReader {
         created_at: Self::timestamp_millis(metadata.created().ok()),
         entries: files.len(),
         modified_at: Self::timestamp_millis(metadata.modified().ok()),
-        output_root_path: destination,
-        path: source,
+        output_root_path: header.output_root_path,
+        path: header.archive_path,
         size_compressed,
         size_real,
       },
@@ -216,7 +206,7 @@ impl ArchiveReader {
   }
 
   fn read_chunk<T: Read>(file: &mut T, chunk_usize: usize, compressed: bool) -> XrfResult<Vec<u8>> {
-    let mut buffer: Vec<u8> = allocate_declared(chunk_usize, "an archive header chunk")?;
+    let mut buffer: Vec<u8> = new_declared_vec(chunk_usize, "an archive header chunk")?;
 
     file.read_exact(buffer.as_mut_slice())?;
 

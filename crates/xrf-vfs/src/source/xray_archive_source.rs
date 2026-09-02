@@ -4,7 +4,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
 
-use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
+use xrf_archive::ArchiveProject;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -87,13 +87,6 @@ impl XrayArchiveSource {
   /// with it, and the engine does not refuse it either.
   // todo: Header order is dropped by the reader, so the within-volume rule is an approximation.
   fn index(project: &ArchiveProject) -> (HashMap<String, String>, Vec<XrayPathCollision>) {
-    let ranks: HashMap<&Path, usize> = project
-      .archives
-      .iter()
-      .enumerate()
-      .map(|(rank, archive)| (archive.path.as_ref(), rank))
-      .collect();
-
     let mut entries: HashMap<String, String> = HashMap::with_capacity(project.files.len());
     let mut collisions: Vec<XrayPathCollision> = Vec::new();
 
@@ -116,7 +109,7 @@ impl XrayArchiveSource {
           let incumbent: String = slot.get().clone();
           let logical_path: XrayLogicalPath = XrayLogicalPath::from_normalized(slot.key().clone());
           let is_replacing: bool =
-            (Self::get_rank_of(&ranks, descriptor), name.as_str()) > Self::get_precedence(project, &ranks, &incumbent);
+            (descriptor.volume as usize, name.as_str()) > Self::get_precedence(project, &incumbent);
 
           let (kept, unreachable) = if is_replacing {
             (name.as_str(), incumbent.as_str())
@@ -140,17 +133,15 @@ impl XrayArchiveSource {
     (entries, collisions)
   }
 
-  /// Which volume of the set holds an entry, as a position in merge order.
-  fn get_rank_of(ranks: &HashMap<&Path, usize>, descriptor: &ArchiveFileDescriptor) -> usize {
-    ranks.get(descriptor.source.as_ref()).copied().unwrap_or_default()
-  }
-
   /// What decides between two entries folding to one identity: volume order first, then the authored name.
-  fn get_precedence<'a>(project: &ArchiveProject, ranks: &HashMap<&Path, usize>, name: &'a str) -> (usize, &'a str) {
+  ///
+  /// An entry records the volume it came from as a position in merge order, so the volume rank this compares on is the
+  /// entry's own field rather than something recovered by matching paths back to the volume list.
+  fn get_precedence<'a>(project: &ArchiveProject, name: &'a str) -> (usize, &'a str) {
     let rank: usize = project
       .files
       .get(name)
-      .map_or_else(usize::default, |descriptor| Self::get_rank_of(ranks, descriptor));
+      .map_or(usize::default(), |descriptor| descriptor.volume as usize);
 
     (rank, name)
   }
@@ -162,7 +153,8 @@ impl XrayArchiveSource {
       volume: project
         .files
         .get(name)
-        .map(|descriptor| descriptor.source.to_path_buf())
+        .and_then(|descriptor| project.archives.get(descriptor.volume as usize))
+        .map(|volume| volume.path.clone())
         .unwrap_or_default(),
     }
   }
@@ -269,7 +261,6 @@ impl XrayAssetSource for XrayArchiveSource {
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
-  use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
 
@@ -293,8 +284,8 @@ mod tests {
           created_at: None,
           entries: 0,
           modified_at: None,
-          output_root_path: Arc::from(Path::new("gamedata")),
-          path: Arc::from(Path::new(*volume)),
+          output_root_path: PathBuf::from("gamedata"),
+          path: PathBuf::from(*volume),
           size_compressed: 0,
           size_real: 0,
         })
@@ -302,10 +293,16 @@ mod tests {
       files: files
         .iter()
         .map(|(volume, name, size)| {
+          // Cases name their volume, which reads better than a position; the project addresses it by position, so the
+          // fixture resolves one to the other exactly as reading a real set does.
+          let index: u32 = volumes
+            .iter()
+            .position(|candidate| candidate == volume)
+            .expect("an entry names a volume of its own set") as u32;
+
           (
             (*name).to_owned(),
-            ArchiveFileDescriptor::new(0, (*name).to_owned(), 0, *size, *size)
-              .with_archive_paths(&Arc::from(Path::new(*volume)), &Arc::from(Path::new("gamedata"))),
+            ArchiveFileDescriptor::new(0, (*name).to_owned(), 0, *size, *size).in_volume(index),
           )
         })
         .collect(),

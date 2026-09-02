@@ -14,17 +14,9 @@ export type ArchiveDescriptor = {
   modifiedAt: number | null;
   /** Entries this volume's name table holds, before any merge shadows one of them. */
   entries: number;
-  /**
-   * Root the volume unpacks under, from `[header] entry_point` with its alias stripped.
-   *
-   * The same allocation every entry of this volume carries as its `destination`.
-   */
+  /** Root the volume unpacks under, from `[header] entry_point` with its alias stripped. */
   outputRootPath: string;
-  /**
-   * The volume file this descriptor was read from.
-   *
-   * The same allocation every entry of this volume carries as its `source`.
-   */
+  /** The volume file this descriptor was read from. */
   path: string;
   /** Bytes this volume's entries occupy as stored, summed while its name table was read. */
   sizeCompressed: number;
@@ -41,19 +33,6 @@ export type ArchiveFileDescriptor = {
   /** CRC32 of the unpacked payload, recorded by the packer and verified on decompression. */
   crc: number;
   /**
-   * The volume file holding the payload.
-   *
-   * Shared with the volume's own descriptor rather than copied: a set has a handful of volumes and tens of thousands
-   * of entries, and every entry of one volume names the same file. Serializes as the path it points at.
-   */
-  source: string;
-  /**
-   * Root the entry unpacks under, from its volume's header.
-   *
-   * Shared for the same reason as [`Self::source`].
-   */
-  destination: string;
-  /**
    * Whether the entry names a directory rather than a file with bytes.
    *
    * A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
@@ -62,12 +41,23 @@ export type ArchiveFileDescriptor = {
   isDirectory: boolean;
   /** Entry name as authored, which the engine registers verbatim. */
   name: string;
-  /** Byte offset of the payload inside [`Self::source`]. */
+  /** Byte offset of the payload inside its volume. */
   offset: number;
   /** Payload bytes as stored in the volume. */
   sizeCompressed: number;
   /** Payload bytes once unpacked. */
   sizeReal: number;
+  /**
+   * Which volume holds the payload, as a position in [`crate::ArchiveProject::archives`].
+   *
+   * A position rather than a path, because an entry belongs to a project and the project already describes each
+   * volume once. Naming the volume again per entry would make every read a search for it, and would let an entry
+   * claim a volume its own project does not hold. The position is also the volume's merge rank, which is what
+   * decides between two entries claiming one name.
+   *
+   * Set by [`crate::ArchiveProject`] as it merges each volume, and stable for the life of that project.
+   */
+  volume: number;
 };
 
 /**

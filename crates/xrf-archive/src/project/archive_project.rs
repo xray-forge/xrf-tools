@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use walkdir::{DirEntry, Error as WalkError, WalkDir};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, format_path_or};
+use xrf_utils::{format_path, format_path_or, to_format_size};
 
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
@@ -134,10 +134,14 @@ impl ArchiveProject {
       log::info!("Reading archive file: {}", format_path(volume));
 
       let (descriptor, entries) = ArchiveReader::from_path(volume)?.read_archive()?;
+      // A set of more than `u32::MAX` volumes cannot be described by the format, and a silent narrowing here would
+      // attribute entries to the wrong file rather than refusing the set.
+      let index: u32 = to_format_size(archives.len(), "archive volume count")?;
 
-      // Moved in, not cloned out: volumes are read in merge order, so a later one overwrites the name a earlier one
-      // claimed, and nothing retains a second copy of what it inserted.
-      files.extend(entries);
+      // Moved in, not cloned out: volumes are read in merge order, so a later one overwrites the name an earlier one
+      // claimed, and nothing retains a second copy of what it inserted. Attributing each entry here is the only point
+      // that knows both the entry and which volume of the set it arrived from.
+      files.extend(entries.into_iter().map(|(name, entry)| (name, entry.in_volume(index))));
       archives.push(descriptor);
     }
 
@@ -163,6 +167,26 @@ impl ArchiveProject {
       read_policy: ArchiveProjectReadPolicy::default(),
       root,
       size_real,
+    })
+  }
+
+  /// The volume an entry's payload sits in.
+  ///
+  /// An entry records its volume as a position in [`Self::archives`], so this is a bounds-checked index rather than a
+  /// search. It fails only for a descriptor that belongs to some other project, which is the one way the position can
+  /// be wrong.
+  ///
+  /// # Errors
+  ///
+  /// Returns a read error when the entry names a volume outside this project.
+  pub fn get_volume_of(&self, descriptor: &ArchiveFileDescriptor) -> XrfResult<&ArchiveDescriptor> {
+    self.archives.get(descriptor.volume as usize).ok_or_else(|| {
+      XrfError::new_read_error(format!(
+        "entry '{}' names volume {}, and its project holds {}",
+        descriptor.name,
+        descriptor.volume,
+        self.archives.len()
+      ))
     })
   }
 

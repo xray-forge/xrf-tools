@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_archive::ArchiveFileDescriptor;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 
 /// One name-table entry, as a machine reads it.
 ///
@@ -20,18 +20,24 @@ pub struct ArchiveEntryReport {
 }
 
 impl ArchiveEntryReport {
-  pub fn new(entry: &ArchiveFileDescriptor) -> Self {
+  pub fn new(project: &ArchiveProject, entry: &ArchiveFileDescriptor) -> Self {
     Self {
       is_directory: entry.is_directory,
       name: entry.name.clone(),
       size_compressed: u64::from(entry.size_compressed),
       size_real: u64::from(entry.size_real),
-      source: xrf_utils::to_portable_path_string(&entry.source),
+      // An entry names its volume by position, so the set it belongs to is what turns that back into a path a reader
+      // of the report can act on. An entry whose volume the project does not hold reports no source rather than
+      // failing a listing over a diagnostic field.
+      source: project
+        .get_volume_of(entry)
+        .map(|volume| xrf_utils::to_portable_path_string(&volume.path))
+        .unwrap_or_default(),
     }
   }
 
-  pub fn list(entries: &[&ArchiveFileDescriptor]) -> Vec<Self> {
-    entries.iter().map(|entry| Self::new(entry)).collect()
+  pub fn list(project: &ArchiveProject, entries: &[&ArchiveFileDescriptor]) -> Vec<Self> {
+    entries.iter().map(|entry| Self::new(project, entry)).collect()
   }
 }
 
@@ -47,10 +53,10 @@ pub struct ArchiveListReport {
 }
 
 impl ArchiveListReport {
-  pub fn new(entries: &[&ArchiveFileDescriptor]) -> Self {
+  pub fn new(project: &ArchiveProject, entries: &[&ArchiveFileDescriptor]) -> Self {
     Self {
       total: entries.len(),
-      entries: ArchiveEntryReport::list(entries),
+      entries: ArchiveEntryReport::list(project, entries),
     }
   }
 }

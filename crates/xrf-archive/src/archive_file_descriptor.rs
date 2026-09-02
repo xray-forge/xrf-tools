@@ -1,6 +1,3 @@
-use std::path::Path;
-use std::sync::{Arc, LazyLock};
-
 use serde::Serialize;
 
 /// One entry of a volume's name table: where its payload sits and how to verify it.
@@ -12,15 +9,6 @@ use serde::Serialize;
 pub struct ArchiveFileDescriptor {
   /// CRC32 of the unpacked payload, recorded by the packer and verified on decompression.
   pub crc: u32,
-  /// The volume file holding the payload.
-  ///
-  /// Shared with the volume's own descriptor rather than copied: a set has a handful of volumes and tens of thousands
-  /// of entries, and every entry of one volume names the same file. Serializes as the path it points at.
-  pub source: Arc<Path>,
-  /// Root the entry unpacks under, from its volume's header.
-  ///
-  /// Shared for the same reason as [`Self::source`].
-  pub destination: Arc<Path>,
   /// Whether the entry names a directory rather than a file with bytes.
   ///
   /// A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
@@ -28,70 +16,59 @@ pub struct ArchiveFileDescriptor {
   pub is_directory: bool,
   /// Entry name as authored, which the engine registers verbatim.
   pub name: String,
-  /// Byte offset of the payload inside [`Self::source`].
+  /// Byte offset of the payload inside its volume.
   pub offset: u32,
   /// Payload bytes as stored in the volume.
   pub size_compressed: u32,
   /// Payload bytes once unpacked.
   pub size_real: u32,
-}
-
-/// The placeholder a descriptor carries between the name table and its volume's header.
-///
-/// Shared rather than allocated per descriptor: the name table is parsed before the header paths are known, so every
-/// entry passes through this state on its way to [`ArchiveFileDescriptor::with_archive_paths`].
-fn new_empty_path() -> Arc<Path> {
-  static EMPTY: LazyLock<Arc<Path>> = LazyLock::new(|| Arc::from(Path::new("")));
-
-  Arc::clone(&EMPTY)
+  /// Which volume holds the payload, as a position in [`crate::ArchiveProject::archives`].
+  ///
+  /// A position rather than a path, because an entry belongs to a project and the project already describes each
+  /// volume once. Naming the volume again per entry would make every read a search for it, and would let an entry
+  /// claim a volume its own project does not hold. The position is also the volume's merge rank, which is what
+  /// decides between two entries claiming one name.
+  ///
+  /// Set by [`crate::ArchiveProject`] as it merges each volume, and stable for the life of that project.
+  pub volume: u32,
 }
 
 impl ArchiveFileDescriptor {
-  /// Creates a descriptor from name-table fields, deriving the extension; volume paths attach separately through
-  /// [`Self::with_archive_paths`], because the table does not record them.
+  /// Creates a descriptor from the fields a name table records.
+  ///
+  /// The volume is left at zero: a name table says where a payload sits inside its own volume and nothing about which
+  /// volume that is, so only the project merging them can answer. [`Self::in_volume`] is where that happens.
   pub fn new(crc: u32, name: String, offset: u32, size_compressed: u32, size_real: u32) -> Self {
     Self {
       crc,
-      source: new_empty_path(),
-      destination: new_empty_path(),
       is_directory: name.ends_with(['\\', '/']),
       name,
       offset,
       size_compressed,
       size_real,
+      volume: 0,
     }
   }
 
-  /// Attaches the volume the entry was read from and the root it unpacks under.
-  pub fn with_archive_paths(mut self, source: &Arc<Path>, destination: &Arc<Path>) -> Self {
-    self.source = Arc::clone(source);
-    self.destination = Arc::clone(destination);
+  /// The same entry, attributed to the volume at `volume` of its project.
+  pub fn in_volume(mut self, volume: u32) -> Self {
+    self.volume = volume;
+
     self
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use std::path::Path;
-  use std::sync::Arc;
-
   use super::ArchiveFileDescriptor;
 
   #[test]
-  fn descriptor_shares_the_archive_paths_it_is_given() {
-    for name in ["configs\\system.LTX", "scripts/actor.script", "readme"] {
-      let source: Arc<Path> = Arc::from(Path::new("database.db0"));
-      let destination: Arc<Path> = Arc::from(Path::new("gamedata"));
-      let descriptor: ArchiveFileDescriptor =
-        ArchiveFileDescriptor::new(0, name.into(), 0, 0, 0).with_archive_paths(&source, &destination);
+  fn an_entry_belongs_to_the_volume_it_is_attributed_to() {
+    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, "configs\\system.ltx".into(), 0, 0, 0);
 
-      assert_eq!(descriptor.source.as_ref(), Path::new("database.db0"));
-      assert_eq!(descriptor.destination.as_ref(), Path::new("gamedata"));
-
-      // The point of sharing: an entry carries a refcount on its volume's path, not a copy of it.
-      assert!(Arc::ptr_eq(&descriptor.source, &source));
-      assert!(Arc::ptr_eq(&descriptor.destination, &destination));
-    }
+    // A name table cannot say which volume it is, so a descriptor starts at the first and is placed by its project.
+    assert_eq!(descriptor.volume, 0);
+    assert_eq!(descriptor.in_volume(3).volume, 3);
   }
 
   #[test]

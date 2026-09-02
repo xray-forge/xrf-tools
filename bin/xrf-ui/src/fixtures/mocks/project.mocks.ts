@@ -16,12 +16,10 @@ export function mockArchiveFile(overrides: Partial<ArchiveFileDescriptor> = {}):
   // Through the descriptor fixture, so `isDirectory` is derived in one place rather than spelled out in two.
   return mockArchiveFileDescriptor({
     crc: 123456,
-    destination: "gamedata\\config\\system.ltx",
     name: "system.ltx",
     offset: 0,
     sizeCompressed: 512,
     sizeReal: 2048,
-    source: "db\\db0",
     ...overrides,
   });
 }
@@ -58,11 +56,9 @@ export function mockArchivesProject(overrides: Partial<ArchiveProject> = {}): Ar
       "config\\system.ltx": mockArchiveFile(),
       "config\\weapons\\wpn_ak74.ltx": mockArchiveFile({
         name: "wpn_ak74.ltx",
-        destination: "gamedata\\config\\weapons\\wpn_ak74.ltx",
       }),
       "meshes\\dynamics\\weapons\\wpn_ak74.ogf": mockArchiveFile({
         name: "wpn_ak74.ogf",
-        destination: "gamedata\\meshes\\dynamics\\weapons\\wpn_ak74.ogf",
       }),
     },
     readPolicy: mockArchiveReadPolicy(),

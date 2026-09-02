@@ -1,9 +1,8 @@
 use std::fs;
-use std::fs::File;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveVolumeReaders};
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
@@ -130,30 +129,25 @@ fn unpack_writes_every_entry_across_several_workers() {
   );
 }
 
-/// A descriptor belonging to some other set is refused rather than read out of whichever volume happens to be open.
+/// An entry naming a volume its project does not hold is refused rather than read out of another one.
 ///
-/// The readers open exactly what their own project's entries name, so an entry from elsewhere has no volume here.
-/// Serving it anyway would mean reading whatever its offset landed in, which is how one archive's bytes end up
-/// written out under another archive's name.
+/// Attribution is a position in the set, so this is the one way it can be wrong: a descriptor that came from a
+/// different project. Serving it would mean reading whichever volume that position happened to land on.
 #[test]
-fn readers_refuse_an_entry_from_another_set() {
-  let directory: PathBuf = create_temporary_directory("readers-foreign-entry");
-  let mine_at: PathBuf = directory.join("mine");
-  let theirs_at: PathBuf = directory.join("theirs");
+fn an_entry_naming_a_volume_outside_its_project_is_refused() {
+  let directory: PathBuf = create_temporary_directory("entry-outside-project");
+  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
+  let stray: ArchiveFileDescriptor = project
+    .files
+    .values()
+    .next()
+    .expect("an entry")
+    .clone()
+    .in_volume(project.archives.len() as u32);
 
-  fs::create_dir_all(&mine_at).expect("one set");
-  fs::create_dir_all(&theirs_at).expect("another set");
-
-  let mine: ArchiveProject = create_project(&mine_at, &[Entry::stored("configs\\system.ltx", b"[section]")]);
-  let theirs: ArchiveProject = create_project(&theirs_at, &[Entry::stored("configs\\other.ltx", b"[other]")]);
-
-  let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(&mine).expect("volumes open");
-  let foreign: &ArchiveFileDescriptor = theirs.files.values().next().expect("an entry");
-  let mut target: File = File::create(directory.join("out.bin")).expect("target file");
-
-  let error: XrfError = readers
-    .write_descriptor_contents(&mut target, foreign)
-    .expect_err("an entry from another set has no volume here");
+  let error: XrfError = project
+    .get_volume_of(&stray)
+    .expect_err("a position past the set has no volume");
 
   assert!(matches!(error, XrfError::Read { .. }), "{error}");
 }

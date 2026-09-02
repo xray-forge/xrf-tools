@@ -3,7 +3,6 @@ use xrf_utils::encode_w1251_bytes_to_string;
 
 use crate::ArchiveProject;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
-use crate::file_io::read_descriptor_bytes;
 use crate::project::archive_project_read_result::ProjectReadResult;
 
 impl ArchiveProject {
@@ -18,7 +17,9 @@ impl ArchiveProject {
       .get(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot read '{name}' - no such file in the archive.")))?;
 
-    read_descriptor_bytes(descriptor)
+    // One read, so one volume opened: the same seam an unpack holds across tens of thousands of entries, used here for
+    // the single entry this asks for.
+    self.open_volumes()?.read_bytes(descriptor)
   }
 
   /// Read one archived file as text, subject to the project's read policy.

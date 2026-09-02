@@ -4,12 +4,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Error as IoError, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use crc32fast::hash;
-use xrf_archive::ArchiveFileDescriptor;
-use xrf_archive::ArchiveProject;
-use xrf_archive::ArchiveProjectReadPolicy;
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
 
 pub(crate) struct Entry {
   name: &'static str,
@@ -56,15 +53,13 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
 
     payload.extend_from_slice(&stored);
 
-    let mut descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(
+    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(
       hash(entry.contents),
       entry.name.into(),
       offset,
       stored.len() as u32,
       entry.contents.len() as u32,
     );
-
-    descriptor.source = Arc::from(source.as_path());
 
     files.insert(entry.name.into(), descriptor);
   }
@@ -75,7 +70,17 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
     .expect("test archive payload");
 
   ArchiveProject {
-    archives: Vec::new(),
+    // The volume the entries were laid out in. A project describes its volumes and its entries address them by
+    // position, so a fixture that skipped this would be describing a set no reader could produce.
+    archives: vec![ArchiveDescriptor {
+      created_at: None,
+      entries: files.len(),
+      modified_at: None,
+      output_root_path: PathBuf::new(),
+      path: source.clone(),
+      size_compressed: payload.len() as u64,
+      size_real: payload.len() as u64,
+    }],
     files,
     read_policy: ArchiveProjectReadPolicy::default(),
     root: directory.into(),

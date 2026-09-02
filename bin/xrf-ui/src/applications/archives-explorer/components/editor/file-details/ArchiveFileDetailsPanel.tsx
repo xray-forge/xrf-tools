@@ -4,7 +4,8 @@ import { ReactElement, useCallback } from "react";
 import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { ArchiveFileDetailRow } from "@/applications/archives-explorer/components/editor/file-details/ArchiveFileDetailRow";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { getArchiveVolumeOf } from "@/core/archive/files";
+import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
@@ -16,6 +17,7 @@ export interface IArchiveFileDetailsPanelProps extends BaseComponentProps {
 
 export function ArchiveFileDetailsPanel({ archivesService }: IArchiveFileDetailsPanelProps): ReactElement {
   const descriptor: Nullable<ArchiveFileDescriptor> = archivesService.selectedFile;
+  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(archivesService.project.value, descriptor);
 
   const getCompressionLabel = useCallback((descriptor: ArchiveFileDescriptor): string => {
     if (descriptor.sizeReal === descriptor.sizeCompressed) {
@@ -49,8 +51,8 @@ export function ArchiveFileDetailsPanel({ archivesService }: IArchiveFileDetails
 
       <Box sx={{ padding: 2 }}>
         <ArchiveFileDetailRow label={"Extension"} value={getFileExtension(descriptor.name) || "-"} />
-        <ArchiveFileDetailRow label={"Source archive"} value={descriptor.source} isPath />
-        <ArchiveFileDetailRow label={"Destination root"} value={descriptor.destination} isPath />
+        <ArchiveFileDetailRow label={"Source archive"} value={volume?.path ?? "-"} isPath />
+        <ArchiveFileDetailRow label={"Destination root"} value={volume?.outputRootPath ?? "-"} isPath />
         <ArchiveFileDetailRow label={"Real size"} value={formatBytes(descriptor.sizeReal)} />
         <ArchiveFileDetailRow label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
         <ArchiveFileDetailRow label={"Compression"} value={getCompressionLabel(descriptor)} />

@@ -10,8 +10,8 @@ use std::time::Duration;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use xrf_archive::ArchiveFileDescriptor;
+use xrf_archive::ArchiveOpenVolumes;
 use xrf_archive::ArchiveProject;
-use xrf_archive::{ArchiveVolumeReaders, write_descriptor_contents};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
@@ -82,12 +82,12 @@ impl ArchiveUnpacker {
 
     // Opened before the write phase and shared by reference: every worker reads by position, so one handle per volume
     // serves the whole run without a cursor to race for.
-    let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(project)?;
+    let volumes: ArchiveOpenVolumes<'_> = project.open_volumes()?;
 
     let prepared: HashMap<PathBuf, PathBuf> = {
       let preparing: JobScope = job.enter(UNPACK_PHASE_PREPARE, None);
 
-      Self::unpack_dirs(project, &destination, &preparing)?
+      Self::unpack_dirs(&volumes, &destination, &preparing)?
     };
 
     let prepared_at: Duration = job.elapsed();
@@ -104,7 +104,7 @@ impl ArchiveUnpacker {
           // A directory row carries no payload, and the tree it names was created during preparation. It is counted
           // anyway, so the progress total stays the entry count the project reports holding.
           if !descriptor.is_directory {
-            Self::unpack_file(&destination, &readers, &prepared, descriptor)?;
+            Self::unpack_file(&destination, &volumes, &prepared, descriptor)?;
 
             tally.files.fetch_add(1, Ordering::Relaxed);
             tally
@@ -180,7 +180,7 @@ impl ArchiveUnpacker {
     destination.create_root()?;
 
     // One handle per volume here too: a directory extraction writes many entries of the same set.
-    let readers: ArchiveVolumeReaders = ArchiveVolumeReaders::open(project)?;
+    let volumes: ArchiveOpenVolumes<'_> = project.open_volumes()?;
 
     // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
     // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
@@ -215,7 +215,7 @@ impl ArchiveUnpacker {
       if descriptor.is_directory {
         destination.create_directory(relative)?;
       } else {
-        readers.write_descriptor_contents(&mut destination.create_file(relative)?, descriptor)?;
+        volumes.write_contents(&mut destination.create_file(relative)?, descriptor)?;
 
         extracted_count += 1;
         size += descriptor.size_real as u64;
@@ -254,7 +254,11 @@ impl ArchiveUnpacker {
       fs::create_dir_all(parent)?;
     }
 
-    write_descriptor_contents(&mut Self::create_target(destination.as_ref())?, descriptor)?;
+    // One entry, so the volumes are opened for the length of this call: the same seam a whole unpack holds open,
+    // asked for one file.
+    project
+      .open_volumes()?
+      .write_contents(&mut Self::create_target(destination.as_ref())?, descriptor)?;
 
     Ok(ArchiveExtractResult {
       name: descriptor.name.clone(),
@@ -318,11 +322,11 @@ impl ArchiveUnpacker {
   /// preparation collects and an entry that never reaches disk.
   fn unpack_file(
     destination: &RootedDestination,
-    readers: &ArchiveVolumeReaders,
+    volumes: &ArchiveOpenVolumes<'_>,
     prepared: &HashMap<PathBuf, PathBuf>,
     descriptor: &ArchiveFileDescriptor,
   ) -> XrfResult {
-    let relative: PathBuf = Self::build_relative_path(descriptor)?;
+    let relative: PathBuf = Self::build_relative_path(volumes.get_unpack_root_of(descriptor)?, descriptor)?;
     let verified: Option<(&PathBuf, &OsStr)> = relative
       .parent()
       .and_then(|parent| prepared.get(parent))
@@ -333,7 +337,7 @@ impl ArchiveUnpacker {
       None => destination.create_file(&relative)?,
     };
 
-    readers.write_descriptor_contents(&mut target, descriptor)
+    volumes.write_contents(&mut target, descriptor)
   }
 
   /// Creates every directory the entries need, and returns where each one landed.
@@ -341,14 +345,14 @@ impl ArchiveUnpacker {
   /// The map is what stops the write phase walking the same components again for every file in a directory: it holds
   /// one verified host path per relative directory, keyed the way [`Self::build_relative_path`] spells it.
   fn unpack_dirs(
-    project: &ArchiveProject,
+    volumes: &ArchiveOpenVolumes<'_>,
     destination: &RootedDestination,
     preparing: &JobScope,
   ) -> XrfResult<HashMap<PathBuf, PathBuf>> {
     let mut set: HashSet<PathBuf> = HashSet::new();
 
-    for descriptor in project.files.values() {
-      let target: PathBuf = Self::build_relative_path(descriptor)?;
+    for descriptor in volumes.get_project().files.values() {
+      let target: PathBuf = Self::build_relative_path(volumes.get_unpack_root_of(descriptor)?, descriptor)?;
 
       let directory: Option<PathBuf> = if descriptor.is_directory {
         Some(target)
@@ -375,13 +379,16 @@ impl ArchiveUnpacker {
 
   /// Where one archived entry lands, relative to a destination root.
   ///
+  /// Takes the root rather than the open volumes, so deciding where an entry goes stays a question about two paths
+  /// that a test can ask without a filesystem.
+  ///
   /// Both halves are engine paths, so both are crossed into host components rather than pushed whole: an entry named
   /// `configs\system.ltx` is a single component to `std::path` on Linux, which unpacks the tree as a flat directory of
   /// files with backslashes in their names.
   ///
   /// Relative rather than already joined, because the destination is only ever reached one component at a time.
-  fn build_relative_path(descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
-    let mut path: PathBuf = to_host_relative(&descriptor.destination.to_string_lossy())?;
+  fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
+    let mut path: PathBuf = to_host_relative(&unpack_root.to_string_lossy())?;
 
     path.push(to_host_relative(&descriptor.name)?);
 
@@ -392,7 +399,6 @@ impl ArchiveUnpacker {
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
-  use std::sync::Arc;
 
   use xrf_archive::ArchiveFileDescriptor;
 
@@ -400,14 +406,10 @@ mod tests {
 
   #[test]
   fn an_entry_lands_under_its_volumes_root_as_a_real_tree() {
-    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, String::from("configs\\system.ltx"), 0, 0, 0)
-      .with_archive_paths(
-        &Arc::from(Path::new("textures.db0")),
-        &Arc::from(Path::new("gamedata\\")),
-      );
+    let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, String::from("configs\\system.ltx"), 0, 0, 0);
 
     assert_eq!(
-      ArchiveUnpacker::build_relative_path(&descriptor).expect("safe archive path"),
+      ArchiveUnpacker::build_relative_path(Path::new("gamedata\\"), &descriptor).expect("safe archive path"),
       PathBuf::from("gamedata").join("configs").join("system.ltx")
     );
   }

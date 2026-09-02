@@ -1,5 +1,4 @@
-use std::path::Path;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
@@ -19,13 +18,9 @@ pub struct ArchiveDescriptor {
   /// Entries this volume's name table holds, before any merge shadows one of them.
   pub entries: usize,
   /// Root the volume unpacks under, from `[header] entry_point` with its alias stripped.
-  ///
-  /// The same allocation every entry of this volume carries as its `destination`.
-  pub output_root_path: Arc<Path>,
+  pub output_root_path: PathBuf,
   /// The volume file this descriptor was read from.
-  ///
-  /// The same allocation every entry of this volume carries as its `source`.
-  pub path: Arc<Path>,
+  pub path: PathBuf,
   /// Bytes this volume's entries occupy as stored, summed while its name table was read.
   pub size_compressed: u64,
   /// Bytes this volume's entries occupy once unpacked, summed while its name table was read.

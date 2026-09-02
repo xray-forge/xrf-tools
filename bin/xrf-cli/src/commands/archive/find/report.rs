@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_archive::ArchiveFileDescriptor;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 
 use crate::commands::archive::list::report::ArchiveEntryReport;
 
@@ -17,10 +17,10 @@ pub struct ArchiveFindReport {
 }
 
 impl ArchiveFindReport {
-  pub fn new(query: &str, entries: &[&ArchiveFileDescriptor]) -> Self {
+  pub fn new(project: &ArchiveProject, query: &str, entries: &[&ArchiveFileDescriptor]) -> Self {
     Self {
       total: entries.len(),
-      entries: ArchiveEntryReport::list(entries),
+      entries: ArchiveEntryReport::list(project, entries),
       query: String::from(query),
     }
   }

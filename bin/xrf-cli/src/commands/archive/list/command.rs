@@ -71,7 +71,7 @@ impl GenericCommand for ListCommand {
           output,
           "{} [{compressed} stored, {unpacked} unpacked, {}]",
           entry.name,
-          format_path(&entry.source),
+          format_path(&project.get_volume_of(entry)?.path),
         );
       } else {
         xrf_output::info!(output, "{}", entry.name);
@@ -86,7 +86,7 @@ impl GenericCommand for ListCommand {
       xrf_utils::format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| ArchiveListReport::new(&entries))?;
+    context.set_result(|| ArchiveListReport::new(&project, &entries))?;
 
     Ok(())
   }

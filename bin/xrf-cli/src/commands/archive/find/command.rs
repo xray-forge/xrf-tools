@@ -80,7 +80,7 @@ impl GenericCommand for FindCommand {
           output,
           "{} [{size}, {compressed} stored, {unpacked} unpacked, {}]",
           entry.name,
-          format_path(&entry.source),
+          format_path(&project.get_volume_of(entry)?.path),
         );
       } else {
         xrf_output::info!(output, "{} [{size}]", entry.name);
@@ -95,7 +95,7 @@ impl GenericCommand for FindCommand {
       xrf_utils::format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| ArchiveFindReport::new(&query, &entries))?;
+    context.set_result(|| ArchiveFindReport::new(&project, &query, &entries))?;
 
     Ok(())
   }

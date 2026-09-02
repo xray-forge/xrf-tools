@@ -1,4 +1,4 @@
-import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -16,4 +16,22 @@ export function listArchiveFiles(project: Nullable<ArchiveProject>): Array<Archi
   return project
     ? Object.values(project.files).filter((descriptor: ArchiveFileDescriptor) => !descriptor.isDirectory)
     : [];
+}
+
+/**
+ * The volume an entry's payload sits in.
+ *
+ * An entry records its volume as a position in the project's `archives`, so the set it belongs to is what turns that
+ * back into a path. Reading it through here keeps the position an implementation detail of the model rather than
+ * something every view indexes for itself.
+ *
+ * @param project - Opened archive project, or null when none is open.
+ * @param descriptor - Entry whose volume is wanted.
+ * @returns The volume holding the entry, or null when the project does not hold that position.
+ */
+export function getArchiveVolumeOf(
+  project: Nullable<ArchiveProject>,
+  descriptor: Nullable<ArchiveFileDescriptor>
+): Nullable<ArchiveDescriptor> {
+  return project && descriptor ? (project.archives[descriptor.volume] ?? null) : null;
 }

@@ -38,6 +38,23 @@ pub fn new_bounded_vec<T>(count: u64, budget: u64, min_record_size: u64, what: &
   Ok(vector)
 }
 
+/// Create a vector of a length a file declared, when nothing bounds what it may declare.
+///
+/// [`new_bounded_vec`] is the one to reach for: a count read out of a file is untrusted, and a budget is what turns a
+/// hostile one into a rejected parse. Use this only where the declared length has no budget to check against - a
+/// decompressed size is the standard case, since what a payload expands to is not bounded by what it occupies. The
+/// reservation is still fallible, so an unsatisfiable length is reported rather than aborting the process.
+pub fn new_declared_vec(size: usize, what: &str) -> XrfResult<Vec<u8>> {
+  let mut buffer: Vec<u8> = Vec::new();
+
+  buffer
+    .try_reserve_exact(size)
+    .map_err(|error| XrfError::new_read_error(format!("cannot allocate {size} bytes for {what}: {error}")))?;
+  buffer.resize(size, 0u8);
+
+  Ok(buffer)
+}
+
 /// A fixed-width format field a length can be narrowed into.
 ///
 /// The label is carried here rather than read from [`std::any::type_name`], whose output the standard library does not
