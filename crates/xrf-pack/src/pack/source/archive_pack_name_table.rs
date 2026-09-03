@@ -6,9 +6,9 @@ use std::path::Path;
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
-use crate::pack::archive_pack_entry::ArchivePackEntry;
-use crate::pack::archive_pack_name_collision::ArchivePackNameCollision;
+use crate::pack::config::ArchivePackConfig;
+use crate::pack::source::ArchivePackEntry;
+use crate::pack::source::ArchivePackNameCollision;
 
 /// Every file and directory one packing run writes, under the name `CLocatorAPI::Register` folds it to, once each, in
 /// the order the engine's own table iterates.
@@ -190,8 +190,8 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::ArchivePackNameTable;
-  use crate::pack::archive_pack_config::ArchivePackConfig;
-  use crate::pack::archive_pack_entry::ArchivePackEntry;
+  use crate::pack::config::ArchivePackConfig;
+  use crate::pack::source::ArchivePackEntry;
 
   /// Rows the way the walk would hand them over, against host paths that need not exist.
   ///

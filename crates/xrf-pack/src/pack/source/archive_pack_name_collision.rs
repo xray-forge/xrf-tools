@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Result as FormatResult};
 use xrf_error::XrfError;
 use xrf_utils::format_path;
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
+use crate::pack::config::ArchivePackConfig;
 
 /// Authored names of different files that one engine name would fold together.
 ///

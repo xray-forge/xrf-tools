@@ -13,8 +13,8 @@ use xrf_vfs::{
   XrayPathCollision, XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XrayVfs,
 };
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_packer::ArchivePacker;
+use crate::pack::ArchivePacker;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
 const TEXTURE: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xfe];
 const CONFIG: &[u8] = b"[section]\nvalue = 1\n";

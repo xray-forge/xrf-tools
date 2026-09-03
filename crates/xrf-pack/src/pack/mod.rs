@@ -1,22 +1,29 @@
-pub(crate) mod archive_alias_table;
-pub(crate) mod archive_descriptor_table;
-pub(crate) mod archive_pack_config;
-pub(crate) mod archive_pack_config_codec;
-pub(crate) mod archive_pack_config_format;
-pub(crate) mod archive_pack_config_json;
-pub(crate) mod archive_pack_config_ltx;
-pub(crate) mod archive_pack_config_rules;
-pub(crate) mod archive_pack_entry;
-pub(crate) mod archive_pack_header_entry;
-pub(crate) mod archive_pack_name_collision;
-pub(crate) mod archive_pack_name_table;
-pub(crate) mod archive_pack_options;
-pub(crate) mod archive_pack_result;
-pub(crate) mod archive_pack_source;
-pub(crate) mod archive_pack_source_collector;
-pub(crate) mod archive_packer;
-pub(crate) mod archive_published_set;
-pub(crate) mod archive_volume_layout;
-pub(crate) mod archive_volume_writer;
+//! Writing a source tree into the `.db` volume set the engine mounts.
+//!
+//! The run is grouped by the question each part answers:
+//!
+//! - [`config`] — what a run was asked to pack, and the two files that configuration is authored in.
+//! - [`source`] — what the source tree holds, folded to the engine names one archive may register.
+//! - [`volume`] — how selected entries become volumes, and what the destination already publishes.
+//!
+//! [`ArchivePacker`] is the operation itself, ordering those three; [`ArchivePackNarrator`] is the only place that
+//! says what it decided, so a transcript of a run reads the same whichever phase produced the line.
+
+pub(crate) mod config;
+pub(crate) mod source;
+pub(crate) mod volume;
+
+mod archive_pack_decision;
+mod archive_pack_narrator;
+mod archive_pack_options;
+mod archive_pack_result;
+mod archive_packer;
+
 #[cfg(test)]
 mod tests;
+
+pub(crate) use archive_pack_decision::{ArchivePackEntryOutcome, ArchivePackSkipReason};
+pub(crate) use archive_pack_narrator::ArchivePackNarrator;
+pub use archive_pack_options::{ArchivePackOptions, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE};
+pub use archive_pack_result::ArchivePackResult;
+pub use archive_packer::ArchivePacker;

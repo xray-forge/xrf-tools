@@ -292,8 +292,14 @@ impl GenericCommand for PackCommand {
       }
     }
 
-    let result: ArchivePackResult =
-      ArchivePacker::pack_opt(&config, ArchivePackOptions::default().with_force(is_forced))?;
+    // The packer says each decision itself, at verbose level, as it is made: a log of a run that stops is then
+    // already naming the volume and the last entry it reached.
+    let result: ArchivePackResult = ArchivePacker::pack_opt(
+      &config,
+      ArchivePackOptions::default()
+        .with_output(output.clone())
+        .with_force(is_forced),
+    )?;
 
     for volume in &result.volumes {
       xrf_output::info!(output, "Wrote {}", format_path(volume));
@@ -320,6 +326,9 @@ impl GenericCommand for PackCommand {
       xrf_utils::format_bytes_pair(result.size_source, result.size_written);
 
     xrf_output::info!(output, "Size: {size_source} source, {size_written} written");
+
+    // Read off the result rather than divided here, so the terminal and the report cannot disagree on it.
+    xrf_output::info!(output, "Speed: {}/s", xrf_utils::format_bytes(result.speed));
 
     context.set_result(|| &result)?;
 

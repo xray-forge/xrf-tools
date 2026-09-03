@@ -3,7 +3,8 @@
 //! The selection dialect is xrCompress's, and it reads the same fields a caller edits, so it lives with them
 //! rather than with the walk that asks. `archive_pack_source.rs` decides what exists; this decides what is wanted.
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
+use crate::pack::ArchivePackSkipReason;
+use crate::pack::config::ArchivePackConfig;
 use crate::path::is_component_prefix;
 
 impl ArchivePackConfig {
@@ -29,12 +30,12 @@ impl ArchivePackConfig {
       .any(|directory| directory.is_recursive && is_component_prefix(name, &directory.path))
   }
 
-  /// Decide whether a file is left out of the archive.
+  /// Which rule leaves a file out of the archive, and none when it packs.
   ///
   /// The hard-coded half is `testSKIP` in `xrCompress.cpp`: editor intermediates, source control leftovers,
   /// and the texture variants the engine rebuilds. It is optional here because a caller packing something
   /// other than a game build has no reason to inherit it.
-  pub(crate) fn is_skipped_file(&self, name: &str) -> bool {
+  pub(crate) fn get_skip_reason(&self, name: &str) -> Option<ArchivePackSkipReason> {
     let lowered: String = name.to_ascii_lowercase();
     let file: &str = lowered.rsplit('\\').next().unwrap_or(&lowered);
     let (stem, extension) = match file.rsplit_once('.') {
@@ -47,13 +48,18 @@ impl ArchivePackConfig {
       .iter()
       .any(|pattern| matches_pattern(&extension, pattern))
     {
-      return true;
+      return Some(ArchivePackSkipReason::ExcludedExtension);
     }
 
     if !self.is_with_skip_list {
-      return false;
+      return None;
     }
 
+    Self::is_on_skip_list(&lowered, stem, &extension).then_some(ArchivePackSkipReason::SkipList)
+  }
+
+  /// The built-in list itself, over a lowered name already split into its stem and dotted extension.
+  fn is_on_skip_list(lowered: &str, stem: &str, extension: &str) -> bool {
     if lowered.contains("textures\\lod\\") || lowered.contains("textures\\det\\") {
       return true;
     }
@@ -69,7 +75,7 @@ impl ArchivePackConfig {
 
     // Level build intermediates, except the lighting the engine still reads.
     if stem == "build" {
-      return matches!(extension.as_str(), ".aimap" | ".cform" | ".details" | ".prj");
+      return matches!(extension, ".aimap" | ".cform" | ".details" | ".prj");
     }
 
     if stem == "do_light" && extension == ".ltx" {
@@ -77,7 +83,7 @@ impl ArchivePackConfig {
     }
 
     if matches!(
-      extension.as_str(),
+      extension,
       ".txt" | ".tga" | ".db" | ".smf" | ".vcproj" | ".sln" | ".old" | ".rc"
     ) {
       return true;
@@ -129,10 +135,16 @@ fn matches_pattern(text: &str, pattern: &str) -> bool {
 #[cfg(test)]
 mod tests {
   use super::matches_pattern;
-  use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
+  use crate::pack::ArchivePackSkipReason;
+  use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
   fn config() -> ArchivePackConfig {
     ArchivePackConfig::new("gamedata", "db", "configs")
+  }
+
+  /// Whether any rule leaves `name` out, for the checks that do not care which one did.
+  fn is_skipped(config: &ArchivePackConfig, name: &str) -> bool {
+    config.get_skip_reason(name).is_some()
   }
 
   fn config_excluding(path: &str, is_recursive: bool) -> ArchivePackConfig {
@@ -172,7 +184,7 @@ mod tests {
       "configs\\system.~ltx",
       "configs\\system._ltx",
     ] {
-      assert!(config().is_skipped_file(name), "{name} should be skipped");
+      assert!(is_skipped(&config(), name), "{name} should be skipped");
     }
   }
 
@@ -189,7 +201,7 @@ mod tests {
       "meshes\\actor.ogf",
       "configs\\system.ltx~",
     ] {
-      assert!(!config().is_skipped_file(name), "{name} should be kept");
+      assert!(!is_skipped(&config(), name), "{name} should be kept");
     }
   }
 
@@ -199,8 +211,17 @@ mod tests {
 
     config.exclude_extensions = vec![String::from("*.json")];
 
-    assert!(config.is_skipped_file("configs\\data.json"));
-    assert!(!config.is_skipped_file("configs\\data.ltx"));
+    // Which rule answered matters here: it is what a run says beside the name it left out.
+    assert_eq!(
+      config.get_skip_reason("configs\\data.json"),
+      Some(ArchivePackSkipReason::ExcludedExtension)
+    );
+    assert_eq!(config.get_skip_reason("configs\\data.ltx"), None);
+    assert_eq!(
+      config.get_skip_reason("readme.txt"),
+      Some(ArchivePackSkipReason::SkipList),
+      "and the built-in list is the other answer"
+    );
   }
 
   #[test]
@@ -247,7 +268,7 @@ mod tests {
     config.is_with_skip_list = false;
     config.exclude_extensions = vec![String::from("*.json")];
 
-    assert!(config.is_skipped_file("configs\\data.json"));
-    assert!(!config.is_skipped_file("readme.txt"), "the built-in list is off");
+    assert!(is_skipped(&config, "configs\\data.json"));
+    assert!(!is_skipped(&config, "readme.txt"), "the built-in list is off");
   }
 }

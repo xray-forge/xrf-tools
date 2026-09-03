@@ -8,8 +8,8 @@
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 
-use crate::pack::archive_pack_config::{ArchivePackMode, VOLUME_SIZE_MAX};
-use crate::pack::archive_packer::ArchivePacker;
+use crate::pack::ArchivePacker;
+use crate::pack::config::{ArchivePackMode, VOLUME_SIZE_MAX};
 use crate::pack::tests::fixtures::{
   CONFIG, assert_one_payload, assert_volumes_within, borrow_files, create_config, descriptor, distinct_files, open,
   pack, read,

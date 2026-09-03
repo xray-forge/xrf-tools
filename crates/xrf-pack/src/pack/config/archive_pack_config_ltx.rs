@@ -1,8 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_pack_header_entry::ArchivePackHeaderEntry;
+use crate::pack::config::ArchivePackHeaderEntry;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
 /// Section holding the extension patterns that keep a file out.
 const SECTION_OPTIONS: &str = "options";
@@ -159,7 +159,7 @@ impl ArchivePackConfig {
 mod tests {
   use xrf_ltx::Ltx;
 
-  use crate::pack::archive_pack_config::ArchivePackConfig;
+  use crate::pack::config::ArchivePackConfig;
 
   fn config_from_ltx(source: &str) -> ArchivePackConfig {
     ArchivePackConfig::new("gamedata", "db", "configs")

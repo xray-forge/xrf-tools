@@ -1,4 +1,5 @@
 use xrf_job::JobHandle;
+use xrf_output::OutputOptions;
 
 /// Phase a pack reports while it walks the source tree and decides what goes in.
 pub const PACK_PHASE_COLLECT: &str = "collect";
@@ -18,6 +19,10 @@ pub const PACK_PHASE_FINALIZE: &str = "finalize";
 pub struct ArchivePackOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: JobHandle,
+  /// Where the run says what it decided: one verbose line per directory, skipped file, placed entry, and volume.
+  ///
+  /// The default is silent, so a caller that does not ask pays nothing beyond a verbosity check per decision.
+  pub output: OutputOptions,
   /// Whether the run may publish over volumes of its set that the destination already holds.
   pub is_forced: bool,
 }
@@ -26,6 +31,11 @@ impl ArchivePackOptions {
   /// The same options, reporting to and cancellable through `job`.
   pub fn with_job(self, job: JobHandle) -> Self {
     Self { job, ..self }
+  }
+
+  /// The same options, saying what the run decides through `output`.
+  pub fn with_output(self, output: OutputOptions) -> Self {
+    Self { output, ..self }
   }
 
   /// The same options, allowed to replace a set the destination already holds.

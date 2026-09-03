@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
+use crate::pack::config::ArchivePackConfig;
 
 /// The volumes of one named set already sitting in a destination.
 ///

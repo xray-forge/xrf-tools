@@ -63,9 +63,17 @@ impl OutputOptions {
     self.write(OutputChannel::Verbose, &message);
   }
 
+  /// Whether a message on `channel` would be rendered at all.
+  ///
+  /// The same test [`Self::write`] applies, published for a caller whose message costs something to build — a
+  /// formatted size, a path turned into a string — so it can skip building it rather than build it to be dropped.
+  pub const fn is_visible(&self, channel: OutputChannel) -> bool {
+    channel.is_visible_at(self.verbosity)
+  }
+
   /// Sends one message on `channel`, when this verbosity renders that channel at all.
   pub fn write(&self, channel: OutputChannel, message: &dyn Display) {
-    if channel.is_visible_at(self.verbosity) {
+    if self.is_visible(channel) {
       self.output.write(channel, message);
     }
   }
@@ -128,6 +136,18 @@ mod tests {
         String::from("Error:error"),
       ]
     );
+  }
+
+  #[test]
+  fn answers_visibility_the_way_write_decides_it() {
+    let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
+    let normal: OutputOptions = OutputOptions::new(output.clone(), OutputVerbosity::Normal);
+    let silent: OutputOptions = OutputOptions::new(output, OutputVerbosity::Silent);
+
+    assert!(normal.is_visible(OutputChannel::Info));
+    assert!(!normal.is_visible(OutputChannel::Verbose));
+    assert!(!silent.is_visible(OutputChannel::Info));
+    assert!(silent.is_visible(OutputChannel::Error));
   }
 
   #[test]

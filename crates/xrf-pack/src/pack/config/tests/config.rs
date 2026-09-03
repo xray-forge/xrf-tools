@@ -2,7 +2,7 @@
 
 use xrf_ltx::Ltx;
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
 fn directory(path: &str, is_recursive: bool) -> ArchivePackDirectory {
   ArchivePackDirectory {

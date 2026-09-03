@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfError;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_pack_config_format::ArchivePackConfigFormat;
-use crate::pack::archive_pack_config_json::ArchivePackConfigJson;
+use crate::pack::config::ArchivePackConfigFormat;
+use crate::pack::config::ArchivePackConfigJson;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
 /// An empty directory of one case's own, since several assertions here scan one.
 fn test_directory(name: &str) -> PathBuf {

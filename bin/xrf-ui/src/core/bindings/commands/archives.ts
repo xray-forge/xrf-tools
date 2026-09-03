@@ -50,17 +50,20 @@ export const archivesCommands = {
   describeImage: (roots: XrayRoots, logicalPath: string) =>
     __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
   /**
-   * Write the selection rules of a configuration out as an xrCompress configuration file.
+   * Write the selection rules of a configuration out as a packing configuration file.
    *
+   * The writer is chosen from the destination's extension, so a surface offering both gets the format it asked for.
    * Only what such a file can carry is written, so a round trip through import returns what was exported.
    * Paths, name, mode, and volume size belong to the run rather than to the file.
    */
   exportPackConfig: (path: string, config: ArchivePackConfig) =>
     __TAURI_INVOKE<null>("plugin:archives|export_pack_config", { path, config }),
   /**
-   * Read an xrCompress configuration file over the configuration the caller holds.
+   * Read a packing configuration file over the configuration the caller holds.
    *
-   * Layers rather than replaces, matching how the command line applies `--ltx`: a configuration file
+   * The codec is chosen from the path's extension, so one command reads an `ltx` and a `json` alike.
+   *
+   * Layers rather than replaces, matching how the command line applies `--config`: a configuration file
    * carries selection rules and a header, never the source, destination, name, mode, or volume size, so
    * those stay as the caller had them.
    */

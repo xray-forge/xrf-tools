@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
+use crate::pack::config::ArchivePackConfig;
 
 /// One `[header]` key and its value, in the engine's own spelling.
 ///

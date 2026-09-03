@@ -7367,6 +7367,7 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-lzhuf",
+ "xrf-output",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",

@@ -2,7 +2,7 @@
 //!
 //! Discovery only. Whether a name the walk reaches is wanted is `archive_pack_config_rules.rs`; how a host path
 //! becomes an archive name is `crate::path`; which name the engine registers it under, and that it is registered once,
-//! is `archive_pack_name_table.rs`.
+//! is `archive_pack_name_table.rs`; and saying any of it out loud is `archive_pack_narrator.rs`.
 
 use std::fs;
 use std::io::ErrorKind;
@@ -13,21 +13,18 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobScope;
 use xrf_utils::format_path;
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_pack_entry::ArchivePackEntry;
-use crate::pack::archive_pack_name_table::ArchivePackNameTable;
-use crate::pack::archive_pack_source::ArchivePackSource;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackOmissions, ArchivePackSource};
 use crate::path::{normalize_archive_name, to_archive_name};
 
 /// What the walk has found so far, as it found it.
 ///
 /// The accumulator is the operation rather than a value beside it: nothing outside one walk has any use for a
 /// half-discovered tree, and [`Self::collect_opt`] is the only way to reach one.
-#[derive(Default)]
 pub(crate) struct ArchivePackSourceCollector {
   files: Vec<ArchivePackEntry>,
   directories: Vec<String>,
-  skipped: usize,
+  omitted: ArchivePackOmissions,
 }
 
 impl ArchivePackSourceCollector {
@@ -40,12 +37,24 @@ impl ArchivePackSourceCollector {
   /// no denominator rather than inventing one. That is the honest state for a phase that can take minutes on a large
   /// source tree and is the reason it is worth reporting at all.
   ///
+  /// What the rules reject is collected the same way and for the same reason, but only when `is_recording_omissions`
+  /// says something will be done with it; otherwise it is counted and dropped. Ordering it is
+  /// [`ArchivePackOmissions`]'s own concern, because the walk reaches it in whatever order the host enumerates.
+  ///
   /// # Errors
   ///
   /// Returns a discovery failure for a root or subtree that could not be enumerated, for a listed file that does not
   /// resolve, and whatever registration refuses.
-  pub(crate) fn collect_opt(config: &ArchivePackConfig, collecting: &JobScope) -> XrfResult<ArchivePackSource> {
-    let mut collector: Self = Self::default();
+  pub(crate) fn collect_opt(
+    config: &ArchivePackConfig,
+    collecting: &JobScope,
+    is_recording_omissions: bool,
+  ) -> XrfResult<ArchivePackSource> {
+    let mut collector: Self = Self {
+      files: Vec::new(),
+      directories: Vec::new(),
+      omitted: ArchivePackOmissions::new(is_recording_omissions),
+    };
 
     collector.walk(config)?;
     collector.register(config, collecting)
@@ -86,7 +95,7 @@ impl ArchivePackSourceCollector {
 
     Ok(ArchivePackSource {
       names,
-      skipped: self.skipped,
+      omitted: self.omitted.finish(),
     })
   }
 
@@ -127,23 +136,45 @@ impl ArchivePackSourceCollector {
 
     // Every failure the walk reports ends the run. A packed volume set is read as a complete build of what the
     // configuration selected, so a subtree that could not be enumerated has to be an error rather than an omission.
-    for entry in walk
-      .into_iter()
-      .filter_entry(|entry| !is_pruned_directory(config, entry))
-    {
+    //
+    // Pruning happens in the filter rather than in the body below, because a pruned directory is never yielded: this
+    // is the only place a run can tell that a rule applied from the directory simply not being there. The filter
+    // borrows the walk for as long as it runs, so it fills a sibling collector that is absorbed once the walk is over.
+    let mut pruned: ArchivePackOmissions = self.omitted.new_sibling();
+
+    for entry in walk.into_iter().filter_entry(|entry| {
+      let Some(name) = pruned_directory_name(config, entry) else {
+        return true;
+      };
+
+      pruned.record_directory(name, true);
+
+      false
+    }) {
       let entry: DirEntry = entry.map_err(|error| walk_error(&root, error))?;
       let path: &Path = entry.path();
       let name: String = to_archive_name(&config.source, path)?;
 
-      if name.is_empty() || config.is_excluded_directory(&name) {
+      if name.is_empty() {
+        continue;
+      }
+
+      if config.is_excluded_directory(&name) {
+        // Only the shallow rule reaches here, since the recursive one was pruned above. Files answer to this rule too
+        // when their own name is listed, which is a rule about the name rather than about a directory, so only a
+        // directory is said to be an excluded one.
+        if entry.file_type().is_dir() {
+          self.omitted.record_directory(name, false);
+        }
+
         continue;
       }
 
       if entry.file_type().is_dir() {
         self.directories.push(name);
       } else if entry.file_type().is_file() {
-        if config.is_skipped_file(&name) {
-          self.skipped += 1;
+        if let Some(reason) = config.get_skip_reason(&name) {
+          self.omitted.record_file(name, reason);
 
           continue;
         }
@@ -154,6 +185,8 @@ impl ArchivePackSourceCollector {
         });
       }
     }
+
+    self.omitted.absorb(pruned);
 
     Ok(())
   }
@@ -191,14 +224,18 @@ fn walk_error(root: &Path, error: WalkError) -> XrfError {
   }
 }
 
-/// Whether a directory can be dropped without descending into it.
+/// The engine name of a directory that can be dropped without descending into it, and none for anything kept.
 ///
 /// A recursive exclusion covers everything below the directory it names, so nothing inside can be selected and
-/// reading it would only turn a intentionally excluded corner of the tree into a packing failure. A plain exclusion
-/// drops the directory alone while its contents still pack, so it must not prune. A directory whose name cannot be
-/// expressed is kept, so the walk reports it instead of losing it here.
-fn is_pruned_directory(config: &ArchivePackConfig, entry: &DirEntry) -> bool {
-  entry.file_type().is_dir()
-    && to_archive_name(&config.source, entry.path())
-      .is_ok_and(|name| !name.is_empty() && config.is_recursively_excluded_directory(&name))
+/// reading it would only turn an intentionally excluded corner of the tree into a packing failure. A shallow
+/// exclusion drops the directory alone while its contents still pack, so it must not prune. A directory whose name
+/// cannot be expressed is kept, so the walk reports it instead of losing it here.
+fn pruned_directory_name(config: &ArchivePackConfig, entry: &DirEntry) -> Option<String> {
+  if !entry.file_type().is_dir() {
+    return None;
+  }
+
+  to_archive_name(&config.source, entry.path())
+    .ok()
+    .filter(|name| !name.is_empty() && config.is_recursively_excluded_directory(name))
 }

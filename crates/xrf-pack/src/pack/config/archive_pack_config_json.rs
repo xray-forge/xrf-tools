@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_pack_header_entry::ArchivePackHeaderEntry;
+use crate::pack::config::ArchivePackHeaderEntry;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
 /// A packing configuration as JSON carries it: the file-owned fields, and nothing else.
 ///

@@ -38,5 +38,5 @@ export type BuildKind =
   | "local"
   /** Continuous integration artifact, built for turnaround rather than size. */
   | "development"
-  /** Deliberate release build, carrying the full optimisation the release profile describes. */
+  /** Release build, carrying the full optimisation the release profile describes. */
   | "optimized";

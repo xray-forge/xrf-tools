@@ -123,9 +123,17 @@ export type ArchivePackResult = {
   filesCompressed: number;
   /** Files that shared an identical earlier payload and cost only a descriptor row. */
   filesAliased: number;
+  /** Bytes of every selected source file, the data the run had to read. */
   sizeSource: number;
+  /** Bytes of every closed volume, headers and descriptor tables included. */
   sizeWritten: number;
   duration: number;
+  /**
+   * Source bytes per second over the whole run, so a reader compares two runs without dividing.
+   *
+   * Zero where the run took no measurable time, rather than a division a caller has to guard.
+   */
+  speed: number;
 };
 
 /**

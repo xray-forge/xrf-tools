@@ -1,8 +1,10 @@
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use xrf_job::JobOutcome;
+
+use crate::pack::ArchivePackEntryOutcome;
 
 /// What one packing run produced.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -37,9 +39,88 @@ pub struct ArchivePackResult {
   pub files_compressed: usize,
   /// Files that shared an identical earlier payload and cost only a descriptor row.
   pub files_aliased: usize,
+  /// Bytes of every selected source file, the data the run had to read.
   pub size_source: u64,
+  /// Bytes of every closed volume, headers and descriptor tables included.
   pub size_written: u64,
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
+  /// Source bytes per second over the whole run, so a reader compares two runs without dividing.
+  ///
+  /// Zero where the run took no measurable time, rather than a division a caller has to guard.
+  pub speed: u64,
+}
+
+impl ArchivePackResult {
+  /// Count one entry under the heading the volume would put it in.
+  ///
+  /// The one place the counts are decided, so `files_stored` means the same thing to a reader of the summary and to a
+  /// reader of the transcript: a reverted or an empty entry is stored, whatever the line about it says it is.
+  pub(crate) fn record_outcome(&mut self, outcome: ArchivePackEntryOutcome) {
+    match outcome {
+      ArchivePackEntryOutcome::Compressed => self.files_compressed += 1,
+      ArchivePackEntryOutcome::Stored | ArchivePackEntryOutcome::Reverted | ArchivePackEntryOutcome::Empty => {
+        self.files_stored += 1;
+      }
+      ArchivePackEntryOutcome::Aliased { .. } => self.files_aliased += 1,
+    }
+  }
+
+  /// Close the clock on a run: how long it took, and how fast that made it.
+  ///
+  /// One method for both because the speed is a function of the duration, and a result carrying the one without the
+  /// other would answer the same question two ways.
+  pub(crate) fn measure(&mut self, started_at: Instant) {
+    self.duration = started_at.elapsed();
+    self.speed = Self::speed_of(self.size_source, self.duration);
+  }
+
+  /// Bytes per second, saturating rather than wrapping and answering zero for a run too fast to time.
+  fn speed_of(bytes: u64, duration: Duration) -> u64 {
+    let seconds: f64 = duration.as_secs_f64();
+
+    if seconds <= 0.0 {
+      return 0;
+    }
+
+    // `as` saturates on overflow and truncates the fraction, both of which are the wanted rounding here.
+    (bytes as f64 / seconds) as u64
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::time::Duration;
+
+  use super::ArchivePackResult;
+  use crate::pack::ArchivePackEntryOutcome;
+
+  #[test]
+  fn measures_speed_as_source_bytes_per_second() {
+    assert_eq!(ArchivePackResult::speed_of(2048, Duration::from_millis(500)), 4096);
+    assert_eq!(ArchivePackResult::speed_of(2048, Duration::ZERO), 0);
+  }
+
+  #[test]
+  fn counts_every_outcome_the_volume_stored_as_stored() {
+    let mut result: ArchivePackResult = ArchivePackResult::default();
+
+    for outcome in [
+      ArchivePackEntryOutcome::Compressed,
+      ArchivePackEntryOutcome::Stored,
+      ArchivePackEntryOutcome::Reverted,
+      ArchivePackEntryOutcome::Empty,
+      ArchivePackEntryOutcome::Aliased {
+        source: "configs\\a.ltx",
+      },
+    ] {
+      result.record_outcome(outcome);
+    }
+
+    // Three transcript lines, one heading: what the reader finds in the volume is a payload written as read.
+    assert_eq!(result.files_stored, 3);
+    assert_eq!(result.files_compressed, 1);
+    assert_eq!(result.files_aliased, 1);
+  }
 }

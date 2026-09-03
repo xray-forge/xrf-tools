@@ -6,17 +6,12 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::format_path;
 
-use crate::pack::archive_descriptor_table::ArchiveDescriptorTable;
-use crate::pack::archive_pack_config::ArchivePackConfig;
-use crate::pack::archive_pack_options::{
-  ArchivePackOptions, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
+use crate::pack::config::ArchivePackConfig;
+use crate::pack::source::{ArchivePackSource, ArchivePackSourceCollector};
+use crate::pack::volume::{ArchiveDescriptorTable, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter};
+use crate::pack::{
+  ArchivePackNarrator, ArchivePackOptions, ArchivePackResult, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
 };
-use crate::pack::archive_pack_result::ArchivePackResult;
-use crate::pack::archive_pack_source::ArchivePackSource;
-use crate::pack::archive_pack_source_collector::ArchivePackSourceCollector;
-use crate::pack::archive_published_set::ArchivePublishedSet;
-use crate::pack::archive_volume_layout::ArchiveVolumeLayout;
-use crate::pack::archive_volume_writer::ArchiveVolumeWriter;
 
 /// Writes one volume set from a source tree.
 pub struct ArchivePacker;
@@ -56,6 +51,10 @@ impl ArchivePacker {
   /// was written by this run, so a failure or a cancellation removes them and leaves the destination as it was found.
   /// A forced run is the exception, and the reason [`ArchivePackResult::volumes_opened`] exists: there, what is on
   /// disk cannot be told apart from what the run replaced, so it is reported rather than deleted.
+  ///
+  /// What the run decides is said as it is decided, through the options' output at verbose level, so a transcript of
+  /// a run that stopped already names the volume being written and the last entry it reached. Saying it changes no
+  /// byte of what is written.
   pub fn pack_opt(config: &ArchivePackConfig, options: ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     config.validate_for_packing()?;
 
@@ -88,12 +87,17 @@ impl ArchivePacker {
   fn pack_into(config: &ArchivePackConfig, options: &ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
+    let narrator: ArchivePackNarrator = ArchivePackNarrator::new(&options.output);
+
+    narrator.describe_settings(config);
 
     let source: ArchivePackSource = {
       let collecting: JobScope = job.enter(PACK_PHASE_COLLECT, None);
 
-      ArchivePackSourceCollector::collect_opt(config, &collecting)?
+      ArchivePackSourceCollector::collect_opt(config, &collecting, narrator.is_recording())?
     };
+
+    narrator.describe_selection(source.names.get_directories(), &source.omitted);
 
     // xrCompress refuses an empty file list too. Saying so here beats leaving the caller to puzzle out
     // a complaint from the codec about an empty descriptor table.
@@ -102,7 +106,7 @@ impl ArchivePacker {
         "Nothing to pack from '{}': {} file(s) matched, {} skipped by the configured rules",
         format_path(&config.source),
         source.names.get_files().len(),
-        source.skipped
+        source.omitted.get_count()
       )));
     }
 
@@ -123,7 +127,7 @@ impl ArchivePacker {
 
     fs::create_dir_all(&config.destination)?;
 
-    let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, layout, descriptors)?;
+    let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, &narrator, layout, descriptors)?;
 
     {
       let writing: JobScope = job.enter(PACK_PHASE_WRITE, Some(source.names.get_files().len() as u64));
@@ -156,7 +160,7 @@ impl ArchivePacker {
     let mut result: ArchivePackResult = writer.finish()?;
 
     result.files_total = source.names.get_files().len();
-    result.files_skipped = source.skipped;
+    result.files_skipped = source.omitted.get_count();
 
     // Only now is the volume count known, so a set that stayed single drops its index.
     if let [only] = result.volumes.as_slice() {
@@ -168,7 +172,7 @@ impl ArchivePacker {
       result.volumes_opened = vec![renamed];
     }
 
-    result.duration = started_at.elapsed();
+    result.measure(started_at);
 
     Ok(result)
   }
@@ -228,8 +232,8 @@ impl ArchivePacker {
   ) -> ArchivePackResult {
     result.outcome = JobOutcome::Cancelled;
     result.files_total = source.names.get_files().len();
-    result.files_skipped = source.skipped;
-    result.duration = started_at.elapsed();
+    result.files_skipped = source.omitted.get_count();
+    result.measure(started_at);
 
     result
   }

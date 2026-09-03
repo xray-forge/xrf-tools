@@ -9,12 +9,12 @@ use xrf_archive::{CHUNK_ID_DATA, CHUNK_ID_METADATA};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
-use crate::pack::archive_alias_table::{ArchiveAlias, ArchiveAliasTable};
-use crate::pack::archive_descriptor_table::{ArchiveDescriptorTable, DescriptorName};
-use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackMode};
-use crate::pack::archive_pack_entry::ArchivePackEntry;
-use crate::pack::archive_pack_result::ArchivePackResult;
-use crate::pack::archive_volume_layout::ArchiveVolumeLayout;
+use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
+use crate::pack::source::ArchivePackEntry;
+use crate::pack::volume::{
+  ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable, ArchiveDescriptorTable, ArchiveVolumeLayout, DescriptorName,
+};
+use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResult};
 
 /// Extensions the engine expects to find compressed; everything else is stored.
 ///
@@ -29,8 +29,12 @@ const COMPRESSION_MARGIN: usize = 16;
 ///
 /// Entries arrive one by one and the writer decides where each lands, so nothing here knows the source tree or how
 /// long the run took: [`Self::finish`] reports only what was observed writing, and the caller composes the rest.
+///
+/// Every placement is counted and said once, from the one outcome that decided it, so the summary and the transcript
+/// cannot describe the same entry two different ways.
 pub(crate) struct ArchiveVolumeWriter<'a> {
   config: &'a ArchivePackConfig,
+  narrator: &'a ArchivePackNarrator<'a>,
   layout: ArchiveVolumeLayout,
   file: Option<BufWriter<File>>,
   path: PathBuf,
@@ -49,11 +53,13 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// Open the first volume of the set, seeded with the directory rows every volume of it repeats.
   pub(crate) fn open(
     config: &'a ArchivePackConfig,
+    narrator: &'a ArchivePackNarrator<'a>,
     layout: ArchiveVolumeLayout,
     descriptors: ArchiveDescriptorTable,
   ) -> XrfResult<Self> {
     let mut writer: Self = Self {
       config,
+      narrator,
       layout,
       file: None,
       path: PathBuf::new(),
@@ -94,15 +100,14 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
     // An alias costs a row and no payload, but only in the volume holding the payload it points at: moving the entry
     // on turns it back into a copy, so this volume is offered it first.
-    if let Some(candidate) = self.aliases.find(&contents, size_real, crc)? {
+    if let Some(ArchiveAliasCandidate { source, alias }) = self.aliases.find(&contents, size_real, crc)? {
       if self.fits(0, name.get_row_size()) {
-        let alias: ArchiveAlias = candidate.alias;
-
-        // The `ALIAS (<source>)` line xrCompress logged for this decision, by logical entry rather than host path.
-        // todo: Report the alias as a typed pack event once the packer carries an event sink.
-        log::trace!("'{}' aliases the payload of '{}'", entry.name, candidate.source.name);
-
-        self.result.files_aliased += 1;
+        self.place(
+          entry,
+          ArchivePackEntryOutcome::Aliased { source: &source.name },
+          size_real,
+          alias.size_compressed,
+        );
         self
           .descriptors
           .push_entry(&name, size_real, alias.size_compressed, crc, alias.offset);
@@ -113,7 +118,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
       self.start_next_volume()?;
     }
 
-    let payload: Cow<'_, [u8]> = self.compress_payload(entry, &contents)?;
+    let (payload, outcome): (Cow<'_, [u8]>, ArchivePackEntryOutcome) = self.compress_payload(entry, &contents)?;
     let size_compressed: u32 = to_format_size(payload.len(), "archive entry payload")?;
 
     self.make_room_for(&entry.name, payload.len() as u64, name.get_row_size())?;
@@ -130,6 +135,8 @@ impl<'a> ArchiveVolumeWriter<'a> {
     }
 
     self.position += payload.len() as u64;
+
+    self.place(entry, outcome, size_real, size_compressed);
 
     self.aliases.record(
       entry,
@@ -162,6 +169,23 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// leave behind than an obviously unfinished file.
   pub(crate) fn abandon(self) -> ArchivePackResult {
     self.result
+  }
+
+  /// Book one entry as placed: count it and say it, from the one outcome that decided both.
+  ///
+  /// Called once per entry, after its bytes are wherever they are going to be, so a run that fails writing them has
+  /// neither counted nor claimed the entry.
+  fn place(
+    &mut self,
+    entry: &ArchivePackEntry,
+    outcome: ArchivePackEntryOutcome,
+    size_real: u32,
+    size_compressed: u32,
+  ) {
+    self.result.record_outcome(outcome);
+    self
+      .narrator
+      .describe_entry(&entry.name, outcome, size_real, size_compressed);
   }
 
   /// Make room in a volume for an entry of this size, closing the current one when that is what it takes.
@@ -200,9 +224,10 @@ impl<'a> ArchiveVolumeWriter<'a> {
     self.aliases.reset();
     self.descriptors.reset();
 
-    // Recorded before the file is created rather than after it is closed: from here on the path exists and has
-    // replaced whatever stood there, so a run that stops has still touched it.
+    // Recorded and said before the file is created rather than after it is closed: from here on the path exists and
+    // has replaced whatever stood there, so a run that stops has still touched it.
     self.result.volumes_opened.push(self.path.clone());
+    self.narrator.describe_opened_volume(&self.path);
 
     let mut file: BufWriter<File> = BufWriter::new(File::create(&self.path)?);
 
@@ -239,6 +264,10 @@ impl<'a> ArchiveVolumeWriter<'a> {
     file.write_all(&(data_size as u32).to_le_bytes())?;
     file.flush()?;
 
+    self
+      .narrator
+      .describe_closed_volume(&self.path, self.position, self.descriptors.get_entries());
+
     self.result.volumes.push(self.path.clone());
     self.result.size_written += self.position;
     self.volume_index += 1;
@@ -254,22 +283,27 @@ impl<'a> ArchiveVolumeWriter<'a> {
   }
 
   /// Compress a payload when the engine expects it compressed and the result is actually smaller.
+  ///
+  /// Answers the payload with how it came to be, since the sizes alone cannot tell a stored payload from one that
+  /// reverted or was empty. Deciding only, never counting: what a decision is worth to the summary is
+  /// [`ArchivePackResult::record_outcome`], so the three that all end up stored say so in one place.
   fn compress_payload<'contents>(
     &mut self,
     entry: &ArchivePackEntry,
     contents: &'contents [u8],
-  ) -> XrfResult<Cow<'contents, [u8]>> {
-    let is_compressible: bool = self.config.mode == ArchivePackMode::Compress
-      && !contents.is_empty()
+  ) -> XrfResult<(Cow<'contents, [u8]>, ArchivePackEntryOutcome<'static>)> {
+    let is_expected_compressed: bool = self.config.mode == ArchivePackMode::Compress
       && entry
         .name
         .rsplit_once('.')
         .is_some_and(|(_, extension)| COMPRESSED_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str()));
 
-    if !is_compressible {
-      self.result.files_stored += 1;
+    if !is_expected_compressed {
+      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Stored));
+    }
 
-      return Ok(Cow::Borrowed(contents));
+    if contents.is_empty() {
+      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Empty));
     }
 
     let compressed: Vec<u8> = lzokay::compress::compress_with_dict(contents, &mut self.dict)
@@ -278,13 +312,9 @@ impl<'a> ArchiveVolumeWriter<'a> {
     // A payload that barely shrinks costs more to decompress than it saves, so it reverts to stored.
     // The reader tells the two apart by the sizes alone, so this must stay a real size difference.
     if compressed.len() + COMPRESSION_MARGIN >= contents.len() {
-      self.result.files_stored += 1;
-
-      return Ok(Cow::Borrowed(contents));
+      return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Reverted));
     }
 
-    self.result.files_compressed += 1;
-
-    Ok(Cow::Owned(compressed))
+    Ok((Cow::Owned(compressed), ArchivePackEntryOutcome::Compressed))
   }
 }

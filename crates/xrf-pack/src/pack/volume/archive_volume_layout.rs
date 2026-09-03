@@ -2,8 +2,8 @@ use xrf_archive::{CHUNK_HEADER_SIZE, CHUNK_SIZE_FIELD_SIZE};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::encode_string_to_w1251_bytes;
 
-use crate::pack::archive_descriptor_table::ArchiveDescriptorTable;
-use crate::pack::archive_pack_config::ArchivePackConfig;
+use crate::pack::config::ArchivePackConfig;
+use crate::pack::volume::ArchiveDescriptorTable;
 
 /// What every volume of one archive set costs before it holds anything, and the size it must close within.
 pub(crate) struct ArchiveVolumeLayout {
@@ -86,8 +86,8 @@ mod tests {
   use xrf_error::XrfError;
 
   use super::{ArchiveVolumeLayout, CHUNK_HEADER_SIZE};
-  use crate::pack::archive_descriptor_table::ArchiveDescriptorTable;
-  use crate::pack::archive_pack_config::ArchivePackConfig;
+  use crate::pack::config::ArchivePackConfig;
+  use crate::pack::volume::ArchiveDescriptorTable;
 
   fn layout_of(max_volume_size: u64, header: Option<&str>) -> Result<ArchiveVolumeLayout, XrfError> {
     let mut config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "packed");

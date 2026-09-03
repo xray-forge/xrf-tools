@@ -5,9 +5,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::Ltx;
 use xrf_utils::{format_path, write_file_staged};
 
-use crate::pack::archive_pack_config::ArchivePackConfig;
-use crate::pack::archive_pack_config_format::ArchivePackConfigFormat;
-use crate::pack::archive_pack_config_json::ArchivePackConfigJson;
+use crate::pack::config::ArchivePackConfig;
+use crate::pack::config::ArchivePackConfigFormat;
+use crate::pack::config::ArchivePackConfigJson;
 
 impl ArchivePackConfig {
   /// Apply a packing configuration file, in whichever format its extension names.

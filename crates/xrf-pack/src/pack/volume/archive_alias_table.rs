@@ -3,7 +3,7 @@ use std::fs;
 
 use xrf_error::XrfResult;
 
-use crate::pack::archive_pack_entry::ArchivePackEntry;
+use crate::pack::source::ArchivePackEntry;
 
 /// Payloads already written to the current volume, so an identical file costs a descriptor row and nothing else.
 ///
@@ -37,19 +37,17 @@ impl<'e> ArchiveAliasTable<'e> {
   /// Equal size and checksum is strong evidence and not proof; xrCompress re-reads the candidate too. Trusting the key
   /// alone would point an entry at another file's payload, which reads back as that other file rather than as an
   /// error, so the cost of the re-read buys the one guarantee worth paying for here.
-  pub(crate) fn find(
-    &self,
-    contents: &[u8],
-    size_real: u32,
-    crc: u32,
-  ) -> XrfResult<Option<&ArchiveAliasCandidate<'e>>> {
+  ///
+  /// Answered by value rather than by reference: a candidate is two words that already borrow the source table, so
+  /// handing back a borrow of this table would only stop the caller recording the entry it just proved a match for.
+  pub(crate) fn find(&self, contents: &[u8], size_real: u32, crc: u32) -> XrfResult<Option<ArchiveAliasCandidate<'e>>> {
     let Some(candidates) = self.candidates.get(&(size_real, crc)) else {
       return Ok(None);
     };
 
     for candidate in candidates {
       if fs::read(&candidate.source.path)? == contents {
-        return Ok(Some(candidate));
+        return Ok(Some(*candidate));
       }
     }
 
@@ -79,7 +77,7 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::{ArchiveAlias, ArchiveAliasTable};
-  use crate::pack::archive_pack_entry::ArchivePackEntry;
+  use crate::pack::source::ArchivePackEntry;
 
   const FIRST: &[u8] = b"the first payload";
   const SECOND: &[u8] = b"a different one!!";
