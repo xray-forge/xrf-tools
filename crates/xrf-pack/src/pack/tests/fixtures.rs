@@ -5,7 +5,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_utils::format_path;
 
@@ -168,4 +168,44 @@ pub(crate) fn borrow_files(files: &[(String, Vec<u8>)]) -> Vec<(&str, &[u8])> {
     .iter()
     .map(|(name, contents)| (name.as_str(), contents.as_slice()))
     .collect()
+}
+
+pub(crate) fn descriptor<'p>(project: &'p ArchiveProject, name: &str) -> &'p ArchiveFileDescriptor {
+  project
+    .files
+    .get(name)
+    .unwrap_or_else(|| panic!("archive lists '{name}'"))
+}
+
+/// Assert these entries are one payload: every descriptor locates the same bytes in the same volume.
+///
+/// Descriptors rather than the aliased count, because a count proves a payload was reused and not that the reuse
+/// points at the right one. Returns the shared descriptor for whatever else a test has to say about it.
+pub(crate) fn assert_one_payload<'p>(project: &'p ArchiveProject, names: &[&str]) -> &'p ArchiveFileDescriptor {
+  let (first, rest) = names.split_first().expect("at least one name");
+  let canonical: &ArchiveFileDescriptor = descriptor(project, first);
+
+  for name in rest {
+    let entry: &ArchiveFileDescriptor = descriptor(project, name);
+
+    assert_eq!(
+      (
+        entry.volume,
+        entry.offset,
+        entry.size_compressed,
+        entry.size_real,
+        entry.crc
+      ),
+      (
+        canonical.volume,
+        canonical.offset,
+        canonical.size_compressed,
+        canonical.size_real,
+        canonical.crc
+      ),
+      "'{name}' shares the payload of '{first}'"
+    );
+  }
+
+  canonical
 }

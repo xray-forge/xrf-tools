@@ -37,7 +37,8 @@ pub(crate) struct ArchiveVolumeWriter<'a> {
   /// Absolute position in the current volume, which is what descriptor offsets record.
   position: u64,
   descriptors: ArchiveDescriptorTable,
-  aliases: ArchiveAliasTable,
+  /// Borrows the entries written so far; the source table they belong to outlives the writer.
+  aliases: ArchiveAliasTable<'a>,
   /// The coder's working state, large enough to be worth building once on the heap and reusing for every entry.
   dict: Box<Dict>,
   volume_index: usize,
@@ -76,7 +77,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// The payload borrows the bytes that were read whenever it is stored rather than compressed, which is every entry
   /// the engine does not expect compressed. Copying them would double the largest entry's cost in memory and memcpy
   /// the whole archive on the way past.
-  pub(crate) fn write_entry(&mut self, entry: &ArchivePackEntry) -> XrfResult<()> {
+  pub(crate) fn write_entry(&mut self, entry: &'a ArchivePackEntry) -> XrfResult<()> {
     let contents: Vec<u8> = fs::read(&entry.path)?;
     let size_real: u32 = u32::try_from(contents.len()).map_err(|_| {
       XrfError::new_invalid_error(format!(
@@ -93,8 +94,14 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
     // An alias costs a row and no payload, but only in the volume holding the payload it points at: moving the entry
     // on turns it back into a copy, so this volume is offered it first.
-    if let Some(alias) = self.aliases.find(&contents, size_real, crc)? {
+    if let Some(candidate) = self.aliases.find(&contents, size_real, crc)? {
       if self.fits(0, name.get_row_size()) {
+        let alias: ArchiveAlias = candidate.alias;
+
+        // The `ALIAS (<source>)` line xrCompress logged for this decision, by logical entry rather than host path.
+        // todo: Report the alias as a typed pack event once the packer carries an event sink.
+        log::trace!("'{}' aliases the payload of '{}'", entry.name, candidate.source.name);
+
         self.result.files_aliased += 1;
         self
           .descriptors
@@ -125,7 +132,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     self.position += payload.len() as u64;
 
     self.aliases.record(
-      &entry.path,
+      entry,
       size_real,
       crc,
       ArchiveAlias {

@@ -15,8 +15,8 @@ use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory, 
 use crate::pack::archive_pack_result::ArchivePackResult;
 use crate::pack::archive_packer::ArchivePacker;
 use crate::pack::tests::fixtures::{
-  BINARY, CONFIG, allow_directory, borrow_files, create_config, create_source, deny_directory, distinct_files, open,
-  pack, read,
+  BINARY, CONFIG, allow_directory, assert_one_payload, borrow_files, create_config, create_source, deny_directory,
+  descriptor, distinct_files, open, pack, read,
 };
 
 /// Pack one source tree into a destination shared with other volumes, under its own volume name.
@@ -239,22 +239,110 @@ fn writes_an_empty_file_as_a_zero_length_entry() {
 
 #[test]
 fn aliases_identical_payloads_to_one_copy() {
+  let names: [&str; 3] = ["configs\\first.ltx", "configs\\second.ltx", "configs\\third.ltx"];
   let (result, destination) = pack(
     "aliases_identical_payloads_to_one_copy",
-    &[
-      ("configs\\first.ltx", CONFIG),
-      ("configs\\second.ltx", CONFIG),
-      ("configs\\third.ltx", CONFIG),
-    ],
+    &[(names[0], CONFIG), (names[1], CONFIG), (names[2], CONFIG)],
     |_| {},
   );
   let project: ArchiveProject = open(&destination);
 
-  assert_eq!(result.files_aliased, 2, "only the first copy costs payload bytes");
+  assert_eq!(result.files_compressed, 1, "only the first copy costs payload bytes");
+  assert_eq!(result.files_stored, 0);
+  assert_eq!(result.files_aliased, 2);
 
-  for name in ["configs\\first.ltx", "configs\\second.ltx", "configs\\third.ltx"] {
+  // The aliases inherit the compressed payload's stored size, not the size of the source they were read from.
+  let shared: &ArchiveFileDescriptor = assert_one_payload(&project, &names);
+
+  assert!(
+    shared.size_compressed < shared.size_real,
+    "the shared payload is the compressed one"
+  );
+
+  for name in names {
     assert_eq!(read(&project, name), CONFIG, "'{name}' still reads back");
   }
+}
+
+#[test]
+fn aliases_a_stored_payload_too() {
+  let names: [&str; 2] = ["textures\\wall.dds", "textures\\wall_copy.dds"];
+  let (result, destination) = pack(
+    "aliases_a_stored_payload_too",
+    &[(names[0], BINARY), (names[1], BINARY)],
+    |_| {},
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(result.files_stored, 1);
+  assert_eq!(result.files_aliased, 1);
+
+  let shared: &ArchiveFileDescriptor = assert_one_payload(&project, &names);
+
+  assert_eq!(
+    shared.size_compressed, shared.size_real,
+    "stored, so the alias declares equal sizes as well"
+  );
+
+  for name in names {
+    assert_eq!(read(&project, name), BINARY, "'{name}' still reads back");
+  }
+}
+
+#[test]
+fn aliases_an_empty_file_onto_the_first_empty_one() {
+  // xrCompress registers its empty-file branch for aliasing like any other payload, so the second empty entry is an
+  // alias rather than a second zero-length payload, and the counts say so.
+  let names: [&str; 2] = ["configs\\a_empty.ltx", "configs\\b_empty.ltx"];
+  let (result, destination) = pack(
+    "aliases_an_empty_file_onto_the_first_empty_one",
+    &[(names[0], b""), (names[1], b""), ("configs\\system.ltx", CONFIG)],
+    |_| {},
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(result.files_stored, 1, "the first empty file");
+  assert_eq!(result.files_compressed, 1, "the config");
+  assert_eq!(result.files_aliased, 1, "the second empty file");
+
+  let shared: &ArchiveFileDescriptor = assert_one_payload(&project, &names);
+
+  assert_eq!(shared.size_real, 0);
+  assert_eq!(shared.size_compressed, 0);
+
+  for name in names {
+    assert_eq!(read(&project, name), b"", "'{name}' reads back empty");
+  }
+
+  assert_eq!(
+    read(&project, "configs\\system.ltx"),
+    CONFIG,
+    "the neighbour sharing the offset is intact"
+  );
+}
+
+#[test]
+fn does_not_alias_distinct_payloads_of_one_size() {
+  const FIRST: &[u8] = &[0x11; 64];
+  const SECOND: &[u8] = &[0x22; 64];
+
+  // The table is keyed by size and checksum and a match is proven by the bytes, so equal size alone shares nothing.
+  let (result, destination) = pack(
+    "does_not_alias_distinct_payloads_of_one_size",
+    &[("textures\\a.dds", FIRST), ("textures\\b.dds", SECOND)],
+    |_| {},
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(result.files_aliased, 0);
+  assert_eq!(result.files_stored, 2);
+  assert_ne!(
+    descriptor(&project, "textures\\a.dds").offset,
+    descriptor(&project, "textures\\b.dds").offset,
+    "each payload has its own bytes"
+  );
+  assert_eq!(read(&project, "textures\\a.dds"), FIRST);
+  assert_eq!(read(&project, "textures\\b.dds"), SECOND);
 }
 
 #[test]
