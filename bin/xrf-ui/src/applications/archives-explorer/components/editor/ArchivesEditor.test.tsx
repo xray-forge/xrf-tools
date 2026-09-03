@@ -11,7 +11,12 @@ import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { EditorPanelsProvider } from "@/core/shell/panel/context";
-import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveFileDescriptor,
+  mockArchiveSharedPayload,
+  mockArchivesProject,
+  mockPathCollision,
+} from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -41,6 +46,7 @@ describe("opened archives editor", () => {
 
     setMockInvokeResponses({
       ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|list_shared_payloads"]: [],
       ["plugin:archives|read_file"]: {
         name: TEXT_FILE.name,
         content: "line one\nline two",
@@ -222,6 +228,38 @@ describe("opened archives editor", () => {
     expect(await findByText("C:\\game\\database\\configs.db0")).toBeInTheDocument();
     expect(await findByText("0x12345678")).toBeInTheDocument();
     expect(await findByText("Stored")).toBeInTheDocument();
+    expect(await findByText("No other entry reads these bytes")).toBeInTheDocument();
+  });
+
+  it("names the entries that read the selected file's bytes, as derived rather than recorded", async () => {
+    // The format keeps no alias field, so the panel says what reads alike and labels it as derived rather than as
+    // something the packer wrote down.
+    setMockInvokeResponses({
+      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|list_shared_payloads"]: [mockArchiveSharedPayload(BINARY_FILE, ["texture_copy.dds"])],
+      ["plugin:archives|describe_image"]: {
+        size: BINARY_FILE.sizeReal,
+        shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
+      },
+      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+    });
+
+    const { findByLabelText, findByText } = renderWithProviders(
+      <EditorBusyProvider>
+        <EditorPanelsProvider>
+          <ApplicationShellFrame>
+            <ArchivesExplorerApplication />
+          </ApplicationShellFrame>
+        </EditorPanelsProvider>
+      </EditorBusyProvider>,
+      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    );
+
+    await userEvent.dblClick(await findByText("texture.dds"));
+    await userEvent.click(await findByLabelText("File details"));
+
+    expect(await findByText(/1 other entry reads these bytes, derived from equal descriptors/)).toBeInTheDocument();
+    expect(await findByText("texture_copy.dds")).toBeInTheDocument();
   });
 
   it("says nothing about reachability when every entry resolves to a path of its own", async () => {

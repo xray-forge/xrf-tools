@@ -8,6 +8,7 @@ import {
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveProjectReadPolicy,
+  ArchiveSharedPayload,
   ProjectReadResult,
 } from "@/core/bindings/types/xrf-archive";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
@@ -129,6 +130,15 @@ export const archivesCommands = {
    */
   listPackVolumes: (config: ArchivePackConfig) =>
     __TAURI_INVOKE<Array<string>>("plugin:archives|list_pack_volumes", { config }),
+  /**
+   * Payloads that several entries of the open volume set locate at once.
+   *
+   * Derived on demand out of the open project rather than stored beside it, the way `list_collisions` answers, so a
+   * close cannot leave a stale answer behind. The derivation is `xrf-archive`'s: the format keeps no alias field, so
+   * this is what a reader observes from equal descriptors and never what the packer recorded. See
+   * [`ArchiveSharedPayload`].
+   */
+  listSharedPayloads: () => __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads"),
   openProject: (path: string) => __TAURI_INVOKE<ArchiveProject>("plugin:archives|open_project", { path }),
   /**
    * Pack a directory into archive volumes from a configuration held by the caller.

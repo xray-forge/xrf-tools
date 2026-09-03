@@ -2,12 +2,13 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ListCommand;
+use crate::commands::archive::list::report::ArchiveSharedPayloadIndex;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -69,6 +70,10 @@ impl GenericCommand for FindCommand {
       .filter(|entry| entry.name.to_ascii_lowercase().contains(&query))
       .collect();
 
+    // Over the whole table, not the matches: a match shares its payload with entries the query did not name.
+    let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
+    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+
     for entry in &entries {
       let size: String = xrf_utils::format_bytes(u64::from(entry.size_real));
 
@@ -78,9 +83,10 @@ impl GenericCommand for FindCommand {
 
         xrf_output::info!(
           output,
-          "{} [{size}, {compressed} stored, {unpacked} unpacked, {}]",
+          "{} [{size}, {compressed} stored, {unpacked} unpacked, {}{}]",
           entry.name,
           format_path(&project.get_volume_of(entry)?.path),
+          shared.describe_others_of(entry),
         );
       } else {
         xrf_output::info!(output, "{} [{size}]", entry.name);
@@ -95,7 +101,7 @@ impl GenericCommand for FindCommand {
       xrf_utils::format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| ArchiveFindReport::new(&project, &query, &entries))?;
+    context.set_result(|| ArchiveFindReport::new(&project, &query, &entries, &shared))?;
 
     Ok(())
   }

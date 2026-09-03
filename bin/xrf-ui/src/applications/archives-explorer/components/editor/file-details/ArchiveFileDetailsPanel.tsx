@@ -3,6 +3,7 @@ import { ReactElement, useCallback } from "react";
 
 import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { ArchiveFileDetailRow } from "@/applications/archives-explorer/components/editor/file-details/ArchiveFileDetailRow";
+import { ArchiveSharedPayloadDetail } from "@/applications/archives-explorer/components/editor/file-details/ArchiveSharedPayloadDetail";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf } from "@/core/archive/files";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
@@ -66,6 +67,7 @@ export function ArchiveFileDetailsPanel({ archivesService }: IArchiveFileDetails
           value={`${formatBytes(descriptor.offset)} (${descriptor.offset})`}
           mono
         />
+        <ArchiveSharedPayloadDetail descriptor={descriptor} sharedPayloads={archivesService.sharedPayloads} />
       </Box>
     </Box>
   ) : (

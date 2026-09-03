@@ -1,4 +1,9 @@
-import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import {
+  ArchiveDescriptor,
+  ArchiveFileDescriptor,
+  ArchiveProject,
+  ArchiveSharedPayload,
+} from "@/core/bindings/types/xrf-archive";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -34,4 +39,48 @@ export function getArchiveVolumeOf(
   descriptor: Nullable<ArchiveFileDescriptor>
 ): Nullable<ArchiveDescriptor> {
   return project && descriptor ? (project.archives[descriptor.volume] ?? null) : null;
+}
+
+/**
+ * The shared payload an entry is read from, if other entries read it too.
+ *
+ * Matched on the fields a reader locates a payload by, which is how the backend derived the group in the first place,
+ * so an entry is found by what it reads rather than by its name.
+ *
+ * @param payloads - Shared payloads the backend derived for the open project.
+ * @param descriptor - Entry to look up.
+ * @returns The payload several entries read, or null when the entry has bytes of its own.
+ */
+export function findSharedPayloadOf(
+  payloads: Array<ArchiveSharedPayload>,
+  descriptor: Nullable<ArchiveFileDescriptor>
+): Nullable<ArchiveSharedPayload> {
+  if (!descriptor || descriptor.isDirectory) {
+    return null;
+  }
+
+  return (
+    payloads.find(
+      (payload: ArchiveSharedPayload) =>
+        payload.volume === descriptor.volume &&
+        payload.offset === descriptor.offset &&
+        payload.sizeCompressed === descriptor.sizeCompressed &&
+        payload.sizeReal === descriptor.sizeReal &&
+        payload.crc === descriptor.crc
+    ) ?? null
+  );
+}
+
+/**
+ * Names of the other entries read from the same bytes as an entry.
+ *
+ * @param payloads - Shared payloads the backend derived for the open project.
+ * @param descriptor - Entry whose sharers are wanted.
+ * @returns The other names, in the order the backend sorted them; empty for a payload of its own.
+ */
+export function listPayloadSharersOf(
+  payloads: Array<ArchiveSharedPayload>,
+  descriptor: Nullable<ArchiveFileDescriptor>
+): Array<string> {
+  return findSharedPayloadOf(payloads, descriptor)?.names.filter((name: string) => name !== descriptor?.name) ?? [];
 }

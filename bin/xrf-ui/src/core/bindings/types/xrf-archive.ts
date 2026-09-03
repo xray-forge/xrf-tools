@@ -112,6 +112,28 @@ export type ArchiveProjectReadPolicy = {
   maximumAudioSize: number;
 };
 
+/**
+ * Stored bytes that several file entries of one volume set locate at once.
+ *
+ * Derived from the descriptors, never recorded by a writer: the format has no alias field, so a packer that stored a
+ * file once and pointed a second row at it left only equal fields behind. Calling this "aliased" would claim to know
+ * what the packer did; it knows only what a reader does, which is read the same bytes for every name here.
+ */
+export type ArchiveSharedPayload = {
+  /** Which volume holds the bytes, as a position in [`crate::ArchiveProject::archives`]. */
+  volume: number;
+  /** Byte offset of the payload inside its volume. */
+  offset: number;
+  /** Payload bytes as stored in the volume. */
+  sizeCompressed: number;
+  /** Payload bytes once unpacked. */
+  sizeReal: number;
+  /** CRC32 of the unpacked payload. */
+  crc: number;
+  /** Authored names of every file entry located here, in name order; always two or more. */
+  names: Array<string>;
+};
+
 /** One archived text file read for display: its name, decoded content, and unpacked size. */
 export type ProjectReadResult = {
   /** Entry name the content was read under. */

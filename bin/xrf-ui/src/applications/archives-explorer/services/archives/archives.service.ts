@@ -16,7 +16,7 @@ import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
@@ -50,6 +50,12 @@ export class ArchivesService {
    */
   @Observable()
   public collisions: Loadable<Array<XrayPathCollision>> = createLoadable([]);
+
+  /**
+   * Payloads several entries of the open volume set read at once.
+   */
+  @Observable()
+  public sharedPayloads: Loadable<Array<ArchiveSharedPayload>> = createLoadable([]);
 
   /** What the explorer points at. Exactly one kind at a time, by construction. */
   @Observable()
@@ -181,6 +187,7 @@ export class ArchivesService {
       this.project = createLoadable(existing);
 
       yield* this.loadCollisions();
+      yield* this.loadSharedPayloads();
     }
 
     this.isReady = true;
@@ -193,6 +200,7 @@ export class ArchivesService {
     this.clearFileSelection();
     this.project = createLoadable(null);
     this.collisions = createLoadable([]);
+    this.sharedPayloads = createLoadable([]);
   }
 
   @LatestFlow("project")
@@ -205,6 +213,7 @@ export class ArchivesService {
       this.clearFileSelection();
       this.project = createLoadable(null, true);
       this.collisions = createLoadable([]);
+      this.sharedPayloads = createLoadable([]);
 
       const response: ArchiveProject = yield* call(archivesCommands.openProject(path));
 
@@ -213,6 +222,7 @@ export class ArchivesService {
       this.project = createLoadable(response, false);
 
       yield* this.loadCollisions();
+      yield* this.loadSharedPayloads();
     } catch (error: unknown) {
       this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
@@ -244,6 +254,7 @@ export class ArchivesService {
       this.clearFileSelection();
       this.project = createLoadable(null);
       this.collisions = createLoadable([]);
+      this.sharedPayloads = createLoadable([]);
     } catch (error: unknown) {
       this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
 
@@ -270,6 +281,27 @@ export class ArchivesService {
       this.log.error("Failed to list archives project collisions:", error);
 
       this.collisions = createLoadable([], false, transformError(error));
+    }
+  }
+
+  /**
+   * Loads which entries of the open volume set read the same bytes, inside whichever flow opened it.
+   *
+   * Undecorated for the same reason as the collisions: it belongs to the open that asked for it.
+   */
+  private *loadSharedPayloads(): TFlow {
+    try {
+      this.sharedPayloads = createLoadable([], true);
+
+      const payloads: Array<ArchiveSharedPayload> = yield* call(archivesCommands.listSharedPayloads());
+
+      this.log.info("Archives project shared payloads:", payloads.length);
+
+      this.sharedPayloads = createLoadable(payloads, false);
+    } catch (error: unknown) {
+      this.log.error("Failed to list archives project shared payloads:", error);
+
+      this.sharedPayloads = createLoadable([], false, transformError(error));
     }
   }
 

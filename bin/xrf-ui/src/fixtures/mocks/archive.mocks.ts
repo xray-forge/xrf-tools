@@ -3,6 +3,7 @@ import {
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveProjectReadPolicy,
+  ArchiveSharedPayload,
 } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 
@@ -47,6 +48,30 @@ export function mockArchiveFileDescriptor(overrides: Partial<ArchiveFileDescript
   return {
     ...descriptor,
     isDirectory: overrides.isDirectory ?? (!descriptor.sizeReal || /[\\/]$/.test(descriptor.name)),
+  };
+}
+
+/**
+ * Creates a shared payload fixture: the bytes one entry reads, read by other names too.
+ *
+ * Built from the entry's own location the way the backend derives it, so the fixture cannot describe a group its entry
+ * would not be found in.
+ *
+ * @param descriptor - One entry read from the payload.
+ * @param others - The other names read from it.
+ * @returns A shared payload fixture with every name in sorted order.
+ */
+export function mockArchiveSharedPayload(
+  descriptor: ArchiveFileDescriptor,
+  others: Array<string>
+): ArchiveSharedPayload {
+  return {
+    crc: descriptor.crc,
+    names: [descriptor.name, ...others].sort(),
+    offset: descriptor.offset,
+    sizeCompressed: descriptor.sizeCompressed,
+    sizeReal: descriptor.sizeReal,
+    volume: descriptor.volume,
   };
 }
 

@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
-use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use super::report::ArchiveListReport;
+use super::report::{ArchiveListReport, ArchiveSharedPayloadIndex};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -62,6 +62,11 @@ impl GenericCommand for ListCommand {
     let project: ArchiveProject = ArchiveProject::new(path)?;
     let entries: Vec<&ArchiveFileDescriptor> = Self::entries(&project, Self::selection(matches));
 
+    // Derived over the whole table once, whatever the selection: a filtered listing still says what each of its
+    // entries shares with entries it left out.
+    let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
+    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+
     for entry in &entries {
       if matches.get_flag("verbose") {
         let (compressed, unpacked): (String, String) =
@@ -69,9 +74,10 @@ impl GenericCommand for ListCommand {
 
         xrf_output::info!(
           output,
-          "{} [{compressed} stored, {unpacked} unpacked, {}]",
+          "{} [{compressed} stored, {unpacked} unpacked, {}{}]",
           entry.name,
           format_path(&project.get_volume_of(entry)?.path),
+          shared.describe_others_of(entry),
         );
       } else {
         xrf_output::info!(output, "{}", entry.name);
@@ -86,7 +92,7 @@ impl GenericCommand for ListCommand {
       xrf_utils::format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| ArchiveListReport::new(&project, &entries))?;
+    context.set_result(|| ArchiveListReport::new(&project, &entries, &shared))?;
 
     Ok(())
   }
