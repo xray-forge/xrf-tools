@@ -50,9 +50,9 @@ impl GenericCommand for PackCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("ltx")
-          .help("Path to an xrCompress configuration LTX describing what to include")
-          .long("ltx")
+        Arg::new("config")
+          .help("Path to a packing configuration describing what to include, as *.ltx or *.json")
+          .long("config")
           .required(false)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -131,10 +131,10 @@ impl GenericCommand for PackCommand {
     let mut config: ArchivePackConfig = ArchivePackConfig::new(&path, &destination, name);
 
     // The configuration file supplies defaults; anything named on the command line wins over it.
-    if let Some(ltx) = matches.get_one::<PathBuf>("ltx") {
-      xrf_output::info!(output, "Pack config: {}", format_path(ltx));
+    if let Some(path) = matches.get_one::<PathBuf>("config") {
+      xrf_output::info!(output, "Pack config: {}", format_path(path));
 
-      config = config.with_ltx_file(ltx)?;
+      config = config.with_config_file(path)?;
     }
 
     if matches.get_flag("store") {
@@ -196,7 +196,7 @@ impl GenericCommand for PackCommand {
       xrf_output::warning!(
         output,
         "No [header] section configured: the engine will read these volumes as encrypted ShoC archives. \
-         Supply --ltx with a [header] naming an entry_point, or pass --xdb."
+         Supply --config with a [header] naming an entry_point, or pass --xdb."
       );
     }
 

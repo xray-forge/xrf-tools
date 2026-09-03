@@ -12,6 +12,8 @@ pub use crate::pack::archive_pack_config::{
   ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX,
   VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
 };
+pub use crate::pack::archive_pack_config_format::ArchivePackConfigFormat;
+pub use crate::pack::archive_pack_config_json::{ArchivePackConfigJson, ArchivePackHeaderEntry};
 pub use crate::pack::archive_pack_options::{
   ArchivePackOptions, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
 };

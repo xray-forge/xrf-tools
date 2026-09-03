@@ -4,6 +4,7 @@ import { Box, IconButton, TextField, Tooltip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { SettingsSection } from "@/core/settings/components/SettingsSection";
+import { MONOSPACE } from "@/core/theme/tokens";
 import { withStoppedPropagation } from "@/lib/dom/event";
 import { Nullable } from "@/lib/types/general";
 
@@ -40,7 +41,7 @@ export function SettingsPathField({
         size={"small"}
         placeholder={placeholder ?? "Not selected"}
         value={value ?? ""}
-        sx={{ "& .MuiInputBase-input": { fontFamily: "'Cascadia Mono', 'Consolas', monospace", fontSize: "0.75rem" } }}
+        sx={{ "& .MuiInputBase-input": MONOSPACE }}
         slotProps={{
           input: {
             readOnly: true,

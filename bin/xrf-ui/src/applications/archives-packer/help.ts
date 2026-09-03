@@ -3,7 +3,8 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 export const ARCHIVES_PACKER_HELP: IApplicationHelp = {
   summary:
     "Builds game archive volumes (`.db*` / `.xdb*`) out of a directory, the way `xrCompress` does. What goes " +
-    "in is edited here and can be read from or written back to an xrCompress `ltx` configuration; where it " +
+    "in is edited here and can be read from or written back to a packing configuration, as either an xrCompress " +
+    "`ltx` or a portable `json` document; where it " +
     "comes from, where it lands, and how it is written belong to the run rather than to that file.",
   workflow: [
     "Under `Source and output`, pick the directory to pack, the output directory, and the base name of the " +
@@ -12,7 +13,7 @@ export const ARCHIVES_PACKER_HELP: IApplicationHelp = {
     "Check `Header` - the entry point is what decides where the engine mounts the contents - and `Options` " +
       "for compression, volume size, and extension.",
     "`Pack` writes the volumes and reports what it produced. The two icons beside it import and export the " +
-      "selection rules as an xrCompress configuration.",
+      "selection rules, in whichever of the two formats the chosen file names.",
   ],
   nuances: [
     "A configuration file carries only the selection rules and the header. Source, output, name, compression " +

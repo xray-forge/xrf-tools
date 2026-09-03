@@ -45,6 +45,20 @@ export const LAYOUT = {
 } as const;
 
 /**
+ * Form controls, shared by every surface that renders one.
+ *
+ * MUI derives an input's height from its font size (a `1.4375em` line box plus padding), so a field that
+ * shrinks its own type -- a monospace path, say -- renders shorter than the fields beside it. These pin the
+ * box instead, and `creation.ts` applies them to every small input so font size and height stay independent.
+ */
+export const CONTROL = {
+  /** Every `size="small"` input, which is all of them: the theme makes `small` the default. */
+  smallHeight: 38,
+  /** MUI's own `sizeSmall` padding above and below the input; the line box is whatever height is left. */
+  smallInputPaddingY: 8.5,
+} as const;
+
+/**
  * Explorer trees, shared by every surface that renders one.
  *
  * Sized against `LAYOUT.railButtonSize` rather than freely: a tree row sits in the same panels as the rail's controls,

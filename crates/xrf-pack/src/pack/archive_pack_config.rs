@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::Ltx;
 
 use crate::path::validate_host_file_name;
 
@@ -77,7 +76,7 @@ impl ArchiveVolumeExtension {
 /// included directory recurses into subdirectories, while an excluded one covers everything below itself rather than
 /// only the directory it names. Either way the path is matched on complete components, without case.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchivePackDirectory {
   pub path: String,
@@ -143,55 +142,6 @@ impl ArchivePackConfig {
       is_with_oversized_volumes: false,
       volume_extension: ArchiveVolumeExtension::default(),
     }
-  }
-
-  /// Apply an xrCompress configuration file.
-  ///
-  /// Reads the dialect `ProcessLTX` accepts: `[options] exclude_exts`, `[include_files]` as bare names,
-  /// `[include_folders]` and `[exclude_folders]` as `path = <bool>`, and a `[header]` copied verbatim.
-  pub fn with_ltx_file<P: AsRef<Path>>(self, path: P) -> XrfResult<Self> {
-    self.with_ltx(&Ltx::read_from_file_full(path)?)
-  }
-
-  pub fn with_ltx(mut self, ltx: &Ltx) -> XrfResult<Self> {
-    if let Some(section) = ltx.section("options")
-      && let Some(extensions) = section.get("exclude_exts")
-    {
-      self.exclude_extensions = extensions
-        .split(',')
-        .map(str::trim)
-        .filter(|pattern| !pattern.is_empty())
-        .map(String::from)
-        .collect();
-    }
-
-    if let Some(section) = ltx.section("include_files") {
-      // Files are listed as bare names, so only the key carries meaning.
-      self.include_files = section.iter().map(|(name, _)| String::from(name)).collect();
-    }
-
-    if let Some(section) = ltx.section("include_folders") {
-      self.include_directories = section.iter().map(Self::directory_from_entry).collect();
-    }
-
-    if let Some(section) = ltx.section("exclude_folders") {
-      self.exclude_directories = section.iter().map(Self::directory_from_entry).collect();
-    }
-
-    if let Some(section) = ltx.section("header") {
-      let mut header: String = String::from("[header]\r\n");
-
-      for (key, value) in section.iter() {
-        header.push_str(key);
-        header.push_str(" = ");
-        header.push_str(value);
-        header.push_str("\r\n");
-      }
-
-      self.header = Some(header);
-    }
-
-    Ok(self)
   }
 
   /// Take an explicit volume size, refusing one outside the range the engine can mount.
@@ -290,34 +240,15 @@ impl ArchivePackConfig {
   pub fn single_volume_name(&self) -> String {
     format!("{}.{}", self.name, self.volume_extension.as_str())
   }
-
-  fn directory_from_entry((path, value): (&str, &str)) -> ArchivePackDirectory {
-    ArchivePackDirectory {
-      // `.\` names the source root itself, which is more readable as an empty prefix.
-      path: if path == ".\\" || path == "./" {
-        String::new()
-      } else {
-        path.replace('/', "\\").trim_end_matches('\\').to_string()
-      },
-      is_recursive: matches!(value, "true" | "on" | "yes" | "1"),
-    }
-  }
 }
 
 #[cfg(test)]
 mod tests {
   use xrf_error::XrfError;
-  use xrf_ltx::Ltx;
 
   use super::{
     ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
   };
-
-  fn config_from_ltx(source: &str) -> ArchivePackConfig {
-    ArchivePackConfig::new("gamedata", "db", "configs")
-      .with_ltx(&Ltx::read_from_str(source).expect("ltx parses"))
-      .expect("ltx applies")
-  }
 
   #[test]
   fn defaults_match_the_engine() {
@@ -327,42 +258,6 @@ mod tests {
     assert_eq!(config.max_volume_size, VOLUME_SIZE_MAX);
     assert_eq!(config.volume_extension, ArchiveVolumeExtension::Db);
     assert!(config.is_with_skip_list, "the vanilla skip list is on by default");
-  }
-
-  #[test]
-  fn reads_the_xrcompress_dialect() {
-    let config: ArchivePackConfig = config_from_ltx(
-      "[options]\nexclude_exts = *.txt, *.json\n\n\
-       [include_files]\ngamemtl.xr\nshaders.xr\n\n\
-       [include_folders]\nconfigs = true\nspawns = false\n\n\
-       [exclude_folders]\nlevels\\build = true\n",
-    );
-
-    assert_eq!(config.exclude_extensions, vec!["*.txt", "*.json"]);
-    assert_eq!(config.include_files, vec!["gamemtl.xr", "shaders.xr"]);
-    assert_eq!(config.include_directories.len(), 2);
-    assert_eq!(config.include_directories[0].path, "configs");
-    assert!(config.include_directories[0].is_recursive);
-    assert!(!config.include_directories[1].is_recursive);
-    assert_eq!(config.exclude_directories[0].path, "levels\\build");
-  }
-
-  #[test]
-  fn reads_the_source_root_as_an_empty_prefix() {
-    let config: ArchivePackConfig = config_from_ltx("[include_folders]\n.\\ = false\n");
-
-    assert_eq!(config.include_directories[0].path, "");
-  }
-
-  #[test]
-  fn keeps_the_header_verbatim_for_the_engine_to_parse() {
-    let config: ArchivePackConfig =
-      config_from_ltx("[header]\nauto_load = true\nentry_point = $fs_root$\\gamedata\\\n");
-    let header: &str = config.header.as_deref().expect("header is carried");
-
-    assert!(header.starts_with("[header]\r\n"), "the section names itself");
-    assert!(header.contains("auto_load = true\r\n"));
-    assert!(header.contains("entry_point = $fs_root$\\gamedata\\\r\n"));
   }
 
   #[test]

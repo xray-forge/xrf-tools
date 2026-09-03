@@ -3,7 +3,7 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { ACCENT, DIVIDER, LAYOUT, MONOSPACE, RADIUS, STATUS, SURFACE, TEXT } from "@/core/theme/tokens";
+import { ACCENT, CONTROL, DIVIDER, LAYOUT, MONOSPACE, RADIUS, STATUS, SURFACE, TEXT } from "@/core/theme/tokens";
 
 type ColorScheme = "light" | "dark";
 
@@ -159,6 +159,11 @@ export function createApplicationTheme(): Theme {
             backgroundColor: (theme.vars ?? theme).palette.action.hover,
             "& .MuiOutlinedInput-notchedOutline": {
               borderColor: (theme.vars ?? theme).palette.divider,
+            },
+            // One height for every small control, whatever type it renders.
+            "&.MuiInputBase-sizeSmall:not(.MuiInputBase-multiline) .MuiOutlinedInput-input": {
+              height: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
+              minHeight: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
             },
           }),
         },

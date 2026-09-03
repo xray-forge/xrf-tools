@@ -3,6 +3,7 @@ import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, IconButton, TextField, Tooltip } from "@mui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 
+import { MONOSPACE } from "@/core/theme/tokens";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -54,7 +55,7 @@ export function FilePickerInput({
       disabled={isDisabled}
       error={isInvalid}
       value={value ?? ""}
-      sx={{ "& .MuiInputBase-input": { fontFamily: "'Cascadia Mono', 'Consolas', monospace", fontSize: "0.75rem" } }}
+      sx={{ "& .MuiInputBase-input": MONOSPACE }}
       slotProps={{
         htmlInput: {
           id: controlId,

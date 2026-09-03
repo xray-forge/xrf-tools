@@ -8,15 +8,15 @@ const READ_POLICY: ArchiveProjectReadPolicy = mockArchiveReadPolicy();
 
 describe("archive preview support", () => {
   it.each(READ_POLICY.extensions)("accepts uncompressed .%s files within the backend limit", (extension: string) => {
-    expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: `preview.${extension}` }), READ_POLICY)
-    ).toEqual({ kind: "supported" });
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: `preview.${extension}` }), READ_POLICY)).toEqual({
+      kind: "supported",
+    });
   });
 
   it("accepts the normalized extension regardless of filename casing", () => {
-    expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "actor.SCRIPT" }), READ_POLICY)
-    ).toEqual({ kind: "supported" });
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "actor.SCRIPT" }), READ_POLICY)).toEqual({
+      kind: "supported",
+    });
   });
 
   it("offers a model preview for a visual, which no policy limit gates", () => {
@@ -34,9 +34,7 @@ describe("archive preview support", () => {
   });
 
   it("identifies each unsupported reason before a backend read", () => {
-    expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "meshes\\actor.omf" }), READ_POLICY)
-    ).toEqual({
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "meshes\\actor.omf" }), READ_POLICY)).toEqual({
       kind: "unsupported-extension",
       extension: "omf",
     });

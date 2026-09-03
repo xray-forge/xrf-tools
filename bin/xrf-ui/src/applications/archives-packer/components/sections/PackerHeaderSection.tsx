@@ -42,6 +42,7 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
   const isDuplicateKey: boolean = Boolean(
     trimmedKey && readHeaderEntries(config.header).some(([key]) => key === trimmedKey)
   );
+  const keyError: Nullable<string> = isDuplicateKey ? "That key is already in the header" : null;
 
   const onAddEntry = useCallback((): void => {
     if (!trimmedKey || isDuplicateKey) {
@@ -81,8 +82,15 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
         />
       </FormRow>
 
-      <FormRow label={"Mount at startup"} description={"Whether the engine loads these volumes on its own"} isInline>
+      <FormRow
+        label={"Mount at startup"}
+        description={"Whether the engine loads these volumes on its own"}
+        controlId={"packer-auto-load"}
+        isInline={true}
+      >
         <Switch
+          id={"packer-auto-load"}
+          size={"small"}
           checked={isAutoLoad}
           disabled={isDisabled}
           slotProps={{ input: { "aria-label": "Mount at startup" } }}
@@ -92,7 +100,7 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
         />
       </FormRow>
 
-      <FormRow label={"Other header values"} description={"Carried into the archive as they are"} isRequired={false}>
+      <FormRow label={"Other header values"} description={"Carried into the archive as they are"} error={keyError}>
         <Stack spacing={1}>
           {customEntries.length ? (
             customEntries.map(([key, value]) => (
@@ -135,7 +143,6 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
               value={newKey}
               placeholder={"key"}
               error={isDuplicateKey}
-              helperText={isDuplicateKey ? "Already in the header" : undefined}
               slotProps={{ htmlInput: { "aria-label": "New header key" } }}
               sx={{ minWidth: 200, flexShrink: 0 }}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setNewKey(event.target.value)}

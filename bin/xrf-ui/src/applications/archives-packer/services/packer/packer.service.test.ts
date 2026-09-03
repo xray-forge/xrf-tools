@@ -178,6 +178,51 @@ describe("PackerService configuration files", () => {
       config: service.config,
     });
   });
+
+  // The two serializations carry the same payload, so nothing here may depend on which one a path names: the backend
+  // picks the codec from the extension, and this service only ever holds a path.
+  it.each(["ltx", "json"])("tracks the same unsaved state whichever format a file names (%s)", async (extension) => {
+    const imported: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, excludeExtensions: [".thm"] };
+
+    setMockInvokeResponses({ ["plugin:archives|import_pack_config"]: imported });
+
+    const service: PackerService = mockPackerService();
+
+    await service.importConfig(`C:\\configs\\pack.${extension}`);
+
+    expect(service.config).toStrictEqual(imported);
+    expect(service.configName).toBe(`pack.${extension}`);
+    expect(service.isDirty).toBe(false);
+
+    service.patchConfig({ excludeExtensions: [".thm", ".tga"] });
+
+    expect(service.isDirty).toBe(true);
+
+    await service.exportConfig(`C:\\configs\\other.${extension}`);
+
+    expect(service.isDirty).toBe(false);
+    expect(service.configName).toBe(`other.${extension}`);
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|export_pack_config", {
+      path: `C:\\configs\\other.${extension}`,
+      config: service.config,
+    });
+  });
+
+  it("reports what the backend refused about a configuration file it cannot read", async () => {
+    // An unsupported extension is the backend's refusal, not this service's rule; it only has to surface it.
+    setMockInvokeResponses({
+      ["plugin:archives|import_pack_config"]: () => {
+        throw new Error("'.txt' is not a packing configuration");
+      },
+    });
+
+    const service: PackerService = mockPackerService();
+
+    await service.importConfig("C:\\configs\\pack.txt");
+
+    expect(service.error).toContain(".txt");
+    expect(service.configPath).toBeNull();
+  });
 });
 
 describe("PackerService adoption", () => {

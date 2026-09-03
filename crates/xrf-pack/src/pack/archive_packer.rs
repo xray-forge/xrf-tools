@@ -13,6 +13,7 @@ use crate::pack::archive_pack_options::{
 };
 use crate::pack::archive_pack_result::ArchivePackResult;
 use crate::pack::archive_pack_source::ArchivePackSource;
+use crate::pack::archive_pack_source_collector::ArchivePackSourceCollector;
 use crate::pack::archive_published_set::ArchivePublishedSet;
 use crate::pack::archive_volume_layout::ArchiveVolumeLayout;
 use crate::pack::archive_volume_writer::ArchiveVolumeWriter;
@@ -91,16 +92,16 @@ impl ArchivePacker {
     let source: ArchivePackSource = {
       let collecting: JobScope = job.enter(PACK_PHASE_COLLECT, None);
 
-      ArchivePackSource::collect_opt(config, &collecting)?
+      ArchivePackSourceCollector::collect_opt(config, &collecting)?
     };
 
     // xrCompress refuses an empty file list too. Saying so here beats leaving the caller to puzzle out
     // a complaint from the codec about an empty descriptor table.
-    if source.entries.is_empty() {
+    if source.names.get_files().is_empty() {
       return Err(XrfError::new_invalid_error(format!(
         "Nothing to pack from '{}': {} file(s) matched, {} skipped by the configured rules",
         format_path(&config.source),
-        source.entries.len(),
+        source.names.get_files().len(),
         source.skipped
       )));
     }
@@ -117,7 +118,7 @@ impl ArchivePacker {
 
     // Both are measured before anything is created, because an unsatisfiable cap is a property of the archive rather
     // than of the file that would first overflow, and refusing it must leave no destination behind.
-    let descriptors: ArchiveDescriptorTable = ArchiveDescriptorTable::of_directories(&source.directories)?;
+    let descriptors: ArchiveDescriptorTable = ArchiveDescriptorTable::of_directories(source.names.get_directories())?;
     let layout: ArchiveVolumeLayout = ArchiveVolumeLayout::new(config, &descriptors)?;
 
     fs::create_dir_all(&config.destination)?;
@@ -125,9 +126,9 @@ impl ArchivePacker {
     let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, layout, descriptors)?;
 
     {
-      let writing: JobScope = job.enter(PACK_PHASE_WRITE, Some(source.entries.len() as u64));
+      let writing: JobScope = job.enter(PACK_PHASE_WRITE, Some(source.names.get_files().len() as u64));
 
-      for entry in &source.entries {
+      for entry in source.names.get_files() {
         // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
         // that are not there, which is worse than a volume that simply ends early.
         if job.is_cancelled() {
@@ -154,7 +155,7 @@ impl ArchivePacker {
     // The writer reports what it saw writing; what the source and the clock know is added here.
     let mut result: ArchivePackResult = writer.finish()?;
 
-    result.files_total = source.entries.len();
+    result.files_total = source.names.get_files().len();
     result.files_skipped = source.skipped;
 
     // Only now is the volume count known, so a set that stayed single drops its index.
@@ -226,7 +227,7 @@ impl ArchivePacker {
     started_at: Instant,
   ) -> ArchivePackResult {
     result.outcome = JobOutcome::Cancelled;
-    result.files_total = source.entries.len();
+    result.files_total = source.names.get_files().len();
     result.files_skipped = source.skipped;
     result.duration = started_at.elapsed();
 

@@ -7,6 +7,14 @@ import {
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
 
+/** Just the extensions, for the open dialog and for recognizing one on a path. */
+export const PACK_CONFIG_EXTENSIONS: ReadonlyArray<string> = ["ltx", "json"];
+
+/**
+ * The extension a configuration takes when the save dialog returned a bare name.
+ */
+export const DEFAULT_PACK_CONFIG_EXTENSION: string = "ltx";
+
 /**
  * The variants of the packer's own enums, named rather than spelled out wherever one is compared.
  *
@@ -148,6 +156,18 @@ export function withoutAt<T>(items: Array<T>, index: number): Array<T> {
 
 export function withValueAt(items: Array<string>, index: number, value: string): Array<string> {
   return items.map((item, at) => (at === index ? value : item));
+}
+
+/**
+ * Give an export destination an extension the backend can write.
+ *
+ * Only a missing or unrecognized suffix is filled in; a path that already names a supported format is left exactly
+ * as the user typed it, so choosing `json` in the dialog is never quietly turned back into `ltx`.
+ */
+export function withPackConfigExtension(path: string): string {
+  const extension: string = path.split(/[\\/]/).pop()?.split(".").slice(1).pop()?.toLowerCase() ?? "";
+
+  return PACK_CONFIG_EXTENSIONS.includes(extension) ? path : `${path}.${DEFAULT_PACK_CONFIG_EXTENSION}`;
 }
 
 /**

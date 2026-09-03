@@ -4,17 +4,18 @@ Packing and unpacking X-Ray `.db` archive volumes.
 
 The volume format itself lives in `xrf-archive`; this crate is the two directions between a volume set and a directory
 on disk. `ArchivePacker` builds volumes from a directory tree, `ArchiveUnpacker` writes them back out to one, and
-`ArchivePackConfig` describes a pack as an LTX file — which is why this crate, not `xrf-archive`, holds the `xrf-ltx`
-dependency.
+`ArchivePackConfig` describes a pack, and reads or writes the file-owned half of itself as either `ltx` or `json`
+(`ArchivePackConfigJson`) — which is why this crate, not `xrf-archive`, holds the `xrf-ltx` dependency.
 
 ```rust,no_run
 use xrf_archive::ArchiveProject;
 use xrf_pack::{ArchivePackConfig, ArchivePacker, ArchiveUnpacker};
 
 # fn main() -> xrf_error::XrfResult {
-// Pack a directory into volumes; an LTX pack config refines the defaults.
+// Pack a directory into volumes; a configuration file refines the defaults. The codec is chosen from the extension,
+// so naming `pack.json` reads the same selection rules out of json instead.
 let config: ArchivePackConfig = ArchivePackConfig::new("C:\\work\\gamedata", "C:\\work\\db", "my_mod")
-  .with_ltx_file("C:\\work\\pack.ltx")?;
+  .with_config_file("C:\\work\\pack.ltx")?;
 let packed = ArchivePacker::pack(&config)?;
 
 // Unpack a volume set back into a directory. Unpacking is synchronous and builds a pool of its own, so a caller on an

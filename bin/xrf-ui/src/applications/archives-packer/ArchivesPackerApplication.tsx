@@ -15,6 +15,7 @@ import { PackerHeaderSection } from "@/applications/archives-packer/components/s
 import { PackerOptionsSection } from "@/applications/archives-packer/components/sections/PackerOptionsSection";
 import { PackerOutputSection } from "@/applications/archives-packer/components/sections/PackerOutputSection";
 import { PackerSelectionSection } from "@/applications/archives-packer/components/sections/PackerSelectionSection";
+import { PACK_CONFIG_EXTENSIONS, withPackConfigExtension } from "@/applications/archives-packer/lib/pack-config";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -32,8 +33,11 @@ import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Nullable } from "@/lib/types/general";
 
-/** Filter used by both configuration dialogs, so import and export agree on what a config is. */
-const CONFIG_FILTERS = [{ name: "Packing configuration", extensions: ["ltx"] }];
+/** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
+const IMPORT_CONFIG_FILTERS = [{ name: "Packing configuration", extensions: [...PACK_CONFIG_EXTENSIONS] }];
+
+/** Filters the save dialog offers, one entry per format. */
+const EXPORT_CONFIG_FILTERS = PACK_CONFIG_EXTENSIONS.map((it) => ({ name: it, extensions: [it] }));
 
 export function ArchivesPackerApplication(): ReactElement {
   const pathsService: PathsService = useInjection(PathsService);
@@ -86,7 +90,7 @@ export function ArchivesPackerApplication(): ReactElement {
   const onImport = useCallback(async () => {
     const selected: Nullable<string> = (await open({
       title: "Import packing configuration",
-      filters: CONFIG_FILTERS,
+      filters: IMPORT_CONFIG_FILTERS,
     })) as Nullable<string>;
 
     if (selected) {
@@ -95,10 +99,13 @@ export function ArchivesPackerApplication(): ReactElement {
   }, [packerService]);
 
   const onExport = useCallback(async () => {
-    const selected: Nullable<string> = await save({ title: "Export packing configuration", filters: CONFIG_FILTERS });
+    const selected: Nullable<string> = await save({
+      title: "Export packing configuration",
+      filters: EXPORT_CONFIG_FILTERS,
+    });
 
     if (selected) {
-      await packerService.exportConfig(selected);
+      await packerService.exportConfig(withPackConfigExtension(selected));
     }
   }, [packerService]);
 

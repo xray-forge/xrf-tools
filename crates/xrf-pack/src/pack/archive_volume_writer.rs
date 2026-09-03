@@ -12,8 +12,8 @@ use xrf_utils::to_format_size;
 use crate::pack::archive_alias_table::{ArchiveAlias, ArchiveAliasTable};
 use crate::pack::archive_descriptor_table::{ArchiveDescriptorTable, DescriptorName};
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackMode};
+use crate::pack::archive_pack_entry::ArchivePackEntry;
 use crate::pack::archive_pack_result::ArchivePackResult;
-use crate::pack::archive_pack_source::ArchivePackEntry;
 use crate::pack::archive_volume_layout::ArchiveVolumeLayout;
 
 /// Extensions the engine expects to find compressed; everything else is stored.
