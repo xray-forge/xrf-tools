@@ -142,3 +142,139 @@ fn keeps_an_explicit_option_winning_over_an_imported_one() -> CommandResult {
 
   Ok(())
 }
+
+#[test]
+fn selects_the_same_files_named_directly_as_through_a_configuration() -> CommandResult {
+  let (source, destination) = create_roots("direct")?;
+  let config: PathBuf = source.parent().expect("a parent").join("pack.json");
+
+  fs::write(
+    &config,
+    r#"{ "includeDirectories": [{ "path": "configs", "isRecursive": true }] }"#,
+  )?;
+
+  let through_file: u64 = pack_with_config(&source, &destination.join("file"), &config)?;
+
+  let mut arguments: Vec<String> = pack_arguments(&source, &destination.join("direct"), "cfg");
+
+  arguments.push(String::from("--include-directory"));
+  arguments.push(String::from("configs"));
+
+  let result: Value = run_command_for_result(&PackCommand, &arguments)?.expect("pack reports a result");
+  let directly: u64 = result
+    .get("filesTotal")
+    .and_then(Value::as_u64)
+    .expect("the result counts what was packed");
+
+  assert_eq!(through_file, 1, "the configuration narrowed the selection");
+  assert_eq!(directly, through_file, "naming it directly selects the same files");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_configuration_file_beside_a_direct_selection() -> CommandResult {
+  let (source, destination) = create_roots("conflict")?;
+  let config: PathBuf = source.parent().expect("a parent").join("pack.json");
+
+  fs::write(&config, r#"{ "includeFiles": [] }"#)?;
+
+  let mut arguments: Vec<String> = pack_arguments(&source, &destination, "cfg");
+
+  arguments.push(String::from("--config"));
+  arguments.push(config.display().to_string());
+  arguments.push(String::from("--include-directory"));
+  arguments.push(String::from("configs"));
+
+  // Two sources for one selection would need a precedence rule; clap refuses instead of inventing one.
+  let error: String = run_command(&PackCommand, &arguments)
+    .expect_err("a file beside a direct selection is refused")
+    .to_string();
+
+  assert!(error.contains("--config"), "{error}");
+  assert!(error.contains("--include-directory"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn writes_the_header_entries_named_on_the_command_line() -> CommandResult {
+  let (source, destination) = create_roots("header")?;
+
+  let mut arguments: Vec<String> = pack_arguments(&source, &destination, "cfg");
+
+  // A value may hold its own `=` and its own quotes, which the engine's own header does.
+  for entry in [
+    "auto_load=true",
+    "entry_point=$fs_root$\\gamedata\\",
+    "creator=\"gsc game world\"",
+  ] {
+    arguments.push(String::from("--header"));
+    arguments.push(String::from(entry));
+  }
+
+  arguments.push(String::from("--include-directory"));
+  arguments.push(String::from("configs"));
+
+  run_command(&PackCommand, &arguments)?;
+
+  // Read back out of the volume the run published, which is where the header actually has to land.
+  let volume: Vec<u8> = fs::read(destination.join("cfg.db"))?;
+  let text: String = String::from_utf8_lossy(&volume).into_owned();
+
+  for expected in [
+    "auto_load = true",
+    "entry_point = $fs_root$\\gamedata\\",
+    "creator = \"gsc game world\"",
+  ] {
+    assert!(text.contains(expected), "the volume carries '{expected}'");
+  }
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_header_entry_that_names_no_key() -> CommandResult {
+  let (source, destination) = create_roots("header-invalid")?;
+
+  for entry in ["auto_load", "=true"] {
+    let mut arguments: Vec<String> = pack_arguments(&source, &destination, "cfg");
+
+    arguments.push(String::from("--header"));
+    arguments.push(String::from(entry));
+
+    let error: String = run_command(&PackCommand, &arguments)
+      .expect_err("a malformed header entry is refused")
+      .to_string();
+
+    assert!(error.contains(entry), "{error}");
+  }
+
+  Ok(())
+}
+
+#[test]
+fn packs_the_whole_tree_when_nothing_is_selected() -> CommandResult {
+  let (source, destination) = create_roots("bare")?;
+
+  // Only a source: no configuration file and no selection option. Naming nothing means everything, as it does when
+  // xrCompress is handed a directory and no LTX, so both files on disk are packed.
+  let result: Value = run_command_for_result(&PackCommand, &pack_arguments(&source, &destination, "cfg"))?
+    .expect("pack reports a result");
+
+  assert_eq!(
+    result.get("filesTotal").and_then(Value::as_u64),
+    Some(2),
+    "an unnarrowed run takes the whole source tree"
+  );
+
+  // The mountable default header survives a run that named no header of its own.
+  let volume: Vec<u8> = fs::read(destination.join("cfg.db"))?;
+
+  assert!(
+    String::from_utf8_lossy(&volume).contains("entry_point = $fs_root$\\gamedata\\"),
+    "the default header is still written"
+  );
+
+  Ok(())
+}

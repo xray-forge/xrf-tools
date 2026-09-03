@@ -7,6 +7,7 @@ pub(crate) mod archive_pack_config_json;
 pub(crate) mod archive_pack_config_ltx;
 pub(crate) mod archive_pack_config_rules;
 pub(crate) mod archive_pack_entry;
+pub(crate) mod archive_pack_header_entry;
 pub(crate) mod archive_pack_name_collision;
 pub(crate) mod archive_pack_name_table;
 pub(crate) mod archive_pack_options;

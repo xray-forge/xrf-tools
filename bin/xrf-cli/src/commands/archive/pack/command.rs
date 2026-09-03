@@ -2,16 +2,27 @@ use std::path::PathBuf;
 
 use clap::parser::ValueSource;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_error::XrfError;
+use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_pack::{
-  ArchivePackConfig, ArchivePackMode, ArchivePackOptions, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension,
-  VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
+  ArchivePackConfig, ArchivePackDirectory, ArchivePackHeaderEntry, ArchivePackMode, ArchivePackOptions,
+  ArchivePackResult, ArchivePacker, ArchiveVolumeExtension, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
 };
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+
+/// The options that name the selection rules directly, which a configuration file also carries.
+const SELECTION_ARGUMENTS: [&str; 7] = [
+  "include-file",
+  "include-directory",
+  "include-directory-shallow",
+  "exclude-directory",
+  "exclude-directory-shallow",
+  "exclude-extension",
+  "header",
+];
 
 #[derive(Default)]
 pub struct PackCommand;
@@ -54,7 +65,64 @@ impl GenericCommand for PackCommand {
           .help("Path to a packing configuration describing what to include, as *.ltx or *.json")
           .long("config")
           .required(false)
+          .conflicts_with_all(SELECTION_ARGUMENTS)
           .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("include-file")
+          .help("File to pack, named relative to --path, repeatable")
+          .long("include-file")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("include-directory")
+          .help("Directory to pack with everything below it, relative to --path, repeatable")
+          .long("include-directory")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("include-directory-shallow")
+          .help("Directory whose own files are packed while its subdirectories only get listed, repeatable")
+          .long("include-directory-shallow")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("exclude-directory")
+          .help("Directory to leave out along with everything below it, repeatable")
+          .long("exclude-directory")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("exclude-directory-shallow")
+          .help("Directory to leave out while its contents still pack, repeatable")
+          .long("exclude-directory-shallow")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("exclude-extension")
+          .help("Extension pattern that keeps a file out, such as *.txt, repeatable")
+          .long("exclude-extension")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("header")
+          .help("Header entry written into the archive as <key>=<value>, repeatable, replacing the default header")
+          .long("header")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
       )
       .arg(
         Arg::new("store")
@@ -130,11 +198,14 @@ impl GenericCommand for PackCommand {
 
     let mut config: ArchivePackConfig = ArchivePackConfig::new(&path, &destination, name);
 
-    // The configuration file supplies defaults; anything named on the command line wins over it.
+    // One selection source or the other, never both: clap refuses `--config` beside a selection option, so whichever
+    // is present supplies the whole selection. The run options below still layer over either.
     if let Some(path) = matches.get_one::<PathBuf>("config") {
       xrf_output::info!(output, "Pack config: {}", format_path(path));
 
       config = config.with_config_file(path)?;
+    } else {
+      config = Self::with_selection_arguments(config, matches)?;
     }
 
     if matches.get_flag("store") {
@@ -196,7 +267,7 @@ impl GenericCommand for PackCommand {
       xrf_output::warning!(
         output,
         "No [header] section configured: the engine will read these volumes as encrypted ShoC archives. \
-         Supply --config with a [header] naming an entry_point, or pass --xdb."
+         Supply a header naming an entry_point, with --header or in --config, or pass --xdb."
       );
     }
 
@@ -253,5 +324,105 @@ impl GenericCommand for PackCommand {
     context.set_result(|| &result)?;
 
     Ok(())
+  }
+}
+
+impl PackCommand {
+  /// Apply the selection rules named on the command line.
+  ///
+  /// The direct half of what a configuration file carries, for a caller that already holds the values and has no use
+  /// for a file between them. `--config` refuses to appear beside these, so whichever mode is in play supplies the
+  /// whole selection rather than layering over the other.
+  ///
+  /// Recursive and shallow entries of one kind arrive as two lists rather than interleaved, which the archive cannot
+  /// tell apart: registration keys every row by engine name and sorts it, so the volume a run writes does not depend
+  /// on the order its directories were named in.
+  fn with_selection_arguments(mut config: ArchivePackConfig, matches: &ArgMatches) -> XrfResult<ArchivePackConfig> {
+    if let Some(files) = matches.get_many::<String>("include-file") {
+      config.include_files = files.cloned().collect();
+    }
+
+    if let Some(directories) = Self::collect_directories(matches, "include-directory", "include-directory-shallow") {
+      config.include_directories = directories;
+    }
+
+    if let Some(directories) = Self::collect_directories(matches, "exclude-directory", "exclude-directory-shallow") {
+      config.exclude_directories = directories;
+    }
+
+    if let Some(extensions) = matches.get_many::<String>("exclude-extension") {
+      config.exclude_extensions = extensions.cloned().collect();
+    }
+
+    if let Some(entries) = matches.get_many::<String>("header") {
+      let entries: Vec<ArchivePackHeaderEntry> = entries
+        .map(|entry| Self::parse_header_entry(entry))
+        .collect::<XrfResult<_>>()?;
+
+      config = config.with_header_entries(&entries);
+    }
+
+    Ok(config)
+  }
+
+  /// Read one kind of directory rule from its recursive and shallow options, or nothing when neither was given.
+  ///
+  /// Answers `None` rather than an empty list so a run that names no directories leaves the configuration's own alone,
+  /// the way every other field here does. The two are the same today, since a fresh configuration selects nothing, and
+  /// would stop being the same the moment a default did.
+  ///
+  /// The flag stores `is_recursive`, which the packer reads differently on each side: an included directory takes
+  /// everything below it, while an excluded one covers everything below it rather than only the name it gives. The
+  /// two options exist so neither meaning has to be spelled into a value.
+  fn collect_directories(matches: &ArgMatches, recursive: &str, shallow: &str) -> Option<Vec<ArchivePackDirectory>> {
+    let sources: [(&str, bool); 2] = [(recursive, true), (shallow, false)];
+
+    if sources
+      .iter()
+      .all(|(argument, _)| matches.get_many::<String>(argument).is_none())
+    {
+      return None;
+    }
+
+    Some(
+      sources
+        .into_iter()
+        .flat_map(|(argument, is_recursive)| {
+          matches
+            .get_many::<String>(argument)
+            .into_iter()
+            .flatten()
+            .map(move |path| ArchivePackDirectory {
+              path: path.clone(),
+              is_recursive,
+            })
+        })
+        .collect(),
+    )
+  }
+
+  /// Split one `--header <key>=<value>` into the pair the archive stores.
+  ///
+  /// Split at the first `=` so a value may hold its own, which the engine's own header does for quoted text. An entry
+  /// naming no key is refused rather than written, since the engine would read the line and find nothing addressed.
+  fn parse_header_entry(entry: &str) -> XrfResult<ArchivePackHeaderEntry> {
+    let (key, value) = entry.split_once('=').ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "Header entry '{entry}' is not a <key>=<value> pair. Write it as --header auto_load=true."
+      ))
+    })?;
+
+    let key: &str = key.trim();
+
+    if key.is_empty() {
+      return Err(XrfError::new_invalid_error(format!(
+        "Header entry '{entry}' names no key. Write it as --header auto_load=true."
+      )));
+    }
+
+    Ok(ArchivePackHeaderEntry {
+      key: key.to_string(),
+      value: value.trim().to_string(),
+    })
   }
 }

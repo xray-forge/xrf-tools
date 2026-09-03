@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::archive_pack_config_json::ArchivePackConfigJson;
+use crate::pack::archive_pack_header_entry::ArchivePackHeaderEntry;
 
 /// Section holding the extension patterns that keep a file out.
 const SECTION_OPTIONS: &str = "options";
@@ -105,7 +105,7 @@ impl ArchivePackConfig {
     Self::write_directories(&mut ltx, SECTION_EXCLUDE_DIRECTORIES, &self.exclude_directories);
 
     if let Some(header) = &self.header {
-      for entry in ArchivePackConfigJson::split_header(header) {
+      for entry in ArchivePackHeaderEntry::split(header) {
         Self::set_entry(&mut ltx, SECTION_HEADER, &entry.key, &entry.value);
       }
     }

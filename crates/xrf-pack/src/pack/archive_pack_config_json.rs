@@ -2,17 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
 use crate::pack::archive_pack_config::{ArchivePackConfig, ArchivePackDirectory};
-
-/// One `[header]` key and its value, in the engine's own spelling.
-///
-/// The section is copied into the archive verbatim and the engine parses it, so neither half is renamed on the way
-/// through a configuration file: `auto_load` stays `auto_load`, whatever the surrounding field names look like.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ArchivePackHeaderEntry {
-  pub key: String,
-  pub value: String,
-}
+use crate::pack::archive_pack_header_entry::ArchivePackHeaderEntry;
 
 /// A packing configuration as JSON carries it: the file-owned fields, and nothing else.
 ///
@@ -81,40 +71,8 @@ impl ArchivePackConfigJson {
       include_files: Self::some_if_populated(config.include_files.clone()),
       include_directories: Self::some_if_populated(config.include_directories.clone()),
       exclude_directories: Self::some_if_populated(config.exclude_directories.clone()),
-      header: config.header.as_deref().map(Self::split_header),
+      header: config.header.as_deref().map(ArchivePackHeaderEntry::split),
     }
-  }
-
-  /// Rebuild the verbatim `[header]` text the archive stores as chunk 666.
-  ///
-  /// Written in the engine's line ending because the engine reads these bytes, not because anything here does.
-  pub(crate) fn join_header(entries: &[ArchivePackHeaderEntry]) -> String {
-    let mut header: String = String::from("[header]\r\n");
-
-    for entry in entries {
-      header.push_str(&entry.key);
-      header.push_str(" = ");
-      header.push_str(&entry.value);
-      header.push_str("\r\n");
-    }
-
-    header
-  }
-
-  /// Split the stored header text back into the pairs it was built from.
-  ///
-  /// The header is kept as text because the archive stores it verbatim; this reads it only well enough to round trip
-  /// through a configuration file. A line carrying no `=` names nothing and is dropped, which is what the LTX
-  /// projection has always done with it.
-  pub(crate) fn split_header(header: &str) -> Vec<ArchivePackHeaderEntry> {
-    header
-      .lines()
-      .filter_map(|line| line.split_once('='))
-      .map(|(key, value)| ArchivePackHeaderEntry {
-        key: key.trim().to_string(),
-        value: value.trim().to_string(),
-      })
-      .collect()
   }
 
   fn some_if_populated<T>(values: Vec<T>) -> Option<Vec<T>> {
@@ -145,7 +103,7 @@ impl ArchivePackConfig {
     }
 
     if let Some(entries) = &json.header {
-      self.header = Some(ArchivePackConfigJson::join_header(entries));
+      self.header = Some(ArchivePackHeaderEntry::join(entries));
     }
 
     self
