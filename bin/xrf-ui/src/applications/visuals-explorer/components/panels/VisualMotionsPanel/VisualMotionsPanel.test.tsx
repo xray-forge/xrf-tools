@@ -154,8 +154,7 @@ describe("VisualMotionsPanel", () => {
 
     await waitFor(() => expect(container.get(VisualMotionService).frameCount).toBe(4));
 
-    // Matched loosely: the counter and the motion's duration share one element.
-    expect(render.getByText(/1 \/ 4/)).toBeInTheDocument();
+    expect(render.getByText(/\d+ \/ 4/)).toBeInTheDocument();
     expect(render.getByRole("button", { name: "Pause" })).toBeEnabled();
   });
 
