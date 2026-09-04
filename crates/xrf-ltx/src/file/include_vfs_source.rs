@@ -7,6 +7,7 @@ use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
 use crate::Ltx;
 use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
+use crate::project::ltx_read_counters::LtxReadCounters;
 
 /// Resolves and reads includes through a mounted VFS.
 ///
@@ -16,16 +17,39 @@ use crate::file::include_source::LtxIncludeSource;
 pub(crate) struct LtxIncludeVfsSource<'a> {
   vfs: &'a XrayVfs,
   scope: &'a XrayLookupScope,
+  /// Where this source reports its reads, when a project is counting them.
+  counters: Option<&'a LtxReadCounters>,
 }
 
 impl<'a> LtxIncludeVfsSource<'a> {
   pub fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope) -> Self {
-    Self { scope, vfs }
+    Self {
+      counters: None,
+      scope,
+      vfs,
+    }
+  }
+
+  /// A source that reports every read and parse it performs.
+  ///
+  /// Only a project counts, because only a project owns the span the counts describe.
+  pub fn new_counted(vfs: &'a XrayVfs, scope: &'a XrayLookupScope, counters: &'a LtxReadCounters) -> Self {
+    Self {
+      counters: Some(counters),
+      scope,
+      vfs,
+    }
   }
 
   /// Reads and parses one logical path, with its logical location recorded so nested includes resolve against it.
   pub fn read_ltx(&self, logical_path: &str) -> XrfResult<Ltx> {
     let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
+
+    if let Some(counters) = self.counters {
+      counters.record_read(bytes.len() as u64);
+      counters.record_parse();
+    }
+
     let contents: String = decode_bytes_to_string(&bytes, new_windows1251_encoder())?;
     let mut ltx: Ltx = Ltx::read_from_str(&contents)?;
     let path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
@@ -41,6 +65,21 @@ impl<'a> LtxIncludeVfsSource<'a> {
     ltx.path = Some(PathBuf::from(path.as_str()));
 
     Ok(ltx)
+  }
+
+  /// Reads only a config's include statements, without parsing its sections.
+  ///
+  /// Project assembly needs every config's include list to work out which files nothing includes, so this pass is
+  /// counted separately: it is a whole read of every config in the project performed before any content is parsed.
+  pub fn read_included(&self, logical_path: &str) -> XrfResult<crate::file::types::LtxIncluded> {
+    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
+
+    if let Some(counters) = self.counters {
+      counters.record_read(bytes.len() as u64);
+      counters.record_include_scan();
+    }
+
+    Ltx::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }
 
   /// A logical path as the VFS spells it.

@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
@@ -7,10 +8,12 @@ use crate::Ltx;
 use crate::file::file_configuration::constants::{
   LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME,
 };
+use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
 use crate::file::include_vfs_source::LtxIncludeVfsSource;
 use crate::file::types::LtxSectionSchemes;
 use crate::project::ltx_project_options::LtxProjectOptions;
+use crate::project::ltx_read_counters::{LtxReadCounters, LtxReadCountersSnapshot};
 use crate::scheme::parser::LtxSchemeParser;
 
 /// An LTX project assembled from one VFS scope.
@@ -35,6 +38,8 @@ pub struct LtxProject {
   /// Mounted sources that resolve project files.
   vfs: XrayVfs,
   scope: XrayLookupScope,
+  /// How much reading and parsing this project has done.
+  counters: Arc<LtxReadCounters>,
 }
 
 impl LtxProject {
@@ -76,6 +81,7 @@ impl LtxProject {
   /// Creates an empty project for callers that need the project shape without mounted files.
   pub fn empty(root: impl AsRef<Path>) -> Self {
     Self {
+      counters: LtxReadCounters::new_shared(),
       ltx_file_entries: Vec::new(),
       ltx_files: Vec::new(),
       ltx_scheme_declarations: Default::default(),
@@ -92,7 +98,8 @@ impl LtxProject {
   /// An entry point is a file nothing else includes, which is why every file's include list is read before any of their
   /// contents.
   fn assemble(root: PathBuf, vfs: XrayVfs, scope: XrayLookupScope, options: LtxProjectOptions) -> XrfResult<Self> {
-    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new(&vfs, &scope);
+    let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
+    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&vfs, &scope, &counters);
 
     let mut ltx_files: Vec<XrayLogicalPath> = Vec::new();
     let mut ltx_scheme_files: Vec<XrayLogicalPath> = Vec::new();
@@ -104,7 +111,7 @@ impl LtxProject {
         .map(|parent| PathBuf::from(parent.as_str()))
         .unwrap_or_default();
 
-      for include in &Ltx::read_included_from_vfs(&vfs, &scope, path.as_str())? {
+      for include in &source.read_included(path.as_str())? {
         for resolved in source.resolve(&directory, include)? {
           included.push(Self::included_path(&resolved)?);
         }
@@ -174,6 +181,7 @@ impl LtxProject {
     };
 
     Ok(Self {
+      counters,
       ltx_file_entries,
       ltx_files,
       ltx_scheme_declarations,
@@ -267,7 +275,16 @@ impl LtxProject {
   ///
   /// Returns an error when the file is not in scope or cannot be read or parsed.
   pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
-    Ltx::read_from_vfs_full(&self.vfs, &self.scope, logical_path.as_str())
+    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+
+    self.counters.record_resolution();
+
+    LtxIncludeConvertor::convert_with(source.read_ltx(logical_path.as_str())?, &source)?.into_inherited()
+  }
+
+  /// How much reading and parsing this project has done.
+  pub fn get_read_counters(&self) -> LtxReadCountersSnapshot {
+    self.counters.get_snapshot()
   }
 
   /// The engine identity of a config named relative to this project.
