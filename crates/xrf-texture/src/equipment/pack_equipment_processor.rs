@@ -35,10 +35,10 @@ impl PackEquipmentProcessor {
 
     let packing: xrf_job::JobScope = options.job.enter(
       crate::job_phases::TEXTURE_PHASE_PACK_SPRITES,
-      Some(options.ltx.sections.len() as u64),
+      Some(options.ltx.len() as u64),
     );
 
-    for (section_name, section) in &options.ltx.sections {
+    for (section_name, section) in options.ltx.iter() {
       // Between sections: the sheet is one image written once at the end, so stopping here leaves nothing on disk
       // rather than a half-drawn sprite atlas.
       if options.job.is_cancelled() {

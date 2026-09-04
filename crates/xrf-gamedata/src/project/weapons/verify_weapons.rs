@@ -27,8 +27,7 @@ impl GamedataProject {
 
     // Selected before the sweep rather than filtered inside it, because a parallel run needs to know how many positions
     // it is releasing output through before the first of them says anything.
-    let weapons: Vec<(&String, &Section)> = system_ltx
-      .sections
+    let weapons: Vec<(&str, &Section)> = system_ltx
       .iter()
       .filter(|(_, section)| is_weapon_section(section))
       .collect();

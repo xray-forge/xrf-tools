@@ -29,8 +29,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
     let system_ltx: Ltx = self.project.ltx_project.system_ltx()?;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
-    let player_hud_sections: Vec<(&String, &Section)> = system_ltx
-      .sections
+    let player_hud_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
       .filter(|(_, section)| is_player_hud_section(section))
       .collect();
@@ -212,7 +211,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
     let mut is_valid: bool = true;
 
-    for (weapon_section_name, weapon_section) in &system_ltx.sections {
+    for (weapon_section_name, weapon_section) in system_ltx.iter() {
       if !is_weapon_section(weapon_section) {
         continue;
       }

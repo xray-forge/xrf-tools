@@ -40,8 +40,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     let system_ltx: Ltx = self.project.ltx_project.system_ltx()?;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
 
-    let item_sections: Vec<(&String, &Section)> = system_ltx
-      .sections
+    let item_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
       .filter(|(_, section)| is_hud_item_section(section))
       .collect();

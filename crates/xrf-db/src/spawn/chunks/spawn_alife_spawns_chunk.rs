@@ -139,7 +139,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
   /// Import ALife spawns data from provided path.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("alife_spawns.ltx"))?;
-    let mut objects: Vec<AlifeObject> = Vec::with_capacity(ltx.sections.len());
+    let mut objects: Vec<AlifeObject> = Vec::with_capacity(ltx.len());
 
     for (section_name, _) in &ltx {
       objects.push(AlifeObject::import(section_name, &ltx)?);

@@ -32,8 +32,7 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     let system_ltx: Ltx = self.project.ltx_project.system_ltx()?;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
 
-    let hud_sections: Vec<(&String, &Section)> = system_ltx
-      .sections
+    let hud_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
       .filter(|(_, section)| is_player_hud_section(section))
       .collect();

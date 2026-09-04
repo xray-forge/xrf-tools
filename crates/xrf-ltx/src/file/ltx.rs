@@ -16,7 +16,7 @@ pub struct Ltx {
   pub(crate) skipped_checks: Vec<LtxCheck>,
   pub directory: Option<PathBuf>,
   pub path: Option<PathBuf>,
-  pub sections: LtxSections,
+  pub(crate) sections: LtxSections,
 }
 
 impl Ltx {
@@ -53,40 +53,32 @@ impl Ltx {
     self.with_section(ROOT_SECTION)
   }
 
-  /// Get the immutable general section
-  pub fn root_section(&mut self) -> &Section {
+  /// The root section, when the file declared any field outside a section.
+  ///
+  /// Answers `None` rather than creating it, so reading a document cannot change it. Use [`Self::root_section_mut`] to
+  /// write one.
+  pub fn root_section(&self) -> Option<&Section> {
+    self.section(ROOT_SECTION)
+  }
+
+  /// The root section, created empty when it does not exist yet.
+  pub fn root_section_mut(&mut self) -> &mut Section {
     self.entry(ROOT_SECTION.into()).or_insert_with(Default::default)
   }
 
-  /// Get the mutable general section
-  pub fn root_section_mut(&mut self) -> &mut Section {
-    self
-      .section_mut(ROOT_SECTION)
-      .expect("There is no root section in this Ltx")
-  }
-
   /// Get a immutable section
-  pub fn section<S>(&self, name: S) -> Option<&Section>
-  where
-    S: Into<String>,
-  {
-    self.sections.get(&name.into())
+  pub fn section(&self, name: &str) -> Option<&Section> {
+    self.sections.get(name)
   }
 
   /// Check whether ltx has section with name.
-  pub fn has_section<S>(&self, name: S) -> bool
-  where
-    S: Into<String>,
-  {
-    self.sections.contains_key(&name.into())
+  pub fn has_section(&self, name: &str) -> bool {
+    self.sections.contains_key(name)
   }
 
   /// Get a mutable section
-  pub fn section_mut<S>(&mut self, name: S) -> Option<&mut Section>
-  where
-    S: Into<String>,
-  {
-    self.sections.get_mut(&name.into())
+  pub fn section_mut(&mut self, name: &str) -> Option<&mut Section> {
+    self.sections.get_mut(name)
   }
 
   pub fn entry(&mut self, name: String) -> SectionEntry<'_> {
@@ -97,8 +89,8 @@ impl Ltx {
     self.includes.push(file);
   }
 
-  pub fn includes(&self, file: &String) -> bool {
-    self.includes.contains(file)
+  pub fn includes(&self, file: &str) -> bool {
+    self.includes.iter().any(|included| included == file)
   }
 
   /// Check whether this LTX file opted out of a conversion or verification check.
@@ -135,45 +127,30 @@ impl Ltx {
   }
 
   /// Get the first value from the sections with key
-  pub fn get_from<S>(&self, section: S, key: &str) -> Option<&str>
-  where
-    S: Into<String>,
-  {
-    self.sections.get(&section.into()).and_then(|section| section.get(key))
+  pub fn get_from(&self, section: &str, key: &str) -> Option<&str> {
+    self.sections.get(section).and_then(|section| section.get(key))
   }
 
   /// Get the first value from the sections with key, return the default value if it does not exist
-  pub fn get_from_or<'a, S>(&'a self, section: S, key: &str, default: &'a str) -> &'a str
-  where
-    S: Into<String>,
-  {
+  pub fn get_from_or<'a>(&'a self, section: &str, key: &str, default: &'a str) -> &'a str {
     self.get_from(section, key).unwrap_or(default)
   }
 
   /// Get the first mutable value from the sections with key
-  pub fn get_from_mut<S>(&mut self, section: S, key: &str) -> Option<&mut str>
-  where
-    S: Into<String>,
-  {
+  pub fn get_from_mut(&mut self, section: &str, key: &str) -> Option<&mut str> {
     self
       .sections
-      .get_mut(&section.into())
+      .get_mut(section)
       .and_then(|section| section.get_mut(key).map(|it| it.as_mut_str()))
   }
 
   /// Delete the first section with key, return the properties if it exists
-  pub fn delete<S>(&mut self, section: S) -> Option<Section>
-  where
-    S: Into<String>,
-  {
-    self.sections.shift_remove(&section.into())
+  pub fn delete(&mut self, section: &str) -> Option<Section> {
+    self.sections.shift_remove(section)
   }
 
   /// Delete the key from the section, return the value if key exists or None
-  pub fn delete_from<S>(&mut self, section: S, key: &str) -> Option<String>
-  where
-    S: Into<String>,
-  {
+  pub fn delete_from(&mut self, section: &str, key: &str) -> Option<String> {
     self.section_mut(section).and_then(|section| section.remove(key))
   }
 
@@ -225,8 +202,11 @@ mod test {
     let mut output: Ltx = ltx.unwrap();
     assert_eq!(output.len(), 1);
 
-    assert!(output.root_section().is_empty());
-    assert!(output.root_section_mut().is_empty());
+    assert!(
+      output.root_section().is_none(),
+      "reading does not create the root section"
+    );
+    assert!(output.root_section_mut().is_empty(), "asking to write one does");
 
     let props1 = output.section(ROOT_SECTION).unwrap();
     assert!(props1.is_empty());
@@ -246,8 +226,11 @@ mod test {
     assert!(ltx.is_ok());
 
     let mut output: Ltx = ltx.unwrap();
-    assert!(output.root_section().is_empty());
-    assert!(output.root_section_mut().is_empty());
+    assert!(
+      output.root_section().is_none(),
+      "reading does not create the root section"
+    );
+    assert!(output.root_section_mut().is_empty(), "asking to write one does");
     assert_eq!(output.len(), 1);
   }
 
@@ -259,8 +242,11 @@ mod test {
     assert!(ltx.is_ok());
 
     let mut output: Ltx = ltx.unwrap();
-    assert!(output.root_section().is_empty());
-    assert!(output.root_section_mut().is_empty());
+    assert!(
+      output.root_section().is_none(),
+      "reading does not create the root section"
+    );
+    assert!(output.root_section_mut().is_empty(), "asking to write one does");
     assert_eq!(output.len(), 1);
   }
 
@@ -664,8 +650,8 @@ x2 = n2
 x1 = n2
 x3 = n2
 ";
-    let mut ltx: Ltx = Ltx::read_from_str(input).unwrap();
-    let section: &Section = ltx.root_section();
+    let ltx: Ltx = Ltx::read_from_str(input).unwrap();
+    let section: &Section = ltx.root_section().expect("root fields to be declared");
     let keys: Vec<&str> = section.iter().map(|(k, _)| k).collect();
     assert_eq!(keys, vec!["x2", "x1", "x3"]);
   }
@@ -714,8 +700,8 @@ foo = c
   fn new_has_empty_general_section() {
     let mut ltx: Ltx = Ltx::new();
 
-    assert!(ltx.root_section().is_empty());
-    assert!(ltx.root_section_mut().is_empty());
+    assert!(ltx.root_section().is_none(), "a new document has no sections at all");
+    assert!(ltx.root_section_mut().is_empty(), "asking to write one creates it");
     assert_eq!(ltx.len(), 1);
   }
 

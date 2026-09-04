@@ -206,7 +206,7 @@ impl GamedataProject {
     path: &Path,
     result: &mut GamedataParticlesUsageVerificationResult,
   ) {
-    for (section_name, section) in &ltx.sections {
+    for (section_name, section) in ltx.iter() {
       for (key, value) in section.iter() {
         if !Self::is_particle_reference_key(section_name, key) {
           continue;

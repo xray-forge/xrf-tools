@@ -41,8 +41,8 @@ impl Section {
   }
 
   /// Return true if property exist.
-  pub fn contains_key<S: AsRef<str>>(&self, key: S) -> bool {
-    self.data.contains_key(key.as_ref())
+  pub fn contains_key(&self, key: &str) -> bool {
+    self.data.contains_key(key)
   }
 
   /// Insert (key, value) pair by replace.
@@ -55,11 +55,8 @@ impl Section {
   }
 
   /// Return true if section inherits another section.
-  pub fn inherits_section<S>(&self, parent_section: S) -> bool
-  where
-    S: Into<String>,
-  {
-    self.inherited.contains(&parent_section.into())
+  pub fn inherits_section(&self, parent_section: &str) -> bool {
+    self.inherited.iter().any(|inherited| inherited == parent_section)
   }
 
   /// Insert (key, value) pair by replace.
@@ -70,33 +67,24 @@ impl Section {
     self.inherited.push(parent_section.into());
   }
 
-  /// Append key with (key, value) pair.
-  pub fn append<K, V>(&mut self, key: K, value: V)
-  where
-    K: Into<String>,
-    V: Into<String>,
-  {
-    self.data.insert(key.into(), value.into());
-  }
-
   /// Merge another section into current one.
   pub fn merge(&mut self, section: Self) {
     self.data.extend(section.data);
   }
 
   /// Get the first value associate with the key.
-  pub fn get<S: Into<String>>(&self, key: S) -> Option<&str> {
-    self.data.get(&key.into()).map(|value| value.as_str())
+  pub fn get(&self, key: &str) -> Option<&str> {
+    self.data.get(key).map(|value| value.as_str())
   }
 
   /// Get the first value associate with the key.
-  pub fn get_mut<S: Into<String>>(&mut self, key: S) -> Option<&mut String> {
-    self.data.get_mut(&key.into())
+  pub fn get_mut(&mut self, key: &str) -> Option<&mut String> {
+    self.data.get_mut(key)
   }
 
   /// Remove the property with the first value of the key.
-  pub fn remove<S: AsRef<str>>(&mut self, key: S) -> Option<String> {
-    self.data.shift_remove(key.as_ref())
+  pub fn remove(&mut self, key: &str) -> Option<String> {
+    self.data.shift_remove(key)
   }
 }
 
@@ -138,8 +126,8 @@ mod test {
   fn property_remove() {
     let mut props = Section::new();
 
-    props.append("k1", "v1");
-    props.append("k1", "v2");
+    props.insert("k1", "v1");
+    props.insert("k1", "v2");
 
     assert_eq!(props.remove("k1"), Some("v2".into()));
     assert!(!props.contains_key("k1"));

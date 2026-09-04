@@ -45,7 +45,7 @@ impl<'a> SectionSetter<'a> {
   }
 
   /// Delete the first entry in this section with `key`.
-  pub fn delete<K: AsRef<str>>(&'a mut self, key: &K) -> &'a mut SectionSetter<'a> {
+  pub fn delete(&'a mut self, key: &str) -> &'a mut SectionSetter<'a> {
     if let Some(props) = self.ltx.section_mut(&self.section_name) {
       props.remove(key);
     }
@@ -54,7 +54,7 @@ impl<'a> SectionSetter<'a> {
   }
 
   /// Get the entry in this section with `key`.
-  pub fn get<K: Into<String>>(&'a mut self, key: K) -> Option<&'a str> {
+  pub fn get(&'a mut self, key: &str) -> Option<&'a str> {
     self.ltx.section(&self.section_name).and_then(|props| props.get(key))
   }
 }

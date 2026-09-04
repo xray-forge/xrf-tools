@@ -597,13 +597,14 @@ fn an_already_canonical_file_is_reported_as_formatted() -> XrfResult {
 #[test]
 fn an_empty_document_holds_no_sections_at_all() -> XrfResult {
   // Not even the root one: the parser creates a section when a line needs it, so an empty file resolves to an empty
-  // document. Callers that want the root section regardless ask through `root_section`, which inserts on demand.
+  // document. Reading the root section reports its absence; only asking to write one creates it.
   let mut ltx: Ltx = Ltx::read_from_str("")?;
 
   assert_eq!(ltx.len(), 0);
   assert!(!ltx.has_section(ROOT_SECTION));
+  assert!(ltx.root_section().is_none());
 
-  assert!(ltx.root_section().is_empty());
+  assert!(ltx.root_section_mut().is_empty());
   assert!(ltx.has_section(ROOT_SECTION));
 
   Ok(())

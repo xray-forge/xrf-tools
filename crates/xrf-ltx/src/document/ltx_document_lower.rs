@@ -79,7 +79,7 @@ impl LtxDocument {
               vacant_entry.insert(properties);
             }
             SectionEntry::Occupied(properties) => {
-              properties.into_mut().append(name.clone(), value);
+              properties.into_mut().insert(name.clone(), value);
             }
           }
         }

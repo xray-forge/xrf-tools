@@ -133,9 +133,9 @@ a3 = n3
     let ltx: Ltx = Ltx::read_from_str(input).unwrap();
     let mut buf = vec![];
     ltx.write_to(&mut buf).unwrap();
-    let mut new_data = Ltx::read_from_str(&String::from_utf8(buf).unwrap()).unwrap();
+    let new_data = Ltx::read_from_str(&String::from_utf8(buf).unwrap()).unwrap();
 
-    let sec0 = new_data.root_section();
+    let sec0 = new_data.root_section().expect("root fields to be declared");
     let keys0: Vec<&str> = sec0.iter().map(|(k, _)| k).collect();
     assert_eq!(keys0, vec!["x2", "x1", "x3"]);
 

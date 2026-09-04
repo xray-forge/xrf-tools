@@ -68,9 +68,9 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("artefact_spawns.ltx"))?;
-    let mut nodes: Vec<ArtefactSpawnPoint> = Vec::with_capacity(ltx.sections.len());
+    let mut nodes: Vec<ArtefactSpawnPoint> = Vec::with_capacity(ltx.len());
 
-    for (name, _) in &ltx.sections {
+    for (name, _) in ltx.iter() {
       nodes.push(ArtefactSpawnPoint::import(name, &ltx)?);
     }
 

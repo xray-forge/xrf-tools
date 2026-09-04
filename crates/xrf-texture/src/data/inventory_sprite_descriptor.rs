@@ -27,7 +27,7 @@ impl InventorySpriteDescriptor {
   pub fn new_list_from_ltx(ltx: &Ltx) -> Vec<Self> {
     let mut inventory_sections: Vec<Self> = Vec::new();
 
-    for (section_name, section) in &ltx.sections {
+    for (section_name, section) in ltx.iter() {
       if let Some(inventory_section) = Self::new_optional_from_section(section_name, section) {
         inventory_sections.push(inventory_section);
       }
@@ -113,7 +113,7 @@ impl InventorySpriteDescriptor {
     let mut max_width: u32 = 0;
     let mut max_height: u32 = 0;
 
-    for (section_name, section) in &ltx.sections {
+    for (section_name, section) in ltx.iter() {
       if let Some(sprite) = Self::new_optional_from_section(section_name, section) {
         max_width = max((sprite.x + sprite.w) * INVENTORY_ICON_GRID_SQUARE_BASE, max_width);
         max_height = max((sprite.y + sprite.h) * INVENTORY_ICON_GRID_SQUARE_BASE, max_height);

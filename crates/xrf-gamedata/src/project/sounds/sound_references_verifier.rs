@@ -147,7 +147,7 @@ impl<'a> SoundReferencesVerifier<'a> {
     path: &Path,
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
-    for (section_name, section) in &ltx.sections {
+    for (section_name, section) in ltx.iter() {
       for (key, value) in section.iter() {
         if !Self::is_sound_reference_key(key) {
           continue;

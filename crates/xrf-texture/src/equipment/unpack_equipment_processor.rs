@@ -14,10 +14,10 @@ impl UnpackEquipmentProcessor {
 
     let unpacking: xrf_job::JobScope = options.job.enter(
       crate::job_phases::TEXTURE_PHASE_UNPACK_SPRITES,
-      Some(options.ltx.sections.len() as u64),
+      Some(options.ltx.len() as u64),
     );
 
-    for (section_name, section) in &options.ltx.sections {
+    for (section_name, section) in options.ltx.iter() {
       unpacking.advance();
 
       if let Some(sprite) = InventorySpriteDescriptor::new_optional_from_section(section_name, section)
