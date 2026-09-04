@@ -9,6 +9,7 @@ use xrf_utils::{
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 use crate::Ltx;
+use crate::document::ltx_document::LtxDocument;
 use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_vfs_source::LtxIncludeVfsSource;
 use crate::file::parser::LtxParser;
@@ -17,7 +18,21 @@ use crate::file::types::LtxIncluded;
 impl Ltx {
   /// Read LTX from a string.
   pub fn read_from_str(buf: &str) -> XrfResult<Self> {
-    LtxParser::new(buf.chars()).parse()
+    Self::read_document_from_str(buf)?.lower()
+  }
+
+  /// Read one LTX file as the document it was written as, applying no dialect rule.
+  pub fn read_document_from_str(buf: &str) -> XrfResult<LtxDocument> {
+    LtxParser::new(buf.chars()).parse_document()
+  }
+
+  /// Read one LTX file as a document that also carries every line as authored.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the contents will not parse.
+  pub fn read_document_from_str_preserving_source(buf: &str) -> XrfResult<LtxDocument> {
+    LtxParser::new_preserving_source(buf.chars()).parse_document()
   }
 
   /// Read LTX from a file as full parsed file, inject included files.
@@ -68,14 +83,20 @@ impl Ltx {
 
   /// Read from a reader as generic ltx with LTX descriptor filled.
   pub fn read_from<R: Read>(reader: &mut R) -> XrfResult<Self> {
-    LtxParser::new(read_as_string_from_w1251_encoded(reader)?.chars()).parse()
+    Self::read_from_str(&read_as_string_from_w1251_encoded(reader)?)
   }
 }
 
 impl Ltx {
   /// Load include statements from a string.
   pub fn read_included_from_str(buf: &str) -> XrfResult<LtxIncluded> {
-    LtxParser::new(buf.chars()).parse_includes()
+    Ok(
+      Self::read_document_from_str(buf)?
+        .list_included()
+        .into_iter()
+        .map(String::from)
+        .collect(),
+    )
   }
 
   /// Load include statements from a file with options.
@@ -99,14 +120,14 @@ impl Ltx {
 
   /// Load include statements from a reader.
   pub fn read_included_from<R: Read>(reader: &mut R) -> XrfResult<LtxIncluded> {
-    LtxParser::new(read_as_string_from_w1251_encoded(reader)?.chars()).parse_includes()
+    Self::read_included_from_str(&read_as_string_from_w1251_encoded(reader)?)
   }
 }
 
 impl Ltx {
   /// Load formatted LTX as string from string.
   pub fn format_from_str(buf: &str) -> XrfResult<String> {
-    LtxParser::new(buf.chars()).parse_into_formatted()
+    Ok(Self::read_document_from_str(buf)?.to_formatted())
   }
 
   /// Load formatted LTX as string from file.
@@ -116,7 +137,7 @@ impl Ltx {
 
   /// Load formatted LTX as string from reader.
   pub fn format_from<R: Read>(reader: &mut R) -> XrfResult<String> {
-    LtxParser::new(read_as_string_from_w1251_encoded(reader)?.chars()).parse_into_formatted()
+    Self::format_from_str(&read_as_string_from_w1251_encoded(reader)?)
   }
 
   /// Whether the given LTX bytes are already formatted canonically.

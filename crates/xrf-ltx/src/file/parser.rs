@@ -2,14 +2,22 @@ use std::str::Chars;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::LtxCheck;
+use crate::document::ltx_document::LtxDocument;
+use crate::document::ltx_item::{LtxItem, LtxItemKind};
+use crate::document::ltx_key_operation::LtxKeyOperation;
+use crate::document::ltx_section_operation::LtxSectionOperation;
+use crate::document::ltx_span::LtxSpan;
 use crate::file::file_configuration::constants::{
   LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE, LTX_SYMBOL_SECTION_OPEN,
 };
-use crate::file::file_configuration::line_separator::LineSeparator;
-use crate::file::file_section::section::Section;
-use crate::file::file_section::section_entry::SectionEntry;
-use crate::file::formatter::LtxFormatter;
-use crate::{Ltx, LtxCheck, ROOT_SECTION};
+
+/// What one statement turned out to be, with its DLTX prefix removed.
+enum StatementOperation<'a> {
+  Include,
+  Section(LtxSectionOperation, &'a str),
+  Key(LtxKeyOperation, &'a str),
+}
 
 /// Ltx parser.
 pub struct LtxParser<'a> {
@@ -17,12 +25,17 @@ pub struct LtxParser<'a> {
   reader: Chars<'a>,
   line: usize,
   column: usize,
+  /// Whitespace consumed since the last line break, kept only to rebuild an authored line verbatim.
+  indent: String,
+  is_preserving_source: bool,
 }
 
 impl Default for LtxParser<'_> {
   fn default() -> Self {
     Self {
       char: None,
+      indent: String::new(),
+      is_preserving_source: false,
       line: 0,
       column: 0,
       reader: "".chars(),
@@ -35,6 +48,8 @@ impl<'a> LtxParser<'a> {
   pub fn new(reader: Chars<'a>) -> Self {
     let mut parser: Self = Self {
       char: None,
+      indent: String::new(),
+      is_preserving_source: false,
       line: 0,
       column: 0,
       reader,
@@ -45,98 +60,134 @@ impl<'a> LtxParser<'a> {
     parser
   }
 
-  /// Parse the whole LTX input.
-  pub fn parse(&mut self) -> XrfResult<Ltx> {
-    let mut current_section: String = ROOT_SECTION.to_string();
+  /// A parser that also keeps each statement's line exactly as authored.
+  ///
+  /// For an editor that must write a file back with untouched lines byte-identical. Verification and formatting do not
+  /// ask for it, so they do not pay the second copy of every line.
+  pub fn new_preserving_source(reader: Chars<'a>) -> Self {
+    let mut parser: Self = Self::new(reader);
+
+    parser.is_preserving_source = true;
+
+    parser
+  }
+
+  /// Parse the whole input into the document it was written as.
+  ///
+  /// The single scanning pass in this crate. Resolution, formatting, and include listing all read the result, so a
+  /// command that verifies and reformats no longer scans twice.
+  ///
+  /// Every statement keeps its line, and each is exactly one line, so a gap between consecutive spans is a blank run.
+  pub fn parse_document(&mut self) -> XrfResult<LtxDocument> {
+    let mut document: LtxDocument = LtxDocument::default();
     let mut is_metadata_header: bool = true;
-    let mut ltx: Ltx = Ltx::new();
 
     self.skip_whitespaces();
 
     while let Some(current_char) = self.char {
-      match current_char {
-        current if current == LTX_SYMBOL_COMMENT => {
-          let comment_line: usize = self.line + 1;
-          let comment_column: usize = self.column + 1;
-          let comment: String = self.skip_comment()?;
+      // `column` already counts from one and names the character now under the cursor, which is this statement's first.
+      // `line` counts from zero. `error` reports `column + 1` instead, meaning the position after what it consumed, and
+      // the metadata diagnostic below keeps that older reading.
+      let span: LtxSpan = LtxSpan::new(self.line + 1, self.column);
 
-          if is_metadata_header {
-            self.parse_metadata_directive(&comment, &mut ltx, comment_line, comment_column)?;
-          }
+      // Kept whole, comment included, because the document carries what a reformat needs to write back. The value of a
+      // statement is unaffected: every `parse_*_from_line` splits the comment off itself.
+      let line: String = self.parse_until_eol(false)?;
+      let source: Option<String> = self.is_preserving_source.then(|| format!("{}{line}", self.indent));
+
+      let kind: LtxItemKind = if current_char == LTX_SYMBOL_COMMENT {
+        // `;` is one byte, so the body starts at index 1.
+        let text: String = String::from(line[1..].trim());
+
+        if is_metadata_header {
+          // One column past the `;`, where the directive itself starts, which is what this diagnostic has always said.
+          let position: LtxSpan = LtxSpan::new(span.line, span.column + 1);
+
+          self.parse_metadata_directive(&text, &mut document, position)?;
         }
 
-        current if current == LTX_SYMBOL_INCLUDE => {
-          is_metadata_header = false;
+        LtxItemKind::Comment { text }
+      } else {
+        is_metadata_header = false;
 
-          let line: String = self.parse_until_eol(true)?;
-          let (included_path, _) = self.parse_include_from_line(&line)?;
+        match Self::split_statement_operation(&line) {
+          StatementOperation::Include => {
+            let (path, comment) = self.parse_include_from_line(&line)?;
 
-          if ltx.includes(&included_path) {
-            return self.error(format!(
-              "Failed to parse include statement in ltx file, including '{}' more than once",
-              included_path
-            ));
-          } else {
-            ltx.include(included_path)
+            LtxItemKind::Include { comment, path }
           }
-        }
+          StatementOperation::Section(operation, rest) => {
+            let (name, parents, comment) = self.parse_section_from_line(rest)?;
 
-        current if current == LTX_SYMBOL_SECTION_OPEN => {
-          is_metadata_header = false;
-
-          let line: String = self.parse_until_eol(true)?;
-          let (section, inherited, _) = self.parse_section_from_line(&line)?;
-
-          current_section = section;
-
-          match ltx.entry(current_section.clone()) {
-            SectionEntry::Vacant(vacant_entry) => {
-              let mut properties: Section = Default::default();
-
-              if let Some(inherited) = inherited {
-                for base_name in inherited {
-                  properties.inherit(base_name);
-                }
-              }
-
-              vacant_entry.insert(properties);
+            LtxItemKind::Section {
+              comment,
+              name,
+              operation,
+              parents: parents.unwrap_or_default(),
             }
-            SectionEntry::Occupied(_) => {
-              return self.error(format!(
-                "Duplicate sections are not allowed, looks like '{current_section}' is declared twice"
-              ));
+          }
+          StatementOperation::Key(operation, rest) => {
+            let (name, value, comment) = self.parse_key_value_from_line(rest)?;
+
+            LtxItemKind::Key {
+              comment,
+              name,
+              operation,
+              value,
             }
           }
         }
+      };
 
-        _ => {
-          is_metadata_header = false;
-
-          let line: String = self.parse_until_eol(true)?;
-          let (key, value, _) = self.parse_key_value_from_line(&line)?;
-
-          match ltx.entry(current_section.clone()) {
-            SectionEntry::Vacant(vacant_entry) => {
-              let mut properties: Section = Section::new();
-
-              properties.insert(key, value.unwrap_or(String::new()));
-
-              vacant_entry.insert(properties);
-            }
-            SectionEntry::Occupied(properties) => {
-              properties.into_mut().append(key, value.unwrap_or(String::new()));
-            }
-          }
-        }
-      }
+      document.items.push(LtxItem::new(kind, span).with_source(source));
 
       self.skip_whitespaces();
     }
 
-    Ok(ltx)
+    Ok(document)
   }
 
-  fn parse_metadata_directive(&self, comment: &str, ltx: &mut Ltx, line: usize, column: usize) -> XrfResult {
+  /// Classify one statement and strip whatever DLTX prefix it carries.
+  ///
+  /// No config in any reference tree begins a line with `!`, `@`, `>` or `<`, so reading those as operations cannot
+  /// change how a standard file parses. Whether an operation is *allowed* is the resolver's call, not this one's.
+  fn split_statement_operation(line: &str) -> StatementOperation<'_> {
+    if line.starts_with(LTX_SYMBOL_INCLUDE) {
+      return StatementOperation::Include;
+    }
+
+    for (prefix, operation) in [
+      ("!!", LtxSectionOperation::Delete),
+      ("!", LtxSectionOperation::Override),
+      ("@", LtxSectionOperation::SafeOverride),
+    ] {
+      if let Some(rest) = line.strip_prefix(prefix)
+        && rest.starts_with(LTX_SYMBOL_SECTION_OPEN)
+      {
+        return StatementOperation::Section(operation, rest);
+      }
+    }
+
+    if line.starts_with(LTX_SYMBOL_SECTION_OPEN) {
+      return StatementOperation::Section(LtxSectionOperation::Declare, line);
+    }
+
+    for (prefix, operation) in [
+      ("!", LtxKeyOperation::Delete),
+      (">", LtxKeyOperation::ListAppend),
+      ("<", LtxKeyOperation::ListRemove),
+    ] {
+      if let Some(rest) = line.strip_prefix(prefix) {
+        return StatementOperation::Key(operation, rest);
+      }
+    }
+
+    StatementOperation::Key(LtxKeyOperation::Set, line)
+  }
+
+  fn parse_metadata_directive(&self, comment: &str, document: &mut LtxDocument, span: LtxSpan) -> XrfResult {
+    let (line, column) = (span.line, span.column);
+
     let mut parts: std::str::SplitWhitespace<'_> = comment.split_whitespace();
 
     if parts.next() != Some("@xrf-ltx") {
@@ -167,94 +218,9 @@ impl<'a> LtxParser<'a> {
       ));
     };
 
-    ltx.skip_check(check);
+    document.record_skipped_check(check);
 
     Ok(())
-  }
-
-  /// Parse the whole LTX input and reformat as string.
-  pub fn parse_into_formatted(&mut self) -> XrfResult<String> {
-    let mut formatted: String = String::new();
-
-    self.skip_whitespaces();
-
-    while let Some(current_char) = self.char {
-      let line: String = self.parse_until_eol(false)?;
-
-      match current_char {
-        current if current == LTX_SYMBOL_COMMENT => {
-          LtxFormatter::write_comment(&mut formatted, &line[1..]);
-        }
-
-        current if current == LTX_SYMBOL_INCLUDE => {
-          let (included_path, comment) = self.parse_include_from_line(&line)?;
-
-          LtxFormatter::write_include(&mut formatted, &included_path, comment.as_deref());
-        }
-
-        current if current == LTX_SYMBOL_SECTION_OPEN => {
-          let (section, inherited, comment) = self.parse_section_from_line(&line)?;
-
-          LtxFormatter::write_section(&mut formatted, &section, inherited, comment.as_deref());
-        }
-
-        _ => {
-          let (key, value, comment) = self.parse_key_value_from_line(&line)?;
-
-          LtxFormatter::write_key_value(&mut formatted, &key, value.as_deref(), comment.as_deref());
-        }
-      }
-
-      self.skip_whitespaces();
-    }
-
-    if !formatted.ends_with(LineSeparator::CRLF.as_str()) {
-      formatted.push_str(LineSeparator::CRLF.as_str());
-    }
-
-    Ok(formatted)
-  }
-
-  /// Parse only include statements from file and return list of included LTX files.
-  ///
-  /// Scans the whole file, because includes are not confined to a leading block. The full parser merges an `#include`
-  /// wherever it appears and real config trees place them after sections, so stopping at the first one would leave the files
-  /// they name looking like nothing includes them.
-  pub fn parse_includes(&mut self) -> XrfResult<Vec<String>> {
-    let mut included: Vec<String> = Vec::new();
-
-    self.skip_whitespaces();
-
-    while let Some(current_char) = self.char {
-      match current_char {
-        current if current == LTX_SYMBOL_COMMENT => {
-          self.skip_comment()?;
-        }
-
-        current if current == LTX_SYMBOL_INCLUDE => {
-          let line: String = self.parse_until_eol(true)?;
-          let (include_path, _) = self.parse_include_from_line(&line)?;
-
-          if included.contains(&include_path) {
-            return self.error(format!(
-              "Failed to parse include statement in ltx file, including '{}' more than once",
-              include_path
-            ));
-          } else {
-            included.push(include_path)
-          }
-        }
-
-        // Sections and fields are consumed rather than parsed: this pass only answers which files a config pulls in.
-        _ => {
-          self.parse_until_eol(true)?;
-        }
-      }
-
-      self.skip_whitespaces();
-    }
-
-    Ok(included)
   }
 }
 
@@ -281,9 +247,21 @@ impl LtxParser<'_> {
 
   /// Consume all the white space until the end of the line or a tab.
   fn skip_whitespaces(&mut self) {
+    self.indent.clear();
+
     while let Some(char) = self.char {
       if !char.is_whitespace() && char != '\n' && char != '\t' && char != '\r' {
         break;
+      }
+
+      // The run after the last break is the indentation of the statement about to be read, which is the one part of an
+      // authored line the statement text itself cannot carry.
+      if self.is_preserving_source {
+        if char == '\n' || char == '\r' {
+          self.indent.clear();
+        } else {
+          self.indent.push(char);
+        }
       }
 
       self.bump();

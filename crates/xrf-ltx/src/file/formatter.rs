@@ -31,11 +31,24 @@ impl LtxFormatter {
 
   /// Write section statement.
   pub fn write_section(destination: &mut String, section: &str, inherited: Option<Vec<String>>, comment: Option<&str>) {
+    Self::write_section_with_prefix(destination, "", section, inherited, comment);
+  }
+
+  /// Write a section statement carrying a DLTX operation prefix.
+  ///
+  /// The prefix sits outside the brackets - `![section]`, not `[!section]` - so it cannot be folded into the name.
+  pub fn write_section_with_prefix(
+    destination: &mut String,
+    prefix: &str,
+    section: &str,
+    inherited: Option<Vec<String>>,
+    comment: Option<&str>,
+  ) {
     if !destination.is_empty() {
       destination.push_str(LineSeparator::CRLF.as_str())
     }
 
-    destination.push_str(&format!("[{section}]"));
+    destination.push_str(&format!("{prefix}[{section}]"));
 
     if let Some(inherited) = inherited
       && !inherited.is_empty()

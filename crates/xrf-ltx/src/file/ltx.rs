@@ -411,9 +411,10 @@ name = hello
     let ltx = Ltx::read_from_str(input);
 
     assert!(ltx.is_err());
+    // Points at the repeated statement, for the same reason as the duplicate-section diagnostic.
     assert_eq!(
       ltx.unwrap_err().to_string(),
-      "Ltx parse error: 4:1 Failed to parse include statement in ltx file, including 'file1.ltx' more than once"
+      "Ltx parse error: 3:1 Failed to parse include statement in ltx file, including 'file1.ltx' more than once"
     );
 
     Ok(())
@@ -698,9 +699,12 @@ foo = c
     let ltx: XrfResult<Ltx> = Ltx::read_from_str(input);
 
     assert!(ltx.is_err());
+    // Points at the second declaration itself. The check moved from the scanner to standard lowering, which knows the
+    // statement's own position rather than wherever the cursor had reached; recorded in
+    // `xrf-agents/plans/ltx-core-and-dltx.md`.
     assert_eq!(
       ltx.unwrap_err().to_string(),
-      "Ltx parse error: 6:1 Duplicate sections are not allowed, looks like 'peer' is declared twice"
+      "Ltx parse error: 5:1 Duplicate sections are not allowed, looks like 'peer' is declared twice"
     );
 
     Ok(())

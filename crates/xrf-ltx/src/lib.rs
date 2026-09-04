@@ -1,8 +1,14 @@
 pub(crate) mod condlist;
+pub(crate) mod document;
 pub(crate) mod file;
 pub(crate) mod project;
 pub(crate) mod scheme;
 
+pub use crate::document::ltx_document::*;
+pub use crate::document::ltx_item::*;
+pub use crate::document::ltx_key_operation::*;
+pub use crate::document::ltx_section_operation::*;
+pub use crate::document::ltx_span::*;
 pub use crate::file::check::*;
 pub use crate::file::file_configuration::constants::LTX_EXTENSION;
 pub use crate::file::file_configuration::constants::LTX_SYMBOL_SCHEME;
