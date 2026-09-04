@@ -1,16 +1,19 @@
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::Ltx;
+use crate::dialect::ltx_document_source::LtxDocumentSource;
+use crate::document::ltx_document::LtxDocument;
 use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
 
 /// Resolves and reads includes from the filesystem, which is what an LTX file read by path uses.
 #[derive(Default)]
-pub(crate) struct LtxIncludeFilesystemSource;
+pub struct LtxIncludeFilesystemSource;
 
 impl LtxIncludeSource for LtxIncludeFilesystemSource {
   fn resolve(&self, directory: &Path, statement: &str) -> XrfResult<Vec<PathBuf>> {
@@ -39,6 +42,47 @@ impl LtxIncludeSource for LtxIncludeFilesystemSource {
 
   fn describe(&self, path: &Path) -> String {
     format_path(path).to_string()
+  }
+}
+
+impl LtxDocumentSource for LtxIncludeFilesystemSource {
+  fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {
+    let path: PathBuf = PathBuf::from(logical_path);
+
+    match std::fs::File::open(&path) {
+      Ok(mut file) => Ok(Some(Arc::new(Ltx::read_document_from(&mut file)?))),
+      // A config generated from TypeScript is absent until the project is built; a project that has not been built
+      // must still parse. Anything else absent is nothing to merge, which is what a wildcard match already gets.
+      Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+      Err(error) => Err(error.into()),
+    }
+  }
+
+  fn resolve_include(&self, directory: &str, statement: &str) -> XrfResult<Vec<String>> {
+    Ok(
+      LtxIncludeConvertor::resolve_include_paths(Path::new(directory), statement)?
+        .into_iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect(),
+    )
+  }
+
+  fn list_file_names(&self, directory: &str) -> XrfResult<Vec<String>> {
+    let entries = match std::fs::read_dir(directory) {
+      Ok(entries) => entries,
+      Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+      Err(error) => return Err(error.into()),
+    };
+
+    let mut names: Vec<String> = entries
+      .flatten()
+      .filter(|entry| entry.path().is_file())
+      .map(|entry| entry.file_name().to_string_lossy().into_owned())
+      .collect();
+
+    names.sort();
+
+    Ok(names)
   }
 }
 

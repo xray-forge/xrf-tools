@@ -200,7 +200,7 @@ impl LtxProject {
 
   /// Format single LTX file by provided path
   pub fn verify_file<P: AsRef<Path>>(path: P) -> XrfResult<()> {
-    Ltx::read_from_file_full(path)?;
+    Ltx::read_from_file_standard(path)?;
 
     Ok(())
   }

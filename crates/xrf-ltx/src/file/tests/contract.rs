@@ -63,7 +63,7 @@ fn dump(ltx: &Ltx) -> String {
 
 /// Reads one file of a tree with includes merged and inheritance resolved, and dumps it.
 fn dump_full(root: &Path, entry: &str) -> XrfResult<String> {
-  Ok(dump(&Ltx::read_from_file_full(root.join(entry))?))
+  Ok(dump(&Ltx::read_from_file_standard(root.join(entry))?))
 }
 
 /// Asserts a dump line by line, so a failure names the line that moved instead of printing two long strings.
@@ -303,7 +303,7 @@ fn rejects_a_section_declared_in_two_included_files() -> XrfResult {
     ],
   );
 
-  let error: String = Ltx::read_from_file_full(root.join("system.ltx"))
+  let error: String = Ltx::read_from_file_standard(root.join("system.ltx"))
     .expect_err("a section declared twice across includes to be refused")
     .to_string();
 

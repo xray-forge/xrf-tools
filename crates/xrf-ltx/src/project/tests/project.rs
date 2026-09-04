@@ -164,3 +164,44 @@ fn an_empty_project_holds_nothing_and_still_answers() -> XrfResult {
 
   Ok(())
 }
+
+#[test]
+fn an_unparseable_config_is_reported_per_entry_rather_than_ending_assembly() -> XrfResult {
+  let root: PathBuf = create_root("unparseable")?;
+
+  fs::write(
+    root.join("readable.ltx"),
+    "[section]
+value = 1
+",
+  )?;
+  fs::write(
+    root.join("broken.ltx"),
+    "[unterminated
+",
+  )?;
+
+  // Assembly cannot read one of them, and answers anyway. One unreadable config used to end the whole open, which hid
+  // every other file's findings behind it; see `issues/0116`.
+  let project: LtxProject = LtxProject::open_at_path(&root)?;
+
+  assert_eq!(project.ltx_files.len(), 2);
+  assert!(
+    project.ltx_file_entries.contains(&XrayLogicalPath::new("broken.ltx")?),
+    "an unreadable config is an entry point, because the verifier has to reach it to say why"
+  );
+
+  // And the verifier is what reports it, as one finding among however many the readable files raise.
+  let result = project.verify_entries()?;
+
+  assert_eq!(result.errors.len(), 1);
+  assert!(
+    result.errors[0].to_string().contains("broken.ltx"),
+    "{:?}",
+    result.errors
+  );
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}

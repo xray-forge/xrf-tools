@@ -193,7 +193,7 @@ mod reported_path_test {
 
     fs::write(&path, "[child]:missing\n")?;
 
-    let error: String = Ltx::read_from_file_full(&path)
+    let error: String = Ltx::read_from_file_standard(&path)
       .expect_err("Expected inheriting an undeclared section to fail")
       .to_string();
 

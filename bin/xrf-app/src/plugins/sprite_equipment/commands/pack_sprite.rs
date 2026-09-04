@@ -55,7 +55,9 @@ pub async fn sprite_equipment_pack_sprite(
     .run_blocking("Equipment sprite pack", move || {
       let options: PackEquipmentOptions = PackEquipmentOptions {
         job: packing,
-        ltx: Ltx::read_from_file_full(&system_ltx)?,
+        // todo: resolve under the project's dialect once the app carries a DLTX setting; a patched install reads
+        // unpatched values here today.
+        ltx: Ltx::read_from_file_standard(&system_ltx)?,
         source,
         output: OutputOptions::default(),
         output_path: output,

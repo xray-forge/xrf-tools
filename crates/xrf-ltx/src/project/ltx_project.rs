@@ -113,6 +113,7 @@ impl LtxProject {
     let mut ltx_files: Vec<XrayLogicalPath> = Vec::new();
     let mut ltx_scheme_files: Vec<XrayLogicalPath> = Vec::new();
     let mut included: Vec<XrayLogicalPath> = Vec::new();
+    let mut unreadable: Vec<XrayLogicalPath> = Vec::new();
 
     for path in Self::collect_logical_paths(&vfs, &scope)? {
       let directory: PathBuf = path
@@ -120,9 +121,20 @@ impl LtxProject {
         .map(|parent| PathBuf::from(parent.as_str()))
         .unwrap_or_default();
 
-      for include in &source.read_included(path.as_str())? {
-        for resolved in source.resolve(&directory, include)? {
-          included.push(Self::included_path(&resolved)?);
+      // A config that cannot be read or parsed is left to be reported per entry rather than ending assembly. One
+      // unreadable file used to hide every other file's findings, because assembly runs before the verifier exists to
+      // record anything: see `issues/0116`. Nothing is lost - the file stays listed, nothing else claims to include
+      // it, so it becomes an entry point and the verifier reads it again and reports the real error.
+      match source.read_included(path.as_str()) {
+        Ok(includes) => {
+          for include in &includes {
+            for resolved in source.resolve(&directory, include)? {
+              included.push(Self::included_path(&resolved)?);
+            }
+          }
+        }
+        Err(_) => {
+          unreadable.push(path.clone());
         }
       }
 
@@ -149,6 +161,14 @@ impl LtxProject {
 
     // Filter our entries not included in other files and consider them entry-points.
     for ltx_file_path in ltx_files.iter() {
+      // An unreadable config is an entry point whatever else says, because its own include list is unknown and the
+      // verifier has to reach it to report why.
+      if unreadable.contains(ltx_file_path) {
+        ltx_file_entries.push(ltx_file_path.clone());
+
+        continue;
+      }
+
       if included.contains(ltx_file_path) || attachments.iter().any(|it| it == ltx_file_path.as_str()) {
         continue;
       }
@@ -290,7 +310,7 @@ impl LtxProject {
 
   /// Reads one project file with included files merged and inherited sections resolved.
   ///
-  /// The project owns this rather than each caller reaching for `Ltx::read_from_file_full`, because only the project knows
+  /// The project owns this rather than each caller reaching for `Ltx::read_from_file_standard`, because only the project knows
   /// whether its files are loose or archived.
   ///
   /// # Errors

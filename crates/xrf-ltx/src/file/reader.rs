@@ -8,12 +8,13 @@ use xrf_utils::{
 };
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
-use crate::Ltx;
 use crate::document::ltx_document::LtxDocument;
 use crate::file::include::LtxIncludeConvertor;
+use crate::file::include_filesystem_source::LtxIncludeFilesystemSource;
 use crate::file::include_vfs_source::LtxIncludeVfsSource;
 use crate::file::parser::LtxParser;
 use crate::file::types::LtxIncluded;
+use crate::{Ltx, LtxDialect};
 
 impl Ltx {
   /// Read LTX from a string.
@@ -40,8 +41,12 @@ impl Ltx {
     Self::read_from_path(filename)?.into_included()
   }
 
-  /// Read LTX from a file, inject all includes and unwrap inherited sections.
-  pub fn read_from_file_full<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
+  /// Read LTX from a file under standard rules, injecting includes and flattening inheritance.
+  ///
+  /// Named for the dialect it applies because it applies one: a game config from a patched Anomaly install resolves
+  /// differently, and silently. Use [`Self::read_from_file_with_dialect`] for anything a patch file could target, and
+  /// this for XRF's own data files, which nothing patches.
+  pub fn read_from_file_standard<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
     Self::read_from_path(filename)?.into_included()?.into_inherited()
   }
 
@@ -62,12 +67,15 @@ impl Ltx {
     LtxIncludeConvertor::convert_with(source.read_ltx(logical_path)?, &source)
   }
 
-  /// Read LTX out of a mounted VFS with includes injected and inherited sections unwrapped.
+  /// Read LTX out of a mounted VFS under standard rules, with includes injected and inheritance flattened.
+  ///
+  /// Resolve a game config through a project instead, which carries the chosen dialect; see
+  /// `LtxProject::read_full_in_scope` for one outside the project's own prefix.
   ///
   /// # Errors
   ///
   /// Returns an error when reading fails, or when an inherited section cannot be resolved.
-  pub fn read_from_vfs_full(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
+  pub fn read_from_vfs_standard(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
     Self::read_from_vfs(vfs, scope, logical_path)?.into_inherited()
   }
 
@@ -79,6 +87,32 @@ impl Ltx {
     ltx.directory = filename.as_ref().parent().map(PathBuf::from);
 
     Ok(ltx)
+  }
+
+  /// Read a document from a reader, decoding strict Windows-1251.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes are not Windows-1251 or will not parse.
+  pub fn read_document_from<R: Read>(reader: &mut R) -> XrfResult<LtxDocument> {
+    Self::read_document_from_str(&read_as_string_from_w1251_encoded(reader)?)
+  }
+
+  /// Read a config from the filesystem, resolving it under `dialect`.
+  ///
+  /// What a command reading one named config should use rather than [`Self::read_from_file_standard`]: a patched
+  /// install resolves differently, and the difference is silent. `path` is used as written, so a relative path
+  /// resolves its includes relative to itself.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the config cannot be read, or when the dialect refuses it.
+  pub fn read_from_file_with_dialect<P: AsRef<Path>>(path: P, dialect: &dyn LtxDialect) -> XrfResult<Self> {
+    Ok(
+      dialect
+        .resolve(&path.as_ref().to_string_lossy(), &LtxIncludeFilesystemSource)?
+        .ltx,
+    )
   }
 
   /// Read from a reader as generic ltx with LTX descriptor filled.

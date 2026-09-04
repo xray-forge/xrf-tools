@@ -31,7 +31,7 @@ impl LtxSchemeParser {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
-      let ltx: Ltx = Ltx::read_from_vfs_full(vfs, scope, file.as_str())?;
+      let ltx: Ltx = Ltx::read_from_vfs_standard(vfs, scope, file.as_str())?;
 
       for (name, section) in &ltx {
         if !name.starts_with(LTX_SYMBOL_SCHEME) {

@@ -20,7 +20,7 @@ impl ArchivePackConfig {
     let path: &Path = path.as_ref();
 
     match ArchivePackConfigFormat::from_path(path)? {
-      ArchivePackConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_full(path)?),
+      ArchivePackConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_standard(path)?),
       ArchivePackConfigFormat::Json => {
         let json: ArchivePackConfigJson = ArchivePackConfigJson::parse(&fs::read(path)?).map_err(|error| {
           XrfError::new_parsing_error(format!(

@@ -24,8 +24,11 @@ pub async fn sprite_equipment_open_sprite(
 
   log::info!("Opened equipment dds file");
 
-  let descriptors: Vec<InventorySpriteDescriptor> =
-    InventorySpriteDescriptor::new_list_from_ltx(&Ltx::read_from_file_full(system_ltx_path).map_err(error_to_string)?);
+  // todo: resolve under the project's dialect once the app carries a DLTX setting; a patched install reads
+  // unpatched values here today.
+  let descriptors: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(
+    &Ltx::read_from_file_standard(system_ltx_path).map_err(error_to_string)?,
+  );
 
   let response = EquipmentSpriteMetadata {
     system_ltx_path: system_ltx_path.into(),

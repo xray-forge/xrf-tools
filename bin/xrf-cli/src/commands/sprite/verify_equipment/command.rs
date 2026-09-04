@@ -10,6 +10,7 @@ use super::report::SpriteEquipmentVerifyReport;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::ltx_dialect_selection::select_ltx_dialect;
 
 #[derive(Default)]
 pub struct VerifyEquipmentCommand;
@@ -30,6 +31,13 @@ impl GenericCommand for VerifyEquipmentCommand {
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
+      .arg(
+        Arg::new("dltx")
+          .help("Resolve configs with the Monolith/Anomaly DLTX patch dialect, applying mod_<base>_*.ltx files")
+          .long("dltx")
+          .required(false)
+          .action(clap::ArgAction::SetTrue),
+      )
   }
 
   /// Report inventory icon rects that overlap, exiting non zero when any are found.
@@ -46,7 +54,7 @@ impl GenericCommand for VerifyEquipmentCommand {
 
     // The system ltx is the judged content: an unparseable file fails the check, while an
     // unreadable one is an execution failure.
-    let ltx: Ltx = match Ltx::read_from_file_full(path) {
+    let ltx: Ltx = match Ltx::read_from_file_with_dialect(path, select_ltx_dialect(matches.get_flag("dltx")).as_ref()) {
       Ok(ltx) => ltx,
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => {

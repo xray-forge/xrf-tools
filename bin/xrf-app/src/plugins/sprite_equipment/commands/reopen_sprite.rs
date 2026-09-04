@@ -34,8 +34,10 @@ pub async fn sprite_equipment_reopen_sprite(
     .and_then(|dds| dds.to_png())
     .map_err(|error| format!("Failed to open provided image file: {}", error))?;
 
+  // todo: resolve under the project's dialect once the app carries a DLTX setting; a patched install reads
+  // unpatched values here today.
   let descriptors: Vec<InventorySpriteDescriptor> =
-    InventorySpriteDescriptor::new_list_from_ltx(&Ltx::read_from_file_full(ltx_path).map_err(error_to_string)?);
+    InventorySpriteDescriptor::new_list_from_ltx(&Ltx::read_from_file_standard(ltx_path).map_err(error_to_string)?);
 
   let response = EquipmentSpriteMetadata {
     system_ltx_path: ltx_path.into(),

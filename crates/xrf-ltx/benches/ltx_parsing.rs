@@ -202,7 +202,7 @@ fn bench_pipeline(criterion: &mut Criterion) {
 
     group.throughput(Throughput::Elements(files as u64));
     group.bench_with_input(BenchmarkId::new("resolve_tree", files), &entry, |bencher, entry| {
-      bencher.iter(|| black_box(Ltx::read_from_file_full(black_box(entry))));
+      bencher.iter(|| black_box(Ltx::read_from_file_standard(black_box(entry))));
     });
   }
 

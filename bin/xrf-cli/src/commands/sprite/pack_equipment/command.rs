@@ -11,6 +11,7 @@ use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -60,6 +61,13 @@ impl GenericCommand for PackEquipmentCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .arg(
+        Arg::new("dltx")
+          .help("Resolve configs with the Monolith/Anomaly DLTX patch dialect, applying mod_<base>_*.ltx files")
+          .long("dltx")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
   }
 
   /// Command to pack separate icon files into the equipment sprite.
@@ -98,7 +106,8 @@ impl GenericCommand for PackEquipmentCommand {
     xrf_output::info!(output_options, "Output dir: {}", format_path(output));
 
     let started_at: Instant = Instant::now();
-    let system_ltx: Ltx = Ltx::read_from_file_full(system_ltx_path)?;
+    let system_ltx: Ltx =
+      Ltx::read_from_file_with_dialect(system_ltx_path, select_ltx_dialect(matches.get_flag("dltx")).as_ref())?;
 
     let options = PackEquipmentOptions {
       job: new_logging_job(),
