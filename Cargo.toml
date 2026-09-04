@@ -9,6 +9,7 @@ members = [
   "crates/xrf-db",
   "crates/xrf-dds",
   "crates/xrf-dialog",
+  "crates/xrf-dltx",
   "crates/xrf-error",
   "crates/xrf-error-derive",
   "crates/xrf-export",
@@ -68,6 +69,7 @@ xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-db = { path = "crates/xrf-db" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
+xrf-dltx = { path = "crates/xrf-dltx" }
 xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
 xrf-export = { path = "crates/xrf-export" }

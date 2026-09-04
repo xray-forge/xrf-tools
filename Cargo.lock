@@ -7234,6 +7234,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-dltx"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-ltx",
+ "xrf-test-utils",
+]
+
+[[package]]
 name = "xrf-error"
 version = "0.1.0"
 dependencies = [
