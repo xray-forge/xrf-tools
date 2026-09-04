@@ -245,7 +245,7 @@ impl ArchivePacker {
     result.files_total = source.names.get_files().len();
     result.files_skipped = source.omitted.get_count();
 
-    result.measure(started_at, collected_at, started_at.elapsed());
+    result.measure_stopped(started_at, collected_at);
 
     result
   }

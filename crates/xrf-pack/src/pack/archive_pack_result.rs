@@ -80,22 +80,28 @@ impl ArchivePackResult {
     }
   }
 
-  /// Close the clock on a run: how long it took, where that time went, and how fast it made the run.
+  /// Close the clock on a run that reached the end of its work.
   ///
-  /// One method for all of it because each part is a function of the duration, and a result carrying one without the
-  /// rest would answer the same question several ways.
-  ///
-  /// The marks are elapsed times taken as their phase ended, not instants, so a run that stopped simply never took
-  /// the ones past where it stopped.
+  /// The marks are elapsed times taken as their phase ended, not instants, so what divides the run is measured where
+  /// the run divided rather than read back afterwards.
   pub(crate) fn measure(&mut self, started_at: Instant, collected_at: Duration, written_at: Duration) {
-    self.duration = started_at.elapsed();
+    self.record(started_at.elapsed(), collected_at, Some(written_at));
+  }
 
-    let [collecting, writing, finalizing] = Self::split_phases(self.duration, collected_at, written_at);
+  /// Close the clock on a run that stopped between entries.
+  pub(crate) fn measure_stopped(&mut self, started_at: Instant, collected_at: Duration) {
+    self.record(started_at.elapsed(), collected_at, None);
+  }
 
+  /// The one place a measured run becomes the numbers reported for it.
+  fn record(&mut self, duration: Duration, collected_at: Duration, written_at: Option<Duration>) {
+    let [collecting, writing, finalizing] = Self::split_phases(duration, collected_at, written_at.unwrap_or(duration));
+
+    self.duration = duration;
     self.collect_duration = collecting;
     self.write_duration = writing;
     self.finalize_duration = finalizing;
-    self.speed = Self::speed_of(self.size_source, self.duration);
+    self.speed = Self::speed_of(self.size_source, duration);
   }
 
   /// The three phases of a run, in the order they happened.
@@ -144,6 +150,20 @@ mod tests {
     assert_eq!(writing, Duration::from_millis(620));
     assert_eq!(finalizing, Duration::from_millis(40));
     assert_eq!(collecting + writing + finalizing, Duration::from_millis(700));
+  }
+
+  #[test]
+  fn a_stopped_run_has_no_finalize_phase_at_all() {
+    let mut result: ArchivePackResult = ArchivePackResult::default();
+
+    result.record(Duration::from_millis(700), Duration::from_millis(40), None);
+
+    assert_eq!(result.collect_duration, Duration::from_millis(40));
+    assert_eq!(result.write_duration, Duration::from_millis(660));
+
+    // Exactly zero rather than merely small. Deriving the end by reading the clock a second time leaves the gap
+    // between the two readings here, which a clock fine enough to resolve nanoseconds reports rather than rounds away.
+    assert_eq!(result.finalize_duration, Duration::ZERO);
   }
 
   #[test]
