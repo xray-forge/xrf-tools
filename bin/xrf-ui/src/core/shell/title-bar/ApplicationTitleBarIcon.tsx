@@ -8,5 +8,5 @@ import { XrfMark } from "@/core/brand/XrfMark";
  * Named rather than decorative: it is the only thing identifying the window, the caption text having been dropped.
  */
 export function ApplicationTitleBarIcon(): ReactElement {
-  return <XrfMark data-testid={"application-title-bar-icon"} size={16} title={"XRF tools"} sx={{ marginX: 1 }} />;
+  return <XrfMark data-testid={"application-title-bar-icon"} size={20} title={"XRF tools"} sx={{ marginX: 1 }} />;
 }

@@ -3,9 +3,10 @@ import { ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { useEditorToolbarHost } from "@/core/shell/header/editor-toolbar-host";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IEditorLayoutProps {
+interface IEditorLayoutProps extends BaseComponentProps {
   /** Portaled into the window caption, so it must stay one row of controls. */
   toolbar?: ReactNode;
   /** Full-width notices between the caption and the content. */
@@ -17,11 +18,24 @@ export interface IEditorLayoutProps {
 /**
  * Workspace shell shared by every application.
  */
-export function EditorLayout({ toolbar, banner, footer, children }: IEditorLayoutProps): ReactElement {
+export function EditorLayout({
+  "data-testid": dataTestId,
+  id,
+  className,
+  toolbar,
+  banner,
+  footer,
+  children,
+}: IEditorLayoutProps): ReactElement {
   const host: Nullable<HTMLElement> = useEditorToolbarHost();
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" }}
+    >
       {toolbar && host ? createPortal(toolbar, host) : toolbar}
 
       {banner ? <Box sx={{ flexShrink: 0 }}>{banner}</Box> : null}

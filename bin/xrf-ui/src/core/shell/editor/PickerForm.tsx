@@ -19,17 +19,18 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Maybe } from "@/lib/types/general";
 
 /** Wide enough for a full windows path at the monospace size the picker rows use. */
-const PANEL_WIDTH: number = 560;
+const PANEL_WIDTH: number = 1280;
 
 /**
  * The least room a result keeps, whatever the parameters above it are doing.
  */
 const RESULT_MIN_HEIGHT: number = 380;
 
-export interface IPickerFormProps {
+interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;
   /** What the command reads and writes, in one line. Say it before it runs, not after. */
   description?: ReactNode;
@@ -51,6 +52,9 @@ export interface IPickerFormProps {
  * Shared shell layout for the editors' "pick some paths, run a command, read the output" screens.
  */
 export function PickerForm({
+  "data-testid": dataTestId,
+  id,
+  className,
   title,
   description,
   children,
@@ -128,7 +132,7 @@ export function PickerForm({
   }, [hasResult]);
 
   return (
-    <EditorLayout toolbar={<EditorToolbar />}>
+    <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
       <Box
         component={"form"}
         noValidate={true}
@@ -145,9 +149,11 @@ export function PickerForm({
       >
         <Box
           sx={{
+            display: "flex",
             flexShrink: 0,
             padding: 3,
             paddingBottom: result ? 2 : 3,
+            justifyContent: "center",
           }}
         >
           <Card variant={"outlined"} sx={{ position: "relative", width: "100%", maxWidth: PANEL_WIDTH }}>
