@@ -7091,6 +7091,7 @@ dependencies = [
  "xrf-db",
  "xrf-dds",
  "xrf-dialog",
+ "xrf-dltx",
  "xrf-error",
  "xrf-export",
  "xrf-gamedata",

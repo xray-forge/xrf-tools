@@ -18,6 +18,8 @@ export interface IEquipmentSectionDescriptor {
 export interface IEquipmentSpriteMetadata {
   /** Path to the `system.ltx` that supplied the section definitions. */
   systemLtxPath: string;
+  /** Whether those definitions came out of a DLTX-resolved config tree. */
+  isDltx: boolean;
   /** Path to the packed sprite. */
   path: string;
   /** Display name for the sprite. */

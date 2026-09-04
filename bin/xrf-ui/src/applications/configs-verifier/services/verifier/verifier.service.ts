@@ -76,9 +76,11 @@ export class VerifierService {
    * Verifies every LTX file the directory exposes.
    *
    * @param directory - Configs directory to work over.
+   * @param isDltx - Whether to resolve with the Monolith/Anomaly DLTX patch dialect, which applies any
+   *   `mod_<base>_*.ltx` beside a config rather than reading it as a config of its own.
    */
   @LatestFlow("isBusy")
-  public *verify(directory: string): TFlow {
+  public *verify(directory: string, isDltx: boolean): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Verifying:", directory);
@@ -89,7 +91,8 @@ export class VerifierService {
 
     const run: IJobRun<LtxProjectVerifyResult> = this.jobsService.run<LtxProjectVerifyResult>({
       kind: EJobKind.CONFIGS_VERIFY,
-      invoke: (id: string, progress) => configsCommands.verifyDirectory(createRoots([directory]), null, id, progress),
+      invoke: (id: string, progress) =>
+        configsCommands.verifyDirectory({ roots: createRoots([directory]), prefix: null, isDltx }, id, progress),
       describe: (outcome: IJobOutcome<LtxProjectVerifyResult>): IJobNotice => describeVerifyOutcome(directory, outcome),
     });
 

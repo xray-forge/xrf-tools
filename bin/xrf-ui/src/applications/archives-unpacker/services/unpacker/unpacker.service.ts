@@ -97,7 +97,7 @@ export class UnpackerService {
     // reach and survives this view being torn down.
     const run: IJobRun<ArchiveUnpackResult> = this.jobsService.run<ArchiveUnpackResult>({
       kind: EJobKind.ARCHIVES_UNPACK,
-      invoke: (id: string, progress) => archivesCommands.unpackDirectory(source, destination, id, progress),
+      invoke: (id: string, progress) => archivesCommands.unpackDirectory({ from: source, destination }, id, progress),
       describe: (outcome: IJobOutcome<ArchiveUnpackResult>): IJobNotice =>
         describeUnpackOutcome(source, destination, outcome),
     });

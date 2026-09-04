@@ -23,6 +23,7 @@ pub async fn sprite_equipment_get_sprite(
   }
 
   Ok(Some(EquipmentSpriteMetadata {
+    is_dltx: *state.is_dltx.lock().unwrap(),
     system_ltx_path: ltx_path_lock.as_ref().unwrap().clone(),
     path: dds_path_lock.as_ref().unwrap().clone(),
     name: name_lock.as_ref().unwrap().clone(),

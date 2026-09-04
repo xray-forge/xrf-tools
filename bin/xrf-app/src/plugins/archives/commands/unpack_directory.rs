@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -14,6 +14,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{UNPACK_JOB_KIND, to_destination_tree_lease_key};
+use crate::plugins::archives::request::ArchivesUnpackRequest;
 
 /// What an unpack was asked to do, for a window that has to describe a run it did not start.
 ///
@@ -36,16 +37,18 @@ struct ArchiveUnpackRequest<'paths> {
 pub async fn archives_unpack_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  from: &str,
-  destination: &str,
+  request: ArchivesUnpackRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchiveUnpackResult> {
-  log::info!("Open archive directory: {}", from);
-  log::info!("Unpacking archive to: {}", destination);
+  let ArchivesUnpackRequest {
+    from: source,
+    destination,
+  } = request;
 
-  let source: PathBuf = PathBuf::from(from);
-  let destination: PathBuf = PathBuf::from(destination);
+  log::info!("Open archive directory: {}", source.display());
+  log::info!("Unpacking archive to: {}", destination.display());
+
   // Before the hop, never inside it: registering in the blocking closure leaves a window where a second request sees
   // no holder and both write the same tree.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(

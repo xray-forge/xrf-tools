@@ -8,6 +8,8 @@ import {
   TranslationParseRequest,
   TranslationParseSummary,
   TranslationSaveOutcome,
+  TranslationsFormatRequest,
+  TranslationsVerifyRequest,
   TranslationVerifySummary,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
@@ -42,13 +44,8 @@ export const translationsCommands = {
    * from the rewrite it reports on, because they are different work with different consequences — one answers a
    * question, the other changes the files.
    */
-  checkProjectFormat: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", {
-      directory,
-      lineEndings,
-      jobId,
-      progress,
-    }),
+  checkProjectFormat: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", { request, jobId, progress }),
   closeProject: () => __TAURI_INVOKE<null>("plugin:translations|close_project"),
   /**
    * Report which layout roots look like, for the open form to preselect.
@@ -71,13 +68,8 @@ export const translationsCommands = {
    * cancelled run leaves the sources it had already formatted formatted and the rest untouched: each is rewritten
    * through a staged replace, so nothing is half-written and running it again resolves the difference.
    */
-  formatProject: (directory: string, lineEndings: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", {
-      directory,
-      lineEndings,
-      jobId,
-      progress,
-    }),
+  formatProject: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", { request, jobId, progress }),
   getProject: () =>
     __TAURI_INVOKE<{
       mode: TranslationProjectMode;
@@ -152,18 +144,6 @@ export const translationsCommands = {
    *
    * Reads only. Nothing here writes, so an installation is a legitimate subject rather than a refusal.
    */
-  verifyProject: (
-    roots: XrayRoots,
-    prefix: string | null,
-    language: string,
-    jobId: string,
-    progress: Channel<JobProgress>
-  ) =>
-    __TAURI_INVOKE<TranslationVerifySummary>("plugin:translations|verify_project", {
-      roots,
-      prefix,
-      language,
-      jobId,
-      progress,
-    }),
+  verifyProject: (request: TranslationsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TranslationVerifySummary>("plugin:translations|verify_project", { request, jobId, progress }),
 };

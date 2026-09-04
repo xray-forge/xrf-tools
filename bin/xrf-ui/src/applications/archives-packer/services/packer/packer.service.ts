@@ -359,7 +359,7 @@ export class PackerService {
     // reach and survives this view being torn down. What it answers is still this service's to render.
     const run: IJobRun<ArchivePackResult> = this.jobsService.run<ArchivePackResult>({
       kind: EJobKind.ARCHIVES_PACK,
-      invoke: (id: string, progress) => archivesCommands.packDirectory(config, isForced, id, progress),
+      invoke: (id: string, progress) => archivesCommands.packDirectory({ config, isForced }, id, progress),
       describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
     });
 

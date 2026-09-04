@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde_json::json;
@@ -13,6 +12,7 @@ use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::format_project::run;
 use crate::plugins::translations::lease::CHECK_FORMAT_JOB_KIND;
+use crate::plugins::translations::request::TranslationsFormatRequest;
 
 /// Report which JSON translation sources under a directory are not normalized.
 ///
@@ -25,11 +25,15 @@ use crate::plugins::translations::lease::CHECK_FORMAT_JOB_KIND;
 pub async fn translations_check_project_format(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  directory: PathBuf,
-  line_endings: Option<String>,
+  request: TranslationsFormatRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationFormatResult> {
+  let TranslationsFormatRequest {
+    directory,
+    line_endings,
+  } = request;
+
   log::info!("Checking translation source format in {}", directory.display());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(

@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde_json::json;
@@ -14,6 +13,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{EXTRACT_JOB_KIND, to_destination_tree_lease_key};
+use crate::plugins::archives::request::ArchivesExtractRequest;
 use crate::plugins::archives::state::ArchiveProjectState;
 
 /// Write every archived file under one directory into a destination root.
@@ -29,16 +29,20 @@ pub async fn archives_extract_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   state: State<'_, ArchiveProjectState>,
-  prefix: &str,
-  destination: &str,
+  request: ArchivesExtractRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchiveExtractDirectoryResult> {
-  log::info!("Extracting archive directory '{}' to '{}'", prefix, destination);
+  let ArchivesExtractRequest { prefix, destination } = request;
+
+  log::info!(
+    "Extracting archive directory '{}' to '{}'",
+    prefix,
+    destination.display()
+  );
 
   let project: Arc<ArchiveProject> = state.require("extract directory")?;
   let prefix: String = prefix.to_owned();
-  let destination: PathBuf = PathBuf::from(destination);
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, EXTRACT_JOB_KIND)

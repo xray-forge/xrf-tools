@@ -56,11 +56,14 @@ describe("DialogsService", () => {
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
 
+    // One request object rather than loose arguments, which is how every command with more than three is shaped.
     expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|open_project", {
-      roots: createRoots(["C:\\game"]),
-      mode: "gamedata",
-      dialogsPrefix: null,
-      translationsPrefix: null,
+      request: {
+        roots: createRoots(["C:\\game"]),
+        mode: "gamedata",
+        dialogsPrefix: null,
+        translationsPrefix: null,
+      },
     });
     expect(service.project.value).toBe(PROJECT);
     expect(service.languages).toEqual(["eng", "rus"]);

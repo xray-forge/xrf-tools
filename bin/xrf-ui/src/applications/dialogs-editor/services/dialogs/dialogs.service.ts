@@ -108,7 +108,9 @@ export class DialogsService {
     try {
       this.project = createLoadable(null, true);
 
-      const response: DialogProjectDescriptor = yield* call(dialogsCommands.openProject(roots, mode, null, null));
+      const response: DialogProjectDescriptor = yield* call(
+        dialogsCommands.openProject({ roots, mode, dialogsPrefix: null, translationsPrefix: null })
+      );
 
       this.log.info(
         "Dialogs project opened:",

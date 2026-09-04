@@ -1,5 +1,6 @@
+import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
 import { EquipmentPackResult } from "@/applications/sprite-equipment-packer/components/EquipmentPackResult";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -61,6 +62,12 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
+  // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the
+  // other's rules draws a sheet from wrong icon descriptors rather than failing.
+  const [isDltx, setDltx] = useState<boolean>(false);
+
+  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
+
   const onPackEquipmentClicked = useCallback(async () => {
     if (!source.value || !output.value || !systemLtx.value) {
       return log.info("Cannot pack equipment sprite without every path");
@@ -72,7 +79,8 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
       const packed: IPackEquipmentResult = await spriteEquipmentService.packEquipmentSprite(
         source.value,
         output.value,
-        systemLtx.value
+        systemLtx.value,
+        isDltx
       );
 
       setResult(createLoadable(packed));
@@ -81,7 +89,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
 
       setResult(createLoadable(null, false, error instanceof Error ? error : new Error(String(error))));
     }
-  }, [spriteEquipmentService, log, output.value, source.value, systemLtx.value]);
+  }, [spriteEquipmentService, log, output.value, source.value, systemLtx.value, isDltx]);
 
   const onCancel = useCallback(() => spriteEquipmentService.cancelPackEquipmentSprite(), [spriteEquipmentService]);
 
@@ -111,6 +119,11 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
         label={"System configuration"}
         description={"The system.ltx that names the icons"}
         field={systemLtx}
+      />
+
+      <FormControlLabel
+        control={<Checkbox disabled={isRunning} checked={isDltx} onChange={onDltxChange} />}
+        label={"DLTX"}
       />
     </PickerForm>
   );

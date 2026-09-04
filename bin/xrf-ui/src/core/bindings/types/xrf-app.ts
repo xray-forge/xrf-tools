@@ -1,6 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
+import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
@@ -10,6 +12,30 @@ import {
 } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
+
+/** What an extraction out of an open archive project was asked to do. */
+export type ArchivesExtractRequest = {
+  /** Directory inside the archive to extract. */
+  prefix: string;
+  /** Directory to write the contents into. */
+  destination: string;
+};
+
+/** What an archive pack was asked to do. */
+export type ArchivesPackRequest = {
+  /** What to pack and how. */
+  config: ArchivePackConfig;
+  /** Whether an existing output may be overwritten. */
+  isForced: boolean;
+};
+
+/** What an archive unpack was asked to do. */
+export type ArchivesUnpackRequest = {
+  /** Archive or directory of archives to read. */
+  from: string;
+  /** Directory to write the contents into. */
+  destination: string;
+};
 
 /**
  * What a texture file is, once it has been located.
@@ -70,10 +96,42 @@ export type AudioSourceParameters = {
   maxAiDistance: number | null;
 };
 
+/** What a config formatting run, or a check of one, was asked to do. */
+export type ConfigsFormatRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** Scope inside those trees, or nothing for all of them. */
+  prefix: string | null;
+};
+
+/** What a config verification was asked to do. */
+export type ConfigsVerifyRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** Scope inside those trees, or nothing for all of them. */
+  prefix: string | null;
+  /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+};
+
+/** What opening a dialogs project was asked to do. */
+export type DialogsOpenRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** How much of the project to read. */
+  mode: DialogProjectMode;
+  /** Scope holding the dialog files, or nothing for all of them. */
+  dialogsPrefix: string | null;
+  /** Scope holding the string tables, or nothing for all of them. */
+  translationsPrefix: string | null;
+};
+
 export type EquipmentSpriteMetadata = {
   path: string;
   name: string;
   systemLtxPath: string;
+  /** Whether these descriptors came out of a DLTX-resolved config tree. */
+  isDltx: boolean;
   equipmentDescriptors: Array<InventorySpriteDescriptor>;
 };
 
@@ -170,6 +228,18 @@ export type JobDescription = {
   result: unknown | null;
   /** How long the job ran, measured by the registry rather than by the operation. */
   duration: number;
+};
+
+/** What an equipment sprite pack was asked to do. */
+export type PackSpriteRequest = {
+  /** Directory of loose icons to draw from. */
+  sourcePath: string;
+  /** Sheet to write. */
+  outputPath: string;
+  /** `system.ltx` declaring which icons exist and where they sit. */
+  systemLtxPath: string;
+  /** Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
 };
 
 /** What a path is right now, for a form field that has to say what it points at before a command runs. */
@@ -306,6 +376,24 @@ export type TranslationVerifySummary = {
   /** Ids with no text, counted once per language that lacks them. */
   missing: number;
   languages: Array<TranslationVerifyLanguageSummary>;
+};
+
+/** What a translation formatting run, or a check of one, was asked to do. */
+export type TranslationsFormatRequest = {
+  /** Project directory to format. */
+  directory: string;
+  /** Line endings to write, or nothing to keep what each file already uses. */
+  lineEndings: string | null;
+};
+
+/** What a translation verification was asked to do. */
+export type TranslationsVerifyRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** Scope inside those trees, or nothing for all of them. */
+  prefix: string | null;
+  /** Language the check is about. */
+  language: string;
 };
 
 /**

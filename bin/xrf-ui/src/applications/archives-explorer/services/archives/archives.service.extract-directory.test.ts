@@ -40,7 +40,7 @@ describe("ArchivesService directory extraction", () => {
     // arguments be whatever the jobs service made them.
     expect(mockInvoke).toHaveBeenCalledWith(
       "plugin:archives|extract_directory",
-      expect.objectContaining({ prefix: "configs", destination: "C:\\out" })
+      expect.objectContaining({ request: { prefix: "configs", destination: "C:\\out" } })
     );
     expect(extractedDirectory(service)?.extractedCount).toBe(12);
   });
@@ -56,7 +56,7 @@ describe("ArchivesService directory extraction", () => {
 
     expect(mockInvoke).toHaveBeenCalledWith(
       "plugin:archives|extract_directory",
-      expect.objectContaining({ prefix: "", destination: "C:\\out" })
+      expect.objectContaining({ request: { prefix: "", destination: "C:\\out" } })
     );
   });
 

@@ -30,6 +30,7 @@ describe("SpriteEquipmentService", () => {
     const { service } = mockInjectedService(SpriteEquipmentService);
 
     service.spriteImage = service.spriteImage.asUpdated({
+      isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
       path: "C:\\game\\equipment.dds",
@@ -49,6 +50,7 @@ describe("SpriteEquipmentService", () => {
     const { service } = mockInjectedService(SpriteEquipmentService);
 
     service.spriteImage = service.spriteImage.asUpdated({
+      isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
       path: "C:\\game\\equipment.dds",

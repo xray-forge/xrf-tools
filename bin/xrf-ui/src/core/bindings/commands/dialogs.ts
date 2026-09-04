@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
+import { DialogsOpenRequest } from "@/core/bindings/types/xrf-app";
 import {
   DialogDescriptor,
   DialogFileDescriptor,
@@ -76,16 +77,6 @@ export const dialogsCommands = {
    * The layout mode is obeyed, never re-derived: it decides which files a later save writes, so a guess
    * acted on here would decide what gets overwritten. `detect_mode` is what preselects it.
    */
-  openProject: (
-    roots: XrayRoots,
-    mode: DialogProjectMode,
-    dialogsPrefix: string | null,
-    translationsPrefix: string | null
-  ) =>
-    __TAURI_INVOKE<DialogProjectDescriptor>("plugin:dialogs|open_project", {
-      roots,
-      mode,
-      dialogsPrefix,
-      translationsPrefix,
-    }),
+  openProject: (request: DialogsOpenRequest) =>
+    __TAURI_INVOKE<DialogProjectDescriptor>("plugin:dialogs|open_project", { request }),
 };

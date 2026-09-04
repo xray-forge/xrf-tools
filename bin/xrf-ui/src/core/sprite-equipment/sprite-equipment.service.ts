@@ -27,6 +27,8 @@ import { Nullable } from "@/lib/types/general";
 
 export interface IEquipmentPngDescriptor {
   ltxPath: string;
+  /** Whether the open project's descriptors came out of a DLTX-resolved config tree. */
+  isDltx: boolean;
   descriptors: Array<IEquipmentSectionDescriptor>;
   path: string;
   name: string;
@@ -133,8 +135,16 @@ export class SpriteEquipmentService {
     this.gridSize = Math.round(clamp(size, 10, 100));
   }
 
+  /**
+   * Reads a sprite sheet and the configuration naming its icons.
+   *
+   * @param equipmentDdsPath - The packed `*.dds` holding the inventory icons.
+   * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
+   * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. Remembered for the
+   *   session, because reopening takes no arguments and has to answer the same descriptors.
+   */
   @LatestFlow("spriteImage")
-  public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string): TFlow {
+  public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string, isDltx: boolean): TFlow {
     this.log.info("Opening equipment project:", equipmentDdsPath, systemLtxPath);
 
     try {
@@ -142,7 +152,7 @@ export class SpriteEquipmentService {
       this.spriteImage = createLoadable(null, true);
 
       const response: IEquipmentSpriteMetadata = yield* call(
-        spriteEquipmentCommands.openSprite(equipmentDdsPath, systemLtxPath)
+        spriteEquipmentCommands.openSprite(equipmentDdsPath, systemLtxPath, isDltx)
       );
 
       this.log.info("Equipment project opened:", response);
@@ -220,7 +230,14 @@ export class SpriteEquipmentService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      yield* call(this.packEquipmentSprite(repackSourcePath, spriteImage.value.path, spriteImage.value.ltxPath));
+      yield* call(
+        this.packEquipmentSprite(
+          repackSourcePath,
+          spriteImage.value.path,
+          spriteImage.value.ltxPath,
+          spriteImage.value.isDltx
+        )
+      );
 
       this.repackedAt = Date.now();
 
@@ -314,19 +331,21 @@ export class SpriteEquipmentService {
    * @param sourcePath - Directory of individual icon files.
    * @param outputPath - File the sheet is written to.
    * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
+   * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect.
    * @returns What the run produced.
    */
   public async packEquipmentSprite(
     sourcePath: string,
     outputPath: string,
-    systemLtxPath: string
+    systemLtxPath: string,
+    isDltx: boolean
   ): Promise<IPackEquipmentResult> {
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
     const run: IJobRun<IPackEquipmentResult> = this.jobsService.run<IPackEquipmentResult>({
       kind: EJobKind.SPRITE_EQUIPMENT_PACK,
       invoke: (id: string, progress) =>
-        spriteEquipmentCommands.packSprite(sourcePath, outputPath, systemLtxPath, id, progress),
+        spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
       describe: (outcome: IJobOutcome<IPackEquipmentResult>): IJobNotice =>
         describePackSpriteOutcome(outputPath, outcome),
     });
@@ -368,6 +387,7 @@ export class SpriteEquipmentService {
 
     return {
       blob,
+      isDltx: response.isDltx,
       ltxPath: response.systemLtxPath,
       descriptors: response.equipmentDescriptors,
       image: await urlToImage(this.assetService.swap(SPRITE_ASSET_KEY, blob)),

@@ -10,7 +10,8 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
 const SPRITE: IEquipmentPngDescriptor = {
-  ltxPath: "C:\\game\\system.ltx",
+  isDltx: false,
+      ltxPath: "C:\\game\\system.ltx",
   descriptors: [],
   path: "C:\\game\\equipment.dds",
   name: "equipment.dds",

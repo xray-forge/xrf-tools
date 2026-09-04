@@ -2,9 +2,9 @@
 
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
+import { ConfigsFormatRequest, ConfigsVerifyRequest } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const configsCommands = {
@@ -15,8 +15,8 @@ export const configsCommands = {
    * nothing to collide over. A separate kind from the rewrite it reports on, because they are different work with
    * different consequences — one answers a question, the other changes the files.
    */
-  checkDirectoryFormat: (roots: XrayRoots, prefix: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|check_directory_format", { roots, prefix, jobId, progress }),
+  checkDirectoryFormat: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|check_directory_format", { request, jobId, progress }),
   /**
    * Rewrite the LTX configs roots exposes.
    *
@@ -28,14 +28,14 @@ export const configsCommands = {
    * the rest untouched: each file is rewritten through a staged replace, so nothing is half-written and running it
    * again resolves the difference.
    */
-  formatDirectory: (roots: XrayRoots, prefix: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { roots, prefix, jobId, progress }),
+  formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { request, jobId, progress }),
   /**
    * Verify the LTX configs roots exposes.
    *
    * Read-only, so it goes through the roots and covers archived configs too. `xrf-ltx` draws the same
    * line: its read-only check reads through the VFS where its rewrite refuses archived winners.
    */
-  verifyDirectory: (roots: XrayRoots, prefix: string | null, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { roots, prefix, jobId, progress }),
+  verifyDirectory: (request: ConfigsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { request, jobId, progress }),
 };

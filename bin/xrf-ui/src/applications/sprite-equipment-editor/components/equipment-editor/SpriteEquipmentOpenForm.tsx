@@ -1,5 +1,6 @@
+import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback } from "react";
+import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
@@ -36,13 +37,20 @@ export function SpriteEquipmentOpenForm(): ReactElement {
     seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
+  // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the
+  // other's rules answers wrong icon descriptors rather than failing. Remembered for the session, because reopening
+  // takes no arguments and has to answer the same values.
+  const [isDltx, setDltx] = useState<boolean>(false);
+
+  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
+
   const onOpenEquipmentClicked = useCallback(() => {
     if (sprite.value && systemLtx.value) {
-      spriteEquipmentService.openEquipmentProject(sprite.value, systemLtx.value);
+      spriteEquipmentService.openEquipmentProject(sprite.value, systemLtx.value, isDltx);
     } else {
       log.info("Cannot open equipment editor without every path");
     }
-  }, [spriteEquipmentService, log, sprite.value, systemLtx.value]);
+  }, [spriteEquipmentService, log, sprite.value, systemLtx.value, isDltx]);
 
   return (
     <PickerForm
@@ -66,6 +74,11 @@ export function SpriteEquipmentOpenForm(): ReactElement {
         label={"System configuration"}
         description={"The system.ltx that names the icons"}
         field={systemLtx}
+      />
+
+      <FormControlLabel
+        control={<Checkbox disabled={isLoading} checked={isDltx} onChange={onDltxChange} />}
+        label={"DLTX"}
       />
     </PickerForm>
   );

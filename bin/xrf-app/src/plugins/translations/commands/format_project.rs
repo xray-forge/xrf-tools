@@ -15,6 +15,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{FORMAT_JOB_KIND, to_output_lease_key};
+use crate::plugins::translations::request::TranslationsFormatRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
 /// Normalize the JSON translation sources under a directory.
@@ -33,11 +34,15 @@ pub async fn translations_format_project(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   project: State<'_, TranslationProjectState>,
-  directory: PathBuf,
-  line_endings: Option<String>,
+  request: TranslationsFormatRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationFormatResult> {
+  let TranslationsFormatRequest {
+    directory,
+    line_endings,
+  } = request;
+
   log::info!("Formatting translation sources in {}", directory.display());
 
   // Before the job exists, because this is a refusal rather than a failed run: the editor's in-memory buffers are not

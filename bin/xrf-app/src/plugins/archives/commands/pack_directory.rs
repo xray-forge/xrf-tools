@@ -4,7 +4,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
-use xrf_pack::{ArchivePackConfig, ArchivePackOptions, ArchivePackResult, ArchivePacker};
+use xrf_pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
@@ -12,6 +12,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
+use crate::plugins::archives::request::ArchivesPackRequest;
 
 /// Pack a directory into archive volumes from a configuration held by the caller.
 ///
@@ -30,11 +31,12 @@ use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
 pub async fn archives_pack_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  config: ArchivePackConfig,
-  is_forced: bool,
+  request: ArchivesPackRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePackResult> {
+  let ArchivesPackRequest { config, is_forced } = request;
+
   log::info!(
     "Packing archive: {} -> {} as '{}'",
     format_path(&config.source),

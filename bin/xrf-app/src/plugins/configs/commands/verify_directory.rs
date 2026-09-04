@@ -6,14 +6,15 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
-use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart};
+use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
+use crate::plugins::configs::request::ConfigsVerifyRequest;
 
 /// Verify the LTX configs roots exposes.
 ///
@@ -24,16 +25,17 @@ use crate::plugins::configs::ltx_roots::open_ltx_project;
 pub async fn configs_verify_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  roots: XrayRoots,
-  prefix: Option<String>,
+  request: ConfigsVerifyRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LtxProjectVerifyResult> {
+  let ConfigsVerifyRequest { roots, prefix, is_dltx } = request;
+
   log::info!("Verifying ltx configs in {}", roots.describe());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, VERIFY_JOB_KIND)
-      .with_request(&json!({ "roots": roots, "prefix": prefix }))
+      .with_request(&json!({ "roots": roots, "prefix": prefix, "isDltx": is_dltx }))
       .with_progress(progress),
   )?;
 
@@ -53,8 +55,7 @@ pub async fn configs_verify_directory(
           &roots,
           prefix.as_deref(),
           LtxProjectOptions {
-            // Standard LTX until the project setting exists; a patched tree needs the caller to say so.
-            dialect: Arc::new(xrf_ltx::LtxStandardDialect),
+            dialect: select_ltx_dialect(is_dltx),
             is_with_schemes_check: true,
             // todo: Probably should be provided as parameter.
             is_strict_check: false,

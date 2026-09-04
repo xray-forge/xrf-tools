@@ -11,13 +11,13 @@ use xrf_translation::{
   TranslationLanguage, TranslationVerifier, TranslationVerifyLanguageSummary, TranslationVerifyOptions,
   TranslationVerifyResult,
 };
-use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::VERIFY_JOB_KIND;
+use crate::plugins::translations::request::TranslationsVerifyRequest;
 
 /// What a completeness check reports back to the desktop surface.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -45,12 +45,16 @@ pub struct TranslationVerifySummary {
 pub async fn translations_verify_project(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  roots: XrayRoots,
-  prefix: Option<String>,
-  language: String,
+  request: TranslationsVerifyRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationVerifySummary> {
+  let TranslationsVerifyRequest {
+    roots,
+    prefix,
+    language,
+  } = request;
+
   // `all` is accepted here, unlike the importer: a check reports every language at once, and that is
   // the run somebody opens this screen to make.
   let language: TranslationLanguage = TranslationLanguage::from_str(&language)?;

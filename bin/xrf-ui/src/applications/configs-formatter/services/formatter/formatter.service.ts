@@ -106,8 +106,8 @@ export class FormatterService {
       kind: isCheck ? EJobKind.CONFIGS_CHECK_FORMAT : EJobKind.CONFIGS_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
-          ? configsCommands.checkDirectoryFormat(createRoots([directory]), null, id, progress)
-          : configsCommands.formatDirectory(createRoots([directory]), null, id, progress),
+          ? configsCommands.checkDirectoryFormat({ roots: createRoots([directory]), prefix: null }, id, progress)
+          : configsCommands.formatDirectory({ roots: createRoots([directory]), prefix: null }, id, progress),
       describe: (outcome: IJobOutcome<LtxProjectFormatResult>): IJobNotice =>
         describeFormatOutcome(directory, isCheck, outcome),
     });

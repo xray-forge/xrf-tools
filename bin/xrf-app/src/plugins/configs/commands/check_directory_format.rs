@@ -6,7 +6,6 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
-use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
@@ -14,6 +13,7 @@ use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::CHECK_FORMAT_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
+use crate::plugins::configs::request::ConfigsFormatRequest;
 
 /// Report which LTX configs roots exposes are misformatted.
 ///
@@ -25,11 +25,12 @@ use crate::plugins::configs::ltx_roots::open_ltx_project;
 pub async fn configs_check_directory_format(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  roots: XrayRoots,
-  prefix: Option<String>,
+  request: ConfigsFormatRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LtxProjectFormatResult> {
+  let ConfigsFormatRequest { roots, prefix } = request;
+
   log::info!("Checking ltx format in {}", roots.describe());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(

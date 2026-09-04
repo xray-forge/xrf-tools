@@ -1,9 +1,9 @@
 use tauri::State;
-use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout, DialogProjectMode};
-use xrf_vfs::XrayRoots;
+use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 
 use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
+use crate::plugins::dialogs::request::DialogsOpenRequest;
 use crate::plugins::dialogs::state::DialogProjectState;
 
 /// Open a dialog tree.
@@ -18,12 +18,16 @@ use crate::plugins::dialogs::state::DialogProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn dialogs_open_project(
-  roots: XrayRoots,
-  mode: DialogProjectMode,
-  dialogs_prefix: Option<String>,
-  translations_prefix: Option<String>,
+  request: DialogsOpenRequest,
   state: State<'_, DialogProjectState>,
 ) -> TauriResult<DialogProjectDescriptor> {
+  let DialogsOpenRequest {
+    roots,
+    mode,
+    dialogs_prefix,
+    translations_prefix,
+  } = request;
+
   log::info!("Opening dialogs project: {} root(s), {:?}", roots.roots.len(), mode);
 
   let layout: DialogProjectLayout = DialogProjectLayout {

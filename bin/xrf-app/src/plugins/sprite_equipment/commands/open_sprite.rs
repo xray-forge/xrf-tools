@@ -4,6 +4,7 @@ use xrf_ltx::Ltx;
 use xrf_texture::InventorySpriteDescriptor;
 
 use crate::core::error::error_to_string;
+use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, EquipmentSpriteState};
 
@@ -12,6 +13,7 @@ use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, Equipment
 pub async fn sprite_equipment_open_sprite(
   equipment_dds_path: &str,
   system_ltx_path: &str,
+  is_dltx: bool,
   state: State<'_, EquipmentSpriteState>,
 ) -> TauriResult<EquipmentSpriteMetadata> {
   log::info!("Opening equipment file: {equipment_dds_path} - {system_ltx_path}");
@@ -24,19 +26,20 @@ pub async fn sprite_equipment_open_sprite(
 
   log::info!("Opened equipment dds file");
 
-  // todo: resolve under the project's dialect once the app carries a DLTX setting; a patched install reads
-  // unpatched values here today.
   let descriptors: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(
-    &Ltx::read_from_file_standard(system_ltx_path).map_err(error_to_string)?,
+    &Ltx::read_from_file_with_dialect(system_ltx_path, select_ltx_dialect(is_dltx).as_ref())
+      .map_err(error_to_string)?,
   );
 
   let response = EquipmentSpriteMetadata {
+    is_dltx,
     system_ltx_path: system_ltx_path.into(),
     path: equipment_dds_path.into(),
     name: name.into(),
     equipment_descriptors: descriptors.clone(),
   };
 
+  *state.is_dltx.lock().unwrap() = is_dltx;
   *state.system_ltx_path.lock().unwrap() = Some(system_ltx_path.into());
   *state.equipment_sprite_name.lock().unwrap() = Some(name.into());
   *state.equipment_sprite_path.lock().unwrap() = Some(equipment_dds_path.into());

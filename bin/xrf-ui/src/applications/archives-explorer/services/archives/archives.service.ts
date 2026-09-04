@@ -401,7 +401,7 @@ export class ArchivesService {
       // writes as much as an unpack does and wants the same identity, lease, and cancel control.
       const run: IJobRun<ArchiveExtractDirectoryResult> = this.jobsService.run<ArchiveExtractDirectoryResult>({
         kind: EJobKind.ARCHIVES_EXTRACT,
-        invoke: (id: string, progress) => archivesCommands.extractDirectory(prefix, destination, id, progress),
+        invoke: (id: string, progress) => archivesCommands.extractDirectory({ prefix, destination }, id, progress),
         describe: (outcome: IJobOutcome<ArchiveExtractDirectoryResult>): IJobNotice =>
           describeExtractOutcome(prefix, destination, outcome),
       });

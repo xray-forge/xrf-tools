@@ -104,8 +104,8 @@ export class TranslationsFormatterService {
       kind: isCheck ? EJobKind.TRANSLATIONS_CHECK_FORMAT : EJobKind.TRANSLATIONS_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
-          ? translationsCommands.checkProjectFormat(directory, null, id, progress)
-          : translationsCommands.formatProject(directory, null, id, progress),
+          ? translationsCommands.checkProjectFormat({ directory, lineEndings: null }, id, progress)
+          : translationsCommands.formatProject({ directory, lineEndings: null }, id, progress),
       describe: (outcome: IJobOutcome<TranslationFormatResult>): IJobNotice =>
         describeFormatOutcome(directory, isCheck, outcome),
     });

@@ -89,7 +89,7 @@ export class TranslationsVerifierService {
     const run: IJobRun<TranslationVerifySummary> = this.jobsService.run<TranslationVerifySummary>({
       kind: EJobKind.TRANSLATIONS_VERIFY,
       invoke: (id: string, progress) =>
-        translationsCommands.verifyProject(createRoots([sources]), null, language, id, progress),
+        translationsCommands.verifyProject({ roots: createRoots([sources]), prefix: null, language }, id, progress),
       describe: (outcome: IJobOutcome<TranslationVerifySummary>): IJobNotice =>
         describeTranslationVerifyOutcome(sources, outcome),
     });

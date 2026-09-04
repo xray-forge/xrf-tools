@@ -1,5 +1,6 @@
+import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect } from "react";
+import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsVerifyResult } from "@/applications/configs-verifier/components/ConfigsVerifyResult";
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
@@ -36,15 +37,19 @@ export function ConfigsVerifierApplication(): ReactElement {
 
   const directory: Nullable<string> = configs.value;
 
+  const [isDltx, setDltx] = useState<boolean>(false);
+
+  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
+
   const onVerify = useCallback(async () => {
     if (!directory) {
       return;
     }
 
-    log.info("Verifying:", directory);
+    log.info("Verifying:", { directory, isDltx });
 
-    await verifierService.verify(directory);
-  }, [directory, log, verifierService]);
+    await verifierService.verify(directory, isDltx);
+  }, [directory, isDltx, log, verifierService]);
 
   const onCancel = useCallback(() => verifierService.cancel(), [verifierService]);
 
@@ -70,6 +75,11 @@ export function ConfigsVerifierApplication(): ReactElement {
         label={"Configs directory"}
         description={"Directory of LTX files to validate"}
         field={configs}
+      />
+
+      <FormControlLabel
+        control={<Checkbox disabled={isRunning} checked={isDltx} onChange={onDltxChange} />}
+        label={"DLTX"}
       />
     </PickerForm>
   );

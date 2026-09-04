@@ -2,7 +2,13 @@
 
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
-import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
+import {
+  ArchivesExtractRequest,
+  ArchivesPackRequest,
+  ArchivesUnpackRequest,
+  AssetTextureDescriptor,
+  AudioDescriptor,
+} from "@/core/bindings/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
@@ -82,13 +88,8 @@ export const archivesCommands = {
    * Holds the destination tree exclusively, sharing that lease with an unpack: both lay the archive's own layout into
    * the root, so two runs there overlap whatever each was asked for, even where their prefixes differ.
    */
-  extractDirectory: (prefix: string, destination: string, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", {
-      prefix,
-      destination,
-      jobId,
-      progress,
-    }),
+  extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", { request, jobId, progress }),
   getProject: () =>
     __TAURI_INVOKE<{
       /**
@@ -154,8 +155,8 @@ export const archivesCommands = {
    * made and the destination is untouched, while a forced one cannot tell its own output from what it replaced and
    * answers with a result naming every volume path it opened.
    */
-  packDirectory: (config: ArchivePackConfig, isForced: boolean, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { config, isForced, jobId, progress }),
+  packDirectory: (request: ArchivesPackRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { request, jobId, progress }),
   readFile: (path: string) => __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { path }),
   /**
    * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
@@ -164,6 +165,6 @@ export const archivesCommands = {
    * are — deleting them is not an option, because the destination may have held the user's own files and nothing here
    * can tell those apart from this run's — so the caller needs the counts to say what is now on disk.
    */
-  unpackDirectory: (from: string, destination: string, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { from, destination, jobId, progress }),
+  unpackDirectory: (request: ArchivesUnpackRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { request, jobId, progress }),
 };

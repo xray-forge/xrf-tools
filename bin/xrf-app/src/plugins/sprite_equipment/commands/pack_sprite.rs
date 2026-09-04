@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde_json::json;
@@ -14,8 +13,10 @@ use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentRes
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_sprite_lease_key};
+use crate::plugins::sprite_equipment::request::PackSpriteRequest;
 
 /// Draw every declared inventory icon into one equipment sprite sheet.
 ///
@@ -27,17 +28,23 @@ use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_spri
 pub async fn sprite_equipment_pack_sprite(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
-  source_path: &str,
-  output_path: &str,
-  system_ltx_path: &str,
+  request: PackSpriteRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<PackEquipmentResult> {
-  log::info!("Packing equipment dds: {source_path} -> {output_path}, {system_ltx_path}");
+  let PackSpriteRequest {
+    source_path: source,
+    output_path: output,
+    system_ltx_path: system_ltx,
+    is_dltx,
+  } = request;
 
-  let source: PathBuf = source_path.into();
-  let output: PathBuf = output_path.into();
-  let system_ltx: PathBuf = system_ltx_path.into();
+  log::info!(
+    "Packing equipment dds: {} -> {}, {}",
+    source.display(),
+    output.display(),
+    system_ltx.display()
+  );
 
   // Registered before the hop, and before the LTX is read: `system.ltx` pulls in the whole include tree, which on an
   // installation is thousands of files and most of the wait.
@@ -55,9 +62,7 @@ pub async fn sprite_equipment_pack_sprite(
     .run_blocking("Equipment sprite pack", move || {
       let options: PackEquipmentOptions = PackEquipmentOptions {
         job: packing,
-        // todo: resolve under the project's dialect once the app carries a DLTX setting; a patched install reads
-        // unpatched values here today.
-        ltx: Ltx::read_from_file_standard(&system_ltx)?,
+        ltx: Ltx::read_from_file_with_dialect(&system_ltx, select_ltx_dialect(is_dltx).as_ref())?,
         source,
         output: OutputOptions::default(),
         output_path: output,
