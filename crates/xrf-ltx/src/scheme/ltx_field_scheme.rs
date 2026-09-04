@@ -349,7 +349,7 @@ impl LtxFieldScheme {
           Some(self.validation_error("Unexpected const check - value is empty"))
         } else if const_value != value {
           Some(self.validation_error(&format!(
-            "Invalid value - constant '{const_value} is expected, got '{value}'"
+            "Invalid value, constant '{const_value}' is expected, got '{value}'"
           )))
         } else {
           None
@@ -623,6 +623,30 @@ mod tests {
     assert!(scheme.validate_enum_type("e").is_some());
     assert!(scheme.validate_enum_type("f").is_some());
     assert!(scheme.validate_enum_type("1").is_some());
+  }
+
+  #[test]
+  fn test_const_validation() {
+    let mut scheme: LtxFieldScheme =
+      LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
+
+    assert!(scheme.validate_const("a").is_some());
+
+    scheme.data_type = LtxFieldDataType::TypeConst(String::from("fixed value"));
+
+    assert!(scheme.validate_const("fixed value").is_none());
+
+    assert!(scheme.validate_const("").is_some());
+    assert!(scheme.validate_const("fixed").is_some());
+
+    // Both operands stay quoted so a constant containing spaces keeps a recoverable boundary.
+    assert_eq!(
+      scheme
+        .validate_const("other")
+        .expect("Expected mismatching constant to be rejected")
+        .to_string(),
+      "Ltx scheme error [test_section] test_field : Invalid value, constant 'fixed value' is expected, got 'other'"
+    );
   }
 
   #[test]
