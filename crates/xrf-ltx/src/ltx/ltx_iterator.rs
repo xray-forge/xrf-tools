@@ -3,7 +3,7 @@ use indexmap::map::{IntoIter, Iter, IterMut};
 use crate::ltx::{Ltx, Section};
 
 pub struct PropertyIter<'a> {
-  pub(crate) inner: Iter<'a, String, String>,
+  pub(crate) inner: Iter<'a, Box<str>, Box<str>>,
 }
 
 impl<'a> Iterator for PropertyIter<'a> {
@@ -26,14 +26,14 @@ impl DoubleEndedIterator for PropertyIter<'_> {
 
 /// Iterator for traversing sections
 pub struct PropertyIterMut<'a> {
-  pub(crate) inner: IterMut<'a, String, String>,
+  pub(crate) inner: IterMut<'a, Box<str>, Box<str>>,
 }
 
 impl<'a> Iterator for PropertyIterMut<'a> {
-  type Item = (&'a str, &'a mut String);
+  type Item = (&'a str, &'a mut str);
 
   fn next(&mut self) -> Option<Self::Item> {
-    self.inner.next().map(|(k, v)| (k.as_ref(), v))
+    self.inner.next().map(|(k, v)| (&**k, &mut **v))
   }
 
   fn size_hint(&self) -> (usize, Option<usize>) {
@@ -43,16 +43,16 @@ impl<'a> Iterator for PropertyIterMut<'a> {
 
 impl DoubleEndedIterator for PropertyIterMut<'_> {
   fn next_back(&mut self) -> Option<Self::Item> {
-    self.inner.next_back().map(|(k, v)| (k.as_ref(), v))
+    self.inner.next_back().map(|(k, v)| (&**k, &mut **v))
   }
 }
 
 pub struct PropertiesIntoIter {
-  inner: IntoIter<String, String>,
+  inner: IntoIter<Box<str>, Box<str>>,
 }
 
 impl Iterator for PropertiesIntoIter {
-  type Item = (String, String);
+  type Item = (Box<str>, Box<str>);
 
   fn next(&mut self) -> Option<Self::Item> {
     self.inner.next()
@@ -79,7 +79,7 @@ impl<'a> IntoIterator for &'a Section {
 }
 
 impl<'a> IntoIterator for &'a mut Section {
-  type Item = (&'a str, &'a mut String);
+  type Item = (&'a str, &'a mut str);
   type IntoIter = PropertyIterMut<'a>;
 
   fn into_iter(self) -> Self::IntoIter {
@@ -88,7 +88,7 @@ impl<'a> IntoIterator for &'a mut Section {
 }
 
 impl IntoIterator for Section {
-  type Item = (String, String);
+  type Item = (Box<str>, Box<str>);
   type IntoIter = PropertiesIntoIter;
 
   fn into_iter(self) -> Self::IntoIter {
@@ -173,12 +173,6 @@ impl<'a> Ltx {
     SectionIter {
       inner: self.sections.iter(),
     }
-  }
-
-  /// Mutable iterate though sections
-  #[deprecated(note = "Use `iter_mut` instead!")]
-  pub fn mut_iter(&'a mut self) -> SectionIterMut<'a> {
-    self.iter_mut()
   }
 
   /// Mutable iterate though sections

@@ -30,10 +30,6 @@ impl LtxStatementWriter {
   }
 
   /// Write section statement.
-  pub fn write_section(destination: &mut String, section: &str, inherited: Option<Vec<String>>, comment: Option<&str>) {
-    Self::write_section_with_prefix(destination, "", section, inherited, comment);
-  }
-
   /// Write a section statement carrying a DLTX operation prefix.
   ///
   /// The prefix sits outside the brackets - `![section]`, not `[!section]` - so it cannot be folded into the name.
@@ -41,7 +37,7 @@ impl LtxStatementWriter {
     destination: &mut String,
     prefix: &str,
     section: &str,
-    inherited: Option<Vec<String>>,
+    inherited: &[Box<str>],
     comment: Option<&str>,
   ) {
     if !destination.is_empty() {
@@ -50,9 +46,7 @@ impl LtxStatementWriter {
 
     destination.push_str(&format!("{prefix}[{section}]"));
 
-    if let Some(inherited) = inherited
-      && !inherited.is_empty()
-    {
+    if !inherited.is_empty() {
       destination.push_str(&format!(":{}", inherited.join(",")));
     }
 
@@ -127,7 +121,7 @@ mod test {
   fn test_write_section() {
     let mut destination: String = String::new();
 
-    LtxStatementWriter::write_section(&mut destination, "some_section", None, None);
+    LtxStatementWriter::write_section_with_prefix(&mut destination, "", "some_section", &[], None);
 
     assert_eq!(destination, "[some_section]\r\n");
   }
@@ -136,12 +130,7 @@ mod test {
   fn test_write_section_with_comment() {
     let mut destination: String = String::new();
 
-    LtxStatementWriter::write_section(
-      &mut destination,
-      "some_section",
-      Some(Vec::new()),
-      Some("nested ; comment"),
-    );
+    LtxStatementWriter::write_section_with_prefix(&mut destination, "", "some_section", &[], Some("nested ; comment"));
 
     assert_eq!(destination, "[some_section] ; nested ; comment\r\n");
   }
@@ -150,10 +139,11 @@ mod test {
   fn test_write_section_inherited() {
     let mut destination: String = String::new();
 
-    LtxStatementWriter::write_section(
+    LtxStatementWriter::write_section_with_prefix(
       &mut destination,
+      "",
       "some_section",
-      Some(vec![String::from("a"), String::from("b")]),
+      &[Box::from("a"), Box::from("b")],
       None,
     );
 
@@ -164,10 +154,11 @@ mod test {
   fn test_write_section_inherited_with_comment() {
     let mut destination: String = String::new();
 
-    LtxStatementWriter::write_section(
+    LtxStatementWriter::write_section_with_prefix(
       &mut destination,
+      "",
       "some_section",
-      Some(vec![String::from("a"), String::from("b"), String::from("c")]),
+      &[Box::from("a"), Box::from("b"), Box::from("c")],
       Some("nested ; comment"),
     );
 

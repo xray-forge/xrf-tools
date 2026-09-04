@@ -15,6 +15,12 @@ pub struct LtxDocument {
   pub(crate) items: Vec<LtxItem>,
   /// Checks the leading comment block opted out of.
   pub(crate) skipped_checks: Vec<LtxCheck>,
+  /// One authored line per statement, in `items` order, or empty when nothing asked for them.
+  ///
+  /// Kept beside the statements rather than inside them: only an editor writing untouched lines back byte-identical
+  /// wants these, and a project holds one [`LtxItem`] per statement of every config it reads, so an always-`None`
+  /// field there costs 24 bytes several hundred thousand times over.
+  pub(crate) source_lines: Vec<Box<str>>,
 }
 
 impl LtxDocument {
@@ -37,6 +43,13 @@ impl LtxDocument {
       .iter()
       .filter_map(|item| item.as_include().map(|(path, _)| path))
       .collect()
+  }
+
+  /// Each statement's line exactly as authored, or empty unless the parse was asked to keep them.
+  ///
+  /// Indexed the same as [`Self::get_items`], so the two zip.
+  pub fn get_source_lines(&self) -> &[Box<str>] {
+    &self.source_lines
   }
 
   pub(crate) fn record_skipped_check(&mut self, check: LtxCheck) {

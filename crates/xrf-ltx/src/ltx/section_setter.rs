@@ -14,8 +14,8 @@ impl<'a> SectionSetter<'a> {
   /// Set (replace) key-value pair in this section (all with the same name).
   pub fn set<K, V>(&'a mut self, key: K, value: V) -> &'a mut SectionSetter<'a>
   where
-    K: Into<String>,
-    V: Into<String>,
+    K: AsRef<str>,
+    V: AsRef<str>,
   {
     self
       .ltx
@@ -30,8 +30,8 @@ impl<'a> SectionSetter<'a> {
   /// Optional values with None will not be written.
   pub fn set_optional<K, V>(&'a mut self, key: K, value: Option<V>) -> &'a mut SectionSetter<'a>
   where
-    K: Into<String>,
-    V: Into<String>,
+    K: AsRef<str>,
+    V: AsRef<str>,
   {
     if let Some(value) = value {
       self

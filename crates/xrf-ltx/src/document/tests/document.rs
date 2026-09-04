@@ -65,7 +65,7 @@ fn records_every_statement_with_the_line_it_was_written_on() -> XrfResult {
 #[test]
 fn a_gap_between_spans_is_how_a_blank_run_is_recorded() -> XrfResult {
   let document: LtxDocument = Ltx::read_document_from_str("[first]\n\n\n\n[second]\n")?;
-  let lines: Vec<usize> = document.get_items().iter().map(|item| item.span.line).collect();
+  let lines: Vec<u32> = document.get_items().iter().map(|item| item.span.line).collect();
 
   // No blank-line statement kind exists; three blank lines are the distance from line 1 to line 5.
   assert_eq!(lines, vec![1, 5]);
@@ -178,21 +178,16 @@ fn formatting_a_patch_file_keeps_its_prefixes_outside_the_brackets() -> XrfResul
 fn a_document_carries_no_line_text_unless_it_is_asked_to() -> XrfResult {
   let contents: &str = "  [section]\n\tkey   =   value\n";
 
-  assert!(
-    Ltx::read_document_from_str(contents)?
-      .get_items()
-      .iter()
-      .all(|item| item.source.is_none())
-  );
+  assert!(Ltx::read_document_from_str(contents)?.get_source_lines().is_empty());
 
   let preserved: LtxDocument = Ltx::read_document_from_str_preserving_source(contents)?;
 
   // Indentation included, so an untouched line can be written back exactly as authored.
   assert_eq!(
     preserved
-      .get_items()
+      .get_source_lines()
       .iter()
-      .map(|item| item.source.as_deref().expect("a preserved line"))
+      .map(Box::as_ref)
       .collect::<Vec<&str>>(),
     vec!["  [section]", "\tkey   =   value"]
   );
@@ -210,13 +205,14 @@ fn preserved_lines_rebuild_the_file_they_came_from() -> XrfResult {
   let mut rebuilt: String = String::new();
   let mut next_line: usize = 1;
 
-  for item in preserved.get_items() {
-    while next_line < item.span.line {
+  // The two are indexed alike, which is the contract `get_source_lines` states.
+  for (item, source) in preserved.get_items().iter().zip(preserved.get_source_lines()) {
+    while next_line < item.span.get_line() {
       rebuilt.push('\n');
       next_line += 1;
     }
 
-    rebuilt.push_str(item.source.as_deref().expect("a preserved line"));
+    rebuilt.push_str(source);
     rebuilt.push('\n');
     next_line += 1;
   }

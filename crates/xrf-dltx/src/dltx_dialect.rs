@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use xrf_error::XrfResult;
 use xrf_ltx::{
   Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxResolution, LtxResolutionDiagnostic, LtxStandardDialect,
+  Section,
 };
 
 use crate::discovery::dltx_discovery::DltxDiscovery;
@@ -77,15 +78,17 @@ impl DltxDialect {
     let mut ltx: Ltx = Ltx::new();
 
     for (section, fields) in &resolved.sections {
-      // Created even when it holds nothing, because an empty section is still one the engine loaded.
-      ltx.entry(section.clone()).or_insert_with(Default::default);
+      // Entered once and filled in place. Going through `set_to` per field re-looked-up the section and cloned its
+      // name for every value it held.
+      let target: &mut Section = ltx.entry(section.clone()).or_insert_with(Default::default);
 
       for (key, value) in fields {
-        ltx.set_to(section.clone(), key.clone(), value.clone());
+        target.insert(key, value);
       }
     }
 
     ltx.set_source_paths(root);
+    ltx.shrink_to_fit();
 
     ltx
   }

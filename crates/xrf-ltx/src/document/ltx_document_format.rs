@@ -25,7 +25,7 @@ impl LtxDocument {
           &mut formatted,
           operation.as_prefix(),
           name,
-          Some(parents.clone()),
+          parents,
           comment.as_deref(),
         ),
         LtxItemKind::Key {

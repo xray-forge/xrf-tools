@@ -135,12 +135,17 @@ impl Ltx {
     self.get_from(section, key).unwrap_or(default)
   }
 
-  /// Get the first mutable value from the sections with key
-  pub fn get_from_mut(&mut self, section: &str, key: &str) -> Option<&mut str> {
-    self
-      .sections
-      .get_mut(section)
-      .and_then(|section| section.get_mut(key).map(|it| it.as_mut_str()))
+  /// Give back the growth room resolving needed, which a resolved config never uses again.
+  ///
+  /// Called where a dialect finishes: a config is built field by field, so every section's map is sized for the next
+  /// insertion that will not come. Across an Anomaly tree that slack is the difference between the peak a sweep
+  /// reaches and one a third smaller, and a sweep's peak is simply everything it retains at once.
+  pub fn shrink_to_fit(&mut self) {
+    self.sections.shrink_to_fit();
+
+    for (_, section) in self.sections.iter_mut() {
+      section.shrink_to_fit();
+    }
   }
 
   /// Delete the first section with key, return the properties if it exists
@@ -149,7 +154,7 @@ impl Ltx {
   }
 
   /// Delete the key from the section, return the value if key exists or None
-  pub fn delete_from(&mut self, section: &str, key: &str) -> Option<String> {
+  pub fn delete_from(&mut self, section: &str, key: &str) -> Option<Box<str>> {
     self.section_mut(section).and_then(|section| section.remove(key))
   }
 
@@ -776,11 +781,17 @@ x3 = nb
 
     let mut str: Ltx = Ltx::read_from_str(input).unwrap();
     let section: &mut Section = str.root_section_mut();
-    section.iter_mut().enumerate().for_each(|(i, (_, v))| {
-      v.push_str(&i.to_string());
+
+    // Edited in place and in order: a resolved value cannot grow, so the proof is that the nth value is the one that
+    // was reached nth.
+    section.iter_mut().enumerate().for_each(|(index, (_, value))| {
+      if index % 2 == 0 {
+        value.make_ascii_uppercase();
+      }
     });
+
     let props: Vec<_> = section.iter().collect();
-    assert_eq!(props, vec![("x2", "nc0"), ("x1", "na1"), ("x3", "nb2")]);
+    assert_eq!(props, vec![("x2", "NC"), ("x1", "na"), ("x3", "NB")]);
   }
 
   #[test]
@@ -797,9 +808,9 @@ x3 = nb
     assert_eq!(
       props,
       vec![
-        ("x2".to_owned(), "nc".to_owned()),
-        ("x1".to_owned(), "na".to_owned()),
-        ("x3".to_owned(), "nb".to_owned())
+        (Box::from("x2"), Box::from("nc")),
+        (Box::from("x1"), Box::from("na")),
+        (Box::from("x3"), Box::from("nb"))
       ]
     );
   }

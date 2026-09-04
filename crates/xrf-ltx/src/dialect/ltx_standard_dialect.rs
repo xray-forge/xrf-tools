@@ -27,7 +27,11 @@ impl LtxDialect for LtxStandardDialect {
 
     ltx.set_source_paths(root);
 
-    Ok(LtxResolution::new_plain(ltx.into_inherited()?))
+    let mut resolved: Ltx = ltx.into_inherited()?;
+
+    resolved.shrink_to_fit();
+
+    Ok(LtxResolution::new_plain(resolved))
   }
 }
 

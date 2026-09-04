@@ -39,18 +39,27 @@ impl Section {
     }
   }
 
+  /// Give back the growth room this section's fields no longer need.
+  pub fn shrink_to_fit(&mut self) {
+    self.data.shrink_to_fit();
+    self.inherited.shrink_to_fit();
+  }
+
   /// Return true if property exist.
   pub fn contains_key(&self, key: &str) -> bool {
     self.data.contains_key(key)
   }
 
   /// Insert (key, value) pair by replace.
+  ///
+  /// `AsRef<str>` rather than `Into<Box<str>>`, which no `&String` satisfies, and rather than `Into<String>`, which
+  /// would build a growable string only to box it. One allocation either way, sized to the value exactly.
   pub fn insert<K, V>(&mut self, key: K, value: V)
   where
-    K: Into<String>,
-    V: Into<String>,
+    K: AsRef<str>,
+    V: AsRef<str>,
   {
-    self.data.insert(key.into(), value.into());
+    self.data.insert(Box::from(key.as_ref()), Box::from(value.as_ref()));
   }
 
   /// Return true if section inherits another section.
@@ -73,16 +82,16 @@ impl Section {
 
   /// Get the first value associate with the key.
   pub fn get(&self, key: &str) -> Option<&str> {
-    self.data.get(key).map(|value| value.as_str())
+    self.data.get(key).map(|value| &**value)
   }
 
   /// Get the first value associate with the key.
-  pub fn get_mut(&mut self, key: &str) -> Option<&mut String> {
-    self.data.get_mut(key)
+  pub fn get_mut(&mut self, key: &str) -> Option<&mut str> {
+    self.data.get_mut(key).map(|value| &mut **value)
   }
 
   /// Remove the property with the first value of the key.
-  pub fn remove(&mut self, key: &str) -> Option<String> {
+  pub fn remove(&mut self, key: &str) -> Option<Box<str>> {
     self.data.shift_remove(key)
   }
 }
@@ -128,7 +137,7 @@ mod test {
     props.insert("k1", "v1");
     props.insert("k1", "v2");
 
-    assert_eq!(props.remove("k1"), Some("v2".into()));
+    assert_eq!(props.remove("k1").as_deref(), Some("v2"));
     assert!(!props.contains_key("k1"));
   }
 }

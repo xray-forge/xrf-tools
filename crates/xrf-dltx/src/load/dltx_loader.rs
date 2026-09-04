@@ -93,7 +93,7 @@ impl<'a> DltxLoader<'a> {
         LtxItemKind::Key {
           name, value, operation, ..
         } => match &current {
-          Some(target) => self.record_field(target.clone(), name, value.clone(), *operation, &filename, depth),
+          Some(target) => self.record_field(target.clone(), name, value.as_deref(), *operation, &filename, depth),
           // Outside any section the engine drops the line without a word.
           None => self.records.diagnostics.push(
             DltxDiagnostic::new("", format!("Field '{name}' sits before any section and is ignored"))
@@ -116,7 +116,7 @@ impl<'a> DltxLoader<'a> {
     &mut self,
     name: &str,
     operation: LtxSectionOperation,
-    parents: &[String],
+    parents: &[Box<str>],
     filename: &str,
   ) -> XrfResult<DltxTarget> {
     // Section names are lowercased at parse time; parent names are not, which is a real trap and preserved as one.
@@ -165,7 +165,7 @@ impl<'a> DltxLoader<'a> {
   ///
   /// Accumulated across every file naming the same section, with a later token cancelling the opposite earlier one.
   /// Removal is the only edit there is: no operator appends a parent, so a bare name is the append.
-  fn record_parents(&mut self, section: &str, parents: &[String], is_override: bool) {
+  fn record_parents(&mut self, section: &str, parents: &[Box<str>], is_override: bool) {
     let declared: &mut Vec<String> = if is_override {
       &mut self.records.override_parents
     } else {
@@ -182,8 +182,8 @@ impl<'a> DltxLoader<'a> {
 
       declared.retain(|existing| existing != &opposite);
 
-      if !declared.contains(parent) {
-        declared.push(parent.clone());
+      if !declared.iter().any(|existing| existing.as_str() == &**parent) {
+        declared.push(String::from(&**parent));
       }
     }
   }
@@ -193,7 +193,7 @@ impl<'a> DltxLoader<'a> {
     &mut self,
     target: DltxTarget,
     key: &str,
-    value: Option<String>,
+    value: Option<&str>,
     operation: LtxKeyOperation,
     filename: &str,
     depth: i32,
@@ -231,7 +231,7 @@ impl<'a> DltxLoader<'a> {
       // A deletion's value is discarded rather than kept, which is what stops it reaching a merged result.
       value: match operation {
         LtxKeyOperation::Delete => None,
-        _ => value,
+        _ => value.map(String::from),
       },
     });
   }

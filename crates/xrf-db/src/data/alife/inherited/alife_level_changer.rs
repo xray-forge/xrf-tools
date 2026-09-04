@@ -122,11 +122,11 @@ impl LtxImportExport for AlifeLevelChanger {
       .set("level_changer.dest_position", self.dest_position.to_string())
       .set("level_changer.dest_direction", self.dest_direction.to_string())
       .set("level_changer.angle_y", self.angle_y.to_string())
-      .set("level_changer.dest_level_name", self.dest_level_name.to_string())
-      .set("level_changer.dest_graph_point", self.dest_graph_point.to_string())
+      .set("level_changer.dest_level_name", &self.dest_level_name)
+      .set("level_changer.dest_graph_point", &self.dest_graph_point)
       .set("level_changer.silent_mode", self.silent_mode.to_string())
       .set("level_changer.enabled", self.enabled.to_string())
-      .set("level_changer.hint", self.hint.to_string())
+      .set("level_changer.hint", &self.hint)
       .set("level_changer.save_marker", self.save_marker.to_string());
 
     Ok(())

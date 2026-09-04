@@ -34,32 +34,32 @@ impl LtxStandardDialect {
         LtxItemKind::Include { path, .. } => {
           if ltx.includes(path) {
             return Err(XrfError::new_ltx_parse_error(
-              item.span.line,
-              item.span.column,
+              item.span.get_line(),
+              item.span.get_column(),
               format!("Failed to parse include statement in ltx file, including '{path}' more than once"),
             ));
           }
 
-          ltx.include(path.clone());
+          ltx.include(String::from(&**path));
         }
 
         LtxItemKind::Section { name, parents, .. } => {
-          current_section = name.clone();
+          current_section = String::from(&**name);
 
           match ltx.entry(current_section.clone()) {
             SectionEntry::Vacant(vacant_entry) => {
               let mut properties: Section = Section::default();
 
               for parent in parents {
-                properties.inherit(parent);
+                properties.inherit(&**parent);
               }
 
               vacant_entry.insert(properties);
             }
             SectionEntry::Occupied(_) => {
               return Err(XrfError::new_ltx_parse_error(
-                item.span.line,
-                item.span.column,
+                item.span.get_line(),
+                item.span.get_column(),
                 format!("Duplicate sections are not allowed, looks like '{current_section}' is declared twice"),
               ));
             }
@@ -67,18 +67,18 @@ impl LtxStandardDialect {
         }
 
         LtxItemKind::Key { name, value, .. } => {
-          let value: String = value.clone().unwrap_or_default();
+          let value: &str = value.as_deref().unwrap_or_default();
 
           match ltx.entry(current_section.clone()) {
             SectionEntry::Vacant(vacant_entry) => {
               let mut properties: Section = Section::new();
 
-              properties.insert(name.clone(), value);
+              properties.insert(&**name, value);
 
               vacant_entry.insert(properties);
             }
             SectionEntry::Occupied(properties) => {
-              properties.into_mut().insert(name.clone(), value);
+              properties.into_mut().insert(&**name, value);
             }
           }
         }
@@ -105,8 +105,8 @@ impl LtxStandardDialect {
     };
 
     XrfError::new_ltx_parse_error(
-      line,
-      column,
+      line as usize,
+      column as usize,
       format!("Found DLTX {statement}, which needs the dltx dialect; rerun with --dltx to evaluate patch files"),
     )
   }
