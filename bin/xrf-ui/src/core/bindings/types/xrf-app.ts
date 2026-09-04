@@ -172,6 +172,21 @@ export type JobDescription = {
   duration: number;
 };
 
+/** What a path is right now, for a form field that has to say what it points at before a command runs. */
+export type PathDescription = {
+  kind: PathKind;
+  /** Entries directly inside a directory. */
+  entryCount: number | null;
+};
+
+/**
+ * What a path turned out to be.
+ *
+ * Carried instead of a pair of booleans so the states cannot disagree. Failing to look is not a variant here: it
+ * reaches the caller as an error, which is what lets a refused check read as unknown rather than as absent.
+ */
+export type PathKind = "missing" | "file" | "directory";
+
 /**
  * What the viewer is showing, paired with where it came from.
  *

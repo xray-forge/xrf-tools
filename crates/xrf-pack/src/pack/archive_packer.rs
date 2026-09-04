@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
@@ -97,6 +97,8 @@ impl ArchivePacker {
       ArchivePackSourceCollector::collect_opt(config, &collecting, narrator.is_recording())?
     };
 
+    let collected_at: Duration = started_at.elapsed();
+
     narrator.describe_selection(source.names.get_directories(), &source.omitted);
 
     // xrCompress refuses an empty file list too. Saying so here beats leaving the caller to puzzle out
@@ -117,6 +119,7 @@ impl ArchivePacker {
         ArchivePackResult::default(),
         &source,
         started_at,
+        collected_at,
       ));
     }
 
@@ -136,7 +139,12 @@ impl ArchivePacker {
         // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
         // that are not there, which is worse than a volume that simply ends early.
         if job.is_cancelled() {
-          return Ok(Self::describe_cancelled(writer.abandon(), &source, started_at));
+          return Ok(Self::describe_cancelled(
+            writer.abandon(),
+            &source,
+            started_at,
+            collected_at,
+          ));
         }
 
         // Sequential, so naming the current entry is meaningful here in a way it is not for a parallel unpack.
@@ -146,6 +154,8 @@ impl ArchivePacker {
         writing.advance();
       }
     }
+
+    let written_at: Duration = started_at.elapsed();
 
     // Bound rather than scoped in a block, because this phase covers everything left: closing the last volume, naming
     // the set, and measuring. It ends when the function does.
@@ -172,7 +182,7 @@ impl ArchivePacker {
       result.volumes_opened = vec![renamed];
     }
 
-    result.measure(started_at);
+    result.measure(started_at, collected_at, written_at);
 
     Ok(result)
   }
@@ -229,11 +239,13 @@ impl ArchivePacker {
     mut result: ArchivePackResult,
     source: &ArchivePackSource,
     started_at: Instant,
+    collected_at: Duration,
   ) -> ArchivePackResult {
     result.outcome = JobOutcome::Cancelled;
     result.files_total = source.names.get_files().len();
     result.files_skipped = source.omitted.get_count();
-    result.measure(started_at);
+
+    result.measure(started_at, collected_at, started_at.elapsed());
 
     result
   }

@@ -315,6 +315,14 @@ impl GenericCommand for PackCommand {
 
     xrf_output::info!(
       output,
+      "Phases: {} collecting, {} writing, {} finalizing",
+      xrf_utils::format_duration(result.collect_duration),
+      xrf_utils::format_duration(result.write_duration),
+      xrf_utils::format_duration(result.finalize_duration),
+    );
+
+    xrf_output::info!(
+      output,
       "Summary: {} compressed, {} stored, {} aliased, {} skipped",
       result.files_compressed,
       result.files_stored,

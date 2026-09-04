@@ -2,10 +2,13 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
+import { PathDescription } from "@/core/bindings/types/xrf-app";
 import { BuildInfo } from "@/core/bindings/types/xrf-build-info";
 
 /** Commands */
 export const systemCommands = {
+  /** Describe what a path currently holds. */
+  describePath: (path: string) => __TAURI_INVOKE<PathDescription>("plugin:system|describe_path", { path }),
   /**
    * Report which build of the application is running.
    *

@@ -1,5 +1,6 @@
 pub(crate) mod fixtures;
 
+mod measurement;
 mod mount;
 mod names;
 mod narration;

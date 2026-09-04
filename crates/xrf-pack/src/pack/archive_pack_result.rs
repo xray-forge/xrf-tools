@@ -43,9 +43,22 @@ pub struct ArchivePackResult {
   pub size_source: u64,
   /// Bytes of every closed volume, headers and descriptor tables included.
   pub size_written: u64,
+  /// Everything the run took, which the three phase durations below divide between them.
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
+  /// The share of `duration` spent walking the source tree, before anything was created.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub collect_duration: Duration,
+  /// The share of `duration` spent reading, compressing, and placing the selected entries.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub write_duration: Duration,
+  /// The share of `duration` spent closing the last volume and naming the set.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub finalize_duration: Duration,
   /// Source bytes per second over the whole run, so a reader compares two runs without dividing.
   ///
   /// Zero where the run took no measurable time, rather than a division a caller has to guard.
@@ -67,13 +80,30 @@ impl ArchivePackResult {
     }
   }
 
-  /// Close the clock on a run: how long it took, and how fast that made it.
+  /// Close the clock on a run: how long it took, where that time went, and how fast it made the run.
   ///
-  /// One method for both because the speed is a function of the duration, and a result carrying the one without the
-  /// other would answer the same question two ways.
-  pub(crate) fn measure(&mut self, started_at: Instant) {
+  /// One method for all of it because each part is a function of the duration, and a result carrying one without the
+  /// rest would answer the same question several ways.
+  ///
+  /// The marks are elapsed times taken as their phase ended, not instants, so a run that stopped simply never took
+  /// the ones past where it stopped.
+  pub(crate) fn measure(&mut self, started_at: Instant, collected_at: Duration, written_at: Duration) {
     self.duration = started_at.elapsed();
+
+    let [collecting, writing, finalizing] = Self::split_phases(self.duration, collected_at, written_at);
+
+    self.collect_duration = collecting;
+    self.write_duration = writing;
+    self.finalize_duration = finalizing;
     self.speed = Self::speed_of(self.size_source, self.duration);
+  }
+
+  /// The three phases of a run, in the order they happened.
+  fn split_phases(duration: Duration, collected_at: Duration, written_at: Duration) -> [Duration; 3] {
+    let collected_at: Duration = collected_at.min(duration);
+    let written_at: Duration = written_at.clamp(collected_at, duration);
+
+    [collected_at, written_at - collected_at, duration - written_at]
   }
 
   /// Bytes per second, saturating rather than wrapping and answering zero for a run too fast to time.
@@ -100,6 +130,34 @@ mod tests {
   fn measures_speed_as_source_bytes_per_second() {
     assert_eq!(ArchivePackResult::speed_of(2048, Duration::from_millis(500)), 4096);
     assert_eq!(ArchivePackResult::speed_of(2048, Duration::ZERO), 0);
+  }
+
+  #[test]
+  fn splits_a_finished_run_into_phases_that_tile_it() {
+    let [collecting, writing, finalizing] = ArchivePackResult::split_phases(
+      Duration::from_millis(700),
+      Duration::from_millis(40),
+      Duration::from_millis(660),
+    );
+
+    assert_eq!(collecting, Duration::from_millis(40));
+    assert_eq!(writing, Duration::from_millis(620));
+    assert_eq!(finalizing, Duration::from_millis(40));
+    assert_eq!(collecting + writing + finalizing, Duration::from_millis(700));
+  }
+
+  #[test]
+  fn folds_a_stopped_run_into_the_phase_it_reached() {
+    // Cancelled inside the walk: the marks past it were never taken, so they read as the run's own end.
+    let [collecting, writing, finalizing] = ArchivePackResult::split_phases(
+      Duration::from_millis(50),
+      Duration::from_millis(90),
+      Duration::from_millis(90),
+    );
+
+    assert_eq!(collecting, Duration::from_millis(50));
+    assert_eq!(writing, Duration::ZERO);
+    assert_eq!(finalizing, Duration::ZERO);
   }
 
   #[test]
