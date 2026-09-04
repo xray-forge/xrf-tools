@@ -1,11 +1,10 @@
-use std::sync::Arc;
+use std::mem;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::dialect::{LtxStandardDialect, LtxTextInterner};
-use crate::document::{LtxDocument, LtxItem, LtxItemKind, LtxSpan};
-use crate::ltx::{Ltx, Section, SectionEntry};
-use crate::syntax::ROOT_SECTION;
+use crate::dialect::{LtxOpenSection, LtxStandardDialect, LtxTextInterner};
+use crate::document::{LtxDocument, LtxItem, LtxItemKind};
+use crate::ltx::Ltx;
 
 impl LtxStandardDialect {
   /// Lowers one document to a resolved [`Ltx`] under standard LTX rules.
@@ -32,7 +31,7 @@ impl LtxStandardDialect {
   /// The same set [`Self::lower`] refuses.
   pub(crate) fn lower_with(document: &LtxDocument, interner: &mut LtxTextInterner) -> XrfResult<Ltx> {
     let mut ltx: Ltx = Ltx::new();
-    let mut current_section: String = String::from(ROOT_SECTION);
+    let mut open: LtxOpenSection = LtxOpenSection::default();
 
     ltx.skipped_checks = document.skipped_checks.clone();
 
@@ -58,47 +57,29 @@ impl LtxStandardDialect {
         }
 
         LtxItemKind::Section { name, parents, .. } => {
-          current_section = String::from(&**name);
+          // Closed first, so a section declared twice is caught by the second header rather than missed because the
+          // first one had not landed yet.
+          mem::take(&mut open).close_into(&mut ltx);
 
-          match ltx.entry(current_section.clone()) {
-            SectionEntry::Vacant(vacant_entry) => {
-              let mut properties: Section = Section::default();
-
-              for parent in parents {
-                properties.inherit(&**parent);
-              }
-
-              vacant_entry.insert(properties);
-            }
-            SectionEntry::Occupied(_) => {
-              return Err(XrfError::new_ltx_parse_error(
-                item.span.get_line(),
-                item.span.get_column(),
-                format!("Duplicate sections are not allowed, looks like '{current_section}' is declared twice"),
-              ));
-            }
+          if ltx.has_section(name) {
+            return Err(XrfError::new_ltx_parse_error(
+              item.span.get_line(),
+              item.span.get_column(),
+              format!("Duplicate sections are not allowed, looks like '{name}' is declared twice"),
+            ));
           }
+
+          open = LtxOpenSection::declared(name, parents);
         }
 
-        LtxItemKind::Key { name, value, .. } => {
-          let key: Arc<str> = interner.intern(name);
-          let value: Arc<str> = interner.intern(value.as_deref().unwrap_or_default());
-
-          match ltx.entry(current_section.clone()) {
-            SectionEntry::Vacant(vacant_entry) => {
-              let mut properties: Section = Section::new();
-
-              properties.insert_shared(key, value);
-
-              vacant_entry.insert(properties);
-            }
-            SectionEntry::Occupied(properties) => {
-              properties.into_mut().insert_shared(key, value);
-            }
-          }
-        }
+        LtxItemKind::Key { name, value, .. } => open.insert(
+          interner.intern(name),
+          interner.intern(value.as_deref().unwrap_or_default()),
+        ),
       }
     }
+
+    open.close_into(&mut ltx);
 
     Ok(ltx)
   }
@@ -107,8 +88,6 @@ impl LtxStandardDialect {
   ///
   /// Names the flag, because a patch file read without it is a mode mistake rather than a broken config.
   fn new_patch_operation_error(item: &LtxItem) -> XrfError {
-    let LtxSpan { column, line } = item.span;
-
     let statement: String = match &item.kind {
       LtxItemKind::Section { name, operation, .. } => {
         format!("section '{}[{name}]'", operation.as_prefix())
@@ -120,8 +99,8 @@ impl LtxStandardDialect {
     };
 
     XrfError::new_ltx_parse_error(
-      line as usize,
-      column as usize,
+      item.span.get_line(),
+      item.span.get_column(),
       format!("Found DLTX {statement}, which needs the dltx dialect; rerun with --dltx to evaluate patch files"),
     )
   }

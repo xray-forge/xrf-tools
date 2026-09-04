@@ -29,7 +29,11 @@ impl LtxInheritConvertor {
       ));
     }
 
+    // The last step of standard resolution either way, so this is where the growth room every section was sized for
+    // stops being needed. Here rather than in the dialect, because the free readers finish here too.
     if ltx.is_check_skipped(LtxCheck::Inheritance) {
+      ltx.shrink_to_fit();
+
       return Ok(ltx);
     }
 
@@ -43,6 +47,7 @@ impl LtxInheritConvertor {
     self.inherit_sections(&ltx, &mut new_sections)?;
 
     ltx.sections = new_sections;
+    ltx.shrink_to_fit();
 
     Ok(ltx)
   }

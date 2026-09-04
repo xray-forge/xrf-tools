@@ -3,11 +3,15 @@ use std::sync::Arc;
 
 use crate::ltx::{PropertyIter, SectionData};
 
-/// Properties type (key-value pairs).
+/// One resolved section: the parents its header declared, and its fields in written order.
+///
+/// Both are private, as [`crate::Ltx`]'s section map is, because a field's text is shared with every section that
+/// inherited it - see [`Self::insert`]. Read through [`Self::get`], [`Self::iter`] and [`Self::inherits_section`];
+/// write through [`Self::insert`], [`Self::remove`] and [`Self::inherit`].
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Section {
-  pub inherited: Vec<String>,
-  pub data: SectionData,
+  pub(crate) inherited: Vec<String>,
+  pub(crate) data: SectionData,
 }
 
 impl Section {
@@ -34,7 +38,7 @@ impl Section {
   }
 
   /// Give back the growth room this section's fields no longer need.
-  pub fn shrink_to_fit(&mut self) {
+  pub(crate) fn shrink_to_fit(&mut self) {
     self.data.shrink_to_fit();
     self.inherited.shrink_to_fit();
   }
@@ -46,9 +50,13 @@ impl Section {
 
   /// Insert (key, value) pair by replace.
   ///
+  /// Replacement is the only edit there is, and that is what keeps sharing safe: the text of a field may be held by
+  /// every section that inherited it, so nothing hands out a mutable reference to it. An existing key keeps the
+  /// position it already had.
+  ///
   /// `AsRef<str>` rather than `Into<Arc<str>>`, which no `&String` satisfies, and rather than `Into<String>`, which
-  /// would build a growable string only to share it. One allocation either way, sized to the value exactly. Use
-  /// [`Self::extend_shared`] where the text is already held.
+  /// would build a growable string only to share it. One allocation either way, sized to the value exactly.
+  /// [`Self::insert_shared`] is the door for text this crate already holds.
   pub fn insert<K, V>(&mut self, key: K, value: V)
   where
     K: AsRef<str>,

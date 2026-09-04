@@ -72,6 +72,14 @@ impl Ltx {
   }
 
   /// Check whether ltx has section with name.
+  /// Place a whole section, replacing any section of that name.
+  ///
+  /// What a lowering pass uses: it reads a section's fields before it knows the section is finished, so it builds one
+  /// and places it once rather than entering the map for every line.
+  pub(crate) fn insert_section(&mut self, name: String, section: Section) {
+    self.sections.insert(name, section);
+  }
+
   pub fn has_section(&self, name: &str) -> bool {
     self.sections.contains_key(name)
   }

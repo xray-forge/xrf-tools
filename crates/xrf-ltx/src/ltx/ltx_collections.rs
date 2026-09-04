@@ -16,6 +16,7 @@ pub type SectionData = IndexMap<Arc<str>, Arc<str>, FxBuildHasher>;
 
 pub type LtxIncluded = Vec<String>;
 
+/// A resolved config's sections, in the order they were declared.
 pub type LtxSections = IndexMap<String, Section, FxBuildHasher>;
 
 pub type LtxSectionSchemes = IndexMap<String, LtxSectionScheme, FxBuildHasher>;
