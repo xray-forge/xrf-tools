@@ -6849,10 +6849,16 @@
           "markdownDescription": "Denies the reopen_sprite command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-describe-path`\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`",
           "type": "string",
           "const": "system:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-describe-path`\n- `allow-get-build-info`\n- `allow-get-default-output-root`\n- `allow-reveal-path`"
+        },
+        {
+          "description": "Enables the describe_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:allow-describe-path",
+          "markdownDescription": "Enables the describe_path command without any pre-configured scope."
         },
         {
           "description": "Enables the get_build_info command without any pre-configured scope.",
@@ -6871,6 +6877,12 @@
           "type": "string",
           "const": "system:allow-reveal-path",
           "markdownDescription": "Enables the reveal_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "system:deny-describe-path",
+          "markdownDescription": "Denies the describe_path command without any pre-configured scope."
         },
         {
           "description": "Denies the get_build_info command without any pre-configured scope.",
