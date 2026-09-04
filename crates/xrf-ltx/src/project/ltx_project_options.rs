@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use crate::dialect::ltx_dialect::LtxDialect;
-use crate::dialect::ltx_standard_dialect::LtxStandardDialect;
+use crate::dialect::{LtxDialect, LtxStandardDialect};
 
 /// Verification configuration.
 #[derive(Clone)]

@@ -5,10 +5,7 @@ use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::require_writable_path;
 
-use crate::project::ltx_files_formatter::LtxFilesFormatter;
-use crate::project::ltx_format_options::LTX_PHASE_CHECK;
-use crate::project::ltx_project_format_result::LtxProjectFormatResult;
-use crate::{LtxFormatOptions, LtxProject};
+use crate::project::{LTX_PHASE_CHECK, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 impl LtxProject {
   /// Formats every project LTX file with explicit options.

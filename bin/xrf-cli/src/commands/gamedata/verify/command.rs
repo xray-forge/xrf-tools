@@ -14,7 +14,7 @@ use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect_selection::select_ltx_dialect;
+use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
 use crate::core::progress::new_logging_job;
 
 /// How many of the most-read paths `--trace-reads` names individually.
@@ -69,19 +69,13 @@ impl GenericCommand for VerifyCommand {
           .action(ArgAction::SetTrue),
       )
       .arg(
-        Arg::new("dltx")
-          .help("Resolve configs with the Monolith/Anomaly DLTX patch dialect, applying mod_<base>_*.ltx files")
-          .long("dltx")
-          .required(false)
-          .action(clap::ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("trace-reads")
           .help("Account for every asset read, reporting redundancy against unique paths")
           .long("trace-reads")
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .with_ltx_dialect()
       .with_jobs()
   }
 
@@ -122,7 +116,7 @@ impl GenericCommand for VerifyCommand {
       output: output.clone(),
       is_strict,
       is_tracing_reads: matches.get_flag("trace-reads"),
-      dialect: select_ltx_dialect(matches.get_flag("dltx")),
+      dialect: requested_ltx_dialect(matches),
     };
 
     // Created before the project opens, so the reported total covers mounting and indexing.

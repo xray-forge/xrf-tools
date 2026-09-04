@@ -10,7 +10,7 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
 
-use crate::project::ltx_project::LtxProject;
+use crate::project::LtxProject;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project/{name}"));

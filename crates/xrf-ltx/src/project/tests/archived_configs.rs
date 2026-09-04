@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayAssetContainer, XrayAssetSource, XrayLookupScope, XraySourceKind, XrayVfs};
 
-use crate::{LtxProject, LtxProjectFormatResult};
+use crate::project::{LtxProject, LtxProjectFormatResult};
 
 /// A read-only source whose entries have no filesystem path, as archive volume entries do not.
 ///

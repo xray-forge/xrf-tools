@@ -1,10 +1,10 @@
 use tauri::State;
 use xrf_dds::{DdsFile, DdsPng};
+use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::Ltx;
 use xrf_texture::InventorySpriteDescriptor;
 
 use crate::core::error::error_to_string;
-use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, EquipmentSpriteState};
 

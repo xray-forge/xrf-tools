@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::Ltx;
+use crate::ltx::Ltx;
 
 /// What resolving one root answers with.
 ///

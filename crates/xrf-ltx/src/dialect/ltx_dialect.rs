@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use xrf_error::XrfResult;
 
-use crate::dialect::ltx_document_source::LtxDocumentSource;
-use crate::dialect::ltx_resolution::LtxResolution;
+use crate::dialect::LtxResolution;
+use crate::source::LtxDocumentSource;
 
 /// Which rules turn a config tree into resolved sections.
 ///

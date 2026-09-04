@@ -2,8 +2,9 @@
 
 use xrf_error::XrfResult;
 
-use crate::document::ltx_item::{LtxItem, LtxItemKind};
-use crate::{Ltx, LtxDocument};
+use crate::dialect::LtxStandardDialect;
+use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind};
+use crate::ltx::Ltx;
 
 /// The kinds a document holds, rendered compactly so a test can assert the whole shape.
 fn outline(document: &LtxDocument) -> Vec<String> {
@@ -93,8 +94,7 @@ fn the_document_accepts_dltx_syntax_that_standard_lowering_refuses() -> XrfResul
   );
 
   // Refusing them is the dialect's job, and the diagnostic names the flag that would evaluate them.
-  let error: String = document
-    .lower()
+  let error: String = LtxStandardDialect::lower(&document)
     .expect_err("standard lowering to refuse a patch file")
     .to_string();
 
@@ -115,8 +115,7 @@ fn every_patch_operation_is_reported_where_it_was_written() -> XrfResult {
     ("@[section]\n", "section '@[section]'"),
     ("!![section]\n", "section '!![section]'"),
   ] {
-    let error: String = Ltx::read_document_from_str(statement)?
-      .lower()
+    let error: String = LtxStandardDialect::lower(&Ltx::read_document_from_str(statement)?)
       .expect_err("standard lowering to refuse a patch operation")
       .to_string();
 
@@ -134,7 +133,7 @@ fn a_plain_section_named_like_a_patch_target_is_not_an_operation() -> XrfResult 
 
   assert!(!document.get_items().iter().any(LtxItem::is_patch_operation));
   assert_eq!(
-    document.lower()?.get_from("section", "condition"),
+    LtxStandardDialect::lower(&document)?.get_from("section", "condition"),
     Some("{!actor_in_zone} true")
   );
 
@@ -151,7 +150,10 @@ fn one_parse_answers_resolution_formatting_and_the_include_list() -> XrfResult {
     document.to_formatted(),
     "; note\r\n#include \"a.ltx\"\r\n#include \"b.ltx\"\r\n\r\n[section]\r\nkey = value\r\n"
   );
-  assert_eq!(document.lower()?.get_from("section", "key"), Some("value"));
+  assert_eq!(
+    LtxStandardDialect::lower(&document)?.get_from("section", "key"),
+    Some("value")
+  );
 
   // Each of the three is a read of the same document, so the answers cannot disagree.
   assert_eq!(document.to_formatted(), Ltx::format_from_str(contents)?);
@@ -242,10 +244,10 @@ fn listing_includes_keeps_a_repeat_that_resolution_refuses() -> XrfResult {
 fn the_header_directive_is_recorded_on_the_document() -> XrfResult {
   let document: LtxDocument = Ltx::read_document_from_str("; @xrf-ltx skip-inheritance\n[child]:missing\n")?;
 
-  assert!(document.is_check_skipped(crate::LtxCheck::Inheritance));
+  assert!(document.is_check_skipped(LtxCheck::Inheritance));
 
   // And survives lowering, because the resolver is what acts on it.
-  assert!(document.lower()?.into_inherited().is_ok());
+  assert!(LtxStandardDialect::lower(&document)?.into_inherited().is_ok());
 
   Ok(())
 }

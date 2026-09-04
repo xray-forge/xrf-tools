@@ -4,13 +4,13 @@ use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_dltx::select_ltx_dialect;
 use xrf_job::{JobHandle, JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart};
-use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;

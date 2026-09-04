@@ -5,7 +5,7 @@ use serde::Serialize;
 use xrf_job::JobOutcome;
 use xrf_utils::format_path;
 
-use crate::LtxFormatOptions;
+use crate::project::LtxFormatOptions;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Default, Serialize)]

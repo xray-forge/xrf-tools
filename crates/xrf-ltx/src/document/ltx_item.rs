@@ -1,6 +1,4 @@
-use crate::document::ltx_key_operation::LtxKeyOperation;
-use crate::document::ltx_section_operation::LtxSectionOperation;
-use crate::document::ltx_span::LtxSpan;
+use crate::document::{LtxKeyOperation, LtxSectionOperation, LtxSpan};
 
 /// One statement of an LTX file, with where it was written.
 #[derive(Clone, Debug, PartialEq)]

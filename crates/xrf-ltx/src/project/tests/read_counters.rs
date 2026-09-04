@@ -8,9 +8,8 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::Ltx;
-use crate::project::ltx_project::LtxProject;
-use crate::project::ltx_read_counters::LtxReadCountersSnapshot;
+use crate::ltx::Ltx;
+use crate::project::{LtxProject, LtxReadCountersSnapshot};
 
 /// Writes a four-file tree: an entry point including two files, one of which includes a third.
 fn open_nested_project(name: &str) -> XrfResult<LtxProject> {

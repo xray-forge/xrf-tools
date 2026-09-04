@@ -7,9 +7,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
-use crate::file::file_configuration::constants::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
-use crate::project::ltx_verify_options::{LTX_PHASE_VERIFY, LtxVerifyOptions};
-use crate::{Ltx, LtxProject, LtxProjectVerifyResult};
+use crate::ltx::Ltx;
+use crate::project::{LTX_PHASE_VERIFY, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
+use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
 
 impl LtxProject {
   /// Verify all the entries in current ltx project.
@@ -214,7 +214,7 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::*;
-  use crate::{LtxProjectOptions, LtxVerifyOptions};
+  use crate::project::{LtxProjectOptions, LtxVerifyOptions};
 
   #[test]
   fn the_total_covers_the_work_done_before_the_first_file_was_read() {

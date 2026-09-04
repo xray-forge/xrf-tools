@@ -8,7 +8,7 @@ pub mod command_testing;
 pub mod execution;
 pub mod generic_command;
 pub mod logging;
-pub mod ltx_dialect_selection;
+pub mod ltx_dialect;
 pub mod output;
 pub mod progress;
 pub mod reporting;

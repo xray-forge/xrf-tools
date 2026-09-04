@@ -1,5 +1,4 @@
-use crate::document::ltx_item::LtxItem;
-use crate::file::check::LtxCheck;
+use crate::document::{LtxCheck, LtxItem};
 
 /// One LTX file as it was written, before any rule is applied to it.
 ///

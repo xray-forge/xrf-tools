@@ -1,9 +1,9 @@
 use xrf_error::{XrfError, XrfResult};
 
-use crate::dialect::ltx_dialect::LtxDialect;
-use crate::dialect::ltx_document_source::LtxDocumentSource;
-use crate::dialect::ltx_resolution::LtxResolution;
-use crate::{Ltx, LtxDocument};
+use crate::dialect::{LtxDialect, LtxResolution};
+use crate::document::LtxDocument;
+use crate::ltx::Ltx;
+use crate::source::LtxDocumentSource;
 
 /// Standard LTX: what the vanilla engine and OpenXRay load.
 ///
@@ -70,7 +70,7 @@ impl LtxStandardDialect {
       }
     }
 
-    let lowered: Ltx = document.lower()?;
+    let lowered: Ltx = Self::lower(document)?;
 
     // Only the entry file's opt-out counts, which is what the previous include pass did: an included file's directive
     // is dropped along with the rest of its metadata when its sections are merged.

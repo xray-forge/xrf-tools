@@ -5,6 +5,5 @@ pub mod error;
 pub mod execution;
 pub mod jobs;
 pub mod logging;
-pub mod ltx_dialect_selection;
 pub mod types;
 pub mod webview_extensions;

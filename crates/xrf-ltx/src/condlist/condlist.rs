@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
-use super::branch::CondlistBranch;
-use super::span::SourceSpan;
+use super::condlist_branch::CondlistBranch;
+use super::source_span::SourceSpan;
 
 /// A parsed X-Ray condition list.
 #[derive(Clone, Debug, PartialEq)]
@@ -34,7 +34,7 @@ impl Condlist {
 
 #[cfg(test)]
 mod tests {
-  use super::super::branch::CondlistCondition;
+  use super::super::condlist_branch::CondlistCondition;
   use super::Condlist;
 
   #[test]

@@ -5,9 +5,8 @@ use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
-use crate::Ltx;
-use crate::project::ltx_format_options::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions};
-use crate::project::ltx_project_format_result::LtxProjectFormatResult;
+use crate::ltx::Ltx;
+use crate::project::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions, LtxProjectFormatResult};
 
 /// Formatter of arbitrary sets of LTX files.
 pub struct LtxFilesFormatter {}
@@ -146,8 +145,8 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-  use crate::project::ltx_files_formatter::LtxFilesFormatter;
-  use crate::project::ltx_project_format_result::LtxProjectFormatResult;
+  use crate::project::LtxFilesFormatter;
+  use crate::project::LtxProjectFormatResult;
 
   fn create_root(name: &str) -> XrfResult<PathBuf> {
     let root: PathBuf = build_absolute_generated_test_resource_path(&format!("format/{name}"));

@@ -1,7 +1,5 @@
-use crate::LineSeparator;
-use crate::document::ltx_document::LtxDocument;
-use crate::document::ltx_item::LtxItemKind;
-use crate::file::formatter::LtxFormatter;
+use crate::document::{LtxDocument, LtxItemKind, LtxStatementWriter};
+use crate::syntax::LTX_LINE_SEPARATOR;
 
 impl LtxDocument {
   /// Render this document in canonical form.
@@ -14,14 +12,16 @@ impl LtxDocument {
 
     for item in &self.items {
       match &item.kind {
-        LtxItemKind::Comment { text } => LtxFormatter::write_comment(&mut formatted, text),
-        LtxItemKind::Include { path, comment } => LtxFormatter::write_include(&mut formatted, path, comment.as_deref()),
+        LtxItemKind::Comment { text } => LtxStatementWriter::write_comment(&mut formatted, text),
+        LtxItemKind::Include { path, comment } => {
+          LtxStatementWriter::write_include(&mut formatted, path, comment.as_deref())
+        }
         LtxItemKind::Section {
           comment,
           name,
           operation,
           parents,
-        } => LtxFormatter::write_section_with_prefix(
+        } => LtxStatementWriter::write_section_with_prefix(
           &mut formatted,
           operation.as_prefix(),
           name,
@@ -33,7 +33,7 @@ impl LtxDocument {
           name,
           operation,
           value,
-        } => LtxFormatter::write_key_value(
+        } => LtxStatementWriter::write_key_value(
           &mut formatted,
           &format!("{}{name}", operation.as_prefix()),
           value.as_deref(),
@@ -42,8 +42,8 @@ impl LtxDocument {
       }
     }
 
-    if !formatted.ends_with(LineSeparator::CRLF.as_str()) {
-      formatted.push_str(LineSeparator::CRLF.as_str());
+    if !formatted.ends_with(LTX_LINE_SEPARATOR) {
+      formatted.push_str(LTX_LINE_SEPARATOR);
     }
 
     formatted

@@ -12,7 +12,7 @@ use crate::commands::ltx::ltx_installation::mount_installation;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect_selection::select_ltx_dialect;
+use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -35,13 +35,7 @@ impl GenericCommand for VerifyCommand {
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
-      .arg(
-        Arg::new("dltx")
-          .help("Resolve configs with the Monolith/Anomaly DLTX patch dialect, applying mod_<base>_*.ltx files")
-          .long("dltx")
-          .required(false)
-          .action(clap::ArgAction::SetTrue),
-      )
+      .with_ltx_dialect()
   }
 
   /// Verify ltx file or folder based on provided arguments.
@@ -61,7 +55,7 @@ impl GenericCommand for VerifyCommand {
     log::info!("Verifying ltx folder: {}", format_path(path));
 
     let options: LtxProjectOptions = LtxProjectOptions {
-      dialect: select_ltx_dialect(matches.get_flag("dltx")),
+      dialect: requested_ltx_dialect(matches),
       is_with_schemes_check: true,
       is_strict_check: true,
     };

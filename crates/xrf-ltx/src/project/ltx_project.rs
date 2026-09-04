@@ -5,19 +5,13 @@ use std::sync::{Arc, Mutex, OnceLock};
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
-use crate::Ltx;
-use crate::dialect::ltx_dialect::LtxDialect;
-use crate::dialect::ltx_standard_dialect::LtxStandardDialect;
-use crate::document::ltx_document::LtxDocument;
-use crate::file::file_configuration::constants::{
-  LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME,
-};
-use crate::file::include_source::LtxIncludeSource;
-use crate::file::include_vfs_source::LtxIncludeVfsSource;
-use crate::file::types::LtxSectionSchemes;
-use crate::project::ltx_project_options::LtxProjectOptions;
-use crate::project::ltx_read_counters::{LtxReadCounters, LtxReadCountersSnapshot};
-use crate::scheme::parser::LtxSchemeParser;
+use crate::dialect::{LtxDialect, LtxStandardDialect};
+use crate::document::LtxDocument;
+use crate::ltx::{Ltx, LtxSectionSchemes};
+use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot};
+use crate::scheme::LtxSchemeParser;
+use crate::source::{LtxIncludeSource, LtxVfsSource};
+use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
 /// An LTX project assembled from one VFS scope.
 ///
@@ -108,7 +102,7 @@ impl LtxProject {
   /// contents.
   fn assemble(root: PathBuf, vfs: XrayVfs, scope: XrayLookupScope, options: LtxProjectOptions) -> XrfResult<Self> {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
-    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&vfs, &scope, &counters);
+    let source: LtxVfsSource = LtxVfsSource::new_counted(&vfs, &scope, &counters);
 
     let mut ltx_files: Vec<XrayLogicalPath> = Vec::new();
     let mut ltx_scheme_files: Vec<XrayLogicalPath> = Vec::new();
@@ -352,7 +346,7 @@ impl LtxProject {
   ///
   /// Returns an error when the config is not in scope, its bytes are not Windows-1251, or it will not parse.
   pub fn read_document(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<LtxDocument>> {
-    LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters).read_document(logical_path.as_str())
+    LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters).read_document(logical_path.as_str())
   }
 
   /// Reads one config's bytes as authored, counted against this project.
@@ -370,7 +364,7 @@ impl LtxProject {
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
-    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+    let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
 
     Ok(self.dialect.resolve(logical_path.as_str(), &source)?.ltx)
   }
@@ -390,7 +384,7 @@ impl LtxProject {
   ///
   /// Returns an error when the config cannot be read or resolved.
   pub fn read_full_in_scope(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
-    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, scope, &self.counters);
+    let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, scope, &self.counters);
 
     self.counters.record_resolution();
 

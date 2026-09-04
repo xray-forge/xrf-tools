@@ -5,6 +5,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_dds::ImageFormat;
+use xrf_dltx::select_ltx_dialect;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
@@ -13,7 +14,6 @@ use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentRes
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
-use crate::core::ltx_dialect_selection::select_ltx_dialect;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_sprite_lease_key};
 use crate::plugins::sprite_equipment::request::PackSpriteRequest;
