@@ -40,6 +40,11 @@ jobs:
       - name: Run workspace tests and verify frontend bindings
         run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
 
+      - name: Discard trybuild scratch crates
+        if: always()
+        shell: bash
+        run: rm -rf target/tests
+
   build-cli-windows:
     runs-on: windows-latest
 
