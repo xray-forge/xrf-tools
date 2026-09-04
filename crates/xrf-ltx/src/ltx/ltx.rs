@@ -175,10 +175,14 @@ impl Ltx {
     self.path = Some(PathBuf::from(logical_path));
   }
 
-  /// Everything before the last separator of a logical path, or the empty string for a top-level config.
-  pub fn directory_of(logical_path: &str) -> &str {
-    match logical_path.rsplit_once('\\') {
-      Some((directory, _)) => directory,
+  /// Everything before the last separator of a path, or the empty string for a top-level config.
+  ///
+  /// Splits on both separators, because one call answers for two flavours of path. A dialect is handed a root by
+  /// whichever source holds it: an X-Ray logical path from the VFS, always backslash-separated, or an operating
+  /// system path from [`Self::read_from_file_with_dialect`], which is `/`-separated on Linux and either on Windows.
+  pub fn directory_of(path: &str) -> &str {
+    match path.rfind(['\\', '/']) {
+      Some(index) => &path[..index],
       None => "",
     }
   }

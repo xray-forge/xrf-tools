@@ -49,10 +49,13 @@ impl LtxDocumentSource for LtxFilesystemSource {
 
     match std::fs::File::open(&path) {
       Ok(mut file) => Ok(Some(Arc::new(Ltx::read_document_from(&mut file)?))),
-      // A config generated from TypeScript is absent until the project is built; a project that has not been built
-      // must still parse. Anything else absent is nothing to merge, which is what a wildcard match already gets.
-      Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-      Err(error) => Err(error.into()),
+      // A config generated from TypeScript is absent until the project is built, and a project that has not been built
+      // must still parse.
+      Err(error) if error.kind() == io::ErrorKind::NotFound && Self::is_raw_ts_variant_existing(&path) => Ok(None),
+      Err(error) => Err(XrfError::new_io_error(
+        format!("Failed to read included ltx file '{}': {error}", format_path(&path)),
+        error.kind(),
+      )),
     }
   }
 
