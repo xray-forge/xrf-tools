@@ -86,16 +86,13 @@ impl LtxInheritConvertor {
 
       let mut new_props: Section = Default::default();
 
+      // Shared, not copied: a parent's fields end up in every child that inherits it, and on a weapon tree that is the
+      // same text stored dozens of times over.
       for inherited in &section.inherited {
-        for (key, value) in destination.get(inherited).unwrap() {
-          new_props.insert(key, value)
-        }
+        new_props.extend_shared(destination.get(inherited).unwrap());
       }
 
-      for (key, value) in section {
-        new_props.insert(key, value)
-      }
-
+      new_props.extend_shared(section);
       new_props.inherited = Default::default();
 
       destination.insert(section_name.into(), new_props);

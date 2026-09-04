@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use indexmap::map::{IntoIter, Iter, IterMut};
 
 use crate::ltx::{Ltx, Section};
 
 pub struct PropertyIter<'a> {
-  pub(crate) inner: Iter<'a, Box<str>, Box<str>>,
+  pub(crate) inner: Iter<'a, Arc<str>, Arc<str>>,
 }
 
 impl<'a> Iterator for PropertyIter<'a> {
@@ -24,35 +26,12 @@ impl DoubleEndedIterator for PropertyIter<'_> {
   }
 }
 
-/// Iterator for traversing sections
-pub struct PropertyIterMut<'a> {
-  pub(crate) inner: IterMut<'a, Box<str>, Box<str>>,
-}
-
-impl<'a> Iterator for PropertyIterMut<'a> {
-  type Item = (&'a str, &'a mut str);
-
-  fn next(&mut self) -> Option<Self::Item> {
-    self.inner.next().map(|(k, v)| (&**k, &mut **v))
-  }
-
-  fn size_hint(&self) -> (usize, Option<usize>) {
-    self.inner.size_hint()
-  }
-}
-
-impl DoubleEndedIterator for PropertyIterMut<'_> {
-  fn next_back(&mut self) -> Option<Self::Item> {
-    self.inner.next_back().map(|(k, v)| (&**k, &mut **v))
-  }
-}
-
 pub struct PropertiesIntoIter {
-  inner: IntoIter<Box<str>, Box<str>>,
+  inner: IntoIter<Arc<str>, Arc<str>>,
 }
 
 impl Iterator for PropertiesIntoIter {
-  type Item = (Box<str>, Box<str>);
+  type Item = (Arc<str>, Arc<str>);
 
   fn next(&mut self) -> Option<Self::Item> {
     self.inner.next()
@@ -78,17 +57,8 @@ impl<'a> IntoIterator for &'a Section {
   }
 }
 
-impl<'a> IntoIterator for &'a mut Section {
-  type Item = (&'a str, &'a mut str);
-  type IntoIter = PropertyIterMut<'a>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.iter_mut()
-  }
-}
-
 impl IntoIterator for Section {
-  type Item = (Box<str>, Box<str>);
+  type Item = (Arc<str>, Arc<str>);
   type IntoIter = PropertiesIntoIter;
 
   fn into_iter(self) -> Self::IntoIter {

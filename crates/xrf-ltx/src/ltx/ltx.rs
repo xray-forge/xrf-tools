@@ -1,5 +1,6 @@
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -154,7 +155,7 @@ impl Ltx {
   }
 
   /// Delete the key from the section, return the value if key exists or None
-  pub fn delete_from(&mut self, section: &str, key: &str) -> Option<Box<str>> {
+  pub fn delete_from(&mut self, section: &str, key: &str) -> Option<Arc<str>> {
     self.section_mut(section).and_then(|section| section.remove(key))
   }
 
@@ -780,18 +781,27 @@ x3 = nb
 ";
 
     let mut str: Ltx = Ltx::read_from_str(input).unwrap();
+    // Replaced, not edited: a resolved value is shared between every section that inherits it, so the operation is
+    // `insert`. Order survives it - a replaced key keeps the position it already had.
+    let replacements: Vec<String> = str
+      .root_section_mut()
+      .iter()
+      .enumerate()
+      .map(|(index, (_, value))| format!("{value}{index}"))
+      .collect();
     let section: &mut Section = str.root_section_mut();
 
-    // Edited in place and in order: a resolved value cannot grow, so the proof is that the nth value is the one that
-    // was reached nth.
-    section.iter_mut().enumerate().for_each(|(index, (_, value))| {
-      if index % 2 == 0 {
-        value.make_ascii_uppercase();
-      }
-    });
+    for (key, value) in section
+      .iter()
+      .map(|(key, _)| String::from(key))
+      .zip(replacements)
+      .collect::<Vec<(String, String)>>()
+    {
+      section.insert(key, value);
+    }
 
     let props: Vec<_> = section.iter().collect();
-    assert_eq!(props, vec![("x2", "NC"), ("x1", "na"), ("x3", "NB")]);
+    assert_eq!(props, vec![("x2", "nc0"), ("x1", "na1"), ("x3", "nb2")]);
   }
 
   #[test]
@@ -806,12 +816,11 @@ x3 = nb
     let (_, section) = ltx.into_iter().next().unwrap();
     let props: Vec<_> = section.into_iter().collect();
     assert_eq!(
-      props,
-      vec![
-        (Box::from("x2"), Box::from("nc")),
-        (Box::from("x1"), Box::from("na")),
-        (Box::from("x3"), Box::from("nb"))
-      ]
+      props
+        .iter()
+        .map(|(key, value)| (&**key, &**value))
+        .collect::<Vec<(&str, &str)>>(),
+      vec![("x2", "nc"), ("x1", "na"), ("x3", "nb")]
     );
   }
 }

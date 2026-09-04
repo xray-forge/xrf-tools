@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use xrf_error::{XrfError, XrfResult};
 
-use crate::dialect::LtxStandardDialect;
+use crate::dialect::{LtxStandardDialect, LtxTextInterner};
 use crate::document::{LtxDocument, LtxItem, LtxItemKind, LtxSpan};
 use crate::ltx::{Ltx, Section, SectionEntry};
 use crate::syntax::ROOT_SECTION;
@@ -17,6 +19,18 @@ impl LtxStandardDialect {
   /// Returns an error when a section is declared twice, an include is named twice, or the file carries a DLTX
   /// operation, which standard mode cannot evaluate.
   pub(crate) fn lower(document: &LtxDocument) -> XrfResult<Ltx> {
+    Self::lower_with(document, &mut LtxTextInterner::default())
+  }
+
+  /// Lowers one document, sharing its text through an interner the caller owns.
+  ///
+  /// The door a whole-root resolution uses: one interner spans the root and every file it includes, so a key name
+  /// written in fifty of them is stored once.
+  ///
+  /// # Errors
+  ///
+  /// The same set [`Self::lower`] refuses.
+  pub(crate) fn lower_with(document: &LtxDocument, interner: &mut LtxTextInterner) -> XrfResult<Ltx> {
     let mut ltx: Ltx = Ltx::new();
     let mut current_section: String = String::from(ROOT_SECTION);
 
@@ -67,18 +81,19 @@ impl LtxStandardDialect {
         }
 
         LtxItemKind::Key { name, value, .. } => {
-          let value: &str = value.as_deref().unwrap_or_default();
+          let key: Arc<str> = interner.intern(name);
+          let value: Arc<str> = interner.intern(value.as_deref().unwrap_or_default());
 
           match ltx.entry(current_section.clone()) {
             SectionEntry::Vacant(vacant_entry) => {
               let mut properties: Section = Section::new();
 
-              properties.insert(&**name, value);
+              properties.insert_shared(key, value);
 
               vacant_entry.insert(properties);
             }
             SectionEntry::Occupied(properties) => {
-              properties.into_mut().insert(&**name, value);
+              properties.into_mut().insert_shared(key, value);
             }
           }
         }

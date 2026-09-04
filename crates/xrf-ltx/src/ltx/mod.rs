@@ -20,7 +20,7 @@ pub use crate::ltx::ltx_collections::{
 };
 pub(crate) use crate::ltx::ltx_include::LtxIncludeConvertor;
 pub(crate) use crate::ltx::ltx_inherit::LtxInheritConvertor;
-pub(crate) use crate::ltx::ltx_iterator::{PropertyIter, PropertyIterMut};
+pub(crate) use crate::ltx::ltx_iterator::PropertyIter;
 pub use crate::ltx::section::Section;
 pub use crate::ltx::section_entry::SectionEntry;
 pub use crate::ltx::section_setter::SectionSetter;

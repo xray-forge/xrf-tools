@@ -1,6 +1,7 @@
 use std::ops::Index;
+use std::sync::Arc;
 
-use crate::ltx::{PropertyIter, PropertyIterMut, SectionData};
+use crate::ltx::{PropertyIter, SectionData};
 
 /// Properties type (key-value pairs).
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -32,13 +33,6 @@ impl Section {
     }
   }
 
-  /// Get a mutable iterator of the properties.
-  pub fn iter_mut(&mut self) -> PropertyIterMut<'_> {
-    PropertyIterMut {
-      inner: self.data.iter_mut(),
-    }
-  }
-
   /// Give back the growth room this section's fields no longer need.
   pub fn shrink_to_fit(&mut self) {
     self.data.shrink_to_fit();
@@ -52,14 +46,33 @@ impl Section {
 
   /// Insert (key, value) pair by replace.
   ///
-  /// `AsRef<str>` rather than `Into<Box<str>>`, which no `&String` satisfies, and rather than `Into<String>`, which
-  /// would build a growable string only to box it. One allocation either way, sized to the value exactly.
+  /// `AsRef<str>` rather than `Into<Arc<str>>`, which no `&String` satisfies, and rather than `Into<String>`, which
+  /// would build a growable string only to share it. One allocation either way, sized to the value exactly. Use
+  /// [`Self::extend_shared`] where the text is already held.
   pub fn insert<K, V>(&mut self, key: K, value: V)
   where
     K: AsRef<str>,
     V: AsRef<str>,
   {
-    self.data.insert(Box::from(key.as_ref()), Box::from(value.as_ref()));
+    self.data.insert(Arc::from(key.as_ref()), Arc::from(value.as_ref()));
+  }
+
+  /// Insert a field whose text is already held, sharing that allocation rather than making another.
+  pub(crate) fn insert_shared(&mut self, key: Arc<str>, value: Arc<str>) {
+    self.data.insert(key, value);
+  }
+
+  /// Copy another section's fields into this one, sharing their text rather than duplicating it.
+  ///
+  /// What inheritance is: a child holds its parents' fields, and the parent still holds them too. An existing key keeps
+  /// the position it already had and takes the new value, which is the ordering repeated [`Self::insert`] gave.
+  pub(crate) fn extend_shared(&mut self, section: &Self) {
+    self.data.extend(
+      section
+        .data
+        .iter()
+        .map(|(key, value)| (Arc::clone(key), Arc::clone(value))),
+    );
   }
 
   /// Return true if section inherits another section.
@@ -85,13 +98,8 @@ impl Section {
     self.data.get(key).map(|value| &**value)
   }
 
-  /// Get the first value associate with the key.
-  pub fn get_mut(&mut self, key: &str) -> Option<&mut str> {
-    self.data.get_mut(key).map(|value| &mut **value)
-  }
-
   /// Remove the property with the first value of the key.
-  pub fn remove(&mut self, key: &str) -> Option<Box<str>> {
+  pub fn remove(&mut self, key: &str) -> Option<Arc<str>> {
     self.data.shift_remove(key)
   }
 }
