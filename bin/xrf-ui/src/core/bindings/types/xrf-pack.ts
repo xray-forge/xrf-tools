@@ -127,7 +127,14 @@ export type ArchivePackResult = {
   sizeSource: number;
   /** Bytes of every closed volume, headers and descriptor tables included. */
   sizeWritten: number;
+  /** Everything the run took, which the three phase durations below divide between them. */
   duration: number;
+  /** The share of `duration` spent walking the source tree, before anything was created. */
+  collectDuration: number;
+  /** The share of `duration` spent reading, compressing, and placing the selected entries. */
+  writeDuration: number;
+  /** The share of `duration` spent closing the last volume and naming the set. */
+  finalizeDuration: number;
   /**
    * Source bytes per second over the whole run, so a reader compares two runs without dividing.
    *
