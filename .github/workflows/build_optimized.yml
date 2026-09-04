@@ -6,6 +6,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   XRF_BUILD_KIND: optimized
+  npm_config_audit: "false"
+  npm_config_fund: "false"
 
 concurrency:
   group: ${{ github.workflow }}
