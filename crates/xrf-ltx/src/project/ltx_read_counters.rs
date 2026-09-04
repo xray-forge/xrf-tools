@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// How much reading and parsing a project actually did.
 #[derive(Debug, Default)]
-pub struct LtxReadCounters {
+pub(crate) struct LtxReadCounters {
   bytes_read: AtomicU64,
   reads: AtomicU64,
   parses: AtomicU64,
@@ -15,7 +15,7 @@ pub struct LtxReadCounters {
 
 impl LtxReadCounters {
   /// A shared handle, which is how a project hands its counters to the sources it builds.
-  pub fn new_shared() -> Arc<Self> {
+  pub(crate) fn new_shared() -> Arc<Self> {
     Arc::new(Self::default())
   }
 
@@ -41,7 +41,7 @@ impl LtxReadCounters {
   }
 
   /// A snapshot of the counts so far.
-  pub fn get_snapshot(&self) -> LtxReadCountersSnapshot {
+  pub(crate) fn get_snapshot(&self) -> LtxReadCountersSnapshot {
     LtxReadCountersSnapshot {
       bytes_read: self.bytes_read.load(Ordering::Relaxed),
       include_scans: self.include_scans.load(Ordering::Relaxed),
@@ -53,7 +53,6 @@ impl LtxReadCounters {
 }
 
 /// The counts at one moment, detached from the project that produced them.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxReadCountersSnapshot {

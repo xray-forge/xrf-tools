@@ -726,9 +726,6 @@ foo = c
     let ltx: XrfResult<Ltx> = Ltx::read_from_str(input);
 
     assert!(ltx.is_err());
-    // Points at the second declaration itself. The check moved from the scanner to standard lowering, which knows the
-    // statement's own position rather than wherever the cursor had reached; recorded in
-    // `xrf-agents/plans/ltx-core-and-dltx.md`.
     assert_eq!(
       ltx.unwrap_err().to_string(),
       "Ltx parse error: 5:1 Duplicate sections are not allowed, looks like 'peer' is declared twice"

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use xrf_ltx::LtxKeyOperation;
 
-use crate::dltx_item::DltxItem;
+use crate::load::dltx_item::DltxItem;
 
 /// Where one resolved field came from.
 ///
@@ -64,13 +64,5 @@ impl DltxProvenance {
       .filter(|(_, origin)| origin.is_from_mod_file())
       .map(|((section, key), _)| (section.as_str(), key.as_str()))
       .collect()
-  }
-
-  pub fn len(&self) -> usize {
-    self.origins.len()
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.origins.is_empty()
   }
 }

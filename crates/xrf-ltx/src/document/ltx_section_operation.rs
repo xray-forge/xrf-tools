@@ -1,7 +1,4 @@
 /// What a section header's prefix asks for.
-///
-/// Only [`Self::Declare`] is standard LTX. The rest are DLTX, recorded so the document can carry a patch file without
-/// pretending the prefix is part of the section name; see `xrf-agents/reports/20260902223702-dltx-compatibility-matrix.md`.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum LtxSectionOperation {
   /// `[section]` - declare it.

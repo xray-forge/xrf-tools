@@ -1,31 +1,30 @@
 //! One test per row of the DLTX compatibility matrix.
 use xrf_error::XrfResult;
 
-use crate::dltx_map_source::DltxMapSource;
-use crate::dltx_resolver::{DltxResolved, DltxResolver};
-use crate::dltx_severity::DltxSeverity;
-use crate::dltx_stores::DltxStores;
+use crate::load::dltx_loader::DltxLoader;
+use crate::resolve::dltx_resolve_result::DltxResolveResult;
+use crate::resolve::dltx_resolver::DltxResolver;
+use crate::tests::dltx_map_source::DltxMapSource;
 
 /// Loads and resolves a config tree rooted at `root`.
-fn resolve(root: &str, files: &[(&str, &str)]) -> XrfResult<DltxResolved> {
+fn resolve(root: &str, files: &[(&str, &str)]) -> XrfResult<DltxResolveResult> {
   let source: DltxMapSource = DltxMapSource::new(files)?;
 
-  DltxResolver::new(&DltxStores::load(&source, root)?).resolve_all()
+  DltxResolver::new(&DltxLoader::new(&source).load(root)?).resolve_all()
 }
 
 /// Every warning message, so a test can assert what was said without depending on order.
-fn warnings(resolved: &DltxResolved) -> Vec<String> {
+fn warnings(resolved: &DltxResolveResult) -> Vec<String> {
   resolved
     .diagnostics
     .iter()
-    .filter(|diagnostic| diagnostic.severity == DltxSeverity::Warning)
     .map(|diagnostic| diagnostic.message.clone())
     .collect()
 }
 
 #[test]
 fn a_plain_section_resolves_to_its_own_fields() -> XrfResult {
-  let resolved: DltxResolved = resolve("system.ltx", &[("system.ltx", "[wpn_ak74]\ncost = 4000\nammo = 30\n")])?;
+  let resolved: DltxResolveResult = resolve("system.ltx", &[("system.ltx", "[wpn_ak74]\ncost = 4000\nammo = 30\n")])?;
 
   assert_eq!(resolved.get("wpn_ak74", "cost"), Some("4000"));
   assert_eq!(resolved.get("wpn_ak74", "ammo"), Some("30"));
@@ -35,7 +34,7 @@ fn a_plain_section_resolves_to_its_own_fields() -> XrfResult {
 
 #[test]
 fn an_override_replaces_a_field_and_adds_another() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[wpn_ak74]\ncost = 4000\nammo = 30\n"),
@@ -52,7 +51,7 @@ fn an_override_replaces_a_field_and_adds_another() -> XrfResult {
 
 #[test]
 fn an_override_of_a_section_nothing_declares_changes_nothing() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[present]\na = 1\n"),
@@ -72,7 +71,7 @@ fn an_override_of_a_section_nothing_declares_changes_nothing() -> XrfResult {
 
 #[test]
 fn a_safe_override_creates_the_section_it_cannot_find() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[present]\na = 1\n"),
@@ -89,7 +88,7 @@ fn a_safe_override_creates_the_section_it_cannot_find() -> XrfResult {
 
 #[test]
 fn a_field_deletion_removes_it_from_the_result() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[wpn_ak74]\ncost = 4000\nammo = 30\n"),
@@ -106,7 +105,7 @@ fn a_field_deletion_removes_it_from_the_result() -> XrfResult {
 #[test]
 fn a_field_deletion_discards_whatever_was_written_after_it() -> XrfResult {
   // `!key = something` deletes; the value is thrown away rather than assigned (`Xr_ini.cpp:867`).
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nkey = original\n"),
@@ -121,7 +120,7 @@ fn a_field_deletion_discards_whatever_was_written_after_it() -> XrfResult {
 
 #[test]
 fn a_section_deletion_removes_it_after_everything_else_resolves() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[parent]\na = 1\n\n[child]:parent\nb = 2\n"),
@@ -140,7 +139,7 @@ fn a_section_deletion_removes_it_after_everything_else_resolves() -> XrfResult {
 
 #[test]
 fn a_list_append_adds_to_a_comma_list() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nammo_class = ammo_a, ammo_b\n"),
@@ -156,7 +155,7 @@ fn a_list_append_adds_to_a_comma_list() -> XrfResult {
 
 #[test]
 fn a_list_remove_drops_every_matching_element() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nammo_class = a, b, a, c\n"),
@@ -175,7 +174,7 @@ fn a_list_remove_drops_every_matching_element() -> XrfResult {
 
 #[test]
 fn a_list_append_does_not_de_duplicate() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nlist = a\n"),
@@ -194,7 +193,7 @@ fn a_list_append_does_not_de_duplicate() -> XrfResult {
 
 #[test]
 fn a_list_edited_down_to_nothing_drops_its_key() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nlist = a\nkept = 1\n"),
@@ -210,7 +209,7 @@ fn a_list_edited_down_to_nothing_drops_its_key() -> XrfResult {
 
 #[test]
 fn a_list_operation_creates_a_key_that_did_not_exist() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\na = 1\n"),
@@ -225,7 +224,7 @@ fn a_list_operation_creates_a_key_that_did_not_exist() -> XrfResult {
 
 #[test]
 fn a_deleted_key_cannot_be_revived_by_a_list_operation() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nlist = a\n"),
@@ -241,7 +240,7 @@ fn a_deleted_key_cannot_be_revived_by_a_list_operation() -> XrfResult {
 
 #[test]
 fn list_operations_apply_in_load_order_and_accumulate() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nlist = a\n"),
@@ -257,7 +256,7 @@ fn list_operations_apply_in_load_order_and_accumulate() -> XrfResult {
 
 #[test]
 fn an_empty_list_operation_value_is_skipped() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nlist = a\n"),
@@ -272,7 +271,7 @@ fn an_empty_list_operation_value_is_skipped() -> XrfResult {
 
 #[test]
 fn the_alphabetically_last_mod_file_wins_a_conflict() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nkey = base\n"),
@@ -289,7 +288,7 @@ fn the_alphabetically_last_mod_file_wins_a_conflict() -> XrfResult {
 
 #[test]
 fn the_root_file_beats_a_file_it_includes_whatever_the_line_order() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "#include \"included.ltx\"\n\n![s]\nkey = root\n"),
@@ -306,7 +305,7 @@ fn the_root_file_beats_a_file_it_includes_whatever_the_line_order() -> XrfResult
 
 #[test]
 fn a_mod_file_include_outranks_the_base_tree_and_loses_to_its_own_parent() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nfrom_base = 1\nkey = base\n"),
@@ -332,7 +331,7 @@ fn a_mod_file_include_outranks_the_base_tree_and_loses_to_its_own_parent() -> Xr
 
 #[test]
 fn a_later_line_in_one_file_wins_over_an_earlier_one() -> XrfResult {
-  let resolved: DltxResolved = resolve("system.ltx", &[("system.ltx", "[s]\nkey = first\nkey = second\n")])?;
+  let resolved: DltxResolveResult = resolve("system.ltx", &[("system.ltx", "[s]\nkey = first\nkey = second\n")])?;
 
   // Equal depth, so the higher position takes it.
   assert_eq!(resolved.get("s", "key"), Some("second"));
@@ -342,7 +341,7 @@ fn a_later_line_in_one_file_wins_over_an_earlier_one() -> XrfResult {
 
 #[test]
 fn a_child_inherits_its_parent_and_overrides_what_it_declares() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[(
       "system.ltx",
@@ -360,7 +359,7 @@ fn a_child_inherits_its_parent_and_overrides_what_it_declares() -> XrfResult {
 #[test]
 fn inheritance_may_name_a_parent_declared_later() -> XrfResult {
   // Resolution happens after the whole tree is read, so a forward reference is legal where vanilla LTX refuses it.
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[("system.ltx", "[child]:parent\nb = 2\n\n[parent]\na = 1\n")],
   )?;
@@ -372,7 +371,7 @@ fn inheritance_may_name_a_parent_declared_later() -> XrfResult {
 
 #[test]
 fn a_later_parent_wins_over_an_earlier_one() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[(
       "system.ltx",
@@ -387,7 +386,7 @@ fn a_later_parent_wins_over_an_earlier_one() -> XrfResult {
 
 #[test]
 fn an_override_can_remove_a_parent() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       (
@@ -407,7 +406,7 @@ fn an_override_can_remove_a_parent() -> XrfResult {
 
 #[test]
 fn an_override_added_parent_outranks_the_base_ones() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       (
@@ -426,7 +425,7 @@ fn an_override_added_parent_outranks_the_base_ones() -> XrfResult {
 
 #[test]
 fn a_missing_parent_contributes_nothing_and_is_reported() -> XrfResult {
-  let resolved: DltxResolved = resolve("system.ltx", &[("system.ltx", "[child]:absent\nown = 1\n")])?;
+  let resolved: DltxResolveResult = resolve("system.ltx", &[("system.ltx", "[child]:absent\nown = 1\n")])?;
 
   // Not an error: the engine fabricates an empty section under that name and carries on.
   assert_eq!(resolved.get("child", "own"), Some("1"));
@@ -442,7 +441,7 @@ fn a_missing_parent_contributes_nothing_and_is_reported() -> XrfResult {
 #[test]
 fn a_parent_name_is_not_case_folded_while_a_section_name_is() -> XrfResult {
   // The trap from the matrix: `[a]:Base` cannot find `base`, because headers are lowercased and parent tokens are not.
-  let resolved: DltxResolved = resolve("system.ltx", &[("system.ltx", "[Base]\na = 1\n\n[child]:Base\n")])?;
+  let resolved: DltxResolveResult = resolve("system.ltx", &[("system.ltx", "[Base]\na = 1\n\n[child]:Base\n")])?;
 
   assert_eq!(resolved.get("child", "a"), None, "the parent reference misses");
   assert!(
@@ -486,7 +485,7 @@ fn a_duplicate_plain_section_is_an_error_naming_both_files() -> XrfResult {
 
 #[test]
 fn a_section_name_is_lowercased_but_a_key_name_is_not() -> XrfResult {
-  let resolved: DltxResolved = resolve("system.ltx", &[("system.ltx", "[MixedCase]\nMixedKey = 1\n")])?;
+  let resolved: DltxResolveResult = resolve("system.ltx", &[("system.ltx", "[MixedCase]\nMixedKey = 1\n")])?;
 
   assert_eq!(resolved.list_sections(), vec!["mixedcase"]);
   assert_eq!(resolved.get("mixedcase", "MixedKey"), Some("1"));
@@ -497,7 +496,7 @@ fn a_section_name_is_lowercased_but_a_key_name_is_not() -> XrfResult {
 
 #[test]
 fn a_list_operation_against_a_section_nothing_declares_is_discarded() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[present]\na = 1\n"),
@@ -513,7 +512,7 @@ fn a_list_operation_against_a_section_nothing_declares_is_discarded() -> XrfResu
 
 #[test]
 fn only_the_root_file_is_scanned_for_mod_files() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "#include \"included.ltx\"\n"),
@@ -530,7 +529,7 @@ fn only_the_root_file_is_scanned_for_mod_files() -> XrfResult {
 
 #[test]
 fn provenance_names_the_file_that_won_each_field() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "[s]\nfrom_base = 1\npatched = base\n"),
@@ -556,7 +555,7 @@ fn provenance_names_the_file_that_won_each_field() -> XrfResult {
 
 #[test]
 fn a_composite_install_resolves_every_rule_together() -> XrfResult {
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "configs\\system.ltx",
     &[
       (
@@ -602,7 +601,7 @@ fn a_composite_install_resolves_every_rule_together() -> XrfResult {
 #[test]
 fn a_tree_with_no_mod_files_resolves_the_same_as_its_base() -> XrfResult {
   // What makes the dialect safe to point at an unpatched install: with nothing to patch, DLTX still answers.
-  let resolved: DltxResolved = resolve(
+  let resolved: DltxResolveResult = resolve(
     "system.ltx",
     &[
       ("system.ltx", "#include \"items.ltx\"\n\n[system]\nversion = 1\n"),

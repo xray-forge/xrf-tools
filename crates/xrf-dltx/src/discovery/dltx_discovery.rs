@@ -1,4 +1,4 @@
-use crate::dltx_attachment::DltxAttachment;
+use crate::discovery::dltx_attachment::DltxAttachment;
 
 /// Depth assigned to the base root. Its includes count up from here.
 pub const DLTX_BASE_DEPTH: i32 = 0;

@@ -5,10 +5,10 @@ use xrf_ltx::{
   Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxResolution, LtxResolutionDiagnostic, LtxStandardDialect,
 };
 
-use crate::dltx_discovery::DltxDiscovery;
-use crate::dltx_resolver::{DltxResolved, DltxResolver};
-use crate::dltx_severity::DltxSeverity;
-use crate::dltx_stores::DltxStores;
+use crate::discovery::dltx_discovery::DltxDiscovery;
+use crate::load::dltx_loader::DltxLoader;
+use crate::resolve::dltx_resolve_result::DltxResolveResult;
+use crate::resolve::dltx_resolver::DltxResolver;
 
 /// The Monolith and Anomaly DLTX patch dialect.
 ///
@@ -50,7 +50,7 @@ impl LtxDialect for DltxDialect {
   }
 
   fn resolve(&self, root: &str, source: &dyn LtxDocumentSource) -> XrfResult<LtxResolution> {
-    let resolved: DltxResolved = DltxResolver::new(&DltxStores::load(source, root)?).resolve_all()?;
+    let resolved: DltxResolveResult = DltxResolver::new(&DltxLoader::new(source).load(root)?).resolve_all()?;
 
     Ok(LtxResolution {
       diagnostics: Self::to_diagnostics(&resolved),
@@ -73,7 +73,7 @@ impl DltxDialect {
   ///
   /// Sections arrive sorted by name and fields by key, which is the order the engine's own container ends up in and
   /// therefore part of matching it. Standard LTX keeps the authored order instead.
-  fn to_ltx(resolved: &DltxResolved, root: &str) -> Ltx {
+  fn to_ltx(resolved: &DltxResolveResult, root: &str) -> Ltx {
     let mut ltx: Ltx = Ltx::new();
 
     for (section, fields) in &resolved.sections {
@@ -90,7 +90,7 @@ impl DltxDialect {
     ltx
   }
 
-  fn to_provenance(resolved: &DltxResolved) -> BTreeMap<(String, String), LtxFieldOrigin> {
+  fn to_provenance(resolved: &DltxResolveResult) -> BTreeMap<(String, String), LtxFieldOrigin> {
     let mut provenance: BTreeMap<(String, String), LtxFieldOrigin> = BTreeMap::new();
 
     for (section, fields) in &resolved.sections {
@@ -112,11 +112,10 @@ impl DltxDialect {
   }
 
   /// Warnings only. Anything the engine refuses to start on already came back as an error.
-  fn to_diagnostics(resolved: &DltxResolved) -> Vec<LtxResolutionDiagnostic> {
+  fn to_diagnostics(resolved: &DltxResolveResult) -> Vec<LtxResolutionDiagnostic> {
     resolved
       .diagnostics
       .iter()
-      .filter(|diagnostic| diagnostic.severity == DltxSeverity::Warning)
       .map(|diagnostic| LtxResolutionDiagnostic {
         engine_behaviour: diagnostic.engine_behaviour.clone(),
         file: diagnostic.file.clone(),

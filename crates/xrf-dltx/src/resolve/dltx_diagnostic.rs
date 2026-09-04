@@ -1,9 +1,9 @@
-use crate::dltx_severity::DltxSeverity;
-
-/// Something worth saying about a patched config tree.
+/// Something the engine does quietly that a person reading configs should be told.
+///
+/// Only ever a warning. Anything the engine refuses to start on comes back as an `Err` from the load or the resolve
+/// instead, so there is no severity to carry: a diagnostic exists precisely because the game would say nothing.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DltxDiagnostic {
-  pub severity: DltxSeverity,
   /// Section the finding is about, lowercased as the engine stores it.
   pub section: String,
   /// File that raised it, when one statement is responsible.
@@ -17,23 +17,12 @@ pub struct DltxDiagnostic {
 }
 
 impl DltxDiagnostic {
-  pub fn new_error(section: impl Into<String>, message: impl Into<String>) -> Self {
+  pub fn new(section: impl Into<String>, message: impl Into<String>) -> Self {
     Self {
       engine_behaviour: None,
       file: None,
       message: message.into(),
       section: section.into(),
-      severity: DltxSeverity::Error,
-    }
-  }
-
-  pub fn new_warning(section: impl Into<String>, message: impl Into<String>) -> Self {
-    Self {
-      engine_behaviour: None,
-      file: None,
-      message: message.into(),
-      section: section.into(),
-      severity: DltxSeverity::Warning,
     }
   }
 

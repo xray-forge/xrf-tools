@@ -1,3 +1,5 @@
+//! One LTX file as it was written, which is the single parse result every other stage reads.
+
 pub mod ltx_document;
 pub mod ltx_document_format;
 pub mod ltx_document_lower;

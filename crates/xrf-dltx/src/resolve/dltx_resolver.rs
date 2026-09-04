@@ -3,10 +3,11 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::LtxKeyOperation;
 
-use crate::dltx_diagnostic::DltxDiagnostic;
-use crate::dltx_item::DltxItem;
-use crate::dltx_provenance::{DltxFieldOrigin, DltxProvenance};
-use crate::dltx_stores::DltxStores;
+use crate::load::dltx_item::DltxItem;
+use crate::load::dltx_load_result::DltxLoadResult;
+use crate::resolve::dltx_diagnostic::DltxDiagnostic;
+use crate::resolve::dltx_provenance::{DltxFieldOrigin, DltxProvenance};
+use crate::resolve::dltx_resolve_result::DltxResolveResult;
 
 /// One section resolved to its fields, in the order the engine emits them.
 type ResolvedSection = BTreeMap<String, DltxItem>;
@@ -16,7 +17,8 @@ type ResolvedSection = BTreeMap<String, DltxItem>;
 /// A depth-first walk with a memo, matching `EvaluateSection`: parents first, then the section's own base merged with
 /// its overrides, then list operations, then section deletions. See the compatibility matrix, section 4.
 pub struct DltxResolver<'a> {
-  stores: &'a DltxStores,
+  /// What the load pass recorded, which this walk decides but never changes.
+  loaded: &'a DltxLoadResult,
   resolved: HashMap<String, ResolvedSection>,
   /// Sections currently being resolved, which is how a cycle is caught.
   visiting: Vec<String>,
@@ -29,14 +31,14 @@ pub struct DltxResolver<'a> {
 }
 
 impl<'a> DltxResolver<'a> {
-  pub fn new(stores: &'a DltxStores) -> Self {
+  pub fn new(loaded: &'a DltxLoadResult) -> Self {
     Self {
       deleted_fields: HashMap::new(),
       diagnostics: Vec::new(),
       effective_parents: HashMap::new(),
       provenance: DltxProvenance::default(),
       resolved: HashMap::new(),
-      stores,
+      loaded,
       visiting: Vec::new(),
     }
   }
@@ -49,8 +51,8 @@ impl<'a> DltxResolver<'a> {
   /// # Errors
   ///
   /// Returns an error for anything the engine would refuse to start on, which is an inheritance cycle here.
-  pub fn resolve_all(mut self) -> XrfResult<DltxResolved> {
-    for section in self.stores.base.keys().cloned().collect::<Vec<String>>() {
+  pub fn resolve_all(mut self) -> XrfResult<DltxResolveResult> {
+    for section in self.loaded.base.keys().cloned().collect::<Vec<String>>() {
       self.resolve_section(&section)?;
     }
 
@@ -61,7 +63,7 @@ impl<'a> DltxResolver<'a> {
     // Sorted by section name and by key, which is the order the engine's own container ends up in. Not the authored
     // order: a resolved DLTX document is a lookup table, and reproducing its order is part of matching it.
     for (section, fields) in &self.resolved {
-      if self.stores.deleted_sections.contains(section) {
+      if self.loaded.deleted_sections.contains(section) {
         continue;
       }
 
@@ -74,15 +76,15 @@ impl<'a> DltxResolver<'a> {
       );
     }
 
-    for section in &self.stores.deleted_sections {
+    for section in &self.loaded.deleted_sections {
       self.provenance.forget_section(section);
     }
 
-    let mut diagnostics: Vec<DltxDiagnostic> = self.stores.diagnostics.clone();
+    let mut diagnostics: Vec<DltxDiagnostic> = self.loaded.diagnostics.clone();
 
     diagnostics.append(&mut self.diagnostics);
 
-    Ok(DltxResolved {
+    Ok(DltxResolveResult {
       diagnostics,
       provenance: self.provenance,
       sections,
@@ -112,7 +114,7 @@ impl<'a> DltxResolver<'a> {
     let mut inherited: ResolvedSection = ResolvedSection::new();
 
     for parent in &parents {
-      self.prepare_parent(section, parent)?;
+      self.prepare_parent(section, parent);
       self.resolve_section(parent)?;
 
       // Folded left, so a later parent overrides an earlier one.
@@ -157,9 +159,9 @@ impl<'a> DltxResolver<'a> {
       return cached.clone();
     }
 
-    let mut tokens: Vec<String> = self.stores.base_parents.get(section).cloned().unwrap_or_default();
+    let mut tokens: Vec<String> = self.loaded.base_parents.get(section).cloned().unwrap_or_default();
 
-    for token in self.stores.override_parents.get(section).cloned().unwrap_or_default() {
+    for token in self.loaded.override_parents.get(section).cloned().unwrap_or_default() {
       let opposite: String = match token.strip_prefix('!') {
         Some(name) => String::from(name),
         None => format!("!{token}"),
@@ -183,12 +185,12 @@ impl<'a> DltxResolver<'a> {
   }
 
   /// Makes sure a named parent can be resolved, reporting it when the engine would have fabricated one.
-  fn prepare_parent(&mut self, section: &str, parent: &str) -> XrfResult {
-    if self.stores.base.contains_key(parent) {
-      return Ok(());
+  fn prepare_parent(&mut self, section: &str, parent: &str) {
+    if self.loaded.base.contains_key(parent) {
+      return;
     }
 
-    let reason: &str = if self.stores.overrides.contains_key(parent) {
+    let reason: &str = if self.loaded.overrides.contains_key(parent) {
       "exists only as an override"
     } else {
       "is declared nowhere"
@@ -197,7 +199,7 @@ impl<'a> DltxResolver<'a> {
     // Not an error: the engine creates an empty section under that name and carries on, which silently gives the child
     // no inherited fields. A parent name is also not case-folded while a section name is, so `[a]:Base` lands here.
     self.diagnostics.push(
-      DltxDiagnostic::new_warning(
+      DltxDiagnostic::new(
         section,
         format!("Inherits '{parent}', which {reason}, so it contributes no fields"),
       )
@@ -205,15 +207,13 @@ impl<'a> DltxResolver<'a> {
     );
 
     self.resolved.insert(String::from(parent), ResolvedSection::new());
-
-    Ok(())
   }
 
   /// One section's own fields: its base contents with its overrides applied.
   fn merge_base_with_overrides(&mut self, section: &str) -> ResolvedSection {
     let mut merged: ResolvedSection = ResolvedSection::new();
 
-    for item in Self::rank(self.stores.base.get(section)) {
+    for item in Self::rank(self.loaded.base.get(section)) {
       match item.operation {
         // A `!key` in a plain section suppresses what the parents offer without recording a deletion, so a later list
         // operation can still revive it (`Xr_ini.cpp:987-990`).
@@ -226,7 +226,7 @@ impl<'a> DltxResolver<'a> {
       }
     }
 
-    let Some(overrides) = self.stores.overrides.get(section) else {
+    let Some(overrides) = self.loaded.overrides.get(section) else {
       return merged;
     };
 
@@ -285,7 +285,7 @@ impl<'a> DltxResolver<'a> {
   /// Last of everything, and cumulative: each operation edits the result of the one before it, in load order
   /// (`Xr_ini.cpp`).
   fn apply_list_operations(&mut self, section: &str, result: &mut ResolvedSection) {
-    let Some(operations) = self.stores.list_operations.get(section) else {
+    let Some(operations) = self.loaded.list_operations.get(section) else {
       return;
     };
 
@@ -355,51 +355,18 @@ impl<'a> DltxResolver<'a> {
 
   /// Reports overrides that never found a section to patch.
   fn report_orphan_overrides(&mut self) {
-    for section in self.stores.overrides.keys() {
-      if self.stores.base.contains_key(section) {
+    for section in self.loaded.overrides.keys() {
+      if self.loaded.base.contains_key(section) {
         continue;
       }
 
       self.diagnostics.push(
-        DltxDiagnostic::new_warning(
+        DltxDiagnostic::new(
           section,
           format!("Override '![{section}]' patches a section nothing declares, so it changes nothing"),
         )
         .with_engine_behaviour("silently dropped unless print_dltx_warnings is on, which it is not by default"),
       );
     }
-  }
-}
-
-/// What a resolution answers with.
-#[derive(Debug, Default)]
-pub struct DltxResolved {
-  /// Sections by lowercased name, each field by key, in the engine's emitted order.
-  pub sections: BTreeMap<String, BTreeMap<String, String>>,
-  pub provenance: DltxProvenance,
-  pub diagnostics: Vec<DltxDiagnostic>,
-}
-
-impl DltxResolved {
-  /// One field's resolved value.
-  pub fn get(&self, section: &str, key: &str) -> Option<&str> {
-    self
-      .sections
-      .get(section)
-      .and_then(|fields| fields.get(key))
-      .map(String::as_str)
-  }
-
-  /// Section names, sorted.
-  pub fn list_sections(&self) -> Vec<&str> {
-    self.sections.keys().map(String::as_str).collect()
-  }
-
-  /// Whether anything would stop the engine starting.
-  pub fn has_errors(&self) -> bool {
-    self
-      .diagnostics
-      .iter()
-      .any(|diagnostic| diagnostic.severity == crate::dltx_severity::DltxSeverity::Error)
   }
 }
