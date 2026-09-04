@@ -1,10 +1,13 @@
 use std::path::{Path, PathBuf};
 
+use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
+
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
 use crate::Ltx;
+use crate::document::ltx_document::LtxDocument;
 use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
 use crate::project::ltx_read_counters::LtxReadCounters;
@@ -41,17 +44,24 @@ impl<'a> LtxIncludeVfsSource<'a> {
     }
   }
 
-  /// Reads and parses one logical path, with its logical location recorded so nested includes resolve against it.
+  /// Reads one logical path as a document, through whatever the mounted world retains.
+  pub fn read_document(&self, logical_path: &str) -> XrfResult<Arc<LtxDocument>> {
+    self
+      .vfs
+      .scoped(self.scope)
+      .read_parsed(XrayAssetType::Ltx, logical_path, |bytes| {
+        if let Some(counters) = self.counters {
+          counters.record_read(bytes.len() as u64);
+          counters.record_parse();
+        }
+
+        Ltx::read_document_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
+      })
+  }
+
+  /// Reads and lowers one logical path, with its logical location recorded so nested includes resolve against it.
   pub fn read_ltx(&self, logical_path: &str) -> XrfResult<Ltx> {
-    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
-
-    if let Some(counters) = self.counters {
-      counters.record_read(bytes.len() as u64);
-      counters.record_parse();
-    }
-
-    let contents: String = decode_bytes_to_string(&bytes, new_windows1251_encoder())?;
-    let mut ltx: Ltx = Ltx::read_from_str(&contents)?;
+    let mut ltx: Ltx = self.read_document(logical_path)?.lower()?;
     let path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
 
     // The logical parent, not `Path::parent`: on a host that does not separate on `\` the latter answers the path unsplit, and
@@ -72,14 +82,18 @@ impl<'a> LtxIncludeVfsSource<'a> {
   /// Project assembly needs every config's include list to work out which files nothing includes, so this pass is
   /// counted separately: it is a whole read of every config in the project performed before any content is parsed.
   pub fn read_included(&self, logical_path: &str) -> XrfResult<crate::file::types::LtxIncluded> {
-    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
-
     if let Some(counters) = self.counters {
-      counters.record_read(bytes.len() as u64);
       counters.record_include_scan();
     }
 
-    Ltx::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
+    Ok(
+      self
+        .read_document(logical_path)?
+        .list_included()
+        .into_iter()
+        .map(String::from)
+        .collect(),
+    )
   }
 
   /// A logical path as the VFS spells it.

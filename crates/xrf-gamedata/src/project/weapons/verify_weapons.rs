@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -22,7 +23,7 @@ impl GamedataProject {
     xrf_output::heading!(options.output, "Verify weapons:");
 
     let started_at: Instant = Instant::now();
-    let system_ltx: Ltx = self.ltx_project.system_ltx()?;
+    let system_ltx: Arc<Ltx> = self.ltx_project.system_ltx()?;
     let system_ltx_path = self.ltx_project.system_ltx_report_path()?;
 
     // Selected before the sweep rather than filtered inside it, because a parallel run needs to know how many positions

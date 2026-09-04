@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
@@ -29,7 +30,7 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
   pub fn verify(&self) -> XrfResult<GamedataHudMotionCollisionsVerificationResult> {
     xrf_output::verbose!(self.options.output, "Verify hud motion collisions");
 
-    let system_ltx: Ltx = self.project.ltx_project.system_ltx()?;
+    let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
 
     let hud_sections: Vec<(&str, &Section)> = system_ltx

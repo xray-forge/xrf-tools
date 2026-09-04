@@ -54,18 +54,18 @@ fn verify(project: &GamedataProject, checks: Vec<GamedataVerificationType>) {
 }
 
 #[test]
-fn each_check_that_wants_system_ltx_resolves_the_whole_include_tree_again() {
-  let root: PathBuf = install("repeated");
+fn every_check_that_wants_system_ltx_shares_one_resolution() {
+  let root: PathBuf = install("shared");
   let project: GamedataProject = open(root.clone());
 
-  // Assembly first: one read and one include-only parse per config, and nothing resolved yet.
+  // Assembly reads each config once to learn its includes, and resolves nothing yet.
   let after_open: LtxReadCountersSnapshot = project.ltx_project.get_read_counters();
 
-  assert_eq!(after_open.include_scans, 2);
+  assert_eq!(after_open.reads, 2);
+  assert_eq!(after_open.parses, 2);
   assert_eq!(after_open.resolutions, 0);
-  assert_eq!(after_open.parses, 0);
 
-  // Animations runs three verifiers that each want `system.ltx`; weapons wants it once more.
+  // Animations runs three verifiers that each want `system.ltx`; weapons wants it a fourth time.
   verify(
     &project,
     vec![GamedataVerificationType::Animations, GamedataVerificationType::Weapons],
@@ -74,19 +74,17 @@ fn each_check_that_wants_system_ltx_resolves_the_whole_include_tree_again() {
   let after_checks: LtxReadCountersSnapshot = project.ltx_project.get_read_counters();
 
   assert_eq!(
-    after_checks.resolutions, 4,
-    "hud item, hud motion collisions, player hud, and weapons each resolve system.ltx"
+    after_checks.resolutions, 1,
+    "four asking checks, one resolution between them"
   );
-  assert_eq!(
-    after_checks.parses, 8,
-    "both configs of the tree are parsed once per resolution"
-  );
+  assert_eq!(after_checks.reads, 2, "nothing was read a second time");
+  assert_eq!(after_checks.parses, 2);
 
   fs::remove_dir_all(root).expect("cleanup");
 }
 
 #[test]
-fn the_ltx_check_walks_the_project_for_formatting_and_again_for_verification() {
+fn the_ltx_check_parses_each_config_once_and_reads_its_bytes_for_formatting() {
   let root: PathBuf = install("ltx_check");
   let project: GamedataProject = open(root.clone());
 
@@ -94,13 +92,43 @@ fn the_ltx_check_walks_the_project_for_formatting_and_again_for_verification() {
 
   let counters: LtxReadCountersSnapshot = project.ltx_project.get_read_counters();
 
-  // The check verifies entry points and separately checks every file's formatting, so `system.ltx` is resolved once
-  // while `weapons.ltx` is read again on its own for the format pass.
+  // Two files, parsed once each: verification reads what assembly already held, and the formatting pass renders from
+  // the same documents. It does read each file's bytes a second time, which is not redundant - judging formatting means
+  // comparing the bytes as authored against the canonical rendering, and only the bytes answer the first half.
   assert_eq!(counters.resolutions, 1);
-  assert!(
-    counters.reads > counters.include_scans,
-    "the format pass reads beyond assembly, got {counters:?}"
+  assert_eq!(counters.parses, 2, "one parse per config");
+  assert_eq!(
+    counters.reads, 4,
+    "one content read and one formatting-comparison read per config"
   );
+
+  fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn a_whole_sweep_parses_each_config_once() {
+  let root: PathBuf = install("whole_sweep");
+  let project: GamedataProject = open(root.clone());
+
+  verify(
+    &project,
+    vec![
+      GamedataVerificationType::Animations,
+      GamedataVerificationType::Ltx,
+      GamedataVerificationType::Sounds,
+      GamedataVerificationType::Weapons,
+      GamedataVerificationType::Weathers,
+    ],
+  );
+
+  let counters: LtxReadCountersSnapshot = project.ltx_project.get_read_counters();
+
+  // The invariant, across every check that touches configs: two files in the tree, parsed twice in total, whatever
+  // asked for them. Resolutions count roots, and only `system.ltx` is one here. The extra reads are the formatting
+  // pass comparing bytes, one per file, and nothing else re-reads.
+  assert_eq!(counters.parses, 2);
+  assert_eq!(counters.resolutions, 1);
+  assert_eq!(counters.reads, 4);
 
   fs::remove_dir_all(root).expect("cleanup");
 }

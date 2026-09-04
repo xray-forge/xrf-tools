@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayCachePolicy, XrayMountMode, XrayVfs};
 
 /// Mounts a game installation's declared sources, or returns `None` when `path` is not one.
 ///
@@ -18,5 +18,7 @@ pub fn mount_installation(path: &Path) -> XrfResult<Option<XrayVfs>> {
     return Ok(None);
   }
 
-  Ok(Some(XrayVfs::open(XrayMountMode::Installation, path)?))
+  Ok(Some(
+    XrayVfs::open(XrayMountMode::Installation, path)?.with_cache_policy(XrayCachePolicy::configs()),
+  ))
 }

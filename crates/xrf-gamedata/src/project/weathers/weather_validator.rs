@@ -1,5 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, Section};
@@ -39,7 +40,7 @@ pub fn verify_weather_findings_with_definitions(
 ) -> XrfResult<Vec<Finding>> {
   // The logical path reads the config; findings need the path a person can act on.
   let reported: PathBuf = project.ltx_project.path_of(config_path);
-  let ltx: Ltx = match project.ltx_project.read_full(config_path) {
+  let ltx: Arc<Ltx> = match project.ltx_project.read_full(config_path) {
     Ok(ltx) => ltx,
     Err(error) => {
       xrf_output::error!(options.output, "Could not open weather LTX: {}", error);

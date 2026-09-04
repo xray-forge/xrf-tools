@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
@@ -52,7 +53,7 @@ impl LtxProject {
       let reported: String = format_path(&self.path_of(entry)).to_string();
 
       // One unreadable config must not end the run.
-      let ltx: Ltx = match self.read_full(entry) {
+      let ltx: Arc<Ltx> = match self.read_full(entry) {
         Ok(ltx) => ltx,
         Err(error) => {
           result
@@ -64,7 +65,7 @@ impl LtxProject {
       };
 
       // For each section in file:
-      for (section_name, section) in &ltx {
+      for (section_name, section) in ltx.iter() {
         result.total_sections += 1;
 
         // Check only if schema is defined:

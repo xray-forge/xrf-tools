@@ -2,12 +2,13 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
+use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::require_writable_path;
 
 use crate::project::ltx_files_formatter::LtxFilesFormatter;
 use crate::project::ltx_format_options::LTX_PHASE_CHECK;
 use crate::project::ltx_project_format_result::LtxProjectFormatResult;
-use crate::{Ltx, LtxFormatOptions, LtxProject};
+use crate::{LtxFormatOptions, LtxProject};
 
 impl LtxProject {
   /// Formats every project LTX file with explicit options.
@@ -45,9 +46,14 @@ impl LtxProject {
         break;
       }
 
-      let contents: Vec<u8> = self.vfs().scoped(self.scope()).read_bytes(logical_path.as_str())?;
+      // Two reads of one config, and the second is not redundant: judging formatting means comparing the bytes as
+      // authored against the canonical rendering, and only the bytes can answer the first half. The rendering comes
+      // from the document the project already holds, so this pass parses nothing.
+      let contents: Vec<u8> = self.read_counted_bytes(logical_path)?;
+      let formatted: bool =
+        encode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted();
 
-      result.record_checked(self.path_of(logical_path), Ltx::is_formatted(&contents)?, &options);
+      result.record_checked(self.path_of(logical_path), formatted, &options);
       checking.advance();
     }
 

@@ -30,11 +30,16 @@ impl XrayCachePolicy {
 
   /// What a verification sweep benefits from.
   ///
-  /// Only motions. A visual is enumerated once per sweep, so retaining it would cost a gigabyte to serve no second
-  /// read, while shared animation banks are read once per referencing visual — the four Anomaly ships are read over
-  /// nine hundred times each.
+  /// Motions and configs. A visual is enumerated once per sweep, so retaining it would cost a gigabyte to serve no
+  /// second read, while shared animation banks are read once per referencing visual — the four Anomaly ships are read
+  /// over nine hundred times each.
   pub fn verification() -> Self {
-    Self::none().with(XrayAssetType::Omf)
+    Self::none().with(XrayAssetType::Omf).with(XrayAssetType::Ltx)
+  }
+
+  /// What a command that only reads configs benefits from.
+  pub fn configs() -> Self {
+    Self::none().with(XrayAssetType::Ltx)
   }
 
   /// What an editing session benefits from, where the same handful of assets is reopened constantly.

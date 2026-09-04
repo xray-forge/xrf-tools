@@ -1,10 +1,12 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
 use crate::Ltx;
+use crate::document::ltx_document::LtxDocument;
 use crate::file::file_configuration::constants::{
   LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME,
 };
@@ -40,6 +42,8 @@ pub struct LtxProject {
   scope: XrayLookupScope,
   /// How much reading and parsing this project has done.
   counters: Arc<LtxReadCounters>,
+  /// Roots resolved so far, one cell per root so two threads asking at once do not both publish.
+  resolved: Mutex<HashMap<XrayLogicalPath, Arc<OnceLock<Arc<Ltx>>>>>,
 }
 
 impl LtxProject {
@@ -50,7 +54,7 @@ impl LtxProject {
   /// Returns an error when the directory cannot be indexed or its project files cannot be assembled.
   pub fn open_at_path_opt<P: AsRef<Path>>(root: P, options: LtxProjectOptions) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
-    let mut vfs: XrayVfs = XrayVfs::new();
+    let mut vfs: XrayVfs = XrayVfs::new().with_cache_policy(XrayCachePolicy::configs());
 
     vfs.mount_directory("", root)?;
 
@@ -82,6 +86,7 @@ impl LtxProject {
   pub fn empty(root: impl AsRef<Path>) -> Self {
     Self {
       counters: LtxReadCounters::new_shared(),
+      resolved: Mutex::default(),
       ltx_file_entries: Vec::new(),
       ltx_files: Vec::new(),
       ltx_scheme_declarations: Default::default(),
@@ -182,6 +187,7 @@ impl LtxProject {
 
     Ok(Self {
       counters,
+      resolved: Mutex::default(),
       ltx_file_entries,
       ltx_files,
       ltx_scheme_declarations,
@@ -274,10 +280,61 @@ impl LtxProject {
   /// # Errors
   ///
   /// Returns an error when the file is not in scope or cannot be read or parsed.
-  pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
-    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+  pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<Ltx>> {
+    let cell: Arc<OnceLock<Arc<Ltx>>> = self.resolved_cell(logical_path);
 
-    self.counters.record_resolution();
+    if let Some(resolved) = cell.get() {
+      return Ok(Arc::clone(resolved));
+    }
+
+    let resolved: Arc<Ltx> = Arc::new(self.resolve(logical_path)?);
+
+    // Counted where the value is published, not where it was produced: two threads racing the same root would
+    // otherwise report two resolutions for one result, and a sweep's numbers would depend on its schedule.
+    Ok(Arc::clone(cell.get_or_init(|| {
+      self.counters.record_resolution();
+
+      resolved
+    })))
+  }
+
+  /// The cell holding one root's resolution, created on first ask.
+  fn resolved_cell(&self, logical_path: &XrayLogicalPath) -> Arc<OnceLock<Arc<Ltx>>> {
+    Arc::clone(
+      self
+        .resolved
+        .lock()
+        .expect("resolved config cache to not be poisoned")
+        .entry(logical_path.clone())
+        .or_default(),
+    )
+  }
+
+  /// Reads one config as a parsed document, through whatever the mounted world retains.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the config is not in scope, its bytes are not Windows-1251, or it will not parse.
+  pub fn read_document(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<LtxDocument>> {
+    LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters).read_document(logical_path.as_str())
+  }
+
+  /// Reads one config's bytes as authored, counted against this project.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the config is not in scope.
+  pub(crate) fn read_counted_bytes(&self, logical_path: &XrayLogicalPath) -> XrfResult<Vec<u8>> {
+    let bytes: Vec<u8> = self.vfs.scoped(&self.scope).read_bytes(logical_path.as_str())?;
+
+    self.counters.record_read(bytes.len() as u64);
+
+    Ok(bytes)
+  }
+
+  /// Reads one root and applies this project's rules to it, retaining nothing.
+  fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
+    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
 
     LtxIncludeConvertor::convert_with(source.read_ltx(logical_path.as_str())?, &source)?.into_inherited()
   }
@@ -329,7 +386,7 @@ impl LtxProject {
   /// # Errors
   ///
   /// Returns an error when the config is not in scope or cannot be read or parsed.
-  pub fn system_ltx(&self) -> XrfResult<Ltx> {
+  pub fn system_ltx(&self) -> XrfResult<Arc<Ltx>> {
     self.read_full(&self.system_ltx_path()?)
   }
 }

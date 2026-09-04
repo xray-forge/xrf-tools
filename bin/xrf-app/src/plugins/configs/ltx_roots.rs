@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxProject, LtxProjectOptions};
-use xrf_vfs::{XrayLookupScope, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayCachePolicy, XrayLookupScope, XrayRoots, XrayVfs};
 
 /// Open an LTX project over roots.
 ///
@@ -16,7 +16,7 @@ use xrf_vfs::{XrayLookupScope, XrayRoots, XrayVfs};
 /// Returns an error when the roots cannot be mounted, the prefix is not a logical path, or the project
 /// cannot be assembled.
 pub fn open_ltx_project(roots: &XrayRoots, prefix: Option<&str>, options: LtxProjectOptions) -> XrfResult<LtxProject> {
-  let vfs: XrayVfs = roots.open()?;
+  let vfs: XrayVfs = roots.open()?.with_cache_policy(XrayCachePolicy::configs());
   let scope: XrayLookupScope = match prefix {
     Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
     None => XrayLookupScope::all(),

@@ -2,11 +2,13 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::Ltx;
 use crate::project::ltx_project::LtxProject;
 use crate::project::ltx_read_counters::LtxReadCountersSnapshot;
 
@@ -32,15 +34,15 @@ fn open_nested_project(name: &str) -> XrfResult<LtxProject> {
 }
 
 #[test]
-fn opening_a_project_scans_every_config_for_includes_and_parses_none_of_them() -> XrfResult {
+fn opening_a_project_reads_and_parses_every_config_exactly_once() -> XrfResult {
   let project: LtxProject = open_nested_project("open")?;
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
-  // Entry-point discovery needs every config's include list and none of their contents, so assembly is one read and one
-  // include-only parse per config in the project.
-  assert_eq!(counters.include_scans, 4);
+  // Entry-point discovery needs every config's include list, which is now a read of the same document a resolution
+  // will want rather than a separate cheaper scan of the same bytes.
   assert_eq!(counters.reads, 4);
-  assert_eq!(counters.parses, 0);
+  assert_eq!(counters.parses, 4);
+  assert_eq!(counters.include_scans, 4);
   assert_eq!(counters.resolutions, 0);
   assert!(counters.bytes_read > 0);
 
@@ -48,7 +50,7 @@ fn opening_a_project_scans_every_config_for_includes_and_parses_none_of_them() -
 }
 
 #[test]
-fn resolving_one_entry_parses_every_config_in_its_include_tree() -> XrfResult {
+fn resolving_an_entry_reuses_the_configs_assembly_already_read() -> XrfResult {
   let project: LtxProject = open_nested_project("resolve_once")?;
   let entry: XrayLogicalPath = XrayLogicalPath::new("system.ltx")?;
 
@@ -56,45 +58,80 @@ fn resolving_one_entry_parses_every_config_in_its_include_tree() -> XrfResult {
 
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
-  // Four configs parsed on top of the four assembly scans: the entry point, both files it includes, and the one nested
-  // inside the first.
-  assert_eq!(counters.resolutions, 1);
+  // Nothing was read or parsed a second time: the whole include tree was already held from assembly.
+  assert_eq!(counters.reads, 4);
   assert_eq!(counters.parses, 4);
-  assert_eq!(counters.reads, 8);
-  assert_eq!(counters.include_scans, 4);
+  assert_eq!(counters.resolutions, 1);
 
   Ok(())
 }
 
 #[test]
-fn resolving_the_same_entry_twice_reads_and_parses_everything_twice() -> XrfResult {
+fn resolving_the_same_entry_again_answers_the_first_resolution() -> XrfResult {
   let project: LtxProject = open_nested_project("resolve_twice")?;
   let entry: XrayLogicalPath = XrayLogicalPath::new("system.ltx")?;
 
-  project.read_full(&entry)?;
-  project.read_full(&entry)?;
+  let first: Arc<Ltx> = project.read_full(&entry)?;
+  let second: Arc<Ltx> = project.read_full(&entry)?;
 
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
-  // Nothing is retained between resolutions, which is what makes a gamedata sweep resolve `system.ltx` once per check
-  // that wants it. Stage 4 of the plan makes this the same as resolving once; until then it is recorded, not accepted.
-  assert_eq!(counters.resolutions, 2);
-  assert_eq!(counters.parses, 8);
-  assert_eq!(counters.reads, 12);
+  assert_eq!(
+    counters.resolutions, 1,
+    "one resolution however many times it is asked for"
+  );
+  assert_eq!(counters.reads, 4);
+  assert_eq!(counters.parses, 4);
+
+  // The same resolution, not an equal copy of it, which is what makes repeated asking free rather than cheap.
+  assert!(Arc::ptr_eq(&first, &second));
 
   Ok(())
 }
 
 #[test]
-fn verifying_the_project_resolves_each_entry_point_again() -> XrfResult {
+fn every_caller_that_wants_the_root_config_shares_one_resolution() -> XrfResult {
+  let project: LtxProject = open_nested_project("shared_root")?;
+
+  let first: Arc<Ltx> = project.system_ltx()?;
+  let second: Arc<Ltx> = project.system_ltx()?;
+  let third: Arc<Ltx> = project.read_full(&project.system_ltx_path()?)?;
+
+  // What a gamedata sweep depends on: four checks each ask for `system.ltx` and one resolution serves them all.
+  assert_eq!(project.get_read_counters().resolutions, 1);
+  assert!(Arc::ptr_eq(&first, &second));
+  assert!(Arc::ptr_eq(&first, &third));
+
+  Ok(())
+}
+
+#[test]
+fn verifying_the_project_adds_one_resolution_per_entry_point() -> XrfResult {
   let project: LtxProject = open_nested_project("verify")?;
 
   project.verify_entries()?;
 
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
-  // One entry point, so verification is one more resolution of the whole include tree on top of assembly.
+  assert_eq!(counters.resolutions, 1, "one entry point");
+  assert_eq!(counters.reads, 4, "nothing re-read for it");
+  assert_eq!(counters.parses, 4);
+
+  Ok(())
+}
+
+#[test]
+fn verifying_twice_repeats_no_work_at_all() -> XrfResult {
+  let project: LtxProject = open_nested_project("verify_twice")?;
+
+  project.verify_entries()?;
+  project.verify_entries()?;
+
+  let counters: LtxReadCountersSnapshot = project.get_read_counters();
+
+  // Two whole-project passes, which is what the gamedata `ltx` check does, and the second one reads nothing.
   assert_eq!(counters.resolutions, 1);
+  assert_eq!(counters.reads, 4);
   assert_eq!(counters.parses, 4);
 
   Ok(())
@@ -106,7 +143,7 @@ fn a_read_outside_the_project_is_not_counted() -> XrfResult {
   let before: LtxReadCountersSnapshot = project.get_read_counters();
 
   // The counters describe what the project did, so a caller reaching past it for a plain VFS read stays invisible.
-  crate::Ltx::read_from_vfs(project.vfs(), project.scope(), "second.ltx")?;
+  Ltx::read_from_vfs(project.vfs(), project.scope(), "second.ltx")?;
 
   assert_eq!(project.get_read_counters(), before);
 

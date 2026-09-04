@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use xrf_ltx::{Ltx, LtxProject};
 use xrf_utils::format_path;
@@ -18,7 +19,7 @@ pub struct WeatherDefinitions {
   /// An empty member list means that every member of the collection has a definition.
   pub thunderbolt_collections: Result<HashMap<String, Vec<String>>, String>,
   /// Parsed legacy definitions from `system.ltx`.
-  legacy_system: Result<Ltx, String>,
+  legacy_system: Result<Arc<Ltx>, String>,
 }
 
 impl WeatherDefinitions {
@@ -91,7 +92,7 @@ impl WeatherDefinitions {
   ///
   /// Failures name the path a person can act on, which for a loose config is its file and for an archived one its engine
   /// identity.
-  fn read_ltx(project: &LtxProject, relative_path: &str) -> Result<Ltx, String> {
+  fn read_ltx(project: &LtxProject, relative_path: &str) -> Result<Arc<Ltx>, String> {
     let logical_path: XrayLogicalPath = project
       .config_path(relative_path)
       .map_err(|error| format!("Could not address weather definitions at {relative_path}: {error}"))?;
@@ -105,12 +106,12 @@ impl WeatherDefinitions {
   }
 
   fn read_thunderbolt_collections(project: &LtxProject) -> Result<HashMap<String, Vec<String>>, String> {
-    let collections: Ltx = Self::read_ltx(project, "environment\\thunderbolt_collections.ltx")?;
-    let thunderbolts: Ltx = Self::read_ltx(project, "environment\\thunderbolts.ltx")?;
+    let collections: Arc<Ltx> = Self::read_ltx(project, "environment\\thunderbolt_collections.ltx")?;
+    let thunderbolts: Arc<Ltx> = Self::read_ltx(project, "environment\\thunderbolts.ltx")?;
 
     let mut result: HashMap<String, Vec<String>> = HashMap::new();
 
-    for (collection_name, collection) in &collections {
+    for (collection_name, collection) in collections.iter() {
       if !collection_name.is_empty() {
         result.insert(
           collection_name.to_string(),
