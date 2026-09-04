@@ -1,9 +1,14 @@
 pub(crate) mod condlist;
+pub(crate) mod dialect;
 pub(crate) mod document;
 pub(crate) mod file;
 pub(crate) mod project;
 pub(crate) mod scheme;
 
+pub use crate::dialect::ltx_dialect::*;
+pub use crate::dialect::ltx_document_source::*;
+pub use crate::dialect::ltx_resolution::*;
+pub use crate::dialect::ltx_standard_dialect::*;
 pub use crate::document::ltx_document::*;
 pub use crate::document::ltx_item::*;
 pub use crate::document::ltx_key_operation::*;

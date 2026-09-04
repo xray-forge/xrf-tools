@@ -6,11 +6,12 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
 use crate::Ltx;
+use crate::dialect::ltx_dialect::LtxDialect;
+use crate::dialect::ltx_standard_dialect::LtxStandardDialect;
 use crate::document::ltx_document::LtxDocument;
 use crate::file::file_configuration::constants::{
   LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME,
 };
-use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
 use crate::file::include_vfs_source::LtxIncludeVfsSource;
 use crate::file::types::LtxSectionSchemes;
@@ -42,6 +43,8 @@ pub struct LtxProject {
   scope: XrayLookupScope,
   /// How much reading and parsing this project has done.
   counters: Arc<LtxReadCounters>,
+  /// Which rules resolve this project's configs.
+  dialect: Arc<dyn LtxDialect>,
   /// Roots resolved so far, one cell per root so two threads asking at once do not both publish.
   resolved: Mutex<HashMap<XrayLogicalPath, Arc<OnceLock<Arc<Ltx>>>>>,
 }
@@ -86,6 +89,7 @@ impl LtxProject {
   pub fn empty(root: impl AsRef<Path>) -> Self {
     Self {
       counters: LtxReadCounters::new_shared(),
+      dialect: Arc::new(LtxStandardDialect),
       resolved: Mutex::default(),
       ltx_file_entries: Vec::new(),
       ltx_files: Vec::new(),
@@ -129,12 +133,23 @@ impl LtxProject {
       ltx_files.push(path);
     }
 
+    // Files that patch another config rather than standing alone. Under standard LTX there are none; under DLTX a
+    // `mod_system_a.ltx` belongs to `system.ltx`, and verifying it on its own would report every override in it as
+    // patching a section nothing declares.
+    let attachments: Vec<String> = options.dialect.plan_attachments(
+      &ltx_files
+        .iter()
+        .map(|path| String::from(path.as_str()))
+        .collect::<Vec<String>>(),
+      &source,
+    )?;
+
     let mut ltx_file_entries: Vec<XrayLogicalPath> = Vec::new();
     let mut ltx_file_entries_failures: Vec<(XrayLogicalPath, XrayLogicalPath)> = Vec::new();
 
     // Filter our entries not included in other files and consider them entry-points.
     for ltx_file_path in ltx_files.iter() {
-      if included.contains(ltx_file_path) {
+      if included.contains(ltx_file_path) || attachments.iter().any(|it| it == ltx_file_path.as_str()) {
         continue;
       }
 
@@ -187,6 +202,7 @@ impl LtxProject {
 
     Ok(Self {
       counters,
+      dialect: options.dialect.clone(),
       resolved: Mutex::default(),
       ltx_file_entries,
       ltx_files,
@@ -332,11 +348,33 @@ impl LtxProject {
     Ok(bytes)
   }
 
-  /// Reads one root and applies this project's rules to it, retaining nothing.
+  /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
     let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
 
-    LtxIncludeConvertor::convert_with(source.read_ltx(logical_path.as_str())?, &source)?.into_inherited()
+    Ok(self.dialect.resolve(logical_path.as_str(), &source)?.ltx)
+  }
+
+  /// Which rules this project resolves its configs under.
+  pub fn get_dialect(&self) -> &Arc<dyn LtxDialect> {
+    &self.dialect
+  }
+
+  /// Resolves one config outside this project's scope, under this project's dialect.
+  ///
+  /// For config trees that are not under the project's own prefix: a level's `level.ltx` sits beside the level, not in
+  /// `configs`, and resolving it with different rules than everything else would make one sweep disagree with itself.
+  /// Nothing is retained, because the caller's scope is not this project's.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the config cannot be read or resolved.
+  pub fn read_full_in_scope(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
+    let source: LtxIncludeVfsSource = LtxIncludeVfsSource::new_counted(&self.vfs, scope, &self.counters);
+
+    self.counters.record_resolution();
+
+    Ok(self.dialect.resolve(logical_path, &source)?.ltx)
   }
 
   /// How much reading and parsing this project has done.

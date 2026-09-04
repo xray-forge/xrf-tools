@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
 use xrf_error::XrfResult;
-use xrf_ltx::Ltx;
 
 use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
@@ -95,8 +94,10 @@ impl<'a> LevelReconciliationVerifier<'a> {
       for location in self.project.entries_with_suffix(file)? {
         let path: &str = location.get_logical_path().as_str();
 
-        // Malformed configurations are reported by the ltx check, not this one.
-        let Ok(ltx) = Ltx::read_from_vfs_full(self.project.vfs(), self.project.scope(), path) else {
+        // Malformed configurations are reported by the ltx check, not this one. Resolved under the project's dialect
+        // even though these sit outside its `configs` prefix, so one sweep does not read some configs patched and
+        // others not.
+        let Ok(ltx) = self.project.ltx_project.read_full_in_scope(self.project.scope(), path) else {
           xrf_output::verbose!(
             self.options.output,
             "Skipping unreadable level maps configuration: {path}"

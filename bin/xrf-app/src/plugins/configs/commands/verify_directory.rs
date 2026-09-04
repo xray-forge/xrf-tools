@@ -53,6 +53,8 @@ pub async fn configs_verify_directory(
           &roots,
           prefix.as_deref(),
           LtxProjectOptions {
+            // Standard LTX until the project setting exists; a patched tree needs the caller to say so.
+            dialect: Arc::new(xrf_ltx::LtxStandardDialect),
             is_with_schemes_check: true,
             // todo: Probably should be provided as parameter.
             is_strict_check: false,

@@ -7,6 +7,7 @@ use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
 use crate::Ltx;
+use crate::dialect::ltx_document_source::LtxDocumentSource;
 use crate::document::ltx_document::LtxDocument;
 use crate::file::include::LtxIncludeConvertor;
 use crate::file::include_source::LtxIncludeSource;
@@ -101,6 +102,40 @@ impl<'a> LtxIncludeVfsSource<'a> {
   /// `PathBuf` may have normalized separators for the host, so this converts back rather than trusting `to_string_lossy`.
   fn to_logical(path: &Path) -> String {
     path.to_string_lossy().replace('/', "\\")
+  }
+}
+
+impl LtxDocumentSource for LtxIncludeVfsSource<'_> {
+  fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {
+    if self.vfs.scoped(self.scope).find(logical_path)?.is_none() {
+      return Ok(None);
+    }
+
+    self.read_document(logical_path).map(Some)
+  }
+
+  fn resolve_include(&self, directory: &str, statement: &str) -> XrfResult<Vec<String>> {
+    Ok(
+      LtxIncludeSource::resolve(self, &PathBuf::from(directory), statement)?
+        .into_iter()
+        .map(|path| Self::to_logical(&path))
+        .collect(),
+    )
+  }
+
+  fn list_file_names(&self, directory: &str) -> XrfResult<Vec<String>> {
+    let mut names: Vec<String> = self
+      .vfs
+      .scoped(self.scope)
+      .list_children(directory)?
+      .files
+      .into_iter()
+      .map(|location| String::from(location.get_logical_path().file_name()))
+      .collect();
+
+    names.sort();
+
+    Ok(names)
   }
 }
 

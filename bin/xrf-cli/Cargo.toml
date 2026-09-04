@@ -31,6 +31,7 @@ xrf-gamedata = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-output = { workspace = true }
 xrf-report = { workspace = true }
+xrf-dltx = { workspace = true }
 xrf-error = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-export = { workspace = true }

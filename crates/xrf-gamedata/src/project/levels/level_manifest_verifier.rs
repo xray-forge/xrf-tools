@@ -95,8 +95,15 @@ impl<'a> LevelManifestVerifier<'a> {
       return Vec::new();
     };
 
-    // Read through the project's VFS, so an archived level config is parsed rather than skipped.
-    let ltx: Ltx = match Ltx::read_from_vfs_full(self.bundle.project().vfs(), self.bundle.project().scope(), &path) {
+    // Read through the project, so an archived level config is parsed rather than skipped and the same dialect
+    // resolves it as resolves everything under `configs`. A level config is outside that prefix, which is why this
+    // names a scope instead of a project path.
+    let ltx: Ltx = match self
+      .bundle
+      .project()
+      .ltx_project
+      .read_full_in_scope(self.bundle.project().scope(), &path)
+    {
       Ok(ltx) => ltx,
       Err(error) => {
         return vec![GamedataFindingFactory::for_asset(

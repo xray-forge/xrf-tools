@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::file::file_section::section_entry::SectionEntry;
 use crate::file::file_section::section_setter::SectionSetter;
@@ -152,6 +152,47 @@ impl Ltx {
   /// Delete the key from the section, return the value if key exists or None
   pub fn delete_from(&mut self, section: &str, key: &str) -> Option<String> {
     self.section_mut(section).and_then(|section| section.remove(key))
+  }
+
+  /// Records where this document was read from, as a logical path.
+  ///
+  /// Public because a dialect lives in another crate and has to stamp what it resolved.
+  pub fn set_source_paths(&mut self, logical_path: &str) {
+    self.directory = Some(PathBuf::from(Self::directory_of(logical_path)));
+    self.path = Some(PathBuf::from(logical_path));
+  }
+
+  /// Everything before the last separator of a logical path, or the empty string for a top-level config.
+  pub fn directory_of(logical_path: &str) -> &str {
+    match logical_path.rsplit_once('\\') {
+      Some((directory, _)) => directory,
+      None => "",
+    }
+  }
+
+  /// Merges another document's sections into this one, refusing a duplicate the way an include does.
+  ///
+  /// Root fields are the one section that merges instead of colliding, because several files may each declare some.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when both documents declare the same named section.
+  pub(crate) fn merge_sections_from(&mut self, other: Self, from: &str) -> XrfResult {
+    for (name, section) in other.sections {
+      match self.sections.get_mut(&name) {
+        None => {
+          self.sections.insert(name, section);
+        }
+        Some(existing) if name.is_empty() => existing.merge(section),
+        Some(_) => {
+          return Err(XrfError::new_convert_error(format!(
+            "Failed to include ltx file '{from}', duplicate section '{name}' found"
+          )));
+        }
+      }
+    }
+
+    Ok(())
   }
 
   /// Total sections count

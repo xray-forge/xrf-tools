@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use xrf_ltx::LtxDialect;
 use xrf_output::OutputOptions;
 
 use crate::project::gamedata_verification_type::GamedataVerificationType;
 
-#[derive(Default)]
 pub struct GamedataProjectReadOptions {
   pub root: PathBuf,
   pub ignored: Vec<String>,
@@ -16,6 +17,24 @@ pub struct GamedataProjectReadOptions {
   /// A diagnostic rather than a mode: it puts a lock on the read path, so it is asked for by a caller measuring
   /// redundancy and off for everyone else.
   pub is_tracing_reads: bool,
+  /// Which rules resolve this project's configs.
+  ///
+  /// Standard LTX unless a caller says otherwise. Named here rather than inferred, because a patched Anomaly tree and
+  /// a vanilla one look alike from the outside and resolve differently.
+  pub dialect: Arc<dyn LtxDialect>,
+}
+
+impl Default for GamedataProjectReadOptions {
+  fn default() -> Self {
+    Self {
+      dialect: Arc::new(xrf_ltx::LtxStandardDialect),
+      ignored: Vec::new(),
+      is_strict: false,
+      is_tracing_reads: false,
+      output: OutputOptions::default(),
+      root: PathBuf::new(),
+    }
+  }
 }
 
 #[derive(Clone, Default)]

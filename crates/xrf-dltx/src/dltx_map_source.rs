@@ -2,11 +2,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxDocument};
+use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource};
 
-use crate::dltx_source::DltxSource;
-
-/// A [`DltxSource`] over configs held in memory.
+/// A [`LtxDocumentSource`] over configs held in memory.
 ///
 /// What lets every rule in the compatibility matrix be tested without a filesystem: a row is a handful of config
 /// strings and one expected resolution. Also the shape an integration reads against, so a caller can check its own
@@ -61,7 +59,7 @@ impl DltxMapSource {
   }
 }
 
-impl DltxSource for DltxMapSource {
+impl LtxDocumentSource for DltxMapSource {
   fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {
     Ok(self.documents.get(&logical_path.to_lowercase()).cloned())
   }

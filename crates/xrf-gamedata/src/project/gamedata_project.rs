@@ -99,6 +99,7 @@ impl GamedataProject {
       vfs,
       scope.clone().with_prefix(CONFIGS_DIRECTORY)?,
       LtxProjectOptions {
+        dialect: options.dialect.clone(),
         is_with_schemes_check: true,
         is_strict_check: false,
       },

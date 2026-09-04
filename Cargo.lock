@@ -7167,6 +7167,7 @@ dependencies = [
  "xrf-db",
  "xrf-dds",
  "xrf-dialog",
+ "xrf-dltx",
  "xrf-error",
  "xrf-export",
  "xrf-gamedata",
@@ -7240,6 +7241,7 @@ dependencies = [
  "xrf-error",
  "xrf-ltx",
  "xrf-test-utils",
+ "xrf-vfs",
 ]
 
 [[package]]

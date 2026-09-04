@@ -1,12 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxItemKind, LtxKeyOperation, LtxSectionOperation};
+use xrf_ltx::{LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation};
 
 use crate::dltx_attachment::DltxAttachment;
 use crate::dltx_diagnostic::DltxDiagnostic;
 use crate::dltx_discovery::{DLTX_BASE_DEPTH, DltxDiscovery};
 use crate::dltx_item::DltxItem;
-use crate::dltx_source::DltxSource;
 
 /// Everything one load pass records, before any of it is resolved.
 ///
@@ -41,7 +40,7 @@ impl DltxStores {
   /// # Errors
   ///
   /// Returns an error when the source cannot answer, or when a statement is one the engine would refuse to start on.
-  pub fn load<S: DltxSource>(source: &S, root: &str) -> XrfResult<Self> {
+  pub fn load(source: &dyn LtxDocumentSource, root: &str) -> XrfResult<Self> {
     let mut stores: Self = Self::default();
 
     stores.load_file(source, root, DLTX_BASE_DEPTH)?;
@@ -63,7 +62,7 @@ impl DltxStores {
   }
 
   /// The mod files attached to a root, as file names in its own directory.
-  fn attachments_of<S: DltxSource>(source: &S, root: &str) -> XrfResult<Vec<DltxAttachment>> {
+  fn attachments_of(source: &dyn LtxDocumentSource, root: &str) -> XrfResult<Vec<DltxAttachment>> {
     let directory: &str = Self::directory_of(root).unwrap_or("");
     let siblings: Vec<String> = source.list_file_names(directory)?;
 
@@ -71,7 +70,7 @@ impl DltxStores {
   }
 
   /// Records one file's statements, recursing into its includes one depth level down.
-  fn load_file<S: DltxSource>(&mut self, source: &S, logical_path: &str, depth: i32) -> XrfResult {
+  fn load_file(&mut self, source: &dyn LtxDocumentSource, logical_path: &str, depth: i32) -> XrfResult {
     let Some(document) = source.read_document(logical_path)? else {
       return Ok(());
     };
