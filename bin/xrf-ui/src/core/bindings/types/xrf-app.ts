@@ -278,6 +278,22 @@ export type SelectedVisualDescription = {
   texturesLtx: XrayAsset | null;
 };
 
+/** The conversion performed, retained with the result after a window reload. */
+export type SpawnConversion = "pack" | "unpack";
+
+/** Source and output paths of a standalone spawn conversion. */
+export type SpawnConversionRequest = {
+  source: string;
+  destination: string;
+};
+
+/** What reached disk; cancellation is accepted only before writing begins. */
+export type SpawnConversionResult = {
+  operation: SpawnConversion;
+  destination: string;
+  outcome: JobOutcome;
+};
+
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {
   /** Both halves of the declared pair resolved to the files the declaration names. */

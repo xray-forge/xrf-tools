@@ -14,6 +14,8 @@ export enum EJobKind {
   CONFIGS_CHECK_FORMAT = "configs.check-format",
   CONFIGS_FORMAT = "configs.format",
   CONFIGS_VERIFY = "configs.verify",
+  SPAWN_PACK = "spawn.pack",
+  SPAWN_UNPACK = "spawn.unpack",
   SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
   GAMEDATA_VERIFY = "gamedata.verify",
   TRANSLATIONS_BUILD = "translations.build",
@@ -43,6 +45,16 @@ export interface IJobKindDescriptor {
  * it, which is how an adopted pack came to be announced as `archives.pack` rather than as the packer's work.
  */
 export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
+  [EJobKind.SPAWN_PACK]: {
+    kind: EJobKind.SPAWN_PACK,
+    source: EApplicationId.SPAWN_PACKER,
+    label: "Spawn packing",
+  },
+  [EJobKind.SPAWN_UNPACK]: {
+    kind: EJobKind.SPAWN_UNPACK,
+    source: EApplicationId.SPAWN_UNPACKER,
+    label: "Spawn unpacking",
+  },
   [EJobKind.ARCHIVES_EXTRACT]: {
     kind: EJobKind.ARCHIVES_EXTRACT,
     source: EApplicationId.ARCHIVES_EXPLORER,

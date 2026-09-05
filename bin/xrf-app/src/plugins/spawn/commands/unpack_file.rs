@@ -1,21 +1,33 @@
-use std::path::Path;
+use std::sync::Arc;
 
-use xrf_db::{SpawnFile, XRayByteOrder};
+use tauri::State;
+use tauri::ipc::Channel;
+use uuid::Uuid;
+use xrf_job::JobProgress;
 
-use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
+use crate::core::jobs::JobRegistry;
 use crate::core::types::TauriResult;
+use crate::plugins::spawn::conversion::{SpawnConversion, SpawnConversionResult, run_conversion};
+use crate::plugins::spawn::request::SpawnConversionRequest;
 
-/// Expand a packed spawn file into editable chunks on disk.
+/// Unpack a spawn file as an exclusive, tracked background job.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "unpack_file"))]
 #[tauri::command(rename = "unpack_file")]
-pub async fn spawn_unpack_file(from: &str, destination: &str) -> TauriResult {
-  log::info!("Unpacking spawn file: {}", from);
-
-  let file: SpawnFile = SpawnFile::read_from_path::<XRayByteOrder, _>(&Path::new(from)).map_err(error_to_string)?;
-
-  log::info!("Unpacking spawn file into: {}", destination);
-
-  file
-    .export_to_path::<XRayByteOrder, _>(&Path::new(destination))
-    .map_err(error_to_string)
+pub async fn spawn_unpack_file(
+  execution: State<'_, ExecutionState>,
+  registry: State<'_, Arc<JobRegistry>>,
+  request: SpawnConversionRequest,
+  job_id: Uuid,
+  progress: Channel<JobProgress>,
+) -> TauriResult<SpawnConversionResult> {
+  run_conversion(
+    &execution,
+    &registry,
+    request,
+    SpawnConversion::Unpack,
+    job_id,
+    progress,
+  )
+  .await
 }

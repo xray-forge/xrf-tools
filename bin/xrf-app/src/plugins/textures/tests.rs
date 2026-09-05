@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_db::{ThmBumpChunk, ThmTextureParamChunk, ThmTextureTypeChunk};
+use xrf_db::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
 use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
 use xrf_vfs::{XrayAssetType, XrayLookupScope, XrayMountId, XrayMountMode, XrayProbe, XrayRoots, XrayVfs};
 
@@ -68,7 +68,7 @@ fn bumped_tree(case: &str) -> ThmFixtureTree {
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP))
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP))
 }
 
 /// The fixture tree made an X-Ray root the VFS implies: it holds textures already, so a `meshes` directory completes it.
@@ -186,7 +186,7 @@ fn a_declared_bump_the_dummy_stands_in_for_is_degraded() {
   let tree: ThmFixtureTree = ThmFixtureTree::new("textures_degraded")
     .with_engine_dummies()
     .with_texture(BASE)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP));
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
   let summaries: Vec<TextureMaterialSummary> = sweep(&tree);
 
   assert_eq!(
@@ -207,8 +207,8 @@ fn a_type_the_engine_skips_is_engine_skipped_and_binds_nothing() {
     .with_descriptor(
       BASE,
       &ThmFixture::image()
-        .with_texture_type(ThmTextureTypeChunk::BUMP_MAP)
-        .with_bump(ThmBumpChunk::MODE_USE, BUMP),
+        .with_texture_type(ThmTextureType::BumpMap)
+        .with_bump(ThmBumpMode::Use, BUMP),
     );
   let summaries: Vec<TextureMaterialSummary> = sweep(&tree);
   let summary: &TextureMaterialSummary = summary(&summaries, BASE);
@@ -229,16 +229,12 @@ fn a_detail_with_a_live_flag_is_detail_associated_and_a_dead_one_is_not() {
     .with_texture("live")
     .with_descriptor(
       "live",
-      &ThmFixture::image().with_detail(
-        "detail\\detail_grnd_grass",
-        1.0,
-        ThmTextureParamChunk::FLAG_DIFFUSE_DETAIL,
-      ),
+      &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[ThmTextureFlag::DiffuseDetail]),
     )
     .with_texture("dead")
     .with_descriptor(
       "dead",
-      &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, 0),
+      &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[]),
     );
   let summaries: Vec<TextureMaterialSummary> = sweep(&tree);
 

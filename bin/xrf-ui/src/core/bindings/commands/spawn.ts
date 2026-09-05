@@ -1,7 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
+import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
+import { SpawnConversionRequest, SpawnConversionResult } from "@/core/bindings/types/xrf-app";
 import {
   AlifeObject,
   ArtefactSpawnPoint,
@@ -18,6 +19,7 @@ import {
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
 } from "@/core/bindings/types/xrf-db";
+import { JobProgress } from "@/core/bindings/types/xrf-job";
 
 /** Commands */
 export const spawnCommands = {
@@ -72,11 +74,11 @@ export const spawnCommands = {
    * measured in tens of megabytes on a real all.spawn.
    */
   openFile: (path: string) => __TAURI_INVOKE<SpawnHeaderChunk>("plugin:spawn|open_file", { path }),
-  /** Build a packed spawn file from unpacked chunks on disk. */
-  packFile: (from: string, destination: string) =>
-    __TAURI_INVOKE<null>("plugin:spawn|pack_file", { from, destination }),
+  /** Pack a spawn file as an exclusive, tracked background job. */
+  packFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|pack_file", { request, jobId, progress }),
   saveFile: (path: string) => __TAURI_INVOKE<null>("plugin:spawn|save_file", { path }),
-  /** Expand a packed spawn file into editable chunks on disk. */
-  unpackFile: (from: string, destination: string) =>
-    __TAURI_INVOKE<null>("plugin:spawn|unpack_file", { from, destination }),
+  /** Unpack a spawn file as an exclusive, tracked background job. */
+  unpackFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|unpack_file", { request, jobId, progress }),
 };

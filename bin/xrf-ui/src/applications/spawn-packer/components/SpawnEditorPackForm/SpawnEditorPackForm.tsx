@@ -1,30 +1,26 @@
-import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect } from "react";
 
-import { spawnCommands } from "@/core/bindings/commands/spawn";
-import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
+import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Build a packed spawn file from chunks on disk.
  */
 export function SpawnEditorPackForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
-  const notify: TEmitNotification = useEmitNotification();
 
   const pathsService: PathsService = useInjection(PathsService);
-
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Nullable<string>>(null);
-  const [packedTo, setPackedTo] = useState<Nullable<string>>(null);
+  const conversionService: SpawnConversionService = useInjection(SpawnConversionService);
+  const isLoading: boolean = conversionService.operation.isRunning;
 
   const source: IPathField = usePathField({
     application: EApplicationId.SPAWN_PACKER,
@@ -50,56 +46,32 @@ export function SpawnEditorPackForm(): ReactElement {
       return log.error("Cannot pack spawn file, expected correct paths");
     }
 
-    log.info("Packing spawn file:", source.value, destination.value);
-
-    setIsLoading(true);
-    setError(null);
-    setPackedTo(null);
-
-    try {
-      await spawnCommands.packFile(source.value, destination.value);
-
-      setPackedTo(destination.value);
-
-      notify({
-        details: `${source.value}\n${destination.value}`,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.SPAWN_PACKER,
-        title: "Packed spawn file",
-      });
-    } catch (caught: unknown) {
-      log.error("Failed to pack spawn file:", caught);
-      setError(String(caught));
-
-      notify({
-        details: `${source.value}\n${String(caught)}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.SPAWN_PACKER,
-        title: "Could not pack spawn file",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [destination.value, log, notify, source.value]);
+    await conversionService.pack(source.value, destination.value);
+  }, [conversionService, destination.value, log, source.value]);
 
   useEffect(() => {
-    setError(null);
-    setPackedTo(null);
-  }, [source.value, destination.value]);
+    conversionService.operation.reset();
+  }, [conversionService, source.value, destination.value]);
 
   return (
     <PickerForm
       isLoading={isLoading}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Pack spawn file"}
-      description={"Builds one spawn file from the unpacked chunks. The output file is overwritten."}
-      error={error ?? undefined}
+      description={
+        "Builds one spawn file from the unpacked chunks. The output file is overwritten. " +
+        "Cancellation stops before writing; a write already started finishes."
+      }
+      error={conversionService.operation.error ?? undefined}
       submitLabel={"Pack"}
       status={
-        packedTo ? (
-          <Alert severity={"success"} variant={"outlined"}>
-            Successfully packed spawn to {packedTo}
-          </Alert>
+        conversionService.operation.job ? (
+          <JobProgressView job={conversionService.operation.job} onCancel={conversionService.operation.cancel} />
+        ) : null
+      }
+      result={
+        conversionService.operation.result ? (
+          <SpawnConversionOutcome result={conversionService.operation.result} />
         ) : null
       }
       onSubmit={onPack}
