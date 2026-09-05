@@ -9,6 +9,7 @@ pub(crate) mod ltx_project_options;
 pub(crate) mod ltx_project_verify;
 pub(crate) mod ltx_project_verify_result;
 pub(crate) mod ltx_read_counters;
+pub(crate) mod ltx_resolved_root;
 pub(crate) mod ltx_verify_options;
 
 #[cfg(test)]
@@ -22,4 +23,5 @@ pub use crate::project::ltx_project_options::LtxProjectOptions;
 pub use crate::project::ltx_project_verify_result::LtxProjectVerifyResult;
 pub(crate) use crate::project::ltx_read_counters::LtxReadCounters;
 pub use crate::project::ltx_read_counters::LtxReadCountersSnapshot;
+pub(crate) use crate::project::ltx_resolved_root::LtxResolvedRoot;
 pub use crate::project::ltx_verify_options::{LTX_PHASE_VERIFY, LtxVerifyOptions};

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
@@ -8,7 +8,7 @@ use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 use crate::dialect::{LtxDialect, LtxStandardDialect};
 use crate::document::LtxDocument;
 use crate::ltx::{Ltx, LtxSectionSchemes};
-use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot};
+use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
 use crate::scheme::LtxSchemeParser;
 use crate::source::{LtxIncludeSource, LtxVfsSource};
 use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
@@ -39,8 +39,8 @@ pub struct LtxProject {
   counters: Arc<LtxReadCounters>,
   /// Which rules resolve this project's configs.
   dialect: Arc<dyn LtxDialect>,
-  /// Roots resolved so far, one cell per root so two threads asking at once do not both publish.
-  resolved: Mutex<HashMap<XrayLogicalPath, Arc<OnceLock<Arc<Ltx>>>>>,
+  /// Roots resolved so far, one cell per root so two threads asking at once produce one resolution between them.
+  resolved: Mutex<HashMap<XrayLogicalPath, Arc<LtxResolvedRoot>>>,
 }
 
 impl LtxProject {
@@ -311,25 +311,18 @@ impl LtxProject {
   ///
   /// Returns an error when the file is not in scope or cannot be read or parsed.
   pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<Ltx>> {
-    let cell: Arc<OnceLock<Arc<Ltx>>> = self.resolved_cell(logical_path);
+    self.resolved_cell(logical_path).get_or_try_init(|| {
+      let resolved: Arc<Ltx> = Arc::new(self.resolve(logical_path)?);
 
-    if let Some(resolved) = cell.get() {
-      return Ok(Arc::clone(resolved));
-    }
-
-    let resolved: Arc<Ltx> = Arc::new(self.resolve(logical_path)?);
-
-    // Counted where the value is published, not where it was produced: two threads racing the same root would
-    // otherwise report two resolutions for one result, and a sweep's numbers would depend on its schedule.
-    Ok(Arc::clone(cell.get_or_init(|| {
+      // Produced once per root now that the cell admits one producer, so counting here counts what actually ran.
       self.counters.record_resolution();
 
-      resolved
-    })))
+      Ok(resolved)
+    })
   }
 
   /// The cell holding one root's resolution, created on first ask.
-  fn resolved_cell(&self, logical_path: &XrayLogicalPath) -> Arc<OnceLock<Arc<Ltx>>> {
+  fn resolved_cell(&self, logical_path: &XrayLogicalPath) -> Arc<LtxResolvedRoot> {
     Arc::clone(
       self
         .resolved
