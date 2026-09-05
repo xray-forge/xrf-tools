@@ -1,6 +1,7 @@
 import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { Vector3d } from "@/core/bindings/types/xrf-db";
+import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import {
   VisualBone,
   VisualBounds,
@@ -220,6 +221,61 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     dependencies: { motions: [], textures: [] },
     roots: createRoots([]),
     textures: {},
+    materials: {},
+    texturesLtx: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a material descriptor fixture: a bumped declaration whose pair resolved.
+ *
+ * @param overrides - Field values to override.
+ * @returns A material descriptor fixture.
+ */
+export function mockMaterialDescriptor(overrides: Partial<XrayMaterialDescriptor> = {}): XrayMaterialDescriptor {
+  return {
+    descriptor: {
+      container: { kind: "directory", relativePath: "textures\\wpn\\wpn_ak74.thm", root: "C:\\gamedata" },
+      logicalPath: "textures\\wpn\\wpn_ak74.thm",
+    },
+    declaration: { kind: "declared", mode: "use", name: "wpn\\wpn_ak74_bump" },
+    bump: {
+      mode: "use",
+      virtualHeight: 0.05,
+      bump: {
+        reference: "wpn\\wpn_ak74_bump",
+        resolution: {
+          kind: "resolved",
+          step: "asset root",
+          assets: [
+            {
+              container: { kind: "directory", relativePath: "textures\\wpn\\wpn_ak74_bump.dds", root: "C:\\gamedata" },
+              logicalPath: "textures\\wpn\\wpn_ak74_bump.dds",
+            },
+          ],
+        },
+      },
+      companion: {
+        reference: "wpn\\wpn_ak74_bump#",
+        resolution: {
+          kind: "resolved",
+          step: "asset root",
+          assets: [
+            {
+              container: {
+                kind: "directory",
+                relativePath: "textures\\wpn\\wpn_ak74_bump#.dds",
+                root: "C:\\gamedata",
+              },
+              logicalPath: "textures\\wpn\\wpn_ak74_bump#.dds",
+            },
+          ],
+        },
+      },
+    },
+    outcome: "bumped",
+    detail: null,
     ...overrides,
   };
 }

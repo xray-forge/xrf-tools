@@ -17,7 +17,9 @@ export const GAMEDATA_VERIFIER_HELP: IApplicationHelp = {
     "Stopping lands between checks, never inside one: the checks parallelise internally and have no boundary of " +
       "their own. A stopped run reports the checks that finished and says plainly that the rest never ran.",
     "The run survives leaving this screen and reloading the window; coming back finds it still going.",
-    "`Strict` turns findings that would warn into failures, matching `xrf-cli gamedata verify --strict`.",
+    "`Strict` turns findings that would warn into failures, matching `xrf-cli gamedata verify --strict`. " +
+      "For textures that is a bump declared without its `bump#` companion: the game still draws it bumped, " +
+      "without parallax relief, so a default run counts it and a strict run fails on it.",
   ],
   limitations: [
     "Every check runs; there is no way to select a subset here yet. `xrf-cli gamedata verify --checks` can.",

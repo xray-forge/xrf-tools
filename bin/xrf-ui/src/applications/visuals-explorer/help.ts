@@ -40,6 +40,14 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "panel reports - such textures shimmer at distance.",
     "A texture shipped without mips uses linear filtering deliberately; sampling its incomplete mip chain " +
       "would render black.",
+    "The Materials panel reports the bump material the game builds for each texture from its `.thm`: the " +
+      "declaration, the bump and `bump#` files it binds, and whether either fell back to the engine's flat dummy " +
+      "or its missing-texture placeholder. The viewer itself still draws every surface flat; a `Dummy bump` or " +
+      "`Bump missing` chip is a surface that also renders flat in the game while paying for the bump shader.",
+    "The type a `.thm` declares gates the whole descriptor: a `Bump Map` or `Cube Map` typed descriptor is skipped " +
+      "by the engine however complete its bump declaration, and the panel says so rather than reporting a bump.",
+    "`Height` on a bumped material is the authored virtual height, which the renderer never reads; parallax depth " +
+      "comes from the `r2_parallax_h` console variable.",
     "Hiding a bone hides everything parented to it, the way the engine collapses an unattached addon; the " +
       "panel offers dedicated switches for addon bones such as `wpn_scope`. Bones past the engine's 64-bone " +
       "visibility mask are flagged: hiding them is viewer-only state.",
@@ -55,6 +63,9 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
     "At most 4 skin links per vertex; unknown vertex layouts skip that submesh.",
     "Authored LOD reference geometry is parsed but not drawn.",
     "Cubemap `dds` textures are refused rather than guessed at.",
+    "Bump, parallax, and detail materials are reported, not rendered.",
+    "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
+      "detail associations too, and is not read; the Materials panel says so when the searched roots hold one.",
     "`Model` mode accepts only loose files on disk; a model inside an archive is reached through `Folder` " +
       "mode, and `Browse folder` is unavailable for archive-sourced models.",
   ],

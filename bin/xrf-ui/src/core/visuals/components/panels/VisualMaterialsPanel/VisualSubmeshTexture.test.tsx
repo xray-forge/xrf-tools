@@ -3,10 +3,11 @@ import { RenderResult } from "@testing-library/react";
 
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { VisualSubmeshTexture } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { mockTextureDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { VisualSubmeshTexture } from "./VisualSubmeshTexture";
 
 const LOOSE: XrayAsset = {
   container: { kind: "directory", relativePath: "textures\\wpn\\wpn_ak74.dds", root: "C:\\gamedata" },

@@ -5,7 +5,6 @@ import { ReactElement, useMemo } from "react";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
-import { VisualSubmeshSection } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshSection";
 import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
 import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import {
@@ -15,6 +14,8 @@ import {
 } from "@/core/visuals/lib/visual-texture-summary";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { VisualSubmeshSection } from "./VisualSubmeshSection";
 
 /** Every submesh of the open visual, in the order the file stores them. */
 export interface IVisualMaterialsPanelProps extends BaseComponentProps {}
@@ -34,7 +35,7 @@ export function VisualMaterialsPanel({
   const summary: Nullable<IVisualTextureSummary> = useMemo(
     () =>
       selected?.dependencies.textures.length
-        ? summarizeVisualTextures(selected.textures, selected.dependencies.textures)
+        ? summarizeVisualTextures(selected.textures, selected.dependencies.textures, selected.materials)
         : null,
     [selected]
   );
@@ -62,6 +63,13 @@ export function VisualMaterialsPanel({
           <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
             {describeVisualTextureSummary(summary)}
           </Typography>
+
+          {selected?.texturesLtx ? (
+            <Typography variant={"caption"} sx={{ display: "block", marginTop: 0.5, color: "warning.main" }}>
+              {`Bump declarations are read from .thm files only. ${selected.texturesLtx.logicalPath} may declare ` +
+                "more, and is not read."}
+            </Typography>
+          ) : null}
         </Box>
       ) : null}
 
@@ -73,6 +81,7 @@ export function VisualMaterialsPanel({
           texture={textures.get(submesh.index) ?? null}
           status={textureStatuses.get(submesh.index) ?? null}
           textures={described}
+          materials={selected?.materials}
         />
       ))}
     </VisualPanel>

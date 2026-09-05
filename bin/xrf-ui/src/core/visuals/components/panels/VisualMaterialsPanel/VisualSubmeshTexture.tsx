@@ -5,15 +5,13 @@ import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolutio
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import {
-  describeTextureState,
-  IVisualTextureStateDescriptor,
-} from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshTexture.utils";
-import { VisualSubmeshTextureSource } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshTextureSource";
 import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
+import { VisualSubmeshTextureSource } from "./VisualSubmeshTextureSource";
 
 export interface IVisualSubmeshTextureProps extends BaseComponentProps {
   texture: Nullable<VisualTextureDependency>;

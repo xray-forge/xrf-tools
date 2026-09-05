@@ -2,14 +2,17 @@ import { Box, Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
+import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { VisualSubmeshTexture } from "@/core/visuals/components/panels/VisualMaterialsPanel/VisualSubmeshTexture";
 import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
+
+import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";
+import { VisualSubmeshTexture } from "./VisualSubmeshTexture";
 
 export interface IVisualSubmeshSectionProps extends BaseComponentProps {
   submesh: VisualSubmesh;
@@ -20,6 +23,8 @@ export interface IVisualSubmeshSectionProps extends BaseComponentProps {
   status?: Nullable<IVisualTextureStatus>;
   /** Descriptors the open reported, keyed by logical path. */
   textures?: Record<string, AssetTextureDescriptor>;
+  /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
+  materials?: Record<string, XrayMaterialDescriptor>;
 }
 
 /**
@@ -34,6 +39,7 @@ export function VisualSubmeshSection({
   texture = null,
   status = null,
   textures,
+  materials,
 }: IVisualSubmeshSectionProps): ReactElement {
   const { content } = submesh;
 
@@ -60,6 +66,8 @@ export function VisualSubmeshSection({
       <VisualPanelRow label={"Type"} value={submesh.modelTypeLabel} />
 
       <VisualSubmeshTexture texture={texture} status={status} textures={textures} />
+
+      <VisualSubmeshMaterial material={texture ? (materials?.[texture.reference] ?? null) : null} />
 
       {content.kind === "packed" ? (
         <>
