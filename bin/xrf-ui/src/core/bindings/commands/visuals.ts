@@ -3,7 +3,8 @@
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 import { AssetTextureDescriptor, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription, VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 
 /** Commands */
@@ -49,6 +50,10 @@ export const visualsCommands = {
       dependencies: VisualDependencies;
       /** What each located texture file is, keyed by the logical path that located it. */
       textures: { [key in string]: AssetTextureDescriptor };
+      /** What the renderer builds for each declared texture, keyed by the reference verbatim as the mesh declares it. */
+      materials: { [key in string]: XrayMaterialDescriptor };
+      /** A `textures.ltx` the searched roots hold, or `None`. */
+      texturesLtx: XrayAsset | null;
     } | null>("plugin:visuals|get_model"),
   /**
    * Every motion the open visual can play, by name.

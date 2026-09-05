@@ -26,6 +26,21 @@ use crate::data::xray_material_detail::XrayMaterialDetail;
 pub struct XrayMaterialResolver;
 
 impl XrayMaterialResolver {
+  /// Where `CTextureDescrMngr::LoadLTX` looks for the texture specification file: `textures.ltx` under
+  /// `$game_textures$` (`TextureDescrManager.cpp:37`).
+  pub const TEXTURES_LTX_LOGICAL_PATH: &'static str = "textures\\textures.ltx";
+
+  /// The `textures.ltx` the engine would load beside the descriptors, when the roots hold one.
+  ///
+  /// This crate does not read it, so a texture declared only there comes back undeclared. Naming the file lets a consumer
+  /// say the answer may be incomplete exactly when it may be, and stay silent on the roots where it cannot be.
+  pub fn find_textures_ltx(probe: &XrayProbe) -> Option<XrayAsset> {
+    probe
+      .find(Self::TEXTURES_LTX_LOGICAL_PATH)
+      .ok()
+      .and_then(|resolution| resolution.get_asset().cloned())
+  }
+
   /// Describes the material of a texture named the way a mesh or a config names it.
   pub fn describe_texture(probe: &XrayProbe, reference: &str) -> XrayMaterialDescriptor {
     match probe.resolve(XrayAssetType::Thm, reference) {

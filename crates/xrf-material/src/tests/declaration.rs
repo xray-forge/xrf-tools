@@ -168,3 +168,34 @@ fn describing_a_located_descriptor_answers_the_same_as_describing_its_texture() 
     XrayMaterialResolver::describe_texture(&probe, BASE)
   );
 }
+
+#[test]
+fn a_textures_ltx_in_the_roots_is_named_and_otherwise_unread() {
+  // The second declaration source this crate does not read. Naming it is what lets a consumer say the answer may be
+  // incomplete on exactly the roots where it may be.
+  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_ltx").with_texture(BASE);
+
+  std::fs::write(tree.root().join("textures").join("textures.ltx"), "[specification]\n").expect("ltx written");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
+  let probe: XrayProbe = probe_over(&vfs, id);
+
+  assert_eq!(
+    XrayMaterialResolver::find_textures_ltx(&probe).map(|asset| asset.get_logical_path().to_string()),
+    Some(String::from(XrayMaterialResolver::TEXTURES_LTX_LOGICAL_PATH))
+  );
+  assert_eq!(
+    XrayMaterialResolver::describe_texture(&probe, BASE),
+    XrayMaterialDescriptor::undeclared()
+  );
+
+  let bare: ThmFixtureTree = ThmFixtureTree::new("no_textures_ltx").with_texture(BASE);
+  let mut bare_vfs: XrayVfs = XrayVfs::new();
+  let bare_id: XrayMountId = bare_vfs.mount_directory("", bare.root()).expect("tree mounts");
+
+  assert_eq!(
+    XrayMaterialResolver::find_textures_ltx(&probe_over(&bare_vfs, bare_id)),
+    None
+  );
+}

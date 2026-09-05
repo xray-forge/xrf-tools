@@ -3,7 +3,8 @@ use std::sync::MutexGuard;
 
 use tauri::State;
 use xrf_db::OgfFile;
-use xrf_vfs::{XrayProbe, XrayRoots};
+use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
@@ -36,15 +37,24 @@ pub async fn visuals_open_model(
 
   // Read, resolve and describe inside one probe, so the model, its references and the files behind them are all looked
   // for in the same roots: a second probe could mount a source between the calls and answer differently.
-  let (package, dependencies, textures, skeleton) = assets.with_probe(&roots, |probe| {
+  let (package, dependencies, textures, materials, textures_ltx, skeleton) = assets.with_probe(&roots, |probe| {
     // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
     // no second read of a file that may sit inside a volume.
     let file: OgfFile = read_source(&source, probe)?;
     let package: VisualPackage = VisualPacker::pack(&file);
     let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
     let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
+    let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(probe, &dependencies);
+    let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(probe);
 
-    TauriResult::Ok((package, dependencies, textures, SelectedSkeleton::of(&file)))
+    TauriResult::Ok((
+      package,
+      dependencies,
+      textures,
+      materials,
+      textures_ltx,
+      SelectedSkeleton::of(&file),
+    ))
   })??;
 
   let description: SelectedVisualDescription = SelectedVisualDescription {
@@ -53,6 +63,8 @@ pub async fn visuals_open_model(
     description: package.description.clone(),
     dependencies: dependencies.clone(),
     textures: textures.clone(),
+    materials: materials.clone(),
+    textures_ltx: textures_ltx.clone(),
   };
 
   let mut selected: MutexGuard<Option<SelectedVisual>> = state
@@ -68,6 +80,8 @@ pub async fn visuals_open_model(
     skeleton,
     posed: None,
     textures,
+    materials,
+    textures_ltx,
   });
 
   Ok(description)
@@ -92,6 +106,29 @@ fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> Ha
         described.insert(String::from(path), descriptor);
       }
     }
+  }
+
+  described
+}
+
+/// Describes the material the renderer builds for every declared texture reference, once per reference.
+///
+/// Keyed by the reference rather than by the located file, and iterated over every dependency rather than only the
+/// located ones, because the engine reads `<reference>.thm` whether or not `<reference>.dds` exists: a missing base
+/// texture with a live bump declaration binds that bump over the dummy diffuse, which is exactly what a modder opening
+/// the panel is trying to see.
+fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> HashMap<String, XrayMaterialDescriptor> {
+  let mut described: HashMap<String, XrayMaterialDescriptor> = HashMap::new();
+
+  for texture in &dependencies.textures {
+    if described.contains_key(&texture.reference) {
+      continue;
+    }
+
+    described.insert(
+      texture.reference.clone(),
+      XrayMaterialResolver::describe_texture(probe, &texture.reference),
+    );
   }
 
   described

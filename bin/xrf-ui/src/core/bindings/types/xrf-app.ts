@@ -2,6 +2,7 @@
 
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
+import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
@@ -10,7 +11,7 @@ import {
   TranslationProjectDescriptor,
   TranslationVerifyLanguageSummary,
 } from "@/core/bindings/types/xrf-translation";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
 /** What an extraction out of an open archive project was asked to do. */
@@ -271,6 +272,10 @@ export type SelectedVisualDescription = {
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */
   textures: { [key in string]: AssetTextureDescriptor };
+  /** What the renderer builds for each declared texture, keyed by the reference verbatim as the mesh declares it. */
+  materials: { [key in string]: XrayMaterialDescriptor };
+  /** A `textures.ltx` the searched roots hold, or `None`. */
+  texturesLtx: XrayAsset | null;
 };
 
 /**

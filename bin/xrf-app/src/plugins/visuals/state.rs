@@ -1,9 +1,9 @@
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
-use xrf_vfs::XrayRoots;
-
-use serde::Serialize;
+use xrf_material::XrayMaterialDescriptor;
+use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
@@ -48,6 +48,10 @@ pub struct SelectedVisual {
   pub posed: Option<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,
+  /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
+  pub materials: HashMap<String, XrayMaterialDescriptor>,
+  /// The `textures.ltx` the roots hold, when they hold one, since its declarations are not read.
+  pub textures_ltx: Option<XrayAsset>,
 }
 
 /// Where a visual is read from.
@@ -100,4 +104,8 @@ pub struct SelectedVisualDescription {
   pub dependencies: VisualDependencies,
   /// What each located texture file is, keyed by the logical path that located it.
   pub textures: HashMap<String, AssetTextureDescriptor>,
+  /// What the renderer builds for each declared texture, keyed by the reference verbatim as the mesh declares it.
+  pub materials: HashMap<String, XrayMaterialDescriptor>,
+  /// A `textures.ltx` the searched roots hold, or `None`.
+  pub textures_ltx: Option<XrayAsset>,
 }
