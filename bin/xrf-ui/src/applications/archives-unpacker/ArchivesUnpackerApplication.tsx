@@ -20,8 +20,8 @@ export function ArchivesUnpackerApplication(): ReactElement {
   const pathsService: PathsService = useInjection(PathsService);
   const unpackerService: UnpackerService = useInjection(UnpackerService);
 
-  const job: Nullable<IJobState> = unpackerService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = unpackerService.operation.job;
+  const isRunning: boolean = unpackerService.operation.isRunning;
 
   const source: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_UNPACKER,
@@ -55,11 +55,11 @@ export function ArchivesUnpackerApplication(): ReactElement {
     await unpackerService.unpack(archivesPath, archivesUnpackPath);
   }, [archivesPath, archivesUnpackPath, log, unpackerService]);
 
-  const onCancel = useCallback(() => unpackerService.cancel(), [unpackerService]);
+  const onCancel = useCallback(() => unpackerService.operation.cancel(), [unpackerService]);
 
   // Changing either path invalidates whatever the previous run reported.
   useEffect(() => {
-    unpackerService.reset();
+    unpackerService.operation.reset();
   }, [archivesPath, archivesUnpackPath, unpackerService]);
 
   return (
@@ -68,12 +68,12 @@ export function ArchivesUnpackerApplication(): ReactElement {
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Unpack game archives"}
       description={"Reads every archive in the source directory and writes its files into the output directory."}
-      error={unpackerService.error ?? undefined}
+      error={unpackerService.operation.error ?? undefined}
       submitLabel={"Unpack"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
       result={
-        unpackerService.result ? (
-          <ArchivesUnpackResult result={unpackerService.result} outputPath={archivesUnpackPath} />
+        unpackerService.operation.result ? (
+          <ArchivesUnpackResult result={unpackerService.operation.result} outputPath={archivesUnpackPath} />
         ) : null
       }
       onSubmit={onUnpackArchivesPathClicked}
