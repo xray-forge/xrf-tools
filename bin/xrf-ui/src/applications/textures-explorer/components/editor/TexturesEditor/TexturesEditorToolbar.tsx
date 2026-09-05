@@ -11,36 +11,15 @@ import {
   ITexturePreviewOptions,
   TEXTURE_TILING_STEPS,
 } from "@/applications/textures-explorer/lib/texture-preview";
-import { ETextureSurfaceShape } from "@/applications/textures-explorer/lib/texture-surface";
+import {
+  describeTextureSurfaceShape,
+  ETextureSurfaceShape,
+} from "@/applications/textures-explorer/lib/texture-surface";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { Nullable } from "@/lib/types/general";
 
-const SHAPE_LABELS: Record<ETextureSurfaceShape, string> = {
-  [ETextureSurfaceShape.PLANE]: "Plane",
-  [ETextureSurfaceShape.SPHERE]: "Sphere",
-  [ETextureSurfaceShape.CUBE]: "Cube",
-};
-
-/**
- * Why shading with the bump pair is unavailable, in the order a person would ask.
- *
- * @param isSurface - Whether the lit body is on screen at all.
- * @param hasBump - Whether the open texture declares a pair.
- * @param isLit - Whether a light is shading the body.
- * @returns The reason, or undefined when the toggle is available.
- */
-function toBumpUnavailableTitle(isSurface: boolean, hasBump: boolean, isLit: boolean): string | undefined {
-  if (!isSurface) {
-    return "Lit surface only";
-  }
-
-  if (!hasBump) {
-    return "This texture declares no bump pair";
-  }
-
-  return isLit ? undefined : "Nothing to shade with the light off";
-}
+import { describeUnavailableBump, SURFACE_ONLY } from "./TexturesEditorToolbar.utils";
 
 interface ITexturesEditorToolbarProps {
   /** The open texture, as the last breadcrumb segment. */
@@ -68,8 +47,12 @@ export function TexturesEditorToolbar({
   const [bodyAnchor, setBodyAnchor] = useState<Nullable<HTMLElement>>(null);
 
   const isSurface: boolean = options.mode === ETexturePreviewMode.SURFACE;
+  const bodyTitle: string = isSurface
+    ? `Body: ${describeTextureSurfaceShape(options.shape)}, ${options.tiling}×`
+    : SURFACE_ONLY;
 
   const onOpenBody = useCallback((event: MouseEvent<HTMLButtonElement>) => setBodyAnchor(event.currentTarget), []);
+
   const onCloseBody = useCallback(() => setBodyAnchor(null), []);
 
   const onToggleMode = useCallback(() => {
@@ -89,7 +72,7 @@ export function TexturesEditorToolbar({
 
           <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
-          <Tooltip title={isSurface ? `Body: ${SHAPE_LABELS[options.shape]}, ${options.tiling}×` : "Lit surface only"}>
+          <Tooltip title={bodyTitle}>
             <span>
               <IconButton
                 aria-label={"Body"}
@@ -126,7 +109,7 @@ export function TexturesEditorToolbar({
               >
                 {Object.values(ETextureSurfaceShape).map((value: ETextureSurfaceShape) => (
                   <ToggleButton key={value} value={value}>
-                    {SHAPE_LABELS[value]}
+                    {describeTextureSurfaceShape(value)}
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
@@ -156,7 +139,7 @@ export function TexturesEditorToolbar({
             icon={<LightbulbIcon />}
             isOn={options.isLit}
             isDisabled={!isSurface}
-            unavailableTitle={"Lit surface only"}
+            unavailableTitle={SURFACE_ONLY}
             onToggle={() => onChangeOptions({ ...options, isLit: !options.isLit })}
           />
 
@@ -165,11 +148,11 @@ export function TexturesEditorToolbar({
             icon={<GrainIcon />}
             isOn={options.isBumped && options.isLit}
             isDisabled={!isSurface || !hasBump || !options.isLit}
-            unavailableTitle={toBumpUnavailableTitle(isSurface, hasBump, options.isLit)}
+            unavailableTitle={describeUnavailableBump(isSurface, hasBump, options.isLit)}
             onToggle={() => onChangeOptions({ ...options, isBumped: !options.isBumped })}
           />
 
-          <Tooltip title={isSurface ? "Reset camera and light" : "Lit surface only"}>
+          <Tooltip title={isSurface ? "Reset camera and light" : SURFACE_ONLY}>
             <span>
               <IconButton aria-label={"Reset camera"} color={"inherit"} disabled={!isSurface} onClick={onResetCamera}>
                 <CenterFocusStrongIcon />

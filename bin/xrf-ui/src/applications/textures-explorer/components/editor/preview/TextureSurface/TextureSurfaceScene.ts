@@ -7,7 +7,6 @@ import {
   PerspectiveCamera,
   RepeatWrapping,
   Scene,
-  Texture,
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -17,11 +16,12 @@ import {
   ETextureSurfaceShape,
   ITextureSurfaceOptions,
   ITextureSurfaceTextures,
+  listTextureSurfaceTextures,
 } from "@/applications/textures-explorer/lib/texture-surface";
 import { applyXrayBumpShading, IVisualBumpShading } from "@/core/visuals/lib/visual-bump";
 import { Nullable } from "@/lib/types/general";
 
-import { createTextureSurfaceGeometry, toLightPosition } from "./texture-surface.utils";
+import { createTextureSurfaceGeometry, toLightPosition } from "./TextureSurfaceScene.utils";
 
 /** Where the light stands, in the angles a drag moves. */
 interface ILightAngles {
@@ -34,9 +34,16 @@ const INITIAL_LIGHT: ILightAngles = { azimuth: Math.PI / 4, elevation: Math.PI /
 /** How far a drag across the whole viewport swings the light, in radians. */
 const LIGHT_DRAG_SPEED: number = Math.PI;
 
-/** How hard the light and the fill are driven when the surface is lit, and when it is not. */
-const LIT_INTENSITY = { ambient: 0.35, directional: 2.6 };
-const UNLIT_INTENSITY = { ambient: 1, directional: 0 };
+/** How hard the light and the fill are driven, in the two states the switch has. */
+interface ILightIntensity {
+  ambient: number;
+  directional: number;
+}
+
+const LIT_INTENSITY: ILightIntensity = { ambient: 0.35, directional: 2.6 };
+
+/** A flat ambient at full strength, which reproduces the flat picture of the same file. */
+const UNLIT_INTENSITY: ILightIntensity = { ambient: 1, directional: 0 };
 
 /** Where the camera starts and returns to. */
 const CAMERA_DISTANCE: number = 5;
@@ -225,11 +232,6 @@ export class TextureSurfaceScene {
     this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
   }
 
-  /** Whether a pair is bound, which is what makes the bump switch worth offering. */
-  public get hasBump(): boolean {
-    return this.textures.bump !== null;
-  }
-
   /**
    * The materials a body is drawn with, one per geometry group.
    */
@@ -255,7 +257,7 @@ export class TextureSurfaceScene {
     // so rather than pretending the surface is still being compared.
     this.shading?.setEnabled(this.options.isBumped && this.options.isLit);
 
-    const intensity = this.options.isLit ? LIT_INTENSITY : UNLIT_INTENSITY;
+    const intensity: ILightIntensity = this.options.isLit ? LIT_INTENSITY : UNLIT_INTENSITY;
 
     this.light.intensity = intensity.directional;
     this.ambient.intensity = intensity.ambient;
@@ -283,11 +285,7 @@ export class TextureSurfaceScene {
 
   /** Repeats every texture the surface samples, the base through three.js and the pair through the patch. */
   private applyTiling(): void {
-    const tiled: Array<Texture> = [this.textures.base, this.textures.bump?.bump, this.textures.bump?.companion].filter(
-      (it: Nullable<Texture> | undefined): it is Texture => Boolean(it)
-    );
-
-    for (const texture of tiled) {
+    for (const texture of listTextureSurfaceTextures(this.textures)) {
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
       texture.repeat.set(this.options.tiling, this.options.tiling);

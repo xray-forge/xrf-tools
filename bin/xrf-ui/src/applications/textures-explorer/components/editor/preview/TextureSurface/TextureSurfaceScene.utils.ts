@@ -1,6 +1,7 @@
 import { BoxGeometry, BufferAttribute, BufferGeometry, SphereGeometry, Vector2, Vector3 } from "three";
 
 import { ETextureSurfaceShape } from "@/applications/textures-explorer/lib/texture-surface";
+import { XRAY_BINORMAL_ATTRIBUTE, XRAY_TANGENT_ATTRIBUTE } from "@/core/visuals/lib/visual-bump";
 import { Nullable } from "@/lib/types/general";
 
 /** How large each body is drawn, chosen so all three frame alike under one camera fit. */
@@ -102,8 +103,8 @@ export function withXrayTangentBasis(geometry: BufferGeometry): BufferGeometry {
     binormals.set([binormalAt.x, binormalAt.y, binormalAt.z], index * 3);
   }
 
-  geometry.setAttribute("xrayTangent", new BufferAttribute(tangents, 3));
-  geometry.setAttribute("xrayBinormal", new BufferAttribute(binormals, 3));
+  geometry.setAttribute(XRAY_TANGENT_ATTRIBUTE, new BufferAttribute(tangents, 3));
+  geometry.setAttribute(XRAY_BINORMAL_ATTRIBUTE, new BufferAttribute(binormals, 3));
 
   return geometry;
 }

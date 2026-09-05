@@ -6,6 +6,7 @@ import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,
   ITextureSurfaceTextures,
+  listTextureSurfaceTextures,
   selectTextureBumpAssets,
   toTextureAspect,
 } from "@/applications/textures-explorer/lib/texture-surface";
@@ -17,7 +18,7 @@ import { transformError } from "@/core/error/lib";
 import { createDdsTexture, createDecodedTexture } from "@/core/visuals/lib/visual-texture";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -38,12 +39,7 @@ export class TextureSurfaceService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    this.release();
-
-    runInAction(() => {
-      this.textures = createLoadable(EMPTY_TEXTURE_SURFACE);
-      this.uploaded = null;
-    });
+    this.clear();
   }
 
   /**
@@ -53,17 +49,20 @@ export class TextureSurfaceService {
    */
   @LatestFlow("textures")
   public *load(description: TextureDescription): TFlow {
-    this.release();
+    disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
     this.textures = this.textures.asLoading(EMPTY_TEXTURE_SURFACE);
     this.uploaded = null;
+
+    const uploads: Array<Promise<Nullable<Texture>>> = [];
+    let published: Nullable<ITextureSurfaceTextures> = null;
 
     try {
       const { roots } = description;
       const bumpAssets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
 
       const base: Nullable<Texture> = description.texture
-        ? yield* call(this.upload(roots, description.texture.logicalPath, true))
+        ? yield* call(this.read(uploads, roots, description.texture.logicalPath, true))
         : null;
 
       // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
@@ -74,18 +73,20 @@ export class TextureSurfaceService {
       }
 
       const bump: Nullable<Texture> = bumpAssets
-        ? yield* call(this.upload(roots, bumpAssets.bump.logicalPath, false))
+        ? yield* call(this.read(uploads, roots, bumpAssets.bump.logicalPath, false))
         : null;
       const companion: Nullable<Texture> = bumpAssets
-        ? yield* call(this.upload(roots, bumpAssets.companion.logicalPath, false))
+        ? yield* call(this.read(uploads, roots, bumpAssets.companion.logicalPath, false))
         : null;
 
-      this.textures = this.textures.asReady({
+      published = {
         aspect: toTextureAspect(description),
         base,
         // Both halves or neither: the decode samples the pair every texel, and half of it shades nothing.
         bump: bump && companion ? { bump, companion } : null,
-      });
+      };
+
+      this.textures = this.textures.asReady(published);
       this.uploaded = description.reference;
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
@@ -94,18 +95,54 @@ export class TextureSurfaceService {
 
       this.textures = this.textures.asFailed(transformed, EMPTY_TEXTURE_SURFACE);
       this.uploaded = description.reference;
+    } finally {
+      // Reached on cancellation too, since abandoning a flow returns through it. Released through the promises rather
+      // than through the textures, because a read the next selection cancelled is still in flight here and will upload
+      // its texture after this line: whatever this run does not publish is gpu memory no surface will ever draw.
+      if (!published) {
+        for (const upload of uploads) {
+          void upload.then((texture: Nullable<Texture>) => texture?.dispose());
+        }
+      }
     }
   }
 
-  /** Drops whatever is uploaded, for a session that is ending or a texture that is no longer selected. */
-  @LatestFlow("textures")
-  public *clear(): TFlow {
-    this.release();
+  /**
+   * Drops whatever is uploaded, for a session that is ending or a texture that is no longer selected.
+   *
+   * Plain rather than a flow, because nothing here waits: the one asynchronous thing in reach is an upload still in
+   * flight, and this abandons it rather than joining it.
+   */
+  public clear(): void {
+    cancelFlow(this, "textures");
+    disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
-    this.textures = createLoadable(EMPTY_TEXTURE_SURFACE);
-    this.uploaded = null;
+    runInAction(() => {
+      this.textures = createLoadable(EMPTY_TEXTURE_SURFACE);
+      this.uploaded = null;
+    });
+  }
 
-    yield* call(Promise.resolve());
+  /**
+   * Starts one read and records it, so the run that asked for it can release it whatever happens next.
+   *
+   * @param uploads - Where the read is recorded.
+   * @param roots - Roots the description was resolved in, so the read reaches the same file.
+   * @param logicalPath - Engine identity of the file.
+   * @param isDecodable - Whether a layout three.js refuses may be decoded by the backend instead.
+   * @returns The upload in progress.
+   */
+  private read(
+    uploads: Array<Promise<Nullable<Texture>>>,
+    roots: XrayRoots,
+    logicalPath: string,
+    isDecodable: boolean
+  ): Promise<Nullable<Texture>> {
+    const upload: Promise<Nullable<Texture>> = this.upload(roots, logicalPath, isDecodable);
+
+    uploads.push(upload);
+
+    return upload;
   }
 
   /**
@@ -118,10 +155,10 @@ export class TextureSurfaceService {
    */
   private async upload(roots: XrayRoots, logicalPath: string, isDecodable: boolean): Promise<Nullable<Texture>> {
     try {
-      const uploaded: Nullable<Texture> = createDdsTexture(await assetsRawCommands.readAsset(roots, logicalPath));
+      const compressed: Nullable<Texture> = createDdsTexture(await assetsRawCommands.readAsset(roots, logicalPath));
 
-      if (uploaded || !isDecodable) {
-        return uploaded;
+      if (compressed || !isDecodable) {
+        return compressed;
       }
 
       return await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath));
@@ -131,13 +168,15 @@ export class TextureSurfaceService {
       return null;
     }
   }
+}
 
-  /** Releases the gpu resources of whatever is currently uploaded. */
-  private release(): void {
-    const current: Nullable<ITextureSurfaceTextures> = this.textures.value;
-
-    for (const texture of [current?.base, current?.bump?.bump, current?.bump?.companion]) {
-      texture?.dispose();
-    }
+/**
+ * Releases the gpu resources of whatever was uploaded.
+ *
+ * @param textures - Uploads to release, present or not.
+ */
+function disposeTextures(textures: ReadonlyArray<Texture>): void {
+  for (const texture of textures) {
+    texture.dispose();
   }
 }

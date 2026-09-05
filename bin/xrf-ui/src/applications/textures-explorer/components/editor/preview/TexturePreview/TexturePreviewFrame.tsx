@@ -10,8 +10,6 @@ interface ITexturePreviewFrameProps extends BaseComponentProps {
   caption: string;
   /** Whether the content area draws the alpha checkerboard behind whatever it holds. */
   isCheckered?: boolean;
-  /** Controls sitting at the far end of the caption bar, which stay put while the content changes. */
-  actions?: ReactNode;
   children: ReactNode;
 }
 
@@ -24,7 +22,6 @@ export function TexturePreviewFrame({
   className,
   caption,
   isCheckered = true,
-  actions,
   children,
 }: ITexturePreviewFrameProps): ReactElement {
   return (
@@ -48,24 +45,11 @@ export function TexturePreviewFrame({
       <Box
         data-testid={tid(dataTestId, "footer")}
         id={uid(id, "footer")}
-        sx={{
-          alignItems: "center",
-          borderColor: "divider",
-          borderTop: 1,
-          display: "flex",
-          flexShrink: 0,
-          gap: 1,
-          justifyContent: "space-between",
-          minHeight: 34,
-          paddingX: 1.5,
-          paddingY: 0.5,
-        }}
+        sx={{ borderColor: "divider", borderTop: 1, flexShrink: 0, paddingX: 1.5, paddingY: 0.5 }}
       >
         <Typography variant={"caption"} noWrap sx={{ color: "text.secondary" }}>
           {caption}
         </Typography>
-
-        {actions}
       </Box>
     </Box>
   );

@@ -15,7 +15,7 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { TextureSurfaceScene } from "./texture-surface-scene";
+import { TextureSurfaceScene } from "./TextureSurfaceScene";
 
 /** Covers the canvas while there is nothing on it to look at, without unmounting the scene beneath. */
 const OVERLAY_STYLES: SxProps<Theme> = {
@@ -116,11 +116,11 @@ export function TextureSurface({
     if (description) {
       void surfaceService.load(description);
     } else {
-      void surfaceService.clear();
+      surfaceService.clear();
     }
   }, [surfaceService, description]);
 
-  useEffect(() => () => void surfaceService.clear(), [surfaceService]);
+  useEffect(() => () => surfaceService.clear(), [surfaceService]);
 
   useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
 

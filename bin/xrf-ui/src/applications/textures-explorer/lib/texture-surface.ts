@@ -4,7 +4,7 @@ import { getLocatedAsset } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * What one texture is drawn from once its files are on the gpu.
@@ -30,6 +30,23 @@ export enum ETextureSurfaceShape {
   CUBE = "cube",
 }
 
+/** What each body is called, where a person chooses one. */
+const SHAPE_LABELS: Record<ETextureSurfaceShape, string> = {
+  [ETextureSurfaceShape.PLANE]: "Plane",
+  [ETextureSurfaceShape.SPHERE]: "Sphere",
+  [ETextureSurfaceShape.CUBE]: "Cube",
+};
+
+/**
+ * Names one body.
+ *
+ * @param shape - Body to name.
+ * @returns Its label.
+ */
+export function describeTextureSurfaceShape(shape: ETextureSurfaceShape): string {
+  return SHAPE_LABELS[shape];
+}
+
 /** How the surface is being looked at. */
 export interface ITextureSurfaceOptions {
   shape: ETextureSurfaceShape;
@@ -44,6 +61,18 @@ export interface ITextureSurfaceOptions {
   isLit: boolean;
   /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
   tiling: number;
+}
+
+/**
+ * Every texture one surface holds, in one list.
+ *
+ * @param textures - The uploaded set, or nothing uploaded at all.
+ * @returns Every texture it actually holds.
+ */
+export function listTextureSurfaceTextures(textures: Nullable<ITextureSurfaceTextures>): ReadonlyArray<Texture> {
+  return [textures?.base, textures?.bump?.bump, textures?.bump?.companion].filter((it: Maybe<Texture>): it is Texture =>
+    Boolean(it)
+  );
 }
 
 /** The two located files behind a bump declaration, which are only ever fetched together. */

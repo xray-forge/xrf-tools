@@ -11,7 +11,13 @@ import {
 } from "three";
 
 import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
-import { applyXrayBumpShading, IVisualBumpShading, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import {
+  applyXrayBumpShading,
+  IVisualBumpShading,
+  IVisualBumpTextures,
+  XRAY_BINORMAL_ATTRIBUTE,
+  XRAY_TANGENT_ATTRIBUTE,
+} from "@/core/visuals/lib/visual-bump";
 import {
   getVisualSubmeshLevel,
   IVisualModelViews,
@@ -163,8 +169,8 @@ export class VisualPreviewMeshes {
       return;
     }
 
-    drawn.mesh.geometry.setAttribute("xrayTangent", new BufferAttribute(drawn.submesh.tangents, 3));
-    drawn.mesh.geometry.setAttribute("xrayBinormal", new BufferAttribute(drawn.submesh.binormals, 3));
+    drawn.mesh.geometry.setAttribute(XRAY_TANGENT_ATTRIBUTE, new BufferAttribute(drawn.submesh.tangents, 3));
+    drawn.mesh.geometry.setAttribute(XRAY_BINORMAL_ATTRIBUTE, new BufferAttribute(drawn.submesh.binormals, 3));
     drawn.bump = applyXrayBumpShading(drawn.mesh.material, textures);
     drawn.bump.setEnabled(this.materialOptions?.isBumpVisible ?? true);
   }

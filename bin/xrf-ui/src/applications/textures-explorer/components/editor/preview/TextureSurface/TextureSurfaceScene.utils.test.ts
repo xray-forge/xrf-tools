@@ -3,7 +3,7 @@ import { BufferAttribute, BufferGeometry, Vector3 } from "three";
 
 import { ETextureSurfaceShape } from "@/applications/textures-explorer/lib/texture-surface";
 
-import { createTextureSurfaceGeometry, toLightPosition } from "./texture-surface.utils";
+import { createTextureSurfaceGeometry, toLightPosition } from "./TextureSurfaceScene.utils";
 
 /**
  * The first vertex of the face the camera starts in front of, which is the one carrying the texture.

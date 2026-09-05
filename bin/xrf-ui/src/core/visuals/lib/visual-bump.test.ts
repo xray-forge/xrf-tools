@@ -6,8 +6,10 @@ import {
   decodeXrayBumpTexel,
   IVisualBumpShading,
   toLoadableBumps,
+  XRAY_BINORMAL_ATTRIBUTE,
   XRAY_BUMP_GLOSS_GLSL,
   XRAY_BUMP_NORMAL_GLSL,
+  XRAY_TANGENT_ATTRIBUTE,
 } from "@/core/visuals/lib/visual-bump";
 import { mockMaterialDescriptor, mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 
@@ -71,7 +73,8 @@ describe("applyXrayBumpShading", () => {
     expect(shader.fragmentShader).toContain(XRAY_BUMP_GLOSS_GLSL);
     expect(shader.fragmentShader).toContain("#include <roughnessmap_fragment>");
     expect(shader.fragmentShader).toContain("#include <normal_fragment_maps>");
-    expect(shader.vertexShader).toContain("attribute vec3 xrayTangent;");
+    expect(shader.vertexShader).toContain(`attribute vec3 ${XRAY_TANGENT_ATTRIBUTE};`);
+    expect(shader.vertexShader).toContain(`attribute vec3 ${XRAY_BINORMAL_ATTRIBUTE};`);
     expect(shader.vertexShader).toContain("skinMatrix * vec4( xrayObjectTangent, 0.0 )");
     expect(Object.keys(shader.uniforms).sort()).toEqual([
       "xrayBump",

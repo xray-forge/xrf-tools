@@ -52,6 +52,12 @@ export interface IVisualBumpTexel {
 export type TVisualTexel = readonly [number, number, number, number];
 
 /**
+ * The geometry attributes the patch reads the authored tangent basis from.
+ */
+export const XRAY_TANGENT_ATTRIBUTE: string = "xrayTangent";
+export const XRAY_BINORMAL_ATTRIBUTE: string = "xrayBinormal";
+
+/**
  * The bump decode of `gl/sload.h`, in the shader's own spelling.
  *
  * Held as one string so the GLSL patch and the TypeScript mirror below cannot drift: the test decodes a texel through
@@ -130,8 +136,8 @@ export interface IVisualBumpShading {
  * into view space by the same `normalMatrix`, so it stays the basis of the surface being drawn.
  */
 const VERTEX_PARS: string = `
-attribute vec3 xrayTangent;
-attribute vec3 xrayBinormal;
+attribute vec3 ${XRAY_TANGENT_ATTRIBUTE};
+attribute vec3 ${XRAY_BINORMAL_ATTRIBUTE};
 uniform mat3 xrayBumpUvTransform;
 varying vec3 vXrayTangent;
 varying vec3 vXrayBinormal;
@@ -139,8 +145,8 @@ varying vec2 vXrayUv;
 `;
 
 const VERTEX_BEGIN: string = `
-vec3 xrayObjectTangent = xrayTangent;
-vec3 xrayObjectBinormal = xrayBinormal;
+vec3 xrayObjectTangent = ${XRAY_TANGENT_ATTRIBUTE};
+vec3 xrayObjectBinormal = ${XRAY_BINORMAL_ATTRIBUTE};
 `;
 
 const VERTEX_SKIN: string = `
