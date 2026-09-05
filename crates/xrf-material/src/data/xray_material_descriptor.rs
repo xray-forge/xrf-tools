@@ -38,9 +38,12 @@ impl XrayMaterialDescriptor {
     }
   }
 
-  /// The bump reference the renderer will try to bind, when the declaration is one it reads.
-  pub fn declared_bump_reference(&self) -> Option<&str> {
-    self.bump.as_ref().map(|bump| bump.bump.reference.as_str())
+  /// The pair of references the renderer will try to bind, when the declaration is one it reads.
+  pub fn declared_bump_pair(&self) -> Option<(&str, &str)> {
+    self
+      .bump
+      .as_ref()
+      .map(|bump| (bump.bump.reference.as_str(), bump.companion.reference.as_str()))
   }
 
   /// Whether the descriptor's texture type makes `LoadTHM` skip it whole, bump declaration included.

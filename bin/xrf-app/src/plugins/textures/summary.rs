@@ -38,15 +38,24 @@ impl TextureBadges {
   }
 }
 
-/// One descriptor's contribution to the tree: its badges, and the bump it names so the pair folds under it.
+/// The two references a declaration binds, which is what folds a pair under the texture that declares it.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureBumpPair {
+  pub bump: String,
+  pub companion: String,
+}
+
+/// One descriptor's contribution to the tree: its badges, and the pair it names so both halves fold under it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureMaterialSummary {
   /// The reference of the texture the descriptor describes.
   pub reference: String,
-  /// The bump reference the engine will try to bind, when the declaration is one it reads.
-  pub bump_reference: Option<String>,
+  /// The pair the engine will try to bind, when the declaration is one it reads.
+  pub bump: Option<TextureBumpPair>,
   pub badges: TextureBadges,
 }
 
@@ -54,7 +63,10 @@ impl TextureMaterialSummary {
   pub fn of(reference: String, material: &XrayMaterialDescriptor) -> Self {
     Self {
       reference,
-      bump_reference: material.declared_bump_reference().map(str::to_owned),
+      bump: material.declared_bump_pair().map(|(bump, companion)| TextureBumpPair {
+        bump: bump.to_owned(),
+        companion: companion.to_owned(),
+      }),
       badges: TextureBadges::of(material),
     }
   }

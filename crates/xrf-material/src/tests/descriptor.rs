@@ -21,8 +21,8 @@ fn a_declared_bump_is_named_and_a_flat_material_names_none() {
       .with_descriptor(BASE, &ThmFixture::image()),
   );
 
-  assert_eq!(declared.declared_bump_reference(), Some(BUMP));
-  assert_eq!(flat.declared_bump_reference(), None);
+  assert_eq!(declared.declared_bump_pair(), Some((BUMP, COMPANION)));
+  assert_eq!(flat.declared_bump_pair(), None);
   assert!(!declared.is_engine_skipped() && !declared.is_unreadable() && !declared.is_detail_associated());
 }
 
@@ -42,7 +42,7 @@ fn a_skipped_type_and_an_unreadable_file_are_told_apart() {
   assert!(skipped.is_engine_skipped() && !skipped.is_unreadable());
   assert!(unreadable.is_unreadable() && !unreadable.is_engine_skipped());
   assert_eq!(
-    skipped.declared_bump_reference(),
+    skipped.declared_bump_pair(),
     None,
     "a skipped declaration binds nothing"
   );

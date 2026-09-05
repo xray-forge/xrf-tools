@@ -120,7 +120,13 @@ fn bump_halves_are_listed_with_their_roles_and_the_declared_name_folds_them() {
   // The sweep names the bump the base declares, which is what folds the two halves under it in a tree.
   let summaries: Vec<TextureMaterialSummary> = sweep(&tree);
 
-  assert_eq!(summary(&summaries, BASE).bump_reference.as_deref(), Some(BUMP));
+  assert_eq!(
+    summary(&summaries, BASE)
+      .bump
+      .as_ref()
+      .map(|pair| (pair.bump.as_str(), pair.companion.as_str())),
+    Some((BUMP, COMPANION))
+  );
 }
 
 #[test]
@@ -214,7 +220,7 @@ fn a_type_the_engine_skips_is_engine_skipped_and_binds_nothing() {
       ..TextureBadges::default()
     }
   );
-  assert_eq!(summary.bump_reference, None);
+  assert_eq!(summary.bump, None);
 }
 
 #[test]
@@ -298,7 +304,7 @@ fn a_description_carries_the_texture_the_material_and_both_bound_halves() {
     description.companion.as_ref().map(|companion| companion.size),
     Some(COMPANION.len() as u64)
   );
-  assert_eq!(description.material.declared_bump_reference(), Some(BUMP));
+  assert_eq!(description.material.declared_bump_pair(), Some((BUMP, COMPANION)));
 }
 
 #[test]
