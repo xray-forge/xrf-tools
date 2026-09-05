@@ -17,9 +17,22 @@ export interface IEmptyStateProps extends BaseComponentProps {
 /**
  * What a surface shows when it has nothing to show.
  */
-export function EmptyState({ action, description, icon, title }: IEmptyStateProps): ReactElement {
+export function EmptyState({
+  "data-testid": dataTestId,
+  id,
+  className,
+  action,
+  description,
+  icon,
+  title,
+}: IEmptyStateProps): ReactElement {
   return (
-    <CenteredColumn sx={{ padding: 3, textAlign: "center" }}>
+    <CenteredColumn
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ padding: 3, textAlign: "center" }}
+    >
       {icon ?? <DescriptionOutlinedIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
 
       <Typography variant={"subtitle1"}>{title}</Typography>

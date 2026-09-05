@@ -14,6 +14,8 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "tree here.",
     "Read the `Material` panel for what the descriptor declares, and the `Files` panel for the three files behind " +
       "it: the texture, the bump, and its `bump#` companion.",
+    "Switch the preview from the flat picture to a lit body to see what the engine makes of the pair. Drag to " +
+      "orbit, hold `Shift` and drag to move the light, and turn `Bump` off to compare the same body flat.",
   ],
   nuances: [
     "A texture is named by its engine reference - the path below `textures\\` without the extension - because that " +
@@ -39,15 +41,18 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "only what it changed still resolves - and reports - the bumps it did not.",
     "Textures the engine loads but no reference names, such as a level's lightmaps, are counted in the status bar " +
       "rather than listed: they sit outside `textures\\`, so no descriptor can describe them.",
+    "The lit surface is the same shading the visuals viewer uses, on a generated body rather than a mesh: one " +
+      "shader kernel decodes `normal.gloss` and `error.height` for both, so a texture judged here and the model " +
+      "binding it cannot disagree. The body's tangent basis is derived from its own uvs, with `v` running downwards " +
+      "as X-Ray stores its rows.",
     "The session survives a reload; the texture that was open does not, because the backend parks no selection. " +
       "Leaving the application closes the browsed roots.",
   ],
   limitations: [
     "Read-only: no editing, saving, or export. Authoring a descriptor, generating a bump pair and re-encoding a " +
       "texture belong to the textures editor, which is not built yet.",
-    "The preview is the flat base texture. The lit preview, the bump toggle and the channel views that show the " +
-      "packed `normal.gloss` and `error.height` planes arrive with the shading kernel the visuals viewer already " +
-      "uses.",
+    "The channel views that show the packed `normal.gloss` and `error.height` planes on their own, and the " +
+      "reconstructed normal, gloss and height they decode to, are not built yet.",
     "A `.dds` layout the backend cannot decode shows no picture; its descriptor and its files are still reported.",
     "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
       "detail associations too, and is not read; a notice names it when the browsed roots hold one.",
