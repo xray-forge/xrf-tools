@@ -88,7 +88,7 @@ impl<'a> DltxLoader<'a> {
           operation,
           parents,
           ..
-        } => current = Some(self.open_section(name, *operation, parents, &filename)?),
+        } => current = Some(self.open_section(name, *operation, parents, logical_path)?),
 
         LtxItemKind::Key {
           name, value, operation, ..
@@ -117,7 +117,7 @@ impl<'a> DltxLoader<'a> {
     name: &str,
     operation: LtxSectionOperation,
     parents: &[Box<str>],
-    filename: &str,
+    path: &str,
   ) -> XrfResult<DltxTarget> {
     // Section names are lowercased at parse time; parent names are not, which is a real trap and preserved as one.
     let section: String = name.to_lowercase();
@@ -133,15 +133,12 @@ impl<'a> DltxLoader<'a> {
       LtxSectionOperation::Declare => {
         if let Some(previous) = self.records.section_files.get(&section) {
           return Err(XrfError::new_convert_error(format!(
-            "Duplicate section '[{section}]' declared in '{previous}' and '{filename}' without being marked an \
-             override; the engine refuses to start. Use '![{section}]' to patch it"
+            "Duplicate section '[{section}]' declared in '{previous}' and '{path}' without being marked an override; \
+             the engine refuses to start. Use '![{section}]' to patch it"
           )));
         }
 
-        self
-          .records
-          .section_files
-          .insert(section.clone(), String::from(filename));
+        self.records.section_files.insert(section.clone(), String::from(path));
         self.records.base.entry(section.clone()).or_default();
         self.record_parents(&section, parents, false);
 

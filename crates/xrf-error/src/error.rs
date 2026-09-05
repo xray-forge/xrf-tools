@@ -65,13 +65,19 @@ pub enum XrfError {
   LtxParse { line: usize, col: usize, message: String },
   #[error(
   "Ltx scheme error{location} [{section}] {field} : {message}",
-  location = XrfError::format_ltx_scheme_location(at.as_deref())
+  location = XrfError::format_ltx_scheme_location(at.as_deref(), entry.as_deref())
 )]
   LtxScheme {
     section: String,
     field: String,
     message: String,
+    /// The config to open: the one that declared the section, where a dialect said which.
     at: Option<String>,
+    /// The entry point whose resolution reached the section, when that is a different file.
+    ///
+    /// Kept beside `at` rather than instead of it: the entry point is the unit a caller re-runs and the only thing
+    /// that explains why two files were read together, but it is not where the section is written.
+    entry: Option<String>,
   },
   /// An operation stopped at a safe boundary because it was asked to.
   ///
@@ -127,6 +133,7 @@ impl XrfError {
   {
     Self::LtxScheme {
       section: section.into(),
+      entry: None,
       field: field.into(),
       message: message.into(),
       at: None,
@@ -142,9 +149,35 @@ impl XrfError {
   {
     Self::LtxScheme {
       section: section.into(),
+      entry: None,
       field: field.into(),
       message: message.into(),
       at: Some(at.into()),
+    }
+  }
+
+  /// A scheme finding at the config that declared the section, resolved through an entry point.
+  ///
+  /// `declared_in` is `None` where the dialect could not say - an override that created a section nothing declares -
+  /// and the finding then names the entry point alone rather than implying an origin it does not know.
+  pub fn new_scheme_error_resolved<S, F, M>(
+    section: S,
+    field: F,
+    message: M,
+    declared_in: Option<&str>,
+    resolved_from: &str,
+  ) -> Self
+  where
+    S: Into<String>,
+    F: Into<String>,
+    M: Into<String>,
+  {
+    Self::LtxScheme {
+      section: section.into(),
+      entry: Some(String::from(resolved_from)),
+      field: field.into(),
+      message: message.into(),
+      at: declared_in.map(String::from),
     }
   }
 
@@ -160,8 +193,12 @@ impl XrfError {
 }
 
 impl XrfError {
-  fn format_ltx_scheme_location(at: Option<&str>) -> String {
-    at.map(|path| format!(" in '{path}'")).unwrap_or_default()
+  fn format_ltx_scheme_location(at: Option<&str>, entry: Option<&str>) -> String {
+    match (at, entry) {
+      (Some(at), Some(entry)) if at != entry => format!(" in '{at}' resolved from '{entry}'"),
+      (Some(path), _) | (None, Some(path)) => format!(" in '{path}'"),
+      (None, None) => String::new(),
+    }
   }
 }
 
@@ -177,6 +214,34 @@ mod tests {
   fn formats_ltx_scheme_error_locations_readably() {
     assert_eq!(
       XrfError::new_scheme_error_at("section", "field", "message", "configs/system.ltx").to_string(),
+      "Ltx scheme error in 'configs/system.ltx' [section] field : message"
+    );
+    assert_eq!(
+      XrfError::new_scheme_error_resolved(
+        "section",
+        "field",
+        "message",
+        Some("configs/items/w_broken.ltx"),
+        "configs/system.ltx"
+      )
+      .to_string(),
+      "Ltx scheme error in 'configs/items/w_broken.ltx' resolved from 'configs/system.ltx' [section] field : message"
+    );
+    // A section written in the entry point itself reads as it always did, rather than naming one file twice.
+    assert_eq!(
+      XrfError::new_scheme_error_resolved(
+        "section",
+        "field",
+        "message",
+        Some("configs/system.ltx"),
+        "configs/system.ltx"
+      )
+      .to_string(),
+      "Ltx scheme error in 'configs/system.ltx' [section] field : message"
+    );
+    // Nothing said where it was declared, so the entry point is named rather than an origin that is not known.
+    assert_eq!(
+      XrfError::new_scheme_error_resolved("section", "field", "message", None, "configs/system.ltx").to_string(),
       "Ltx scheme error in 'configs/system.ltx' [section] field : message"
     );
     assert_eq!(
@@ -196,7 +261,30 @@ mod tests {
           "section": "section",
           "field": "field",
           "message": "message",
-          "at": "configs/system.ltx"
+          "at": "configs/system.ltx",
+          "entry": null
+        }
+      })
+    );
+
+    // A finding whose section was declared somewhere other than the entry point that resolved it carries both, so a
+    // report says which file to open without losing the unit a caller re-runs.
+    assert_eq!(
+      serde_json::to_value(XrfError::new_scheme_error_resolved(
+        "section",
+        "field",
+        "message",
+        Some("configs/items/w_broken.ltx"),
+        "configs/system.ltx",
+      ))
+      .expect("XRF errors should serialize"),
+      json!({
+        "LtxScheme": {
+          "section": "section",
+          "field": "field",
+          "message": "message",
+          "at": "configs/items/w_broken.ltx",
+          "entry": "configs/system.ltx"
         }
       })
     );

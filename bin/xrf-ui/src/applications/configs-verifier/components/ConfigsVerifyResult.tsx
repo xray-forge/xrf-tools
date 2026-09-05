@@ -17,7 +17,13 @@ export function ConfigsVerifyResult({ result }: IConfigsVerifyResultProps): Reac
       { field: "section", headerName: "Section", width: 180, cellClassName: "monospace" },
       { field: "field", headerName: "Field", width: 150, cellClassName: "monospace" },
       { field: "message", headerName: "Problem", flex: 1, minWidth: 220 },
-      { field: "at", headerName: "Location", width: 220, cellClassName: "monospace" },
+      {
+        field: "at",
+        headerName: "Location",
+        width: 220,
+        cellClassName: "monospace",
+        valueGetter: (_, row: TLtxSchemeError) => row.at ?? row.entry,
+      },
     ],
     []
   );
@@ -51,8 +57,8 @@ export function ConfigsVerifyResult({ result }: IConfigsVerifyResultProps): Reac
       <CommandResultFindings<TLtxSchemeError>
         rows={findings}
         columns={columns}
-        getRowId={(row) => `${row.at}:${row.section}:${row.field}`}
-        getSearchText={(row) => `${row.section} ${row.field} ${row.message} ${row.at}`}
+        getRowId={(row) => `${row.at ?? row.entry}:${row.section}:${row.field}`}
+        getSearchText={(row) => `${row.section} ${row.field} ${row.message} ${row.at ?? ""} ${row.entry ?? ""}`}
         emptyLabel={"Nothing to report."}
         searchPlaceholder={"Filter by section, field or file"}
       />

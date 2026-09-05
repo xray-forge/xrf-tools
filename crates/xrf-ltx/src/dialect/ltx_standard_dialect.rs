@@ -78,7 +78,11 @@ impl LtxStandardDialect {
       }
     }
 
-    let lowered: Ltx = Self::lower_with(document, interner)?;
+    let mut lowered: Ltx = Self::lower_with(document, interner)?;
+
+    // Stamped before the merge, so every section keeps the file whose header declared it. Interned, because one file
+    // commonly declares hundreds of sections and they can share the one name.
+    lowered.set_section_origins(&interner.intern(logical_path));
 
     // Only the entry file's opt-out counts, which is what the previous include pass did: an included file's directive
     // is dropped along with the rest of its metadata when its sections are merged.

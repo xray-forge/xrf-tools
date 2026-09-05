@@ -99,6 +99,8 @@ impl LtxInheritConvertor {
 
       new_props.extend_shared(section);
       new_props.inherited = Default::default();
+      // The child's own declaring file, not a parent's: inheritance copies fields in, it does not move the header.
+      new_props.origin = section.origin.clone();
 
       destination.insert(section_name.into(), new_props);
     }

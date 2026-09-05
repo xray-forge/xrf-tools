@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_ltx::{
@@ -7,6 +8,7 @@ use xrf_ltx::{
 };
 
 use crate::discovery::dltx_discovery::DltxDiscovery;
+use crate::load::dltx_load_result::DltxLoadResult;
 use crate::load::dltx_loader::DltxLoader;
 use crate::resolve::dltx_resolve_result::DltxResolveResult;
 use crate::resolve::dltx_resolver::DltxResolver;
@@ -51,11 +53,14 @@ impl LtxDialect for DltxDialect {
   }
 
   fn resolve(&self, root: &str, source: &dyn LtxDocumentSource) -> XrfResult<LtxResolution> {
-    let resolved: DltxResolveResult = DltxResolver::new(&DltxLoader::new(source).load(root)?).resolve_all()?;
+    // The load result outlives the resolve by one call now, because it is what knows which file declared each
+    // section. It is still dropped here rather than retained.
+    let loaded: DltxLoadResult = DltxLoader::new(source).load(root)?;
+    let resolved: DltxResolveResult = DltxResolver::new(&loaded).resolve_all()?;
 
     Ok(LtxResolution {
       diagnostics: Self::to_diagnostics(&resolved),
-      ltx: Self::to_ltx(&resolved, root),
+      ltx: Self::to_ltx(&resolved, &loaded, root),
       provenance: Self::to_provenance(&resolved),
     })
   }
@@ -74,8 +79,10 @@ impl DltxDialect {
   ///
   /// Sections arrive sorted by name and fields by key, which is the order the engine's own container ends up in and
   /// therefore part of matching it. Standard LTX keeps the authored order instead.
-  fn to_ltx(resolved: &DltxResolveResult, root: &str) -> Ltx {
+  fn to_ltx(resolved: &DltxResolveResult, loaded: &DltxLoadResult, root: &str) -> Ltx {
     let mut ltx: Ltx = Ltx::new();
+    // One handle per declaring file rather than one per section: a config commonly declares hundreds.
+    let mut origins: BTreeMap<&str, Arc<str>> = BTreeMap::new();
 
     for (section, fields) in &resolved.sections {
       // Entered once and filled in place. Going through `set_to` per field re-looked-up the section and cloned its
@@ -84,6 +91,16 @@ impl DltxDialect {
 
       for (key, value) in fields {
         target.insert(key, value);
+      }
+
+      // A section an override created without a base declaration has no declaring file, and says so rather than
+      // naming the root that resolved it.
+      if let Some(declared_in) = loaded.section_files.get(section) {
+        target.set_origin(Arc::clone(
+          origins
+            .entry(declared_in.as_str())
+            .or_insert_with(|| Arc::from(declared_in.as_str())),
+        ));
       }
     }
 

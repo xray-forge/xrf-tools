@@ -72,16 +72,29 @@ impl Ltx {
   }
 
   /// Check whether ltx has section with name.
+  pub fn has_section(&self, name: &str) -> bool {
+    self.sections.contains_key(name)
+  }
+
+  /// Say which config declared every section that does not name one yet.
+  ///
+  /// Called by a dialect as it merges one file's sections in, so a section keeps the file that declared it rather than
+  /// the entry point that happened to reach it. Sections already carrying an origin arrived through an include and
+  /// keep theirs.
+  pub(crate) fn set_section_origins(&mut self, origin: &Arc<str>) {
+    for (_, section) in self.sections.iter_mut() {
+      if section.origin.is_none() {
+        section.origin = Some(Arc::clone(origin));
+      }
+    }
+  }
+
   /// Place a whole section, replacing any section of that name.
   ///
   /// What a lowering pass uses: it reads a section's fields before it knows the section is finished, so it builds one
   /// and places it once rather than entering the map for every line.
   pub(crate) fn insert_section(&mut self, name: String, section: Section) {
     self.sections.insert(name, section);
-  }
-
-  pub fn has_section(&self, name: &str) -> bool {
-    self.sections.contains_key(name)
   }
 
   /// Get a mutable section

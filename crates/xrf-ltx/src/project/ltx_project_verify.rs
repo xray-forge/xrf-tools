@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -6,6 +7,7 @@ use indexmap::IndexSet;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
+use xrf_vfs::XrayLogicalPath;
 
 use crate::ltx::Ltx;
 use crate::project::{LTX_PHASE_VERIFY, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
@@ -18,6 +20,9 @@ impl LtxProject {
   /// - All the inherited sections are valid and declared before inherit attempt
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
+    // Rendered once per declaring file, not once per section: a config commonly declares hundreds of them, and
+    // rendering asks the VFS where a logical path really sits.
+    let mut declaring_paths: HashMap<String, String> = HashMap::new();
 
     xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
 
@@ -68,6 +73,19 @@ impl LtxProject {
       for (section_name, section) in ltx.iter() {
         result.total_sections += 1;
 
+        // The file a person has to open. `reported` stays beside it, because the entry point is what a caller re-runs
+        // and the only thing that explains why two files were read together.
+        let declared_in: Option<String> = section.get_origin().map(|origin| {
+          declaring_paths
+            .entry(String::from(origin))
+            .or_insert_with(|| match XrayLogicalPath::new(origin) {
+              Ok(logical) => format_path(&self.path_of(&logical)).to_string(),
+              // A path the VFS will not accept is still worth naming as the file said it.
+              Err(_) => String::from(origin),
+            })
+            .clone()
+        });
+
         // Check only if schema is defined:
         if let Some(scheme_name) = section.get(LTX_SCHEME_FIELD) {
           let mut section_has_error: bool = false;
@@ -103,10 +121,11 @@ impl LtxProject {
                     XrfError::LtxScheme { message, .. } => {
                       section_has_error = true;
 
-                      result.errors.push(XrfError::new_scheme_error_at(
+                      result.errors.push(XrfError::new_scheme_error_resolved(
                         section_name,
                         field_name,
                         message,
+                        declared_in.as_deref(),
                         &reported,
                       ));
                     }
@@ -116,10 +135,11 @@ impl LtxProject {
               } else if scheme_definition.is_strict {
                 section_has_error = true;
 
-                result.errors.push(XrfError::new_scheme_error_at(
+                result.errors.push(XrfError::new_scheme_error_resolved(
                   section_name,
                   field_name,
                   "Unexpected field, definition is required in strict mode",
+                  declared_in.as_deref(),
                   &reported,
                 ));
               }
@@ -130,10 +150,11 @@ impl LtxProject {
                 if !definition.is_optional && field_name != LTX_SYMBOL_ANY && !validated.contains(field_name) {
                   section_has_error = true;
 
-                  result.errors.push(XrfError::new_scheme_error_at(
+                  result.errors.push(XrfError::new_scheme_error_resolved(
                     section_name,
                     field_name,
                     "Required field was not provided",
+                    declared_in.as_deref(),
                     &reported,
                   ));
                 }
@@ -142,10 +163,11 @@ impl LtxProject {
           } else {
             section_has_error = true;
 
-            result.errors.push(XrfError::new_scheme_error_at(
+            result.errors.push(XrfError::new_scheme_error_resolved(
               section_name,
               "*",
               format!("Required schema '{scheme_name}' definition is not found"),
+              declared_in.as_deref(),
               &reported,
             ));
           }

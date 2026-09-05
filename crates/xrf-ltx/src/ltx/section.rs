@@ -12,6 +12,8 @@ use crate::ltx::{PropertyIter, SectionData};
 pub struct Section {
   pub(crate) inherited: Vec<String>,
   pub(crate) data: SectionData,
+  /// The config whose header declared this section, once a dialect has said so.
+  pub(crate) origin: Option<Arc<str>>,
 }
 
 impl Section {
@@ -28,6 +30,19 @@ impl Section {
   /// Check if properties has 0 elements.
   pub fn is_empty(&self) -> bool {
     self.data.is_empty()
+  }
+
+  /// The config that declared this section, where a dialect recorded one.
+  pub fn get_origin(&self) -> Option<&str> {
+    self.origin.as_deref()
+  }
+
+  /// Say which config declared this section.
+  ///
+  /// Public for the same reason [`crate::Ltx::set_source_paths`] is: a dialect lives in another crate and has to stamp
+  /// what it resolved.
+  pub fn set_origin(&mut self, origin: Arc<str>) {
+    self.origin = Some(origin);
   }
 
   /// Get an iterator of the properties.

@@ -52,14 +52,17 @@ impl GamedataProject {
 
     for error in &verification_result.errors {
       match error {
+        // The declaring config where the dialect named one, and the entry point that resolved it otherwise, so a
+        // finding always carries the asset a person opens.
         XrfError::LtxScheme {
-          at: Some(path),
+          at,
+          entry,
           field,
           message,
           section,
-        } => findings.push(GamedataFindingFactory::for_asset(
+        } if at.is_some() || entry.is_some() => findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LtxSchema,
-          Path::new(path),
+          Path::new(at.as_deref().or(entry.as_deref()).unwrap_or_default()),
           format!("[{section}] {field}: {message}"),
         )),
         error => findings.push(GamedataFindingFactory::without_asset(

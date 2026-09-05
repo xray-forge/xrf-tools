@@ -561,7 +561,15 @@ export type XrfError =
         section: string;
         field: string;
         message: string;
+        /** The config to open: the one that declared the section, where a dialect said which. */
         at: string | null;
+        /**
+         * The entry point whose resolution reached the section, when that is a different file.
+         *
+         * Kept beside `at` rather than instead of it: the entry point is the unit a caller re-runs and the only thing
+         * that explains why two files were read together, but it is not where the section is written.
+         */
+        entry: string | null;
       };
     } & {
       Assertion?: never;
