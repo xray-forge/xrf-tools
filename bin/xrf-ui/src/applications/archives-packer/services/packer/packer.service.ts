@@ -214,6 +214,14 @@ export class PackerService {
   @BoundAction()
   public setVolumeSize(volumeSize: string): void {
     this.volumeSize = volumeSize;
+    this.resetResult();
+  }
+
+  /** Clears the outcome when any input to the pack changes. */
+  @BoundAction()
+  public resetResult(): void {
+    this.result = null;
+    this.error = null;
   }
 
   /**
@@ -231,8 +239,7 @@ export class PackerService {
     }
 
     this.config = { ...this.config, ...patch };
-    this.result = null;
-    this.error = null;
+    this.resetResult();
   }
 
   /**

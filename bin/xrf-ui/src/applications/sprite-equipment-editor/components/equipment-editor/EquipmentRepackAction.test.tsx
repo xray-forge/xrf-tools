@@ -11,7 +11,7 @@ import { Nullable } from "@/lib/types/general";
 
 const SPRITE: IEquipmentPngDescriptor = {
   isDltx: false,
-      ltxPath: "C:\\game\\system.ltx",
+  ltxPath: "C:\\game\\system.ltx",
   descriptors: [],
   path: "C:\\game\\equipment.dds",
   name: "equipment.dds",

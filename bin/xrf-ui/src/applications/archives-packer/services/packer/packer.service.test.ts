@@ -88,6 +88,30 @@ describe("PackerService editing", () => {
 });
 
 describe("PackerService volume ceiling", () => {
+  it.each(["success", "failure"])("clears the previous %s when the ceiling changes", async (outcome) => {
+    const service = mockPackerService();
+
+    setMockInvokeResponses({
+      ["plugin:archives|pack_directory"]: () => {
+        if (outcome === "failure") {
+          throw new Error("cannot pack");
+        }
+
+        return { volumes: ["gamedata.db"], filesTotal: 1 };
+      },
+    });
+
+    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
+
+    expect(service.result !== null || service.error !== null).toBe(true);
+
+    service.setVolumeSize("512");
+
+    expect(service.result).toBeNull();
+    expect(service.error).toBeNull();
+    expect(service.isDirty).toBe(false);
+  });
+
   it("packs with the packer's own maximum while nothing is typed", () => {
     const service: PackerService = mockPackerService();
 

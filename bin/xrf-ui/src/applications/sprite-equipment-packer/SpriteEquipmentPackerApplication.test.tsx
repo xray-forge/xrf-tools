@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { act } from "@testing-library/react";
+import { act, fireEvent } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { SpriteEquipmentPackerApplication } from "@/applications/sprite-equipment-packer/SpriteEquipmentPackerApplication";
 import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { IPackEquipmentResult, SpriteEquipmentService } from "@/core/sprite-equipment";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { SpriteEquipmentPackerApplication } from "./SpriteEquipmentPackerApplication";
 
 const PACKED: IPackEquipmentResult = {
   outcome: "completed",
@@ -63,7 +64,36 @@ function renderAdoptedPack() {
 describe("Sprite equipment packer reload", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.localStorage.setItem("xrf.form.sprite-equipment-packer.source", "C:\\icons");
+    window.localStorage.setItem("xrf.form.sprite-equipment-packer.output", "C:\\out\\equipment.dds");
+    window.localStorage.setItem("xrf.form.sprite-equipment-packer.system-ltx", "C:\\configs\\system.ltx");
     setMockInvokeResponses({});
+  });
+
+  describe.each(["Source", "Output", "System configuration", "DLTX"])("editing %s", (label) => {
+    it.each(["success", "failure"])("clears an adopted %s", async (outcome) => {
+      const view = renderAdoptedPack();
+
+      await view.findByRole("button", { name: "Pack" });
+
+      const message = outcome === "success" ? "12 file(s) packed" : "Cannot write equipment.dds";
+
+      view.finish(outcome === "success" ? PACKED : null, outcome === "failure" ? message : null);
+
+      expect(await view.findByText(message)).toBeInTheDocument();
+
+      if (outcome === "success") {
+        fireEvent.click(view.getByRole("button", { name: "Show parameters" }));
+      }
+
+      if (label === "DLTX") {
+        fireEvent.click(view.getByRole("checkbox", { name: label }));
+      } else {
+        fireEvent.change(view.getByRole("textbox", { name: label }), { target: { value: "C:\\changed" } });
+      }
+
+      expect(view.queryByText(message)).not.toBeInTheDocument();
+    });
   });
 
   it("renders the result when the pack started before reload finishes", async () => {

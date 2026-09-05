@@ -27,12 +27,7 @@ export function EmptyState({
   title,
 }: IEmptyStateProps): ReactElement {
   return (
-    <CenteredColumn
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ padding: 3, textAlign: "center" }}
-    >
+    <CenteredColumn data-testid={dataTestId} id={id} className={className} sx={{ padding: 3, textAlign: "center" }}>
       {icon ?? <DescriptionOutlinedIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
 
       <Typography variant={"subtitle1"}>{title}</Typography>

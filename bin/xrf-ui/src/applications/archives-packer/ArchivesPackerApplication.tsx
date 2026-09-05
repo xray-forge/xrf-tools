@@ -2,7 +2,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Box, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   PACKER_SECTIONS_PANEL_LABEL,
@@ -130,6 +130,10 @@ export function ArchivesPackerApplication(): ReactElement {
 
     await packerService.pack(resolved, isForced);
   }, [packerService, resolved, isForced]);
+
+  useEffect(() => {
+    packerService.resetResult();
+  }, [source.value, destination.value, packerService]);
 
   // Drawn by the shell beside every other application's navigation, rather than as a column of this
   // application's own. The menu reads the open section from the service, so this registers once.

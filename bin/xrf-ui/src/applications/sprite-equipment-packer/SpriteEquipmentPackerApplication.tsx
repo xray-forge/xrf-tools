@@ -1,7 +1,7 @@
 import { Checkbox, FormControlLabel } from "@mui/material";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useState } from "react";
+import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
 
 import { EquipmentPackResult } from "@/applications/sprite-equipment-packer/components/EquipmentPackResult";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -78,6 +78,10 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   }, [spriteEquipmentService, log, output.value, source.value, systemLtx.value, isDltx]);
 
   const onCancel = useCallback(() => spriteEquipmentService.packOperation.cancel(), [spriteEquipmentService]);
+
+  useEffect(() => {
+    spriteEquipmentService.packOperation.reset();
+  }, [source.value, output.value, systemLtx.value, isDltx, spriteEquipmentService]);
 
   return (
     <PickerForm

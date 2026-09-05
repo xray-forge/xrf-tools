@@ -53,10 +53,9 @@ export function ConfigsVerifierApplication(): ReactElement {
 
   const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
-  // A different directory invalidates whatever the previous run reported.
   useEffect(() => {
     verifierService.operation.reset();
-  }, [directory, verifierService]);
+  }, [directory, isDltx, verifierService]);
 
   return (
     <PickerForm

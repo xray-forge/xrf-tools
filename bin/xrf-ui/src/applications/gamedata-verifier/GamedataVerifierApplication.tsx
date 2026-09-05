@@ -51,18 +51,13 @@ export function GamedataVerifierApplication(): ReactElement {
 
   const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
-  const onStrictChanged = useCallback(
-    (_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-      verifierService.operation.reset();
-      setIsStrict(checked);
-    },
-    [verifierService]
-  );
+  const onStrictChanged = useCallback((_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    setIsStrict(checked);
+  }, []);
 
-  // A different tree invalidates whatever the previous run reported.
   useEffect(() => {
     verifierService.operation.reset();
-  }, [root, verifierService]);
+  }, [root, isStrict, verifierService]);
 
   return (
     <PickerForm

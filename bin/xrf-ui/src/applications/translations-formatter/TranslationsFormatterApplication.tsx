@@ -51,17 +51,13 @@ export function TranslationsFormatterApplication(): ReactElement {
 
   const onCancel = useCallback(() => formatterService.operation.cancel(), [formatterService]);
 
-  const onCheckModeChange = useCallback(
-    (_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-      formatterService.operation.reset();
-      setIsCheck(checked);
-    },
-    [formatterService]
-  );
+  const onCheckModeChange = useCallback((_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    setIsCheck(checked);
+  }, []);
 
   useEffect(() => {
     formatterService.operation.reset();
-  }, [directory, formatterService]);
+  }, [directory, isCheck, formatterService]);
 
   return (
     <PickerForm

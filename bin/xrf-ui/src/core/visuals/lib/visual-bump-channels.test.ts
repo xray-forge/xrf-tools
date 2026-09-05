@@ -1,11 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { Texture } from "three";
 
-import {
-  XRAY_BUMP_GLOSS_GLSL,
-  XRAY_BUMP_HEIGHT_GLSL,
-  XRAY_BUMP_NORMAL_GLSL,
-} from "@/core/visuals/lib/visual-bump";
+import { XRAY_BUMP_GLOSS_GLSL, XRAY_BUMP_HEIGHT_GLSL, XRAY_BUMP_NORMAL_GLSL } from "@/core/visuals/lib/visual-bump";
 import { createXrayBumpChannels, EVisualBumpView, IVisualBumpChannels } from "@/core/visuals/lib/visual-bump-channels";
 
 function mockChannels(): IVisualBumpChannels {
