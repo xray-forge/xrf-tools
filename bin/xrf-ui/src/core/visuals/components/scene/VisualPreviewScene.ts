@@ -22,6 +22,7 @@ import {
 } from "@/core/visuals/components/scene/scene-config";
 import { VisualPreviewModel } from "@/core/visuals/components/scene/VisualPreviewModel";
 import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
+import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
@@ -34,6 +35,7 @@ export const DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS: IVisualPreviewViewOptions = {
   isAxesVisible: true,
   isCheckerVisible: false,
   isSkeletonVisible: false,
+  isBumpVisible: true,
 };
 
 /** Radius assumed when a model reports no usable extent, so the camera and helpers still have a scale. */
@@ -64,6 +66,14 @@ export interface IVisualPreviewViewOptions {
    * inside - which is the point when checking where a weapon's attach bone actually is.
    */
   isSkeletonVisible: boolean;
+  /**
+   * Shades bumped materials the way the game does, or draws them flat.
+   *
+   * On by default, because the point is to see what the game draws; off is the comparison, showing what the bump adds
+   * and, for a dummy pair, that it adds nothing. It changes a uniform, so the pose, the detail level and the camera
+   * all survive the switch.
+   */
+  isBumpVisible: boolean;
 }
 
 /**
@@ -302,6 +312,16 @@ export class VisualPreviewScene {
    */
   public applyTexture(submeshIndex: number, texture: Texture): void {
     this.model?.applyTexture(submeshIndex, texture);
+  }
+
+  /**
+   * Shades one of the model's submeshes with its bump pair, borrowing both from whoever loaded them.
+   *
+   * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
+   * @param textures - The uploaded pair.
+   */
+  public applyBump(submeshIndex: number, textures: IVisualBumpTextures): void {
+    this.model?.applyBump(submeshIndex, textures);
   }
 
   /**

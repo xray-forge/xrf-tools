@@ -5,13 +5,16 @@ import {
   XrayDetailUsage,
   XrayMaterialBumpInput,
   XrayMaterialDeclaration,
+  XrayMaterialDescriptor,
   XrayMaterialDetail,
 } from "@/core/bindings/types/xrf-material";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
+import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { formatNumber } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
-import { IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
+import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
 
 /**
  * Wording and severity for what the renderer ends up drawing for a material.
@@ -138,4 +141,42 @@ function describeDetailUsage(usage: Nullable<XrayDetailUsage>): string {
  */
 export function describeDetail(detail: XrayMaterialDetail): string {
   return `${detail.name} · ×${formatNumber(detail.scale, 1)} · ${describeDetailUsage(detail.usage)}`;
+}
+
+/**
+ * Where the viewer's shading falls short of the game's for this material, stated rather than approximated silently.
+ *
+ * @param material - What the backend resolved.
+ * @returns A line for the row, or null when the viewer draws exactly what it reports.
+ */
+export function describeBumpShading(material: XrayMaterialDescriptor): Nullable<string> {
+  const gaps: Array<string> = [];
+
+  if (material.bump?.mode === "parallax") {
+    gaps.push("parallax is drawn as plain bump");
+  }
+
+  if (material.detail?.usage === "bump" || material.detail?.usage === "diffuseAndBump") {
+    gaps.push("the detail bump is not drawn");
+  }
+
+  return gaps.length ? `In this viewer, ${gaps.join(" and ")}` : null;
+}
+
+/**
+ * What became of the bump pair on the frontend, when anything short of both halves uploaded.
+ *
+ * @param status - Each half's outcome, or null for a material that bound no pair.
+ * @returns A line for the row, or null when there is nothing to explain.
+ */
+export function describeBumpUpload(status: Nullable<IVisualBumpStatus>): Nullable<string> {
+  if (!status || (status.bump === EVisualTextureState.APPLIED && status.companion === EVisualTextureState.APPLIED)) {
+    return null;
+  }
+
+  const halves: string =
+    `bump ${describeTextureState(status.bump).label.toLowerCase()}, ` +
+    `bump# ${describeTextureState(status.companion).label.toLowerCase()}`;
+
+  return status.reason ? `${halves}: ${status.reason}` : halves;
 }

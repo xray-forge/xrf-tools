@@ -6,6 +6,7 @@ import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
+import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
@@ -21,6 +22,8 @@ export interface IVisualSubmeshSectionProps extends BaseComponentProps {
   texture?: Nullable<VisualTextureDependency>;
   /** What the frontend then did with it. */
   status?: Nullable<IVisualTextureStatus>;
+  /** What the frontend did with the bump pair, absent for a material that bound none. */
+  bumpStatus?: Nullable<IVisualBumpStatus>;
   /** Descriptors the open reported, keyed by logical path. */
   textures?: Record<string, AssetTextureDescriptor>;
   /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
@@ -38,6 +41,7 @@ export function VisualSubmeshSection({
   isFirst,
   texture = null,
   status = null,
+  bumpStatus = null,
   textures,
   materials,
 }: IVisualSubmeshSectionProps): ReactElement {
@@ -67,7 +71,7 @@ export function VisualSubmeshSection({
 
       <VisualSubmeshTexture texture={texture} status={status} textures={textures} />
 
-      <VisualSubmeshMaterial material={texture ? (materials?.[texture.reference] ?? null) : null} />
+      <VisualSubmeshMaterial material={texture ? (materials?.[texture.reference] ?? null) : null} status={bumpStatus} />
 
       {content.kind === "packed" ? (
         <>

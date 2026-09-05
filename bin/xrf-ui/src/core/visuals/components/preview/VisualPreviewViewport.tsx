@@ -3,6 +3,7 @@ import { ReactElement, useEffect, useRef } from "react";
 import { Texture } from "three";
 
 import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/components/scene";
+import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
@@ -26,6 +27,8 @@ export interface IVisualPreviewViewportProps {
   hiddenBones?: ReadonlySet<number>;
   /** Loaded textures by submesh index, applied as they arrive. */
   textures?: ReadonlyMap<number, Texture>;
+  /** Loaded bump pairs by submesh index, shaded as they arrive. */
+  bumps?: ReadonlyMap<number, IVisualBumpTextures>;
 }
 
 /**
@@ -49,6 +52,7 @@ export function VisualPreviewViewport({
   motionFrame = 0,
   motionFloatsPerBone = 0,
   textures,
+  bumps,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Nullable<VisualPreviewScene>>(null);
@@ -122,6 +126,19 @@ export function VisualPreviewViewport({
       sceneRef.current?.applyTexture(submeshIndex, texture);
     }
   }, [textures, model]);
+
+  /**
+   * Shades every loaded bump pair on each change, the same way, since a model change rebuilds the meshes.
+   */
+  useEffect(() => {
+    if (!bumps) {
+      return;
+    }
+
+    for (const [submeshIndex, pair] of bumps) {
+      sceneRef.current?.applyBump(submeshIndex, pair);
+    }
+  }, [bumps, model]);
 
   useEffect(() => {
     sceneRef.current?.resetCamera();

@@ -149,4 +149,49 @@ describe("VisualSubmeshMaterial", () => {
 
     expect(getByText("detail\\detail_grnd_grass · ×4.0 · not applied, no usage flag is set")).toBeInTheDocument();
   });
+
+  it("says what the viewer does not draw for a parallax or detail-bump material, never silently", () => {
+    const parallax: XrayMaterialDescriptor = mockMaterialDescriptor();
+
+    parallax.bump!.mode = "parallax";
+
+    const { getByText, unmount } = render(parallax);
+
+    expect(getByText("In this viewer, parallax is drawn as plain bump")).toBeInTheDocument();
+    unmount();
+
+    const both = render(
+      mockMaterialDescriptor({
+        detail: { name: "detail\\detail_grnd_grass", scale: 4, usage: "diffuseAndBump" },
+      })
+    );
+
+    expect(both.getByText("In this viewer, the detail bump is not drawn")).toBeInTheDocument();
+    both.unmount();
+
+    const plain = render(mockMaterialDescriptor());
+
+    expect(plain.queryByText("Shading")).not.toBeInTheDocument();
+  });
+
+  it("names the half of the pair that did not upload, and stays quiet when both did", () => {
+    const failed = renderWithProviders(
+      <VisualSubmeshMaterial
+        material={mockMaterialDescriptor()}
+        status={{ submeshIndex: 0, bump: "applied", companion: "unsupportedFormat", reason: null } as never}
+      />
+    );
+
+    expect(failed.getByText("bump applied, bump# format unsupported")).toBeInTheDocument();
+    failed.unmount();
+
+    const { queryByText } = renderWithProviders(
+      <VisualSubmeshMaterial
+        material={mockMaterialDescriptor()}
+        status={{ submeshIndex: 0, bump: "applied", companion: "applied", reason: null } as never}
+      />
+    );
+
+    expect(queryByText("Bump upload")).not.toBeInTheDocument();
+  });
 });

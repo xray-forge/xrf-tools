@@ -66,6 +66,7 @@ export function ArchiveModelPreview({
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         cameraResetToken={cameraResetToken}
         textures={loadService.textures}
+        bumps={loadService.bumps}
       />
 
       {visual.isLoading ? (

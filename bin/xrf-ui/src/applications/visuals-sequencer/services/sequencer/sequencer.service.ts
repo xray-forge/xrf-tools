@@ -15,6 +15,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { configuredAssetRoots } from "@/core/settings/lib/path/role";
 import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
+import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -68,6 +69,16 @@ export class SequencerService implements IVisualInspection {
   @Computed()
   public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
     return this.loadService.textureStatuses;
+  }
+
+  @Computed()
+  public get bumps(): ReadonlyMap<number, IVisualBumpTextures> {
+    return this.loadService.bumps;
+  }
+
+  @Computed()
+  public get bumpStatuses(): ReadonlyMap<number, IVisualBumpStatus> {
+    return this.loadService.bumpStatuses;
   }
 
   /**

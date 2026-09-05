@@ -1,6 +1,17 @@
-import { BufferGeometry, Matrix4, Mesh, MeshStandardMaterial, Object3D, Skeleton, SkinnedMesh, Texture } from "three";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Matrix4,
+  Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  Skeleton,
+  SkinnedMesh,
+  Texture,
+} from "three";
 
 import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
+import { applyXrayBumpShading, IVisualBumpShading, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import {
   getVisualSubmeshLevel,
   IVisualModelViews,
@@ -13,11 +24,13 @@ const MESH_METALNESS: number = 0.05;
 const MESH_ROUGHNESS: number = 0.75;
 
 /**
- * The two view toggles a material answers to.
+ * The three view toggles a material answers to.
  */
 export interface IVisualMeshMaterialOptions {
   isWireframe: boolean;
   isCheckerVisible: boolean;
+  /** Whether a submesh whose material bound a bump pair is shaded with it, or drawn flat for comparison. */
+  isBumpVisible: boolean;
 }
 
 /** What drawing a model's submeshes needs beyond the model itself. */
@@ -32,11 +45,14 @@ export interface IVisualPreviewMeshesOptions {
 }
 
 /**
- * One drawn submesh: its mesh, its own material, and the texture applied to it.
+ * One drawn submesh: its mesh, its own material, the texture applied to it, and the bump shading patched onto it.
  */
 interface IVisualSubmeshMesh {
+  submesh: IVisualSubmeshViews;
   mesh: Mesh<BufferGeometry, MeshStandardMaterial>;
   texture: Nullable<Texture>;
+  /** The switch of a material shading a bump pair, or null for a surface with no pair to shade. */
+  bump: Nullable<IVisualBumpShading>;
 }
 
 /**
@@ -75,7 +91,7 @@ export class VisualPreviewMeshes {
     for (const submesh of this.submeshes) {
       const mesh: Mesh<BufferGeometry, MeshStandardMaterial> = this.createMesh(submesh, options);
 
-      this.meshes.set(submesh.index, { mesh, texture: null });
+      this.meshes.set(submesh.index, { submesh, mesh, texture: null, bump: null });
       this.parent.add(mesh);
     }
   }
@@ -131,20 +147,45 @@ export class VisualPreviewMeshes {
   }
 
   /**
+   * Shades one submesh with its bump pair, borrowing both textures.
+   *
+   * The authored tangent basis goes onto the geometry here rather than at build time, because most submeshes bind no
+   * pair and would carry two attributes nothing reads. The material is patched once; the view toggle then switches a
+   * uniform, so comparing flat and bumped costs neither a recompile nor a re-upload.
+   *
+   * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
+   * @param textures - The uploaded pair, owned by whoever loaded it.
+   */
+  public applyBump(submeshIndex: number, textures: IVisualBumpTextures): void {
+    const drawn: Optional<IVisualSubmeshMesh> = this.meshes.get(submeshIndex);
+
+    if (!drawn) {
+      return;
+    }
+
+    drawn.mesh.geometry.setAttribute("xrayTangent", new BufferAttribute(drawn.submesh.tangents, 3));
+    drawn.mesh.geometry.setAttribute("xrayBinormal", new BufferAttribute(drawn.submesh.binormals, 3));
+    drawn.bump = applyXrayBumpShading(drawn.mesh.material, textures);
+    drawn.bump.setEnabled(this.materialOptions?.isBumpVisible ?? true);
+  }
+
+  /**
    * Applies the view toggles that change how a surface is drawn.
    *
-   * Retained as well as applied, because a texture arriving later has to know whether the checkerboard is currently
-   * standing in for it.
+   * Retained as well as applied, because a texture or a bump pair arriving later has to know whether the checkerboard
+   * is currently standing in for it and whether the bump is being compared away.
    *
-   * @param options - Whether to draw as wireframe, and whether the checkerboard covers every texture.
+   * @param options - Whether to draw as wireframe, whether the checkerboard covers every texture, and whether bumps
+   *   are shaded.
    */
   public applyMaterialOptions(options: IVisualMeshMaterialOptions): void {
     this.materialOptions = options;
 
-    for (const { mesh, texture } of this.meshes.values()) {
+    for (const { mesh, texture, bump } of this.meshes.values()) {
       mesh.material.wireframe = options.isWireframe;
       mesh.material.map = options.isCheckerVisible ? this.checker : texture;
       mesh.material.needsUpdate = true;
+      bump?.setEnabled(options.isBumpVisible);
     }
   }
 

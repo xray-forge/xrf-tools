@@ -25,7 +25,7 @@ export function VisualMaterialsPanel({
   id,
   className,
 }: IVisualMaterialsPanelProps = {}): ReactElement {
-  const { selected, textureStatuses }: IVisualInspection = useInjection(VISUAL_INSPECTION);
+  const { selected, textureStatuses, bumpStatuses }: IVisualInspection = useInjection(VISUAL_INSPECTION);
   const description: Nullable<VisualDescription> = selected?.description ?? null;
   const described: Record<string, AssetTextureDescriptor> = selected?.textures ?? {};
 
@@ -80,6 +80,7 @@ export function VisualMaterialsPanel({
           isFirst={index === 0}
           texture={textures.get(submesh.index) ?? null}
           status={textureStatuses.get(submesh.index) ?? null}
+          bumpStatus={bumpStatuses.get(submesh.index) ?? null}
           textures={described}
           materials={selected?.materials}
         />

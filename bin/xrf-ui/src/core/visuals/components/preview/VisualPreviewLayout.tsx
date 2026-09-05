@@ -14,6 +14,7 @@ import {
   VisualPreviewToolbar,
 } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
+import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -29,6 +30,8 @@ export interface IVisualPreviewLayoutProps extends BaseComponentProps {
   panels?: Array<IEditorPanel>;
   /** Loaded textures by submesh index, passed straight through to the viewport. */
   textures?: ReadonlyMap<number, Texture>;
+  /** Loaded bump pairs by submesh index, passed straight through to the viewport; any at all offers the bump toggle. */
+  bumps?: ReadonlyMap<number, IVisualBumpTextures>;
   /** Joint to mark in the viewport, named elsewhere - the bones panel - and resolved to a position by its owner. */
   highlightedJoint?: Nullable<[number, number, number]>;
   /** Bones the viewport collapses, by index, as the engine collapses an addon that is not attached. */
@@ -70,6 +73,7 @@ export function VisualPreviewLayout({
   tree,
   panels,
   textures,
+  bumps,
   highlightedJoint = null,
   hiddenBones,
   renderViewport,
@@ -94,6 +98,8 @@ export function VisualPreviewLayout({
   const triangleCount: number = model ? countVisualTriangles(model, detail) : 0;
   const hasDetailLevels: boolean = (model?.levelCount ?? 1) > 1;
   const hasSkeleton: boolean = Boolean(model?.skeleton);
+  // A dummy pair counts: it is uploaded and shaded, and comparing it flat is how a modder sees that it adds nothing.
+  const hasBump: boolean = Boolean(model && bumps && bumps.size > 0);
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
@@ -132,6 +138,7 @@ export function VisualPreviewLayout({
           isOpenEnabled={Boolean(onOpen)}
           hasDetailLevels={hasDetailLevels}
           hasSkeleton={hasSkeleton}
+          hasBump={hasBump}
           subtitle={subtitle}
           options={options}
           detail={detail}
@@ -151,7 +158,7 @@ export function VisualPreviewLayout({
         sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
       >
         {renderViewport ? (
-          renderViewport({ cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
+          renderViewport({ bumps, cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
         ) : (
           <VisualPreviewMotionViewport
             model={model}
@@ -161,6 +168,7 @@ export function VisualPreviewLayout({
             highlightedJoint={highlightedJoint}
             hiddenBones={hiddenBones}
             textures={textures}
+            bumps={bumps}
           />
         )}
 

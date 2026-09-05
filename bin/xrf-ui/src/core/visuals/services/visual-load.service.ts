@@ -8,6 +8,7 @@ import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import {
   createDdsTexture,
@@ -43,9 +44,19 @@ interface IVisualTextureRead {
  * Submeshes sharing a file share the one `Texture`: `textures` maps several indices onto the same upload, which is why
  * anything freeing them has to go through the distinct values rather than the entries.
  */
+/** One half of a bump pair after upload: the texture when it made it, and what to report either way. */
+interface IVisualBumpHalf {
+  texture: Nullable<Texture>;
+  state: EVisualTextureState;
+  reason: Nullable<string>;
+}
+
 interface IVisualTextureLoad {
   textures: Map<number, Texture>;
   statuses: Map<number, IVisualTextureStatus>;
+  /** The bump pair of every submesh whose material bound one and whose two files both uploaded. */
+  bumps: Map<number, IVisualBumpTextures>;
+  bumpStatuses: Map<number, IVisualBumpStatus>;
 }
 
 /**
@@ -72,6 +83,19 @@ export class VisualLoadService {
   /** What became of each submesh's texture, so a panel can report it rather than leaving a submesh unexplained. */
   @Observable()
   public textureStatuses: ReadonlyMap<number, IVisualTextureStatus> = new Map();
+
+  /**
+   * Uploaded bump pairs by submesh index, for a viewport to shade with.
+   *
+   * Only complete pairs: the engine's sampler reads both every texel, so one half is nothing to shade with. A `dummy`
+   * outcome is a complete pair too, of the real dummy files, so the preview shows the flat surface the game shows.
+   */
+  @Observable()
+  public bumps: ReadonlyMap<number, IVisualBumpTextures> = new Map();
+
+  /** What became of each submesh's bump inputs, each half on its own. */
+  @Observable()
+  public bumpStatuses: ReadonlyMap<number, IVisualBumpStatus> = new Map();
 
   /**
    * @returns The path or entry the loaded visual was read from, or null when nothing is loaded.
@@ -112,6 +136,7 @@ export class VisualLoadService {
       this.visual = this.visual.asLoading(null);
       this.releaseTextures();
       this.textureStatuses = new Map();
+      this.bumpStatuses = new Map();
 
       const selected: SelectedVisualDescription = yield* call(visualsCommands.openModel(source, roots));
 
@@ -148,6 +173,7 @@ export class VisualLoadService {
       this.visual = createLoadable(null);
       this.releaseTextures();
       this.textureStatuses = new Map();
+      this.bumpStatuses = new Map();
     });
   }
 
@@ -194,6 +220,8 @@ export class VisualLoadService {
     this.visual = this.visual.asReady({ selected, views });
     this.textures = loaded.textures;
     this.textureStatuses = loaded.statuses;
+    this.bumps = loaded.bumps;
+    this.bumpStatuses = loaded.bumpStatuses;
   }
 
   /**
@@ -209,8 +237,15 @@ export class VisualLoadService {
    * @returns Each distinct file's bytes, or the reason there are none, by logical path.
    */
   private async readTextures(selected: SelectedVisualDescription): Promise<Map<string, IVisualTextureRead>> {
+    // Base textures and bump pairs in one pass: a dummy pair shared by every degraded submesh is one read either way.
     const paths: Array<string> = [
-      ...new Set(toLoadableTextures(selected.dependencies.textures).map((it: ILoadableTexture) => it.logicalPath)),
+      ...new Set([
+        ...toLoadableTextures(selected.dependencies.textures).map((it: ILoadableTexture) => it.logicalPath),
+        ...toLoadableBumps(selected.dependencies.textures, selected.materials).flatMap((it: ILoadableBump) => [
+          it.bump,
+          it.companion,
+        ]),
+      ]),
     ];
 
     if (!paths.length) {
@@ -290,7 +325,81 @@ export class VisualLoadService {
       });
     }
 
-    return { statuses, textures };
+    const { bumps, bumpStatuses } = this.uploadBumps(selected, reads, uploads);
+
+    return { statuses, textures, bumps, bumpStatuses };
+  }
+
+  /**
+   * Upload every complete bump pair, sharing uploads with the base textures and between submeshes.
+   *
+   * A pair lands only when both halves uploaded: the engine samples both every texel, so half a pair shades nothing,
+   * while each half still reports its own outcome so the panel can say which one failed. The renderer's own loader is
+   * the only decoder here; a bump in a layout it refuses stays unshaded rather than going through the png fallback,
+   * whose single image would lose the mip chain a bump relies on at distance.
+   *
+   * @param selected - Visual the materials belong to.
+   * @param reads - What each texture read produced.
+   * @param uploads - Uploads so far by logical path, shared so a file read once is uploaded once.
+   * @returns Complete pairs by submesh index, and every submesh's two outcomes.
+   */
+  private uploadBumps(
+    selected: SelectedVisualDescription,
+    reads: Map<string, IVisualTextureRead>,
+    uploads: Map<string, Nullable<Texture>>
+  ): Pick<IVisualTextureLoad, "bumps" | "bumpStatuses"> {
+    const bumps: Map<number, IVisualBumpTextures> = new Map();
+    const bumpStatuses: Map<number, IVisualBumpStatus> = new Map();
+
+    for (const loadable of toLoadableBumps(selected.dependencies.textures, selected.materials)) {
+      const bump: IVisualBumpHalf = this.uploadBumpHalf(loadable.bump, reads, uploads);
+      const companion: IVisualBumpHalf = this.uploadBumpHalf(loadable.companion, reads, uploads);
+
+      if (bump.texture && companion.texture) {
+        bumps.set(loadable.submeshIndex, { bump: bump.texture, companion: companion.texture });
+      }
+
+      bumpStatuses.set(loadable.submeshIndex, {
+        submeshIndex: loadable.submeshIndex,
+        bump: bump.state,
+        companion: companion.state,
+        reason: bump.reason ?? companion.reason,
+      });
+    }
+
+    return { bumps, bumpStatuses };
+  }
+
+  /**
+   * Upload one half of a pair, or say why it is not on the gpu.
+   *
+   * @param logicalPath - The located file.
+   * @param reads - What each texture read produced.
+   * @param uploads - Uploads so far by logical path, shared so a file read once is uploaded once.
+   * @returns The texture when it uploaded, and the state and reason either way.
+   */
+  private uploadBumpHalf(
+    logicalPath: string,
+    reads: Map<string, IVisualTextureRead>,
+    uploads: Map<string, Nullable<Texture>>
+  ): IVisualBumpHalf {
+    const read: Optional<IVisualTextureRead> = reads.get(logicalPath);
+
+    if (!read || read.bytes === null) {
+      return { texture: null, state: EVisualTextureState.FAILED, reason: read?.reason ?? null };
+    }
+
+    if (!uploads.has(logicalPath)) {
+      uploads.set(logicalPath, createDdsTexture(read.bytes));
+    }
+
+    const texture: Nullable<Texture> = uploads.get(logicalPath) ?? null;
+
+    return {
+      texture,
+      state: texture ? EVisualTextureState.APPLIED : EVisualTextureState.UNSUPPORTED_FORMAT,
+      reason: null,
+    };
   }
 
   /**
@@ -346,11 +455,19 @@ export class VisualLoadService {
    */
   private releaseTextures(): void {
     // Through the distinct values: submeshes sharing a file share one upload, and disposing per entry would free it
-    // once per submesh that named it.
-    for (const texture of new Set(this.textures.values())) {
+    // once per submesh that named it. The bump pairs join the same set, since a dummy pair is shared the same way.
+    const uploaded: Set<Texture> = new Set(this.textures.values());
+
+    for (const pair of this.bumps.values()) {
+      uploaded.add(pair.bump);
+      uploaded.add(pair.companion);
+    }
+
+    for (const texture of uploaded) {
       texture.dispose();
     }
 
     this.textures = new Map();
+    this.bumps = new Map();
   }
 }

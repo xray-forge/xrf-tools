@@ -18,6 +18,7 @@ function renderToolbar(
       detail={detail}
       hasDetailLevels={hasDetailLevels}
       hasSkeleton
+      hasBump
       onChangeOptions={jest.fn()}
       onChangeDetail={onChangeDetail}
       onResetCamera={jest.fn()}
@@ -36,6 +37,7 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
         detail={0}
         hasDetailLevels
         hasSkeleton={false}
+        hasBump
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -54,6 +56,7 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
         detail={0}
         hasDetailLevels
         hasSkeleton
+        hasBump
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -64,6 +67,51 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
 
     expect(changes).toHaveLength(1);
     expect(changes[0].isSkeletonVisible).toBe(true);
+  });
+});
+
+describe("VisualPreviewToolbar bump toggle", () => {
+  it("offers nothing to shade on a model whose materials bound no pair", () => {
+    // Most models: no descriptor declares a bump, so the toggle sits disabled with its reason rather than vanishing.
+    const { getByRole } = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        isOpenEnabled
+        detail={0}
+        hasDetailLevels
+        hasSkeleton
+        hasBump={false}
+        onChangeOptions={jest.fn()}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    expect(getByRole("button", { name: "Bump" })).toBeDisabled();
+  });
+
+  it("starts on and asks to draw the surface flat when a pair is there to compare against", () => {
+    const changes: Array<IVisualPreviewViewOptions> = [];
+    const { getByRole } = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        isOpenEnabled
+        detail={0}
+        hasDetailLevels
+        hasSkeleton
+        hasBump
+        onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    expect(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS.isBumpVisible).toBe(true);
+
+    fireEvent.click(getByRole("button", { name: "Bump" }));
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].isBumpVisible).toBe(false);
   });
 });
 

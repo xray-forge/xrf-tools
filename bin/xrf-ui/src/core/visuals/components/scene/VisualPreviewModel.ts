@@ -5,6 +5,7 @@ import {
   IVisualPreviewSkeletonConfig,
   VisualPreviewSkeleton,
 } from "@/core/visuals/components/scene/VisualPreviewSkeleton";
+import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
@@ -104,6 +105,16 @@ export class VisualPreviewModel {
    */
   public applyTexture(submeshIndex: number, texture: Texture): void {
     this.meshes.applyTexture(submeshIndex, texture);
+  }
+
+  /**
+   * Shades one of this model's submeshes with its bump pair.
+   *
+   * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
+   * @param textures - The uploaded pair, owned by whoever loaded it.
+   */
+  public applyBump(submeshIndex: number, textures: IVisualBumpTextures): void {
+    this.meshes.applyBump(submeshIndex, textures);
   }
 
   /**

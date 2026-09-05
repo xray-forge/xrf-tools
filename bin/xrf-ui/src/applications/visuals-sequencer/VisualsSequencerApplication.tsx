@@ -53,6 +53,7 @@ export function VisualsSequencerApplication({
       subtitle={service.sourceLabel ?? undefined}
       panels={SEQUENCER_PANELS}
       textures={service.textures}
+      bumps={service.bumps}
       renderViewport={renderViewport}
       footer={<SequencerTransport />}
       isLoading={service.visual.isLoading}

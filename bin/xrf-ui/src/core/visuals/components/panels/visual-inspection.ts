@@ -2,6 +2,7 @@ import { InjectionToken } from "@wirestate/core";
 
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { Nullable } from "@/lib/types/general";
 
@@ -38,6 +39,8 @@ export interface IVisualInspection {
   bones: Array<VisualBone>;
   /** What became of each submesh's texture, by submesh index. */
   textureStatuses: ReadonlyMap<number, IVisualTextureStatus>;
+  /** What became of each submesh's bump pair, by submesh index, for the submeshes whose material bound one. */
+  bumpStatuses: ReadonlyMap<number, IVisualBumpStatus>;
   /** Bone marking and hiding, or null on a surface that offers neither. */
   boneControls: Nullable<IVisualBoneControls>;
 }

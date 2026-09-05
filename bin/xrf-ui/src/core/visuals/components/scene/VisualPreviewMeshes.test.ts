@@ -96,7 +96,7 @@ describe("VisualPreviewMeshes", () => {
     const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false });
+    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
     meshes.applyTexture(0, texture);
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
@@ -152,11 +152,11 @@ describe("VisualPreviewMeshes", () => {
     const texture: Texture = new Texture();
 
     meshes.applyTexture(0, texture);
-    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false });
+    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false, isBumpVisible: true });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(CHECKER);
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false });
+    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
@@ -165,12 +165,12 @@ describe("VisualPreviewMeshes", () => {
     const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false });
+    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false, isBumpVisible: true });
     meshes.applyTexture(0, texture);
 
     expect(attachedMeshes(parent)[0].material.map).toBe(CHECKER);
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false });
+    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
@@ -178,7 +178,7 @@ describe("VisualPreviewMeshes", () => {
   it("draws wireframe when asked", () => {
     const { meshes, parent } = mockMeshes();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: true });
+    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: true, isBumpVisible: true });
 
     expect(attachedMeshes(parent)[0].material.wireframe).toBe(true);
   });
@@ -223,5 +223,50 @@ describe("VisualPreviewMeshes", () => {
     const { parent }: { parent: Object3D; meshes: Nullable<VisualPreviewMeshes> } = mockMeshes(mockVisualModelViews());
 
     expect(parent.children).toHaveLength(0);
+  });
+});
+
+describe("VisualPreviewMeshes bump shading", () => {
+  it("patches the material and hands the geometry the authored basis when a pair arrives", () => {
+    const { meshes, parent } = mockMeshes();
+    const [mesh] = attachedMeshes(parent);
+
+    expect(mesh.geometry.getAttribute("xrayTangent")).toBeUndefined();
+
+    meshes.applyBump(0, { bump: new Texture(), companion: new Texture() });
+
+    // The basis goes on only now: most submeshes bind no pair and would carry two attributes nothing reads.
+    expect(mesh.geometry.getAttribute("xrayTangent").count).toBe(3);
+    expect(mesh.geometry.getAttribute("xrayBinormal").count).toBe(3);
+    expect(mesh.material.customProgramCacheKey()).toBe("xray-bump");
+  });
+
+  it("switches a shaded surface flat and back through the view options", () => {
+    const { meshes, parent } = mockMeshes();
+    const [mesh] = attachedMeshes(parent);
+    const shader = {
+      uniforms: {},
+      vertexShader: "#include <common>",
+      fragmentShader: "#include <common>",
+    } as unknown as Parameters<MeshStandardMaterial["onBeforeCompile"]>[0];
+
+    meshes.applyBump(0, { bump: new Texture(), companion: new Texture() });
+    mesh.material.onBeforeCompile(shader, null as never);
+
+    expect(shader.uniforms.xrayBumpEnabled.value).toBe(1);
+
+    meshes.applyMaterialOptions({ isWireframe: false, isCheckerVisible: false, isBumpVisible: false });
+
+    expect(shader.uniforms.xrayBumpEnabled.value).toBe(0);
+
+    meshes.applyMaterialOptions({ isWireframe: false, isCheckerVisible: false, isBumpVisible: true });
+
+    expect(shader.uniforms.xrayBumpEnabled.value).toBe(1);
+  });
+
+  it("leaves a submesh it does not draw alone", () => {
+    const { meshes } = mockMeshes();
+
+    expect(() => meshes.applyBump(7, { bump: new Texture(), companion: new Texture() })).not.toThrow();
   });
 });

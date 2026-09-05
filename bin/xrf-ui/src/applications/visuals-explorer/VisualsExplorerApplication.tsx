@@ -64,6 +64,7 @@ export function VisualsExplorerApplication({
       subtitle={visualsService.sourceLabel ?? undefined}
       panels={VISUALS_EXPLORER_PANELS}
       textures={visualsService.textures}
+      bumps={visualsService.bumps}
       highlightedJoint={visualsService.highlightedJoint}
       hiddenBones={visualsService.hiddenBoneIndices}
       tree={isBrowsing ? <VisualsMenu /> : undefined}

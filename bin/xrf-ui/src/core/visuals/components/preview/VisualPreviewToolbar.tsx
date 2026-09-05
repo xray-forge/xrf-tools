@@ -1,6 +1,7 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocusStrong";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as PolylineIcon } from "@mui/icons-material/Polyline";
@@ -25,6 +26,8 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   detail: number;
   /** Whether the open model carries a bind pose to draw. */
   hasSkeleton: boolean;
+  /** Whether any of the open model's materials bound a bump pair to shade with. */
+  hasBump: boolean;
   /** Whether the open model has anything to decimate. */
   hasDetailLevels: boolean;
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
@@ -49,6 +52,7 @@ export function VisualPreviewToolbar({
   detail,
   hasDetailLevels,
   hasSkeleton,
+  hasBump,
   onChangeOptions,
   onChangeDetail,
   onResetCamera,
@@ -164,6 +168,15 @@ export function VisualPreviewToolbar({
             icon={<TextureIcon />}
             isOn={options.isCheckerVisible}
             onToggle={() => onToggle("isCheckerVisible")}
+          />
+
+          <VisualPreviewViewToggle
+            label={"Bump"}
+            icon={<GrainIcon />}
+            isOn={options.isBumpVisible}
+            isDisabled={!hasBump}
+            unavailableTitle={"No bump material in this model"}
+            onToggle={() => onToggle("isBumpVisible")}
           />
 
           <VisualPreviewViewToggle
