@@ -14,8 +14,9 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "tree here.",
     "Read the `Material` panel for what the descriptor declares, and the `Files` panel for the three files behind " +
       "it: the texture, the bump, and its `bump#` companion.",
-    "Switch the preview from the flat picture to a lit body to see what the engine makes of the pair. Drag to " +
-      "orbit, hold `Shift` and drag to move the light, and turn `Bump` off to compare the same body flat.",
+    "Turn `Lit surface` on in the toolbar to see what the engine makes of the pair. `Body` chooses what the texture " +
+      "is laid on and how many times it repeats; drag to orbit, hold `Shift` and drag to move the light, and turn " +
+      "`Bump` off to compare the same body flat.",
   ],
   nuances: [
     "A texture is named by its engine reference - the path below `textures\\` without the extension - because that " +
@@ -45,6 +46,12 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "shader kernel decodes `normal.gloss` and `error.height` for both, so a texture judged here and the model " +
       "binding it cannot disagree. The body's tangent basis is derived from its own uvs, with `v` running downwards " +
       "as X-Ray stores its rows.",
+    "Turning `Light` off draws the body under a flat ambient, which is the same picture the flat preview shows. " +
+      "That is what makes the two modes comparable: with the light on you are looking at an interpretation, and the " +
+      "switch says which of the two you have. Nothing is shaded with the light off, so the `Bump` toggle goes with " +
+      "it.",
+    "`Plane` is a thin slab rather than a true plane, so orbiting past its edge shows a dark side rather than an " +
+      "empty viewport. Its proportions are the texture's own, and only its front face carries the texture.",
     "The session survives a reload; the texture that was open does not, because the backend parks no selection. " +
       "Leaving the application closes the browsed roots.",
   ],

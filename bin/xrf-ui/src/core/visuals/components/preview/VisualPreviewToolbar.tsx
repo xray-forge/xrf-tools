@@ -12,8 +12,8 @@ import { Box, Divider, IconButton, Popover, Slider, Tooltip, Typography } from "
 import { MouseEvent, ReactElement, useCallback, useState } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { LAYOUT } from "@/core/theme/tokens";
-import { VisualPreviewViewToggle } from "@/core/visuals/components/preview/VisualPreviewViewToggle";
 import { IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -156,21 +156,21 @@ export function VisualPreviewToolbar({
 
           <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Wireframe"}
             icon={<HexagonIcon />}
             isOn={options.isWireframe}
             onToggle={() => onToggle("isWireframe")}
           />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Uv checkerboard"}
             icon={<TextureIcon />}
             isOn={options.isCheckerVisible}
             onToggle={() => onToggle("isCheckerVisible")}
           />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Bump"}
             icon={<GrainIcon />}
             isOn={options.isBumpVisible}
@@ -179,7 +179,7 @@ export function VisualPreviewToolbar({
             onToggle={() => onToggle("isBumpVisible")}
           />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Skeleton"}
             icon={<PolylineIcon />}
             isOn={options.isSkeletonVisible}
@@ -188,14 +188,14 @@ export function VisualPreviewToolbar({
             onToggle={() => onToggle("isSkeletonVisible")}
           />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Grid"}
             icon={<GridOnIcon />}
             isOn={options.isGridVisible}
             onToggle={() => onToggle("isGridVisible")}
           />
 
-          <VisualPreviewViewToggle
+          <EditorViewToggle
             label={"Axes"}
             icon={<ThreeDRotationIcon />}
             isOn={options.isAxesVisible}

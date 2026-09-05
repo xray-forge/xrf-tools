@@ -7,24 +7,21 @@ import {
   PerspectiveCamera,
   RepeatWrapping,
   Scene,
+  Texture,
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/applications/textures-explorer/lib/texture-surface";
+import {
+  EMPTY_TEXTURE_SURFACE,
+  ETextureSurfaceShape,
+  ITextureSurfaceOptions,
+  ITextureSurfaceTextures,
+} from "@/applications/textures-explorer/lib/texture-surface";
 import { applyXrayBumpShading, IVisualBumpShading } from "@/core/visuals/lib/visual-bump";
 import { Nullable } from "@/lib/types/general";
 
-import { createTextureSurfaceGeometry, ETextureSurfaceShape, toLightPosition } from "./texture-surface.utils";
-
-/** How the surface is being looked at. */
-export interface ITextureSurfaceOptions {
-  shape: ETextureSurfaceShape;
-  /** Whether the bump pair shades the surface, so the same body can be compared flat. */
-  isBumped: boolean;
-  /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
-  tiling: number;
-}
+import { createTextureSurfaceGeometry, toLightPosition } from "./texture-surface.utils";
 
 /** Where the light stands, in the angles a drag moves. */
 interface ILightAngles {
@@ -37,6 +34,13 @@ const INITIAL_LIGHT: ILightAngles = { azimuth: Math.PI / 4, elevation: Math.PI /
 /** How far a drag across the whole viewport swings the light, in radians. */
 const LIGHT_DRAG_SPEED: number = Math.PI;
 
+/** How hard the light and the fill are driven when the surface is lit, and when it is not. */
+const LIT_INTENSITY = { ambient: 0.35, directional: 2.6 };
+const UNLIT_INTENSITY = { ambient: 1, directional: 0 };
+
+/** Where the camera starts and returns to. */
+const CAMERA_DISTANCE: number = 5;
+
 /**
  * One texture on a lit body, shaded the way the engine shades it.
  *
@@ -48,13 +52,21 @@ export class TextureSurfaceScene {
   private readonly renderer: WebGLRenderer;
   private readonly controls: OrbitControls;
   private readonly light: DirectionalLight;
+  private readonly ambient: AmbientLight;
   private readonly material: MeshStandardMaterial;
+  private readonly edgeMaterial: MeshStandardMaterial;
   private readonly resizeObserver: ResizeObserver;
 
-  private mesh: Nullable<Mesh<BufferGeometry, MeshStandardMaterial>> = null;
+  private mesh: Nullable<Mesh<BufferGeometry, MeshStandardMaterial | Array<MeshStandardMaterial>>> = null;
   private shading: Nullable<IVisualBumpShading> = null;
   private textures: ITextureSurfaceTextures = EMPTY_TEXTURE_SURFACE;
-  private options: ITextureSurfaceOptions = { isBumped: true, shape: ETextureSurfaceShape.PLANE, tiling: 1 };
+  private options: ITextureSurfaceOptions = {
+    isBumped: true,
+    isLit: true,
+    shape: ETextureSurfaceShape.PLANE,
+    tiling: 1,
+  };
+
   private lightAngles: ILightAngles = { ...INITIAL_LIGHT };
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
@@ -68,19 +80,23 @@ export class TextureSurfaceScene {
     this.scene = new Scene();
 
     this.camera = new PerspectiveCamera(45, 1, 0.01, 100);
-    this.camera.position.set(0, 0, 5);
+    this.camera.position.set(0, 0, CAMERA_DISTANCE);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
 
-    this.light = new DirectionalLight(0xffffff, 2.6);
+    this.light = new DirectionalLight(0xffffff, LIT_INTENSITY.directional);
     this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
 
     // Low rather than absent, so the unlit side of a sphere is readable without washing the bump response out.
-    this.scene.add(new AmbientLight(0xffffff, 0.35));
+    this.ambient = new AmbientLight(0xffffff, LIT_INTENSITY.ambient);
+
+    this.scene.add(this.ambient);
     this.scene.add(this.light);
 
     this.material = new MeshStandardMaterial({ metalness: 0, roughness: 1 });
+    // Dark and plain, so a rotated slab reads as a slab: its four edges and its back are not the texture.
+    this.edgeMaterial = new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.9 });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
 
@@ -112,6 +128,7 @@ export class TextureSurfaceScene {
     this.controls.dispose();
     this.mesh?.geometry.dispose();
     this.material.dispose();
+    this.edgeMaterial.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.container = null;
@@ -130,7 +147,7 @@ export class TextureSurfaceScene {
       this.mesh.geometry.dispose();
     }
 
-    this.mesh = new Mesh(createTextureSurfaceGeometry(shape), this.material);
+    this.mesh = new Mesh(createTextureSurfaceGeometry(shape), this.toShapeMaterials(shape));
     this.scene.add(this.mesh);
 
     this.applyAspect();
@@ -148,7 +165,6 @@ export class TextureSurfaceScene {
     if (textures.bump) {
       // Re-patched per pair rather than kept, because the patch closes over the two samplers it was given.
       this.shading = applyXrayBumpShading(this.material, textures.bump);
-      this.shading.setEnabled(this.options.isBumped);
     } else {
       // Unpatched rather than switched off: a texture declaring no pair must compile the stock program, or it keeps
       // sampling the last texture's bump through a patch nothing is left to disable.
@@ -157,8 +173,7 @@ export class TextureSurfaceScene {
       this.material.customProgramCacheKey = () => "";
     }
 
-    this.applyTiling();
-    this.applyAspect();
+    this.applyOptions();
 
     this.material.needsUpdate = true;
   }
@@ -166,7 +181,7 @@ export class TextureSurfaceScene {
   /**
    * Applies how the surface is being looked at.
    *
-   * @param options - Shape, bump switch and tiling.
+   * @param options - Shape, lighting, bump switch and tiling.
    */
   public setOptions(options: ITextureSurfaceOptions): void {
     if (options.shape !== this.options.shape) {
@@ -175,11 +190,9 @@ export class TextureSurfaceScene {
 
     this.options = options;
 
-    this.shading?.setEnabled(options.isBumped);
-    this.material.needsUpdate = true;
+    this.applyOptions();
 
-    this.applyTiling();
-    this.applyAspect();
+    this.material.needsUpdate = true;
   }
 
   /**
@@ -204,7 +217,7 @@ export class TextureSurfaceScene {
 
   /** Puts the camera and the light back where they started. */
   public reset(): void {
-    this.camera.position.set(0, 0, 5);
+    this.camera.position.set(0, 0, CAMERA_DISTANCE);
     this.controls.target.set(0, 0, 0);
     this.controls.update();
 
@@ -215,6 +228,40 @@ export class TextureSurfaceScene {
   /** Whether a pair is bound, which is what makes the bump switch worth offering. */
   public get hasBump(): boolean {
     return this.textures.bump !== null;
+  }
+
+  /**
+   * The materials a body is drawn with, one per geometry group.
+   */
+  private toShapeMaterials(shape: ETextureSurfaceShape): MeshStandardMaterial | Array<MeshStandardMaterial> {
+    if (shape !== ETextureSurfaceShape.PLANE) {
+      return this.material;
+    }
+
+    // `BoxGeometry` groups its faces +x, -x, +y, -y, +z, -z, and the texture belongs on the one facing the camera.
+    return [
+      this.edgeMaterial,
+      this.edgeMaterial,
+      this.edgeMaterial,
+      this.edgeMaterial,
+      this.material,
+      this.edgeMaterial,
+    ];
+  }
+
+  /** Applies everything the current options say, from whichever of them changed. */
+  private applyOptions(): void {
+    // Nothing to shade without a light: under a flat ambient the decoded normal changes no pixel, so the switch says
+    // so rather than pretending the surface is still being compared.
+    this.shading?.setEnabled(this.options.isBumped && this.options.isLit);
+
+    const intensity = this.options.isLit ? LIT_INTENSITY : UNLIT_INTENSITY;
+
+    this.light.intensity = intensity.directional;
+    this.ambient.intensity = intensity.ambient;
+
+    this.applyTiling();
+    this.applyAspect();
   }
 
   /**
@@ -230,19 +277,28 @@ export class TextureSurfaceScene {
 
     const aspect: number = this.options.shape === ETextureSurfaceShape.PLANE ? this.textures.aspect : 1;
 
+    // Depth is left alone, so a slab keeps one thickness whatever proportions the texture on it has.
     this.mesh.scale.set(aspect >= 1 ? 1 : aspect, aspect >= 1 ? 1 / aspect : 1, 1);
   }
 
+  /** Repeats every texture the surface samples, the base through three.js and the pair through the patch. */
   private applyTiling(): void {
-    for (const texture of [this.textures.base, this.textures.bump?.bump, this.textures.bump?.companion]) {
-      if (!texture) {
-        continue;
-      }
+    const tiled: Array<Texture> = [this.textures.base, this.textures.bump?.bump, this.textures.bump?.companion].filter(
+      (it: Nullable<Texture> | undefined): it is Texture => Boolean(it)
+    );
 
+    for (const texture of tiled) {
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
       texture.repeat.set(this.options.tiling, this.options.tiling);
+      texture.updateMatrix();
       texture.needsUpdate = true;
+    }
+
+    // The patch samples the pair itself, so nothing else would carry the repeat to it: without this the base tiles
+    // and the bump does not, and one tile of detail is shaded across every tile of colour.
+    if (this.textures.bump) {
+      this.shading?.setUvTransform(this.textures.bump.bump.matrix);
     }
   }
 
@@ -259,15 +315,22 @@ export class TextureSurfaceScene {
     // Styled as well as sized: the drawing buffer is the css size times the device pixel ratio, and a canvas left to
     // lay itself out at its buffer size overflows its container by exactly that ratio.
     this.renderer.setSize(width, height);
+    // Drawn again at once, because resizing clears the buffer and observers run after this frame's animation callback:
+    // without this every step of a drag composites one empty frame, which reads as the surface fading in and out.
+    this.draw();
   }
 
   private start(): void {
-    const draw = (): void => {
-      this.frameHandle = requestAnimationFrame(draw);
-      this.controls.update();
-      this.renderer.render(this.scene, this.camera);
+    const step = (): void => {
+      this.frameHandle = requestAnimationFrame(step);
+      this.draw();
     };
 
-    draw();
+    step();
+  }
+
+  private draw(): void {
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
   }
 }

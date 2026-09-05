@@ -4,7 +4,7 @@ import { ReactElement, ReactNode } from "react";
 /** How far a toggle that is off is faded, which is the whole of the on/off vocabulary in this toolbar. */
 const OFF_OPACITY: number = 0.45;
 
-export interface IVisualPreviewViewToggleProps {
+export interface IEditorViewToggleProps {
   /** Names the toggle in the tooltip and to a screen reader, which are the same word on purpose. */
   label: string;
   icon: ReactNode;
@@ -16,16 +16,19 @@ export interface IVisualPreviewViewToggleProps {
 }
 
 /**
- * One view toggle of the preview toolbar.
+ * One on/off view toggle of an editor toolbar.
+ *
+ * Lives with the toolbar rather than with any one editor, because the vocabulary is what makes two tools feel like
+ * one program: a person who has learned that a faded icon means the view option is off has learned it everywhere.
  */
-export function VisualPreviewViewToggle({
+export function EditorViewToggle({
   label,
   icon,
   isOn,
   unavailableTitle,
   isDisabled = false,
   onToggle,
-}: IVisualPreviewViewToggleProps): ReactElement {
+}: IEditorViewToggleProps): ReactElement {
   return (
     <Tooltip title={isDisabled && unavailableTitle ? unavailableTitle : label} describeChild>
       <span>

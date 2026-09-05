@@ -1,4 +1,4 @@
-import { IUniform, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
+import { IUniform, Matrix3, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
@@ -115,6 +115,12 @@ export function toLoadableBumps(
 /** Switches a patched material between the flat and the bumped surface without recompiling it. */
 export interface IVisualBumpShading {
   setEnabled(isEnabled: boolean): void;
+  /**
+   * Applies the same uv transform the base texture is sampled through.
+   *
+   * @param matrix - The base texture's `matrix`, kept up to date by `Texture.updateMatrix`.
+   */
+  setUvTransform(matrix: Matrix3): void;
 }
 
 /**
@@ -126,6 +132,7 @@ export interface IVisualBumpShading {
 const VERTEX_PARS: string = `
 attribute vec3 xrayTangent;
 attribute vec3 xrayBinormal;
+uniform mat3 xrayBumpUvTransform;
 varying vec3 vXrayTangent;
 varying vec3 vXrayBinormal;
 varying vec2 vXrayUv;
@@ -146,7 +153,7 @@ xrayObjectBinormal = vec4( skinMatrix * vec4( xrayObjectBinormal, 0.0 ) ).xyz;
 const VERTEX_TRANSFORM: string = `
 vXrayTangent = normalMatrix * xrayObjectTangent;
 vXrayBinormal = normalMatrix * xrayObjectBinormal;
-vXrayUv = uv;
+vXrayUv = ( xrayBumpUvTransform * vec3( uv, 1.0 ) ).xy;
 `;
 
 const FRAGMENT_PARS: string = `
@@ -210,11 +217,13 @@ export function applyXrayBumpShading(
   textures: IVisualBumpTextures
 ): IVisualBumpShading {
   const enabled: IUniform<number> = { value: 1 };
+  const uvTransform: IUniform<Matrix3> = { value: new Matrix3() };
 
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms): void => {
     shader.uniforms.xrayBump = { value: textures.bump };
     shader.uniforms.xrayBumpX = { value: textures.companion };
     shader.uniforms.xrayBumpEnabled = enabled;
+    shader.uniforms.xrayBumpUvTransform = uvTransform;
 
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n${VERTEX_PARS}`)
@@ -234,6 +243,9 @@ export function applyXrayBumpShading(
   return {
     setEnabled(isEnabled: boolean): void {
       enabled.value = isEnabled ? 1 : 0;
+    },
+    setUvTransform(matrix: Matrix3): void {
+      uvTransform.value.copy(matrix);
     },
   };
 }

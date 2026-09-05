@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeTexturePreviewGap, ETexturePreviewMode } from "./TexturePreview.utils";
+import { describeTexturePreviewGap, ETexturePreviewMode } from "@/applications/textures-explorer/lib/texture-preview";
 
 describe("describeTexturePreviewGap", () => {
   it("should report a descriptor with no texture beside it, in either mode", () => {

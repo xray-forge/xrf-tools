@@ -1,7 +1,27 @@
 import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute, BufferGeometry, Vector3 } from "three";
 
-import { createTextureSurfaceGeometry, ETextureSurfaceShape, toLightPosition } from "./texture-surface.utils";
+import { ETextureSurfaceShape } from "@/applications/textures-explorer/lib/texture-surface";
+
+import { createTextureSurfaceGeometry, toLightPosition } from "./texture-surface.utils";
+
+/**
+ * The first vertex of the face the camera starts in front of, which is the one carrying the texture.
+ *
+ * @param geometry - Geometry to search.
+ * @returns Index of a vertex whose normal points at the camera.
+ */
+function frontFaceVertex(geometry: BufferGeometry): number {
+  const normals: BufferAttribute = geometry.getAttribute("normal") as BufferAttribute;
+
+  for (let index = 0; index < normals.count; index += 1) {
+    if (normals.getZ(index) === 1) {
+      return index;
+    }
+  }
+
+  throw new Error("The body has no face pointing at the camera.");
+}
 
 /**
  * Reads one vertex out of a named attribute.
@@ -43,22 +63,38 @@ describe("createTextureSurfaceGeometry", () => {
     }
   });
 
-  it("should orient the plane so u runs right and v runs down, as X-Ray stores rows", () => {
+  it("should orient the flat body so u runs right and v runs down, as X-Ray stores rows", () => {
     const geometry: BufferGeometry = createTextureSurfaceGeometry(ETextureSurfaceShape.PLANE);
+    const front: number = frontFaceVertex(geometry);
     const uvs: BufferAttribute = geometry.getAttribute("uv") as BufferAttribute;
+    const position: Vector3 = vectorAt(geometry, "position", front);
 
-    // Top-left of the file at the top-left corner of the quad: three.js generates the opposite, and a texture drawn
+    // Top-left of the file at the top-left corner of the face: three.js generates the opposite, and a texture drawn
     // that way is mirrored against the flat preview of the same file.
-    expect(uvs.getY(0)).toBe(0);
-    expect(vectorAt(geometry, "position", 0).y).toBeGreaterThan(0);
+    expect(uvs.getX(front)).toBe(0);
+    expect(uvs.getY(front)).toBe(0);
+    expect(position.x).toBeLessThan(0);
+    expect(position.y).toBeGreaterThan(0);
 
-    const tangent: Vector3 = vectorAt(geometry, "xrayTangent", 0);
-    const binormal: Vector3 = vectorAt(geometry, "xrayBinormal", 0);
+    const tangent: Vector3 = vectorAt(geometry, "xrayTangent", front);
+    const binormal: Vector3 = vectorAt(geometry, "xrayBinormal", front);
 
     // u to the right and v downwards, which is the handedness a DirectX-era engine packs its normals against: get the
     // binormal's sign wrong here and every bumped surface is lit from the opposite side of its own detail.
     expect(tangent.x).toBeCloseTo(1, 5);
     expect(binormal.y).toBeCloseTo(-1, 5);
+  });
+
+  it("should give the flat body a depth, so turning it away shows an edge rather than nothing", () => {
+    const geometry: BufferGeometry = createTextureSurfaceGeometry(ETextureSurfaceShape.PLANE);
+
+    geometry.computeBoundingBox();
+
+    const depth: number = geometry.boundingBox!.max.z - geometry.boundingBox!.min.z;
+
+    expect(depth).toBeGreaterThan(0);
+    // Thin enough that the face a person is reading is not competing with the sides of a box.
+    expect(depth).toBeLessThan(0.2);
   });
 });
 

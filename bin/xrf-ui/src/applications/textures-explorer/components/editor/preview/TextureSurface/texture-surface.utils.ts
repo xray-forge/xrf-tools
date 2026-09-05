@@ -1,19 +1,13 @@
-import { BoxGeometry, BufferAttribute, BufferGeometry, PlaneGeometry, SphereGeometry, Vector2, Vector3 } from "three";
+import { BoxGeometry, BufferAttribute, BufferGeometry, SphereGeometry, Vector2, Vector3 } from "three";
 
+import { ETextureSurfaceShape } from "@/applications/textures-explorer/lib/texture-surface";
 import { Nullable } from "@/lib/types/general";
-
-/** The bodies a texture can be laid on, each answering a different question about it. */
-export enum ETextureSurfaceShape {
-  /** Flat and face on, where the decode is read most directly and tiling is judged. */
-  PLANE = "plane",
-  /** Curved, so the normal sweeps every grazing angle a wrong tangent sign shows up at. */
-  SPHERE = "sphere",
-  /** Edged, where a seam and the wrap of a tiling texture meet. */
-  CUBE = "cube",
-}
 
 /** How large each body is drawn, chosen so all three frame alike under one camera fit. */
 const SHAPE_EXTENT: number = 2;
+
+/** How thick the flat body is, as a fraction of its extent: enough to see it turn, too little to read as a box. */
+const SLAB_THICKNESS: number = 0.02;
 
 /**
  * Builds the body a texture is laid on, with the tangent basis the X-Ray bump shader rotates through.
@@ -150,7 +144,7 @@ export function toLightPosition(azimuth: number, elevation: number): Vector3 {
 function createShapeGeometry(shape: ETextureSurfaceShape): BufferGeometry {
   switch (shape) {
     case ETextureSurfaceShape.PLANE:
-      return withTopFirstUvs(new PlaneGeometry(SHAPE_EXTENT, SHAPE_EXTENT, 1, 1));
+      return withTopFirstUvs(new BoxGeometry(SHAPE_EXTENT, SHAPE_EXTENT, SHAPE_EXTENT * SLAB_THICKNESS));
 
     case ETextureSurfaceShape.SPHERE:
       return withTopFirstUvs(new SphereGeometry(SHAPE_EXTENT / 2, 96, 64));

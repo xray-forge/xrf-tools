@@ -1,13 +1,18 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
-import { Texture } from "three";
+import { SRGBColorSpace, Texture } from "three";
 
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/applications/textures-explorer/lib/texture-surface";
-import { getLocatedAsset } from "@/core/assets/lib";
+import {
+  EMPTY_TEXTURE_SURFACE,
+  ITextureBumpAssets,
+  ITextureSurfaceTextures,
+  selectTextureBumpAssets,
+  toTextureAspect,
+} from "@/applications/textures-explorer/lib/texture-surface";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
 import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
-import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { createDdsTexture, createDecodedTexture } from "@/core/visuals/lib/visual-texture";
 import { createLoadable, Loadable } from "@/lib/loadable";
@@ -55,16 +60,24 @@ export class TextureSurfaceService {
 
     try {
       const { roots } = description;
-      const bumpAssets: Nullable<[XrayAsset, XrayAsset]> = selectBumpAssets(description);
+      const bumpAssets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
 
       const base: Nullable<Texture> = description.texture
         ? yield* call(this.upload(roots, description.texture.logicalPath, true))
         : null;
+
+      // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
+      // picture of the same file. The pair is left alone on purpose - a packed normal is numbers, and linearising it
+      // would move every one of them.
+      if (base) {
+        base.colorSpace = SRGBColorSpace;
+      }
+
       const bump: Nullable<Texture> = bumpAssets
-        ? yield* call(this.upload(roots, bumpAssets[0].logicalPath, false))
+        ? yield* call(this.upload(roots, bumpAssets.bump.logicalPath, false))
         : null;
       const companion: Nullable<Texture> = bumpAssets
-        ? yield* call(this.upload(roots, bumpAssets[1].logicalPath, false))
+        ? yield* call(this.upload(roots, bumpAssets.companion.logicalPath, false))
         : null;
 
       this.textures = this.textures.asReady({
@@ -127,35 +140,4 @@ export class TextureSurfaceService {
       texture?.dispose();
     }
   }
-}
-
-/**
- * The proportions of the base file, or a square when nothing measured it.
- *
- * @param description - The texture as the backend resolved it.
- * @returns Width over height.
- */
-function toTextureAspect(description: TextureDescription): number {
-  const shape: Nullable<AssetTextureShape> = description.base?.shape ?? null;
-
-  return shape && shape.height > 0 ? shape.width / shape.height : 1;
-}
-
-/**
- * The two files the engine binds for a texture, when it binds a pair with both halves located.
- *
- * @param description - The texture as the backend resolved it.
- * @returns The bump and its companion, or null when there is no pair to draw.
- */
-function selectBumpAssets(description: TextureDescription): Nullable<[XrayAsset, XrayAsset]> {
-  const { bump } = description.material;
-
-  if (!bump) {
-    return null;
-  }
-
-  const located: Nullable<XrayAsset> = getLocatedAsset(bump.bump.resolution);
-  const companion: Nullable<XrayAsset> = getLocatedAsset(bump.companion.resolution);
-
-  return located && companion ? [located, companion] : null;
 }

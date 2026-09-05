@@ -5,16 +5,20 @@ import { ReactElement, useCallback, useState } from "react";
 import { createTexturesExplorerPanels } from "@/applications/textures-explorer/components/editor/panels/textures-panels";
 import { TexturePreview } from "@/applications/textures-explorer/components/editor/preview/TexturePreview";
 import { selectUnreadTexturesLtx } from "@/applications/textures-explorer/lib/texture-catalog";
+import {
+  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  ITexturePreviewOptions,
+} from "@/applications/textures-explorer/lib/texture-preview";
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { TextureCatalog } from "@/core/bindings/types/xrf-app";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 import { describeTexturesStatus } from "./TexturesEditor.utils";
+import { TexturesEditorToolbar } from "./TexturesEditorToolbar";
 
 /**
  * The open session: the texture on screen, the tree it was chosen from, and what its descriptor declares.
@@ -27,6 +31,8 @@ export function TexturesEditor({
   const texturesService: TexturesService = useInjection(TexturesService);
 
   const [isLtxNoticeDismissed, setLtxNoticeDismissed] = useState<boolean>(false);
+  const [previewOptions, setPreviewOptions] = useState<ITexturePreviewOptions>(DEFAULT_TEXTURE_PREVIEW_OPTIONS);
+  const [cameraResetToken, setCameraResetToken] = useState<number>(0);
 
   const catalog: Nullable<TextureCatalog> = texturesService.catalog.value;
   const isBrowsing: boolean = texturesService.isBrowsing;
@@ -37,6 +43,7 @@ export function TexturesEditor({
   const isLtxNoticeShown: boolean = Boolean(texturesLtx) && !isLtxNoticeDismissed;
 
   const onClose = useCallback(() => void texturesService.close(), [texturesService]);
+  const onResetCamera = useCallback(() => setCameraResetToken((it: number) => it + 1), []);
 
   useEditorPanels(() => createTexturesExplorerPanels(isBrowsing), [isBrowsing]);
 
@@ -51,7 +58,16 @@ export function TexturesEditor({
       data-testid={dataTestId}
       id={id}
       className={className}
-      toolbar={<EditorToolbar subtitle={texturesService.selectedReference ?? undefined} onBack={onClose} />}
+      toolbar={
+        <TexturesEditorToolbar
+          subtitle={texturesService.selectedReference ?? undefined}
+          options={previewOptions}
+          hasBump={Boolean(texturesService.selected.value?.material.bump)}
+          onChangeOptions={setPreviewOptions}
+          onResetCamera={onResetCamera}
+          onBack={onClose}
+        />
+      }
       banner={
         isLtxNoticeShown ? (
           <Alert
@@ -65,7 +81,7 @@ export function TexturesEditor({
         ) : null
       }
     >
-      <TexturePreview />
+      <TexturePreview options={previewOptions} resetToken={cameraResetToken} />
     </EditorLayout>
   );
 }

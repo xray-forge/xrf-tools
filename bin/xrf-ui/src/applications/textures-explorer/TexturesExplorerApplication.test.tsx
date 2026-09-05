@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { RenderResult, waitFor } from "@testing-library/react";
+import { act, RenderResult, waitFor } from "@testing-library/react";
 import { Binding, Container } from "@wirestate/core";
 
 import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer/application";
@@ -58,7 +58,13 @@ describe("TexturesExplorerApplication", () => {
     // The editor mounts its viewport and its panels; a missing binding throws here rather than failing an assertion.
     await waitFor(() => expect(render.getByTestId("textures-explorer-application")).toBeInTheDocument());
 
-    await service.select(MOCK_TEXTURE);
+    // Inside `act`, because selecting settles two flows - the descriptor and the decoded preview - and each one
+    // re-renders the editor through mobx after the await the test is holding.
+    await act(async () => {
+      await service.select(MOCK_TEXTURE);
+    });
+
+    await waitFor(() => expect(service.preview.isLoading).toBe(false));
 
     expect(service.selectedReference).toBe(MOCK_TEXTURE);
   });

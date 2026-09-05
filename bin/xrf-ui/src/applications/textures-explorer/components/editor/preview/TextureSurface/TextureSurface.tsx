@@ -1,8 +1,12 @@
-import { Box, Paper, SxProps, Theme, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import { Box, SxProps, Theme } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { PointerEvent, ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/applications/textures-explorer/lib/texture-surface";
+import {
+  EMPTY_TEXTURE_SURFACE,
+  ITextureSurfaceOptions,
+  ITextureSurfaceTextures,
+} from "@/applications/textures-explorer/lib/texture-surface";
 import { TextureSurfaceService } from "@/applications/textures-explorer/services/surface";
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
@@ -11,17 +15,7 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { ITextureSurfaceOptions, TextureSurfaceScene } from "./texture-surface-scene";
-import { ETextureSurfaceShape } from "./texture-surface.utils";
-
-/** How many times a texture may be repeated across the body, in the steps a seam is actually judged at. */
-const TILING_STEPS: ReadonlyArray<number> = [1, 2, 4];
-
-const SHAPE_LABELS: Record<ETextureSurfaceShape, string> = {
-  [ETextureSurfaceShape.PLANE]: "Plane",
-  [ETextureSurfaceShape.SPHERE]: "Sphere",
-  [ETextureSurfaceShape.CUBE]: "Cube",
-};
+import { TextureSurfaceScene } from "./texture-surface-scene";
 
 /** Covers the canvas while there is nothing on it to look at, without unmounting the scene beneath. */
 const OVERLAY_STYLES: SxProps<Theme> = {
@@ -41,6 +35,12 @@ interface IDragOrigin {
   y: number;
 }
 
+interface ITextureSurfaceProps extends BaseComponentProps {
+  options: ITextureSurfaceOptions;
+  /** Changes whenever the toolbar asks for the camera and the light to go back where they started. */
+  resetToken: number;
+}
+
 /**
  * The selected texture on a lit body, shaded the way the engine shades it.
  */
@@ -48,7 +48,9 @@ export function TextureSurface({
   "data-testid": dataTestId = "texture-surface",
   id,
   className,
-}: BaseComponentProps): ReactElement {
+  options,
+  resetToken,
+}: ITextureSurfaceProps): ReactElement {
   const texturesService: TexturesService = useInjection(TexturesService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
 
@@ -56,20 +58,13 @@ export function TextureSurface({
   const sceneRef = useRef<Nullable<TextureSurfaceScene>>(null);
   const dragRef = useRef<Nullable<IDragOrigin>>(null);
 
-  const [shape, setShape] = useState<ETextureSurfaceShape>(ETextureSurfaceShape.PLANE);
-  const [tiling, setTiling] = useState<number>(1);
-  const [isBumped, setBumped] = useState<boolean>(true);
-
   const description: Nullable<TextureDescription> = texturesService.selected.value;
   const textures: ITextureSurfaceTextures = surfaceService.textures.value ?? EMPTY_TEXTURE_SURFACE;
-  const hasBump: boolean = textures.bump !== null;
   const isUploading: boolean = surfaceService.textures.isLoading;
   // Keyed on which texture was uploaded, so this says "nothing to draw" only once an upload has answered for the one
   // on screen, rather than during the frame between choosing a texture and asking for its files.
   const isUntextured: boolean =
     !isUploading && textures.base === null && surfaceService.uploaded === description?.reference;
-
-  const options: ITextureSurfaceOptions = useMemo(() => ({ isBumped, shape, tiling }), [isBumped, shape, tiling]);
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLDivElement>): void => {
     // Shift is what separates moving the light from orbiting the camera, since both are a drag over the same body.
@@ -131,6 +126,13 @@ export function TextureSurface({
 
   useEffect(() => sceneRef.current?.setOptions(options), [options]);
 
+  useEffect(() => {
+    // Skipped at zero, which is the token before anyone has asked: a fresh scene is already where reset would put it.
+    if (resetToken) {
+      sceneRef.current?.reset();
+    }
+  }, [resetToken]);
+
   return (
     <Box
       data-testid={dataTestId}
@@ -166,71 +168,6 @@ export function TextureSurface({
           />
         </Box>
       ) : null}
-
-      <Paper
-        elevation={3}
-        sx={{
-          bottom: 12,
-          display: "flex",
-          gap: 1,
-          left: "50%",
-          padding: 0.75,
-          position: "absolute",
-          transform: "translateX(-50%)",
-        }}
-      >
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={shape}
-          aria-label={"Surface shape"}
-          onChange={(_, next: Nullable<ETextureSurfaceShape>) => next && setShape(next)}
-        >
-          {Object.values(ETextureSurfaceShape).map((value: ETextureSurfaceShape) => (
-            <ToggleButton key={value} value={value}>
-              {SHAPE_LABELS[value]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={tiling}
-          aria-label={"Tiling"}
-          onChange={(_, next: Nullable<number>) => next && setTiling(next)}
-        >
-          {TILING_STEPS.map((value: number) => (
-            <ToggleButton key={value} value={value} aria-label={`Tile ${value} by ${value}`}>
-              {`${value}×`}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-
-        <Tooltip
-          title={
-            hasBump ? "Shade with the declared pair, or draw the same body flat" : "This texture declares no bump pair"
-          }
-        >
-          <Box component={"span"} sx={{ display: "flex" }}>
-            <ToggleButton
-              size={"small"}
-              value={"bump"}
-              selected={isBumped && hasBump}
-              disabled={!hasBump}
-              onChange={() => setBumped(!isBumped)}
-            >
-              Bump
-            </ToggleButton>
-          </Box>
-        </Tooltip>
-
-        <Tooltip title={"Put the camera and the light back. Shift and drag moves the light"}>
-          <ToggleButton size={"small"} value={"reset"} onClick={() => sceneRef.current?.reset()}>
-            Reset
-          </ToggleButton>
-        </Tooltip>
-      </Paper>
     </Box>
   );
 }

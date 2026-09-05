@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
+import { Matrix3, MeshStandardMaterial, RepeatWrapping, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import {
   applyXrayBumpShading,
@@ -73,7 +73,12 @@ describe("applyXrayBumpShading", () => {
     expect(shader.fragmentShader).toContain("#include <normal_fragment_maps>");
     expect(shader.vertexShader).toContain("attribute vec3 xrayTangent;");
     expect(shader.vertexShader).toContain("skinMatrix * vec4( xrayObjectTangent, 0.0 )");
-    expect(Object.keys(shader.uniforms).sort()).toEqual(["xrayBump", "xrayBumpEnabled", "xrayBumpX"]);
+    expect(Object.keys(shader.uniforms).sort()).toEqual([
+      "xrayBump",
+      "xrayBumpEnabled",
+      "xrayBumpUvTransform",
+      "xrayBumpX",
+    ]);
     expect(material.customProgramCacheKey()).toBe("xray-bump");
   });
 
@@ -92,6 +97,32 @@ describe("applyXrayBumpShading", () => {
     shading.setEnabled(false);
 
     expect(shader.uniforms.xrayBumpEnabled.value).toBe(0);
+  });
+
+  it("samples the pair through the same uv transform as the texture it shades", () => {
+    const material: MeshStandardMaterial = new MeshStandardMaterial();
+    const shader: WebGLProgramParametersWithUniforms = mockShader();
+    const shading: IVisualBumpShading = applyXrayBumpShading(material, {
+      bump: new Texture(),
+      companion: new Texture(),
+    });
+
+    material.onBeforeCompile(shader, null as never);
+
+    // Identity until told otherwise, so an untiled surface samples exactly the uvs its geometry carries.
+    expect(shader.vertexShader).toContain("vXrayUv = ( xrayBumpUvTransform * vec3( uv, 1.0 ) ).xy;");
+    expect((shader.uniforms.xrayBumpUvTransform.value as Matrix3).elements).toEqual(new Matrix3().elements);
+
+    const tiled: Texture = new Texture();
+
+    tiled.wrapS = RepeatWrapping;
+    tiled.wrapT = RepeatWrapping;
+    tiled.repeat.set(4, 4);
+    tiled.updateMatrix();
+
+    shading.setUvTransform(tiled.matrix);
+
+    expect((shader.uniforms.xrayBumpUvTransform.value as Matrix3).elements).toEqual(tiled.matrix.elements);
   });
 });
 

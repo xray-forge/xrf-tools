@@ -1,10 +1,15 @@
-import { default as ImageIcon } from "@mui/icons-material/Image";
-import { default as SurfaceIcon } from "@mui/icons-material/ViewInAr";
-import { Button, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useMemo, useState } from "react";
 
 import { TextureSurface } from "@/applications/textures-explorer/components/editor/preview/TextureSurface";
+import {
+  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  describeTexturePreviewGap,
+  ETexturePreviewMode,
+  ITexturePreviewGap,
+  ITexturePreviewOptions,
+} from "@/applications/textures-explorer/lib/texture-preview";
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { describeTextureShape } from "@/core/assets/lib";
 import { AssetService } from "@/core/assets/services";
@@ -15,11 +20,17 @@ import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { describeTexturePreviewGap, ETexturePreviewMode, ITexturePreviewGap } from "./TexturePreview.utils";
 import { TexturePreviewFrame } from "./TexturePreviewFrame";
 
 /** One texture is shown at a time, so its url lives under a fixed key and displaces the last one. */
 const TEXTURE_PREVIEW_ASSET_KEY: string = "texture-preview";
+
+interface ITexturePreviewProps extends BaseComponentProps {
+  /** What the toolbar is asking for. Defaulted, so the preview stands on its own outside the editor. */
+  options?: ITexturePreviewOptions;
+  /** Changes whenever the toolbar asks the lit body to put its camera and light back. */
+  resetToken?: number;
+}
 
 /**
  * The selected texture, flat or on a lit body.
@@ -28,11 +39,12 @@ export function TexturePreview({
   "data-testid": dataTestId = "texture-preview",
   id,
   className,
-}: BaseComponentProps): ReactElement {
+  options = DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  resetToken = 0,
+}: ITexturePreviewProps): ReactElement {
   const texturesService: TexturesService = useInjection(TexturesService);
   const assetService: AssetService = useInjection(AssetService);
 
-  const [mode, setMode] = useState<ETexturePreviewMode>(ETexturePreviewMode.IMAGE);
   const [url, setUrl] = useState<Nullable<string>>(null);
 
   // The description of the texture being replaced is still here while the next one is read, so what says a read is in
@@ -73,37 +85,9 @@ export function TexturePreview({
     );
   }
 
-  const modeSwitch: ReactElement = (
-    <ToggleButtonGroup
-      exclusive
-      size={"small"}
-      value={mode}
-      aria-label={"Preview mode"}
-      onChange={(_, next: Nullable<ETexturePreviewMode>) => next && setMode(next)}
-    >
-      <Tooltip title={"The decoded picture, flat"}>
-        <ToggleButton value={ETexturePreviewMode.IMAGE} aria-label={"Image"}>
-          <ImageIcon fontSize={"small"} />
-        </ToggleButton>
-      </Tooltip>
-
-      <Tooltip title={"A lit body, shaded through the declared bump pair"}>
-        <ToggleButton value={ETexturePreviewMode.SURFACE} aria-label={"Surface"}>
-          <SurfaceIcon fontSize={"small"} />
-        </ToggleButton>
-      </Tooltip>
-    </ToggleButtonGroup>
-  );
-
   if (isReading || !description) {
     return (
-      <TexturePreviewFrame
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        caption={"Reading…"}
-        actions={modeSwitch}
-      >
+      <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={"Reading…"}>
         <DelayedProgress />
       </TexturePreviewFrame>
     );
@@ -111,12 +95,13 @@ export function TexturePreview({
 
   const shape: Nullable<AssetTextureShape> = description.base?.shape ?? null;
   const gap: Nullable<ITexturePreviewGap> = describeTexturePreviewGap(
-    mode,
+    options.mode,
     description.texture !== null,
     Boolean(shape && url)
   );
+
   // The flat viewport draws its own checkerboard; the lit surface is a transparent canvas and needs the frame's.
-  const isCheckered: boolean = !gap && mode === ETexturePreviewMode.SURFACE;
+  const isCheckered: boolean = !gap && options.mode === ETexturePreviewMode.SURFACE;
 
   return (
     <TexturePreviewFrame
@@ -125,15 +110,16 @@ export function TexturePreview({
       className={className}
       caption={shape ? describeTextureShape(shape) : description.reference}
       isCheckered={isCheckered}
-      actions={modeSwitch}
     >
       {gap ? <EmptyState title={gap.title} description={gap.description} /> : null}
 
-      {!gap && mode === ETexturePreviewMode.IMAGE && shape && url ? (
+      {!gap && options.mode === ETexturePreviewMode.IMAGE && shape && url ? (
         <ImageViewport alt={description.reference} src={url} width={shape.width} height={shape.height} />
       ) : null}
 
-      {!gap && mode === ETexturePreviewMode.SURFACE ? <TextureSurface /> : null}
+      {!gap && options.mode === ETexturePreviewMode.SURFACE ? (
+        <TextureSurface options={options} resetToken={resetToken} />
+      ) : null}
     </TexturePreviewFrame>
   );
 }

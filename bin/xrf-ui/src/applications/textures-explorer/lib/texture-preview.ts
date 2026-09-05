@@ -1,3 +1,6 @@
+import { ETextureSurfaceShape, ITextureSurfaceOptions } from "@/applications/textures-explorer/lib/texture-surface";
+import { Nullable } from "@/lib/types/general";
+
 /** The two ways one texture file can be looked at here. */
 export enum ETexturePreviewMode {
   /** The decoded picture, flat and face on, where texels are read directly. */
@@ -5,6 +8,25 @@ export enum ETexturePreviewMode {
   /** The same file on a lit body, shaded the way the engine shades it. */
   SURFACE = "surface",
 }
+
+/** Everything the toolbar sets and the preview obeys, for whichever texture is open. */
+export interface ITexturePreviewOptions extends ITextureSurfaceOptions {
+  mode: ETexturePreviewMode;
+}
+
+/** How many times a texture may be repeated across the body, in the steps a seam is actually judged at. */
+export const TEXTURE_TILING_STEPS: ReadonlyArray<number> = [1, 2, 4];
+
+/**
+ * What the preview shows before anyone touches it.
+ */
+export const DEFAULT_TEXTURE_PREVIEW_OPTIONS: ITexturePreviewOptions = {
+  isBumped: true,
+  isLit: true,
+  mode: ETexturePreviewMode.IMAGE,
+  shape: ETextureSurfaceShape.PLANE,
+  tiling: 1,
+};
 
 /** What is missing when a texture cannot be shown, in the words that say which of the two things is absent. */
 export interface ITexturePreviewGap {
@@ -23,6 +45,9 @@ const DESCRIPTOR_ONLY: ITexturePreviewGap = {
 /**
  * Why a texture cannot be drawn in the chosen mode, when it cannot.
  *
+ * Split by mode because the two fail for different reasons: the flat picture needs the backend's decode, while the
+ * lit body needs only a file three.js can upload, and a layout that defeats one may well not defeat the other.
+ *
  * @param mode - How the texture is being looked at.
  * @param hasTexture - Whether a file sits beside the descriptor at all.
  * @param hasDecodedImage - Whether the backend produced a picture of it.
@@ -32,7 +57,7 @@ export function describeTexturePreviewGap(
   mode: ETexturePreviewMode,
   hasTexture: boolean,
   hasDecodedImage: boolean
-): ITexturePreviewGap | null {
+): Nullable<ITexturePreviewGap> {
   if (!hasTexture) {
     return DESCRIPTOR_ONLY;
   }
