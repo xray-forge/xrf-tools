@@ -2,21 +2,21 @@ import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
-import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
-
 import {
   describeBumpDeclaration,
   describeBumpInput,
   describeBumpOutcome,
   describeBumpShading,
-  describeBumpUpload,
   describeDetail,
   describeVirtualHeight,
-} from "./VisualSubmeshMaterial.utils";
-import { IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
+  IMaterialStateDescriptor,
+} from "@/core/materials/lib";
+import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
+import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable } from "@/lib/types/general";
+
+import { describeBumpUpload } from "./VisualSubmeshMaterial.utils";
 
 export interface IVisualSubmeshMaterialProps extends BaseComponentProps {
   /** What the backend resolved for this submesh's texture reference, absent when it declares no texture. */
@@ -34,7 +34,7 @@ export function VisualSubmeshMaterial({ material, status = null }: IVisualSubmes
     return null;
   }
 
-  const outcome: IVisualTextureStateDescriptor = describeBumpOutcome(material.outcome);
+  const outcome: IMaterialStateDescriptor = describeBumpOutcome(material.outcome);
   const declaration: Nullable<string> = describeBumpDeclaration(material.declaration, material.descriptor);
   const shading: Nullable<string> = describeBumpShading(material);
   const upload: Nullable<string> = describeBumpUpload(status);

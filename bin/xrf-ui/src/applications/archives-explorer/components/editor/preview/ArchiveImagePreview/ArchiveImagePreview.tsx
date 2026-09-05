@@ -2,10 +2,10 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useMemo, useState } from "react";
 
-import { formatMipmapLevels } from "@/applications/archives-explorer/components/editor/preview/ArchiveImagePreview/ArchiveImagePreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
+import { describeTextureShape } from "@/core/assets/lib";
 import { AssetService } from "@/core/assets/services";
 import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
@@ -69,7 +69,7 @@ export function ArchiveImagePreview(): ReactElement {
 
       <Box sx={{ flexShrink: 0, paddingX: 1.5, paddingY: 0.5, borderTop: 1, borderColor: "divider" }}>
         <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
-          {shape.width} x {shape.height} · {shape.format} · {formatMipmapLevels(shape.mipmapLevels)}
+          {describeTextureShape(shape)}
         </Typography>
       </Box>
     </Box>
