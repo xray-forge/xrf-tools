@@ -278,6 +278,102 @@ export type SelectedVisualDescription = {
   texturesLtx: XrayAsset | null;
 };
 
+/** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
+export type TextureBadges = {
+  /** Both halves of the declared pair resolved to the files the declaration names. */
+  isBumped: boolean;
+  /** The bump shader path is taken but at least one half is a dummy or absent, so the surface is not what was authored. */
+  isDegraded: boolean;
+  /** The descriptor's texture type makes `LoadTHM` skip it whole, bump declaration included. */
+  isEngineSkipped: boolean;
+  /** A detail texture is named and one of the two flags that switch it on is set. */
+  isDetailAssociated: boolean;
+  /** A `.thm` sits there and does not parse as one. */
+  isUnreadable: boolean;
+};
+
+/** The two references a declaration binds, which is what folds a pair under the texture that declares it. */
+export type TextureBumpPair = {
+  bump: string;
+  companion: string;
+};
+
+/** Every texture the roots hold, once per reference, in reference order. */
+export type TextureCatalog = {
+  /** The roots the catalog was listed from, so a later read searches what the listing searched. */
+  roots: XrayRoots;
+  /** A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says so where it matters. */
+  texturesLtx: XrayAsset | null;
+  entries: Array<TextureEntry>;
+  /**
+   * `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out.
+   *
+   * Counted rather than dropped silently: a level's lightmaps are the usual case, and a person wondering where a file
+   * went deserves the number.
+   */
+  outsideTexturesCount: number;
+};
+
+/** Everything the inspection panel says about one texture, resolved in one call. */
+export type TextureDescription = {
+  source: TextureSource;
+  /** The engine reference the source came to. */
+  reference: string;
+  /** The roots the description was resolved in, so a later read searches what this searched. */
+  roots: XrayRoots;
+  /** The `.dds` the reference resolves to, or `None` for a descriptor with no texture. */
+  texture: XrayAsset | null;
+  /** What the base texture file is, when it is located and its bytes can be reached. */
+  base: AssetTextureDescriptor | null;
+  material: XrayMaterialDescriptor;
+  /** What the bound bump file is, when the material binds one and its bytes can be reached. */
+  bump: AssetTextureDescriptor | null;
+  /** What the bound bump companion file is, on the same terms. */
+  companion: AssetTextureDescriptor | null;
+};
+
+/** One texture name and the files the roots hold for it. */
+export type TextureEntry = {
+  /** The engine reference, such as `ston\ston_beton05`. */
+  reference: string;
+  role: TextureRole;
+  /** The `.dds` the roots answer for this reference, winner first. */
+  texture: XrayAsset | null;
+  /** The `.thm` the roots answer for this reference, winner first. */
+  descriptor: XrayAsset | null;
+};
+
+/** One descriptor's contribution to the tree: its badges, and the pair it names so both halves fold under it. */
+export type TextureMaterialSummary = {
+  /** The reference of the texture the descriptor describes. */
+  reference: string;
+  /** The pair the engine will try to bind, when the declaration is one it reads. */
+  bump: TextureBumpPair | null;
+  badges: TextureBadges;
+};
+
+/**
+ * What a texture name is by convention, before any descriptor has been read.
+ *
+ * Read off the name so a tree can fold a pair under its texture the moment the listing arrives; which pairs are
+ * declared, and by whom, is what the sweep then says. The convention itself is `xrf-material`'s, shared with the
+ * renderer's fallback rule and the companion derivation.
+ */
+export type TextureRole =
+  /** A texture a mesh or a level binds by name. */
+  | "texture"
+  /** The first half of a bump pair: packed normal and gloss. */
+  | "bump"
+  /** The second half of a bump pair: packed error and height. */
+  | "bumpCompanion";
+
+/** Where a texture is named from. */
+export type TextureSource =
+  /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
+  | { kind: "file"; path: string }
+  /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
+  | { kind: "asset"; reference: string };
+
 /**
  * What a build was asked to do.
  *
