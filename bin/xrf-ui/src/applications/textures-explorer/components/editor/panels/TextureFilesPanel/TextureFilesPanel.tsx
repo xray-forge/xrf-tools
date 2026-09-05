@@ -3,10 +3,7 @@ import { ReactElement } from "react";
 
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -26,19 +23,19 @@ export function TextureFilesPanel({
 
   if (!description) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
-        <VisualPanelEmpty label={"No texture selected. The files behind it show here."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
+        <EditorPanelEmpty label={"No texture selected. The files behind it show here."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
-      <VisualPanelSection title={"Bound files"} caption={"What the engine reads for this surface"} isFirst>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
+      <EditorPanelSection title={"Bound files"} caption={"What the engine reads for this surface"} isFirst>
         {selectBoundTextureFiles(description).map((file: ITextureFile) => (
-          <VisualPanelRow key={file.label} label={file.label} value={describeTextureFile(file)} />
+          <EditorPanelRow key={file.label} label={file.label} value={describeTextureFile(file)} />
         ))}
-      </VisualPanelSection>
-    </VisualPanel>
+      </EditorPanelSection>
+    </EditorPanel>
   );
 }

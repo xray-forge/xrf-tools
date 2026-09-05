@@ -11,7 +11,7 @@ import {
   describeVirtualHeight,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
+import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -47,26 +47,26 @@ export function VisualSubmeshMaterial({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <VisualPanelRow
+      <EditorPanelRow
         label={"Bump"}
         value={<Chip size={"small"} color={outcome.color} variant={"outlined"} label={outcome.label} />}
       />
 
-      {declaration ? <VisualPanelRow label={"Declared by"} value={declaration} /> : null}
+      {declaration ? <EditorPanelRow label={"Declared by"} value={declaration} /> : null}
 
       {material.bump ? (
         <>
-          <VisualPanelRow label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
-          <VisualPanelRow label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
-          <VisualPanelRow label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
+          <EditorPanelRow label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
+          <EditorPanelRow label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
+          <EditorPanelRow label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
         </>
       ) : null}
 
-      {material.detail ? <VisualPanelRow label={"Detail"} value={describeDetail(material.detail)} /> : null}
+      {material.detail ? <EditorPanelRow label={"Detail"} value={describeDetail(material.detail)} /> : null}
 
-      {shading ? <VisualPanelRow label={"Shading"} value={shading} /> : null}
+      {shading ? <EditorPanelRow label={"Shading"} value={shading} /> : null}
 
-      {upload ? <VisualPanelRow label={"Bump upload"} value={upload} /> : null}
+      {upload ? <EditorPanelRow label={"Bump upload"} value={upload} /> : null}
     </div>
   );
 }

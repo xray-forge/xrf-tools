@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { SequenceClipRow } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel/SequenceClipRow";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { VisualPanel, VisualPanelEmpty, VisualPanelRow, VisualPanelSection } from "@/core/visuals/components/panels";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -21,15 +21,15 @@ export function SequenceTrackPanel({
 
   if (!clips.length) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Sequence"}>
-        <VisualPanelEmpty label={"No clips yet. Add motions from the panel on the left to build a track."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Sequence"}>
+        <EditorPanelEmpty label={"No clips yet. Add motions from the panel on the left to build a track."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Sequence"}>
-      <VisualPanelSection
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Sequence"}>
+      <EditorPanelSection
         title={`Track (${clips.length})`}
         caption={"Played in order, cutting at each boundary"}
         isFirst
@@ -37,12 +37,12 @@ export function SequenceTrackPanel({
         {clips.map((clip: ISequenceClip, position: number) => (
           <SequenceClipRow key={clip.id} clip={clip} position={position} length={clips.length} />
         ))}
-      </VisualPanelSection>
+      </EditorPanelSection>
 
-      <VisualPanelSection title={"Totals"} caption={"As the baked clips report themselves"}>
-        <VisualPanelRow label={"Playable clips"} value={`${service.playableCount} / ${clips.length}`} />
-        <VisualPanelRow label={"Duration"} value={formatDuration(Math.round(service.duration * 1000))} />
-      </VisualPanelSection>
-    </VisualPanel>
+      <EditorPanelSection title={"Totals"} caption={"As the baked clips report themselves"}>
+        <EditorPanelRow label={"Playable clips"} value={`${service.playableCount} / ${clips.length}`} />
+        <EditorPanelRow label={"Duration"} value={formatDuration(Math.round(service.duration * 1000))} />
+      </EditorPanelSection>
+    </EditorPanel>
   );
 }

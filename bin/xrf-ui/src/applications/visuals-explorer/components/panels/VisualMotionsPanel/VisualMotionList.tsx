@@ -8,10 +8,10 @@ import {
   groupMotionNames,
   listMotionGroupIds,
 } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/motion-groups";
+import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -89,19 +89,19 @@ export function VisualMotionList({
   }, [expandAll, filter, nodes]);
 
   if (service.motions.isLoading) {
-    return <VisualPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />;
+    return <EditorPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />;
   }
 
   if (!listed?.length) {
     return (
-      <VisualPanelEmpty
+      <EditorPanelEmpty
         label={service.motions.error?.message ?? "This visual references animation files that name no motions."}
       />
     );
   }
 
   if (!nodes.length) {
-    return <VisualPanelEmpty label={`No motion of the ${listed.length} this visual plays matches that.`} />;
+    return <EditorPanelEmpty label={`No motion of the ${listed.length} this visual plays matches that.`} />;
   }
 
   return (

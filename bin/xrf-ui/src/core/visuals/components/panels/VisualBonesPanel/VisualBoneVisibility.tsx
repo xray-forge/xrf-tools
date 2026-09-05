@@ -4,8 +4,8 @@ import { Box, Button, Chip, FormControlLabel, Switch, Typography } from "@mui/ma
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
 import { Nullable } from "@/lib/types/general";
 
@@ -33,7 +33,7 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
   }
 
   return (
-    <VisualPanelSection
+    <EditorPanelSection
       title={"Visibility"}
       caption={"Collapses a bone to nothing, as the engine does for an addon that is not attached"}
     >
@@ -91,6 +91,6 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
             `cannot reach.`}
         </Typography>
       ) : null}
-    </VisualPanelSection>
+    </EditorPanelSection>
   );
 }

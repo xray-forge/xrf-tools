@@ -2,12 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { VisualDescription } from "@/core/bindings/types/xrf-visual";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBoundsSection } from "@/core/visuals/components/panels/VisualHeaderPanel/VisualBoundsSection";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
@@ -21,25 +18,25 @@ export function VisualHeaderPanel({
 
   if (!description) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
-        <VisualPanelEmpty label={"No visual open. Open an ogf file to see its header."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
+        <EditorPanelEmpty label={"No visual open. Open an ogf file to see its header."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
-      <VisualPanelSection title={"Model"} isFirst>
-        <VisualPanelRow label={"Format version"} value={description.version} />
-        <VisualPanelRow label={"Type"} value={description.modelTypeLabel} />
-        <VisualPanelRow label={"Type id"} value={description.modelType} />
-        <VisualPanelRow label={"Shader id"} value={description.shaderId} />
-        <VisualPanelRow label={"Submeshes"} value={description.submeshes.length} />
-      </VisualPanelSection>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
+      <EditorPanelSection title={"Model"} isFirst>
+        <EditorPanelRow label={"Format version"} value={description.version} />
+        <EditorPanelRow label={"Type"} value={description.modelTypeLabel} />
+        <EditorPanelRow label={"Type id"} value={description.modelType} />
+        <EditorPanelRow label={"Shader id"} value={description.shaderId} />
+        <EditorPanelRow label={"Submeshes"} value={description.submeshes.length} />
+      </EditorPanelSection>
 
-      <VisualPanelSection title={"Source"}>
-        <VisualPanelRow label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} />
-      </VisualPanelSection>
+      <EditorPanelSection title={"Source"}>
+        <EditorPanelRow label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} />
+      </EditorPanelSection>
 
       <VisualBoundsSection
         title={"Declared bounds"}
@@ -52,6 +49,6 @@ export function VisualHeaderPanel({
         caption={"As the drawn geometry spans"}
         bounds={description.computedBounds}
       />
-    </VisualPanel>
+    </EditorPanel>
   );
 }

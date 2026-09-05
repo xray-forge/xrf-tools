@@ -4,8 +4,7 @@ import { ReactElement } from "react";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
+import { EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -48,7 +47,7 @@ export function VisualSubmeshSection({
   const { content } = submesh;
 
   return (
-    <VisualPanelSection
+    <EditorPanelSection
       data-testid={dataTestId}
       id={id}
       className={className}
@@ -65,9 +64,9 @@ export function VisualSubmeshSection({
         </Box>
       }
     >
-      <VisualPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} />
+      <EditorPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} />
 
-      <VisualPanelRow label={"Type"} value={submesh.modelTypeLabel} />
+      <EditorPanelRow label={"Type"} value={submesh.modelTypeLabel} />
 
       <VisualSubmeshTexture texture={texture} status={status} textures={textures} />
 
@@ -75,20 +74,20 @@ export function VisualSubmeshSection({
 
       {content.kind === "packed" ? (
         <>
-          <VisualPanelRow label={"Vertices"} value={content.geometry.vertexCount} />
+          <EditorPanelRow label={"Vertices"} value={content.geometry.vertexCount} />
 
-          <VisualPanelRow
+          <EditorPanelRow
             label={"Triangles"}
             value={`${content.geometry.detailLevels[0].count / 3} of ${content.geometry.indexCount / 3}`}
           />
 
           {content.geometry.detailLevels.length > 1 ? (
-            <VisualPanelRow label={"Detail levels"} value={content.geometry.detailLevels.length} />
+            <EditorPanelRow label={"Detail levels"} value={content.geometry.detailLevels.length} />
           ) : null}
         </>
       ) : (
-        <VisualPanelRow label={"Reason"} value={content.reason} />
+        <EditorPanelRow label={"Reason"} value={content.reason} />
       )}
-    </VisualPanelSection>
+    </EditorPanelSection>
   );
 }

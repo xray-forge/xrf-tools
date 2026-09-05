@@ -9,7 +9,7 @@ import { VisualMotionTransport } from "@/applications/visuals-explorer/component
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
-import { VisualPanel, VisualPanelEmpty, VisualPanelSection } from "@/core/visuals/components/panels";
+import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -46,14 +46,14 @@ export function VisualMotionsPanel({
 
   if (!hasMotions) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
-        <VisualPanelEmpty label={"No motions. Resolved from the visual's omf motion refs."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
+        <EditorPanelEmpty label={"No motions. Resolved from the visual's omf motion refs."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
         <Box
           sx={{
@@ -82,31 +82,31 @@ export function VisualMotionsPanel({
           />
         </Box>
 
-        <VisualPanelSection
+        <EditorPanelSection
           title={playable ? `Playable (${playable})` : "Playable"}
           caption={"Grouped by name prefix; double click to pose"}
           isFirst={true}
           isFilling={true}
         >
           <VisualMotionList filter={filter} />
-        </VisualPanelSection>
+        </EditorPanelSection>
 
         <Box sx={{ flexShrink: 0, maxHeight: "25%", overflowY: "auto" }}>
           {refs.length > 0 ? (
-            <VisualPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
+            <EditorPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
               {refs.map((motion: VisualMotionDependency) => (
                 <VisualMotionRow key={motion.reference} motion={motion} />
               ))}
-            </VisualPanelSection>
+            </EditorPanelSection>
           ) : null}
 
           {embedded.length > 0 ? (
-            <VisualPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
+            <EditorPanelSection title={`Embedded motions (${embedded.length})`} caption={"Stored inside this visual"}>
               <VisualMotionNames names={embedded} />
-            </VisualPanelSection>
+            </EditorPanelSection>
           ) : null}
         </Box>
       </Box>
-    </VisualPanel>
+    </EditorPanel>
   );
 }

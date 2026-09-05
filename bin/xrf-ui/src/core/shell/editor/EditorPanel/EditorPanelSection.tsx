@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IVisualPanelSectionProps extends BaseComponentProps {
+interface IEditorPanelSectionProps extends BaseComponentProps {
   title: ReactNode;
   /** What distinguishes this group from a similar one beside it. */
   caption?: ReactNode;
@@ -19,7 +19,7 @@ interface IVisualPanelSectionProps extends BaseComponentProps {
 /**
  * A titled group of rows.
  */
-export function VisualPanelSection({
+export function EditorPanelSection({
   "data-testid": dataTestId = "visual-panel-section",
   id,
   className,
@@ -28,7 +28,7 @@ export function VisualPanelSection({
   children,
   isFirst,
   isFilling,
-}: IVisualPanelSectionProps): ReactElement {
+}: IEditorPanelSectionProps): ReactElement {
   return (
     <Box
       data-testid={dataTestId}

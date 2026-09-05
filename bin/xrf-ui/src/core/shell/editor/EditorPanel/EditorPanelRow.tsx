@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IVisualPanelRowProps extends BaseComponentProps {
+interface IEditorPanelRowProps extends BaseComponentProps {
   label: string;
   value: ReactNode;
 }
@@ -11,16 +11,16 @@ interface IVisualPanelRowProps extends BaseComponentProps {
 /**
  * One label and value pair.
  *
- * The value is allowed to wrap onto its own line, because a texture path or a source object path is longer than the
+ * The value is allowed to wrap onto its own line, because a path or identifier can be longer than the
  * panel is wide and truncating it would hide the part that identifies it.
  */
-export function VisualPanelRow({
+export function EditorPanelRow({
   "data-testid": dataTestId = "visual-panel-row",
   id,
   className,
   label,
   value,
-}: IVisualPanelRowProps): ReactElement {
+}: IEditorPanelRowProps): ReactElement {
   return (
     <Box
       data-testid={dataTestId}

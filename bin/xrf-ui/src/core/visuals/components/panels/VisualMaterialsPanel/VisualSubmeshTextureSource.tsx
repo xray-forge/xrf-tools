@@ -2,7 +2,7 @@ import { ReactElement } from "react";
 
 import { AssetTextureDescriptor, AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
+import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -51,17 +51,17 @@ export function VisualSubmeshTextureSource({
 }: IVisualSubmeshTextureSourceProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <VisualPanelRow label={"Path"} value={asset.logicalPath} />
+      <EditorPanelRow label={"Path"} value={asset.logicalPath} />
 
       {asset.container.kind === "archive" ? (
-        <VisualPanelRow label={"Archive"} value={asset.container.path} />
+        <EditorPanelRow label={"Archive"} value={asset.container.path} />
       ) : (
-        <VisualPanelRow label={"Root"} value={asset.container.root} />
+        <EditorPanelRow label={"Root"} value={asset.container.root} />
       )}
 
-      {descriptor ? <VisualPanelRow label={"Size"} value={formatBytes(descriptor.size)} /> : null}
+      {descriptor ? <EditorPanelRow label={"Size"} value={formatBytes(descriptor.size)} /> : null}
 
-      {descriptor?.shape ? <VisualPanelRow label={"Format"} value={describeShape(descriptor.shape)} /> : null}
+      {descriptor?.shape ? <EditorPanelRow label={"Format"} value={describeShape(descriptor.shape)} /> : null}
     </div>
   );
 }

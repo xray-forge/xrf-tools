@@ -5,7 +5,7 @@ import { ChangeEvent, ReactElement, useCallback, useMemo, useState } from "react
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
-import { VisualPanel, VisualPanelEmpty } from "@/core/visuals/components/panels";
+import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -49,27 +49,27 @@ export function SequenceMotionsPanel({
 
   if (sequencerService.motions.isLoading) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
-        <VisualPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
+        <EditorPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />
+      </EditorPanel>
     );
   }
 
   if (!names.length) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
-        <VisualPanelEmpty
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
+        <EditorPanelEmpty
           label={
             sequencerService.motions.error?.message ??
             "No motions. This visual references no animation files, so there is nothing to sequence."
           }
         />
-      </VisualPanel>
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
       <Box
         sx={{
           position: "sticky",
@@ -117,7 +117,7 @@ export function SequenceMotionsPanel({
         ))}
 
         {matched.length === 0 ? (
-          <VisualPanelEmpty label={`No motion of the ${names.length} this visual plays matches that.`} />
+          <EditorPanelEmpty label={`No motion of the ${names.length} this visual plays matches that.`} />
         ) : null}
 
         {matched.length > SHOWN_LIMIT ? (
@@ -126,6 +126,6 @@ export function SequenceMotionsPanel({
           </Typography>
         ) : null}
       </Box>
-    </VisualPanel>
+    </EditorPanel>
   );
 }

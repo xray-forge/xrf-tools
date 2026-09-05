@@ -6,11 +6,8 @@ import { ITextureBumpTexels, ITextureSurfaceTextures } from "@/applications/text
 import { TextureSurfaceService } from "@/applications/textures-explorer/services/surface";
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -125,12 +122,12 @@ export function TextureChannelsPanel({
   );
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Channels"}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Channels"}>
       {gap ? (
-        <VisualPanelEmpty label={gap} />
+        <EditorPanelEmpty label={gap} />
       ) : (
         <>
-          <VisualPanelSection
+          <EditorPanelSection
             data-testid={"texture-channels-readout"}
             title={"Texel"}
             caption={texels ? "Under the pointer, as stored and as reconstructed" : undefined}
@@ -138,25 +135,25 @@ export function TextureChannelsPanel({
           >
             {readout ? (
               <>
-                <VisualPanelRow label={"At"} value={readout.position} />
-                <VisualPanelRow label={"Bump"} value={readout.bump} />
-                <VisualPanelRow label={"Bump#"} value={readout.companion} />
-                <VisualPanelRow label={"Normal"} value={readout.normal} />
-                <VisualPanelRow label={"Gloss"} value={readout.gloss} />
-                <VisualPanelRow label={"Height"} value={readout.height} />
+                <EditorPanelRow label={"At"} value={readout.position} />
+                <EditorPanelRow label={"Bump"} value={readout.bump} />
+                <EditorPanelRow label={"Bump#"} value={readout.companion} />
+                <EditorPanelRow label={"Normal"} value={readout.normal} />
+                <EditorPanelRow label={"Gloss"} value={readout.gloss} />
+                <EditorPanelRow label={"Height"} value={readout.height} />
               </>
             ) : (
-              <VisualPanelRow
+              <EditorPanelRow
                 label={"Readout"}
                 value={
                   texels ? "Point at a tile" : "Unavailable: this pair is stored as blocks rather than as plain texels"
                 }
               />
             )}
-          </VisualPanelSection>
+          </EditorPanelSection>
 
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
-            <VisualPanelSection key={tile.view} title={tile.label} caption={tile.caption}>
+            <EditorPanelSection key={tile.view} title={tile.label} caption={tile.caption}>
               <Box
                 sx={[{ aspectRatio: aspect, width: "100%" }, IMAGE_CHECKERBOARD]}
                 onPointerMove={onHover}
@@ -169,10 +166,10 @@ export function TextureChannelsPanel({
                   sx={{ display: "block", height: "100%", width: "100%" }}
                 />
               </Box>
-            </VisualPanelSection>
+            </EditorPanelSection>
           ))}
         </>
       )}
-    </VisualPanel>
+    </EditorPanel>
   );
 }

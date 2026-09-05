@@ -3,15 +3,13 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { toBoneTree } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
 import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Height the skeleton keeps for itself before the panel starts scrolling instead. */
@@ -44,14 +42,14 @@ export function VisualBonesPanel({
 
   if (!bones.length) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Bones"}>
-        <VisualPanelEmpty label={"No skeleton. Ogf bone and ik chunks land here."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bones"}>
+        <EditorPanelEmpty label={"No skeleton. Ogf bone and ik chunks land here."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel
+    <EditorPanel
       data-testid={dataTestId}
       id={id}
       className={className}
@@ -62,7 +60,7 @@ export function VisualBonesPanel({
     >
       {/* The panel's own content slot is a block, so the column the skeleton and the switches divide starts here. */}
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <VisualPanelSection
+        <EditorPanelSection
           title={`Skeleton (${bones.length})`}
           caption={"Bone names, parented as ogf stores them"}
           isFirst={true}
@@ -78,10 +76,10 @@ export function VisualBonesPanel({
             onActivate={onActivateBone}
             onToggleExpanded={tree.toggleExpanded}
           />
-        </VisualPanelSection>
+        </EditorPanelSection>
 
         <VisualBoneVisibility />
       </Box>
-    </VisualPanel>
+    </EditorPanel>
   );
 }

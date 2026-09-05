@@ -4,9 +4,8 @@ import { ReactElement, useMemo } from "react";
 
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
 import {
   describeVisualTextureSummary,
   IVisualTextureSummary,
@@ -47,14 +46,14 @@ export function VisualMaterialsPanel({
 
   if (!description || description.submeshes.length === 0) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Materials"}>
-        <VisualPanelEmpty label={"No materials. Texture and shader names per child visual."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Materials"}>
+        <EditorPanelEmpty label={"No materials. Texture and shader names per child visual."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Materials"}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Materials"}>
       {summary ? (
         <Box sx={{ paddingX: 2, paddingY: 1, borderBottom: 1, borderColor: "divider" }}>
           <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
@@ -82,6 +81,6 @@ export function VisualMaterialsPanel({
           materials={selected?.materials}
         />
       ))}
-    </VisualPanel>
+    </EditorPanel>
   );
 }

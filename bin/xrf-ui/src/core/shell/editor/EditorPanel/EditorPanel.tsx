@@ -4,7 +4,7 @@ import { ReactElement, ReactNode } from "react";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
-interface IVisualPanelProps extends StyledComponentProps {
+interface IEditorPanelProps extends StyledComponentProps {
   /** The name this panel's stripe button carries. */
   title: string;
   children: ReactNode;
@@ -13,14 +13,14 @@ interface IVisualPanelProps extends StyledComponentProps {
 /**
  * One panel, titled with the name its stripe button carries.
  */
-export function VisualPanel({
+export function EditorPanel({
   "data-testid": dataTestId = "visual-panel",
   id,
   className,
   sx,
   title,
   children,
-}: IVisualPanelProps): ReactElement {
+}: IEditorPanelProps): ReactElement {
   return (
     <Box
       data-testid={dataTestId}

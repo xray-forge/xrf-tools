@@ -12,10 +12,7 @@ import {
   describeVirtualHeight,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { VisualPanel } from "@/core/visuals/components/panels/VisualPanel";
-import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEmpty";
-import { VisualPanelRow } from "@/core/visuals/components/panels/VisualPanelRow";
-import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -33,9 +30,9 @@ export function TextureMaterialPanel({
 
   if (!description) {
     return (
-      <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
-        <VisualPanelEmpty label={"No texture selected. What its descriptor declares shows here."} />
-      </VisualPanel>
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
+        <EditorPanelEmpty label={"No texture selected. What its descriptor declares shows here."} />
+      </EditorPanel>
     );
   }
 
@@ -44,34 +41,34 @@ export function TextureMaterialPanel({
   const declaration: Nullable<string> = describeBumpDeclaration(material.declaration, material.descriptor);
 
   return (
-    <VisualPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
-      <VisualPanelSection title={"Declaration"} isFirst>
-        <VisualPanelRow label={"Texture"} value={description.reference} />
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
+      <EditorPanelSection title={"Declaration"} isFirst>
+        <EditorPanelRow label={"Texture"} value={description.reference} />
 
-        <VisualPanelRow
+        <EditorPanelRow
           label={"Bump"}
           value={<Chip size={"small"} color={outcome.color} variant={"outlined"} label={outcome.label} />}
         />
 
-        <VisualPanelRow
+        <EditorPanelRow
           label={"Declared by"}
           value={declaration ?? "No .thm sits beside this texture in any searched root"}
         />
-      </VisualPanelSection>
+      </EditorPanelSection>
 
       {material.bump ? (
-        <VisualPanelSection title={"Bump pair"} caption={"What the renderer binds, substitutions included"}>
-          <VisualPanelRow label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
-          <VisualPanelRow label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
-          <VisualPanelRow label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
-        </VisualPanelSection>
+        <EditorPanelSection title={"Bump pair"} caption={"What the renderer binds, substitutions included"}>
+          <EditorPanelRow label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
+          <EditorPanelRow label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
+          <EditorPanelRow label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
+        </EditorPanelSection>
       ) : null}
 
       {material.detail ? (
-        <VisualPanelSection title={"Detail"}>
-          <VisualPanelRow label={"Association"} value={describeDetail(material.detail)} />
-        </VisualPanelSection>
+        <EditorPanelSection title={"Detail"}>
+          <EditorPanelRow label={"Association"} value={describeDetail(material.detail)} />
+        </EditorPanelSection>
       ) : null}
-    </VisualPanel>
+    </EditorPanel>
   );
 }
