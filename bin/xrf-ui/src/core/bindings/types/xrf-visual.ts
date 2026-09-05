@@ -108,6 +108,10 @@ export type VisualGeometry = {
   indexCount: number;
   positions: VisualSection;
   normals: VisualSection;
+  /** The authored tangent of every vertex, mirrored with the normal. */
+  tangents: VisualSection;
+  /** The authored binormal of every vertex, mirrored with the normal; see [`Self::tangents`]. */
+  binormals: VisualSection;
   uvs: VisualSection;
   indices: VisualSection;
   /** Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored. */

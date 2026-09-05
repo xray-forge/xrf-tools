@@ -139,7 +139,9 @@ fn winds_each_triangle_in_place_so_detail_offsets_stay_valid() {
 }
 
 #[test]
-fn mirrors_z_on_positions_and_normals() {
+fn mirrors_z_on_positions_and_every_basis_vector() {
+  // The fixture vertex carries tangent (1, 0, 0) and binormal (0, 0, 1): the tangent lies in the mirror plane and
+  // survives, the binormal points along Z and flips, so a basis that stopped being mirrored with the normal would show.
   let child: OgfFile = OgfFile {
     geometry: Some(geometry(
       vec![vertex(vector(1.0, 2.0, 3.0), vector(0.0, 0.0, 1.0), 0.0, 0.0)],
@@ -158,6 +160,16 @@ fn mirrors_z_on_positions_and_normals() {
   assert_eq!(
     read_f32_section(&package.buffer, geometry.normals),
     vec![0.0, 0.0, -1.0]
+  );
+  assert_eq!(
+    read_f32_section(&package.buffer, geometry.tangents),
+    vec![1.0, 0.0, 0.0],
+    "the authored tangent ships, mirrored like the normal"
+  );
+  assert_eq!(
+    read_f32_section(&package.buffer, geometry.binormals),
+    vec![0.0, 0.0, -1.0],
+    "the authored binormal ships, mirrored like the normal"
   );
 }
 

@@ -196,14 +196,9 @@ impl VisualPacker {
     .ok_or_else(|| VisualSkip::malformed("Drawn range reaches no vertex"))?;
 
     let flat_positions: Vec<f32> = positions.iter().flat_map(|it| [it.x, it.y, it.z]).collect();
-    let flat_normals: Vec<f32> = vertices
-      .iter()
-      .flat_map(|it| {
-        let normal: Vector3d = convert_vector(&it.normal);
-
-        [normal.x, normal.y, normal.z]
-      })
-      .collect();
+    let flat_normals: Vec<f32> = Self::flatten_directions(vertices, |it| &it.normal);
+    let flat_tangents: Vec<f32> = Self::flatten_directions(vertices, |it| &it.tangent);
+    let flat_binormals: Vec<f32> = Self::flatten_directions(vertices, |it| &it.binormal);
     let flat_uvs: Vec<f32> = vertices
       .iter()
       .flat_map(|it| {
@@ -224,6 +219,8 @@ impl VisualPacker {
       index_count: wound_indices.len() as u32,
       positions: builder.push_f32_section(&flat_positions),
       normals: builder.push_f32_section(&flat_normals),
+      tangents: builder.push_f32_section(&flat_tangents),
+      binormals: builder.push_f32_section(&flat_binormals),
       uvs: builder.push_f32_section(&flat_uvs),
       indices: builder.push_u16_section(&wound_indices),
       skin: skin.map(|it| VisualSkin {
@@ -233,6 +230,21 @@ impl VisualPacker {
       detail_levels,
       bounds,
     })
+  }
+
+  /// One direction of every vertex, converted into renderer space and laid out flat.
+  ///
+  /// Normals, tangents and binormals all go through the same mirror as positions: the basis has to stay a basis of the
+  /// mirrored surface, and the winding correction the packer applies afterwards is what keeps it right handed.
+  fn flatten_directions(vertices: &[OgfVertex], direction: impl Fn(&OgfVertex) -> &Vector3d) -> Vec<f32> {
+    vertices
+      .iter()
+      .flat_map(|it| {
+        let converted: Vector3d = convert_vector(direction(it));
+
+        [converted.x, converted.y, converted.z]
+      })
+      .collect()
   }
 
   /// Every vertex's skinning links, widened to four, or `None` when the geometry carries none.

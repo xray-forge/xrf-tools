@@ -33,6 +33,10 @@ pub struct VisualGeometry {
   pub index_count: u32,
   pub positions: VisualSection,
   pub normals: VisualSection,
+  /// The authored tangent of every vertex, mirrored with the normal.
+  pub tangents: VisualSection,
+  /// The authored binormal of every vertex, mirrored with the normal; see [`Self::tangents`].
+  pub binormals: VisualSection,
   pub uvs: VisualSection,
   pub indices: VisualSection,
   /// Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored.

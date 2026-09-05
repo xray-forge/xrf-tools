@@ -21,6 +21,8 @@ function mockSubmesh(index: number, isSkinned: boolean = false): IVisualSubmeshV
     label: `submesh ${index}`,
     positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
     normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+    tangents: new Float32Array([1, 0, 0, 1, 0, 0, 1, 0, 0]),
+    binormals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0]),
     uvs: new Float32Array([0, 0, 1, 0, 0, 1]),
     indices: new Uint16Array([0, 1, 2]),
     skinIndices: isSkinned ? new Uint16Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) : null,

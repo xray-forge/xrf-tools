@@ -40,6 +40,14 @@ export interface IVisualSubmeshViews {
   label: string;
   positions: Float32Array;
   normals: Float32Array;
+  /**
+   * The authored tangent basis, three floats per vertex each, mirrored with the normals.
+   *
+   * The engine's bumped vertex shader reads these rather than deriving them, so a material shading an X-Ray bump has to
+   * as well; a Three.js-computed basis agrees with the authored one only by coincidence.
+   */
+  tangents: Float32Array;
+  binormals: Float32Array;
   uvs: Float32Array;
   indices: Uint16Array;
   /**
@@ -206,6 +214,8 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
       label: submesh.textureName ?? `submesh ${submesh.index}`,
       positions: toFloatView(buffer, geometry.positions),
       normals: toFloatView(buffer, geometry.normals),
+      tangents: toFloatView(buffer, geometry.tangents),
+      binormals: toFloatView(buffer, geometry.binormals),
       uvs: toFloatView(buffer, geometry.uvs),
       indices: toIndexView(buffer, geometry.indices),
       skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,

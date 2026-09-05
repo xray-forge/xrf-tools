@@ -107,6 +107,8 @@ export function mockPackedSubmesh(
 ): VisualSubmesh {
   const positions: VisualSection = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
   const normals: VisualSection = buffer.pushFloats([0, 0, 1, 0, 0, 1, 0, 0, 1]);
+  const tangents: VisualSection = buffer.pushFloats([1, 0, 0, 1, 0, 0, 1, 0, 0]);
+  const binormals: VisualSection = buffer.pushFloats([0, 1, 0, 0, 1, 0, 0, 1, 0]);
   const uvs: VisualSection = buffer.pushFloats([0, 0, 1, 0, 0, 1]);
   const indices: VisualSection = buffer.pushIndices([0, 1, 2]);
 
@@ -124,6 +126,8 @@ export function mockPackedSubmesh(
         indexCount: 3,
         positions,
         normals,
+        tangents,
+        binormals,
         uvs,
         indices,
         skin: null,
