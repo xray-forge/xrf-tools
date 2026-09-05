@@ -9,6 +9,16 @@ import unusedImportsPlugin from "eslint-plugin-unused-imports";
 import globals from "globals";
 import tsPlugin from "typescript-eslint";
 
+const RESTRICTED_IMPORT_PATHS = [
+  {
+    name: "@testing-library/react",
+    importNames: ["screen"],
+    message:
+      "Query through the render result instead: `const { findByRole } = renderWithProviders(...)`. " +
+      "`screen` searches the whole document, so a test cannot say which render it is asserting on.",
+  },
+];
+
 /**
  * Flat configuration for the desktop frontend.
  *
@@ -143,15 +153,7 @@ export default [
       "no-restricted-imports": [
         "error",
         {
-          paths: [
-            {
-              name: "@testing-library/react",
-              importNames: ["screen"],
-              message:
-                "Query through the render result instead: `const { findByRole } = renderWithProviders(...)`. " +
-                "`screen` searches the whole document, so a test cannot say which render it is asserting on.",
-            },
-          ],
+          paths: RESTRICTED_IMPORT_PATHS,
         },
       ],
       "no-trailing-spaces": "error",
@@ -175,17 +177,55 @@ export default [
           propElementValues: "always",
         },
       ],
-      "react/jsx-key": "off",
+      "react/jsx-key": ["error", { checkFragmentShorthand: true }],
       "react/jsx-no-undef": "off",
       "react/no-unknown-property": "off",
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
       "react-hooks/exhaustive-deps": ["warn", { additionalHooks: "^useEditorPanels$" }],
+      "react-hooks/rules-of-hooks": "error",
       semi: "error",
       "space-in-parens": ["error", "never"],
       "spaced-comment": ["error", "always"],
       "template-tag-spacing": ["error", "never"],
       yoda: "error",
+    },
+  },
+  {
+    files: ["src/core/**/*.{ts,tsx}"],
+    // Integration tests may compose shared components with application services.
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: RESTRICTED_IMPORT_PATHS,
+          patterns: [
+            {
+              group: ["@/applications", "@/applications/**"],
+              message: "Core must not depend on applications. Inject application behavior at the composition root.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: RESTRICTED_IMPORT_PATHS,
+          patterns: [
+            {
+              group: ["@/core", "@/core/**", "@/applications", "@/applications/**"],
+              message: "Library utilities must not depend on core or applications. Move domain behavior to its owner.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
