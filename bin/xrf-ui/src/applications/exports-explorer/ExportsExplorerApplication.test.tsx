@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { act, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 
@@ -26,22 +27,24 @@ describe("ExportsExplorerApplication", () => {
    * @param route - Initial application route.
    * @returns Testing Library render result for the application shell.
    */
-  function renderApplication(route: string) {
-    return renderWithProviders(
-      <ApplicationShell>
-        <Routes>
-          <Route path={"/exports-explorer/*"} element={<ExportsExplorerApplication />} />
-          <Route path={"/"} element={<div>Application home</div>} />
-        </Routes>
-      </ApplicationShell>,
-      { route }
+  async function renderApplication(route: string): Promise<RenderResult> {
+    return act(async () =>
+      renderWithProviders(
+        <ApplicationShell>
+          <Routes>
+            <Route path={"/exports-explorer/*"} element={<ExportsExplorerApplication />} />
+            <Route path={"/"} element={<div>Application home</div>} />
+          </Routes>
+        </ApplicationShell>,
+        { route }
+      )
     );
   }
 
   it("lands on its own picker, with no list of one thing in between", async () => {
     // The route used to open a landing pane holding a single card called "Open". Flattening deleted
     // that pane: the application is the thing home links to, so it opens what it is for.
-    const { findByDisplayValue, findByText, queryByText } = renderApplication("/exports-explorer");
+    const { findByDisplayValue, findByText, queryByText } = await renderApplication("/exports-explorer");
 
     expect(await findByText("Open script exports")).toBeInTheDocument();
     expect(await findByDisplayValue("C:\\projects\\active-xrf")).toBeInTheDocument();
@@ -50,9 +53,9 @@ describe("ExportsExplorerApplication", () => {
   });
 
   it("resolves the services its descriptor declares, with nothing bound above the shell", async () => {
-    // `ExportsService` is bound by the frame out of `EXPORTS_EXPLORER_APPLICATION.bindings`. Only the root
+    // `ExportsService` is bound by the frame from the deferred runtime. Only the root
     // services are provided here, so if that wiring broke this would throw rather than render.
-    const { findByRole } = renderApplication("/exports-explorer");
+    const { findByRole } = await renderApplication("/exports-explorer");
 
     await userEvent.click(await findByRole("button", { name: "Open exports" }));
 

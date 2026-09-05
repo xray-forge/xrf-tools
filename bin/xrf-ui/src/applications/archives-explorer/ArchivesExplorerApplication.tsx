@@ -6,11 +6,6 @@ import { ArchivesEditor } from "@/applications/archives-explorer/components/edit
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 
-/**
- * Picker until something is open, editor once it is.
- *
- * Separate from the application because a provider cannot consume what it provides.
- */
 export function ArchivesExplorerApplication(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 

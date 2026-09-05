@@ -72,7 +72,8 @@ describe("Sprite equipment packer reload", () => {
   });
 
   it("mounts and leaves the packer without restoring or closing an editor project", async () => {
-    const container = mockContainer([...(SPRITE_EQUIPMENT_PACKER_APPLICATION.container?.bindings ?? [])]);
+    const runtime = await SPRITE_EQUIPMENT_PACKER_APPLICATION.load?.();
+    const container = mockContainer([...(runtime?.container?.bindings ?? [])]);
 
     await container.provision();
     container.get(SpriteEquipmentPackerService);

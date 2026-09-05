@@ -1,5 +1,6 @@
-import { ContainerConfig } from "@wirestate/core";
 import { ComponentType, ReactElement } from "react";
+
+import { ContainerDefinition } from "@/lib/container/container-definition";
 
 /** Canonical application identity shared by its directory, route, descriptor, and component stem. */
 export enum EApplicationId {
@@ -81,7 +82,15 @@ export interface IApplicationHelp {
   relatedTools?: ReadonlyArray<EApplicationId>;
 }
 
-export interface IApplicationDescriptor {
+/** The component and service bindings that make up an application. */
+export interface IApplicationRuntime {
+  Component: ComponentType;
+  /** Omit the container to use root services only. */
+  container?: ContainerDefinition;
+}
+
+/** Identity and presentation available before an application's runtime loads. */
+export interface IApplicationMetadata {
   id: EApplicationId;
   group: EApplicationGroupId;
   /** The one name this application answers to, everywhere. */
@@ -92,9 +101,11 @@ export interface IApplicationDescriptor {
   status: EApplicationStatus;
   /** In-application help. Required for `READY` applications once the roster is covered. */
   help?: IApplicationHelp;
-  /** The container this application's services live in. Omit it to run in the root one. */
-  container?: Omit<ContainerConfig, "parent">;
-  Component: ComponentType;
+}
+
+export interface IApplicationDescriptor extends IApplicationMetadata, IApplicationRuntime {
+  /** Returns the same runtime promise for preloading and rendering. */
+  load?: () => Promise<IApplicationRuntime>;
   /** Pulls this application's chunk in before it is navigated to. */
   preload?: () => Promise<unknown>;
 }

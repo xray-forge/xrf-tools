@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import * as dialog from "@tauri-apps/plugin-dialog";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { ArchivesExplorerApplication } from "@/applications/archives-explorer/ArchivesExplorerApplication";
@@ -189,15 +189,17 @@ describe("opened archives editor", () => {
   });
 
   it("keeps file details collapsed until its tool button is used", async () => {
-    const { findByLabelText, findByText, queryByText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText, queryByText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     const detailsButton: HTMLElement = await findByLabelText("File details");
@@ -210,15 +212,17 @@ describe("opened archives editor", () => {
   });
 
   it("renders the selected file metadata in Details", async () => {
-    const { findByLabelText, findByText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     await userEvent.dblClick(await findByText("texture.dds"));
@@ -244,15 +248,17 @@ describe("opened archives editor", () => {
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
 
-    const { findByLabelText, findByText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     await userEvent.dblClick(await findByText("texture.dds"));
@@ -277,15 +283,17 @@ describe("opened archives editor", () => {
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
-    const { findByLabelText, findByText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     expect(await findByText(/1 file\(s\) here cannot be reached/)).toBeInTheDocument();
@@ -302,15 +310,17 @@ describe("opened archives editor", () => {
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
-    const { findByLabelText, findByText, queryByText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText, queryByText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     await userEvent.click(await findByLabelText("Dismiss unreachable files notice"));
@@ -364,15 +374,17 @@ describe("opened archives editor", () => {
       ["plugin:archives|extract_file"]: () => new Promise(() => {}),
     });
 
-    const { findByLabelText, findByText, getByLabelText } = renderWithProviders(
-      <EditorBusyProvider>
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>
-      </EditorBusyProvider>,
-      { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+    const { findByLabelText, findByText, getByLabelText } = await act(async () =>
+      renderWithProviders(
+        <EditorBusyProvider>
+          <EditorPanelsProvider>
+            <ApplicationShellFrame>
+              <ArchivesExplorerApplication />
+            </ApplicationShellFrame>
+          </EditorPanelsProvider>
+        </EditorBusyProvider>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+      )
     );
 
     await userEvent.dblClick(await findByText("readme.ltx"));

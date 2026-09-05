@@ -1,5 +1,4 @@
 import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
-import { lazy } from "react";
 
 import {
   EApplicationGroupId,
@@ -7,17 +6,19 @@ import {
   EApplicationStatus,
   IApplicationDescriptor,
 } from "@/core/routing/application";
-import { SpawnFileService } from "@/core/spawn/services";
+import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 
-export const SPAWN_UNPACKER_APPLICATION: IApplicationDescriptor = {
-  container: { bindings: [SpawnFileService] },
-  Component: lazy(() => import("./SpawnUnpackerApplication").then((it) => ({ default: it.SpawnUnpackerApplication }))),
-  preload: () => import("./SpawnUnpackerApplication"),
-  description: "Extract a spawn file into editable chunks",
-  group: EApplicationGroupId.SPAWNS,
-  icon: <UnarchiveIcon />,
-  id: EApplicationId.SPAWN_UNPACKER,
-  label: "Spawn unpacker",
-  path: "/spawn-unpacker",
-  status: EApplicationStatus.READY,
-};
+export const SPAWN_UNPACKER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
+  {
+    description: "Extract a spawn file into editable chunks",
+    group: EApplicationGroupId.SPAWNS,
+    icon: <UnarchiveIcon />,
+    id: EApplicationId.SPAWN_UNPACKER,
+    label: "Spawn unpacker",
+    path: "/spawn-unpacker",
+    status: EApplicationStatus.READY,
+  },
+  {
+    load: () => import("./runtime"),
+  }
+);

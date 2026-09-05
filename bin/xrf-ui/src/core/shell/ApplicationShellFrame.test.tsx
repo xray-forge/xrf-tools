@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -118,12 +118,14 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("keeps notifications open when navigating to another tool", async () => {
-    const { getByLabelText, getByText, queryByText } = renderFrame(<EditorWithRouter />, "/archives-explorer");
+    const { getByLabelText, getByText, findByText, queryByText } = await act(async () =>
+      renderFrame(<EditorWithRouter />, "/archives-explorer")
+    );
 
     await userEvent.click(getByLabelText("Notifications"));
-    await userEvent.click(getByText("Open another tool"));
+    await act(async () => fireEvent.click(getByText("Open another tool")));
 
-    expect(getByText("Header editor")).toBeInTheDocument();
+    expect(await findByText("Header editor")).toBeInTheDocument();
     expect(getByText(/Nothing has been reported yet/)).toBeInTheDocument();
     expect(queryByText("Header panel")).not.toBeInTheDocument();
   });

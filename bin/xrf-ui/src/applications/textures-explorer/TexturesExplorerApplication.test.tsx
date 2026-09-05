@@ -17,10 +17,14 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /**
- * Builds the container out of the application descriptor's own bindings.
+ * Builds the container out of the application's deferred runtime bindings.
+ *
+ * @returns A test container with the application's services.
  */
-function mockApplicationContainer(): Container {
-  return mockContainer([...((TEXTURES_EXPLORER_APPLICATION.container?.bindings ?? []) as Array<Binding>)]);
+async function mockApplicationContainer(): Promise<Container> {
+  const runtime = await TEXTURES_EXPLORER_APPLICATION.load?.();
+
+  return mockContainer([...((runtime?.container?.bindings ?? []) as Array<Binding>)]);
 }
 
 describe("TexturesExplorerApplication", () => {
@@ -28,7 +32,7 @@ describe("TexturesExplorerApplication", () => {
     resetMockInvoke();
     setMockInvokeResponses({ ["plugin:textures|get_roots"]: null });
 
-    const container: Container = mockApplicationContainer();
+    const container: Container = await mockApplicationContainer();
 
     await container.get(TexturesService).onProvision();
 
@@ -47,7 +51,7 @@ describe("TexturesExplorerApplication", () => {
       ["plugin:textures|read_texture"]: new ArrayBuffer(0),
     });
 
-    const container: Container = mockApplicationContainer();
+    const container: Container = await mockApplicationContainer();
     const service: TexturesService = container.get(TexturesService);
 
     await service.onProvision();

@@ -16,13 +16,15 @@ import { createContainerPlugins } from "./plugins";
  *
  * @returns Each bound service token, once.
  */
-function catalogServices(): Array<Binding> {
+async function catalogServices(): Promise<Array<Binding>> {
   // The root container's own bindings come first: an application service may inject one, and resolving it here has to
   // go through the same graph the application would.
   const bound: Set<Binding> = new Set<Binding>(ROOT_BINDINGS);
 
   for (const application of APPLICATION_CATALOG.applications) {
-    for (const binding of application.container?.bindings ?? []) {
+    const runtime = application.load ? await application.load() : application;
+
+    for (const binding of runtime?.container?.bindings ?? []) {
       // Instance bindings only, in wirestate's own vocabulary. A factory binding names a token rather than a service —
       // an application pointing the shared inspection panels at whichever of its own services answers them — and what
       // it resolves to is a class already in this list.
@@ -36,8 +38,8 @@ function catalogServices(): Array<Binding> {
 }
 
 describe("createContainerPlugins", () => {
-  it("makes every service the catalog binds observable", () => {
-    const services: Array<Binding> = catalogServices();
+  it("makes every service the catalog binds observable", async () => {
+    const services: Array<Binding> = await catalogServices();
 
     // Guards the failure this plugin can cause and lint cannot see: a container that omits it resolves services whose
     // annotations were never applied, so their state is inert and every screen over it silently stops updating.

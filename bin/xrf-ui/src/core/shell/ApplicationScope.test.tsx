@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+import { act } from "@testing-library/react";
 import { Injectable } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
-import { Fragment, ReactElement } from "react";
+import { Fragment, ReactElement, Suspense } from "react";
 
 import {
   EApplicationGroupId,
@@ -9,6 +10,7 @@ import {
   EApplicationStatus,
   IApplicationDescriptor,
 } from "@/core/routing/application";
+import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import {
   EditorPanelsProvider,
@@ -72,9 +74,7 @@ function PanelSlot(): ReactElement {
   );
 }
 
-const APPLICATION: IApplicationDescriptor = {
-  container: { bindings: [ScopedService] },
-  Component: Publisher,
+const APPLICATION_METADATA = {
   description: "",
   group: EApplicationGroupId.ARCHIVES,
   icon: <span>a</span>,
@@ -84,47 +84,71 @@ const APPLICATION: IApplicationDescriptor = {
   status: EApplicationStatus.READY,
 };
 
+const APPLICATION = createApplicationDescriptor(APPLICATION_METADATA, {
+  load: async () => ({ Component: Publisher, container: { bindings: [ScopedService] } }),
+});
+
 describe("ApplicationScope", () => {
-  it("reaches the panels the shell renders, not just the application's own tree", () => {
+  it("reaches the panels the shell renders, not just the application's own tree", async () => {
     // The archives menu injects its service and is published as a panel. When the application provided
     // its own container the panel rendered outside it and the injection threw, which is the whole
-    // reason bindings moved onto the descriptor.
-    const { getByText } = renderWithProviders(
-      <EditorPanelsProvider>
-        <ApplicationScope application={APPLICATION}>
-          <Publisher />
-          <PanelSlot />
-        </ApplicationScope>
-      </EditorPanelsProvider>
+    // reason the shell owns the scope around both surfaces.
+    const { findByText } = await act(async () =>
+      renderWithProviders(
+        <EditorPanelsProvider>
+          <Suspense fallback={null}>
+            <ApplicationScope application={APPLICATION}>
+              <Publisher />
+              <PanelSlot />
+            </ApplicationScope>
+          </Suspense>
+        </EditorPanelsProvider>
+      )
     );
 
-    expect(getByText("content")).toBeInTheDocument();
-    expect(getByText("scoped service")).toBeInTheDocument();
+    expect(await findByText("content")).toBeInTheDocument();
+    expect(await findByText("scoped service")).toBeInTheDocument();
   });
 
-  it("keeps the container when a rebuilt descriptor binds the same classes", () => {
-    // The common hot update, where a module above the descriptor re-executed but the service did not.
-    // Rebuilding here would discard the live services and everything they hold open, so the same
-    // instance has to come back out.
-    const TRACKED: IApplicationDescriptor = { ...APPLICATION, container: { bindings: [TrackedService] } };
+  it("keeps the container when a rebuilt runtime binds the same classes", async () => {
+    const TRACKED: IApplicationDescriptor = createApplicationDescriptor(APPLICATION_METADATA, {
+      load: async () => ({ Component: TrackedPanel, container: { bindings: [TrackedService] } }),
+    });
 
-    const { getByText, rerender } = renderWithProviders(
-      <ApplicationScope application={TRACKED}>
-        <TrackedPanel />
-      </ApplicationScope>
+    const { findByText, rerender } = await act(async () =>
+      renderWithProviders(
+        <Suspense fallback={null}>
+          <ApplicationScope application={TRACKED}>
+            <TrackedPanel />
+          </ApplicationScope>
+        </Suspense>
+      )
     );
 
-    const instance: Nullable<string> = getByText(/instance /).textContent;
-
-    rerender(
-      <>
-        <ApplicationScope application={{ ...TRACKED, container: { bindings: [TrackedService] } }}>
-          <TrackedPanel />
-        </ApplicationScope>
-      </>
+    const instance: Nullable<string> = (await findByText(/instance /)).textContent;
+    const rebuilt: IApplicationDescriptor = createApplicationDescriptor(
+      {
+        ...APPLICATION_METADATA,
+        label: "Updated application label",
+      },
+      {
+        load: async () => ({ Component: TrackedPanel, container: { bindings: [TrackedService] } }),
+      }
     );
 
-    expect(getByText(/instance /).textContent).toBe(instance);
+    await act(async () =>
+      rerender(
+        <>
+          <Suspense fallback={null}>
+            <ApplicationScope application={rebuilt}>
+              <TrackedPanel />
+            </ApplicationScope>
+          </Suspense>
+        </>
+      )
+    );
+
+    expect((await findByText(/instance /)).textContent).toBe(instance);
   });
 
   it("renders in the root container when no application owns the route", () => {
