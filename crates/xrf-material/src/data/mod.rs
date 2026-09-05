@@ -1,0 +1,9 @@
+pub(crate) mod xray_bump_fallback;
+pub(crate) mod xray_bump_mode;
+pub(crate) mod xray_bump_outcome;
+pub(crate) mod xray_detail_usage;
+pub(crate) mod xray_material_bump;
+pub(crate) mod xray_material_bump_input;
+pub(crate) mod xray_material_declaration;
+pub(crate) mod xray_material_descriptor;
+pub(crate) mod xray_material_detail;

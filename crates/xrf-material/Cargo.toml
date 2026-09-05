@@ -1,0 +1,28 @@
+[package]
+name = "xrf-material"
+version = "0.1.0"
+publish = false
+edition = "2024"
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+xrf-chunk = { workspace = true }
+xrf-db = { workspace = true }
+xrf-error = { workspace = true }
+xrf-test-utils = { workspace = true, optional = true }
+xrf-vfs = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[features]
+typescript-bindings = ["specta", "xrf-vfs/typescript-bindings"]
+fixtures = ["xrf-test-utils"]
+
+[lints]
+workspace = true

@@ -18,6 +18,7 @@ members = [
   "crates/xrf-ltx",
   "crates/xrf-lua",
   "crates/xrf-lzhuf",
+  "crates/xrf-material",
   "crates/xrf-output",
   "crates/xrf-pack",
   "crates/xrf-report",
@@ -50,9 +51,6 @@ log = "0.4.33"
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
 rayon = "1.12.0"
 regex = "1.13.1"
-# `rc` makes Arc<T> serialize as T, which is what lets the archive index share one path allocation across
-# tens of thousands of entries without changing a reported shape. Note that it serializes the pointee rather
-# than preserving sharing, so a round trip through JSON does not give the Arc back.
 serde = { version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
 sysinfo = "0.33"
@@ -78,6 +76,7 @@ xrf-job = { path = "crates/xrf-job" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }
+xrf-material = { path = "crates/xrf-material" }
 xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
 xrf-report = { path = "crates/xrf-report" }

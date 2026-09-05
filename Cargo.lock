@@ -7097,6 +7097,7 @@ dependencies = [
  "xrf-gamedata",
  "xrf-job",
  "xrf-ltx",
+ "xrf-material",
  "xrf-output",
  "xrf-pack",
  "xrf-sound",
@@ -7298,6 +7299,7 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-lua",
+ "xrf-material",
  "xrf-output",
  "xrf-report",
  "xrf-shaders",
@@ -7355,6 +7357,19 @@ version = "0.1.0"
 dependencies = [
  "xrf-error",
  "xrf-test-utils",
+]
+
+[[package]]
+name = "xrf-material"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "xrf-chunk",
+ "xrf-db",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-vfs",
 ]
 
 [[package]]
