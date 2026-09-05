@@ -55,6 +55,8 @@ export function createApplicationTheme(): Theme {
       // Thin, unobtrusive scrollbars. The default chromium ones are wide enough to read as a web page.
       MuiCssBaseline: {
         styleOverrides: (theme) => ({
+          // Outrank MUI typography defaults regardless of style injection order.
+          ".monospace.monospace": MONOSPACE,
           "*::-webkit-scrollbar": { width: 10, height: 10 },
           "*::-webkit-scrollbar-track": { backgroundColor: "transparent" },
           "*::-webkit-scrollbar-thumb": {
@@ -176,9 +178,6 @@ export function createApplicationTheme(): Theme {
         styleOverrides: {
           root: {
             border: "none",
-            // Opt-in per column: identifiers, paths and file positions are compared by eye and read
-            // badly in proportional type.
-            "& .monospace": MONOSPACE,
           },
         },
       },

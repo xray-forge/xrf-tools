@@ -122,7 +122,6 @@ export function TranslationsTable({
           flexGrow: 1,
           minHeight: 0,
           "& .MuiDataGrid-row--edited": { backgroundColor: "action.hover" },
-          "& .monospace": { fontFamily: "'Cascadia Mono', 'Consolas', monospace", fontSize: "0.75rem" },
         }}
         getRowClassName={(params: GridRowParams<ITranslationRow>) =>
           params.row.isEdited ? "MuiDataGrid-row--edited" : ""
