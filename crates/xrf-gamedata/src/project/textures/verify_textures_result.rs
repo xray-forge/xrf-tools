@@ -1,16 +1,39 @@
 use std::time::Duration;
 
+use crate::GamedataFindingFactory;
+use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
+use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
-#[derive(Default)]
 pub struct GamedataTexturesVerificationResult {
   pub(crate) duration: Duration,
-  pub(crate) findings: Vec<Finding>,
-  pub(crate) invalid_textures_count: u32,
-  pub(crate) checked_textures_count: u32,
-  /// Texture descriptors that declare a bump the engine can resolve to a file.
-  pub(crate) checked_bumps_count: u32,
-  pub(crate) unresolved_bumps_count: u32,
+  findings: Vec<Finding>,
+  pub(crate) texture_files: GamedataTextureFilesVerificationResult,
+  pub(crate) texture_bumps: GamedataTextureBumpsVerificationResult,
+}
+
+impl GamedataTexturesVerificationResult {
+  pub(crate) fn new(
+    duration: Duration,
+    texture_files: GamedataTextureFilesVerificationResult,
+    texture_bumps: GamedataTextureBumpsVerificationResult,
+  ) -> Self {
+    let mut findings: Vec<Finding> = texture_files
+      .get_findings()
+      .iter()
+      .chain(texture_bumps.get_findings())
+      .cloned()
+      .collect();
+
+    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
+
+    Self {
+      duration,
+      findings,
+      texture_files,
+      texture_bumps,
+    }
+  }
 }
 
 impl GamedataCheckResult for GamedataTexturesVerificationResult {
@@ -19,16 +42,14 @@ impl GamedataCheckResult for GamedataTexturesVerificationResult {
   }
 
   fn get_status(&self) -> GamedataVerificationStatus {
-    GamedataVerificationStatus::from_is_valid(self.invalid_textures_count == 0 && self.unresolved_bumps_count == 0)
+    GamedataVerificationStatus::aggregate([self.texture_files.get_status(), self.texture_bumps.get_status()])
   }
 
   fn get_failure_message(&self) -> String {
     format!(
-      "{}/{} textures valid, {}/{} declared bumps resolved",
-      self.checked_textures_count - self.invalid_textures_count,
-      self.checked_textures_count,
-      self.checked_bumps_count - self.unresolved_bumps_count,
-      self.checked_bumps_count
+      "{}; {}",
+      self.texture_files.get_failure_message(),
+      self.texture_bumps.get_failure_message()
     )
   }
 
@@ -39,10 +60,15 @@ impl GamedataCheckResult for GamedataTexturesVerificationResult {
 
 #[cfg(test)]
 mod tests {
+  use std::time::Duration;
+
   use super::GamedataTexturesVerificationResult;
   use crate::GamedataFindingFactory;
+  use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
+  use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
   use crate::{
-    Finding, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus, GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   #[test]
@@ -56,15 +82,39 @@ mod tests {
 
     report.add_check(
       GamedataVerificationType::Textures,
-      Ok(GamedataTexturesVerificationResult {
-        checked_textures_count: 1,
-        findings: vec![finding.clone()],
-        invalid_textures_count: 1,
-        ..Default::default()
-      }),
+      Ok(GamedataTexturesVerificationResult::new(
+        Duration::ZERO,
+        GamedataTextureFilesVerificationResult {
+          checked_textures_count: 1,
+          findings: vec![finding.clone()],
+          invalid_textures_count: 1,
+        },
+        GamedataTextureBumpsVerificationResult::default(),
+      )),
     );
 
     assert_eq!(report.get_status(), GamedataVerificationStatus::Failed);
     assert_eq!(report.get_checks()[0].get_findings(), [finding]);
+  }
+
+  #[test]
+  fn reads_as_both_halves_in_one_line() {
+    let result: GamedataTexturesVerificationResult = GamedataTexturesVerificationResult::new(
+      Duration::ZERO,
+      GamedataTextureFilesVerificationResult {
+        checked_textures_count: 2,
+        ..Default::default()
+      },
+      GamedataTextureBumpsVerificationResult {
+        checked_bumps_count: 1,
+        ..Default::default()
+      },
+    );
+
+    assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
+    assert_eq!(
+      result.get_failure_message(),
+      "2/2 textures valid; 1/1 declared bumps resolved"
+    );
   }
 }

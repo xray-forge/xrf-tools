@@ -16,6 +16,7 @@ xrf-error = { workspace = true }
 xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-lua = { workspace = true }
+xrf-material = { workspace = true }
 xrf-output = { workspace = true }
 xrf-report = { workspace = true }
 xrf-vfs = { workspace = true }
@@ -26,6 +27,7 @@ xrf-xml = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 # Measures the pattern rather than the private call site, which is what the decision needs: whether the linear scan is

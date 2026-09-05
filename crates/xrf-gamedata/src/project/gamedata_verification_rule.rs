@@ -120,6 +120,10 @@ pub enum GamedataVerificationRule {
   SpawnsRead,
   #[display("textures.bump")]
   TexturesBump,
+  #[display("textures.bump-companion")]
+  TexturesBumpCompanion,
+  #[display("textures.bump-declaration")]
+  TexturesBumpDeclaration,
   #[display("textures.path")]
   TexturesPath,
   #[display("textures.read")]
