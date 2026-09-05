@@ -1,10 +1,18 @@
-import { CompressedPixelFormat, CompressedTexture, LinearFilter, RepeatWrapping, Texture } from "three";
+import {
+  CompressedPixelFormat,
+  CompressedTexture,
+  CompressedTextureMipmap,
+  LinearFilter,
+  RepeatWrapping,
+  RGBAFormat,
+  Texture,
+} from "three";
 import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 /** Shared parser, since `DDSLoader.parse` keeps no state between calls and constructing one per texture is waste. */
 const DDS_LOADER: DDSLoader = new DDSLoader();
@@ -129,6 +137,54 @@ export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture
   texture.needsUpdate = true;
 
   return texture;
+}
+
+/** A texture's top mip on the cpu, for a layout that stores its texels plainly. */
+export interface IVisualTextureTexels {
+  width: number;
+  height: number;
+  /** Rgba bytes, row major, the row X-Ray stores first coming first. */
+  data: Uint8Array;
+}
+
+/**
+ * Reads a dds file's top mip back as plain texels, when the file stores them plainly.
+ *
+ * Only an uncompressed layout answers. A block-compressed one would have to be decoded to be read texel by texel, and
+ * a decoder here would be a second implementation of something the gpu already does correctly.
+ *
+ * Parsed a second time rather than handed out by {@link createDdsTexture}, because almost nothing wants this: one
+ * surface reading two small files for a hover readout should not put a cpu copy in the path of every model upload.
+ *
+ * @param bytes - The file as read.
+ * @returns Its top mip, or null for a layout stored as blocks.
+ */
+export function readDdsTexels(bytes: ArrayBuffer): Nullable<IVisualTextureTexels> {
+  const parsed: DDS = DDS_LOADER.parse(bytes, true);
+  const mip: Optional<CompressedTextureMipmap> = parsed.mipmaps[0];
+
+  // `DDSLoader` reports `RGBAFormat` only for a file it expanded rather than left as blocks.
+  if (!mip || parsed.isCubemap || (parsed.format as number) !== (RGBAFormat as number)) {
+    return null;
+  }
+
+  return { data: new Uint8Array(mip.data), height: mip.height, width: mip.width };
+}
+
+/**
+ * One texel of a cpu copy, in the range a shader reads.
+ *
+ * @param texels - The mip to read.
+ * @param x - Column, from the left.
+ * @param y - Row, from the top, as the file stores them.
+ * @returns Its four channels, each in `[0, 1]`.
+ */
+export function readVisualTexel(texels: IVisualTextureTexels, x: number, y: number): [number, number, number, number] {
+  const column: number = Math.min(Math.max(x, 0), texels.width - 1);
+  const row: number = Math.min(Math.max(y, 0), texels.height - 1);
+  const at: number = (row * texels.width + column) * 4;
+
+  return [texels.data[at] / 255, texels.data[at + 1] / 255, texels.data[at + 2] / 255, texels.data[at + 3] / 255];
 }
 
 /**

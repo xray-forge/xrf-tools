@@ -12,8 +12,9 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "type into the filter field to search every name.",
     "Open a texture with a double click in the tree, `Enter`, or the filter. One click only selects, as in every " +
       "tree here.",
-    "Read the `Material` panel for what the descriptor declares, and the `Files` panel for the three files behind " +
-      "it: the texture, the bump, and its `bump#` companion.",
+    "Read the `Material` panel for what the descriptor declares, the `Files` panel for the three files behind it - " +
+      "the texture, the bump, and its `bump#` companion - and the `Channels` panel for the two bump planes and the " +
+      "three values the engine reads out of them.",
     "Turn `Lit surface` on in the toolbar to see what the engine makes of the pair. `Body` chooses what the texture " +
       "is laid on and how many times it repeats; drag to orbit, hold `Shift` and drag to move the light, and turn " +
       "`Bump` off to compare the same body flat.",
@@ -42,6 +43,10 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "only what it changed still resolves - and reports - the bumps it did not.",
     "Textures the engine loads but no reference names, such as a level's lightmaps, are counted in the status bar " +
       "rather than listed: they sit outside `textures\\`, so no descriptor can describe them.",
+    "The `Channels` panel draws through the same decode the lit surface is shaded by, on small unlit quads: a " +
+      "surface that looks wrong is traced back to the plane it came from without a second implementation to " +
+      "disagree with. The two raw tiles are the files as uploaded, so a wrong plane and a wrong decode are told " +
+      "apart. Nothing there is colour-managed; the numbers are drawn as they are read.",
     "The lit surface is the same shading the visuals viewer uses, on a generated body rather than a mesh: one " +
       "shader kernel decodes `normal.gloss` and `error.height` for both, so a texture judged here and the model " +
       "binding it cannot disagree. The body's tangent basis is derived from its own uvs, with `v` running downwards " +
@@ -58,8 +63,8 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
   limitations: [
     "Read-only: no editing, saving, or export. Authoring a descriptor, generating a bump pair and re-encoding a " +
       "texture belong to the textures editor, which is not built yet.",
-    "The channel views that show the packed `normal.gloss` and `error.height` planes on their own, and the " +
-      "reconstructed normal, gloss and height they decode to, are not built yet.",
+    "The channel tiles have no texel readout. Hovering one names no numbers, because a bump pair the SDK wrote is " +
+      "always DXT5 and no cpu copy of a compressed plane exists to read.",
     "A `.dds` layout the backend cannot decode shows no picture; its descriptor and its files are still reported.",
     "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
       "detail associations too, and is not read; a notice names it when the browsed roots hold one.",

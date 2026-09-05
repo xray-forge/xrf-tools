@@ -111,17 +111,6 @@ export function TextureSurface({
     };
   }, []);
 
-  // Uploaded while this surface is on screen and dropped when it leaves, so the flat preview costs no gpu memory.
-  useEffect(() => {
-    if (description) {
-      void surfaceService.load(description);
-    } else {
-      surfaceService.clear();
-    }
-  }, [surfaceService, description]);
-
-  useEffect(() => () => surfaceService.clear(), [surfaceService]);
-
   useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
 
   useEffect(() => sceneRef.current?.setOptions(options), [options]);

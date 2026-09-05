@@ -68,6 +68,9 @@ export const XRAY_BUMP_NORMAL_GLSL: string = "xrayNu.wzy + (xrayNuE.xyz - 1.0)";
 /** Gloss is the bump's red channel squared, `S.gloss = Nu.x * Nu.x`. */
 export const XRAY_BUMP_GLOSS_GLSL: string = "xrayNu.x * xrayNu.x";
 
+/** Height is the companion's blue channel, which `it_height_rev` moved there. */
+export const XRAY_BUMP_HEIGHT_GLSL: string = "xrayNuE.z";
+
 /**
  * Reconstructs what the engine reads from one texel of a bump pair.
  *

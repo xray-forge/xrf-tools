@@ -4,6 +4,7 @@ import { getLocatedAsset } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { IVisualTextureTexels } from "@/core/visuals/lib/visual-texture";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
@@ -73,6 +74,14 @@ export function listTextureSurfaceTextures(textures: Nullable<ITextureSurfaceTex
   return [textures?.base, textures?.bump?.bump, textures?.bump?.companion].filter((it: Maybe<Texture>): it is Texture =>
     Boolean(it)
   );
+}
+
+/**
+ * The pair's texels on the cpu, for a pair whose layout stores them plainly.
+ */
+export interface ITextureBumpTexels {
+  bump: IVisualTextureTexels;
+  companion: IVisualTextureTexels;
 }
 
 /** The two located files behind a bump declaration, which are only ever fetched together. */

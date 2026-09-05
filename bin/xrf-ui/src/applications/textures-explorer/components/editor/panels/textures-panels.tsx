@@ -1,10 +1,12 @@
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { default as InfoIcon } from "@mui/icons-material/Info";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
+import { default as TuneIcon } from "@mui/icons-material/Tune";
 
 import { TexturesMenu } from "@/applications/textures-explorer/components/editor/tree/TexturesMenu";
 import { IEditorPanel } from "@/core/shell/panel/context";
 
+import { TextureChannelsPanel } from "./TextureChannelsPanel";
 import { TextureFilesPanel } from "./TextureFilesPanel";
 import { TextureMaterialPanel } from "./TextureMaterialPanel";
 
@@ -41,6 +43,13 @@ export function createTexturesExplorerPanels(isBrowsing: boolean): Array<IEditor
       isOpenByDefault: false,
       label: "Files",
       render: () => <TextureFilesPanel />,
+    },
+    {
+      icon: <TuneIcon />,
+      id: "channels",
+      isOpenByDefault: false,
+      label: "Channels",
+      render: () => <TextureChannelsPanel />,
     },
   ];
 }

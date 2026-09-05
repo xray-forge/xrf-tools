@@ -1,6 +1,6 @@
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { createTexturesExplorerPanels } from "@/applications/textures-explorer/components/editor/panels/textures-panels";
 import { TexturePreview } from "@/applications/textures-explorer/components/editor/preview/TexturePreview";
@@ -9,8 +9,9 @@ import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ITexturePreviewOptions,
 } from "@/applications/textures-explorer/lib/texture-preview";
+import { TextureSurfaceService } from "@/applications/textures-explorer/services/surface";
 import { TexturesService } from "@/applications/textures-explorer/services/textures";
-import { TextureCatalog } from "@/core/bindings/types/xrf-app";
+import { TextureCatalog, TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
@@ -27,8 +28,9 @@ export function TexturesEditor({
   "data-testid": dataTestId = "textures-editor",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const texturesService: TexturesService = useInjection(TexturesService);
+  const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
 
   const [isLtxNoticeDismissed, setLtxNoticeDismissed] = useState<boolean>(false);
   const [previewOptions, setPreviewOptions] = useState<ITexturePreviewOptions>(DEFAULT_TEXTURE_PREVIEW_OPTIONS);
@@ -42,8 +44,22 @@ export function TexturesEditor({
   const texturesLtx: Nullable<string> = selectUnreadTexturesLtx(catalog);
   const isLtxNoticeShown: boolean = Boolean(texturesLtx) && !isLtxNoticeDismissed;
 
+  const description: Nullable<TextureDescription> = texturesService.selected.value;
+
   const onClose = useCallback(() => void texturesService.close(), [texturesService]);
   const onResetCamera = useCallback(() => setCameraResetToken((it: number) => it + 1), []);
+
+  // Uploaded for whichever texture is open rather than by whatever happens to be drawing it, because the lit surface
+  // and the channel panel read the same pair and either of the two can be the only one on screen.
+  useEffect(() => {
+    if (description) {
+      void surfaceService.load(description);
+    } else {
+      surfaceService.clear();
+    }
+  }, [surfaceService, description]);
+
+  useEffect(() => () => surfaceService.clear(), [surfaceService]);
 
   useEditorPanels(() => createTexturesExplorerPanels(isBrowsing), [isBrowsing]);
 
@@ -62,7 +78,7 @@ export function TexturesEditor({
         <TexturesEditorToolbar
           subtitle={texturesService.selectedReference ?? undefined}
           options={previewOptions}
-          hasBump={Boolean(texturesService.selected.value?.material.bump)}
+          hasBump={Boolean(description?.material.bump)}
           onChangeOptions={setPreviewOptions}
           onResetCamera={onResetCamera}
           onBack={onClose}

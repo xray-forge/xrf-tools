@@ -5,6 +5,7 @@ import { SRGBColorSpace, Texture } from "three";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,
+  ITextureBumpTexels,
   ITextureSurfaceTextures,
   listTextureSurfaceTextures,
   selectTextureBumpAssets,
@@ -15,11 +16,22 @@ import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { createDdsTexture, createDecodedTexture } from "@/core/visuals/lib/visual-texture";
+import {
+  createDdsTexture,
+  createDecodedTexture,
+  IVisualTextureTexels,
+  readDdsTexels,
+} from "@/core/visuals/lib/visual-texture";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
+
+/** One half of the pair as it arrived: on the gpu always, and on the cpu when its layout stores texels plainly. */
+interface ITextureBumpHalf {
+  texture: Texture;
+  texels: Nullable<IVisualTextureTexels>;
+}
 
 /**
  * The textures the lit surface is drawn from, uploaded to the gpu.
@@ -37,6 +49,12 @@ export class TextureSurfaceService {
   @Observable()
   public uploaded: Nullable<string> = null;
 
+  /**
+   * The pair's texels on the cpu, when its layout stores them plainly.
+   */
+  @Observable()
+  public bumpTexels: Nullable<ITextureBumpTexels> = null;
+
   @OnDeactivation()
   public onDeactivation(): void {
     this.clear();
@@ -49,10 +67,11 @@ export class TextureSurfaceService {
    */
   @LatestFlow("textures")
   public *load(description: TextureDescription): TFlow {
-    disposeTextures(listTextureSurfaceTextures(this.textures.value));
+    this.disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
     this.textures = this.textures.asLoading(EMPTY_TEXTURE_SURFACE);
     this.uploaded = null;
+    this.bumpTexels = null;
 
     const uploads: Array<Promise<Nullable<Texture>>> = [];
     let published: Nullable<ITextureSurfaceTextures> = null;
@@ -62,7 +81,7 @@ export class TextureSurfaceService {
       const bumpAssets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
 
       const base: Nullable<Texture> = description.texture
-        ? yield* call(this.read(uploads, roots, description.texture.logicalPath, true))
+        ? yield* call(this.readBase(uploads, roots, description.texture.logicalPath))
         : null;
 
       // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
@@ -72,22 +91,23 @@ export class TextureSurfaceService {
         base.colorSpace = SRGBColorSpace;
       }
 
-      const bump: Nullable<Texture> = bumpAssets
-        ? yield* call(this.read(uploads, roots, bumpAssets.bump.logicalPath, false))
+      const bump: Nullable<ITextureBumpHalf> = bumpAssets
+        ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.bump.logicalPath))
         : null;
-      const companion: Nullable<Texture> = bumpAssets
-        ? yield* call(this.read(uploads, roots, bumpAssets.companion.logicalPath, false))
+      const companion: Nullable<ITextureBumpHalf> = bumpAssets
+        ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.companion.logicalPath))
         : null;
 
       published = {
         aspect: toTextureAspect(description),
         base,
         // Both halves or neither: the decode samples the pair every texel, and half of it shades nothing.
-        bump: bump && companion ? { bump, companion } : null,
+        bump: bump && companion ? { bump: bump.texture, companion: companion.texture } : null,
       };
 
       this.textures = this.textures.asReady(published);
       this.uploaded = description.reference;
+      this.bumpTexels = bump?.texels && companion?.texels ? { bump: bump.texels, companion: companion.texels } : null;
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -115,30 +135,35 @@ export class TextureSurfaceService {
    */
   public clear(): void {
     cancelFlow(this, "textures");
-    disposeTextures(listTextureSurfaceTextures(this.textures.value));
+    this.disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
     runInAction(() => {
       this.textures = createLoadable(EMPTY_TEXTURE_SURFACE);
       this.uploaded = null;
+      this.bumpTexels = null;
     });
   }
 
   /**
-   * Starts one read and records it, so the run that asked for it can release it whatever happens next.
+   * Reads the base texture, falling back to the backend's decode for a layout three.js refuses.
    *
-   * @param uploads - Where the read is recorded.
+   * @param uploads - Where the read is recorded, so a run that never publishes can still release it.
    * @param roots - Roots the description was resolved in, so the read reaches the same file.
    * @param logicalPath - Engine identity of the file.
-   * @param isDecodable - Whether a layout three.js refuses may be decoded by the backend instead.
    * @returns The upload in progress.
    */
-  private read(
+  private readBase(
     uploads: Array<Promise<Nullable<Texture>>>,
     roots: XrayRoots,
-    logicalPath: string,
-    isDecodable: boolean
+    logicalPath: string
   ): Promise<Nullable<Texture>> {
-    const upload: Promise<Nullable<Texture>> = this.upload(roots, logicalPath, isDecodable);
+    const upload: Promise<Nullable<Texture>> = this.guard(logicalPath, async () => {
+      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
+
+      const compressed: Nullable<Texture> = createDdsTexture(bytes);
+
+      return compressed ?? (await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath)));
+    });
 
     uploads.push(upload);
 
@@ -146,37 +171,58 @@ export class TextureSurfaceService {
   }
 
   /**
-   * Reads one file and uploads it.
+   * Reads one half of the pair, and its texels where the layout stores them plainly.
    *
+   * Never the backend's png fallback, unlike the base: a packed plane re-encoded through an srgb path would report
+   * values it does not hold, and a bump drawn from those is worse than no bump at all.
+   *
+   * @param uploads - Where the read is recorded, so a run that never publishes can still release it.
    * @param roots - Roots the description was resolved in, so the read reaches the same file.
    * @param logicalPath - Engine identity of the file.
-   * @param isDecodable - Whether a layout three.js refuses may be decoded by the backend instead.
-   * @returns The texture, or null when nothing could be uploaded for it.
+   * @returns The upload in progress.
    */
-  private async upload(roots: XrayRoots, logicalPath: string, isDecodable: boolean): Promise<Nullable<Texture>> {
+  private readBumpHalf(
+    uploads: Array<Promise<Nullable<Texture>>>,
+    roots: XrayRoots,
+    logicalPath: string
+  ): Promise<Nullable<ITextureBumpHalf>> {
+    const half: Promise<Nullable<ITextureBumpHalf>> = this.guard(logicalPath, async () => {
+      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
+      const texture: Nullable<Texture> = createDdsTexture(bytes);
+
+      return texture ? { texels: readDdsTexels(bytes), texture } : null;
+    });
+
+    uploads.push(half.then((it: Nullable<ITextureBumpHalf>) => it?.texture ?? null));
+
+    return half;
+  }
+
+  /**
+   * Runs one read, reporting a failure as an absent answer rather than as a thrown one.
+   *
+   * @param logicalPath - Engine identity of the file, for the log line.
+   * @param read - The read to run.
+   * @returns What the read answered, or null when it failed.
+   */
+  private async guard<T>(logicalPath: string, read: () => Promise<Nullable<T>>): Promise<Nullable<T>> {
     try {
-      const compressed: Nullable<Texture> = createDdsTexture(await assetsRawCommands.readAsset(roots, logicalPath));
-
-      if (compressed || !isDecodable) {
-        return compressed;
-      }
-
-      return await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath));
+      return await read();
     } catch (error: unknown) {
       this.log.error(`Failed to upload '${logicalPath}':`, error);
 
       return null;
     }
   }
-}
 
-/**
- * Releases the gpu resources of whatever was uploaded.
- *
- * @param textures - Uploads to release, present or not.
- */
-function disposeTextures(textures: ReadonlyArray<Texture>): void {
-  for (const texture of textures) {
-    texture.dispose();
+  /**
+   * Releases the gpu resources of whatever was uploaded.
+   *
+   * @param textures - Uploads to release, present or not.
+   */
+  private disposeTextures(textures: ReadonlyArray<Texture>): void {
+    for (const texture of textures) {
+      texture.dispose();
+    }
   }
 }
