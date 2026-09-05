@@ -23,8 +23,8 @@ export function ConfigsVerifierApplication(): ReactElement {
 
   // The run rather than this view's own flag: a verification survives the window being reloaded, so returning here
   // finds it again instead of showing an idle form over a project it is still reading.
-  const job: Nullable<IJobState> = verifierService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = verifierService.operation.job;
+  const isRunning: boolean = verifierService.operation.isRunning;
 
   const configs: IPathField = usePathField({
     application: EApplicationId.CONFIGS_VERIFIER,
@@ -51,11 +51,11 @@ export function ConfigsVerifierApplication(): ReactElement {
     await verifierService.verify(directory, isDltx);
   }, [directory, isDltx, log, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.cancel(), [verifierService]);
+  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
   // A different directory invalidates whatever the previous run reported.
   useEffect(() => {
-    verifierService.reset();
+    verifierService.operation.reset();
   }, [directory, verifierService]);
 
   return (
@@ -64,10 +64,12 @@ export function ConfigsVerifierApplication(): ReactElement {
       isSubmitDisabled={!configs.isValid}
       title={"Verify LTX configs"}
       description={"Checks every LTX file in the directory. Nothing is written."}
-      error={verifierService.error ?? undefined}
+      error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={verifierService.result ? <ConfigsVerifyResult result={verifierService.result} /> : null}
+      result={
+        verifierService.operation.result ? <ConfigsVerifyResult result={verifierService.operation.result} /> : null
+      }
       onSubmit={onVerify}
     >
       <PathFormRow

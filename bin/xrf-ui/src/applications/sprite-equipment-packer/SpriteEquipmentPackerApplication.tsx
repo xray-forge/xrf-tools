@@ -1,4 +1,5 @@
 import { Checkbox, FormControlLabel } from "@mui/material";
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
@@ -9,10 +10,9 @@ import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPackEquipmentResult, SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentService } from "@/core/sprite-equipment";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
-import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -23,13 +23,10 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
 
   const pathsService: PathsService = useInjection(PathsService);
 
-  // The run rather than this view's own loadable: a pack survives the window being reloaded, so returning here finds
-  // it again instead of offering a Pack button the lease would then refuse.
-  const job: Nullable<IJobState> = spriteEquipmentService.packJob;
+  // Rediscover a running pack after reload so the form cannot offer a second pack against the same output.
+  const job: Nullable<IJobState> = spriteEquipmentService.packOperation.job;
 
-  const [result, setResult] = useState<Loadable<Nullable<IPackEquipmentResult>>>(() => createLoadable(null));
-
-  const isRunning: boolean = Boolean(job) || result.isLoading;
+  const isRunning: boolean = spriteEquipmentService.packOperation.isRunning;
 
   // The source is the directory of loose icons and the output is the single dds built from them. The
   // dialogs used to be configured the other way round, so browsing either one offered the wrong kind of
@@ -74,24 +71,13 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     }
 
     try {
-      setResult(createLoadable(null, true));
-
-      const packed: IPackEquipmentResult = await spriteEquipmentService.packEquipmentSprite(
-        source.value,
-        output.value,
-        systemLtx.value,
-        isDltx
-      );
-
-      setResult(createLoadable(packed));
+      await flowResult(spriteEquipmentService.packEquipmentSprite(source.value, output.value, systemLtx.value, isDltx));
     } catch (error) {
       log.error("Failed to pack equipment-editor:", error);
-
-      setResult(createLoadable(null, false, error instanceof Error ? error : new Error(String(error))));
     }
   }, [spriteEquipmentService, log, output.value, source.value, systemLtx.value, isDltx]);
 
-  const onCancel = useCallback(() => spriteEquipmentService.cancelPackEquipmentSprite(), [spriteEquipmentService]);
+  const onCancel = useCallback(() => spriteEquipmentService.packOperation.cancel(), [spriteEquipmentService]);
 
   return (
     <PickerForm
@@ -99,10 +85,14 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
       isSubmitDisabled={!source.isValid || !output.isValid || !systemLtx.isValid}
       title={"Pack equipment sprite"}
       description={"Builds one sprite from a directory of icons. The output file is overwritten."}
-      error={result.error ? String(result.error) : undefined}
+      error={spriteEquipmentService.packOperation.error ?? undefined}
       submitLabel={"Pack"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={result.value ? <EquipmentPackResult result={result.value} /> : null}
+      result={
+        spriteEquipmentService.packOperation.result ? (
+          <EquipmentPackResult result={spriteEquipmentService.packOperation.result} />
+        ) : null
+      }
       onSubmit={onPackEquipmentClicked}
     >
       <PathFormRow

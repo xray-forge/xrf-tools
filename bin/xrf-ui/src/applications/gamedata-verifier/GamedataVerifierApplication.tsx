@@ -25,8 +25,8 @@ export function GamedataVerifierApplication(): ReactElement {
 
   // The run rather than this view's own flag: a full pass takes minutes and survives the window being reloaded, so
   // returning here finds it again instead of offering to start a second one.
-  const job: Nullable<IJobState> = verifierService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = verifierService.operation.job;
+  const isRunning: boolean = verifierService.operation.isRunning;
 
   const gamedata: IPathField = usePathField({
     application: EApplicationId.GAMEDATA_VERIFIER,
@@ -49,11 +49,11 @@ export function GamedataVerifierApplication(): ReactElement {
     await verifierService.verify(root, isStrict);
   }, [isStrict, log, root, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.cancel(), [verifierService]);
+  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
   const onStrictChanged = useCallback(
     (_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-      verifierService.reset();
+      verifierService.operation.reset();
       setIsStrict(checked);
     },
     [verifierService]
@@ -61,7 +61,7 @@ export function GamedataVerifierApplication(): ReactElement {
 
   // A different tree invalidates whatever the previous run reported.
   useEffect(() => {
-    verifierService.reset();
+    verifierService.operation.reset();
   }, [root, verifierService]);
 
   return (
@@ -70,10 +70,12 @@ export function GamedataVerifierApplication(): ReactElement {
       isSubmitDisabled={!gamedata.isValid}
       title={"Verify gamedata"}
       description={"Runs every check over a gamedata tree: configs, meshes, textures, sounds, scripts and the rest."}
-      error={verifierService.error ?? undefined}
+      error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={verifierService.result ? <GamedataVerifyResult result={verifierService.result} /> : null}
+      result={
+        verifierService.operation.result ? <GamedataVerifyResult result={verifierService.operation.result} /> : null
+      }
       onSubmit={onVerify}
     >
       <PathFormRow

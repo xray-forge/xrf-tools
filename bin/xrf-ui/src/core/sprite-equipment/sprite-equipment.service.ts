@@ -2,8 +2,8 @@ import { clamp } from "@mui/x-data-grid/internals";
 import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { EventBus, inject, Injectable, OnDeactivation, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
+import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { describePackSpriteOutcome } from "@/applications/sprite-equipment-packer/lib/describe-pack-sprite-outcome";
 import { urlToImage } from "@/core/assets/image";
@@ -11,7 +11,8 @@ import { AssetService } from "@/core/assets/services";
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
-import { EJobKind, IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
+import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
@@ -65,15 +66,16 @@ export class SpriteEquipmentService {
   @Observable()
   public repackedAt: Nullable<number> = null;
 
-  /** The sprite pack this service started, while it runs. */
-  @Observable()
-  public packJobId: Nullable<string> = null;
+  /** The sheet is written once at the end; a cancelled pack leaves the output unchanged. */
+  public readonly packOperation: JobOperation<IPackEquipmentResult>;
 
   public constructor(
     private readonly assetService: AssetService = inject(AssetService),
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly jobsService: JobsService = inject(JobsService)
-  ) {}
+    jobsService: JobsService = inject(JobsService)
+  ) {
+    this.packOperation = new JobOperation(jobsService, [EJobKind.SPRITE_EQUIPMENT_PACK], this.log);
+  }
 
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -231,11 +233,13 @@ export class SpriteEquipmentService {
       this.spriteImage = this.spriteImage.asLoading();
 
       yield* call(
-        this.packEquipmentSprite(
-          repackSourcePath,
-          spriteImage.value.path,
-          spriteImage.value.ltxPath,
-          spriteImage.value.isDltx
+        flowResult(
+          this.packEquipmentSprite(
+            repackSourcePath,
+            spriteImage.value.path,
+            spriteImage.value.ltxPath,
+            spriteImage.value.isDltx
+          )
         )
       );
 
@@ -334,15 +338,16 @@ export class SpriteEquipmentService {
    * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect.
    * @returns What the run produced.
    */
-  public async packEquipmentSprite(
+  @LatestFlow()
+  public *packEquipmentSprite(
     sourcePath: string,
     outputPath: string,
     systemLtxPath: string,
     isDltx: boolean
-  ): Promise<IPackEquipmentResult> {
+  ): TFlow<IPackEquipmentResult> {
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
-    const run: IJobRun<IPackEquipmentResult> = this.jobsService.run<IPackEquipmentResult>({
+    const completion: JobCompletion<IPackEquipmentResult> = yield* this.packOperation.run({
       kind: EJobKind.SPRITE_EQUIPMENT_PACK,
       invoke: (id: string, progress) =>
         spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
@@ -350,36 +355,16 @@ export class SpriteEquipmentService {
         describePackSpriteOutcome(outputPath, outcome),
     });
 
-    this.packJobId = run.id;
-
-    try {
-      return await run.promise;
-    } catch (error) {
-      this.log.error("Failed to pack equipment editor:", error);
-      throw error;
-    } finally {
-      this.packJobId = null;
+    if (completion.error !== null) {
+      throw completion.error;
     }
+
+    return completion.result;
   }
 
-  /**
-   * @returns The sprite pack currently running, whether this service started it or found it again.
-   */
-  @Computed()
-  public get packJob(): Nullable<IJobState> {
-    return this.packJobId
-      ? this.jobsService.getJob(this.packJobId)
-      : this.jobsService.getJobOfKind(EJobKind.SPRITE_EQUIPMENT_PACK);
-  }
-
-  /** Stops the running sprite pack. Nothing has been written yet, so nothing is left behind. */
-  @BoundAction()
-  public cancelPackEquipmentSprite(): void {
-    const job: Nullable<IJobState> = this.packJob;
-
-    if (job) {
-      this.jobsService.cancel(job.id);
-    }
+  @OnEvent(JOB_SETTLED_EVENT)
+  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
+    this.packOperation.adopt(event.payload);
   }
 
   public async spriteFromResponse(response: IEquipmentSpriteMetadata): Promise<IEquipmentPngDescriptor> {

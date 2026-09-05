@@ -22,8 +22,8 @@ export function TranslationsParserApplication(): ReactElement {
   const parserService: TranslationsParserService = useInjection(TranslationsParserService);
 
   // The run rather than this view's own flag: an import survives the window being reloaded.
-  const job: Nullable<IJobState> = parserService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = parserService.operation.job;
+  const isRunning: boolean = parserService.operation.isRunning;
 
   const [isOverwrite, setIsOverwrite] = useState<boolean>(false);
 
@@ -69,7 +69,7 @@ export function TranslationsParserApplication(): ReactElement {
     [isOverwrite, language, outputPath, parserService, sourcePath]
   );
 
-  const onCancel = useCallback(() => parserService.cancel(), [parserService]);
+  const onCancel = useCallback(() => parserService.operation.cancel(), [parserService]);
 
   const onPreviewClicked = useCallback(() => void onRun(true), [onRun]);
 
@@ -84,7 +84,7 @@ export function TranslationsParserApplication(): ReactElement {
 
   // Changing anything the run depends on invalidates whatever the previous one reported.
   useEffect(() => {
-    parserService.reset();
+    parserService.operation.reset();
   }, [sourcePath, outputPath, language, isOverwrite, parserService]);
 
   return (
@@ -95,7 +95,7 @@ export function TranslationsParserApplication(): ReactElement {
       description={
         "Reads one language's raw XML string tables and merges them into JSON sources, filling gaps with placeholders."
       }
-      error={parserService.error ?? undefined}
+      error={parserService.operation.error ?? undefined}
       submitLabel={"Import"}
       secondaryActions={
         <Button
@@ -108,7 +108,9 @@ export function TranslationsParserApplication(): ReactElement {
       }
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
       result={
-        parserService.result ? <TranslationsParseResult result={parserService.result} outputPath={outputPath} /> : null
+        parserService.operation.result ? (
+          <TranslationsParseResult result={parserService.operation.result} outputPath={outputPath} />
+        ) : null
       }
       onSubmit={onImportClicked}
     >

@@ -25,8 +25,8 @@ export function TranslationsBuilderApplication(): ReactElement {
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
 
   // The run rather than this view's own flag: a build survives the window being reloaded.
-  const job: Nullable<IJobState> = builderService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = builderService.operation.job;
+  const isRunning: boolean = builderService.operation.isRunning;
 
   const [isSorted, setIsSorted] = useState<boolean>(true);
   const [language, setLanguage] = useRememberedValue({
@@ -66,7 +66,7 @@ export function TranslationsBuilderApplication(): ReactElement {
     await builderService.build(sourcesPath, language, outputPath, isSorted);
   }, [builderService, isSorted, language, outputPath, sourcesPath]);
 
-  const onCancel = useCallback(() => builderService.cancel(), [builderService]);
+  const onCancel = useCallback(() => builderService.operation.cancel(), [builderService]);
 
   const onLanguageChanged = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -77,7 +77,7 @@ export function TranslationsBuilderApplication(): ReactElement {
 
   // Anything the build depends on invalidates whatever the previous run reported.
   useEffect(() => {
-    builderService.reset();
+    builderService.operation.reset();
   }, [sourcesPath, outputPath, language, isSorted, builderService]);
 
   return (
@@ -86,12 +86,12 @@ export function TranslationsBuilderApplication(): ReactElement {
       isSubmitDisabled={!sources.isValid || !destination.isValid}
       title={"Build translations"}
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}
-      error={builderService.error ?? undefined}
+      error={builderService.operation.error ?? undefined}
       submitLabel={"Build"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
       result={
-        builderService.result ? (
-          <TranslationsBuildResult result={builderService.result} outputPath={outputPath} />
+        builderService.operation.result ? (
+          <TranslationsBuildResult result={builderService.operation.result} outputPath={outputPath} />
         ) : null
       }
       onSubmit={onBuild}

@@ -25,8 +25,8 @@ export function TranslationsVerifierApplication(): ReactElement {
   const verifierService: TranslationsVerifierService = useInjection(TranslationsVerifierService);
 
   // The run rather than this view's own flag: a check survives the window being reloaded.
-  const job: Nullable<IJobState> = verifierService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = verifierService.operation.job;
+  const isRunning: boolean = verifierService.operation.isRunning;
   const [language, setLanguage] = useRememberedValue({
     application: EApplicationId.TRANSLATIONS_VERIFIER,
     id: "language",
@@ -53,7 +53,7 @@ export function TranslationsVerifierApplication(): ReactElement {
     await verifierService.verify(sourcesPath, language);
   }, [language, sourcesPath, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.cancel(), [verifierService]);
+  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
   const onLanguageChanged = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -64,7 +64,7 @@ export function TranslationsVerifierApplication(): ReactElement {
 
   // A different tree or language invalidates whatever the previous run reported.
   useEffect(() => {
-    verifierService.reset();
+    verifierService.operation.reset();
   }, [sourcesPath, language, verifierService]);
 
   return (
@@ -73,10 +73,12 @@ export function TranslationsVerifierApplication(): ReactElement {
       isSubmitDisabled={!sources.isValid}
       title={"Verify translations"}
       description={"Checks every JSON source for ids a language has no text for. Nothing is written."}
-      error={verifierService.error ?? undefined}
+      error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={verifierService.result ? <TranslationsVerifyResult result={verifierService.result} /> : null}
+      result={
+        verifierService.operation.result ? <TranslationsVerifyResult result={verifierService.operation.result} /> : null
+      }
       onSubmit={onVerify}
     >
       <PathFormRow

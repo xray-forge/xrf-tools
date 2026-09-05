@@ -25,8 +25,8 @@ export function ConfigsFormatterApplication(): ReactElement {
 
   // The run rather than this view's own flag: it survives the window being reloaded, so returning here finds it again
   // instead of showing an idle form over files it is still rewriting.
-  const job: Nullable<IJobState> = formatterService.job;
-  const isRunning: boolean = Boolean(job);
+  const job: Nullable<IJobState> = formatterService.operation.job;
+  const isRunning: boolean = formatterService.operation.isRunning;
 
   const configs: IPathField = usePathField({
     application: EApplicationId.CONFIGS_FORMATTER,
@@ -49,18 +49,18 @@ export function ConfigsFormatterApplication(): ReactElement {
     await formatterService.format(directory, isCheck);
   }, [directory, formatterService, isCheck, log]);
 
-  const onCancel = useCallback(() => formatterService.cancel(), [formatterService]);
+  const onCancel = useCallback(() => formatterService.operation.cancel(), [formatterService]);
 
   const onCheckModeChange = useCallback(
     (_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-      formatterService.reset();
+      formatterService.operation.reset();
       setIsCheck(checked);
     },
     [formatterService]
   );
 
   useEffect(() => {
-    formatterService.reset();
+    formatterService.operation.reset();
   }, [directory, formatterService]);
 
   return (
@@ -73,11 +73,13 @@ export function ConfigsFormatterApplication(): ReactElement {
           ? "Reports which files are badly formatted. Nothing is written."
           : "Rewrites every badly formatted file in the directory in place."
       }
-      error={formatterService.error ?? undefined}
+      error={formatterService.operation.error ?? undefined}
       submitLabel={isCheck ? "Check" : "Format"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
       result={
-        formatterService.result ? <ConfigsFormatResult isCheck={isCheck} result={formatterService.result} /> : null
+        formatterService.operation.result ? (
+          <ConfigsFormatResult isCheck={isCheck} result={formatterService.operation.result} />
+        ) : null
       }
       onSubmit={onFormat}
     >
