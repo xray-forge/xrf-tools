@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
 use regex::Regex;
+use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK};
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::decompress;
 use xrf_utils::{
@@ -21,8 +22,7 @@ use crate::archive_file_descriptor::ArchiveFileDescriptor;
 use crate::archive_header::ArchiveHeader;
 use crate::byte_order::XRayByteOrder;
 use crate::constants::{
-  CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_MASK, CHUNK_ID_METADATA_READ,
-  DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
+  CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 
 /// Patterns of the `[header]` metadata chunk, compiled once.

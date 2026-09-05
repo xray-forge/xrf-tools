@@ -4,6 +4,16 @@ use xrf_error::XrfResult;
 use crate::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
 
+/// Read chunk as u8 value, verify remaining data is 0.
+#[inline]
+pub fn read_u8_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<u8> {
+  let data: u8 = reader.read_u8()?;
+
+  reader.assert_read("All data should be read in u8 chunk")?;
+
+  Ok(data)
+}
+
 /// Read chunk as u16 value, verify remaining data is 0.
 #[inline]
 pub fn read_u16_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<u16> {

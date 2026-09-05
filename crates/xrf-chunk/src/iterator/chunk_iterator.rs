@@ -4,6 +4,7 @@ use byteorder::ReadBytesExt;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::chunk_constants::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK};
 use crate::reader::chunk_reader::ChunkReader;
 use crate::{ChunkDataSource, XRayByteOrder};
 
@@ -12,17 +13,42 @@ use crate::{ChunkDataSource, XRayByteOrder};
 pub struct ChunkIterator<'a, T: ChunkDataSource = FileSlice> {
   pub reader: &'a mut ChunkReader<T>,
   failed: bool,
+  /// Whether a chunk whose id carries `CFS_CompressMark` is handed over rather than refused.
+  is_compression_accepted: bool,
 }
 
 impl<T: ChunkDataSource> ChunkIterator<'_, T> {
   pub fn from_start(reader: &mut ChunkReader<T>) -> XrfResult<ChunkIterator<'_, T>> {
     reader.reset_pos()?;
 
-    Ok(ChunkIterator { reader, failed: false })
+    Ok(ChunkIterator {
+      reader,
+      failed: false,
+      is_compression_accepted: false,
+    })
+  }
+
+  /// Iterates from the start, handing over a compressed chunk as the bytes it is stored as.
+  ///
+  /// For a format that carries one and can account for it without decompressing - a descriptor copying its preview
+  /// picture through, say. Every other walk refuses one, because reading a compressed payload as though it were the
+  /// data it stands for produces silence rather than an error.
+  pub fn from_start_including_compressed(reader: &mut ChunkReader<T>) -> XrfResult<ChunkIterator<'_, T>> {
+    reader.reset_pos()?;
+
+    Ok(ChunkIterator {
+      reader,
+      failed: false,
+      is_compression_accepted: true,
+    })
   }
 
   pub fn from_current(reader: &mut ChunkReader<T>) -> ChunkIterator<'_, T> {
-    ChunkIterator { reader, failed: false }
+    ChunkIterator {
+      reader,
+      failed: false,
+      is_compression_accepted: false,
+    }
   }
 
   fn fail(&mut self, error: XrfError) -> Option<XrfResult<ChunkReader<T>>> {
@@ -41,14 +67,13 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
       return None;
     }
 
-    let header_size: u64 = 8;
     let remaining: u64 = self.reader.read_bytes_remain();
 
-    if remaining < header_size {
+    if remaining < CHUNK_HEADER_SIZE {
       return self.fail(XrfError::new_invalid_error(format!(
         "Incomplete chunk header at position {}, expected {} bytes but only {} remain",
         self.reader.cursor_pos(),
-        header_size,
+        CHUNK_HEADER_SIZE,
         remaining
       )));
     }
@@ -69,7 +94,7 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
       Err(error) => return self.fail(error.into()),
     };
 
-    if id & (1 << 31) != 0 {
+    if id & CHUNK_ID_COMPRESSED_MASK != 0 && !self.is_compression_accepted {
       return self.fail(XrfError::new_not_implemented_error(format!(
         "Compressed chunk {id:#010x} at position {position}"
       )));

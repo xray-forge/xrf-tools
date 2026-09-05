@@ -1,11 +1,11 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_chunk::{CHUNK_HEADER_SIZE, ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::ogf_file::OgfFile;
-use crate::ogf::residue::ogf_residue::{CHUNK_HEADER_SIZE, OgfResidue};
+use crate::ogf::residue::ogf_residue::OgfResidue;
 
 /// A visual rewritten into bytes the engine loads identically, beside what the rewrite took out.
 ///

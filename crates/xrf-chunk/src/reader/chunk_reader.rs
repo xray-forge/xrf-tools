@@ -167,6 +167,16 @@ impl<T: ChunkDataSource> ChunkReader<T> {
     ChunkIterator::from_start(&mut self.clone())?.collect()
   }
 
+  /// Returns all children, handing over a compressed one as the bytes it is stored as.
+  ///
+  /// [`Self::read_children`] refuses a chunk whose id carries `CFS_CompressMark`, because reading its payload as
+  /// though it were the data it stands for produces silence rather than an error. This door is for the format that
+  /// carries one and accounts for it without decompressing: the caller gets the marked id and the stored bytes, and
+  /// owes the reader an explanation of what it does with them.
+  pub fn read_children_including_compressed(&mut self) -> XrfResult<Vec<Self>> {
+    ChunkIterator::from_start_including_compressed(self)?.collect()
+  }
+
   /// Returns all children and advances this reader through the child sequence.
   pub fn read_children(&mut self) -> XrfResult<Vec<Self>> {
     let (chunks, trailing) = self.read_children_with_trailing()?;

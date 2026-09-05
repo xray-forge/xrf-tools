@@ -5,7 +5,7 @@
 
 use std::fs;
 
-use xrf_db::{ThmBumpChunk, ThmTextureTypeChunk};
+use xrf_db::{ThmBumpMode, ThmTextureType};
 use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
 
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
@@ -54,7 +54,7 @@ fn a_pair_that_resolves_counts_as_a_resolved_bump() {
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP));
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
   let result: GamedataTexturesVerificationResult = verify(&tree);
 
   assert_eq!(result.texture_bumps.checked_bumps_count, 1);
@@ -71,7 +71,7 @@ fn a_missing_companion_is_its_own_rule_and_its_own_count() {
     .with_engine_dummies()
     .with_texture(BASE)
     .with_texture(BUMP)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP));
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
   let result: GamedataTexturesVerificationResult = verify(&tree);
 
   assert_eq!(result.texture_bumps.checked_bumps_count, 1);
@@ -105,7 +105,7 @@ fn a_missing_bump_is_one_finding_however_much_of_the_pair_is_missing() {
   let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_missing")
     .with_engine_dummies()
     .with_texture(BASE)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP));
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
   let result: GamedataTexturesVerificationResult = verify(&tree);
 
   assert_eq!(result.texture_bumps.checked_bumps_count, 1);
@@ -123,8 +123,8 @@ fn a_declaration_the_engine_skips_for_its_type_is_invalid_rather_than_unresolved
     .with_descriptor(
       BASE,
       &ThmFixture::image()
-        .with_bump(ThmBumpChunk::MODE_USE, BUMP)
-        .with_texture_type(ThmTextureTypeChunk::BUMP_MAP),
+        .with_bump(ThmBumpMode::Use, BUMP)
+        .with_texture_type(ThmTextureType::BumpMap),
     );
   let result: GamedataTexturesVerificationResult = verify(&tree);
 
@@ -148,7 +148,7 @@ fn a_declaration_the_engine_skips_for_its_type_is_invalid_rather_than_unresolved
 fn a_used_mode_with_an_empty_name_is_an_invalid_declaration() {
   let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_empty")
     .with_texture(BASE)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, ""));
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, ""));
   let result: GamedataTexturesVerificationResult = verify(&tree);
 
   assert_eq!(result.texture_bumps.invalid_bump_declarations_count, 1);
@@ -163,12 +163,12 @@ fn a_disabled_declaration_and_an_orphan_descriptor_are_checked_and_clean() {
   // The orphan has no texture beside it and is still walked, because `LoadTHM` walks descriptors rather than textures.
   let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_disabled")
     .with_texture(BASE)
-    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_NONE, BUMP))
+    .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::None, BUMP))
     .with_texture(BUMP)
     .with_texture(COMPANION)
     .with_descriptor(
       "act\\act_orphan",
-      &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP),
+      &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP),
     );
   let result: GamedataTexturesVerificationResult = verify(&tree);
 

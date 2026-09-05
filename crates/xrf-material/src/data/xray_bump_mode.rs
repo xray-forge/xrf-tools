@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ThmBumpChunk;
+use xrf_db::ThmBumpMode;
 
 /// Which bump shader family a declaration selects, `STextureParams::ETBumpMode` without the two values that mean no
 /// bump at all (`ETextureParams.h`).
@@ -15,11 +15,11 @@ pub enum XrayBumpMode {
 }
 
 impl XrayBumpMode {
-  /// The mode a chunk value selects, or `None` for the two that declare no bump.
-  pub fn of(mode: u32) -> Option<Self> {
+  /// The mode a chunk value selects, or `None` for the values that declare no bump.
+  pub fn of(mode: ThmBumpMode) -> Option<Self> {
     match mode {
-      ThmBumpChunk::MODE_USE => Some(Self::Use),
-      ThmBumpChunk::MODE_USE_PARALLAX => Some(Self::Parallax),
+      ThmBumpMode::Use => Some(Self::Use),
+      ThmBumpMode::UseParallax => Some(Self::Parallax),
       _ => None,
     }
   }

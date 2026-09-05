@@ -1,6 +1,6 @@
 //! The questions a surface asks of a resolved material, answered here once so no consumer re-derives them.
 
-use xrf_db::{ThmTextureParamChunk, ThmTextureTypeChunk};
+use xrf_db::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{ThmFixture, ThmFixtureTree};
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, used_bump};
@@ -31,7 +31,7 @@ fn a_skipped_type_and_an_unreadable_file_are_told_apart() {
   let skipped: XrayMaterialDescriptor = describe(
     &ThmFixtureTree::new("predicate_skipped")
       .with_texture(BASE)
-      .with_descriptor(BASE, &used_bump().with_texture_type(ThmTextureTypeChunk::BUMP_MAP)),
+      .with_descriptor(BASE, &used_bump().with_texture_type(ThmTextureType::BumpMap)),
   );
   let unreadable: XrayMaterialDescriptor = describe(
     &ThmFixtureTree::new("predicate_unreadable")
@@ -52,11 +52,11 @@ fn a_skipped_type_and_an_unreadable_file_are_told_apart() {
 fn a_detail_is_associated_only_when_a_flag_switches_it_on() {
   let live: XrayMaterialDescriptor = describe(&ThmFixtureTree::new("predicate_detail_live").with_descriptor(
     BASE,
-    &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, ThmTextureParamChunk::FLAG_BUMP_DETAIL),
+    &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[ThmTextureFlag::BumpDetail]),
   ));
   let dead: XrayMaterialDescriptor = describe(&ThmFixtureTree::new("predicate_detail_dead").with_descriptor(
     BASE,
-    &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, 0),
+    &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[]),
   ));
 
   assert!(live.is_detail_associated());

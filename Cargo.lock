@@ -7122,6 +7122,7 @@ dependencies = [
  "serde",
  "specta",
  "walkdir",
+ "xrf-chunk",
  "xrf-error",
  "xrf-lzhuf",
  "xrf-test-utils",

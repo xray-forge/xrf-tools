@@ -14,6 +14,18 @@ pub struct ThmDetailChunk {
 
 impl ThmDetailChunk {
   pub const CHUNK_ID: u32 = 0x0815;
+
+  /// The scale `STextureParams::STextureParams` starts a new descriptor with (`ETextureParams.h`).
+  pub const DEFAULT_SCALE: f32 = 1.0;
+}
+
+impl Default for ThmDetailChunk {
+  fn default() -> Self {
+    Self {
+      name: String::new(),
+      scale: Self::DEFAULT_SCALE,
+    }
+  }
 }
 
 impl ChunkReadWrite for ThmDetailChunk {

@@ -1,6 +1,6 @@
 //! The seven declaration states, one test each, so a change that collapses two of them fails by name.
 
-use xrf_db::{ThmBumpChunk, ThmTextureTypeChunk};
+use xrf_db::{ThmBumpMode, ThmTextureType};
 use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::{ThmFixture, ThmFixtureTree};
@@ -39,13 +39,13 @@ fn a_bump_map_typed_descriptor_is_skipped_whole_however_complete_its_declaration
       .with_texture(BASE)
       .with_texture(BUMP)
       .with_texture(COMPANION)
-      .with_descriptor(BASE, &used_bump().with_texture_type(ThmTextureTypeChunk::BUMP_MAP)),
+      .with_descriptor(BASE, &used_bump().with_texture_type(ThmTextureType::BumpMap)),
   );
 
   assert_eq!(
     descriptor.declaration,
     XrayMaterialDeclaration::TypeDisqualified {
-      texture_type: ThmTextureTypeChunk::BUMP_MAP,
+      texture_type: ThmTextureType::BumpMap.into(),
       label: String::from("Bump Map"),
       declared_bump: Some(String::from(BUMP)),
     }
@@ -86,13 +86,13 @@ fn a_disabled_mode_with_a_name_is_disabled_not_declared() {
     &ThmFixtureTree::new("disabled")
       .with_texture(BASE)
       .with_texture(BUMP)
-      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_NONE, BUMP)),
+      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::None, BUMP)),
   );
 
   assert_eq!(
     descriptor.declaration,
     XrayMaterialDeclaration::Disabled {
-      mode: ThmBumpChunk::MODE_NONE
+      mode: ThmBumpMode::None.into()
     }
   );
   assert_eq!(descriptor.outcome, XrayBumpOutcome::Flat);
@@ -103,24 +103,24 @@ fn the_reserved_mode_is_disabled_as_the_engine_clamps_it() {
   let descriptor: XrayMaterialDescriptor = describe(
     &ThmFixtureTree::new("reserved")
       .with_texture(BASE)
-      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpChunk::MODE_RESERVED, BUMP)),
+      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Reserved, BUMP)),
   );
 
   assert_eq!(
     descriptor.declaration,
     XrayMaterialDeclaration::Disabled {
-      mode: ThmBumpChunk::MODE_RESERVED
+      mode: ThmBumpMode::Reserved.into()
     }
   );
 }
 
 #[test]
 fn a_used_mode_with_an_empty_name_is_flat() {
-  let descriptor: XrayMaterialDescriptor =
-    describe(&ThmFixtureTree::new("empty_name").with_texture(BASE).with_descriptor(
-      BASE,
-      &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE_PARALLAX, ""),
-    ));
+  let descriptor: XrayMaterialDescriptor = describe(
+    &ThmFixtureTree::new("empty_name")
+      .with_texture(BASE)
+      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::UseParallax, "")),
+  );
 
   assert_eq!(
     descriptor.declaration,

@@ -9,6 +9,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, open_export_file};
 
 use crate::thm::chunks::thm_bump_chunk::ThmBumpChunk;
+use crate::thm::thm_bump_mode::ThmBumpMode;
 use crate::thm::thm_bump_patch_report::ThmBumpPatchReport;
 use crate::thm::thm_file::ThmFile;
 
@@ -34,13 +35,13 @@ impl ThmBumpProcessor {
   ///
   /// The honest fix for a descriptor asking for a bump that does not exist and is not going to.
   /// Leaving the name in place with the mode off would still be inert, but an empty name is what
-  /// `STextureParams` writes for [`ThmBumpChunk::MODE_NONE`], so it stays diffable against vanilla.
+  /// `STextureParams` writes for [`ThmBumpMode::None`], so it stays diffable against vanilla.
   pub fn patch_bump_off_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
     is_dry_run: bool,
   ) -> XrfResult<ThmBumpPatchReport> {
-    Self::patch_bump_to_path::<T>(source, destination, Some(""), Some(ThmBumpChunk::MODE_NONE), is_dry_run)
+    Self::patch_bump_to_path::<T>(source, destination, Some(""), Some(ThmBumpMode::None), is_dry_run)
   }
 
   /// Rewrite the bump declaration of a thm file, verifying the result before letting it survive.
@@ -54,7 +55,7 @@ impl ThmBumpProcessor {
     source: &Path,
     destination: &Path,
     bump_name: Option<&str>,
-    mode: Option<u32>,
+    mode: Option<ThmBumpMode>,
     is_dry_run: bool,
   ) -> XrfResult<ThmBumpPatchReport> {
     let original: Vec<u8> = fs::read(source)?;
@@ -98,8 +99,13 @@ impl ThmBumpProcessor {
   }
 
   /// Rewrite the bump chunk of a thm file, copying every other chunk verbatim.
+  ///
+  /// A compressed chunk is copied like any other, id and stored bytes both, which is why the walk takes the door that
+  /// hands one over: eleven corpus descriptors carry a compressed thumbnail and a patcher that refused them would
+  /// leave their bump unfixable.
   pub fn write_bump_name_to_buffer<T: ByteOrder>(file: File, bump: &ThmBumpChunk) -> XrfResult<Vec<u8>> {
-    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_file(file)?.read_children()?;
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
+      ChunkReader::from_file(file)?.read_children_including_compressed()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -210,14 +216,15 @@ mod tests {
   };
 
   use crate::thm::chunks::thm_bump_chunk::ThmBumpChunk;
+  use crate::thm::thm_bump_mode::ThmBumpMode;
   use crate::thm::thm_bump_processor::ThmBumpProcessor;
   use crate::thm::thm_file::ThmFile;
 
-  /// Payload standing in for an authoring chunk the writer must copy verbatim.
+  /// Payload standing in for a chunk the writer must copy verbatim.
   const OPAQUE_PAYLOAD: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
-  /// An authoring chunk this crate does not read, so the copy has to carry it through untouched.
-  const OPAQUE_CHUNK_ID: u32 = 0x0819;
+  /// An id the format has no name for, so the copy has to carry it through untouched.
+  const OPAQUE_CHUNK_ID: u32 = 0x0820;
 
   fn write_sample(filename: &str, bump: &ThmBumpChunk) -> XrfResult<PathBuf> {
     let mut opaque_writer: ChunkWriter = ChunkWriter::new();
@@ -237,7 +244,7 @@ mod tests {
   fn used_bump(name: &str) -> ThmBumpChunk {
     ThmBumpChunk {
       virtual_height: 0.05,
-      mode: ThmBumpChunk::MODE_USE,
+      mode: ThmBumpMode::Use,
       name: name.to_owned(),
     }
   }
@@ -279,7 +286,7 @@ mod tests {
     assert_eq!(thm.used_bump_name(), Some("wpn\\wpn_pm\\wpn_pm_bump"));
     assert_eq!(
       thm.bump.as_ref().map(|bump| bump.mode),
-      Some(ThmBumpChunk::MODE_USE),
+      Some(ThmBumpMode::Use),
       "Expect mode to survive repointing"
     );
 
@@ -308,7 +315,7 @@ mod tests {
     let report = ThmBumpProcessor::patch_bump_off_to_path::<XRayByteOrder>(&path, &path, false)?;
 
     assert_eq!(report.previous_name, "tile\\tile_walls_red_01_bump");
-    assert_eq!(report.previous_mode, ThmBumpChunk::MODE_USE);
+    assert_eq!(report.previous_mode, ThmBumpMode::Use);
 
     let thm: ThmFile = ThmFile::read_from_path::<XRayByteOrder, _>(&path)?;
 
@@ -319,7 +326,7 @@ mod tests {
     );
     assert_eq!(
       thm.bump.as_ref().map(|bump| (bump.mode, bump.name.as_str())),
-      Some((ThmBumpChunk::MODE_NONE, "")),
+      Some((ThmBumpMode::None, "")),
       "Expect the SDK form of a disabled bump, mode none and an empty name"
     );
 
@@ -332,20 +339,14 @@ mod tests {
     let path: PathBuf = write_sample(&filename, &used_bump("wpn\\source_bump"))?;
 
     // Mode omitted, so the parallax variant must survive a rename.
-    ThmBumpProcessor::patch_bump_to_path::<XRayByteOrder>(
-      &path,
-      &path,
-      None,
-      Some(ThmBumpChunk::MODE_USE_PARALLAX),
-      false,
-    )?;
+    ThmBumpProcessor::patch_bump_to_path::<XRayByteOrder>(&path, &path, None, Some(ThmBumpMode::UseParallax), false)?;
     ThmBumpProcessor::patch_bump_to_path::<XRayByteOrder>(&path, &path, Some("wpn\\renamed_bump"), None, false)?;
 
     let thm: ThmFile = ThmFile::read_from_path::<XRayByteOrder, _>(&path)?;
 
     assert_eq!(
       thm.bump.as_ref().map(|bump| (bump.mode, bump.name.as_str())),
-      Some((ThmBumpChunk::MODE_USE_PARALLAX, "wpn\\renamed_bump"))
+      Some((ThmBumpMode::UseParallax, "wpn\\renamed_bump"))
     );
 
     Ok(())
@@ -377,7 +378,7 @@ mod tests {
       &filename,
       &ThmBumpChunk {
         virtual_height: 0.05,
-        mode: ThmBumpChunk::MODE_NONE,
+        mode: ThmBumpMode::None,
         name: String::from("wpn\\ignored_bump"),
       },
     )?;

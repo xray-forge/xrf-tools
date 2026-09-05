@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xrf_chunk::ChunkReader;
-use xrf_db::{ThmBumpChunk, ThmFile, ThmTextureTypeChunk, XRayByteOrder};
+use xrf_db::{ThmBumpChunk, ThmFile, ThmTextureType, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
 
@@ -71,13 +71,13 @@ impl XrayMaterialResolver {
     };
 
     if !file.is_described_by_engine() {
-      let texture_type: u32 = file.texture_type();
+      let texture_type: ThmTextureType = file.texture_type();
 
       return XrayMaterialDescriptor::flat(
         Some(descriptor.clone()),
         XrayMaterialDeclaration::TypeDisqualified {
-          texture_type,
-          label: ThmTextureTypeChunk::label(texture_type),
+          texture_type: texture_type.into(),
+          label: texture_type.label(),
           declared_bump: file.used_bump_name().map(str::to_owned),
         },
       );
@@ -126,7 +126,12 @@ impl XrayMaterialResolver {
     };
 
     let Some(mode) = XrayBumpMode::of(chunk.mode) else {
-      return (XrayMaterialDeclaration::Disabled { mode: chunk.mode }, None);
+      return (
+        XrayMaterialDeclaration::Disabled {
+          mode: chunk.mode.into(),
+        },
+        None,
+      );
     };
 
     if chunk.name.is_empty() {

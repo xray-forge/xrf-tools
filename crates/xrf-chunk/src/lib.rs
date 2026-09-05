@@ -1,3 +1,4 @@
+pub(crate) mod chunk_constants;
 pub(crate) mod chunk_io;
 pub(crate) mod chunk_trait;
 pub(crate) mod iterator;
@@ -7,6 +8,9 @@ pub(crate) mod types;
 pub(crate) mod utils;
 pub(crate) mod writer;
 
+pub use crate::chunk_constants::{
+  CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FIELD_SIZE, CHUNK_ID_MASK, CHUNK_SIZE_FIELD_SIZE,
+};
 pub use crate::chunk_trait::{ChunkReadWrite, ChunkReadWriteList, ChunkReadWriteOptional};
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
@@ -21,6 +25,6 @@ pub use crate::utils::chunk_utils_find::{
   find_required_chunk_by_id,
 };
 pub use crate::utils::chunk_utils_read::{
-  read_f32_chunk, read_f32_vector_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
+  read_f32_chunk, read_f32_vector_chunk, read_u8_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
 };
 pub use crate::writer::chunk_writer::ChunkWriter;

@@ -1,6 +1,6 @@
 //! What a bound pair comes to: the files the renderer binds and the outcome the worse half decides.
 
-use xrf_db::ThmBumpChunk;
+use xrf_db::ThmBumpMode;
 use xrf_vfs::XrayResolution;
 
 use crate::fixtures::{ThmFixture, ThmFixtureTree};
@@ -100,7 +100,7 @@ fn a_missing_name_without_the_marker_falls_to_the_not_existing_texture() {
       .with_texture(BASE)
       .with_descriptor(
         BASE,
-        &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, "act\\act_stalker_nm"),
+        &ThmFixture::image().with_bump(ThmBumpMode::Use, "act\\act_stalker_nm"),
       ),
   );
 
@@ -139,10 +139,7 @@ fn a_parallax_declaration_is_reported_as_parallax() {
       .with_texture(BASE)
       .with_texture(BUMP)
       .with_texture(COMPANION)
-      .with_descriptor(
-        BASE,
-        &ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE_PARALLAX, BUMP),
-      ),
+      .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::UseParallax, BUMP)),
   );
 
   assert_eq!(descriptor.bump.expect("declared").mode, XrayBumpMode::Parallax);

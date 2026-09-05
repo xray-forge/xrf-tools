@@ -1,6 +1,6 @@
 //! The tree, probe and names every test in this module shares.
 
-use xrf_db::ThmBumpChunk;
+use xrf_db::ThmBumpMode;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
 
 use crate::fixtures::{ThmFixture, ThmFixtureTree};
@@ -23,7 +23,7 @@ pub(crate) fn describe(tree: &ThmFixtureTree) -> XrayMaterialDescriptor {
 }
 
 pub(crate) fn used_bump() -> ThmFixture {
-  ThmFixture::image().with_bump(ThmBumpChunk::MODE_USE, BUMP)
+  ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP)
 }
 
 pub(crate) fn located_path(resolution: &XrayResolution) -> Option<&str> {

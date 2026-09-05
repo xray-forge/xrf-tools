@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
+use crate::thm::thm_bump_mode::ThmBumpMode;
+
 /// Bump declaration of a texture, `THM_CHUNK_BUMP` in the engine (`ETextureParams.h:190`).
 ///
 /// The engine reads this at load time in `CTextureDescrMngr::LoadTHM` and takes [`Self::name`]
@@ -13,11 +15,13 @@ use xrf_error::XrfResult;
 /// name is non-empty, so the renderer still picks the `_bump` shader variant and the loader
 /// substitutes `ed\ed_dummy_bump`, logging `! Fallback to default bump map` once per load. The
 /// surface ends up flat while paying for the bump path.
+///
+/// [`Self::virtual_height`] is read by the generator that builds the pair and by nothing at runtime.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThmBumpChunk {
   pub virtual_height: f32,
-  pub mode: u32,
+  pub mode: ThmBumpMode,
   /// Bump texture path without extension, engine-style with backslashes. Empty when unused.
   pub name: String,
 }
@@ -25,15 +29,22 @@ pub struct ThmBumpChunk {
 impl ThmBumpChunk {
   pub const CHUNK_ID: u32 = 0x0817;
 
-  /// `STextureParams::ETBumpMode`, `ETextureParams.h:37`.
-  pub const MODE_RESERVED: u32 = 0;
-  pub const MODE_NONE: u32 = 1;
-  pub const MODE_USE: u32 = 2;
-  pub const MODE_USE_PARALLAX: u32 = 3;
+  /// The height `STextureParams::STextureParams` starts a new descriptor with (`ETextureParams.h`).
+  pub const DEFAULT_VIRTUAL_HEIGHT: f32 = 0.05;
 
   /// Whether the engine will try to resolve [`Self::name`] as a bump texture.
   pub fn is_used(&self) -> bool {
-    matches!(self.mode, Self::MODE_USE | Self::MODE_USE_PARALLAX) && !self.name.is_empty()
+    self.mode.is_used() && !self.name.is_empty()
+  }
+}
+
+impl Default for ThmBumpChunk {
+  fn default() -> Self {
+    Self {
+      virtual_height: Self::DEFAULT_VIRTUAL_HEIGHT,
+      mode: ThmBumpMode::default(),
+      name: String::new(),
+    }
   }
 }
 
@@ -41,7 +52,7 @@ impl ChunkReadWrite for ThmBumpChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let bump: Self = Self {
       virtual_height: reader.read_f32::<T>()?,
-      mode: reader.read_u32::<T>()?,
+      mode: ThmBumpMode::from(reader.read_u32::<T>()?),
       name: reader.read_w1251_string()?,
     };
 
@@ -52,7 +63,7 @@ impl ChunkReadWrite for ThmBumpChunk {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_f32::<T>(self.virtual_height)?;
-    writer.write_u32::<T>(self.mode)?;
+    writer.write_u32::<T>(self.mode.into())?;
     writer.write_w1251_string(&self.name)?;
 
     Ok(())

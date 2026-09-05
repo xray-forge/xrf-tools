@@ -1,13 +1,10 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkTrailing};
+use xrf_chunk::{CHUNK_HEADER_SIZE, ChunkDataSource, ChunkReader, ChunkTrailing};
 use xrf_error::XrfResult;
 use xrf_utils::encode_w1251_bytes_to_string;
 
 use crate::ogf::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf::residue::ogf_residue_cause::OgfResidueCause;
-
-/// The eight bytes of id and size that open every chunk.
-pub(super) const CHUNK_HEADER_SIZE: u64 = 8;
 
 /// Bytes past the last well-formed root chunk of a visual that the engine's loader never reads.
 ///
