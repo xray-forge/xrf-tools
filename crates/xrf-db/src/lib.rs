@@ -98,7 +98,11 @@ pub use crate::spawn::chunks::{
 };
 pub use crate::spawn::spawn_file::*;
 pub use crate::thm::chunks::thm_bump_chunk::*;
+pub use crate::thm::chunks::thm_detail_chunk::*;
+pub use crate::thm::chunks::thm_texture_param_chunk::*;
+pub use crate::thm::chunks::thm_texture_type_chunk::*;
 pub use crate::thm::thm_bump_patch_report::*;
 pub use crate::thm::thm_bump_processor::*;
+pub use crate::thm::thm_detail_usage::*;
 pub use crate::thm::thm_file::*;
 pub use crate::types::*;

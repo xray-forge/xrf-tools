@@ -216,6 +216,9 @@ mod tests {
   /// Payload standing in for an authoring chunk the writer must copy verbatim.
   const OPAQUE_PAYLOAD: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
+  /// An authoring chunk this crate does not read, so the copy has to carry it through untouched.
+  const OPAQUE_CHUNK_ID: u32 = 0x0819;
+
   fn write_sample(filename: &str, bump: &ThmBumpChunk) -> XrfResult<PathBuf> {
     let mut opaque_writer: ChunkWriter = ChunkWriter::new();
     opaque_writer.write_all(&OPAQUE_PAYLOAD)?;
@@ -225,7 +228,7 @@ mod tests {
 
     let mut file: File = overwrite_generated_test_resource_as_file(filename)?;
 
-    opaque_writer.flush_chunk_into::<XRayByteOrder>(&mut file, 0x0812)?;
+    opaque_writer.flush_chunk_into::<XRayByteOrder>(&mut file, OPAQUE_CHUNK_ID)?;
     bump_writer.flush_chunk_into::<XRayByteOrder>(&mut file, ThmBumpChunk::CHUNK_ID)?;
 
     Ok(build_absolute_generated_test_resource_path(filename))
