@@ -142,13 +142,17 @@ impl<'a> TextureBumpsVerifier<'a> {
           return TextureBumpVerification::undeclared();
         };
 
+        // A missing bump is one finding, not two: its companion is missing with it, and generating the pair is the one
+        // fix, so the companion rule speaks only when the bump itself is in place.
+        let is_bump_missing: bool = !bump.bump.is_declared_file();
+        let is_companion_missing: bool = !is_bump_missing && !bump.companion.is_declared_file();
         let mut verification: TextureBumpVerification =
-          TextureBumpVerification::bound(!bump.bump.is_declared_file(), !bump.companion.is_declared_file());
+          TextureBumpVerification::bound(is_bump_missing, is_companion_missing);
 
         if let Some(bound) = Self::describe_substitution(&bump.bump) {
           xrf_output::info!(output, "Texture descriptor declares missing bump: {path} -> {name}");
 
-          verification = verification.with_finding(GamedataFindingFactory::for_asset(
+          return verification.with_finding(GamedataFindingFactory::for_asset(
             GamedataVerificationRule::TexturesBump,
             path,
             format!("Texture descriptor declares bump '{name}' that is not in gamedata, the engine binds {bound}"),

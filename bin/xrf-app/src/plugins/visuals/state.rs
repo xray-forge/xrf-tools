@@ -104,7 +104,7 @@ pub struct SelectedVisualDescription {
   pub dependencies: VisualDependencies,
   /// What each located texture file is, keyed by the logical path that located it.
   pub textures: HashMap<String, AssetTextureDescriptor>,
-  /// What the renderer builds for each declared texture, keyed by the reference verbatim as the mesh declares it.
+  /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
   pub materials: HashMap<String, XrayMaterialDescriptor>,
   /// A `textures.ltx` the searched roots hold, or `None`.
   pub textures_ltx: Option<XrayAsset>,

@@ -9,23 +9,26 @@ pub(crate) struct GamedataTextureBumpsVerificationResult {
   /// Declared bumps whose own file is not the one the declaration names: the engine draws a dummy or the not-existing
   /// texture, so the surface is flat while paying for the bump shader.
   pub(crate) unresolved_bumps_count: u32,
-  /// Declared bumps whose `#` companion is not the file the declaration names. The engine binds `ed\ed_dummy_bump#`:
-  /// parallax relief is lost and the DXT normal goes uncorrected, but the surface still reads as bumped, and vanilla
-  /// ships one such pair. Reported always, gating only under strict.
+  /// Declared bumps that resolved but whose `#` companion is not the file the declaration names. The engine binds
+  /// `ed\ed_dummy_bump#`: parallax relief is lost and the DXT normal goes uncorrected, but the surface still reads as
+  /// bumped, and vanilla ships one such pair. A pair missing both halves counts once, above. Reported always, gating
+  /// only under strict.
   pub(crate) missing_companions_count: u32,
   /// Descriptors that ask for a bump the engine never binds: a texture type `LoadTHM` skips, or a used mode with no
-  /// name. Authoring that does nothing, reported so it gets fixed or removed.
+  /// name. Authoring that does nothing, harmless at runtime; vanilla ships two. Reported always, gating only under strict.
   pub(crate) invalid_bump_declarations_count: u32,
-  /// Whether the run was asked to judge what the engine tolerates, which is what promotes a missing companion.
+  /// Whether the run was asked to judge what the engine tolerates silently, which is what promotes a missing companion
+  /// and an unread declaration from counted to failing.
   pub(crate) is_strict: bool,
 }
 
 impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
   fn get_status(&self) -> GamedataVerificationStatus {
+    // Default mode fails on what the engine reads and renders wrong: a bump it binds a substitute for. Strict also
+    // judges what the engine tolerates silently: a companion it substitutes, and a declaration it never reads.
     GamedataVerificationStatus::from_is_valid(
       self.unresolved_bumps_count == 0
-        && self.invalid_bump_declarations_count == 0
-        && (!self.is_strict || self.missing_companions_count == 0),
+        && (!self.is_strict || (self.missing_companions_count == 0 && self.invalid_bump_declarations_count == 0)),
     )
   }
 
@@ -65,18 +68,16 @@ mod tests {
   use crate::{GamedataCheckResult, GamedataVerificationStatus};
 
   #[test]
-  fn an_invalid_declaration_fails_the_check_and_is_named_only_when_present() {
+  fn a_missing_bump_fails_in_every_mode() {
+    // The engine binds a substitute for a texture it does read: the surface is flat while paying for the bump shader.
     let result: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      checked_bumps_count: 1,
-      invalid_bump_declarations_count: 1,
+      checked_bumps_count: 2,
+      unresolved_bumps_count: 1,
       ..Default::default()
     };
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
-    assert_eq!(
-      result.get_failure_message(),
-      "1/1 declared bumps resolved, 1 bump declarations the engine never reads"
-    );
+    assert_eq!(result.get_failure_message(), "1/2 declared bumps resolved");
 
     let clean: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
       checked_bumps_count: 1,
@@ -85,6 +86,29 @@ mod tests {
 
     assert_eq!(clean.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(clean.get_failure_message(), "1/1 declared bumps resolved");
+  }
+
+  #[test]
+  fn an_unread_declaration_is_named_always_and_fails_only_under_strict() {
+    // The engine never reads it, so nothing renders wrong; vanilla ships two, so a default run stays green.
+    let lenient: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
+      checked_bumps_count: 1,
+      invalid_bump_declarations_count: 1,
+      ..Default::default()
+    };
+
+    assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
+    assert_eq!(
+      lenient.get_failure_message(),
+      "1/1 declared bumps resolved, 1 bump declarations the engine never reads"
+    );
+
+    let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
+      is_strict: true,
+      ..lenient
+    };
+
+    assert_eq!(strict.get_status(), GamedataVerificationStatus::Failed);
   }
 
   #[test]

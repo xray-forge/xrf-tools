@@ -50,7 +50,7 @@ export const visualsCommands = {
       dependencies: VisualDependencies;
       /** What each located texture file is, keyed by the logical path that located it. */
       textures: { [key in string]: AssetTextureDescriptor };
-      /** What the renderer builds for each declared texture, keyed by the reference verbatim as the mesh declares it. */
+      /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
       materials: { [key in string]: XrayMaterialDescriptor };
       /** A `textures.ltx` the searched roots hold, or `None`. */
       texturesLtx: XrayAsset | null;

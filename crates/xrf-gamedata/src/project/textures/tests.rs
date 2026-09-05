@@ -100,7 +100,8 @@ fn a_missing_companion_is_its_own_rule_and_its_own_count() {
 }
 
 #[test]
-fn a_missing_bump_reports_both_halves_of_the_pair() {
+fn a_missing_bump_is_one_finding_however_much_of_the_pair_is_missing() {
+  // The companion is missing with it, and generating the pair is the one fix, so the companion rule stays quiet.
   let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_missing")
     .with_engine_dummies()
     .with_texture(BASE)
@@ -109,17 +110,8 @@ fn a_missing_bump_reports_both_halves_of_the_pair() {
 
   assert_eq!(result.texture_bumps.checked_bumps_count, 1);
   assert_eq!(result.texture_bumps.unresolved_bumps_count, 1);
-  assert_eq!(
-    result.texture_bumps.missing_companions_count, 1,
-    "each half is counted where it is missing"
-  );
-  assert_eq!(
-    rules_of(&result),
-    [
-      GamedataVerificationRule::TexturesBump.to_string(),
-      GamedataVerificationRule::TexturesBumpCompanion.to_string(),
-    ]
-  );
+  assert_eq!(result.texture_bumps.missing_companions_count, 0);
+  assert_eq!(rules_of(&result), [GamedataVerificationRule::TexturesBump.to_string()]);
 }
 
 #[test]
