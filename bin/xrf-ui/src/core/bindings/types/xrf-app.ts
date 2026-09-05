@@ -282,7 +282,7 @@ export type SelectedVisualDescription = {
 export type TextureBadges = {
   /** Both halves of the declared pair resolved to the files the declaration names. */
   isBumped: boolean;
-  /** The bump shader path is taken but at least one half is a dummy or absent, so the surface is not what was authored. */
+  /** The bump shader path is taken but a half is a dummy or absent, so the surface is not what was authored. */
   isDegraded: boolean;
   /** The descriptor's texture type makes `LoadTHM` skip it whole, bump declaration included. */
   isEngineSkipped: boolean;
@@ -302,7 +302,7 @@ export type TextureBumpPair = {
 export type TextureCatalog = {
   /** The roots the catalog was listed from, so a later read searches what the listing searched. */
   roots: XrayRoots;
-  /** A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says so where it matters. */
+  /** A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says where it matters. */
   texturesLtx: XrayAsset | null;
   entries: Array<TextureEntry>;
   /**

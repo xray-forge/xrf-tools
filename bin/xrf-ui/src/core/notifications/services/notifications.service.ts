@@ -1,4 +1,4 @@
-import { Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable, OnDeprovision, OnEvent, OnProvision, ProvisionId, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import {
@@ -81,6 +81,16 @@ export class NotificationsService {
     }
 
     return highest;
+  }
+
+  @OnProvision()
+  public async onProvision(provisionId: ProvisionId): Promise<void> {
+    this.log.info("Provisioning:", provisionId);
+  }
+
+  @OnDeprovision()
+  public onDeprovision(provisionId: ProvisionId): void {
+    this.log.info("Deprovisioning:", provisionId);
   }
 
   /**

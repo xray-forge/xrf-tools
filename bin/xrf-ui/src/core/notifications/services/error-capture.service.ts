@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeactivation, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
@@ -28,7 +28,9 @@ export class ErrorCaptureService {
    * Register global error and rejection listeners when the service is provisioned.
    */
   @OnProvision()
-  public onProvision(): void {
+  public onProvision(provisionId: ProvisionId): void {
+    this.log.info("Provisioning:", provisionId);
+
     window.addEventListener("error", this.onWindowError);
     window.addEventListener("unhandledrejection", this.onUnhandledRejection);
   }
@@ -37,7 +39,9 @@ export class ErrorCaptureService {
    * Remove global error and rejection listeners when the service is deactivated.
    */
   @OnDeactivation()
-  public onDeactivation(): void {
+  public onDeactivation(provisionId: ProvisionId): void {
+    this.log.info("Deprovisioning:", provisionId);
+
     window.removeEventListener("error", this.onWindowError);
     window.removeEventListener("unhandledrejection", this.onUnhandledRejection);
   }

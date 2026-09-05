@@ -22,6 +22,8 @@ export enum EPathRole {
   GAMEDATA = "gamedata",
   /** Tree holding the translation XML the game loads, which an installation and game data both have. */
   BUILT_TRANSLATIONS = "builtTranslations",
+  /** Tree of texture assets to browse. */
+  TEXTURES = "textures",
   /** Tree of visual assets to browse. */
   VISUALS = "visuals",
 }

@@ -39,6 +39,7 @@ const ROLE_CHAINS: Record<EPathRole, ReadonlyArray<IPathRoleSource>> = {
   [EPathRole.GAMEDATA]: [{ from: EWorkspacePath.GAMEDATA }],
   [EPathRole.BUILT_TRANSLATIONS]: [{ from: EWorkspacePath.GAME_INSTALLATION }, { from: EWorkspacePath.GAMEDATA }],
   // Game data first: a tree being edited is the likelier subject, and the installation behind it holds the rest.
+  [EPathRole.TEXTURES]: [{ from: EWorkspacePath.GAMEDATA }, { from: EWorkspacePath.GAME_INSTALLATION }],
   [EPathRole.VISUALS]: [{ from: EWorkspacePath.GAMEDATA }, { from: EWorkspacePath.GAME_INSTALLATION }],
 };
 

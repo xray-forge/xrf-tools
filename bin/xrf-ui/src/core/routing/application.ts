@@ -24,6 +24,7 @@ export enum EApplicationId {
   SPRITE_EQUIPMENT_PACKER = "sprite-equipment-packer",
   SPRITE_EQUIPMENT_UNPACKER = "sprite-equipment-unpacker",
   TASKS_EXPLORER = "tasks-explorer",
+  TEXTURES_EXPLORER = "textures-explorer",
   TRANSLATIONS_BUILDER = "translations-builder",
   TRANSLATIONS_EDITOR = "translations-editor",
   TRANSLATIONS_FORMATTER = "translations-formatter",
@@ -45,6 +46,7 @@ export enum EApplicationGroupId {
   GAMEPLAY = "gameplay",
   SPAWNS = "spawns",
   SPRITES = "sprites",
+  TEXTURES = "textures",
   TRANSLATIONS = "translations",
   VISUALS = "visuals",
 }

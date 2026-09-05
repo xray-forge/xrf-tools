@@ -17,9 +17,9 @@ export const texturesCommands = {
   /**
    * Describe one texture: its file, its descriptor as the engine reads it, and the pair the engine binds.
    *
-   * Resolution happens once, for the texture and both halves, inside one probe, so the three files are looked for in the
-   * same roots: a second probe could mount a source between the calls and answer differently. The roots are centred on
-   * the file when the source is one, and the effective roots travel back so a later read searches the same way.
+   * Resolution happens once, for the texture and both halves, inside one probe, so the three files are looked for in
+   * the same roots: a second probe could mount a source between the calls and answer differently. The roots are
+   * centred on the file when the source is one, and the effective roots travel back so a later read searches alike.
    */
   describe: (source: TextureSource, roots: XrayRoots) =>
     __TAURI_INVOKE<TextureDescription>("plugin:textures|describe", { source, roots }),
@@ -41,8 +41,8 @@ export const texturesCommands = {
   /**
    * Open a root set and list every texture it holds.
    *
-   * Lists and returns in one call, and reads no descriptor: the catalog is a walk of the mounted index, so the tree is on
-   * screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
+   * Lists and returns in one call, and reads no descriptor: the catalog is a walk of the mounted index, so the tree is
+   * on screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
    * person browses while it runs rather than waiting on it.
    */
   open: (roots: XrayRoots) => __TAURI_INVOKE<TextureCatalog>("plugin:textures|open", { roots }),

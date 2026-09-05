@@ -65,7 +65,7 @@ impl TextureEntry {
 pub struct TextureCatalog {
   /// The roots the catalog was listed from, so a later read searches what the listing searched.
   pub roots: XrayRoots,
-  /// A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says so where it matters.
+  /// A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says where it matters.
   pub textures_ltx: Option<XrayAsset>,
   pub entries: Vec<TextureEntry>,
   /// `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out.

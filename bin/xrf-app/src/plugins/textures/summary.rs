@@ -16,7 +16,7 @@ const SWEEP_SLICE: usize = 512;
 pub struct TextureBadges {
   /// Both halves of the declared pair resolved to the files the declaration names.
   pub is_bumped: bool,
-  /// The bump shader path is taken but at least one half is a dummy or absent, so the surface is not what was authored.
+  /// The bump shader path is taken but a half is a dummy or absent, so the surface is not what was authored.
   pub is_degraded: bool,
   /// The descriptor's texture type makes `LoadTHM` skip it whole, bump declaration included.
   pub is_engine_skipped: bool,

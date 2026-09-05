@@ -6,6 +6,7 @@ import { default as MapIcon } from "@mui/icons-material/Map";
 import { default as SettingsApplicationsIcon } from "@mui/icons-material/SettingsApplications";
 import { default as SportsEsportsIcon } from "@mui/icons-material/SportsEsports";
 import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
+import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 
@@ -30,6 +31,7 @@ import { SPRITE_EQUIPMENT_EDITOR_APPLICATION } from "@/applications/sprite-equip
 import { SPRITE_EQUIPMENT_PACKER_APPLICATION } from "@/applications/sprite-equipment-packer";
 import { SPRITE_EQUIPMENT_UNPACKER_APPLICATION } from "@/applications/sprite-equipment-unpacker";
 import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
+import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
 import { TRANSLATIONS_FORMATTER_APPLICATION } from "@/applications/translations-formatter";
@@ -71,6 +73,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     SPRITE_DESCRIPTION_EDITOR_APPLICATION,
     SPRITE_DESCRIPTION_PACKER_APPLICATION,
     SPRITE_DESCRIPTION_UNPACKER_APPLICATION,
+    TEXTURES_EXPLORER_APPLICATION,
     TRANSLATIONS_EDITOR_APPLICATION,
     TRANSLATIONS_PARSER_APPLICATION,
     TRANSLATIONS_BUILDER_APPLICATION,
@@ -127,6 +130,12 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.SPRITES,
       label: "Sprites",
       icon: <ImageIcon />,
+    },
+    {
+      accent: { light: "#4a5b73", dark: "#93a7c4" },
+      id: EApplicationGroupId.TEXTURES,
+      label: "Textures",
+      icon: <TextureIcon />,
     },
     {
       accent: { light: "#217414", dark: "#60c85c" },
