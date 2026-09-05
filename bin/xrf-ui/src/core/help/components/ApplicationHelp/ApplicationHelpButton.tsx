@@ -2,10 +2,11 @@ import { default as HelpOutlineIcon } from "@mui/icons-material/HelpOutlineOutli
 import { ButtonBase, Tooltip } from "@mui/material";
 import { ReactElement } from "react";
 
+import { mergeSx } from "@/core/theme/merge-sx";
 import { LAYOUT } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpButtonProps extends BaseComponentProps {
+export interface IApplicationHelpButtonProps extends StyledComponentProps {
   onClick: () => void;
 }
 
@@ -30,7 +31,7 @@ export function ApplicationHelpButton({
         className={className}
         aria-label={"Help"}
         disableRipple={true}
-        sx={[
+        sx={mergeSx(
           {
             width: LAYOUT.windowControlWidth,
             height: LAYOUT.titleBarHeight,
@@ -51,8 +52,8 @@ export function ApplicationHelpButton({
               outlineOffset: -2,
             },
           },
-          ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-        ]}
+          sx
+        )}
         onClick={onClick}
       >
         <HelpOutlineIcon sx={{ fontSize: 16 }} />

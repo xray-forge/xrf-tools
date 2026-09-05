@@ -1,9 +1,10 @@
 import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IXrfMarkProps extends BaseComponentProps {
+interface IXrfMarkProps extends StyledComponentProps {
   /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
   size?: number;
   /** Names the mark for assistive technology. Omit where a label already sits beside it. */
@@ -28,7 +29,7 @@ export function XrfMark({
       component={"svg"}
       viewBox={"0 0 256 256"}
       role={"img"}
-      sx={[{ width: size, height: size, flexShrink: 0 }, ...(Array.isArray(sx) ? sx : [sx])]}
+      sx={mergeSx({ width: size, height: size, flexShrink: 0 }, sx)}
     >
       <path
         d={

@@ -30,7 +30,7 @@ interface ILauncherSection {
   applications: Array<IApplicationDescriptor>;
 }
 
-export interface IApplicationLauncherProps {
+interface IApplicationLauncherProps {
   applications: ReadonlyArray<IApplicationDescriptor>;
   groups: ReadonlyArray<IApplicationGroup>;
 }

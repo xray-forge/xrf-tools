@@ -19,7 +19,7 @@ export function SequenceMotionsPanel({
   "data-testid": dataTestId = "sequence-motions-panel",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const sequencerService: SequencerService = useInjection(SequencerService);
   const sequenceService: VisualSequenceService = useInjection(VisualSequenceService);
 

@@ -3,9 +3,10 @@ import { ReactElement, useMemo } from "react";
 
 import { SyntaxContent } from "@/core/syntax/components/SyntaxContent";
 import { ESyntaxLanguage } from "@/core/syntax/lib";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface ICodeViewProps extends BaseComponentProps {
+interface ICodeViewProps extends StyledComponentProps {
   content: string;
   language: ESyntaxLanguage;
   /**
@@ -45,10 +46,7 @@ export function CodeView({
       aria-label={label}
       id={id}
       className={className}
-      sx={[
-        { display: "flex", minWidth: 0, overflow: "auto" },
-        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-      ]}
+      sx={mergeSx({ display: "flex", minWidth: 0, overflow: "auto" }, sx)}
     >
       <Box
         aria-hidden={true}

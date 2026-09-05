@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { IApplicationGroup } from "@/core/routing/application";
 
-export interface IApplicationLauncherSectionProps {
+interface IApplicationLauncherSectionProps {
   group: IApplicationGroup;
   count: number;
 }

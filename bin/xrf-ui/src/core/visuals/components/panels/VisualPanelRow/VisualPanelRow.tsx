@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IVisualPanelRowProps extends BaseComponentProps {
+interface IVisualPanelRowProps extends BaseComponentProps {
   label: string;
   value: ReactNode;
 }

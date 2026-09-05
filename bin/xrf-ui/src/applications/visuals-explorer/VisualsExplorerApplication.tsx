@@ -12,8 +12,6 @@ import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualsExplorerApplicationProps extends BaseComponentProps {}
-
 /**
  * Browse a tree of visuals, or look at one model on its own.
  *
@@ -25,7 +23,7 @@ export function VisualsExplorerApplication({
   "data-testid": dataTestId = "visuals-explorer-application",
   id,
   className,
-}: IVisualsExplorerApplicationProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
 

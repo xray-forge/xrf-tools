@@ -1,9 +1,10 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IEditorPanelHeaderProps extends BaseComponentProps {
+interface IEditorPanelHeaderProps extends StyledComponentProps {
   /** What the panel holds, as its heading. */
   title: string;
   /** Stated opposite the title: a count, or whatever else the panel reports about itself. */
@@ -29,7 +30,7 @@ export function EditorPanelHeader({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={[
+      sx={mergeSx(
         {
           display: "flex",
           flexDirection: "column",
@@ -38,8 +39,8 @@ export function EditorPanelHeader({
           borderBottom: 1,
           borderColor: "divider",
         },
-        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-      ]}
+        sx
+      )}
     >
       <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, paddingX: 0.5 }}>
         <Typography variant={"subtitle2"} sx={{ color: "text.primary" }}>

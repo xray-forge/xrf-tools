@@ -17,7 +17,8 @@ import {
 import { ReactElement, ReactNode } from "react";
 
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
 import "@xyflow/react/dist/style.css";
 
@@ -27,7 +28,7 @@ const PRO_OPTIONS: ProOptions = { hideAttribution: true };
 // which is how every node editor in this domain expects to be driven.
 const PAN_MOUSE_BUTTONS: Array<number> = [1];
 
-export interface IGraphCanvasProps extends BaseComponentProps {
+interface IGraphCanvasProps extends StyledComponentProps {
   nodes: Array<TGraphNode>;
   edges: Array<TGraphEdge>;
   nodeTypes?: NodeTypes;
@@ -76,7 +77,7 @@ export function GraphCanvas({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ display: "flex", flexGrow: 1, width: "100%", height: "100%", minWidth: 0, minHeight: 0, ...sx }}
+      sx={mergeSx({ display: "flex", flexGrow: 1, width: "100%", height: "100%", minWidth: 0, minHeight: 0 }, sx)}
     >
       <ReactFlow
         colorMode={(mode ?? "system") as ColorMode}

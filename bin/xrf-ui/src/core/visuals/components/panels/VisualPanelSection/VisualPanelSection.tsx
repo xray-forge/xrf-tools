@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IVisualPanelSectionProps extends BaseComponentProps {
+interface IVisualPanelSectionProps extends BaseComponentProps {
   title: ReactNode;
   /** What distinguishes this group from a similar one beside it. */
   caption?: ReactNode;

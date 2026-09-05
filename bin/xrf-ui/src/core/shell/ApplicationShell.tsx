@@ -6,7 +6,7 @@ import { EditorDirtyProvider } from "@/core/shell/EditorDirtyContext";
 import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
 import { EditorPanelsProvider } from "@/core/shell/panel/context";
 
-export interface IApplicationShellProps {
+interface IApplicationShellProps {
   children: ReactNode;
 }
 

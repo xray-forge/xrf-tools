@@ -6,7 +6,7 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 
-export interface IPlannedApplicationProps {
+interface IPlannedApplicationProps {
   /** What this application will do once it exists, in the present tense. */
   description: string;
 }

@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-export interface IConfirmDialogProps {
+interface IConfirmDialogProps {
   isOpen: boolean;
   /** Paints the confirming button as destructive, for commands that overwrite or delete. */
   isDestructive?: boolean;

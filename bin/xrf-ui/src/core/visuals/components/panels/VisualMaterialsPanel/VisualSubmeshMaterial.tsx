@@ -18,7 +18,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { describeBumpUpload } from "./VisualSubmeshMaterial.utils";
 
-export interface IVisualSubmeshMaterialProps extends BaseComponentProps {
+interface IVisualSubmeshMaterialProps extends BaseComponentProps {
   /** What the backend resolved for this submesh's texture reference, absent when it declares no texture. */
   material: Nullable<XrayMaterialDescriptor>;
   /** What the frontend did with the bump pair, absent for a material that bound none. */
@@ -29,7 +29,13 @@ export interface IVisualSubmeshMaterialProps extends BaseComponentProps {
  * What the renderer builds for a submesh's texture beyond the diffuse: the bump declaration, both inputs it binds,
  * the detail association, and what the viewer makes of them.
  */
-export function VisualSubmeshMaterial({ material, status = null }: IVisualSubmeshMaterialProps): ReactElement | null {
+export function VisualSubmeshMaterial({
+  "data-testid": dataTestId,
+  id,
+  className,
+  material,
+  status = null,
+}: IVisualSubmeshMaterialProps): ReactElement | null {
   if (!material) {
     return null;
   }
@@ -40,7 +46,7 @@ export function VisualSubmeshMaterial({ material, status = null }: IVisualSubmes
   const upload: Nullable<string> = describeBumpUpload(status);
 
   return (
-    <>
+    <div data-testid={dataTestId} id={id} className={className}>
       <VisualPanelRow
         label={"Bump"}
         value={<Chip size={"small"} color={outcome.color} variant={"outlined"} label={outcome.label} />}
@@ -61,6 +67,6 @@ export function VisualSubmeshMaterial({ material, status = null }: IVisualSubmes
       {shading ? <VisualPanelRow label={"Shading"} value={shading} /> : null}
 
       {upload ? <VisualPanelRow label={"Bump upload"} value={upload} /> : null}
-    </>
+    </div>
   );
 }

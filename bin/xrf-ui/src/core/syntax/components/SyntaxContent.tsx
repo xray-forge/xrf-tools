@@ -4,7 +4,7 @@ import { Fragment, ReactElement, useMemo } from "react";
 import { getSyntaxColors } from "@/core/syntax/components/syntax.styles";
 import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, ISyntaxSpan } from "@/core/syntax/lib";
 
-export interface ISyntaxContentProps {
+interface ISyntaxContentProps {
   content: string;
   language: ESyntaxLanguage;
 }

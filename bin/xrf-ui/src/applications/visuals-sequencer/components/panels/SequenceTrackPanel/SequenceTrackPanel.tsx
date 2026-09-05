@@ -14,7 +14,7 @@ export function SequenceTrackPanel({
   "data-testid": dataTestId = "sequence-track-panel",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const service: VisualSequenceService = useInjection(VisualSequenceService);
 
   const clips: ReadonlyArray<ISequenceClip> = service.clips;

@@ -16,7 +16,7 @@ export function useCurrentApplication(): Nullable<IApplicationDescriptor> {
   return application;
 }
 
-export interface ICurrentApplicationProviderProps {
+interface ICurrentApplicationProviderProps {
   application: Nullable<IApplicationDescriptor>;
   children: ReactNode;
 }

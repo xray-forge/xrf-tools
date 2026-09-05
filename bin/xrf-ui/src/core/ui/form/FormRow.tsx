@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { Nullable } from "@/lib/types/general";
 
-export interface IFormRowProps {
+interface IFormRowProps {
   label: string;
   description?: string;
   isRequired?: boolean;

@@ -14,7 +14,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
-export interface IArchiveModelPreviewProps extends BaseComponentProps {
+interface IArchiveModelPreviewProps extends BaseComponentProps {
   /** Entry name as the archive records it, which is also its engine identity. */
   name: string;
 }

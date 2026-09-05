@@ -14,7 +14,7 @@ export interface ITexturesExplorerApplicationProps extends BaseComponentProps {}
  */
 export function TexturesExplorerApplication({
   "data-testid": dataTestId = "textures-explorer-application",
-}: ITexturesExplorerApplicationProps = {}): ReactElement {
+}: ITexturesExplorerApplicationProps): ReactElement {
   const texturesService: TexturesService = useInjection(TexturesService);
   const isOpen: boolean = texturesService.isBrowsing || texturesService.selected.value !== null;
 

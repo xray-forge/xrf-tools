@@ -4,10 +4,10 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { selectRelatedApplications } from "@/core/help/lib/related";
 import { EApplicationId, IApplicationDescriptor } from "@/core/routing/application";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationHelpRelatedProps extends BaseComponentProps {
+export interface IApplicationHelpRelatedProps extends StyledComponentProps {
   relatedTools: ReadonlyArray<EApplicationId>;
   /** Called after a related tool is navigated to, so the hosting surface can dismiss itself. */
   onNavigated?: () => void;

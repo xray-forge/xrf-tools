@@ -30,7 +30,7 @@ function describeShape(shape: AssetTextureShape): string {
   return `${shape.width}×${shape.height} · ${shape.format} · ${describeMipmaps(shape.mipmapLevels)}`;
 }
 
-export interface IVisualSubmeshTextureSourceProps extends BaseComponentProps {
+interface IVisualSubmeshTextureSourceProps extends BaseComponentProps {
   asset: XrayAsset;
   /** What the file is, absent when it could not be reached to be described. */
   descriptor?: Nullable<AssetTextureDescriptor>;
@@ -43,11 +43,14 @@ export interface IVisualSubmeshTextureSourceProps extends BaseComponentProps {
  * with no descriptor shows no size at all rather than a zero: unreachable is not empty.
  */
 export function VisualSubmeshTextureSource({
+  "data-testid": dataTestId,
+  id,
+  className,
   asset,
   descriptor = null,
 }: IVisualSubmeshTextureSourceProps): ReactElement {
   return (
-    <>
+    <div data-testid={dataTestId} id={id} className={className}>
       <VisualPanelRow label={"Path"} value={asset.logicalPath} />
 
       {asset.container.kind === "archive" ? (
@@ -59,6 +62,6 @@ export function VisualSubmeshTextureSource({
       {descriptor ? <VisualPanelRow label={"Size"} value={formatBytes(descriptor.size)} /> : null}
 
       {descriptor?.shape ? <VisualPanelRow label={"Format"} value={describeShape(descriptor.shape)} /> : null}
-    </>
+    </div>
   );
 }

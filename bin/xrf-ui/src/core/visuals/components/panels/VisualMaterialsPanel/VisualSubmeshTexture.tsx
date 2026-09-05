@@ -13,7 +13,7 @@ import { Nullable } from "@/lib/types/general";
 import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
 import { VisualSubmeshTextureSource } from "./VisualSubmeshTextureSource";
 
-export interface IVisualSubmeshTextureProps extends BaseComponentProps {
+interface IVisualSubmeshTextureProps extends BaseComponentProps {
   texture: Nullable<VisualTextureDependency>;
   status: Nullable<IVisualTextureStatus>;
   /** Descriptors the open reported, keyed by logical path, so a file two submeshes share is described once. */
@@ -23,7 +23,14 @@ export interface IVisualSubmeshTextureProps extends BaseComponentProps {
 /**
  * What became of one submesh's texture: the outcome, the root that answered, the file inside it, and what that file is.
  */
-export function VisualSubmeshTexture({ texture, status, textures }: IVisualSubmeshTextureProps): ReactElement | null {
+export function VisualSubmeshTexture({
+  "data-testid": dataTestId,
+  id,
+  className,
+  texture,
+  status,
+  textures,
+}: IVisualSubmeshTextureProps): ReactElement | null {
   if (!texture) {
     return null;
   }
@@ -34,7 +41,7 @@ export function VisualSubmeshTexture({ texture, status, textures }: IVisualSubme
   const descriptor: IVisualTextureStateDescriptor = describeTextureState(state);
 
   return (
-    <>
+    <div data-testid={dataTestId} id={id} className={className}>
       <VisualPanelRow
         label={"Texture"}
         value={<Chip size={"small"} color={descriptor.color} variant={"outlined"} label={descriptor.label} />}
@@ -59,6 +66,6 @@ export function VisualSubmeshTexture({ texture, status, textures }: IVisualSubme
       ) : null}
 
       {status?.reason ? <VisualPanelRow label={"Texture error"} value={status.reason} /> : null}
-    </>
+    </div>
   );
 }

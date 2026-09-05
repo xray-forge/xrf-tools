@@ -8,7 +8,7 @@ import { LAYOUT } from "@/core/theme/tokens";
 import { DELAYED_REVEAL_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationTitleBarProps extends BaseComponentProps {
+interface IApplicationTitleBarProps extends BaseComponentProps {
   /** Where the active application portals its toolbar. The frame owns the element. */
   toolbarRef?: Ref<HTMLElement>;
   /** Draws the band's own progress line. Every editor already publishes this through `useEditorBusy`. */

@@ -1,7 +1,8 @@
 import { Box, Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorSideMenuItem {
   label: string;
@@ -12,7 +13,7 @@ export interface IEditorSideMenuItem {
   onClick?: () => void;
 }
 
-export interface IEditorSideMenuProps extends BaseComponentProps {
+interface IEditorSideMenuProps extends StyledComponentProps {
   header?: ReactNode;
   sections?: Array<IEditorSideMenuItem>;
   actions?: Array<IEditorSideMenuItem>;
@@ -52,10 +53,7 @@ export function EditorSideMenu({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={[
-        { display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 },
-        ...(Array.isArray(sx) ? sx : [sx]),
-      ]}
+      sx={mergeSx({ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }, sx)}
     >
       {header ? <Box sx={{ flexShrink: 0 }}>{header}</Box> : null}
 

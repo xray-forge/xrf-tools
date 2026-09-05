@@ -12,20 +12,11 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
-/**
- * What the file says it is, with both extents side by side.
- *
- * Declared and measured bounds are shown together and unreconciled: a file whose header disagrees with its own geometry
- * is worth seeing rather than having one quietly stand in for the other. Each is captioned so they cannot be misread as
- * one list of eight numbers.
- */
-export interface IVisualHeaderPanelProps extends BaseComponentProps {}
-
 export function VisualHeaderPanel({
   "data-testid": dataTestId = "visual-header-panel",
   id,
   className,
-}: IVisualHeaderPanelProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const description: Nullable<VisualDescription> = useInjection(VISUAL_INSPECTION).selected?.description ?? null;
 
   if (!description) {

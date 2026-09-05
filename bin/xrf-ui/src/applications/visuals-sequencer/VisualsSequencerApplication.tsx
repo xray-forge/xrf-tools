@@ -20,7 +20,7 @@ export function VisualsSequencerApplication({
   "data-testid": dataTestId = "visuals-sequencer-application",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const service: SequencerService = useInjection(SequencerService);
 
   const [isPickerOpen, setPickerOpen] = useState(false);

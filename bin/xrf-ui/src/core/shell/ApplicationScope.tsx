@@ -5,7 +5,7 @@ import { Fragment, ReactElement, ReactNode, useMemo } from "react";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationScopeProps {
+interface IApplicationScopeProps {
   application: Nullable<IApplicationDescriptor>;
   children: ReactNode;
 }

@@ -28,7 +28,7 @@ import {
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
@@ -60,7 +60,7 @@ export function TexturesMenu({
   id,
   className,
   sx,
-}: BaseComponentProps): ReactElement {
+}: StyledComponentProps): ReactElement {
   const texturesService: TexturesService = useInjection(TexturesService);
 
   const tree: IUseTreeState = useTreeState();

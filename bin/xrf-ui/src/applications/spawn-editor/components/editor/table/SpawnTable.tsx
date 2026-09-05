@@ -6,7 +6,7 @@ import { SpawnFileService } from "@/core/spawn/services";
 import { DataTable } from "@/core/ui/table";
 import { AnyObject, Nullable } from "@/lib/types/general";
 
-export interface ISpawnTableProps<T> {
+interface ISpawnTableProps<T> {
   /** What one row is, for the details panel heading. */
   source: string;
   rows: Array<T>;

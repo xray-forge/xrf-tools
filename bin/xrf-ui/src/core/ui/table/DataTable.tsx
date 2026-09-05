@@ -5,7 +5,7 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IDataTableProps<T> extends BaseComponentProps {
+interface IDataTableProps<T> extends BaseComponentProps {
   rows: Array<T>;
   columns: Array<GridColDef>;
   getRowId: (row: T) => GridRowId;
@@ -23,6 +23,8 @@ export interface IDataTableProps<T> extends BaseComponentProps {
 
 export function DataTable<T>({
   "data-testid": dataTestId,
+  id,
+  className,
   rows,
   columns,
   getRowId,
@@ -65,7 +67,13 @@ export function DataTable<T>({
 
   if (!rows.length) {
     return (
-      <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+      <Typography
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        variant={"body2"}
+        sx={{ color: "text.secondary" }}
+      >
         {emptyLabel}
       </Typography>
     );
@@ -74,6 +82,8 @@ export function DataTable<T>({
   return (
     <Box
       data-testid={dataTestId}
+      id={id}
+      className={className}
       sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%", flexGrow: 1, minHeight: 0 }}
     >
       {getSearchText ? (

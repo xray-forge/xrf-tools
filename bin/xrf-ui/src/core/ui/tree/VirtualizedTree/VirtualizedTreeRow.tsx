@@ -8,7 +8,7 @@ import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVirtualizedTreeRowProps<T> {
+interface IVirtualizedTreeRowProps<T> {
   row: IFlatTreeRow<T>;
   /** Element id, so the tree can point `aria-activedescendant` at the selected row. */
   rowId: string;

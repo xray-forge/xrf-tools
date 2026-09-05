@@ -37,7 +37,7 @@ const SEVERITY_COLORS: Record<ENotificationSeverity, string> = {
   [ENotificationSeverity.WARNING]: "warning.main",
 };
 
-export interface INotificationRowProps {
+interface INotificationRowProps {
   entry: INotificationEntry;
   isExpanded: boolean;
   onToggleExpanded: (id: string) => void;

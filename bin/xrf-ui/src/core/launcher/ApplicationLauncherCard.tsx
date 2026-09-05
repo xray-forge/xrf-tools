@@ -5,7 +5,7 @@ import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLaunch
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/ApplicationLauncherPlannedBadge";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 
-export interface IApplicationLauncherCardProps {
+interface IApplicationLauncherCardProps {
   application: IApplicationDescriptor;
   group: IApplicationGroup;
   isEnabled: boolean;

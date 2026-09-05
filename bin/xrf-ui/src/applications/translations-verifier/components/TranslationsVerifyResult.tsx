@@ -5,11 +5,11 @@ import { TranslationVerifySummary } from "@/core/bindings/types/xrf-app";
 import { TranslationVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
 
-export interface ITranslationsVerifyResultProps extends BaseComponentProps {
+export interface ITranslationsVerifyResultProps extends StyledComponentProps {
   result: TranslationVerifySummary;
 }
 

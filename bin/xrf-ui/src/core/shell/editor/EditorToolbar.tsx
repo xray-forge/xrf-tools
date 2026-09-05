@@ -11,7 +11,7 @@ import { useRequestLeave } from "@/core/shell/EditorDirtyContext";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IEditorToolbarProps extends BaseComponentProps {
+interface IEditorToolbarProps extends BaseComponentProps {
   /** Overrides the application name resolved from the route. Rarely needed. */
   title?: string;
   /** The open document, as the last breadcrumb segment. Counts and state belong in the status bar. */

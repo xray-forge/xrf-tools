@@ -6,10 +6,10 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface ITranslationsParseResultProps extends BaseComponentProps {
+export interface ITranslationsParseResultProps extends StyledComponentProps {
   result: TranslationParseSummary;
   /** Where the sources were written, so the run can be opened; absent while nothing was written. */
   outputPath: Nullable<string>;

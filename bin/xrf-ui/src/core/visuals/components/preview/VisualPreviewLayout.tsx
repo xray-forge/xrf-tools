@@ -19,7 +19,7 @@ import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visu
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualPreviewLayoutProps extends BaseComponentProps {
+interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** The model on screen, or null while nothing is open. */
   model?: Nullable<IVisualModelViews>;
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */

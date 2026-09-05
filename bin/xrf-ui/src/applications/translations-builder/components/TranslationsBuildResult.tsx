@@ -7,12 +7,12 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 
-export interface ITranslationsBuildResultProps extends BaseComponentProps {
+export interface ITranslationsBuildResultProps extends StyledComponentProps {
   result: TranslationBuildSummary;
   /** Where the build was told to write; the summary does not carry an address. */
   outputPath: Nullable<string>;

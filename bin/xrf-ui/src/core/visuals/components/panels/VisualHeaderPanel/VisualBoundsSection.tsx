@@ -7,7 +7,7 @@ import { formatCoordinate, formatVector } from "@/core/visuals/lib/visual-format
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualBoundsSectionProps extends BaseComponentProps {
+interface IVisualBoundsSectionProps extends BaseComponentProps {
   title: string;
   /** Which of the two extents this is, since the rows themselves are identical. */
   caption: string;

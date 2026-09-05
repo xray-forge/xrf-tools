@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/panel/context";
 import { LAYOUT } from "@/core/theme/tokens";
 
-export interface IPanelStripeButtonProps {
+interface IPanelStripeButtonProps {
   panel: IEditorPanel;
   side: TEditorPanelSide;
   isActive: boolean;

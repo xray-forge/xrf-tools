@@ -6,7 +6,7 @@ import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";
 import { LAYOUT } from "@/core/theme/tokens";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationPanelStripeProps {
+interface IApplicationPanelStripeProps {
   side: TEditorPanelSide;
   panels: Array<IEditorPanel>;
   activePanelId: Nullable<string>;

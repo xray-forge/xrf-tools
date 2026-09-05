@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-export interface ICaptionGlyphProps {
+interface ICaptionGlyphProps {
   children: ReactNode;
 }
 

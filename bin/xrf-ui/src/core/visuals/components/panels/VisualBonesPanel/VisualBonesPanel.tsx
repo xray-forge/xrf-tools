@@ -14,9 +14,6 @@ import { VisualPanelEmpty } from "@/core/visuals/components/panels/VisualPanelEm
 import { VisualPanelSection } from "@/core/visuals/components/panels/VisualPanelSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** The open visual's skeleton, as the tree its parent names describe. */
-export interface IVisualBonesPanelProps extends BaseComponentProps {}
-
 /** Height the skeleton keeps for itself before the panel starts scrolling instead. */
 const TREE_MIN_HEIGHT: number = 160;
 
@@ -24,7 +21,7 @@ export function VisualBonesPanel({
   "data-testid": dataTestId = "visual-bones-panel",
   id,
   className,
-}: IVisualBonesPanelProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const { bones, boneControls }: IVisualInspection = useInjection(VISUAL_INSPECTION);
 
   const tree: IUseTreeState = useTreeState();

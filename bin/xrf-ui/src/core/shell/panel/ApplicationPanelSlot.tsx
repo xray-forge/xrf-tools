@@ -5,7 +5,7 @@ import { IEditorPanel, TEditorPanelSide } from "@/core/shell/panel/context";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationPanelSlotProps {
+interface IApplicationPanelSlotProps {
   side: TEditorPanelSide;
   panel: Nullable<IEditorPanel>;
   width: number;

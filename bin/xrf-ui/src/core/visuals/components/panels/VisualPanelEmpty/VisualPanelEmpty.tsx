@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IVisualPanelEmptyProps extends BaseComponentProps {
+interface IVisualPanelEmptyProps extends BaseComponentProps {
   /** What is absent, and where it would come from once it is not. */
   label: string;
 }

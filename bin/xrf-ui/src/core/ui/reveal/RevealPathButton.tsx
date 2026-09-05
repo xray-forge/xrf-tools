@@ -8,7 +8,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IRevealPathButtonProps extends BaseComponentProps {
+interface IRevealPathButtonProps extends BaseComponentProps {
   /** Which application the failure notification is attributed to. */
   application: EApplicationId;
   /** Path to show; a missing one disables the button rather than hiding it. */

@@ -7,7 +7,7 @@ import { LAYOUT } from "@/core/theme/tokens";
 const CLOSE_HOVER: string = "#c42b1c";
 const CLOSE_ACTIVE: string = "#b7291b";
 
-export interface IWindowControlButtonProps {
+interface IWindowControlButtonProps {
   label: string;
   /** Marks the button that ends the session, which the system paints differently for that reason. */
   isDanger?: boolean;

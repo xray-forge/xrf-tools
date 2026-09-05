@@ -14,8 +14,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualMotionTransportProps extends BaseComponentProps {}
-
 /**
  * Playing what is posed: which frame, how fast, and whether it repeats.
  */
@@ -23,7 +21,7 @@ export function VisualMotionTransport({
   "data-testid": dataTestId = "visual-motion-transport",
   id,
   className,
-}: IVisualMotionTransportProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const service: VisualMotionService = useInjection(VisualMotionService);
 
   const [rateAnchor, setRateAnchor] = useState<Nullable<HTMLElement>>(null);

@@ -8,7 +8,7 @@ import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IFilePickerInputProps extends BaseComponentProps {
+interface IFilePickerInputProps extends BaseComponentProps {
   /** When given, the control labels itself by composing a `FormRow`. */
   label?: string;
   description?: string;
@@ -31,7 +31,9 @@ export interface IFilePickerInputProps extends BaseComponentProps {
  * The value is monospaced because these are filesystem paths, compared by eye.
  */
 export function FilePickerInput({
+  "data-testid": dataTestId,
   id,
+  className,
   label,
   description,
   isRequired,
@@ -49,6 +51,9 @@ export function FilePickerInput({
 
   const control: ReactElement = (
     <TextField
+      data-testid={dataTestId}
+      id={controlId}
+      className={className}
       fullWidth
       size={"small"}
       placeholder={placeholder}
@@ -58,7 +63,6 @@ export function FilePickerInput({
       sx={{ "& .MuiInputBase-input": MONOSPACE }}
       slotProps={{
         htmlInput: {
-          id: controlId,
           spellCheck: false,
           // Paths are compared and edited from the end far more often than from the start.
           autoComplete: "off",

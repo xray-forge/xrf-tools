@@ -16,7 +16,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
-export interface IArchiveDirectoryContentProps {
+interface IArchiveDirectoryContentProps {
   path: string;
 }
 

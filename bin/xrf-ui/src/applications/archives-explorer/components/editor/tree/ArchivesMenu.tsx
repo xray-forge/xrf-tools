@@ -36,7 +36,7 @@ export function ArchivesMenu({
   "data-testid": dataTestId = "archives-menu",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const tree: IUseTreeState = useTreeState();

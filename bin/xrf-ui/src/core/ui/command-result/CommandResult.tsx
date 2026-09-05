@@ -1,7 +1,8 @@
 import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
 
@@ -18,7 +19,7 @@ export interface ICommandResultStat {
   tone?: TCommandResultTone;
 }
 
-export interface ICommandResultProps extends BaseComponentProps {
+interface ICommandResultProps extends StyledComponentProps {
   /** The one sentence answer to "how did it go". */
   headline: string;
   tone: TCommandResultTone;
@@ -50,10 +51,7 @@ export function CommandResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={[
-        { display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0 },
-        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-      ]}
+      sx={mergeSx({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0 }, sx)}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
         <Typography variant={"subtitle2"} sx={{ color: TONE_COLORS[tone] }}>

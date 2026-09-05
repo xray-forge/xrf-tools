@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { DataTable } from "@/core/ui/table";
 
-export interface ICommandResultFindingsProps<T> {
+interface ICommandResultFindingsProps<T> {
   rows: Array<T>;
   columns: Array<GridColDef>;
   getRowId: (row: T) => GridRowId;

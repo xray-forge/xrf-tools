@@ -7,7 +7,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { EditorPanelHeader } from "./EditorPanelHeader";
 
-export interface IEditorSearchHeaderProps extends BaseComponentProps {
+interface IEditorSearchHeaderProps extends BaseComponentProps {
   /** What the panel lists, as its heading. */
   title: string;
   count: number;
@@ -25,6 +25,9 @@ export interface IEditorSearchHeaderProps extends BaseComponentProps {
  * Heading and filter field for a side menu that lists more than fits on a screen.
  */
 export function EditorSearchHeader({
+  "data-testid": dataTestId,
+  id,
+  className,
   title,
   count,
   query,
@@ -35,7 +38,7 @@ export function EditorSearchHeader({
   onQueryChange,
 }: IEditorSearchHeaderProps): ReactElement {
   return (
-    <EditorPanelHeader title={title} caption={count}>
+    <EditorPanelHeader data-testid={dataTestId} id={id} className={className} title={title} caption={count}>
       <TextField
         value={query}
         placeholder={placeholder}

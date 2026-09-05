@@ -5,7 +5,7 @@ import { ReactElement, ReactNode } from "react";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IEmptyStateProps extends BaseComponentProps {
+interface IEmptyStateProps extends BaseComponentProps {
   title: string;
   description: string;
   /** Overrides the default document glyph where a surface has a better one. */

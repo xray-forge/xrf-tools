@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IVisualPreviewEmptyProps extends BaseComponentProps {
+interface IVisualPreviewEmptyProps extends BaseComponentProps {
   /** Why the last open failed, or absent when nothing is open and nothing went wrong. */
   error?: string;
   /** Reads the failed open's source again. Absent where the surface has no attempt to repeat. */
@@ -15,9 +15,20 @@ export interface IVisualPreviewEmptyProps extends BaseComponentProps {
 /**
  * What covers the viewport while it holds no model: nothing has been opened, or the last open failed.
  */
-export function VisualPreviewEmpty({ error, onRetry }: IVisualPreviewEmptyProps): ReactElement {
+export function VisualPreviewEmpty({
+  "data-testid": dataTestId,
+  id,
+  className,
+  error,
+  onRetry,
+}: IVisualPreviewEmptyProps): ReactElement {
   return (
-    <Box sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}
+    >
       <EmptyState
         title={error ? "Could not open this visual" : "No visual open"}
         description={error ?? "Pick a model from the tree to preview it."}

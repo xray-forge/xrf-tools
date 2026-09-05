@@ -12,7 +12,7 @@ const EditorStatusContext = createContext<IEditorStatusContextValue>({
   setSegments: () => {},
 });
 
-export interface IEditorStatusProviderProps {
+interface IEditorStatusProviderProps {
   children: ReactNode;
 }
 

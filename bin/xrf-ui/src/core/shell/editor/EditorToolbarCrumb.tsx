@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { RADIUS } from "@/core/theme/tokens";
 
-export interface IEditorToolbarCrumbProps {
+interface IEditorToolbarCrumbProps {
   label: string;
   isDisabled?: boolean;
   /** Says what following the segment does, for a name the label alone cannot carry. */

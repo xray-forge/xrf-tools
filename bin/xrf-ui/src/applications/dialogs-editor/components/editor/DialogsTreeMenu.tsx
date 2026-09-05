@@ -39,7 +39,7 @@ export function DialogsTreeMenu({
   "data-testid": dataTestId = "dialogs-tree-menu",
   id,
   className,
-}: BaseComponentProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
   const tree: IUseTreeState = useTreeState();

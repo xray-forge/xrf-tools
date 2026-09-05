@@ -17,14 +17,11 @@ import { Nullable } from "@/lib/types/general";
 
 import { VisualSubmeshSection } from "./VisualSubmeshSection";
 
-/** Every submesh of the open visual, in the order the file stores them. */
-export interface IVisualMaterialsPanelProps extends BaseComponentProps {}
-
 export function VisualMaterialsPanel({
   "data-testid": dataTestId = "visual-materials-panel",
   id,
   className,
-}: IVisualMaterialsPanelProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const { selected, textureStatuses, bumpStatuses }: IVisualInspection = useInjection(VISUAL_INSPECTION);
   const description: Nullable<VisualDescription> = selected?.description ?? null;
   const described: Record<string, AssetTextureDescriptor> = selected?.textures ?? {};

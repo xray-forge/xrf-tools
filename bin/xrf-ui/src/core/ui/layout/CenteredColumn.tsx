@@ -1,9 +1,10 @@
 import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface ICenteredColumnProps extends BaseComponentProps {
+interface ICenteredColumnProps extends StyledComponentProps {
   children: ReactNode;
 }
 
@@ -22,7 +23,7 @@ export function CenteredColumn({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={[
+      sx={mergeSx(
         {
           display: "flex",
           flexDirection: "column",
@@ -32,8 +33,8 @@ export function CenteredColumn({
           height: "100%",
           gap: 1,
         },
-        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-      ]}
+        sx
+      )}
     >
       {children}
     </Box>

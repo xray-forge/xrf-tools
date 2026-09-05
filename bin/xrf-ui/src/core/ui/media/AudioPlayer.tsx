@@ -23,7 +23,7 @@ const PEAKS_PER_PIXEL: number = 0.5;
 
 const WAVEFORM_HEIGHT: number = 96;
 
-export interface IAudioPlayerProps {
+interface IAudioPlayerProps {
   src: string;
   bytes?: Nullable<Uint8Array>;
 }

@@ -2,11 +2,12 @@ import { Box } from "@mui/material";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
+import { mergeSx } from "@/core/theme/merge-sx";
 import { TREE } from "@/core/theme/tokens";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /** Icons the tree draws beside the chevron, chosen per row by what the row is. */
@@ -19,7 +20,7 @@ export interface IVirtualizedTreeIcons {
   leaf: ReactNode;
 }
 
-export interface IVirtualizedTreeProps<T> extends BaseComponentProps {
+interface IVirtualizedTreeProps<T> extends StyledComponentProps {
   items: ReadonlyArray<ITreeNode<T>>;
   expandedIds: ReadonlySet<string>;
   selectedId: Nullable<string>;
@@ -284,20 +285,22 @@ export function VirtualizedTree<T>({
       id={id}
       className={className}
       role={"tree"}
-      sx={{
-        height: "100%",
-        outline: "none",
-        overflow: "auto",
-        padding: 0.5,
-        // Every tree draws its selection; the ring says which one the keyboard is talking to, a live question
-        // beside a graph canvas or a viewport.
-        "&:focus [aria-selected=true]": {
-          outline: "1px solid",
-          outlineColor: "primary.main",
-          outlineOffset: "-1px",
+      sx={mergeSx(
+        {
+          height: "100%",
+          outline: "none",
+          overflow: "auto",
+          padding: 0.5,
+          // Every tree draws its selection; the ring says which one the keyboard is talking to, a live question
+          // beside a graph canvas or a viewport.
+          "&:focus [aria-selected=true]": {
+            outline: "1px solid",
+            outlineColor: "primary.main",
+            outlineOffset: "-1px",
+          },
         },
-        ...sx,
-      }}
+        sx
+      )}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >

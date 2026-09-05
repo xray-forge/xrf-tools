@@ -15,7 +15,7 @@ import { Nullable } from "@/lib/types/general";
 import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";
 import { VisualSubmeshTexture } from "./VisualSubmeshTexture";
 
-export interface IVisualSubmeshSectionProps extends BaseComponentProps {
+interface IVisualSubmeshSectionProps extends BaseComponentProps {
   submesh: VisualSubmesh;
   isFirst: boolean;
   /** What the backend resolved this submesh's reference to, absent when the model reports no textures at all. */

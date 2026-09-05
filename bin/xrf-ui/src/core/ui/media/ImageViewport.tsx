@@ -17,7 +17,7 @@ import {
 } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
-export interface IImageViewportProps {
+interface IImageViewportProps {
   src: string;
   alt: string;
   width: number;

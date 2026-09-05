@@ -46,6 +46,9 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
  * the control disabled rather than hidden, so the toolbar does not change shape as the user steps through a tree.
  */
 export function VisualPreviewToolbar({
+  "data-testid": dataTestId,
+  id,
+  className,
   subtitle,
   options,
   isOpenEnabled,
@@ -93,6 +96,9 @@ export function VisualPreviewToolbar({
 
   return (
     <EditorToolbar
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       subtitle={subtitle}
       actions={
         <>

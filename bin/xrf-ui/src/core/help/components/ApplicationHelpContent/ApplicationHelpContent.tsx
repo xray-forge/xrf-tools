@@ -5,9 +5,10 @@ import { ApplicationHelpRelated } from "@/core/help/components/ApplicationHelpCo
 import { ApplicationHelpSection } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpSection";
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpContentProps extends BaseComponentProps {
+export interface IApplicationHelpContentProps extends StyledComponentProps {
   help: IApplicationHelp;
   /** Called after a related tool is navigated to, so the hosting surface can dismiss itself. */
   onNavigated?: () => void;
@@ -45,10 +46,7 @@ export function ApplicationHelpContent({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={[
-        { display: "flex", flexDirection: "column", gap: 2 },
-        ...(sx === undefined ? [] : Array.isArray(sx) ? sx : [sx]),
-      ]}
+      sx={mergeSx({ display: "flex", flexDirection: "column", gap: 2 }, sx)}
     >
       <Typography variant={"body2"} sx={{ lineHeight: 1.55 }}>
         {renderHelpText(help.summary)}

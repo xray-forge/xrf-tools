@@ -2,9 +2,9 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpSectionProps extends BaseComponentProps {
+export interface IApplicationHelpSectionProps extends StyledComponentProps {
   title: string;
   items: ReadonlyArray<string>;
   isOrdered?: boolean;

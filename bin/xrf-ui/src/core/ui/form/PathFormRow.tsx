@@ -4,7 +4,7 @@ import { FilePickerInput } from "@/core/ui/form/file-picker/FilePickerInput";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
 
-export interface IPathFormRowProps {
+interface IPathFormRowProps {
   label: string;
   description?: string;
   isRequired?: boolean;

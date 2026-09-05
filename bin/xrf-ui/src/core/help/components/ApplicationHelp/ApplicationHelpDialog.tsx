@@ -4,9 +4,9 @@ import { ReactElement } from "react";
 
 import { ApplicationHelpContent } from "@/core/help/components/ApplicationHelpContent";
 import { IApplicationDescriptor, IApplicationHelp } from "@/core/routing/application";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpDialogProps extends BaseComponentProps {
+export interface IApplicationHelpDialogProps extends StyledComponentProps {
   application: IApplicationDescriptor;
   help: IApplicationHelp;
   isOpen: boolean;

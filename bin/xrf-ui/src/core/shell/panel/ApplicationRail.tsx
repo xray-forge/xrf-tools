@@ -14,7 +14,7 @@ import { RailButton } from "@/core/shell/panel/RailButton";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
-export interface IApplicationRailProps {
+interface IApplicationRailProps {
   panels: Array<IEditorPanel>;
   activePanelId: Nullable<string>;
   onTogglePanel: (id: string) => void;

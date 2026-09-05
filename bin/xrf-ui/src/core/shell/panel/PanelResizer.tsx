@@ -3,7 +3,7 @@ import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/panel/context";
 
-export interface IPanelResizerProps {
+interface IPanelResizerProps {
   side: TEditorPanelSide;
   width: number;
   onResize: (width: number) => void;

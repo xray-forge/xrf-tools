@@ -14,8 +14,6 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IVisualMotionsPanelProps extends BaseComponentProps {}
-
 /**
  * What this visual animates from, and playing it.
  */
@@ -23,7 +21,7 @@ export function VisualMotionsPanel({
   "data-testid": dataTestId = "visual-motions-panel",
   id,
   className,
-}: IVisualMotionsPanelProps = {}): ReactElement {
+}: BaseComponentProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const motionService: VisualMotionService = useInjection(VisualMotionService);
 

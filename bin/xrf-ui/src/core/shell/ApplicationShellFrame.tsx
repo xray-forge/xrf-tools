@@ -26,7 +26,7 @@ import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar"
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationShellFrameProps extends BaseComponentProps {
+interface IApplicationShellFrameProps extends BaseComponentProps {
   children: ReactNode;
 }
 

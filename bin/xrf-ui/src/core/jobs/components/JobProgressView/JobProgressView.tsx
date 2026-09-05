@@ -8,7 +8,7 @@ import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/li
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
-export interface IJobProgressViewProps extends BaseComponentProps {
+interface IJobProgressViewProps extends BaseComponentProps {
   job: IJobState;
   /** Omitted where a job is only being watched, such as a listing of somebody else's run. */
   onCancel?: (id: string) => void;
@@ -20,12 +20,23 @@ export interface IJobProgressViewProps extends BaseComponentProps {
  * Renders before the first snapshot arrives, because the job exists from the moment it was started and a blank space
  * there would read as the control having done nothing.
  */
-export function JobProgressView({ "data-testid": dataTestId, job, onCancel }: IJobProgressViewProps): ReactElement {
+export function JobProgressView({
+  "data-testid": dataTestId,
+  id,
+  className,
+  job,
+  onCancel,
+}: IJobProgressViewProps): ReactElement {
   const levels: Array<ProgressLevel> = job.progress?.levels ?? [];
   const detail: string = describeActiveProgress(job.progress);
 
   return (
-    <Box data-testid={dataTestId} sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}
+    >
       {levels.length ? (
         levels
           .slice(0, RENDERED_PROGRESS_LEVELS)
