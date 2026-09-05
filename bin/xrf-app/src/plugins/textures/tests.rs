@@ -353,11 +353,10 @@ fn a_file_outside_any_root_or_outside_textures_names_no_reference() {
   let loose: ThmFixtureTree = ThmFixtureTree::new("textures_file_loose").with_texture(BASE);
   let rooted: ThmFixtureTree = implied_root_tree("file_misplaced");
 
-  assert!(
-    file_source(loose.root().join("textures").join("ston").join("ston_beton05.dds"))
-      .to_reference()
-      .is_err(),
-    "a textures directory with no meshes beside it is not a root the VFS implies"
+  assert_eq!(
+    file_source(loose.root().join("textures").join("ston").join("ston_beton05.dds")).to_reference(),
+    Ok(String::from(BASE)),
+    "a textures directory with no meshes beside it still names the files under it"
   );
   assert!(
     file_source(rooted.root().join("meshes").join("ston_beton05.dds"))

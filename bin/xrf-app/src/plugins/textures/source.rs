@@ -41,7 +41,7 @@ impl TextureSource {
   ///
   /// # Errors
   ///
-  /// Returns an error when no ancestor of the file is an X-Ray root, or when the file is neither a texture nor a
+  /// Returns an error when no ancestor of the file names a root, or when the file is neither a texture nor a
   /// descriptor under that root's textures directory.
   pub fn to_reference(&self) -> TauriResult<String> {
     match self {
@@ -50,7 +50,7 @@ impl TextureSource {
         let file: &Path = Path::new(path);
         let logical_path: XrayLogicalPath = XrayMountPlan::implied_logical_path(file).ok_or_else(|| {
           format!(
-            "Texture '{}' is not inside an X-Ray root: no ancestor holds both a meshes and a textures directory",
+            "Texture '{}' is not inside an X-Ray root: no ancestor of it is a meshes or textures directory",
             format_path(file)
           )
         })?;

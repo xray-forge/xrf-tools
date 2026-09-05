@@ -69,6 +69,9 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
     "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
       "detail associations too, and is not read; a notice names it when the browsed roots hold one.",
     "`Texture` mode accepts only loose files on disk. A texture inside an archive is reached through `Folder` mode.",
+    "A single file is opened by its engine reference, which is its path below a `textures` directory. The file " +
+      "therefore has to sit under one; a `.dds` on a desktop belongs to no tree and names no texture. A tree holding " +
+      "only textures is enough, and the configured game data is still searched behind it for the bump pair.",
   ],
   relatedTools: [EApplicationId.VISUALS_EXPLORER, EApplicationId.ARCHIVES_EXPLORER],
 };

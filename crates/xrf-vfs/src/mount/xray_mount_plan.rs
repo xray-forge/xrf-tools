@@ -106,9 +106,10 @@ impl XrayMountPlan {
   /// The X-Ray root a physical asset path sits under, if any — what [`Self::implied`] plans from.
   ///
   /// Walks upward from the asset and answers with the nearest ancestor holding both a `meshes` and a `textures`
-  /// directory, so a gamedata tree nested inside another resolves against the one that contains the asset. Finding a
-  /// root does not promise a reference resolves inside it; callers that need a resolvable root must fall through on a
-  /// failed lookup rather than on a failed derivation.
+  /// directory, so a gamedata tree nested inside another resolves against the one that contains the asset. Failing
+  /// that, the parent of the asset directory the file itself sits under, so a tree carrying only `textures/` still
+  /// names its files. Finding a root does not promise a reference resolves inside it; callers that need a resolvable
+  /// root must fall through on a failed lookup rather than on a failed derivation.
   pub fn implied_root(asset: &Path) -> Option<PathBuf> {
     find_implied_asset_root(asset)
   }

@@ -17,16 +17,44 @@ pub(crate) const SPAWNS_DIRECTORY: &str = "spawns";
 /// Nearest rather than furthest, so a gamedata tree nested inside another resolves against the one that contains the
 /// asset.
 ///
+/// Falls back to the directory holding the asset directory the file itself lives under, so a tree carrying only
+/// `textures/` still names its files. That tree is not an installation and nothing pretends otherwise, but a file
+/// inside it has exactly one engine reference either way, and refusing to read one file because no meshes were shipped
+/// beside it serves nobody. The complete rule is tried first, so a real gamedata still answers with the gamedata root
+/// even where a nested directory happens to be called `textures`.
+///
 /// Finding a root does not promise a reference resolves inside it: a source tree holds both directories while storing
 /// textures one directory per texture under names that do not match their reference. Callers that need a resolvable root
 /// must therefore fall through on a failed lookup rather than on a failed derivation.
 ///
 /// Returns the nearest implied root, or `None` when no ancestor looks like one. Behind [`crate::XrayMountPlan::implied_root`].
 pub(crate) fn find_implied_asset_root(path: &Path) -> Option<PathBuf> {
+  find_complete_asset_root(path).or_else(|| find_partial_asset_root(path))
+}
+
+/// The nearest ancestor holding every directory a root is identified by.
+fn find_complete_asset_root(path: &Path) -> Option<PathBuf> {
   path
     .ancestors()
     .skip(1)
     .find(|candidate| candidate.join(MESHES_DIRECTORY).is_dir() && candidate.join(TEXTURES_DIRECTORY).is_dir())
+    .map(Path::to_path_buf)
+}
+
+/// The parent of the nearest asset directory the file lives under, for a tree holding only one of them.
+fn find_partial_asset_root(path: &Path) -> Option<PathBuf> {
+  path
+    .ancestors()
+    .skip(1)
+    .find(|candidate| {
+      candidate
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+          name.eq_ignore_ascii_case(MESHES_DIRECTORY) || name.eq_ignore_ascii_case(TEXTURES_DIRECTORY)
+        })
+    })
+    .and_then(Path::parent)
     .map(Path::to_path_buf)
 }
 
@@ -84,10 +112,32 @@ mod tests {
   }
 
   #[test]
-  fn requires_both_directories_rather_than_either() {
-    let root: PathBuf = tree("meshes_only", &["meshes/dynamics"]);
+  fn names_a_file_of_a_tree_holding_only_one_asset_directory() {
+    // A modder shipping textures alone still has files with exactly one engine reference, and refusing to read one
+    // because no meshes were shipped beside it serves nobody.
+    let root: PathBuf = tree("textures_only", &["textures/act"]);
 
-    assert_eq!(find_implied_asset_root(&root.join("meshes/dynamics/wpn.ogf")), None);
+    assert_eq!(
+      find_implied_asset_root(&root.join("textures/act/act_arm_1.dds")).as_deref(),
+      Some(root.as_path())
+    );
+
+    let meshes: PathBuf = tree("meshes_only", &["meshes/dynamics"]);
+
+    assert_eq!(
+      find_implied_asset_root(&meshes.join("meshes/dynamics/wpn.ogf")).as_deref(),
+      Some(meshes.as_path())
+    );
+  }
+
+  #[test]
+  fn prefers_a_complete_root_over_the_asset_directory_the_file_sits_in() {
+    // Both rules answer for this file. The complete one is the gamedata tree, which is what every other root in the
+    // search order is relative to; the loose one would name a directory halfway down it.
+    let root: PathBuf = tree("complete_wins", &["meshes", "textures/act/textures"]);
+    let texture: PathBuf = root.join("textures/act/textures/act_arm_1.dds");
+
+    assert_eq!(find_implied_asset_root(&texture).as_deref(), Some(root.as_path()));
   }
 
   #[test]
