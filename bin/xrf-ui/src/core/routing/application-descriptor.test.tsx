@@ -94,11 +94,43 @@ describe("createApplicationDescriptor", () => {
     expect(loadRuntime).not.toHaveBeenCalled();
 
     const preloaded = application.preload?.();
+    const loaded = application.load?.();
 
-    expect(application.load?.()).toBe(preloaded);
-    expect(await preloaded).toBe(RUNTIME);
+    expect(application.load?.()).toBe(loaded);
+    await expect(preloaded).resolves.toBeUndefined();
+    await expect(loaded).resolves.toBe(RUNTIME);
     expect(loadRuntime).toHaveBeenCalledTimes(1);
     expect(constructed).not.toHaveBeenCalled();
+  });
+
+  it("settles failed preloads silently while preserving the runtime error", async () => {
+    const error = new Error("Runtime chunk unavailable");
+    const loadRuntime = jest.fn(async () => {
+      throw error;
+    });
+    const application = createApplicationDescriptor(METADATA, { load: loadRuntime });
+
+    await expect(application.preload?.()).resolves.toBeUndefined();
+    await expect(application.preload?.()).resolves.toBeUndefined();
+
+    const loaded = application.load?.();
+
+    expect(application.load?.()).toBe(loaded);
+    await expect(loaded).rejects.toBe(error);
+    expect(loadRuntime).toHaveBeenCalledTimes(1);
+    expect(constructed).not.toHaveBeenCalled();
+  });
+
+  it("also contains a loader that throws before returning a promise during preload", async () => {
+    const error = new Error("Loader unavailable");
+    const application = createApplicationDescriptor(METADATA, {
+      load: () => {
+        throw error;
+      },
+    });
+
+    await expect(application.preload?.()).resolves.toBeUndefined();
+    expect(() => application.load?.()).toThrow(error);
   });
 
   it("waits for bindings before rendering the component and uses the same load", async () => {
@@ -131,31 +163,39 @@ describe("createApplicationDescriptor", () => {
     expect(constructed).toHaveBeenCalledTimes(1);
   });
 
-  it("contains runtime load failures inside the application while keeping window controls available", async () => {
-    const application: IApplicationDescriptor = createApplicationDescriptor(METADATA, {
-      load: async () => {
-        throw new Error("Runtime chunk unavailable");
-      },
-    });
-    const consoleError = jest.spyOn(console, "error").mockImplementation(noop);
+  it.each([false, true])(
+    "keeps window controls available after a runtime failure (preloaded: %s)",
+    async (isPreloaded) => {
+      const application: IApplicationDescriptor = createApplicationDescriptor(METADATA, {
+        load: async () => {
+          throw new Error("Runtime chunk unavailable");
+        },
+      });
 
-    try {
-      const view = await act(async () =>
-        renderWithProviders(
-          <CurrentApplicationProvider application={application}>
-            <ApplicationShell>
-              <application.Component />
-            </ApplicationShell>
-          </CurrentApplicationProvider>
-        )
-      );
+      if (isPreloaded) {
+        await application.preload?.();
+      }
 
-      expect(view.getByText("This tool stopped rendering")).toBeInTheDocument();
-      expect(view.getByTestId("application-title-bar")).toBeInTheDocument();
-      expect(view.getByRole("button", { name: "Notifications" })).toBeInTheDocument();
-      expect(view.getByRole("button", { name: "Go home" })).toBeInTheDocument();
-    } finally {
-      consoleError.mockRestore();
+      const consoleError = jest.spyOn(console, "error").mockImplementation(noop);
+
+      try {
+        const view = await act(async () =>
+          renderWithProviders(
+            <CurrentApplicationProvider application={application}>
+              <ApplicationShell>
+                <application.Component />
+              </ApplicationShell>
+            </CurrentApplicationProvider>
+          )
+        );
+
+        expect(view.getByText("This tool stopped rendering")).toBeInTheDocument();
+        expect(view.getByTestId("application-title-bar")).toBeInTheDocument();
+        expect(view.getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+        expect(view.getByRole("button", { name: "Go home" })).toBeInTheDocument();
+      } finally {
+        consoleError.mockRestore();
+      }
     }
-  });
+  );
 });

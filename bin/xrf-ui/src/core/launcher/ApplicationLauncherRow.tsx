@@ -1,8 +1,9 @@
 import { Box, ListItem, ListItemButton, Theme, Tooltip, Typography } from "@mui/material";
-import { ReactElement, ReactNode, useCallback } from "react";
+import { ReactElement, ReactNode } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/ApplicationLauncherPlannedBadge";
+import { useApplicationLauncherActions } from "@/core/launcher/use-application-launcher-actions";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { TREE } from "@/core/theme/tokens";
 
@@ -27,12 +28,7 @@ export function ApplicationLauncherRow({
 }: IApplicationLauncherRowProps): ReactElement {
   const isPlanned: boolean = application.status === EApplicationStatus.PLANNED;
 
-  const onWarm = useCallback(() => {
-    if (isEnabled) {
-      // Nothing awaits this: the point is only that the fetch has started before the click.
-      void application.preload?.();
-    }
-  }, [application, isEnabled]);
+  const { onWarm, onClick } = useApplicationLauncherActions(application, isEnabled, onOpen);
 
   /**
    * A row measures the same as an explorer tree row, so the two read as one application. The group
@@ -106,7 +102,7 @@ export function ApplicationLauncherRow({
           sx={layout}
           onFocus={onWarm}
           onMouseEnter={onWarm}
-          onClick={() => onOpen(application)}
+          onClick={onClick}
         >
           {content}
         </ListItemButton>

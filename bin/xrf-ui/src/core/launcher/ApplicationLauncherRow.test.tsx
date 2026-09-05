@@ -9,6 +9,7 @@ import {
   IApplicationDescriptor,
   IApplicationGroup,
 } from "@/core/routing/application";
+import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function mockApplication(overrides: Partial<IApplicationDescriptor> = {}): IApplicationDescriptor {
@@ -33,6 +34,25 @@ const GROUP: IApplicationGroup = {
 };
 
 describe("ApplicationLauncherRow", () => {
+  it("still opens after hover and focus encounter a failed preload", async () => {
+    const load = jest.fn(async () => {
+      throw new Error("Runtime unavailable");
+    });
+    const application = createApplicationDescriptor(mockApplication(), { load });
+    const onOpen = jest.fn();
+    const { getByRole } = renderWithProviders(
+      <ApplicationLauncherRow application={application} group={GROUP} isEnabled onOpen={onOpen} />
+    );
+
+    await userEvent.hover(getByRole("button"));
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(application);
+  });
+
   it("carries the tool and what it does", () => {
     const { getByText } = renderWithProviders(
       <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />

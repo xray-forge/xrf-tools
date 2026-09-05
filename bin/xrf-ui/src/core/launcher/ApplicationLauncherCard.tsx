@@ -1,8 +1,9 @@
 import { Box, Card, CardActionArea, Theme, Tooltip, Typography } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/ApplicationLauncherPlannedBadge";
+import { useApplicationLauncherActions } from "@/core/launcher/use-application-launcher-actions";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 
 interface IApplicationLauncherCardProps {
@@ -26,11 +27,7 @@ export function ApplicationLauncherCard({
 }: IApplicationLauncherCardProps): ReactElement {
   const isPlanned: boolean = application.status === EApplicationStatus.PLANNED;
 
-  const onWarm = useCallback(() => {
-    if (isEnabled) {
-      void application.preload?.();
-    }
-  }, [application, isEnabled]);
+  const { onWarm, onClick } = useApplicationLauncherActions(application, isEnabled, onOpen);
 
   const content: ReactElement = (
     <Box
@@ -126,7 +123,7 @@ export function ApplicationLauncherCard({
           }}
           onFocus={onWarm}
           onMouseEnter={onWarm}
-          onClick={() => onOpen(application)}
+          onClick={onClick}
         >
           {content}
         </CardActionArea>

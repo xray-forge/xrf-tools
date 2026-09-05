@@ -11,7 +11,8 @@ export type TApplicationDescriptorOptions =
 /**
  * Creates a synchronous or lazy application descriptor from its metadata and runtime source.
  *
- * A supplied component is used directly. A loader is called only on preload or render, and both share its promise.
+ * A supplied component is used directly. Preloading and rendering share one runtime load.
+ * Preload failures are silent; loading the application still exposes the original error.
  * Service containers are created by the shell when the application mounts.
  *
  * @param metadata - Application identity and presentation fields.
@@ -34,10 +35,23 @@ export function createApplicationDescriptor(
     return (pending ??= loadRuntime());
   }
 
+  /**
+   * Warms the runtime without reporting failures before the application opens.
+   *
+   * @returns Completion of the preload attempt, whether it succeeds or fails.
+   */
+  async function preload(): Promise<void> {
+    try {
+      await load();
+    } catch {
+      // Keep the rejected runtime promise so opening the application reaches its error boundary.
+    }
+  }
+
   return {
     ...metadata,
     Component: lazy(() => load().then((runtime) => ({ default: runtime.Component }))),
     load,
-    preload: load,
+    preload,
   };
 }

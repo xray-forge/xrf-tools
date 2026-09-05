@@ -104,10 +104,10 @@ export interface IApplicationMetadata {
 }
 
 export interface IApplicationDescriptor extends IApplicationMetadata, IApplicationRuntime {
-  /** Returns the same runtime promise for preloading and rendering. */
+  /** Returns the cached runtime promise, including any load failure. */
   load?: () => Promise<IApplicationRuntime>;
-  /** Pulls this application's chunk in before it is navigated to. */
-  preload?: () => Promise<unknown>;
+  /** Warms the runtime and resolves silently on failure; opening still reports the error. */
+  preload?: () => Promise<void>;
 }
 
 export interface IApplicationGroupAccent {
