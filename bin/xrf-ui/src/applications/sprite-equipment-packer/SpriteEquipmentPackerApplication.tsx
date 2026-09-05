@@ -10,7 +10,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
@@ -19,14 +19,14 @@ import { Nullable } from "@/lib/types/general";
 export function SpriteEquipmentPackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const spriteEquipmentService: SpriteEquipmentService = useInjection(SpriteEquipmentService);
+  const packerService: SpriteEquipmentPackerService = useInjection(SpriteEquipmentPackerService);
 
   const pathsService: PathsService = useInjection(PathsService);
 
   // Rediscover a running pack after reload so the form cannot offer a second pack against the same output.
-  const job: Nullable<IJobState> = spriteEquipmentService.packOperation.job;
+  const job: Nullable<IJobState> = packerService.operation.job;
 
-  const isRunning: boolean = spriteEquipmentService.packOperation.isRunning;
+  const isRunning: boolean = packerService.operation.isRunning;
 
   // The source is the directory of loose icons and the output is the single dds built from them. The
   // dialogs used to be configured the other way round, so browsing either one offered the wrong kind of
@@ -71,17 +71,17 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     }
 
     try {
-      await flowResult(spriteEquipmentService.packEquipmentSprite(source.value, output.value, systemLtx.value, isDltx));
+      await flowResult(packerService.packEquipmentSprite(source.value, output.value, systemLtx.value, isDltx));
     } catch (error) {
       log.error("Failed to pack equipment-editor:", error);
     }
-  }, [spriteEquipmentService, log, output.value, source.value, systemLtx.value, isDltx]);
+  }, [packerService, log, output.value, source.value, systemLtx.value, isDltx]);
 
-  const onCancel = useCallback(() => spriteEquipmentService.packOperation.cancel(), [spriteEquipmentService]);
+  const onCancel = useCallback(() => packerService.operation.cancel(), [packerService]);
 
   useEffect(() => {
-    spriteEquipmentService.packOperation.reset();
-  }, [source.value, output.value, systemLtx.value, isDltx, spriteEquipmentService]);
+    packerService.operation.reset();
+  }, [source.value, output.value, systemLtx.value, isDltx, packerService]);
 
   return (
     <PickerForm
@@ -89,14 +89,10 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
       isSubmitDisabled={!source.isValid || !output.isValid || !systemLtx.isValid}
       title={"Pack equipment sprite"}
       description={"Builds one sprite from a directory of icons. The output file is overwritten."}
-      error={spriteEquipmentService.packOperation.error ?? undefined}
+      error={packerService.operation.error ?? undefined}
       submitLabel={"Pack"}
       status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={
-        spriteEquipmentService.packOperation.result ? (
-          <EquipmentPackResult result={spriteEquipmentService.packOperation.result} />
-        ) : null
-      }
+      result={packerService.operation.result ? <EquipmentPackResult result={packerService.operation.result} /> : null}
       onSubmit={onPackEquipmentClicked}
     >
       <PathFormRow

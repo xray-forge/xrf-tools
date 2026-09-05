@@ -1,3 +1,3 @@
 export * from "./equipment";
-export * from "./sprite-equipment.service";
+export * from "./services/packer";
 export * from "./GridMapper";

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { SpriteEquipmentService } from "@/core/sprite-equipment/sprite-equipment.service";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+
+import { SpriteEquipmentEditorService } from "./editor.service";
 
 function closeCalls(): number {
   return mockInvoke.mock.calls.filter(([command]) => command === "plugin:sprite-equipment|close_sprite").length;
@@ -11,17 +13,17 @@ function closeCalls(): number {
 /**
  * These assert the container semantics the release hook depends on, not just that the hook exists.
  */
-describe("SpriteEquipmentService deactivation", () => {
+describe("SpriteEquipmentEditorService deactivation", () => {
   beforeEach(() => {
     setMockInvokeResponses({});
   });
 
   it("does not release on deprovision alone, which strict mode reaches on every mount", async () => {
-    const { container } = mockInjectedService(SpriteEquipmentService);
+    const { container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     await container.provision();
 
-    container.get(SpriteEquipmentService);
+    container.get(SpriteEquipmentEditorService);
     container.deprovision();
 
     // The strict mode remount cancels the pending `unbindAll`, so this is the whole teardown it sees.
@@ -30,11 +32,11 @@ describe("SpriteEquipmentService deactivation", () => {
   });
 
   it("releases once the container is actually unbound", async () => {
-    const { container } = mockInjectedService(SpriteEquipmentService);
+    const { container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     await container.provision();
 
-    container.get(SpriteEquipmentService);
+    container.get(SpriteEquipmentEditorService);
 
     container.deprovision();
     container.unbindAll();
@@ -43,18 +45,18 @@ describe("SpriteEquipmentService deactivation", () => {
   });
 
   it("survives a strict mode style remount without releasing", async () => {
-    const { container } = mockInjectedService(SpriteEquipmentService);
+    const { container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     await container.provision();
 
-    container.get(SpriteEquipmentService);
+    container.get(SpriteEquipmentEditorService);
 
     // Mount, throwaway unmount, remount - `unbindAll` never runs because the provider cancels it.
     container.deprovision();
 
     await container.provision();
 
-    container.get(SpriteEquipmentService);
+    container.get(SpriteEquipmentEditorService);
 
     expect(closeCalls()).toBe(0);
 

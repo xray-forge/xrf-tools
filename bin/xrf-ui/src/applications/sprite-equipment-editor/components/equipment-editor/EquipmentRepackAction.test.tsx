@@ -4,8 +4,12 @@ import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
 
 import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentRepackAction";
+import {
+  IEquipmentPngDescriptor,
+  SpriteEquipmentEditorService,
+} from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
-import { IEquipmentPngDescriptor, SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -22,9 +26,9 @@ const SPRITE: IEquipmentPngDescriptor = {
 const seed: { repackSourcePath: Nullable<string> } = { repackSourcePath: null };
 
 /** The instance the container built for the current render, so a test can watch what it is asked to do. */
-let rendered: Nullable<SpriteEquipmentService> = null;
+let rendered: Nullable<SpriteEquipmentEditorService> = null;
 
-function captureRendered(service: SpriteEquipmentService): void {
+function captureRendered(service: SpriteEquipmentEditorService): void {
   rendered = service;
 }
 
@@ -35,7 +39,7 @@ function captureRendered(service: SpriteEquipmentService): void {
  * constructed itself, and `useInjection` goes through provisioning.
  */
 @Injectable()
-class TestSpriteEquipmentService extends SpriteEquipmentService {
+class TestSpriteEquipmentEditorService extends SpriteEquipmentEditorService {
   public constructor() {
     super();
 
@@ -50,7 +54,11 @@ function renderAction(repackSourcePath: Nullable<string>): RenderResult {
   seed.repackSourcePath = repackSourcePath;
 
   return renderWithProviders(<EquipmentRepackAction />, {
-    bindings: [AssetService, { token: SpriteEquipmentService, type: "Instance", value: TestSpriteEquipmentService }],
+    bindings: [
+      AssetService,
+      SpriteEquipmentPackerService,
+      { token: SpriteEquipmentEditorService, type: "Instance", value: TestSpriteEquipmentEditorService },
+    ],
   });
 }
 
@@ -89,8 +97,8 @@ describe("EquipmentRepackAction", () => {
     // Asserted through the service rather than a spy: `@BoundAction()` makes the method non-writable,
     // and untouched state is the stronger claim anyway. A repack that ran against the mocked backend
     // would have left either a timestamp or an error behind.
-    expect((rendered as SpriteEquipmentService).repackedAt).toBeNull();
-    expect((rendered as SpriteEquipmentService).spriteImage.error).toBeNull();
-    expect((rendered as SpriteEquipmentService).spriteImage.isLoading).toBe(false);
+    expect((rendered as SpriteEquipmentEditorService).repackedAt).toBeNull();
+    expect((rendered as SpriteEquipmentEditorService).spriteImage.error).toBeNull();
+    expect((rendered as SpriteEquipmentEditorService).spriteImage.isLoading).toBe(false);
   });
 });

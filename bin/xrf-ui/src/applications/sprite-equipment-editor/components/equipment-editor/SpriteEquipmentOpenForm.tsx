@@ -2,11 +2,11 @@ import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { SpriteEquipmentService } from "@/core/sprite-equipment";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Logger, useLogger } from "@/lib/logging";
@@ -15,7 +15,7 @@ export function SpriteEquipmentOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const pathsService: PathsService = useInjection(PathsService);
-  const spriteEquipmentService: SpriteEquipmentService = useInjection(SpriteEquipmentService);
+  const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
 

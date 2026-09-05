@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { SpriteEquipmentService } from "@/core/sprite-equipment/sprite-equipment.service";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-describe("SpriteEquipmentService", () => {
+import { SpriteEquipmentEditorService } from "./editor.service";
+
+describe("SpriteEquipmentEditorService", () => {
   beforeEach(() => {
     setMockInvokeResponses({});
   });
 
   it("reports a failed reload instead of staying loading forever", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentService);
+    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     setMockInvokeResponses({
       ["plugin:sprite-equipment|reopen_sprite"]: () => {
@@ -27,7 +29,7 @@ describe("SpriteEquipmentService", () => {
   });
 
   it("refuses to repack when nothing has been unpacked beside the sprite", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentService);
+    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asUpdated({
       isDltx: false,
@@ -47,7 +49,7 @@ describe("SpriteEquipmentService", () => {
   });
 
   it("keeps a failed repack reported rather than silently returning to ready", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentService);
+    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asUpdated({
       isDltx: false,
@@ -75,7 +77,7 @@ describe("SpriteEquipmentService", () => {
   });
 
   it("clears a reported failure without discarding the sprite behind it", () => {
-    const { service } = mockInjectedService(SpriteEquipmentService);
+    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asFailed(new Error("boom"), null);
 

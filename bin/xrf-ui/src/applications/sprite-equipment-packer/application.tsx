@@ -1,17 +1,16 @@
 import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
 import { lazy } from "react";
 
-import { AssetService } from "@/core/assets/services";
 import {
   EApplicationGroupId,
   EApplicationId,
   EApplicationStatus,
   IApplicationDescriptor,
 } from "@/core/routing/application";
-import { SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
 
 export const SPRITE_EQUIPMENT_PACKER_APPLICATION: IApplicationDescriptor = {
-  container: { bindings: [AssetService, SpriteEquipmentService] },
+  container: { bindings: [SpriteEquipmentPackerService] },
   Component: lazy(() =>
     import("./SpriteEquipmentPackerApplication").then((it) => ({ default: it.SpriteEquipmentPackerApplication }))
   ),

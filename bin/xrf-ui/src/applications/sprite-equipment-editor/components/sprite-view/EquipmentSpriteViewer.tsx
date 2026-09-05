@@ -10,12 +10,13 @@ import { EquipmentGridMoveOver } from "@/applications/sprite-equipment-editor/co
 import { EquipmentGridZoom } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridZoom";
 import { EquipmentSpriteGrid } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentSpriteGrid";
 import { equipmentViewerConfig } from "@/applications/sprite-equipment-editor/configs/EquipmentViewerConfig";
-import { GridMapper, SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { GridMapper } from "@/core/sprite-equipment";
 import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
 import { Nullable } from "@/lib/types/general";
 
 export function EquipmentSpriteViewer(): ReactElement {
-  const spriteEquipmentService: SpriteEquipmentService = useInjection(SpriteEquipmentService);
+  const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
   const [holdingOrigin, setHoldingOrigin] = useState<Nullable<[number, number]>>(null);
   const [zoomValue, setZoomValue] = useState(1);

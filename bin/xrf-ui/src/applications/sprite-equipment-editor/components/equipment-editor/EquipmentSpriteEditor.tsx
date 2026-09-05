@@ -6,18 +6,21 @@ import { ReactElement, useCallback, useEffect } from "react";
 
 import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentRepackAction";
 import { EquipmentSpriteEditorWorkspace } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentSpriteEditorWorkspace";
+import {
+  IEquipmentPngDescriptor,
+  SpriteEquipmentEditorService,
+} from "@/applications/sprite-equipment-editor/services/editor";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
-import { IEquipmentPngDescriptor, SpriteEquipmentService } from "@/core/sprite-equipment";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 export function EquipmentSpriteEditor(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const spriteEquipmentService: SpriteEquipmentService = useInjection(SpriteEquipmentService);
+  const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
   const spriteImage: Nullable<IEquipmentPngDescriptor> = spriteEquipmentService.spriteImage.value;
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;

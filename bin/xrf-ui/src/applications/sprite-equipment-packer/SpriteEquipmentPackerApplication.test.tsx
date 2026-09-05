@@ -5,11 +5,12 @@ import { runInAction } from "@wirestate/mobx";
 
 import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { IPackEquipmentResult, SpriteEquipmentService } from "@/core/sprite-equipment";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { IPackEquipmentResult, SpriteEquipmentPackerService } from "@/core/sprite-equipment";
+import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
+import { SPRITE_EQUIPMENT_PACKER_APPLICATION } from "./application";
 import { SpriteEquipmentPackerApplication } from "./SpriteEquipmentPackerApplication";
 
 const PACKED: IPackEquipmentResult = {
@@ -23,7 +24,7 @@ const PACKED: IPackEquipmentResult = {
 };
 
 function renderAdoptedPack() {
-  const { container } = mockInjectedService(SpriteEquipmentService);
+  const { container } = mockInjectedService(SpriteEquipmentPackerService);
   const jobs = container.get(JobsService);
 
   jobs.jobs = [
@@ -68,6 +69,17 @@ describe("Sprite equipment packer reload", () => {
     window.localStorage.setItem("xrf.form.sprite-equipment-packer.output", "C:\\out\\equipment.dds");
     window.localStorage.setItem("xrf.form.sprite-equipment-packer.system-ltx", "C:\\configs\\system.ltx");
     setMockInvokeResponses({});
+  });
+
+  it("mounts and leaves the packer without restoring or closing an editor project", async () => {
+    const container = mockContainer([...(SPRITE_EQUIPMENT_PACKER_APPLICATION.container?.bindings ?? [])]);
+
+    await container.provision();
+    container.get(SpriteEquipmentPackerService);
+    container.deprovision();
+    container.unbindAll();
+
+    expect(mockInvoke.mock.calls.filter(([command]) => command.startsWith("plugin:sprite-equipment|"))).toEqual([]);
   });
 
   describe.each(["Source", "Output", "System configuration", "DLTX"])("editing %s", (label) => {

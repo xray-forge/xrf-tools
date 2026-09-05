@@ -2,12 +2,16 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
-import { SpriteEquipmentService } from "@/core/sprite-equipment/sprite-equipment.service";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
+import { SpriteEquipmentEditorService } from "./editor.service";
+
 const RESPONSE = {
+  isDltx: true,
   name: "equipment.dds",
   path: "C:\\game\\equipment.dds",
   systemLtxPath: "C:\\game\\system.ltx",
@@ -20,8 +24,8 @@ const RESPONSE = {
  *
  * @returns The service, its asset service, and their provisioned container.
  */
-function createService(): { service: SpriteEquipmentService; assets: AssetService; container: Container } {
-  const { service, container } = mockInjectedService(SpriteEquipmentService);
+function createService(): { service: SpriteEquipmentEditorService; assets: AssetService; container: Container } {
+  const { service, container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
   global.fetch = jest.fn(async () => ({ blob: async () => new Blob() })) as unknown as typeof fetch;
 
@@ -50,7 +54,61 @@ function createService(): { service: SpriteEquipmentService; assets: AssetServic
   };
 }
 
-describe("SpriteEquipmentService object urls", () => {
+describe("SpriteEquipmentEditorService object urls", () => {
+  it("repacks through the shared service before replacing the editor image", async () => {
+    const packed: IPackEquipmentResult = {
+      outcome: "completed",
+      savedAt: RESPONSE.path,
+      savedWidth: 1024,
+      savedHeight: 512,
+      packedCount: 12,
+      skippedCount: 0,
+      duration: 1000,
+    };
+
+    setMockInvokeResponses({
+      "plugin:sprite-equipment|open_sprite": RESPONSE,
+      "plugin:sprite-equipment|pack_sprite": packed,
+      "plugin:sprite-equipment|reopen_sprite": RESPONSE,
+    });
+
+    const { service, assets, container } = createService();
+
+    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+
+    const previousImage = service.spriteImage.value?.image;
+
+    service.repackSourcePath = "C:\\game\\equipment";
+
+    await service.repackAndOpenProject();
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "plugin:sprite-equipment|pack_sprite",
+      expect.objectContaining({
+        request: {
+          sourcePath: "C:\\game\\equipment",
+          outputPath: RESPONSE.path,
+          systemLtxPath: RESPONSE.systemLtxPath,
+          isDltx: true,
+        },
+      })
+    );
+    expect(
+      mockInvoke.mock.calls
+        .filter(([command]) => command.startsWith("plugin:sprite-equipment|"))
+        .map(([command]) => command)
+    ).toEqual([
+      "plugin:sprite-equipment|open_sprite",
+      "plugin:sprite-equipment|pack_sprite",
+      "plugin:sprite-equipment|reopen_sprite",
+    ]);
+    expect(container.get(SpriteEquipmentPackerService).operation.result).toEqual(packed);
+    expect(service.spriteImage.value?.image).not.toBe(previousImage);
+    expect(service.spriteImage.isLoading).toBe(false);
+    expect(service.repackedAt).not.toBeNull();
+    expect(assets.heldCount).toBe(1);
+  });
+
   it("holds exactly one url no matter how often the sprite is reloaded", async () => {
     setMockInvokeResponses({ ["plugin:sprite-equipment|reopen_sprite"]: RESPONSE });
 

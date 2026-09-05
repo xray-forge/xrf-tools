@@ -3,7 +3,7 @@ import { IconButton, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
@@ -14,7 +14,7 @@ import { Nullable } from "@/lib/types/general";
 export function EquipmentRepackAction(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const spriteEquipmentService: SpriteEquipmentService = useInjection(SpriteEquipmentService);
+  const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
   const [isConfirmOpen, setConfirmOpen] = useState<boolean>(false);
 

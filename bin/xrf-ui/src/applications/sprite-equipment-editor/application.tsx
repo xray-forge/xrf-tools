@@ -1,6 +1,7 @@
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { lazy } from "react";
 
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
 import {
   EApplicationGroupId,
@@ -8,10 +9,10 @@ import {
   EApplicationStatus,
   IApplicationDescriptor,
 } from "@/core/routing/application";
-import { SpriteEquipmentService } from "@/core/sprite-equipment";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 
 export const SPRITE_EQUIPMENT_EDITOR_APPLICATION: IApplicationDescriptor = {
-  container: { bindings: [AssetService, SpriteEquipmentService] },
+  container: { bindings: [AssetService, SpriteEquipmentPackerService, SpriteEquipmentEditorService] },
   Component: lazy(() =>
     import("./SpriteEquipmentEditorApplication").then((it) => ({ default: it.SpriteEquipmentEditorApplication }))
   ),
