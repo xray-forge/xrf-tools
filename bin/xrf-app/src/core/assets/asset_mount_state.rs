@@ -1,4 +1,4 @@
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use xrf_vfs::{XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
 
@@ -13,14 +13,15 @@ use crate::core::types::TauriResult;
 ///
 /// Lives in `core/` because it belongs to no command domain: visuals resolves a model's textures through it, and the
 /// surfaces that follow — an archive preview, a level view — mount the same roots instead of indexing their own.
+#[derive(Clone)]
 pub struct AssetMountState {
-  vfs: Mutex<XrayVfs>,
+  vfs: Arc<Mutex<XrayVfs>>,
 }
 
 impl AssetMountState {
   pub fn new() -> Self {
     Self {
-      vfs: Mutex::new(XrayVfs::new()),
+      vfs: Arc::new(Mutex::new(XrayVfs::new())),
     }
   }
 

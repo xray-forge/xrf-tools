@@ -94,6 +94,17 @@ macro_rules! for_each_tauri_command_domain {
         get_default_output_root => crate::plugins::system::commands::get_default_output_root::system_get_default_output_root,
         reveal_path => crate::plugins::system::commands::reveal_path::system_reveal_path,
       }
+      textures => "textures" {
+        close => crate::plugins::textures::commands::close::textures_close,
+        describe => crate::plugins::textures::commands::describe::textures_describe,
+        describe_catalog => crate::plugins::textures::commands::describe_catalog::textures_describe_catalog,
+        get_roots => crate::plugins::textures::commands::get_roots::textures_get_roots,
+        open => crate::plugins::textures::commands::open::textures_open,
+      }
+      // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
+      @raw {
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::commands::read_texture::textures_read_texture,
+      }
       visuals => "visuals" {
         close_browse => crate::plugins::visuals::commands::close_browse::visuals_close_browse,
         close_model => crate::plugins::visuals::commands::close_model::visuals_close_model,

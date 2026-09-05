@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
 use crate::mount::xray_root::{find_implied_asset_root, implied_install_root};
-use crate::path::{normalize, normalize_base};
+use crate::path::{XrayLogicalPath, normalize, normalize_base};
 use crate::{FsgameFile, XraySourceKind};
 
 /// One source to mount before it is opened or indexed.
@@ -111,6 +111,19 @@ impl XrayMountPlan {
   /// failed lookup rather than on a failed derivation.
   pub fn implied_root(asset: &Path) -> Option<PathBuf> {
     find_implied_asset_root(asset)
+  }
+
+  /// The engine identity of a loose file, read against the root [`Self::implied_root`] finds for it.
+  pub fn implied_logical_path(asset: &Path) -> Option<XrayLogicalPath> {
+    let root: PathBuf = find_implied_asset_root(asset)?;
+    let components: Vec<&str> = asset
+      .strip_prefix(&root)
+      .ok()?
+      .components()
+      .map(|component| component.as_os_str().to_str())
+      .collect::<Option<Vec<&str>>>()?;
+
+    XrayLogicalPath::new(&components.join("\\")).ok()
   }
 
   /// Plans the nearest installation containing an asset.
@@ -436,6 +449,30 @@ mod tests {
     assert!(
       !XrayMountPlan::holds_volumes(&absent),
       "the predicate still answers honestly for its own question"
+    );
+  }
+
+  /// A loose file is named the way the root that implies it would list it, whatever separators the host used.
+  #[test]
+  fn names_a_loose_file_by_its_logical_path_inside_the_implied_root() {
+    let root: PathBuf = directory("implied_logical_path", &[]);
+
+    fs::create_dir_all(root.join("meshes")).expect("meshes directory");
+    fs::create_dir_all(root.join("textures").join("ston")).expect("textures directory");
+
+    let texture: PathBuf = root.join("textures").join("ston").join("Ston_Beton05.dds");
+
+    assert_eq!(
+      XrayMountPlan::implied_logical_path(&texture).map(|path| path.as_str().to_owned()),
+      Some(String::from("textures\\ston\\ston_beton05.dds"))
+    );
+    // The root's own parent holds no meshes or textures, so a file beside the root is inside no root at all.
+    let beside: PathBuf = root.parent().expect("scratch root has a parent").join("loose.dds");
+
+    assert_eq!(
+      XrayMountPlan::implied_logical_path(&beside),
+      None,
+      "a file beside the root is not inside it"
     );
   }
 }

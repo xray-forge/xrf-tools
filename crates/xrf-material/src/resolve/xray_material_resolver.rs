@@ -7,6 +7,7 @@ use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::data::xray_bump_fallback::XrayBumpFallback;
 use crate::data::xray_bump_mode::XrayBumpMode;
+use crate::data::xray_bump_naming::XrayBumpNaming;
 use crate::data::xray_bump_outcome::XrayBumpOutcome;
 use crate::data::xray_material_bump::XrayMaterialBump;
 use crate::data::xray_material_bump_input::XrayMaterialBumpInput;
@@ -141,7 +142,7 @@ impl XrayMaterialResolver {
         mode,
         virtual_height: chunk.virtual_height,
         bump: Self::resolve_input(probe, chunk.name.clone(), false),
-        companion: Self::resolve_input(probe, format!("{}#", chunk.name), true),
+        companion: Self::resolve_input(probe, XrayBumpNaming::companion_of(&chunk.name), true),
       }),
     )
   }

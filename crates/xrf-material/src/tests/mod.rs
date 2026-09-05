@@ -3,5 +3,6 @@
 pub(crate) mod material_probe;
 
 mod declaration;
+mod descriptor;
 mod detail;
 mod outcome;

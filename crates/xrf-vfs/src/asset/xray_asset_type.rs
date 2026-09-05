@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::path::XrayLogicalPath;
+
 /// Asset category inferred from an X-Ray logical path's extension or recognized suffix.
 ///
 /// Serialized so a consumer can name the kind it wants without the crate growing a command per kind, which is the same
@@ -161,14 +163,72 @@ impl XrayAssetRules {
 
     format!("{reference}{}", self.extension)
   }
+
+  /// Converts a logical path below this kind's directory back into the reference the engine names it by.
+  pub fn to_reference(&self, logical_path: &XrayLogicalPath) -> Option<String> {
+    let below: &str = logical_path.strip_prefix(self.directory).ok()??;
+    let reference: &str = below.strip_suffix(self.extension)?;
+
+    (!reference.is_empty()).then(|| reference.to_owned())
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::{XrayAssetRules, XrayAssetType};
+  use crate::path::XrayLogicalPath;
 
   fn rules(asset_type: XrayAssetType) -> XrayAssetRules {
     asset_type.get_rules().expect("kind has a canonical home")
+  }
+
+  fn logical(path: &str) -> XrayLogicalPath {
+    XrayLogicalPath::new(path).expect("valid logical path")
+  }
+
+  #[test]
+  fn reads_a_reference_back_off_a_logical_path_in_the_kinds_home() {
+    assert_eq!(
+      rules(XrayAssetType::Dds)
+        .to_reference(&logical("textures\\pfx\\smoke.dds"))
+        .as_deref(),
+      Some("pfx\\smoke")
+    );
+    assert_eq!(
+      rules(XrayAssetType::Ogf)
+        .to_reference(&logical("meshes\\actors\\stalker.ogf"))
+        .as_deref(),
+      Some("actors\\stalker")
+    );
+    // Round trip: the reference resolves back to the path it was read from.
+    assert_eq!(
+      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke"),
+      "pfx\\smoke.dds"
+    );
+  }
+
+  #[test]
+  fn names_no_reference_for_a_path_outside_the_kinds_home_or_extension() {
+    assert_eq!(
+      rules(XrayAssetType::Dds).to_reference(&logical("levels\\l01\\lmap#0_1.dds")),
+      None,
+      "the directory has to match, not only the extension"
+    );
+    assert_eq!(
+      rules(XrayAssetType::Dds).to_reference(&logical("textures_old\\a.dds")),
+      None,
+      "a directory sharing the prefix is not the home"
+    );
+    assert_eq!(
+      rules(XrayAssetType::Dds).to_reference(&logical("textures\\pfx\\smoke.thm")),
+      None,
+      "a descriptor is not a texture, whatever directory it sits in"
+    );
+    assert_eq!(
+      rules(XrayAssetType::Dds).to_reference(&logical("textures\\.dds")),
+      None,
+      "an extension alone names nothing"
+    );
   }
 
   #[test]

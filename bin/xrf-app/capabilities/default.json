@@ -38,6 +38,7 @@
     "spawn:default",
     "sprite-equipment:default",
     "system:default",
+    "textures:default",
     "translations:default",
     "visuals:default"
   ]

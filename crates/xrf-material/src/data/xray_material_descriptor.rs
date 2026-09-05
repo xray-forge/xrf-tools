@@ -37,4 +37,24 @@ impl XrayMaterialDescriptor {
       detail: None,
     }
   }
+
+  /// The bump reference the renderer will try to bind, when the declaration is one it reads.
+  pub fn declared_bump_reference(&self) -> Option<&str> {
+    self.bump.as_ref().map(|bump| bump.bump.reference.as_str())
+  }
+
+  /// Whether the descriptor's texture type makes `LoadTHM` skip it whole, bump declaration included.
+  pub fn is_engine_skipped(&self) -> bool {
+    matches!(self.declaration, XrayMaterialDeclaration::TypeDisqualified { .. })
+  }
+
+  /// Whether a `.thm` was located and could not be read as one.
+  pub fn is_unreadable(&self) -> bool {
+    matches!(self.declaration, XrayMaterialDeclaration::Unreadable { .. })
+  }
+
+  /// Whether a detail texture is named and one of the two flags that switch it on is set, so the engine applies it.
+  pub fn is_detail_associated(&self) -> bool {
+    self.detail.as_ref().is_some_and(|detail| detail.usage.is_some())
+  }
 }

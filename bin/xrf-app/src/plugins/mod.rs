@@ -14,5 +14,6 @@ pub mod jobs;
 pub mod spawn;
 pub mod sprite_equipment;
 pub mod system;
+pub mod textures;
 pub mod translations;
 pub mod visuals;

@@ -19,6 +19,7 @@ use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
 use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
+use crate::plugins::textures::plugin::TexturesPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
 
@@ -39,6 +40,7 @@ pub fn run() {
     .plugin(ConfigsPlugin::init())
     .plugin(SpriteEquipmentPlugin::init())
     .plugin(SystemPlugin::init())
+    .plugin(TexturesPlugin::init())
     .plugin(TranslationsPlugin::init())
     .plugin(VisualsPlugin::init())
     .setup(|app| {

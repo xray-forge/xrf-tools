@@ -1,3 +1,5 @@
+use crate::data::xray_bump_naming::XrayBumpNaming;
+
 /// What `CRender::texture_load` binds in place of a bump input it cannot find (`Texture.cpp`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum XrayBumpFallback {
@@ -10,15 +12,12 @@ pub enum XrayBumpFallback {
 }
 
 impl XrayBumpFallback {
-  /// The substring the renderer tests before choosing a dummy.
-  const BUMP_MARKER: &'static str = "_bump";
-
   /// The fallback the renderer picks for one input, by the name it was asked for.
   ///
   /// The companion's name is the bump's with `#` appended, so it carries the marker whenever the bump does; the flag
   /// only selects which dummy, since `texture_load` tests `_bump#` before `_bump`.
   pub fn for_input(reference: &str, is_companion: bool) -> Self {
-    if !reference.contains(Self::BUMP_MARKER) {
+    if !XrayBumpNaming::carries_marker(reference) {
       Self::NotExisting
     } else if is_companion {
       Self::DummyCompanion

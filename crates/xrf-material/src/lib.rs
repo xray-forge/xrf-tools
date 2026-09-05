@@ -12,6 +12,7 @@ mod tests;
 
 pub use crate::data::xray_bump_fallback::XrayBumpFallback;
 pub use crate::data::xray_bump_mode::XrayBumpMode;
+pub use crate::data::xray_bump_naming::XrayBumpNaming;
 pub use crate::data::xray_bump_outcome::XrayBumpOutcome;
 pub use crate::data::xray_detail_usage::XrayDetailUsage;
 pub use crate::data::xray_material_bump::XrayMaterialBump;

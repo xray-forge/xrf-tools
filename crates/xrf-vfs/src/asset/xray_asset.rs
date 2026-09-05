@@ -71,6 +71,11 @@ impl XrayAsset {
     self.get_asset_type() == Some(asset_type)
   }
 
+  /// The engine reference this asset answers to, for a kind with one canonical home.
+  pub fn to_reference(&self) -> Option<String> {
+    self.get_asset_type()?.get_rules()?.to_reference(&self.logical_path)
+  }
+
   /// Returns the containing tree for a loose asset, or `None` for an archived asset.
   pub fn get_root(&self) -> Option<&Path> {
     match &self.container {
@@ -157,6 +162,37 @@ mod tests {
       asset.get_logical_path().as_str(),
       "textures\\wpn\\wpn_ak74.dds",
       "the engine identity keeps backslashes on every platform, unlike the host path beside it"
+    );
+  }
+
+  #[test]
+  fn an_asset_answers_the_reference_its_kind_names_it_by() {
+    let archive: XrayAssetContainer = XrayAssetContainer::Archive {
+      path: Path::new("anomaly").join("db").join("textures"),
+    };
+    let asset =
+      |logical_path: &str| XrayAsset::new(XrayLogicalPath::new(logical_path).expect("valid"), archive.clone());
+
+    assert_eq!(
+      asset("textures\\ston\\ston_beton05_bump#.dds")
+        .to_reference()
+        .as_deref(),
+      Some("ston\\ston_beton05_bump#")
+    );
+    assert_eq!(
+      asset("textures\\ston\\ston_beton05.thm").to_reference().as_deref(),
+      Some("ston\\ston_beton05"),
+      "a descriptor shares the reference of the texture it describes"
+    );
+    assert_eq!(
+      asset("levels\\l01_escape\\lmap#0_1.dds").to_reference(),
+      None,
+      "a texture outside the textures directory is named by no reference"
+    );
+    assert_eq!(
+      asset("levels\\l01_escape\\level").to_reference(),
+      None,
+      "a kind without one home has no reference"
     );
   }
 

@@ -6903,6 +6903,84 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-open`\n- `allow-read-texture`",
+          "type": "string",
+          "const": "textures:default",
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-open`\n- `allow-read-texture`"
+        },
+        {
+          "description": "Enables the close command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-close",
+          "markdownDescription": "Enables the close command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the describe command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-describe",
+          "markdownDescription": "Enables the describe command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the describe_catalog command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-describe-catalog",
+          "markdownDescription": "Enables the describe_catalog command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_roots command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-get-roots",
+          "markdownDescription": "Enables the get_roots command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-open",
+          "markdownDescription": "Enables the open command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_texture command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-read-texture",
+          "markdownDescription": "Enables the read_texture command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the close command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-close",
+          "markdownDescription": "Denies the close command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-describe",
+          "markdownDescription": "Denies the describe command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe_catalog command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-describe-catalog",
+          "markdownDescription": "Denies the describe_catalog command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_roots command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-get-roots",
+          "markdownDescription": "Denies the get_roots command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-open",
+          "markdownDescription": "Denies the open command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_texture command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-read-texture",
+          "markdownDescription": "Denies the read_texture command without any pre-configured scope."
+        },
+        {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-check-project-format`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-format-project`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",
           "type": "string",
           "const": "translations:default",

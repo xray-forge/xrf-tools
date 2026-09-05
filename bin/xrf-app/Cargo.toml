@@ -53,6 +53,7 @@ xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
 
 [dev-dependencies]
+xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 [features]
