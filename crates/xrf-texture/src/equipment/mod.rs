@@ -6,6 +6,8 @@ mod inventory_sprite_descriptor;
 mod pack_equipment_options;
 mod pack_equipment_processor;
 mod pack_equipment_result;
+#[cfg(test)]
+mod pack_equipment_tests;
 mod unpack_equipment_options;
 mod unpack_equipment_processor;
 mod verify_equipment_grid_processor;

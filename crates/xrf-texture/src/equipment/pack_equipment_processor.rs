@@ -90,24 +90,36 @@ impl PackEquipmentProcessor {
       count += 1;
     }
 
-    Self::assert_every_section_has_an_icon(&options, &skipped_sections)?;
+    // Cancellation during the last icon has no next iteration to observe it.
+    if options.job.is_cancelled() {
+      outcome = xrf_job::JobOutcome::Cancelled;
+    }
 
-    warn_on_reshaped_ui_dds(
-      &options.output,
-      &options.output_path,
-      image.width(),
-      image.height(),
-      UI_MIPMAP_LEVELS,
-    );
+    if outcome == xrf_job::JobOutcome::Completed {
+      Self::assert_every_section_has_an_icon(&options, &skipped_sections)?;
 
-    save_image_as_ui_dds(&options.output_path, &image, options.dds_compression_format, UI_MIPMAPS)?;
+      warn_on_reshaped_ui_dds(
+        &options.output,
+        &options.output_path,
+        image.width(),
+        image.height(),
+        UI_MIPMAP_LEVELS,
+      );
 
-    xrf_output::info!(
-      options.output,
-      "Packed {} icons in {} format",
-      count,
-      options.dds_compression_format
-    );
+      // The write is the publication boundary; once started, finish it even if cancellation arrives.
+      if options.job.is_cancelled() {
+        outcome = xrf_job::JobOutcome::Cancelled;
+      } else {
+        save_image_as_ui_dds(&options.output_path, &image, options.dds_compression_format, UI_MIPMAPS)?;
+
+        xrf_output::info!(
+          options.output,
+          "Packed {} icons in {} format",
+          count,
+          options.dds_compression_format
+        );
+      }
+    }
 
     Ok(PackEquipmentResult {
       outcome,
