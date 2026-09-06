@@ -263,12 +263,34 @@ ${transformError(error).message}`,
   public *closeProject(): TFlow {
     this.log.info("Closing translations project");
 
-    this.project = this.project.asLoading();
+    const previous = this.project;
+    const loading = previous.asLoading();
 
-    yield* call(translationsCommands.closeProject());
+    this.project = loading;
 
-    this.project = this.project.asIdle();
+    try {
+      yield* call(translationsCommands.closeProject());
 
-    this.log.info("Translations project closed");
+      this.project = this.project.asIdle();
+      this.edits = {};
+
+      this.log.info("Translations project closed");
+    } catch (error: unknown) {
+      const transformed: Error = transformError(error);
+
+      this.log.error("Failed to close translations project:", transformed);
+
+      emitNotification(this.eventBus, {
+        details: transformed.message,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.TRANSLATIONS_EDITOR,
+        title: "Could not close translations project",
+      });
+    } finally {
+      // A failed or abandoned close keeps the open project and its edits available for retry.
+      if (this.project === loading) {
+        this.project = previous;
+      }
+    }
   }
 }

@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { noop } from "@/lib/callbacks/noop";
 
 /** The one file, entry and language every project here holds; which project they came from is what is under test. */
 const FILE: string = "st_test.json";
@@ -132,6 +135,74 @@ describe("TranslationsService", () => {
     // already in flight and cannot be recalled; what must not survive is the marker saying this file is being written.
     await flowResult(service.openProject(createRoots([SECOND_ROOT]), "source"));
 
+    expect(service.savingFile).toBeNull();
+  });
+
+  it("keeps the project and edits usable after a failed close, then permits a retry", async () => {
+    const { service, container } = mockInjectedService(TranslationsService);
+    const notices: Array<unknown> = [];
+
+    container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
+    setMockInvokeResponses({
+      ["plugin:translations|open_project"]: PROJECT,
+      ["plugin:translations|close_project"]: () => {
+        throw "backend refused";
+      },
+    });
+
+    await openWithEdit(service);
+
+    const previous = service.project;
+
+    await service.closeProject();
+
+    expect(service.project).toBe(previous);
+    expect(service.project.isLoading).toBe(false);
+    expect(service.resolveValue(FILE, LANGUAGE, ID)).toBe("edited");
+    expect(service.dirtyFiles).toEqual([FILE]);
+    expect(notices).toEqual([
+      expect.objectContaining({
+        details: "backend refused",
+        severity: ENotificationSeverity.ERROR,
+        title: "Could not close translations project",
+      }),
+    ]);
+
+    setMockInvokeResponses({});
+    await service.closeProject();
+
+    expect(service.project.isIdle).toBe(true);
+    expect(service.project.value).toBeNull();
+    expect(service.edits).toEqual({});
+    expect(service.dirtyFiles).toEqual([]);
+  });
+
+  it("clears pending edits only after the backend confirms the close", async () => {
+    const { service } = mockInjectedService(TranslationsService);
+    let finishClose: () => void = noop;
+    const answer = new Promise<void>((resolve) => {
+      finishClose = resolve;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:translations|open_project"]: PROJECT,
+      ["plugin:translations|close_project"]: () => answer,
+    });
+
+    await openWithEdit(service);
+
+    const closing = flowResult(service.closeProject());
+
+    expect(service.project.isLoading).toBe(true);
+    expect(service.project.value).toBe(PROJECT);
+    expect(service.dirtyFiles).toEqual([FILE]);
+
+    finishClose();
+    await closing;
+
+    expect(service.project.isIdle).toBe(true);
+    expect(service.project.value).toBeNull();
+    expect(service.edits).toEqual({});
     expect(service.savingFile).toBeNull();
   });
 });
