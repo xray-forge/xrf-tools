@@ -254,8 +254,6 @@ fn resolution_reorders_sections_so_a_parent_precedes_its_child() -> XrfResult {
   // Parsing keeps the authored order.
   assert_eq!(parsed.sections().collect::<Vec<&str>>(), vec!["child", "parent"]);
 
-  // Resolution does not. This is a consequence of the inheritance walk inserting a parent as it recurses into it, and
-  // it is pinned deliberately: writing a resolved document back out would not reproduce the authored file.
   assert_eq!(
     parsed.into_inherited()?.sections().collect::<Vec<&str>>(),
     vec!["parent", "child"]

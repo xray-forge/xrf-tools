@@ -291,9 +291,6 @@ impl<'a> DltxResolver<'a> {
 
     let mut ordered: Vec<&DltxItem> = operations.iter().collect();
 
-    // By key, then by load position - and deliberately not by depth. A field takes the lowest depth, but a list
-    // operation is cumulative, so every one of them applies and they apply in the order they were read: the root
-    // file's, then each mod file alphabetically, then top to bottom within a file (`Xr_ini.cpp:1175-1182`).
     ordered.sort_by_key(|item| (item.key.clone(), item.insertion_index));
 
     for operation in ordered {

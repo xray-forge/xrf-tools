@@ -10,8 +10,8 @@ export const gamedataCommands = {
   /**
    * Run the selected checks over a gamedata project.
    *
-   * Takes no lease: verification only reads, so two runs over one project have nothing to collide over. It is still a
-   * job, because a full run over an installation is minutes of work that somebody may want to watch or call off.
+   * Holds the verification action group across windows. A full run over an installation is minutes of work that
+   * somebody may want to watch or call off.
    */
   verifyProject: (request: GamedataVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<GamedataVerifySummary>("plugin:gamedata|verify_project", { request, jobId, progress }),

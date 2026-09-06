@@ -95,11 +95,15 @@ macro_rules! for_each_tauri_command_domain {
         reveal_path => crate::plugins::system::commands::reveal_path::system_reveal_path,
       }
       textures => "textures" {
+        build_from_source => crate::plugins::textures::commands::build_from_source::textures_build_from_source,
         close => crate::plugins::textures::commands::close::textures_close,
+        compare_encodings => crate::plugins::textures::commands::compare_encodings::textures_compare_encodings,
         describe => crate::plugins::textures::commands::describe::textures_describe,
         describe_catalog => crate::plugins::textures::commands::describe_catalog::textures_describe_catalog,
         get_roots => crate::plugins::textures::commands::get_roots::textures_get_roots,
+        make_bump => crate::plugins::textures::commands::make_bump::textures_make_bump,
         open => crate::plugins::textures::commands::open::textures_open,
+        save => crate::plugins::textures::commands::save::textures_save,
       }
       // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
       @raw {

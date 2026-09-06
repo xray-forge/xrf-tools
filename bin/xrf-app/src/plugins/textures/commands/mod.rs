@@ -1,6 +1,10 @@
+pub(crate) mod build_from_source;
 pub(crate) mod close;
+pub(crate) mod compare_encodings;
 pub(crate) mod describe;
 pub(crate) mod describe_catalog;
 pub(crate) mod get_roots;
+pub(crate) mod make_bump;
 pub(crate) mod open;
 pub(crate) mod read_texture;
+pub(crate) mod save;

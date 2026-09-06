@@ -3,11 +3,13 @@ use std::path::{Path, PathBuf};
 use image::RgbaImage;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::{JobOutcome, JobScope};
 
 use crate::bump::bump_normal_map::{GreyPlane, derive_normal_map};
 use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
 use crate::bump::generate_bump_result::GenerateBumpResult;
 use crate::image_file::DDS_EXTENSION;
+use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
 
 /// Suffix of the half holding the normals and the gloss.
 const BUMP_SUFFIX: &str = "_bump";
@@ -20,6 +22,12 @@ const ERROR_BIAS: i32 = 128;
 
 /// The middle the height plane is shifted onto, one below the midpoint the SDK uses everywhere else.
 const HEIGHT_CENTER: i32 = 127;
+
+/// Steps the generation reports, which is what a bar over it is a fraction of.
+///
+/// Fixed rather than derived, because the count is a property of the algorithm: `DXTCompressBump` does these things in
+/// this order every time, whatever it is given.
+const GENERATE_STEPS: u64 = 7;
 
 /// Builds the two textures the renderer binds for a bumped surface.
 ///
@@ -39,28 +47,86 @@ impl GenerateBumpProcessor {
   /// encoded, or when either file cannot be written. A gloss too dark to be useful is reported in the result rather
   /// than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
+    let steps: JobScope = options.job.enter(TEXTURE_PHASE_GENERATE_BUMP, Some(GENERATE_STEPS));
+    let bump_path: PathBuf = Self::half_path(&options.destination, BUMP_SUFFIX);
+    let companion_path: PathBuf = Self::half_path(&options.destination, COMPANION_SUFFIX);
+
+    let stopped = |gloss_power: f32| GenerateBumpResult {
+      outcome: JobOutcome::Cancelled,
+      bump: bump_path.clone(),
+      companion: companion_path.clone(),
+      gloss_power,
+    };
+
+    options.job.set_detail(Some(String::from("Reading the height")));
+
     let height: GreyPlane = GreyPlane::from_rgb_average(&options.height);
+
+    steps.advance();
+    options.job.set_detail(Some(String::from("Deriving the normals")));
+
     let normals: RgbaImage = Self::resolve_normals(options, &height)?;
+
+    steps.advance();
+    options.job.set_detail(Some(String::from("Reading the gloss")));
+
     let gloss: GreyPlane = Self::resolve_gloss(options)?;
+    let gloss_power: f32 = gloss.average();
+
+    steps.advance();
+
+    if options.job.is_cancelled() {
+      return Ok(stopped(gloss_power));
+    }
+
+    options.job.set_detail(Some(String::from("Encoding the normals")));
 
     // The first half as the engine reads it: gloss in red, and the normal's three channels reversed behind it.
     let bump: RgbaImage = Self::pack_bump(&normals, &gloss);
-    let bump_path: PathBuf = Self::half_path(&options.destination, BUMP_SUFFIX);
+    let encoded_bump: DdsFile = Self::encode(&bump, options)?;
 
-    Self::encode(&bump, options)?.write_to_path(&bump_path)?;
+    steps.advance();
 
-    // Read back rather than kept, because what the second half corrects is what the file has, not what was handed to
-    // the encoder.
-    let restored: RgbaImage = DdsFile::read_from_path(&bump_path)?.decode_rgba(0)?;
+    if options.job.is_cancelled() {
+      return Ok(stopped(gloss_power));
+    }
+
+    options
+      .job
+      .set_detail(Some(String::from("Measuring what the encoder lost")));
+
+    // Decoded back out of the encoded file rather than kept, because what the second half corrects is what the file
+    // has and not what was handed to the encoder. Out of the file in memory rather than off disk: these are the bytes
+    // `write_to_path` would write, so the round trip through the filesystem answered the same and only cost a write
+    // that a cancelled run should not have made.
+    let restored: RgbaImage = encoded_bump.decode_rgba(0)?;
     let companion: RgbaImage = Self::pack_companion(&bump, &restored, &Self::center_height(options, &height));
-    let companion_path: PathBuf = Self::half_path(&options.destination, COMPANION_SUFFIX);
 
-    Self::encode(&companion, options)?.write_to_path(&companion_path)?;
+    steps.advance();
+    options.job.set_detail(Some(String::from("Encoding the height")));
+
+    let encoded_companion: DdsFile = Self::encode(&companion, options)?;
+
+    steps.advance();
+
+    // The last boundary: past here both halves exist and the pair is written or neither is.
+    if options.job.is_cancelled() {
+      return Ok(stopped(gloss_power));
+    }
+
+    options.job.set_detail(Some(String::from("Writing the pair")));
+
+    encoded_bump.write_to_path(&bump_path)?;
+    encoded_companion.write_to_path(&companion_path)?;
+
+    steps.advance();
+    options.job.set_detail(None);
 
     Ok(GenerateBumpResult {
+      outcome: JobOutcome::Completed,
       bump: bump_path,
       companion: companion_path,
-      gloss_power: gloss.average(),
+      gloss_power,
     })
   }
 
@@ -175,6 +241,17 @@ impl GenerateBumpProcessor {
       .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(options.mip_filter))?)
   }
 
+  /// Both halves a generation would write, in the order it writes them.
+  ///
+  /// Public because the naming rule is the generator's and a caller that needs the paths before the run - to hold them
+  /// while it works, or to say what it is about to replace - should not be spelling `_bump#` a second time.
+  pub fn pair_paths(destination: &Path) -> [PathBuf; 2] {
+    [
+      Self::half_path(destination, BUMP_SUFFIX),
+      Self::half_path(destination, COMPANION_SUFFIX),
+    ]
+  }
+
   /// Where one half of the pair is written, from the base name both share.
   fn half_path(destination: &Path, suffix: &str) -> PathBuf {
     let name: String = destination
@@ -202,6 +279,7 @@ mod tests {
   use image::{Rgba, RgbaImage};
   use xrf_dds::{DdsFile, DdsMipFilter, Quality};
   use xrf_error::XrfResult;
+  use xrf_job::JobHandle;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::GenerateBumpProcessor;
@@ -219,6 +297,7 @@ mod tests {
     std::fs::create_dir_all(destination.parent().expect("case directory")).expect("scratch directory");
 
     GenerateBumpOptions {
+      job: JobHandle::inert(),
       destination,
       height,
       gloss: GenerateBumpGloss::Constant(0.5),

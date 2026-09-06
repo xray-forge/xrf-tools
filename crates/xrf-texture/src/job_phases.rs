@@ -14,3 +14,9 @@ pub const TEXTURE_PHASE_PACK_DESCRIPTIONS: &str = "pack";
 
 /// Phase a description unpack reports while it reads each described texture.
 pub const TEXTURE_PHASE_UNPACK_DESCRIPTIONS: &str = "unpack";
+
+/// Phase a bump generation reports as it walks the steps `DXTCompressBump` walks.
+pub const TEXTURE_PHASE_GENERATE_BUMP: &str = "generate";
+
+/// Phase a texture build reports while it encodes the one image it was given.
+pub const TEXTURE_PHASE_BUILD_TEXTURE: &str = "build";

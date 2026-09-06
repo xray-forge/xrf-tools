@@ -1,7 +1,4 @@
 //! What the source tree holds: the walk that finds it, and the engine-name table that decides what may be registered.
-//!
-//! Discovery and registration are deliberately two seams. The walk answers what exists and what the rules want;
-//! the table answers what the engine could address, and refuses a set it would fold into fewer files.
 
 mod archive_pack_entry;
 mod archive_pack_name_collision;

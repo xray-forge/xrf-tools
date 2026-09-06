@@ -6903,16 +6903,28 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-open`\n- `allow-read-texture`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`",
           "type": "string",
           "const": "textures:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-open`\n- `allow-read-texture`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`"
+        },
+        {
+          "description": "Enables the build_from_source command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-build-from-source",
+          "markdownDescription": "Enables the build_from_source command without any pre-configured scope."
         },
         {
           "description": "Enables the close command without any pre-configured scope.",
           "type": "string",
           "const": "textures:allow-close",
           "markdownDescription": "Enables the close command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the compare_encodings command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-compare-encodings",
+          "markdownDescription": "Enables the compare_encodings command without any pre-configured scope."
         },
         {
           "description": "Enables the describe command without any pre-configured scope.",
@@ -6933,6 +6945,12 @@
           "markdownDescription": "Enables the get_roots command without any pre-configured scope."
         },
         {
+          "description": "Enables the make_bump command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-make-bump",
+          "markdownDescription": "Enables the make_bump command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open command without any pre-configured scope.",
           "type": "string",
           "const": "textures:allow-open",
@@ -6945,10 +6963,28 @@
           "markdownDescription": "Enables the read_texture command without any pre-configured scope."
         },
         {
+          "description": "Enables the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-save",
+          "markdownDescription": "Enables the save command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the build_from_source command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-build-from-source",
+          "markdownDescription": "Denies the build_from_source command without any pre-configured scope."
+        },
+        {
           "description": "Denies the close command without any pre-configured scope.",
           "type": "string",
           "const": "textures:deny-close",
           "markdownDescription": "Denies the close command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the compare_encodings command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-compare-encodings",
+          "markdownDescription": "Denies the compare_encodings command without any pre-configured scope."
         },
         {
           "description": "Denies the describe command without any pre-configured scope.",
@@ -6969,6 +7005,12 @@
           "markdownDescription": "Denies the get_roots command without any pre-configured scope."
         },
         {
+          "description": "Denies the make_bump command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-make-bump",
+          "markdownDescription": "Denies the make_bump command without any pre-configured scope."
+        },
+        {
           "description": "Denies the open command without any pre-configured scope.",
           "type": "string",
           "const": "textures:deny-open",
@@ -6979,6 +7021,12 @@
           "type": "string",
           "const": "textures:deny-read-texture",
           "markdownDescription": "Denies the read_texture command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-save",
+          "markdownDescription": "Denies the save command without any pre-configured scope."
         },
         {
           "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-project`\n- `allow-check-project-format`\n- `allow-close-project`\n- `allow-detect-mode`\n- `allow-format-project`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-parse-project`\n- `allow-save-file`\n- `allow-validate-text`\n- `allow-verify-project`",

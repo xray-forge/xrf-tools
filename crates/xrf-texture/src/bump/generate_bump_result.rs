@@ -1,8 +1,15 @@
 use std::path::PathBuf;
 
+use xrf_job::JobOutcome;
+
 /// What a generated bump pair came to.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GenerateBumpResult {
+  /// Whether the run reached the end of its work or stopped because it was asked to.
+  ///
+  /// A cancelled run wrote neither half. Both are encoded before either is written, so there is no point at which
+  /// stopping could leave one half of a pair on disk for the other to be missing from.
+  pub outcome: JobOutcome,
   /// The normals and gloss, written as `<name>_bump.dds`.
   pub bump: PathBuf,
   /// The compression error and the height, written as `<name>_bump#.dds`.

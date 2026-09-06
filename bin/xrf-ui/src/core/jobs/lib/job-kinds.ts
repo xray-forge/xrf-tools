@@ -18,6 +18,10 @@ export enum EJobKind {
   SPAWN_UNPACK = "spawn.unpack",
   SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
   GAMEDATA_VERIFY = "gamedata.verify",
+  TEXTURES_BUILD = "textures.build",
+  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
+  TEXTURES_MAKE_BUMP = "textures.make-bump",
+  TEXTURES_SAVE = "textures.save",
   TRANSLATIONS_BUILD = "translations.build",
   TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
   TRANSLATIONS_FORMAT = "translations.format",
@@ -119,6 +123,26 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     kind: EJobKind.GAMEDATA_VERIFY,
     source: EApplicationId.GAMEDATA_VERIFIER,
     label: "Gamedata verification",
+  },
+  [EJobKind.TEXTURES_SAVE]: {
+    kind: EJobKind.TEXTURES_SAVE,
+    source: EApplicationId.TEXTURES_EXPLORER,
+    label: "Texture save",
+  },
+  [EJobKind.TEXTURES_BUILD]: {
+    kind: EJobKind.TEXTURES_BUILD,
+    source: EApplicationId.TEXTURES_EXPLORER,
+    label: "Texture build",
+  },
+  [EJobKind.TEXTURES_MAKE_BUMP]: {
+    kind: EJobKind.TEXTURES_MAKE_BUMP,
+    source: EApplicationId.TEXTURES_EXPLORER,
+    label: "Bump pair generation",
+  },
+  [EJobKind.TEXTURES_COMPARE_ENCODINGS]: {
+    kind: EJobKind.TEXTURES_COMPARE_ENCODINGS,
+    source: EApplicationId.TEXTURES_EXPLORER,
+    label: "Texture format comparison",
   },
 };
 

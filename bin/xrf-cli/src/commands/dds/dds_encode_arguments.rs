@@ -42,10 +42,7 @@ pub fn get_mip_filter(matches: &ArgMatches) -> XrfResult<DdsMipFilter> {
     .map(String::as_str)
     .unwrap_or_default();
 
-  DdsMipFilter::NAMED
-    .into_iter()
-    .find(|filter| filter.label().eq_ignore_ascii_case(name))
-    .ok_or_else(|| XrfError::new_invalid_error(format!("Unexpected mip filter '{name}'")))
+  DdsMipFilter::from_label(name).ok_or_else(|| XrfError::new_invalid_error(format!("Unexpected mip filter '{name}'")))
 }
 
 /// The quality a run asked for.

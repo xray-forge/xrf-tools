@@ -39,10 +39,8 @@ export const translationsCommands = {
   /**
    * Report which JSON translation sources under a directory are not normalized.
    *
-   * Read-only, so no lease is taken and no open editor session is refused: two readers of one tree have nothing to
-   * collide over, and a check that leaves every file exactly as it found it cannot make a buffer stale. A separate kind
-   * from the rewrite it reports on, because they are different work with different consequences — one answers a
-   * question, the other changes the files.
+   * Shares the formatter's exclusion group. Open editor sessions are allowed because checking does not rewrite files
+   * or make their buffers stale; the separate job kind preserves that distinction in the reported outcome.
    */
   checkProjectFormat: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", { request, jobId, progress }),

@@ -1,9 +1,12 @@
 use serde::Serialize;
+use xrf_db::{ThmFile, XRayByteOrder};
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
 
 use crate::core::assets::AssetTextureDescriptor;
 use crate::core::types::TauriResult;
+use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
+use crate::plugins::textures::edit_targets::TextureEditTargets;
 use crate::plugins::textures::source::TextureSource;
 
 /// Everything the inspection panel says about one texture, resolved in one call.
@@ -25,6 +28,13 @@ pub struct TextureDescription {
   pub bump: Option<AssetTextureDescriptor>,
   /// What the bound bump companion file is, on the same terms.
   pub companion: Option<AssetTextureDescriptor>,
+  /// The descriptor's editable fields, when a `.thm` was located and parsed.
+  ///
+  /// Separate from [`Self::material`], which is what the renderer makes of the descriptor. This is the descriptor
+  /// itself, and the editor binds to it. A `.thm` that will not parse reports `None` here and its refusal there.
+  pub form: Option<TextureDescriptorForm>,
+  /// Where an edit of this texture would write, absent for a texture served out of an archive.
+  pub targets: Option<TextureEditTargets>,
 }
 
 impl TextureDescription {
@@ -49,6 +59,16 @@ impl TextureDescription {
     };
 
     Ok(Self {
+      form: material
+        .descriptor
+        .as_ref()
+        .and_then(|asset| read_descriptor(probe, asset))
+        .as_ref()
+        .map(TextureDescriptorForm::read),
+      targets: match &texture {
+        Some(asset) => TextureEditTargets::of(asset, material.descriptor.as_ref())?,
+        None => None,
+      },
       base: texture
         .as_ref()
         .and_then(|asset| AssetTextureDescriptor::describe(probe, asset)),
@@ -61,4 +81,9 @@ impl TextureDescription {
       material,
     })
   }
+}
+
+/// Read a located `.thm`, or nothing when its bytes cannot be reached or are not a descriptor.
+fn read_descriptor(probe: &XrayProbe, asset: &XrayAsset) -> Option<ThmFile> {
+  ThmFile::read_from_bytes::<XRayByteOrder>(probe.read_asset_bytes(asset).ok()?).ok()
 }

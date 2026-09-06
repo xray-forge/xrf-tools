@@ -308,6 +308,35 @@ export type TextureBadges = {
   isUnreadable: boolean;
 };
 
+/** One recipe field the descriptor asks for that this build does not carry out. */
+export type TextureBuildOmissionReport = {
+  /** The descriptor field this sits beside, under the name the SDK gives it. */
+  field: string;
+  /** Why the build does not do it, in words a person deciding whether to rebuild can act on. */
+  reason: string;
+};
+
+/** What a rebuilt texture came to. */
+export type TextureBuildOutcome = {
+  /**
+   * Whether the texture was written or the run stopped before it started.
+   *
+   * A cancelled build wrote nothing. There is one boundary and it is before the work: the encode writes the file
+   * itself and is a single call with no seam inside it. That costs nothing worth having, because the encode is tens
+   * of milliseconds - a descriptor decides the format here and `ETFormat` has no name for BC7, so the one candidate
+   * that takes seconds cannot arise.
+   */
+  outcome: JobOutcome;
+  destination: string;
+  /** Size of the source, which the descriptor's own width and height are refreshed from. */
+  width: number;
+  height: number;
+  /** Levels written, counting the base. */
+  mipmapLevels: number;
+  /** Recipe fields the descriptor asked for and the build did not carry out. */
+  omissions: Array<TextureBuildOmissionReport>;
+};
+
 /** The two references a declaration binds, which is what folds a pair under the texture that declares it. */
 export type TextureBumpPair = {
   bump: string;
@@ -346,6 +375,162 @@ export type TextureDescription = {
   bump: AssetTextureDescriptor | null;
   /** What the bound bump companion file is, on the same terms. */
   companion: AssetTextureDescriptor | null;
+  /**
+   * The descriptor's editable fields, when a `.thm` was located and parsed.
+   *
+   * Separate from [`Self::material`], which is what the renderer makes of the descriptor. This is the descriptor
+   * itself, and the editor binds to it. A `.thm` that will not parse reports `None` here and its refusal there.
+   */
+  form: TextureDescriptorForm | null;
+  /** Where an edit of this texture would write, absent for a texture served out of an archive. */
+  targets: TextureEditTargets | null;
+};
+
+/**
+ * The descriptor fields the editor owns, read off a `.thm` and written back onto one.
+ *
+ * A form rather than the file itself, for two things a round trip through the webview cannot honour. The thumbnail is
+ * a compressed picture nothing in these tools can rebuild, and [`ThmFile::extra`] carries whatever a later SDK wrote
+ * that this reader could not fold; both would have to travel out and back untouched to survive an edit. Applying a
+ * form onto the file as it is on disk keeps them by construction, and keeps the payload to the couple of dozen values
+ * a person can actually change.
+ *
+ * Every enum crosses as the number it is stored as, which is how [`ThmFormat`] and its siblings already serialize -
+ * `#[serde(from = "u32", into = "u32")]` on each, with an `Unknown(u32)` variant for a value the SDK never named. A
+ * surface naming them is naming numbers either way, and a form that dropped an unnamed value would silently rewrite
+ * somebody's descriptor.
+ */
+export type TextureDescriptorForm = {
+  /** The thumbnail's texture type, which is the gate `LoadTHM` reads before anything else. */
+  textureType: number;
+  bumpMode: number;
+  /** Bump texture path without extension, engine-style with backslashes. Empty when unused. */
+  bumpName: string;
+  /** Detail texture path on the same terms. */
+  detailName: string;
+  detailScale: number | null;
+  /**
+   * The whole `STextureParams` flag word, named bits and unnamed alike.
+   *
+   * One word rather than a boolean per bit: the twelve the SDK names are the ones a surface offers, and the rest are
+   * bits somebody's tool set that this editor has no business dropping.
+   */
+  flags: number;
+  format: number;
+  mipFilter: number;
+  borderColor: number;
+  fadeColor: number;
+  fadeAmount: number;
+  /** Mip level the converter starts fading from. */
+  fadeDelay: number;
+  material: number;
+  materialWeight: number | null;
+  extNormalMapName: string;
+  /** Read by the bump generator and by nothing at runtime. */
+  virtualHeight: number | null;
+  /** What the descriptor claims its texture measures, which the DDS beside it is the authority on. */
+  width: number;
+  height: number;
+};
+
+/** The descriptor half of a save. */
+export type TextureDescriptorSave = {
+  target: TextureSaveTarget;
+  form: TextureDescriptorForm;
+};
+
+/**
+ * Where an edit of one texture would write, and what was there when the editor read it.
+ *
+ * Resolved by the command that located the files rather than derived by the frontend, for the same reason the
+ * descriptor is: a path assembled in TypeScript out of a reference and a separator is a guess about where the VFS
+ * found something, and the two disagree the moment a root is nested or a name is cased differently.
+ *
+ * Absent for a texture served out of an archive, which has no file to replace at all.
+ */
+export type TextureEditTargets = {
+  /**
+   * The `.thm` to write, whether or not one is there yet.
+   *
+   * Always present, because the editor can author a descriptor for a texture that has none: its
+   * [`TextureSaveTarget::expected`] is what says which of the two cases this is.
+   */
+  descriptor: TextureSaveTarget;
+  /** The `.dds` to replace when a re-encode is saved. */
+  texture: TextureSaveTarget;
+};
+
+/** Every candidate weighed against one texture, with the texture itself for a baseline. */
+export type TextureEncodingComparison = {
+  /**
+   * Whether every candidate was weighed or the run stopped because it was asked to.
+   *
+   * A cancelled comparison still reports what it managed, and the session still holds those encodes: a candidate it
+   * reached is a real measurement and a real set of bytes, whatever happened after it.
+   */
+  outcome: JobOutcome;
+  /** The texture the encodes were made from, which a save has to name to claim them. */
+  reference: string;
+  current: TextureEncodingCurrent;
+  /** The candidates weighed, in the order [`DdsEncodeCandidate::ALL`] lists them, cheapest first. */
+  candidates: Array<TextureEncodingReport>;
+};
+
+/** The texture as it stands, for the row a comparison is read against. */
+export type TextureEncodingCurrent = {
+  /** Format name from the file's own header, which is not always one of the five candidates. */
+  label: string;
+  fileBytes: number;
+  gpuBytes: number;
+  width: number;
+  height: number;
+  mipmapLevels: number;
+};
+
+/**
+ * A format the base texture can be written in, of the five worth offering.
+ *
+ * A plugin-side mirror of [`DdsEncodeCandidate`] rather than the crate's own enum, for the reason every wire type
+ * here is one: `xrf-dds` is a pure image crate and carries no bindings feature, and a surface naming a format wants
+ * a name that cannot change under it.
+ */
+export type TextureEncodingFormat = "bc1" | "bc2" | "bc3" | "rgba8" | "bc7";
+
+/** How hard the encoder works, which trades seconds for fidelity. */
+export type TextureEncodingQuality =
+  | "fast"
+  | "normal"
+  /** The default, because everything but BC7 costs pennies at it. */
+  | "slow";
+
+/** What one candidate cost and what it lost, weighed against the texture as it is now. */
+export type TextureEncodingReport = {
+  format: TextureEncodingFormat;
+  /** The format's name with the DXT name the descriptor and the SDK use for it. */
+  label: string;
+  /** Bytes on disk, header included. */
+  fileBytes: number;
+  /** Bytes once uploaded, which is the whole mip chain without the header. */
+  gpuBytes: number;
+  encodeDuration: number;
+  /**
+   * Peak signal-to-noise ratio, absent where nothing was lost.
+   *
+   * Additional loss relative to the current file. That file is itself lossy for every texture already stored in a
+   * DXT family, so this is what a re-encode costs on top - never distance from an original nobody has.
+   */
+  psnr: number | null;
+  /** Root mean square error per channel, in the eight-bit units the pixels are stored in. */
+  channelRmse: [number | null, number | null, number | null, number | null];
+  /** What the renderers together make of the format, as a sentence a badge can show. */
+  supportSummary: string;
+  compatibility: Array<TextureRendererSupport>;
+};
+
+/** The texture half of a save, which is one of the candidates a comparison already encoded. */
+export type TextureEncodingSave = {
+  target: TextureSaveTarget;
+  format: TextureEncodingFormat;
 };
 
 /** One texture name and the files the roots hold for it. */
@@ -359,6 +544,43 @@ export type TextureEntry = {
   descriptor: XrayAsset | null;
 };
 
+/**
+ * What the editor read at a path, so a later write cannot overwrite a change it never saw.
+ *
+ * Size and modification time rather than a hash of the bytes: a texture is megabytes, the editor holds one node at a
+ * time for minutes rather than days, and the case worth catching is an SDK or a converter having rewritten the file in
+ * the meantime - which moves both.
+ */
+export type TextureFileStamp = {
+  size: number;
+  /** Milliseconds since the Unix epoch, as the platform reports the file's modification time. */
+  modifiedMs: number;
+};
+
+/** What a generated pair came to. */
+export type TextureMakeBumpOutcome = {
+  /**
+   * Whether the pair was written or the run stopped because it was asked to.
+   *
+   * A cancelled run wrote neither half: both are encoded before either is written, so there is no point at which
+   * stopping could leave one half of a pair on disk with the other missing.
+   */
+  outcome: JobOutcome;
+  /** The normals and gloss, written as `<name>_bump.dds`. */
+  bump: string;
+  /** The compression error and the height, written as `<name>_bump#.dds`. */
+  companion: string;
+  /** Mean gloss over the whole surface, in `0..=1`. */
+  glossPower: number | null;
+  /**
+   * Whether the gloss is too dark for the surface to show a specular response worth having.
+   *
+   * A verdict rather than a failure, exactly as in the SDK: the pair is written either way, because a modder who
+   * meant to author a matte surface is not making a mistake and one who did not wants to be told.
+   */
+  isGlossTooDark: boolean;
+};
+
 /** One descriptor's contribution to the tree: its badges, and the pair it names so both halves fold under it. */
 export type TextureMaterialSummary = {
   /** The reference of the texture the descriptor describes. */
@@ -366,6 +588,13 @@ export type TextureMaterialSummary = {
   /** The pair the engine will try to bind, when the declaration is one it reads. */
   bump: TextureBumpPair | null;
   badges: TextureBadges;
+};
+
+/** One renderer's answer about a format. */
+export type TextureRendererSupport = {
+  renderer: string;
+  /** `supported`, `unsupported`, or `unverified` - the third being a path nobody has read, not a refusal. */
+  support: string;
 };
 
 /**
@@ -383,12 +612,118 @@ export type TextureRole =
   /** The second half of a bump pair: packed error and height. */
   | "bumpCompanion";
 
+/** What a save left on disk. */
+export type TextureSaveOutcome = {
+  /**
+   * Whether the save wrote what it was asked to or stopped because it was asked to.
+   *
+   * A cancelled save wrote nothing. Cancellation is read once, after both files have been prepared and before either
+   * is written, because there is no useful boundary inside two staged writes: stopping between them would leave a
+   * texture whose descriptor still describes the old one, which is the state a save exists to avoid.
+   */
+  outcome: JobOutcome;
+  /** The files written, in the order they were written. */
+  written: Array<string>;
+  /**
+   * The format the descriptor ended up naming, when writing a texture changed it.
+   *
+   * Reported rather than left to the caller to infer, because the rule is the SDK's: `tfDXT1` and `tfADXT1` are one
+   * encoder distinguished by the alpha flag, so only the descriptor's own flags can say which of them a BC1 texture
+   * is. Absent when nothing synced - no texture was written, or its format has no name in `ETFormat`.
+   */
+  descriptorFormat: number | null;
+};
+
+/** One file a write addresses, and what was there when the editor read it. */
+export type TextureSaveTarget = {
+  /** Absolute path of the file to replace or create. */
+  path: string;
+  /** The stamp the editor read there, or `None` for a file it is creating. */
+  expected: TextureFileStamp | null;
+};
+
 /** Where a texture is named from. */
 export type TextureSource =
   /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
   | { kind: "file"; path: string }
   /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
   | { kind: "asset"; reference: string };
+
+/** What a texture rebuild was asked to do. */
+export type TexturesBuildRequest = {
+  /** Path of the `.dds` to write, which is the file beside the descriptor. */
+  destination: string;
+  /** Path of the image to encode, of whatever kind `image` decodes. */
+  source: string;
+  /**
+   * The descriptor to read as a recipe, as the editor currently has it rather than as it is on disk.
+   *
+   * The form rather than the file, because a build should produce what the editor's own format and flags describe. A
+   * person who has changed the format and not saved yet wants to see that format built.
+   */
+  descriptor: TextureDescriptorForm;
+  quality: TextureEncodingQuality;
+};
+
+/** What a format comparison was asked to weigh. */
+export type TexturesCompareRequest = {
+  /** The texture to re-encode, by its engine reference. */
+  reference: string;
+  roots: XrayRoots;
+  /**
+   * Kernel the chain is reduced with, by its SDK name, or `None` to weigh the base level alone.
+   *
+   * Not read from the descriptor. A comparison answers "what would this texture cost in each format", and the answer
+   * has to be about one chain built one way, or the figures are not comparable with each other.
+   */
+  mipFilter: string | null;
+  quality: TextureEncodingQuality;
+};
+
+/**
+ * What a bump pair generation was asked to do.
+ *
+ * The height source is required and everything else refines it, exactly as the SDK's generator has it: normals are
+ * derived from the height alone and gloss is a separate plane, so a caller with only a height map still gets a pair.
+ */
+export type TexturesMakeBumpRequest = {
+  /** Path of the texture the pair belongs to, without the `_bump` suffix or an extension. */
+  destination: string;
+  /** Path of the image the relief is read from, averaged across its colour channels. */
+  height: string;
+  /**
+   * Path of a gloss mask, averaged the same way.
+   *
+   * When absent the whole surface takes [`Self::gloss_constant`], which is what a texture authored without a mask
+   * needs and what the SDK's own dialog offers.
+   */
+  gloss: string | null;
+  glossConstant: number | null;
+  /** Path of a normal map to use instead of deriving one from the height, of the same size. */
+  normalMap: string | null;
+  /** `bump_virtual_height` of the descriptor, read here and nowhere at runtime. */
+  virtualHeight: number | null;
+  /**
+   * Kernel the pair's chain is reduced with, by its SDK name.
+   *
+   * Defaults to `Box` at the caller, because that is what the SDK's generator leaves it at: `DXTCompressBump` builds
+   * its `STextureParams` and overrides only the flags, the type and the format.
+   */
+  mipFilter: string | null;
+  quality: TextureEncodingQuality;
+};
+
+/**
+ * What one node's save was asked to write.
+ *
+ * Both halves are optional and independent: a node may be dirty in its descriptor, in its pixels, or in both, and a
+ * save that could only do the pair would make the common case - a flag changed on a texture nobody re-encoded -
+ * impossible to express.
+ */
+export type TexturesSaveRequest = {
+  descriptor: TextureDescriptorSave | null;
+  texture: TextureEncodingSave | null;
+};
 
 /**
  * What a build was asked to do.

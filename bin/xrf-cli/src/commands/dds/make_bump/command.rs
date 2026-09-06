@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
 use xrf_texture::{
   GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult, read_image_as_rgba,
@@ -80,6 +81,7 @@ impl GenericCommand for MakeBumpCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: GenerateBumpOptions = GenerateBumpOptions {
+      job: JobHandle::inert(),
       destination: destination.clone(),
       height: read_image_as_rgba(height)?,
       gloss: Self::get_gloss(matches)?,

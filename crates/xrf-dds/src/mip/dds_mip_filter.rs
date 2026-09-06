@@ -69,6 +69,16 @@ impl DdsMipFilter {
     }
   }
 
+  /// The kernel a caller named, matched against [`Self::label`] without regard to case.
+  ///
+  /// Here rather than beside each caller, because the CLI's `--mip-filter` and the editor's filter list are the same
+  /// question asked twice: a name accepted by one and refused by the other would be a difference nothing states.
+  pub fn from_label(label: &str) -> Option<Self> {
+    Self::NAMED
+      .into_iter()
+      .find(|filter| filter.label().eq_ignore_ascii_case(label))
+  }
+
   /// Half-width of the kernel's window, in destination pixels.
   ///
   /// Everything past it weighs nothing, so this is what decides how many source pixels each destination pixel reads.

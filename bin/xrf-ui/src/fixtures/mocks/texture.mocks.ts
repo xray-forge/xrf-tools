@@ -102,10 +102,12 @@ export function mockTextureDescription(
     base: { shape: null, size: 1024 },
     bump: null,
     companion: null,
+    form: null,
     material: mockFlatMaterial(),
     reference,
     roots: mockTextureRoots(),
     source: { kind: "asset", reference },
+    targets: null,
     texture: mockTextureAsset(`textures\\${reference}.dds`),
     ...overrides,
   };

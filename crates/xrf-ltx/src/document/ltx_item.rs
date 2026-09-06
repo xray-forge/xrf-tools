@@ -1,9 +1,6 @@
 use crate::document::{LtxKeyOperation, LtxSectionOperation, LtxSpan};
 
 /// One statement of an LTX file, with where it was written.
-///
-/// Deliberately small: a project retains one of these per statement of every config it holds, so a field that only
-/// some callers want does not live here. The authored line is the one such field, and it sits on
 /// [`crate::document::LtxDocument`] instead.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LtxItem {

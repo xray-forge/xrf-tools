@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use image::RgbaImage;
 use xrf_dds::{DdsMipFilter, Quality};
+use xrf_job::JobHandle;
 
 /// The gloss the pair carries, which is what the specular response is read out of.
 pub enum GenerateBumpGloss {
@@ -16,6 +17,10 @@ pub enum GenerateBumpGloss {
 /// The height source is required and everything else refines it: the SDK derives its normals from the height alone
 /// and takes gloss as a separate plane, so a caller with only a height map still gets a usable pair.
 pub struct GenerateBumpOptions {
+  /// What the run reports its steps to and reads its cancellation from.
+  ///
+  /// [`JobHandle::inert`] for a caller with nobody watching, which is what the CLI passes.
+  pub job: JobHandle,
   /// Where the pair is written, without the `_bump` suffix or an extension.
   pub destination: PathBuf,
   /// The surface's relief. Its three colour channels are averaged, as `AverageRGBToAlpha` does.

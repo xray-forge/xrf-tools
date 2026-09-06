@@ -11,9 +11,8 @@ export const configsCommands = {
   /**
    * Report which LTX configs roots exposes are misformatted.
    *
-   * Read-only, so an archived config is checked like any other, and no lease is taken: two readers of one project have
-   * nothing to collide over. A separate kind from the rewrite it reports on, because they are different work with
-   * different consequences — one answers a question, the other changes the files.
+   * Reads archived configs too. Shares the formatter's exclusion group while retaining a separate job kind because
+   * checking reports findings without rewriting files.
    */
   checkDirectoryFormat: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|check_directory_format", { request, jobId, progress }),
