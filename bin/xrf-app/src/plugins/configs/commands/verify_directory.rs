@@ -8,9 +8,8 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_job::{JobHandle, JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
@@ -42,15 +41,17 @@ pub async fn configs_verify_directory(
 
   // Off the async worker: opening the project mounts every root and reads every config it holds, and the check then
   // walks all of them. An `async fn` alone would leave that on an executor thread meant for short requests.
-  let verifying: JobHandle = job.clone();
-  let outcome: TauriResult<LtxProjectVerifyResult> = execution
-    .run_blocking("Configs verification", move || {
+  run_job(
+    &execution,
+    "Configs verification",
+    registration,
+    move || {
       let project: LtxProject = {
         // Opening mounts every root, indexes the trees and assembles the project, and none of it reports a unit —
         // so without a phase around it a window shows an indeterminate bar and an elapsed time of zero for the whole
         // of it, then jumps to the total. The phase says what is happening; the registry's heartbeat is what makes
         // the time advance while it does (`issues/0109`).
-        let _preparing: JobScope = verifying.enter(JOB_PHASE_PREPARE, None);
+        let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
 
         open_ltx_project(
           &roots,
@@ -64,12 +65,9 @@ pub async fn configs_verify_directory(
         )?
       };
 
-      project.verify_entries_opt(LtxVerifyOptions::default().with_job(verifying))
-    })
-    .await?
-    .map_err(error_to_string);
-
-  registration.conclude_with(&outcome, job.is_cancelled());
-
-  outcome
+      project.verify_entries_opt(LtxVerifyOptions::default().with_job(job))
+    },
+    |result| result.outcome,
+  )
+  .await
 }

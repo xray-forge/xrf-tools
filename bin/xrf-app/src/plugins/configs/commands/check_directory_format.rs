@@ -7,9 +7,8 @@ use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::configs::lease::{CHECK_FORMAT_JOB_KIND, FORMAT_JOB_KIND};
 use crate::plugins::configs::ltx_roots::open_ltx_project;
@@ -40,17 +39,16 @@ pub async fn configs_check_directory_format(
   )?;
 
   // Off the async worker: this mounts every root and reads every config it holds.
-  let checking: JobHandle = job.clone();
-  let outcome: TauriResult<LtxProjectFormatResult> = execution
-    .run_blocking("Configs format check", move || {
+  run_job(
+    &execution,
+    "Configs format check",
+    registration,
+    move || {
       let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
 
-      project.check_format_all_files_opt(LtxFormatOptions::default().with_job(checking))
-    })
-    .await?
-    .map_err(error_to_string);
-
-  registration.conclude_with(&outcome, job.is_cancelled());
-
-  outcome
+      project.check_format_all_files_opt(LtxFormatOptions::default().with_job(job))
+    },
+    |result| result.outcome,
+  )
+  .await
 }

@@ -9,7 +9,7 @@ use xrf_job::{JobHandle, JobOutcome, JobProgress};
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::request::SpawnConversionRequest;
 
@@ -56,18 +56,14 @@ pub async fn run_conversion(
   let (job, registration): (JobHandle, JobRegistration) =
     register_conversion(registry, &request, operation, job_id, progress)?;
 
-  execution
-    .run_blocking("Spawn conversion", move || {
-      let outcome: TauriResult<SpawnConversionResult> = convert(&request, operation, &job);
-      let cancelled: bool = outcome
-        .as_ref()
-        .is_ok_and(|result| result.outcome == JobOutcome::Cancelled);
-
-      registration.conclude_with(&outcome, cancelled);
-
-      outcome
-    })
-    .await?
+  run_job(
+    execution,
+    "Spawn conversion",
+    registration,
+    move || convert(&request, operation, &job),
+    |result| result.outcome,
+  )
+  .await
 }
 
 /// Takes the conversion lease and the job's place in the registry, before any work is dispatched.

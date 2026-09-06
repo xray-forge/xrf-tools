@@ -12,9 +12,8 @@ use xrf_translation::{
   TranslationVerifyResult,
 };
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::VERIFY_JOB_KIND;
 use crate::plugins::translations::request::TranslationsVerifyRequest;
@@ -69,7 +68,7 @@ pub async fn translations_verify_project(
   )?;
 
   let options: TranslationVerifyOptions = TranslationVerifyOptions {
-    job: job.clone(),
+    job,
     is_strict: false,
     output: xrf_output::OutputOptions::default(),
     language,
@@ -82,21 +81,24 @@ pub async fn translations_verify_project(
   // Anomaly-sized import and not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationVerifySummary> = execution
-    .run_blocking("Translation check", move || {
-      TranslationVerifier::verify_roots(&roots, prefix.as_deref(), &options)
-    })
-    .await?
-    .map_err(error_to_string)
-    .map(|result: TranslationVerifyResult| TranslationVerifySummary {
-      language: language.to_string(),
-      outcome: result.outcome,
-      checked: result.checked_translations_count,
-      missing: result.missing_translations_count,
-      languages: result.languages,
-    });
-
-  registration.conclude_with(&outcome, job.is_cancelled());
+  let outcome: TauriResult<TranslationVerifySummary> = run_job(
+    &execution,
+    "Translation check",
+    registration,
+    move || {
+      TranslationVerifier::verify_roots(&roots, prefix.as_deref(), &options).map(|result: TranslationVerifyResult| {
+        TranslationVerifySummary {
+          language: language.to_string(),
+          outcome: result.outcome,
+          checked: result.checked_translations_count,
+          missing: result.missing_translations_count,
+          languages: result.languages,
+        }
+      })
+    },
+    |summary| summary.outcome,
+  )
+  .await;
 
   if let Ok(summary) = &outcome {
     log::info!(

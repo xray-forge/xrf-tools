@@ -9,9 +9,8 @@ use xrf_archive::ArchiveProject;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{UNPACK_JOB_KIND, to_destination_tree_lease_key};
 use crate::plugins::archives::request::ArchivesUnpackRequest;
@@ -64,21 +63,16 @@ pub async fn archives_unpack_directory(
 
   // Off the async worker, indexing included: reading the volumes, decompressing every entry, and writing the tree are
   // all synchronous, and none of it yields to this one.
-  let unpacking: JobHandle = job.clone();
-  let outcome: TauriResult<ArchiveUnpackResult> = execution
-    .run_blocking("Archive unpack", move || {
+  run_job(
+    &execution,
+    "Archive unpack",
+    registration,
+    move || {
       let project: ArchiveProject = ArchiveProject::new(&source)?;
 
-      ArchiveUnpacker::unpack_opt(
-        &project,
-        &destination,
-        ArchiveUnpackOptions::default().with_job(unpacking),
-      )
-    })
-    .await?
-    .map_err(error_to_string);
-
-  registration.conclude_with(&outcome, job.is_cancelled());
-
-  outcome
+      ArchiveUnpacker::unpack_opt(&project, &destination, ArchiveUnpackOptions::default().with_job(job))
+    },
+    |result| result.outcome,
+  )
+  .await
 }

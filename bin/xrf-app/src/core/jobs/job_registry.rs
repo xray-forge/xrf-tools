@@ -389,7 +389,7 @@ impl JobRegistration {
   /// answered. Serialization is the same one the command's own response goes through, and a payload that cannot be
   /// serialized is dropped rather than failing the job: the run itself succeeded, and its caller is being told so
   /// through the response either way.
-  pub fn conclude_with<T: Serialize, E: ToString>(&self, outcome: &Result<T, E>, cancelled: bool) {
+  pub(super) fn conclude_with<T: Serialize, E: ToString>(&self, outcome: &Result<T, E>, cancelled: bool) {
     let ending: JobEnding = match outcome {
       Ok(value) => JobEnding {
         conclusion: if cancelled {

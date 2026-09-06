@@ -12,7 +12,7 @@ use xrf_utils::LineEndings;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{FORMAT_JOB_KIND, to_output_lease_key};
 use crate::plugins::translations::request::TranslationsFormatRequest;
@@ -57,20 +57,21 @@ pub async fn translations_format_project(
       .with_progress(progress),
   )?;
 
-  let outcome: TauriResult<TranslationFormatResult> =
-    run(&execution, job.clone(), directory, line_endings, false).await;
-
-  registration.conclude_with(&outcome, job.is_cancelled());
-
-  outcome
+  run_job(
+    &execution,
+    "Translations formatting",
+    registration,
+    move || run(job, directory, line_endings, false),
+    |result| result.outcome,
+  )
+  .await
 }
 
 /// Walk and judge the sources off the async worker, which is where every blocking crate call belongs.
 ///
 /// `is_check` picks which of the formatter's two doors is opened, rather than being handed to one door that decides
 /// for itself: whether this call rewrites the tree is the difference between the two commands above.
-pub(super) async fn run(
-  execution: &ExecutionState,
+pub(super) fn run(
   job: JobHandle,
   directory: PathBuf,
   line_endings: Option<String>,
@@ -82,19 +83,15 @@ pub(super) async fn run(
     .transpose()
     .map_err(error_to_string)?;
 
-  execution
-    .run_blocking("Translations formatting", move || {
-      let paths: Vec<PathBuf> = vec![directory];
-      let options: TranslationFormatOptions = TranslationFormatOptions::default()
-        .with_job(job)
-        .with_line_endings(line_endings);
+  let paths: Vec<PathBuf> = vec![directory];
+  let options: TranslationFormatOptions = TranslationFormatOptions::default()
+    .with_job(job)
+    .with_line_endings(line_endings);
 
-      if is_check {
-        TranslationFormatter::check_format_opt(&paths, options)
-      } else {
-        TranslationFormatter::format_opt(&paths, options)
-      }
-    })
-    .await?
-    .map_err(error_to_string)
+  if is_check {
+    TranslationFormatter::check_format_opt(&paths, options)
+  } else {
+    TranslationFormatter::format_opt(&paths, options)
+  }
+  .map_err(error_to_string)
 }

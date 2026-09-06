@@ -8,9 +8,8 @@ use xrf_archive::ArchiveProject;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::{EXTRACT_JOB_KIND, to_destination_tree_lease_key};
 use crate::plugins::archives::request::ArchivesExtractRequest;
@@ -53,20 +52,19 @@ pub async fn archives_extract_directory(
   )?;
 
   // Off the async worker: an empty prefix means the whole archive, so this is a full unpack in everything but name.
-  let extracting: JobHandle = job.clone();
-  let outcome: TauriResult<ArchiveExtractDirectoryResult> = execution
-    .run_blocking("Archive directory extraction", move || {
+  run_job(
+    &execution,
+    "Archive directory extraction",
+    registration,
+    move || {
       ArchiveUnpacker::extract_directory_opt(
         &project,
         &prefix,
         &destination,
-        ArchiveExtractOptions::default().with_job(extracting),
+        ArchiveExtractOptions::default().with_job(job),
       )
-    })
-    .await?
-    .map_err(error_to_string);
-
-  registration.conclude_with(&outcome, job.is_cancelled());
-
-  outcome
+    },
+    |result| result.outcome,
+  )
+  .await
 }

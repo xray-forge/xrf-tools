@@ -17,7 +17,7 @@ use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::gamedata::lease::VERIFY_JOB_KIND;
 
@@ -101,21 +101,14 @@ pub async fn gamedata_verify_project(
 
   // Off the async worker: this mounts an installation, indexes every asset it declares, and runs checks that
   // parallelise internally. None of that belongs on an executor thread meant for short requests.
-  execution
-    .run_blocking("Gamedata verification", move || {
-      let outcome: TauriResult<GamedataVerifySummary> = run_verification(request, checks, &job);
-
-      // Keep the registration alive with the blocking work, even if the caller stops awaiting the command.
-      registration.conclude_with(
-        &outcome,
-        outcome
-          .as_ref()
-          .is_ok_and(|summary| summary.outcome == JobOutcome::Cancelled),
-      );
-
-      outcome
-    })
-    .await?
+  run_job(
+    &execution,
+    "Gamedata verification",
+    registration,
+    move || run_verification(request, checks, &job),
+    |summary| summary.outcome,
+  )
+  .await
 }
 
 /// Opens the project and verifies it, translating cooperative cancellation into a stopped result.

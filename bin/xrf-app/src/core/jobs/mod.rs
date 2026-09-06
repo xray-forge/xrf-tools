@@ -2,6 +2,7 @@
 
 mod job_conclusion;
 mod job_description;
+mod job_execution;
 mod job_leases;
 mod job_phases;
 mod job_progress_sink;
@@ -10,11 +11,10 @@ mod job_start;
 mod lease_path;
 
 #[cfg(test)]
-mod exclusion_tests;
-#[cfg(test)]
 mod tests;
 
 pub use job_description::JobDescription;
+pub use job_execution::run_job;
 pub use job_phases::JOB_PHASE_PREPARE;
 pub use job_registry::{JobRegistration, JobRegistry};
 pub use job_start::JobStart;

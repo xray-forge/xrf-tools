@@ -14,9 +14,8 @@ use xrf_translation::{
 use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
+use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::lease::{BUILD_JOB_KIND, to_output_lease_key};
 
@@ -104,7 +103,7 @@ pub async fn translations_build_project(
   } = request;
 
   let options: TranslationBuildOptions = TranslationBuildOptions {
-    job: job.clone(),
+    job,
     is_sorted,
     output: xrf_output::OutputOptions::default(),
     output_dir,
@@ -115,21 +114,24 @@ pub async fn translations_build_project(
   // of them, which is not work an IPC executor should be holding.
   // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
   // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
-  let outcome: TauriResult<TranslationBuildSummary> = execution
-    .run_blocking("Translation build", move || {
-      TranslationBuilder::build_roots(&roots, prefix.as_deref(), &options)
-    })
-    .await?
-    .map_err(error_to_string)
-    .map(|result: TranslationBuildResult| TranslationBuildSummary {
-      language: language.to_string(),
-      outcome: result.outcome,
-      sources: result.sources,
-      files: result.files,
-      languages: result.languages,
-    });
-
-  registration.conclude_with(&outcome, job.is_cancelled());
+  let outcome: TauriResult<TranslationBuildSummary> = run_job(
+    &execution,
+    "Translation build",
+    registration,
+    move || {
+      TranslationBuilder::build_roots(&roots, prefix.as_deref(), &options).map(|result: TranslationBuildResult| {
+        TranslationBuildSummary {
+          language: language.to_string(),
+          outcome: result.outcome,
+          sources: result.sources,
+          files: result.files,
+          languages: result.languages,
+        }
+      })
+    },
+    |summary| summary.outcome,
+  )
+  .await;
 
   if let Ok(summary) = &outcome {
     log::info!(
