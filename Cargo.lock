@@ -7454,6 +7454,7 @@ dependencies = [
  "rayon",
  "serde",
  "specta",
+ "xrf-db",
  "xrf-dds",
  "xrf-error",
  "xrf-job",
