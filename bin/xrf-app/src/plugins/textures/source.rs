@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_utils::format_path;
@@ -23,12 +23,23 @@ impl TextureSource {
     }
   }
 
-  /// Returns the texture's filesystem path when its source provides one, for centring the roots on it.
+  /// Returns the named file's path when its source provides one, for centring the roots on it.
   pub fn physical_path(&self) -> Option<&Path> {
     match self {
       Self::File { path } => Some(Path::new(path)),
       Self::Asset { .. } => None,
     }
+  }
+
+  /// Returns the path of the `.dds` this source names, for a file that may be either half of the pair.
+  ///
+  /// Not the same question as [`Self::physical_path`], and the difference is a real one: a person opens a texture by
+  /// picking either the `.dds` or the `.thm` beside it, so the file they named is not always the file the pixels are
+  /// in. Anything reading bytes to decode wants this; anything reporting what was opened wants the other.
+  pub fn to_texture_path(&self) -> Option<PathBuf> {
+    let extension: &str = XrayAssetType::Dds.get_rules()?.extension.trim_start_matches('.');
+
+    Some(self.physical_path()?.with_extension(extension))
   }
 
   /// The engine reference this source names, or `None` for a file that names none.

@@ -636,3 +636,31 @@ fn a_texture_is_read_by_its_reference_and_not_by_its_reference_as_a_path() {
   // And the logical path the listing reports is what the path reader wants.
   assert!(read_located_asset(&probe, "textures\\ston\\ston_beton05.dds").is_ok());
 }
+
+#[test]
+fn a_source_naming_the_descriptor_still_answers_the_texture_beside_it() {
+  // A person opens a texture by picking either half of the pair, so the file named is not always the file the pixels
+  // are in. Anything decoding bytes has to ask for the texture rather than for what was named, or it reads a chunked
+  // descriptor as a dds and reports a bad magic number at a person who picked a perfectly ordinary file.
+  let root: PathBuf = loose_directory("named_descriptor");
+  let texture: PathBuf = root.join("wall.dds");
+  let descriptor: PathBuf = root.join("wall.thm");
+
+  assert_eq!(
+    file_source(descriptor.clone()).to_texture_path(),
+    Some(texture.clone()),
+    "expect the descriptor's own path to answer the texture beside it"
+  );
+  assert_eq!(
+    file_source(texture.clone()).to_texture_path(),
+    Some(texture.clone()),
+    "expect a texture to answer itself"
+  );
+
+  // What was named is still what was named: the two questions have two answers.
+  assert_eq!(
+    file_source(descriptor.clone()).physical_path(),
+    Some(descriptor.as_path()),
+    "expect the named file to be reported as named, for anything centring roots or saying what was opened"
+  );
+}

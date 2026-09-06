@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use tauri::State;
@@ -100,12 +100,14 @@ pub async fn textures_compare_encodings(
 fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest) -> TauriResult<Vec<u8>> {
   match &request.source {
     TextureSource::File { .. } => {
-      let path: &Path = request
+      // The texture beside what was named rather than the named file itself: a person opens a texture by picking
+      // either half of the pair, and weighing the descriptor's own bytes reads a chunked file as a dds.
+      let path: PathBuf = request
         .source
-        .physical_path()
+        .to_texture_path()
         .ok_or_else(|| String::from("A texture outside every root has to be named by a file path"))?;
 
-      std::fs::read(path).map_err(|error| format!("Cannot read '{}': {error}", format_path(path)))
+      std::fs::read(&path).map_err(|error| format!("Cannot read '{}': {error}", format_path(&path)))
     }
     TextureSource::Asset { reference } => assets
       .with_probe(&request.roots, |probe| {
