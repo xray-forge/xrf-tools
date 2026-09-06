@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_dds::{DdsMipFilter, Quality};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_texture::{
@@ -10,14 +9,11 @@ use xrf_texture::{
 use xrf_utils::format_path;
 
 use super::report::DdsMakeBumpReport;
+use crate::commands::dds::dds_encode_arguments::{
+  DEFAULT_BUMP_MIP_FILTER, get_mip_filter, get_quality, new_mip_filter_argument, new_quality_argument,
+};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-
-/// Both halves are written as DXT5 with a mip chain, as the SDK's own generator does twice over.
-const QUALITY: Quality = Quality::Slow;
-
-/// The kernel the pair's chain is reduced with, which the SDK leaves to its converter's default.
-const MIP_FILTER: DdsMipFilter = DdsMipFilter::Kaiser;
 
 #[derive(Default)]
 pub struct MakeBumpCommand;
@@ -63,6 +59,8 @@ impl GenericCommand for MakeBumpCommand {
           .long("normal-map")
           .value_parser(value_parser!(PathBuf)),
       )
+      .arg(new_mip_filter_argument(DEFAULT_BUMP_MIP_FILTER))
+      .arg(new_quality_argument())
       .arg(
         Arg::new("virtual-height")
           .help("Relief depth the normals are derived at, `bump_virtual_height` of the descriptor")
@@ -92,8 +90,8 @@ impl GenericCommand for MakeBumpCommand {
       virtual_height: *matches
         .get_one::<f32>("virtual-height")
         .expect("Expected valid virtual height"),
-      mip_filter: MIP_FILTER,
-      quality: QUALITY,
+      mip_filter: get_mip_filter(matches)?,
+      quality: get_quality(matches)?,
     };
 
     let result: GenerateBumpResult = GenerateBumpProcessor::generate(&options)?;

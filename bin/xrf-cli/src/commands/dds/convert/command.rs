@@ -1,19 +1,17 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_dds::{
-  DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, Quality, RgbaImage,
-};
+use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMipChain, DdsMipmaps, Quality, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::DdsConvertReport;
+use crate::commands::dds::dds_encode_arguments::{
+  DEFAULT_CONVERT_MIP_FILTER, get_mip_filter, get_quality, new_mip_filter_argument, new_quality_argument,
+};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
-
-/// How hard the encoder works, which is not a knob a command line needs: a conversion writes a file somebody keeps.
-const QUALITY: Quality = Quality::Slow;
 
 #[derive(Default)]
 pub struct ConvertCommand;
@@ -47,13 +45,8 @@ impl GenericCommand for ConvertCommand {
           .required(true)
           .value_parser(["bc1", "bc2", "bc3", "bc7", "rgba8"]),
       )
-      .arg(
-        Arg::new("mip-filter")
-          .help("Kernel the mip chain is reduced with, from the X-Ray converter's own family")
-          .long("mip-filter")
-          .default_value("kaiser")
-          .value_parser(Self::filter_names()),
-      )
+      .arg(new_mip_filter_argument(DEFAULT_CONVERT_MIP_FILTER))
+      .arg(new_quality_argument())
       .arg(
         Arg::new("no-mipmaps")
           .help("Write only the base level, for a texture the engine never minifies")
@@ -76,12 +69,13 @@ impl GenericCommand for ConvertCommand {
     let source: &PathBuf = matches.get_one("source").expect("Expected valid source path");
     let destination: &PathBuf = matches.get_one("destination").expect("Expected valid destination path");
     let candidate: DdsEncodeCandidate = Self::get_candidate(matches)?;
+    let quality: Quality = get_quality(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
     let base: RgbaImage = DdsFile::read_from_path(source)?.decode_rgba(0)?;
     let chain: DdsMipChain = DdsMipChain::build(&base, Self::get_mipmaps(matches)?)?;
 
-    let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, QUALITY)?;
+    let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, quality)?;
 
     written.file.write_to_path(destination)?;
 
@@ -90,7 +84,7 @@ impl GenericCommand for ConvertCommand {
       DdsEncodeCandidate::ALL
         .into_iter()
         .filter(|it| *it != candidate)
-        .map(|it| DdsEncodeAttempt::measure(&chain, it, QUALITY))
+        .map(|it| DdsEncodeAttempt::measure(&chain, it, quality))
         .collect::<XrfResult<Vec<DdsEncodeAttempt>>>()?
     } else {
       Vec::new()
@@ -113,14 +107,6 @@ impl GenericCommand for ConvertCommand {
 }
 
 impl ConvertCommand {
-  /// The filter names the command accepts, taken from the family itself so the two cannot drift.
-  fn filter_names() -> Vec<String> {
-    DdsMipFilter::NAMED
-      .iter()
-      .map(|filter| filter.label().to_lowercase())
-      .collect()
-  }
-
   fn get_candidate(matches: &ArgMatches) -> XrfResult<DdsEncodeCandidate> {
     match matches.get_one::<String>("format").map(String::as_str) {
       Some("bc1") => Ok(DdsEncodeCandidate::Bc1),
@@ -140,15 +126,6 @@ impl ConvertCommand {
       return Ok(DdsMipmaps::Disabled);
     }
 
-    let name: &str = matches
-      .get_one::<String>("mip-filter")
-      .map(String::as_str)
-      .unwrap_or_default();
-
-    DdsMipFilter::NAMED
-      .into_iter()
-      .find(|filter| filter.label().eq_ignore_ascii_case(name))
-      .map(DdsMipmaps::Filtered)
-      .ok_or_else(|| XrfError::new_invalid_error(format!("Unexpected mip filter '{name}'")))
+    Ok(DdsMipmaps::Filtered(get_mip_filter(matches)?))
   }
 }
