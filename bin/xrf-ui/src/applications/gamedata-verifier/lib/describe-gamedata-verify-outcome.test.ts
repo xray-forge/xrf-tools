@@ -77,6 +77,7 @@ describe("describeGamedataVerifyOutcome", () => {
     expect(notice.severity).toBe(ENotificationSeverity.INFO);
     expect(notice.title).toContain("Stopped");
     expect(notice.details).toContain("not run");
+    expect(notice.details).toContain("Interrupted checks are incomplete");
   });
 
   it("reports a failure with the reason", () => {

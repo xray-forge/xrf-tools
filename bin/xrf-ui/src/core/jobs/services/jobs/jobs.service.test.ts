@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
 import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { EJobKind, IJobNotice, IJobOutcome, IJobState } from "@/core/jobs/lib";
+import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import {
@@ -211,6 +211,26 @@ describe("JobsService", () => {
 
     expect(raised).toHaveLength(1);
     expect(raised[0].title).toBe("Packed");
+  });
+
+  it("delivers opaque results without inventing a conclusion from a cancellation request", async () => {
+    const { service, container } = mockInjectedService(JobsService);
+    const settled: Array<IJobSettledPayload | undefined> = [];
+    const { descriptor, settle } = pending();
+    const run = service.run(descriptor);
+    const result = { count: 3 };
+
+    container.get(EventBus).subscribe(JOB_SETTLED_EVENT, (event: WireEvent<IJobSettledPayload>) => {
+      expect(service.getJob(run.id)).toBeNull();
+      settled.push(event.payload);
+    });
+
+    service.cancel(run.id);
+    settle(result);
+
+    await expect(run.promise).resolves.toBe(result);
+
+    expect(settled).toEqual([{ id: run.id, kind: descriptor.kind, conclusion: null, error: null, result }]);
   });
 
   it("tells the tool whether stopping was asked for when it describes the outcome", async () => {

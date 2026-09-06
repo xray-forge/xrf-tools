@@ -319,18 +319,10 @@ export class JobsService {
     error: Nullable<string>,
     result: unknown
   ): void {
-    this.jobs = this.jobs.filter((it: IJobState) => it.id !== job.id);
-    this.attached.delete(job.id);
-
-    this.announce(job.kind, describeAdoptedOutcome(job, conclusion, error));
-
-    this.eventBus.emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
-      id: job.id,
-      kind: job.kind,
-      conclusion,
-      error,
-      result,
-    });
+    this.publishSettlement(
+      { id: job.id, kind: job.kind, conclusion, error, result },
+      describeAdoptedOutcome(job, conclusion, error)
+    );
   }
 
   @BoundAction()
@@ -350,11 +342,39 @@ export class JobsService {
   private onSettled<T>(id: string, descriptor: IJobDescriptor<T>, result: Nullable<T>, error: Nullable<Error>): void {
     const job: Nullable<IJobState> = this.getJob(id);
 
-    this.jobs = this.jobs.filter((it: IJobState) => it.id !== id);
-
     const outcome: IJobOutcome<T> = { isCancelRequested: Boolean(job?.isCancelRequested), result, error };
+    let conclusion: Nullable<JobConclusion> = error ? "failed" : null;
 
-    this.announce(descriptor.kind, descriptor.describe(outcome));
+    // The shared outcome marker records accepted cancellation; requesting cancellation alone proves nothing.
+    if (
+      !error &&
+      typeof result === "object" &&
+      result !== null &&
+      "outcome" in result &&
+      (result.outcome === "completed" || result.outcome === "cancelled")
+    ) {
+      conclusion = result.outcome;
+    }
+
+    this.publishSettlement(
+      { id, kind: descriptor.kind, conclusion, error: error?.message ?? null, result },
+      descriptor.describe(outcome)
+    );
+  }
+
+  /**
+   * Removes a finished job and delivers its outcome to the user and the current tool scope.
+   *
+   * @param settled - Result from the command or the backend's retained listing.
+   * @param notice - Notification describing the outcome.
+   */
+  @BoundAction()
+  private publishSettlement(settled: IJobSettledPayload, notice: IJobNotice): void {
+    this.jobs = this.jobs.filter((job: IJobState) => job.id !== settled.id);
+    this.attached.delete(settled.id);
+
+    this.announce(settled.kind, notice);
+    this.eventBus.emit<IJobSettledPayload>(JOB_SETTLED_EVENT, settled);
   }
 
   /**

@@ -162,7 +162,7 @@ export type GamedataVerifyRequest = {
 /** What a whole verification reports back to the desktop surface. */
 export type GamedataVerifySummary = {
   /**
-   * Whether every selected check ran, or the run was stopped between them.
+   * Whether every selected check finished, or the run stopped before or inside a check.
    *
    * A stopped run's checks are real verdicts; its silence about the rest is not one.
    */

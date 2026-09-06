@@ -55,11 +55,11 @@ fn cancellation_before_reading_preserves_existing_output() {
   job.cancel();
 
   for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
-    assert!(
+    assert_eq!(
       convert(&request, operation, &job)
         .expect("cancelled before missing source is read")
-        .outcome
-        == JobOutcome::Cancelled
+        .outcome,
+      JobOutcome::Cancelled
     );
   }
 

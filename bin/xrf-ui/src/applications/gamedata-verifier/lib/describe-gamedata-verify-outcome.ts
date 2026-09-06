@@ -39,8 +39,8 @@ export function describeGamedataVerifyOutcome(root: string, outcome: IJobOutcome
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Ran ${result.checks.length} check(s) before stopping.`,
-        "The rest were not run, so nothing is known about them.",
+        `Reported ${result.checks.length} check(s) before stopping.`,
+        "Interrupted checks are incomplete; remaining checks were not run.",
         root,
       ].join("\n"),
       severity: ENotificationSeverity.INFO,

@@ -49,7 +49,8 @@ impl GamedataProject {
           ParticlesFile::read_from_chunk::<XRayByteOrder, _>(chunk)
         }) {
           Ok(particles_file) => {
-            let particle_findings: Vec<Finding> = self.verify_particle_with_job(output, &particles_file, path, &options.job);
+            let particle_findings: Vec<Finding> =
+              self.verify_particle_with_job(output, &particles_file, path, &options.job);
 
             if !particle_findings.is_empty() {
               xrf_output::info!(output, "Particle library is invalid: {}", path);

@@ -15,7 +15,11 @@ pub struct GamedataShaderSourceLoader<'a> {
 
 impl<'a> GamedataShaderSourceLoader<'a> {
   pub fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope) -> Self {
-    Self { scope, vfs, job: JobHandle::inert() }
+    Self {
+      scope,
+      vfs,
+      job: JobHandle::inert(),
+    }
   }
 
   pub(crate) fn with_job(mut self, job: JobHandle) -> Self {

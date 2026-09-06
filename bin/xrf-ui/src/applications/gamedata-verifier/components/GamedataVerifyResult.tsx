@@ -65,7 +65,7 @@ export function GamedataVerifyResult({ result }: IGamedataVerifyResultProps): Re
     <CommandResult
       headline={
         result.outcome === "cancelled"
-          ? `Stopped after ${result.checks.length} check(s) — the rest were not run`
+          ? "Verification stopped — some checks are incomplete or were not run"
           : failed.length
             ? `Gamedata ${result.status}: ${failed.length} of ${result.checks.length} check(s)`
             : `Gamedata passed ${result.checks.length} check(s)`

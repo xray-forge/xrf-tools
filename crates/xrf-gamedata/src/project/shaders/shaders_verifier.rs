@@ -110,8 +110,8 @@ impl<'a> ShadersVerifier<'a> {
 
     self.verify_root_shader_scripts(&renderer_root, &renderer_prefix, result);
 
-    let source_loader: GamedataShaderSourceLoader<'_> = GamedataShaderSourceLoader::new(self.vfs, self.scope)
-      .with_job(self.options.job.clone());
+    let source_loader: GamedataShaderSourceLoader<'_> =
+      GamedataShaderSourceLoader::new(self.vfs, self.scope).with_job(self.options.job.clone());
     let mut checked_sources: HashSet<PathBuf> = HashSet::new();
 
     // Scripts and sources are different sets: a `.s` script is Lua the renderer runs, so a renderer holding only scripts is

@@ -59,6 +59,13 @@ fn cancellation_inside_a_check_stops_its_remaining_items() {
       "invalid",
       "Verify spawn file:",
     ),
+    (
+      GamedataVerificationType::Weathers,
+      "configs/environment/weathers",
+      "ltx",
+      "[00:00:00]\n[01:00:00]\n",
+      "Weather [",
+    ),
   ] {
     let root = build_absolute_generated_test_resource_path(&format!("gamedata_cancellation/{check}"));
 

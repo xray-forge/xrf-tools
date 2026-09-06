@@ -145,6 +145,23 @@ mod tests {
   }
 
   #[test]
+  fn every_check_accepts_cancellation_before_reading_its_inputs() {
+    let project = empty_project();
+    let options = GamedataProjectVerifyOptions::default();
+    options.job.cancel();
+
+    for check in GamedataVerificationType::ALL {
+      let report = check.run(&project, &options);
+
+      assert_eq!(report.get_status(), GamedataVerificationStatus::Incomplete, "{check}");
+      assert!(
+        report.get_findings().is_empty(),
+        "{check} read missing inputs despite cancellation"
+      );
+    }
+  }
+
+  #[test]
   fn runs_each_selected_check_once_in_request_order() {
     let project: GamedataProject = empty_project();
     let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {

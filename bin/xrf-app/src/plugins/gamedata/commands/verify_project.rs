@@ -7,11 +7,12 @@ use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_error::{XrfError, XrfResult};
 use xrf_gamedata::{
   GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationCheckReport,
   GamedataVerificationReport, GamedataVerificationType,
 };
-use xrf_job::{JobHandle, JobOutcome, JobProgress};
+use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
 use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
@@ -43,7 +44,7 @@ pub struct GamedataCheckSummary {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct GamedataVerifySummary {
-  /// Whether every selected check ran, or the run was stopped between them.
+  /// Whether every selected check finished, or the run stopped before or inside a check.
   ///
   /// A stopped run's checks are real verdicts; its silence about the rest is not one.
   pub outcome: JobOutcome,
@@ -99,33 +100,64 @@ pub async fn gamedata_verify_project(
 
   // Off the async worker: this mounts an installation, indexes every asset it declares, and runs checks that
   // parallelise internally. None of that belongs on an executor thread meant for short requests.
-  let verifying: JobHandle = job.clone();
-  let is_strict: bool = request.is_strict;
-  let root: PathBuf = request.root;
-
-  let outcome: TauriResult<GamedataVerifySummary> = execution
+  execution
     .run_blocking("Gamedata verification", move || {
-      let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
-        root,
-        is_strict,
-        ..Default::default()
-      })?;
+      let outcome: TauriResult<GamedataVerifySummary> = run_verification(request, checks, &job);
 
-      project.verify(&GamedataProjectVerifyOptions {
-        is_strict,
-        checks,
-        job: verifying.clone(),
-        ..Default::default()
-      })
+      // Keep the registration alive with the blocking work, even if the caller stops awaiting the command.
+      registration.conclude_with(
+        &outcome,
+        outcome
+          .as_ref()
+          .is_ok_and(|summary| summary.outcome == JobOutcome::Cancelled),
+      );
+
+      outcome
     })
     .await?
-    .map_err(error_to_string)
-    .map(|report: GamedataVerificationReport| to_summary(&report, job.elapsed()));
+}
 
-  registration.conclude_with(&outcome, job.is_cancelled());
+/// Opens the project and verifies it, translating cooperative cancellation into a stopped result.
+fn run_verification(
+  request: GamedataVerifyRequest,
+  checks: Vec<GamedataVerificationType>,
+  job: &JobHandle,
+) -> TauriResult<GamedataVerifySummary> {
+  let report: XrfResult<GamedataVerificationReport> = (|| {
+    job.check_cancelled()?;
+
+    let project: GamedataProject = {
+      let _opening: JobScope = job.enter("open", None);
+      job.check_cancelled()?;
+
+      GamedataProject::open(&GamedataProjectReadOptions {
+        root: request.root,
+        is_strict: request.is_strict,
+        ..Default::default()
+      })?
+    };
+
+    job.check_cancelled()?;
+
+    project.verify(&GamedataProjectVerifyOptions {
+      is_strict: request.is_strict,
+      checks,
+      job: job.clone(),
+      ..Default::default()
+    })
+  })();
 
   // todo: Better reporting and display so findings actually can be analysed from UI.
-  outcome
+  match report {
+    Ok(report) => Ok(to_summary(&report, job.elapsed())),
+    Err(XrfError::Cancelled { .. }) => Ok(GamedataVerifySummary {
+      outcome: JobOutcome::Cancelled,
+      status: String::from("incomplete"),
+      checks: Vec::new(),
+      duration: job.elapsed(),
+    }),
+    Err(error) => Err(error_to_string(error)),
+  }
 }
 
 /// The report as the desktop surface reads it.
@@ -146,5 +178,96 @@ fn to_summary(report: &GamedataVerificationReport, elapsed: Duration) -> Gamedat
       .collect(),
     // The job's own clock rather than the report's, so opening the project is inside the number a person reads.
     duration: elapsed,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+  use std::sync::{Arc, Mutex};
+  use std::time::Duration;
+
+  use xrf_gamedata::GamedataVerificationType;
+  use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+  use super::{GamedataVerifyRequest, run_verification};
+
+  struct CancelAtPhase {
+    job: Mutex<Option<JobHandle>>,
+    phase: &'static str,
+    completed: Option<u64>,
+  }
+
+  impl ProgressSink for CancelAtPhase {
+    fn report(&self, progress: &JobProgress) {
+      if progress
+        .levels
+        .iter()
+        .any(|level| level.id == self.phase && self.completed.is_none_or(|count| level.completed == count))
+        && let Some(job) = self.job.lock().expect("test job lock").take()
+      {
+        job.cancel();
+      }
+    }
+  }
+
+  fn request(root: PathBuf) -> GamedataVerifyRequest {
+    GamedataVerifyRequest {
+      root,
+      checks: None,
+      is_strict: false,
+    }
+  }
+
+  #[test]
+  fn a_queued_cancel_does_not_open_the_project() {
+    let job = JobHandle::inert();
+    job.cancel();
+    let summary = run_verification(request(PathBuf::new()), vec![GamedataVerificationType::Scripts], &job)
+      .expect("cancellation is a result, not an invalid-root failure");
+
+    assert_eq!(summary.outcome, JobOutcome::Cancelled);
+    assert_eq!(summary.status, "incomplete");
+    assert!(summary.checks.is_empty());
+  }
+
+  #[test]
+  fn cancelling_at_the_open_phase_skips_the_read() {
+    let sink = Arc::new(CancelAtPhase {
+      job: Mutex::new(None),
+      phase: "open",
+      completed: None,
+    });
+    let job = JobHandle::new(sink.clone());
+    *sink.job.lock().expect("test job lock") = Some(job.clone());
+
+    let summary = run_verification(request(PathBuf::new()), vec![GamedataVerificationType::Scripts], &job)
+      .expect("cancellation skips the invalid root");
+
+    assert_eq!(summary.outcome, JobOutcome::Cancelled);
+    assert!(summary.checks.is_empty());
+  }
+
+  #[test]
+  fn a_cancel_after_the_last_check_keeps_the_completed_result() {
+    let root = build_absolute_generated_test_resource_path("gamedata_job/late_cancel");
+    fs::create_dir_all(root.join("configs")).expect("configs directory");
+    fs::write(root.join("configs/system.ltx"), "[system]\nversion = 1\n").expect("system config");
+    let sink = Arc::new(CancelAtPhase {
+      job: Mutex::new(None),
+      phase: "checks",
+      completed: Some(1),
+    });
+    // Only phase transitions report: the final snapshot comes as the completed check scope is dropped.
+    let job = JobHandle::with_interval(sink.clone(), Duration::MAX);
+    *sink.job.lock().expect("test job lock") = Some(job.clone());
+
+    let summary =
+      run_verification(request(root), vec![GamedataVerificationType::Scripts], &job).expect("verification finishes");
+
+    assert!(job.is_cancelled());
+    assert_eq!(summary.outcome, JobOutcome::Completed);
   }
 }

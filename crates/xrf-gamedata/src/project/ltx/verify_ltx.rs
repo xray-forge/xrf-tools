@@ -89,7 +89,6 @@ impl GamedataProject {
     self.ltx_project.check_format_all_files_opt(LtxFormatOptions {
       output: options.output.clone(),
       job: options.job.clone(),
-      ..Default::default()
     })
   }
 

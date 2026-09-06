@@ -53,12 +53,8 @@ pub async fn run_conversion(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<SpawnConversionResult> {
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, operation.job_kind())
-      .with_lease_keys(vec![CONVERSION_LEASE.to_owned()])
-      .with_request(&request)
-      .with_progress(progress),
-  )?;
+  let (job, registration): (JobHandle, JobRegistration) =
+    register_conversion(registry, &request, operation, job_id, progress)?;
 
   execution
     .run_blocking("Spawn conversion", move || {
@@ -72,6 +68,22 @@ pub async fn run_conversion(
       outcome
     })
     .await?
+}
+
+/// Takes the conversion lease and the job's place in the registry, before any work is dispatched.
+fn register_conversion(
+  registry: &Arc<JobRegistry>,
+  request: &SpawnConversionRequest,
+  operation: SpawnConversion,
+  job_id: Uuid,
+  progress: Channel<JobProgress>,
+) -> TauriResult<(JobHandle, JobRegistration)> {
+  registry.register(
+    JobStart::new(job_id, operation.job_kind())
+      .with_lease_keys(vec![CONVERSION_LEASE.to_owned()])
+      .with_request(request)
+      .with_progress(progress),
+  )
 }
 
 fn convert(

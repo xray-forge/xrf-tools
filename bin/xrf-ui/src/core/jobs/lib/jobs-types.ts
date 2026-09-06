@@ -20,8 +20,7 @@ export type IJobNotice = Omit<INotificationPayload, "source">;
  * How a job ended, as the thing that started it sees it.
  *
  * Deliberately does not say "cancelled": whether a run that answered successfully was cancelled is inside its own
- * payload, which only the tool that knows the payload type can read. What is offered here is whether stopping was
- * asked for, which is the part the jobs service is the authority on.
+ * payload. What is offered here is whether stopping was asked for, independently of what the command reported.
  */
 export interface IJobOutcome<T> {
   /** Whether the cancel control was used, whatever the run then answered. */
@@ -90,10 +89,10 @@ export interface IJobRun<T> {
 }
 
 /**
- * The event announcing that a job this window was only watching has ended.
+ * Announces completion of a locally started or adopted job.
  *
- * How a tool learns the outcome of a run it never started: the command's answer went to the page that asked for it,
- * and after a reload that page is gone. What the backend retained arrives here instead.
+ * A replacement tool scope receives the result after navigation. After a window reload, the result comes from the
+ * backend's retained listing. The scope awaiting the command publishes through its own flow instead.
  */
 export const JOB_SETTLED_EVENT: EventType = Symbol("@/jobs/settled");
 
@@ -104,14 +103,14 @@ export interface IJobSettledPayload {
   id: string;
   /** What kind of work it was, which is how a tool decides whether this is its own run. */
   kind: string;
-  /** How it ended, or null where it left the backend's retained listing before this window looked again. */
+  /** How it ended, or null when neither the command result nor the retained listing supplies an outcome. */
   conclusion: Nullable<JobConclusion>;
-  /** Why it failed, where the backend recorded a reason. */
+  /** Why the command failed, or null when no failure was reported. */
   error: Nullable<string>;
   /**
-   * What the run answered, as the backend retained it.
+   * What the command answered, directly or through the backend's retained listing.
    *
-   * Untyped on purpose: the jobs service serves every tool and cannot know what any of their results mean. The tool
+   * Untyped on purpose: the jobs service only reads the shared outcome marker. The tool
    * that recognises the kind is the one that knows the shape, and is where the cast belongs.
    */
   result: unknown;
