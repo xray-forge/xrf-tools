@@ -116,7 +116,9 @@ fn read_typescript_config(path: &Path) -> XrfResult<TypeScriptConfig> {
     )
   })?;
 
-  serde_json::from_str(&source).map_err(|error| {
+  // A tsconfig is JSONC: TypeScript accepts comments and trailing commas, so strict JSON would
+  // reject configurations the compiler itself reads.
+  jsonc_parser::parse_to_serde_value(&source, &Default::default()).map_err(|error| {
     XrfError::new_invalid_error(format!(
       "Failed to parse TypeScript configuration '{}': {error}",
       format_path(path),
