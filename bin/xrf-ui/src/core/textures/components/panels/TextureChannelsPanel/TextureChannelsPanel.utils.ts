@@ -86,10 +86,12 @@ export function describeTextureChannelsGap(
     return "No texture selected. The planes of its bump pair show here.";
   }
 
-  const { bump } = description.material;
+  const bump = description.material?.bump ?? null;
 
   if (!bump) {
-    return "This texture declares no bump pair, so there are no planes to read.";
+    return description.material
+      ? "This texture declares no bump pair, so there are no planes to read."
+      : "This file sits outside a game tree, so no bump pair was resolved for it.";
   }
 
   if (isUploading) {

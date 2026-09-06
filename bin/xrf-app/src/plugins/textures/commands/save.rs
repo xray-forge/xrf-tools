@@ -67,7 +67,7 @@ fn read_held_encoding(state: &TextureState, format: TextureEncodingFormat) -> Ta
   let file: &DdsFile = session.get(format).ok_or_else(|| {
     format!(
       "The held comparison of '{}' does not carry that format; compare the formats again before saving one",
-      session.reference
+      session.label
     )
   })?;
 

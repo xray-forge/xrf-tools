@@ -116,7 +116,9 @@ export function toTextureAspect(description: TextureDescription): number {
  * @returns The bump and its companion, or null when there is no pair to draw.
  */
 export function selectTextureBumpAssets(description: TextureDescription): Nullable<ITextureBumpAssets> {
-  const { bump } = description.material;
+  // Null for a file outside a game tree as well as for one that declares no pair: nothing was resolved either way, and
+  // a surface with nothing to bind draws the same in both cases.
+  const bump = description.material?.bump ?? null;
 
   if (!bump) {
     return null;

@@ -72,7 +72,7 @@ export function TexturePreviewLayout({
         <TextureWorkspaceToolbar
           subtitle={selectionService.reference ?? undefined}
           options={previewOptions}
-          hasBump={Boolean(description?.material.bump)}
+          hasBump={Boolean(description?.material?.bump)}
           onChangeOptions={setPreviewOptions}
           onResetCamera={onResetCamera}
           onBack={onBack}

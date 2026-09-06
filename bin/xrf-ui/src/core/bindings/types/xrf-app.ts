@@ -359,10 +359,10 @@ export type TextureCatalog = {
   outsideTexturesCount: number;
 };
 
-/** Everything the inspection panel says about one texture, resolved in one call. */
+/** Everything the inspection panels say about one texture, resolved in one call. */
 export type TextureDescription = {
   source: TextureSource;
-  /** The engine reference the source came to. */
+  /** What to call this texture on screen: its engine reference, or a standalone file's own stem. */
   reference: string;
   /** The roots the description was resolved in, so a later read searches what this searched. */
   roots: XrayRoots;
@@ -370,17 +370,19 @@ export type TextureDescription = {
   texture: XrayAsset | null;
   /** What the base texture file is, when it is located and its bytes can be reached. */
   base: AssetTextureDescriptor | null;
-  material: XrayMaterialDescriptor;
+  /**
+   * What the renderer would build for this texture, or `None` for a file outside every tree.
+   *
+   * Absent rather than empty for a standalone file. There is no tree to resolve a bump pair or a detail against, so
+   * answering "declares nothing" would be a claim this description is in no position to make - the descriptor beside
+   * the file may well declare a pair, and what the engine would do with it depends on a game tree nobody has named.
+   */
+  material: XrayMaterialDescriptor | null;
   /** What the bound bump file is, when the material binds one and its bytes can be reached. */
   bump: AssetTextureDescriptor | null;
   /** What the bound bump companion file is, on the same terms. */
   companion: AssetTextureDescriptor | null;
-  /**
-   * The descriptor's editable fields, when a `.thm` was located and parsed.
-   *
-   * Separate from [`Self::material`], which is what the renderer makes of the descriptor. This is the descriptor
-   * itself, and the editor binds to it. A `.thm` that will not parse reports `None` here and its refusal there.
-   */
+  /** The descriptor's editable fields, when a `.thm` was located and parsed. */
   form: TextureDescriptorForm | null;
   /** Where an edit of this texture would write, absent for a texture served out of an archive. */
   targets: TextureEditTargets | null;
@@ -682,8 +684,13 @@ export type TexturesBuildRequest = {
 
 /** What a format comparison was asked to weigh. */
 export type TexturesCompareRequest = {
-  /** The texture to re-encode, by its engine reference. */
-  reference: string;
+  /**
+   * The texture to re-encode, named the way `describe` names one.
+   *
+   * A source rather than an engine reference, because a file outside every tree has no reference and is addressed by
+   * its path. The label a surface shows still comes from the description; this is the address.
+   */
+  source: TextureSource;
   roots: XrayRoots;
   /**
    * Kernel the chain is reduced with, by its SDK name, or `None` to weigh the base level alone.

@@ -14,6 +14,7 @@ use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::lease::to_texture_lease_key;
+use crate::plugins::textures::source::TextureSource;
 
 /// One file a write addresses, and what was there when the editor read it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -109,8 +110,11 @@ pub struct TexturesMakeBumpRequest {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TexturesCompareRequest {
-  /// The texture to re-encode, by its engine reference.
-  pub reference: String,
+  /// The texture to re-encode, named the way `describe` names one.
+  ///
+  /// A source rather than an engine reference, because a file outside every tree has no reference and is addressed by
+  /// its path. The label a surface shows still comes from the description; this is the address.
+  pub source: TextureSource,
   pub roots: XrayRoots,
   /// Kernel the chain is reduced with, by its SDK name, or `None` to weigh the base level alone.
   ///

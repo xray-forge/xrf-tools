@@ -28,7 +28,7 @@ pub async fn textures_describe(
   log::info!(
     "Described texture '{}': {:?}",
     description.reference,
-    description.material.outcome
+    description.material.as_ref().map(|material| material.outcome)
   );
 
   Ok(description)

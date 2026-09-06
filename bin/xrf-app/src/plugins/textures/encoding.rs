@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsFormatSupport, DdsRenderer, Quality};
 use xrf_job::JobOutcome;
 
+use crate::plugins::textures::source::TextureSource;
+
 /// A format the base texture can be written in, of the five worth offering.
 ///
 /// A plugin-side mirror of [`DdsEncodeCandidate`] rather than the crate's own enum, for the reason every wire type
@@ -100,7 +102,12 @@ pub struct TextureEncodingComparison {
 /// The encodes one comparison produced, kept until somebody saves one or asks for another texture.
 pub struct TextureEncodingSession {
   /// The texture these were encoded from, so a save cannot write one texture's bytes over another's file.
-  pub reference: String,
+  ///
+  /// The source rather than its label: two files in different trees can share an engine reference, and a label a
+  /// standalone file gets from its own stem is not unique at all.
+  pub source: TextureSource,
+  /// What to call it in a message, carried beside the source because a source is an address rather than a name.
+  pub label: String,
   pub attempts: Vec<DdsEncodeAttempt>,
 }
 
@@ -120,7 +127,7 @@ impl TextureEncodingSession {
   pub fn to_comparison(&self, current: TextureEncodingCurrent, outcome: JobOutcome) -> TextureEncodingComparison {
     TextureEncodingComparison {
       outcome,
-      reference: self.reference.clone(),
+      reference: self.label.clone(),
       current,
       candidates: self.attempts.iter().map(TextureEncodingReport::of).collect(),
     }

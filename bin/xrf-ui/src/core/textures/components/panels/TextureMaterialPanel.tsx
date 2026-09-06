@@ -37,6 +37,20 @@ export function TextureMaterialPanel({
   }
 
   const { material } = description;
+
+  if (!material) {
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
+        <EditorPanelEmpty
+          label={
+            "This file sits outside a game tree, so there is nothing to resolve a bump pair or a detail against. " +
+            "What its descriptor declares is in the Descriptor panel."
+          }
+        />
+      </EditorPanel>
+    );
+  }
+
   const outcome: IMaterialStateDescriptor = describeBumpOutcome(material.outcome);
   const declaration: Nullable<string> = describeBumpDeclaration(material.declaration, material.descriptor);
 

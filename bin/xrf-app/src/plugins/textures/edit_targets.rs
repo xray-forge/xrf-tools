@@ -49,10 +49,22 @@ impl TextureEditTargets {
       .and_then(XrayAsset::to_physical_path)
       .unwrap_or_else(|| to_descriptor_path(&texture_path));
 
-    Ok(Some(Self {
-      descriptor: to_target(&descriptor_path)?,
-      texture: to_target(&texture_path)?,
-    }))
+    Ok(Some(Self::of_paths(&descriptor_path, &texture_path)?))
+  }
+
+  /// The two files an edit writes, named by path.
+  ///
+  /// The door a standalone texture comes through: it sits in no mount, so there is no asset to derive anything from
+  /// and the paths are the whole address.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when either file exists and its metadata cannot be read.
+  pub fn of_paths(descriptor: &Path, texture: &Path) -> TauriResult<Self> {
+    Ok(Self {
+      descriptor: to_target(descriptor)?,
+      texture: to_target(texture)?,
+    })
   }
 }
 

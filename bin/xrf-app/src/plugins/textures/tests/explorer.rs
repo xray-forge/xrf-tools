@@ -5,7 +5,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_db::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
+use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
+use xrf_material::XrayMaterialDescriptor;
 use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAssetType, XrayLookupScope, XrayMountId, XrayMountMode, XrayProbe, XrayRoots, XrayVfs};
 
 use crate::plugins::textures::catalog::{TextureCatalog, TextureEntry, TextureRole};
@@ -84,6 +87,27 @@ fn file_source(path: PathBuf) -> TextureSource {
   TextureSource::File {
     path: path.display().to_string(),
   }
+}
+
+/// A real uncompressed dds, so a standalone description has a header to read rather than a placeholder.
+fn to_dds_bytes(size: u32) -> Vec<u8> {
+  let base: RgbaImage = RgbaImage::from_fn(size, size, |x, y| Rgba([(x * 8) as u8, (y * 8) as u8, 0, u8::MAX]));
+
+  DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
+    .encode(&DdsMipChain::build(&base, DdsMipmaps::Disabled).expect("chain"))
+    .expect("encode")
+    .write_to_bytes()
+    .expect("bytes")
+}
+
+/// A scratch directory outside every X-Ray root, which is the case a standalone description exists for.
+fn loose_directory(case: &str) -> PathBuf {
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("textures_standalone/{case}"));
+
+  let _ = std::fs::remove_dir_all(&root);
+  std::fs::create_dir_all(&root).expect("case directory");
+
+  root
 }
 
 #[test]
@@ -300,7 +324,13 @@ fn a_description_carries_the_texture_the_material_and_both_bound_halves() {
     description.companion.as_ref().map(|companion| companion.size),
     Some(COMPANION.len() as u64)
   );
-  assert_eq!(description.material.declared_bump_pair(), Some((BUMP, COMPANION)));
+  assert_eq!(
+    description
+      .material
+      .as_ref()
+      .and_then(XrayMaterialDescriptor::declared_bump_pair),
+    Some((BUMP, COMPANION))
+  );
 }
 
 #[test]
@@ -319,7 +349,11 @@ fn a_descriptor_without_a_texture_describes_with_no_base() {
 
   assert!(description.texture.is_none());
   assert!(description.base.is_none());
-  assert!(description.material.descriptor.is_some());
+  assert!(
+    description
+      .material
+      .is_some_and(|material| material.descriptor.is_some())
+  );
 }
 
 #[test]
@@ -328,10 +362,10 @@ fn a_file_source_is_named_inside_the_root_the_vfs_implies_for_it() {
   let texture: PathBuf = tree.root().join("textures").join("ston").join("ston_beton05.dds");
   let descriptor: PathBuf = tree.root().join("textures").join("ston").join("ston_beton05.thm");
 
-  assert_eq!(file_source(texture.clone()).to_reference().as_deref(), Ok(BASE));
+  assert_eq!(file_source(texture.clone()).to_reference().as_deref(), Some(BASE));
   assert_eq!(
     file_source(descriptor).to_reference().as_deref(),
-    Ok(BASE),
+    Some(BASE),
     "the descriptor beside a texture names the same texture"
   );
   assert_eq!(file_source(texture.clone()).physical_path(), Some(texture.as_path()));
@@ -351,18 +385,119 @@ fn a_file_outside_any_root_or_outside_textures_names_no_reference() {
 
   assert_eq!(
     file_source(loose.root().join("textures").join("ston").join("ston_beton05.dds")).to_reference(),
-    Ok(String::from(BASE)),
+    Some(String::from(BASE)),
     "a textures directory with no meshes beside it still names the files under it"
   );
-  assert!(
-    file_source(rooted.root().join("meshes").join("ston_beton05.dds"))
-      .to_reference()
-      .is_err(),
+  assert_eq!(
+    file_source(rooted.root().join("meshes").join("ston_beton05.dds")).to_reference(),
+    None,
     "a texture file outside the textures directory is named by no reference"
   );
-  assert!(
-    file_source(Path::new("C:\\loose\\ston_beton05.dds").to_path_buf())
-      .to_reference()
-      .is_err()
+  assert_eq!(
+    file_source(Path::new("C:\\loose\\ston_beton05.dds").to_path_buf()).to_reference(),
+    None,
+    "a file under no root at all names none either, and is described from its own path instead"
   );
+}
+
+#[test]
+fn a_texture_outside_every_root_is_described_from_its_own_path() {
+  // The case the reference machinery cannot answer: no ancestor named `textures`, so no engine reference exists and
+  // nothing can be resolved against a tree that is not there. The file is still a texture somebody wants to open.
+  let root: PathBuf = loose_directory("plain");
+  let texture: PathBuf = root.join("wall.dds");
+
+  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+
+  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_roots"));
+  let description: TextureDescription = TextureDescription::describe(
+    &probe_over(&vfs, id),
+    file_source(texture.clone()),
+    XrayRoots::default(),
+  )
+  .expect("a loose texture is described");
+
+  assert_eq!(
+    description.reference, "wall",
+    "expect the file stem where there is no engine reference"
+  );
+  assert_eq!(
+    description.material, None,
+    "expect no material: there is no tree to resolve a bump pair or a detail against"
+  );
+  assert!(description.bump.is_none() && description.companion.is_none());
+  assert_eq!(
+    description
+      .base
+      .and_then(|base| base.shape)
+      .map(|shape| (shape.width, shape.height)),
+    Some((8, 8)),
+    "expect the dds header to be read straight off the path"
+  );
+}
+
+#[test]
+fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one() {
+  let root: PathBuf = loose_directory("descriptor");
+  let texture: PathBuf = root.join("wall.dds");
+  let descriptor: PathBuf = root.join("wall.thm");
+
+  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+
+  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_descriptor_roots"));
+  let probe: XrayProbe = probe_over(&vfs, id);
+
+  // With no `.thm` beside it the form is absent and the editor authors one; the target says so by expecting nothing.
+  let authoring: TextureDescription =
+    TextureDescription::describe(&probe, file_source(texture.clone()), XrayRoots::default()).expect("described");
+
+  assert!(authoring.form.is_none());
+  assert_eq!(
+    authoring
+      .targets
+      .as_ref()
+      .and_then(|targets| targets.descriptor.expected),
+    None
+  );
+  assert!(
+    authoring
+      .targets
+      .as_ref()
+      .is_some_and(|targets| targets.descriptor.path.ends_with("wall.thm")),
+    "expect the descriptor to be the sibling with the extension swapped, which is the engine's own rule"
+  );
+
+  // The sibling `.thm` is read straight off disk, because no mount holds it either.
+  std::fs::write(&descriptor, ThmFixture::image().to_bytes()).expect("descriptor is writable");
+
+  let described: TextureDescription =
+    TextureDescription::describe(&probe, file_source(texture), XrayRoots::default()).expect("described");
+
+  assert!(described.form.is_some());
+  assert!(
+    described
+      .targets
+      .is_some_and(|targets| targets.descriptor.expected.is_some())
+  );
+}
+
+#[test]
+fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
+  // Either half of the pair may be picked, exactly as inside a tree.
+  let root: PathBuf = loose_directory("from_thm");
+
+  std::fs::write(root.join("wall.dds"), to_dds_bytes(8)).expect("texture is writable");
+  std::fs::write(root.join("wall.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
+
+  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_thm_roots"));
+  let description: TextureDescription = TextureDescription::describe(
+    &probe_over(&vfs, id),
+    file_source(root.join("wall.thm")),
+    XrayRoots::default(),
+  )
+  .expect("described");
+
+  assert_eq!(description.reference, "wall");
+  assert!(description.form.is_some());
+  assert!(description.base.is_some(), "expect the dds beside the descriptor");
 }

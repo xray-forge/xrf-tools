@@ -18,7 +18,7 @@ export interface ITextureFile {
  * @returns The base texture and both halves of its pair, in the order a person reads them.
  */
 export function selectBoundTextureFiles(description: TextureDescription): Array<ITextureFile> {
-  const { bump } = description.material;
+  const bump = description.material?.bump ?? null;
 
   return [
     { asset: description.texture, descriptor: description.base, label: "Texture" },

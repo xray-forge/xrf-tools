@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use tauri::State;
@@ -5,6 +6,7 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMetadata, DdsMipChain, DdsMipmaps, RgbaImage};
 use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
+use xrf_utils::format_path;
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::error::error_to_string;
@@ -16,6 +18,7 @@ use crate::plugins::textures::encoding::{
 };
 use crate::plugins::textures::lease::{COMPARE_ENCODINGS_JOB_KIND, TEXTURE_ENCODE_GROUP, TEXTURE_PHASE_WEIGH};
 use crate::plugins::textures::request::TexturesCompareRequest;
+use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::state::TextureState;
 
 /// What one run weighed, before the encodes and the figures are told apart.
@@ -42,12 +45,10 @@ pub async fn textures_compare_encodings(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureEncodingComparison> {
-  log::info!("Comparing encodings of texture: {}", request.reference);
+  log::info!("Comparing encodings of texture: {}", request.source.label());
 
   let mipmaps: DdsMipmaps = request.to_mipmaps()?;
-  let bytes: Vec<u8> = assets
-    .with_probe(&request.roots, |probe| read_located_asset(probe, &request.reference))?
-    .map_err(error_to_string)?;
+  let bytes: Vec<u8> = read_texture_bytes(&assets, &request)?;
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, COMPARE_ENCODINGS_JOB_KIND)
@@ -59,14 +60,15 @@ pub async fn textures_compare_encodings(
   // A handle on the same slot rather than a borrow of the managed state, because the session is stored on the
   // blocking thread once the encodes exist and the command frame's borrow does not reach that far.
   let held: Arc<Mutex<Option<TextureEncodingSession>>> = Arc::clone(&state.encodings);
-  let reference: String = request.reference.clone();
+  let source: TextureSource = request.source.clone();
+  let label: String = request.source.to_label();
 
   run_job(
     &execution,
     "Texture encoding comparison",
     registration,
     move || -> TauriResult<TextureEncodingComparison> {
-      let measured: MeasuredComparison = measure(&job, &bytes, reference, mipmaps, request.quality)?;
+      let measured: MeasuredComparison = measure(&job, &bytes, source, label, mipmaps, request.quality)?;
       let comparison: TextureEncodingComparison = measured.session.to_comparison(measured.current, measured.outcome);
 
       // Held even for a stopped run, because what it holds is what this run really encoded and a save naming one of
@@ -88,11 +90,33 @@ pub async fn textures_compare_encodings(
   .await
 }
 
+/// The stored bytes of whatever the request names.
+///
+/// Two doors, because a texture has two kinds of address. One inside a tree is read through the probe, so an archived
+/// entry answers as readily as a loose file and the roots decide which of several wins. One outside every tree is read
+/// from its path, because no mount holds it and the path is the whole address.
+fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest) -> TauriResult<Vec<u8>> {
+  match request.source.to_reference() {
+    Some(reference) => assets
+      .with_probe(&request.roots, |probe| read_located_asset(probe, &reference))?
+      .map_err(error_to_string),
+    None => {
+      let path: &Path = request
+        .source
+        .physical_path()
+        .ok_or_else(|| String::from("A texture outside every root has to be named by a file path"))?;
+
+      std::fs::read(path).map_err(|error| format!("Cannot read '{}': {error}", format_path(path)))
+    }
+  }
+}
+
 /// Decode the texture once, reduce it once, and encode every candidate from those levels.
 fn measure(
   job: &JobHandle,
   bytes: &[u8],
-  reference: String,
+  source: TextureSource,
+  label: String,
   mipmaps: DdsMipmaps,
   quality: TextureEncodingQuality,
 ) -> TauriResult<MeasuredComparison> {
@@ -119,7 +143,11 @@ fn measure(
   job.set_detail(None);
 
   Ok(MeasuredComparison {
-    session: TextureEncodingSession { reference, attempts },
+    session: TextureEncodingSession {
+      source,
+      label,
+      attempts,
+    },
     current: TextureEncodingCurrent {
       label: metadata.get_format_label(),
       file_bytes: metadata.file_size,

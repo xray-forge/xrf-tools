@@ -1,4 +1,6 @@
 use serde::Serialize;
+use std::path::Path;
+
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_error::XrfResult;
 use xrf_vfs::{XrayAsset, XrayProbe};
@@ -50,18 +52,7 @@ impl AssetTextureDescriptor {
   /// whose headers this reader refuses are exactly the ones worth knowing the size of.
   pub fn describe(probe: &XrayProbe, asset: &XrayAsset) -> Option<Self> {
     match asset.to_physical_path() {
-      Some(path) => {
-        let metadata: Option<DdsMetadata> = DdsFile::read_metadata_from_path(&path).ok();
-        let size: u64 = match &metadata {
-          Some(metadata) => metadata.file_size,
-          None => std::fs::metadata(&path).ok()?.len(),
-        };
-
-        Some(Self {
-          size,
-          shape: metadata.as_ref().map(AssetTextureShape::from_metadata),
-        })
-      }
+      Some(path) => Self::describe_path(&path),
       None => {
         let bytes: Vec<u8> = probe.read_asset_bytes(asset).ok()?;
 
@@ -74,6 +65,24 @@ impl AssetTextureDescriptor {
         })
       }
     }
+  }
+}
+
+impl AssetTextureDescriptor {
+  /// Describes a texture file by path, for one no mount holds.
+  ///
+  /// A header that will not parse costs the shape, not the descriptor: the byte count is still a fact, and the files
+  /// whose headers this reader refuses are exactly the ones worth knowing the size of.
+  pub fn describe_path(path: &Path) -> Option<Self> {
+    let metadata: Option<DdsMetadata> = DdsFile::read_metadata_from_path(path).ok();
+
+    Some(Self {
+      size: match &metadata {
+        Some(metadata) => metadata.file_size,
+        None => std::fs::metadata(path).ok()?.len(),
+      },
+      shape: metadata.as_ref().map(AssetTextureShape::from_metadata),
+    })
   }
 }
 

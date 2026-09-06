@@ -23,6 +23,7 @@ use crate::plugins::textures::request::{
   TextureDescriptorSave, TextureEncodingSave, TextureSaveTarget, TexturesSaveRequest,
 };
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
+use crate::plugins::textures::source::TextureSource;
 
 const BASE: &str = "ston\\ston_beton05";
 
@@ -450,7 +451,10 @@ fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
 fn a_held_session_answers_for_the_candidates_it_weighed_and_no_others() {
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
   let session: TextureEncodingSession = TextureEncodingSession {
-    reference: String::from(BASE),
+    source: TextureSource::Asset {
+      reference: String::from(BASE),
+    },
+    label: String::from(BASE),
     attempts: vec![
       DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3"),
       DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Rgba8, Quality::Fast).expect("rgba8"),
