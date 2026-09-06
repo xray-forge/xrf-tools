@@ -29,7 +29,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";
@@ -83,13 +83,13 @@ export function TexturesMenu({
     [filtered]
   );
 
-  const onOpenReference = useCallback(
-    (reference: string) => {
+  const onOpenNode = useCallback(
+    (node: ITextureNode) => {
       // Selection is written from what was asked for, never derived from what the panels ended up holding: a texture
       // that fails to describe leaves its row selected, beside the failure's own retry.
-      reveal(toFileItemId(reference));
+      reveal(toFileItemId(node.reference));
 
-      void catalogService.select(reference);
+      void catalogService.select(node.source);
     },
     [reveal, catalogService]
   );
@@ -97,7 +97,7 @@ export function TexturesMenu({
   const search: IUseRankedSearch<ITextureNode> = useRankedSearch({
     items: filtered,
     toSearchText: (node: ITextureNode) => node.reference,
-    onSelect: (node: ITextureNode) => onOpenReference(node.reference),
+    onSelect: onOpenNode,
   });
 
   const rows: Array<IEditorSearchResultRow> = useMemo(
@@ -111,6 +111,23 @@ export function TexturesMenu({
   );
 
   const onSelectNode = useCallback((item: ITreeNode<ITextureNode>) => tree.select(item.id), [tree]);
+
+  // The tree and the search list both hand back what a row is called, and what to open is what the row carries.
+  const byReference: Map<string, ITextureNode> = useMemo(
+    () => new Map(nodes.map((node: ITextureNode) => [node.reference, node])),
+    [nodes]
+  );
+
+  const onOpenReference = useCallback(
+    (reference: string) => {
+      const node: Optional<ITextureNode> = byReference.get(reference);
+
+      if (node) {
+        onOpenNode(node);
+      }
+    },
+    [byReference, onOpenNode]
+  );
 
   const onActivateNode = useCallback(
     (item: ITreeNode<ITextureNode>) => {

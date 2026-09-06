@@ -11,17 +11,14 @@ import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-interface ITexturesEditorOpenFormProps extends BaseComponentProps {
-  /**
-   * Called once an open attempt has finished, successfully or not.
-   */
-  onFinished?: () => void;
-}
-
 /**
  * The way into the editor: one texture.
  */
-export function TexturesEditorOpenForm({ onFinished }: ITexturesEditorOpenFormProps): ReactElement {
+export function TexturesEditorOpenForm({
+  "data-testid": dataTestId = "textures-editor-open-form",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const pathsService: PathsService = useInjection(PathsService);
 
@@ -46,12 +43,13 @@ export function TexturesEditorOpenForm({ onFinished }: ITexturesEditorOpenFormPr
     }
 
     await selectionService.openFile(texture.value);
-
-    onFinished?.();
-  }, [log, onFinished, selectionService, texture.value]);
+  }, [log, selectionService, texture.value]);
 
   return (
     <PickerForm
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       isLoading={isLoading}
       title={"Open a texture to work on"}
       description={

@@ -38,6 +38,7 @@ async function mockService(): Promise<{ service: TextureEncodingService; selecti
   setMockInvokeResponses({
     ["plugin:textures|compare_encodings"]: mockComparison(),
     ["plugin:textures|describe"]: mockTextureDescription(),
+    ["plugin:textures|read_candidate"]: new ArrayBuffer(8),
     ["plugin:textures|read_texture"]: new ArrayBuffer(0),
   });
 
@@ -134,5 +135,58 @@ describe("TextureEncodingService", () => {
 
     expect(service.chosen).toBeNull();
     expect(service.comparison).toBeNull();
+  });
+
+  it("reads the chosen candidate as a picture, and lets it go again", async () => {
+    // Choosing is what says somebody wants to look at the format rather than only read its numbers, so the picture is
+    // fetched then rather than for every candidate a comparison weighed.
+    const { service } = await mockService();
+
+    await service.run(null);
+
+    expect(service.preview.value).toBeNull();
+
+    await service.choose("bc3");
+
+    expect(service.chosen).toBe("bc3");
+    expect(service.preview.value).toEqual(new ArrayBuffer(8));
+
+    // Naming the held candidate again releases it, and the picture of it goes with the choice.
+    await service.choose("bc3");
+
+    expect(service.chosen).toBeNull();
+    expect(service.preview.value).toBeNull();
+  });
+
+  it("answers the choice before it has the picture", async () => {
+    // The row paints from `chosen`, so a click that only showed as chosen once the bytes arrived would look dropped.
+    const { service } = await mockService();
+
+    await service.run(null);
+
+    const choosing = service.choose("bc1");
+
+    expect(service.chosen).toBe("bc1");
+
+    await choosing;
+  });
+
+  it("keeps no picture of a candidate that could not be decoded", async () => {
+    const { service } = await mockService();
+
+    await service.run(null);
+
+    setMockInvokeResponses({
+      ["plugin:textures|read_candidate"]: () => {
+        throw new Error("The held comparison does not carry that format");
+      },
+    });
+
+    await service.choose("bc3");
+
+    // Still chosen: the encode is there to save even when this picture of it is not.
+    expect(service.chosen).toBe("bc3");
+    expect(service.preview.value).toBeNull();
+    expect(service.preview.error?.message).toContain("does not carry that format");
   });
 });

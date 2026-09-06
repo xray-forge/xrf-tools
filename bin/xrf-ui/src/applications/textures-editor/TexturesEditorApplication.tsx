@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement } from "react";
 
 import { TexturesEditorOpenForm } from "@/applications/textures-editor/components/TexturesEditorOpenForm";
 import { TexturesEditorWorkspace } from "@/applications/textures-editor/components/TexturesEditorWorkspace";
@@ -16,12 +16,8 @@ export function TexturesEditorApplication({
 }: ITexturesEditorApplicationProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
 
-  const [isPickerOpen, setPickerOpen] = useState<boolean>(false);
-
-  const onFinished = useCallback(() => setPickerOpen(false), []);
-
-  if (isPickerOpen || selectionService.selected.value === null) {
-    return <TexturesEditorOpenForm data-testid={dataTestId} onFinished={onFinished} />;
+  if (selectionService.selected.value === null) {
+    return <TexturesEditorOpenForm data-testid={dataTestId} />;
   }
 
   return <TexturesEditorWorkspace data-testid={dataTestId} />;

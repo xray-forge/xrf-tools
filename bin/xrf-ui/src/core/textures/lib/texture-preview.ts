@@ -1,4 +1,5 @@
 import { ETextureSurfaceShape, ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 /** The two ways one texture file can be looked at here. */
@@ -27,6 +28,16 @@ export const DEFAULT_TEXTURE_PREVIEW_OPTIONS: ITexturePreviewOptions = {
   shape: ETextureSurfaceShape.PLANE,
   tiling: 1,
 };
+
+/**
+ * A second encoding to show beside the texture, for looking at what writing it would change.
+ */
+export interface ITexturePreviewComparison {
+  /** What this encoding is called, on its own caption. */
+  label: string;
+  /** It, decoded to png. */
+  preview: Loadable<Nullable<ArrayBuffer>>;
+}
 
 /** What is missing when a texture cannot be shown, in the words that say which of the two things is absent. */
 export interface ITexturePreviewGap {

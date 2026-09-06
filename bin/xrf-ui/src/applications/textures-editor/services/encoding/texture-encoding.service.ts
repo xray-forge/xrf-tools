@@ -3,18 +3,21 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
 import { texturesCommands } from "@/core/bindings/commands/textures";
+import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import {
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
 } from "@/core/bindings/types/xrf-app";
+import { transformError } from "@/core/error/lib";
 import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -31,6 +34,12 @@ export class TextureEncodingService {
    */
   @Observable()
   public chosen: Nullable<TextureEncodingFormat> = null;
+
+  /**
+   * The chosen candidate as a picture, for showing it beside the texture it would replace.
+   */
+  @Observable()
+  public preview: Loadable<Nullable<ArrayBuffer>> = Loadable.idle(null);
 
   /**
    * The reference the comparison belongs to, so one made for another texture is not shown against this one.
@@ -79,18 +88,45 @@ export class TextureEncodingService {
   @BoundAction()
   public clear(): void {
     this.chosen = null;
+    this.preview = this.preview.asIdle();
     this.comparedReference = null;
     this.compare.reset();
   }
 
   /**
-   * Choose a candidate to write, or clear the choice by naming the one already chosen.
+   * Choose a candidate to write, or clear the choice by naming the one already chosen, and read its picture.
+   *
+   * Superseding rather than exclusive: clicking down a list of candidates is an ordinary way to look at them, and
+   * only the last one asked for is the one anybody is waiting to see.
    *
    * @param format - The candidate to hold, or the held one to release.
    */
-  @BoundAction()
-  public choose(format: TextureEncodingFormat): void {
-    this.chosen = this.chosen === format ? null : format;
+  @LatestFlow("preview")
+  public *choose(format: TextureEncodingFormat): TFlow {
+    // Before the first yield, so a caller that reads the choice straight after asking for it sees the answer.
+    const chosen: Nullable<TextureEncodingFormat> = this.chosen === format ? null : format;
+
+    this.chosen = chosen;
+
+    if (chosen === null) {
+      this.preview = this.preview.asIdle();
+
+      return;
+    }
+
+    this.preview = this.preview.asLoading(null);
+
+    try {
+      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readCandidate(chosen));
+
+      this.preview = this.preview.asReady(bytes);
+    } catch (error: unknown) {
+      const transformed: Error = transformError(error);
+
+      this.log.error("Failed to decode the chosen candidate:", transformed);
+
+      this.preview = this.preview.asFailed(transformed, null);
+    }
   }
 
   /**

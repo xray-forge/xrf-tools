@@ -6903,10 +6903,10 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-session`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-candidate`\n- `allow-read-texture`",
           "type": "string",
           "const": "textures:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-session`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-candidate`\n- `allow-read-texture`"
         },
         {
           "description": "Enables the build_from_source command without any pre-configured scope.",
@@ -6939,10 +6939,10 @@
           "markdownDescription": "Enables the describe_catalog command without any pre-configured scope."
         },
         {
-          "description": "Enables the get_roots command without any pre-configured scope.",
+          "description": "Enables the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "textures:allow-get-roots",
-          "markdownDescription": "Enables the get_roots command without any pre-configured scope."
+          "const": "textures:allow-get-session",
+          "markdownDescription": "Enables the get_session command without any pre-configured scope."
         },
         {
           "description": "Enables the get_vocabulary command without any pre-configured scope.",
@@ -6961,6 +6961,12 @@
           "type": "string",
           "const": "textures:allow-open",
           "markdownDescription": "Enables the open command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_candidate command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-read-candidate",
+          "markdownDescription": "Enables the read_candidate command without any pre-configured scope."
         },
         {
           "description": "Enables the read_texture command without any pre-configured scope.",
@@ -7005,10 +7011,10 @@
           "markdownDescription": "Denies the describe_catalog command without any pre-configured scope."
         },
         {
-          "description": "Denies the get_roots command without any pre-configured scope.",
+          "description": "Denies the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "textures:deny-get-roots",
-          "markdownDescription": "Denies the get_roots command without any pre-configured scope."
+          "const": "textures:deny-get-session",
+          "markdownDescription": "Denies the get_session command without any pre-configured scope."
         },
         {
           "description": "Denies the get_vocabulary command without any pre-configured scope.",
@@ -7027,6 +7033,12 @@
           "type": "string",
           "const": "textures:deny-open",
           "markdownDescription": "Denies the open command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_candidate command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-read-candidate",
+          "markdownDescription": "Denies the read_candidate command without any pre-configured scope."
         },
         {
           "description": "Denies the read_texture command without any pre-configured scope.",

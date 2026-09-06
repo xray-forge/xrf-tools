@@ -6,7 +6,11 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
-import { DEFAULT_TEXTURE_PREVIEW_OPTIONS, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
+import {
+  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  ITexturePreviewComparison,
+  ITexturePreviewOptions,
+} from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -23,6 +27,8 @@ interface ITexturePreviewLayoutProps extends BaseComponentProps {
   banner?: ReactNode;
   /** Leaving the session, which each application ends its own way. */
   onBack: () => void;
+  /** Another encoding of the open texture to show beside it, for an application that can produce one. */
+  comparison?: Nullable<ITexturePreviewComparison>;
 }
 
 /**
@@ -35,6 +41,7 @@ export function TexturePreviewLayout({
   panels,
   status,
   banner,
+  comparison = null,
   onBack,
 }: ITexturePreviewLayoutProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
@@ -80,7 +87,7 @@ export function TexturePreviewLayout({
       }
       banner={banner}
     >
-      <TexturePreview options={previewOptions} resetToken={cameraResetToken} />
+      <TexturePreview options={previewOptions} resetToken={cameraResetToken} comparison={comparison} />
     </EditorLayout>
   );
 }

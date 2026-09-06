@@ -3,7 +3,13 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/bindings/commands/textures";
-import { TextureCatalog, TextureMaterialSummary } from "@/core/bindings/types/xrf-app";
+import {
+  TextureBrowseSession,
+  TextureCatalog,
+  TextureCatalogMode,
+  TextureMaterialSummary,
+  TextureSource,
+} from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
@@ -79,10 +85,10 @@ export class TextureCatalogService {
   @OnProvision()
   public async onProvision(): Promise<void> {
     try {
-      const roots: Nullable<XrayRoots> = await texturesCommands.getRoots();
+      const session: Nullable<TextureBrowseSession> = await texturesCommands.getSession();
 
-      if (roots) {
-        this.log.info("Restoring browsed texture roots:", describeRoots(roots));
+      if (session) {
+        this.log.info("Restoring browsed texture roots:", describeRoots(session.roots));
 
         // Through the lane rather than around it, so a root the user picks while this is still restoring wins.
         //
@@ -90,7 +96,7 @@ export class TextureCatalogService {
         // provisions twice, and the second restore cancels the first, so a `finally` here would report a ready screen
         // while the catalog is still empty - which is the picker, opened for a quarter of a second over a session that
         // was already coming back.
-        await flowResult(this.restore(roots));
+        await flowResult(this.restore(session));
 
         return;
       }
@@ -129,7 +135,17 @@ export class TextureCatalogService {
    */
   @LatestFlow("catalog")
   public *openRoot(root: string): TFlow {
-    yield* this.list(createRoots([root, ...configuredAssetRoots(this.pathsService.paths)]));
+    yield* this.list(createRoots([root, ...configuredAssetRoots(this.pathsService.paths)]), "roots");
+  }
+
+  /**
+   * List a plain directory of textures, addressed by path rather than by engine reference.
+   *
+   * @param directory - Filesystem path of the folder to list.
+   */
+  @LatestFlow("catalog")
+  public *openLooseDirectory(directory: string): TFlow {
+    yield* this.list(createRoots([directory]), "looseDirectory");
   }
 
   /**
@@ -152,30 +168,33 @@ export class TextureCatalogService {
   }
 
   /**
-   * Inspect a texture of the browsed roots.
+   * Inspect a texture of the browsed session.
    *
-   * @param reference - Engine reference of the texture, as the listing reported it.
+   * Addressed by the source the listing put on the row rather than by what it is labelled: a loose file has no
+   * reference to resolve back into, and the row is the only thing that knows which of the two it is.
+   *
+   * @param source - Where the row said its texture is.
    */
-  public select(reference: string): Promise<void> {
+  public select(source: TextureSource): Promise<void> {
     const roots: Nullable<XrayRoots> = this.roots;
 
     if (!roots) {
-      this.log.info("Cannot inspect a texture with nothing open:", reference);
+      this.log.info("Cannot inspect a texture with nothing open:", source);
 
       return Promise.resolve();
     }
 
-    return flowResult(this.selectionService.openReference(reference, roots));
+    return flowResult(this.selectionService.open(source, roots));
   }
 
   /**
-   * Puts an already browsed root set back on screen, for a session the backend still holds.
+   * Puts an already browsed session back on screen, for one the backend still holds.
    *
-   * @param roots - Roots the backend reported as browsed.
+   * @param session - What the backend reported as browsed, listed the way it was listed.
    */
   @LatestFlow("catalog")
-  private *restore(roots: XrayRoots): TFlow {
-    yield* this.list(roots);
+  private *restore(session: TextureBrowseSession): TFlow {
+    yield* this.list(session.roots, session.mode);
   }
 
   /**
@@ -185,13 +204,14 @@ export class TextureCatalogService {
    * belongs to, and a sweep that fails leaves the tree browsable with no badges rather than closing it.
    *
    * @param roots - Roots to list and sweep.
+   * @param mode - How to address what is found, which also decides whether a sweep can say anything.
    */
-  private *list(roots: XrayRoots): TFlow {
+  private *list(roots: XrayRoots, mode: TextureCatalogMode): TFlow {
     this.catalog = this.catalog.asLoading();
     this.summaries = this.summaries.asIdle([]);
 
     try {
-      const catalog: TextureCatalog = yield* call(texturesCommands.open(roots));
+      const catalog: TextureCatalog = yield* call(texturesCommands.open(roots, mode));
 
       this.catalog = this.catalog.asReady(catalog);
       // Announced here rather than after the sweep: the tree can be drawn from the listing alone, and waiting for
@@ -201,7 +221,11 @@ export class TextureCatalogService {
 
       this.log.info(`Listed ${catalog.entries.length} textures in:`, describeRoots(catalog.roots));
 
-      yield* this.sweep(catalog.roots);
+      // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run
+      // and ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
+      if (mode === "roots") {
+        yield* this.sweep(catalog.roots);
+      }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 

@@ -1,4 +1,10 @@
-import { TextureCatalog, TextureEntry, TextureMaterialSummary, TextureRole } from "@/core/bindings/types/xrf-app";
+import {
+  TextureCatalog,
+  TextureEntry,
+  TextureMaterialSummary,
+  TextureRole,
+  TextureSource,
+} from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -20,12 +26,16 @@ export enum ETextureBadge {
   ORPHAN = "orphan",
   /** A file named as a bump half that no descriptor declares, so the engine never binds it. */
   UNREFERENCED = "unreferenced",
+  /** The winning file is inside a `.db` volume, so it can be read and shown but not written. */
+  ARCHIVED = "archived",
 }
 
 /** One texture of the browsed roots: what it is named, what files it has, and what its descriptor makes of them. */
 export interface ITextureNode {
-  /** Engine reference, which is the identity everything about this texture is keyed by. */
+  /** What this row is called and keyed by: an engine reference, or a loose file's path below its root. */
   reference: string;
+  /** Where its texture is, which is what opening the row asks for. */
+  source: TextureSource;
   role: TextureRole;
   texture: Nullable<XrayAsset>;
   descriptor: Nullable<XrayAsset>;
@@ -83,6 +93,13 @@ const BADGE_DESCRIPTORS: Record<ETextureBadge, ITextureBadgeDescriptor> = {
     color: "default",
     description: "A file named as a bump half that no descriptor declares, so the engine never binds it.",
     label: "Unreferenced",
+  },
+  [ETextureBadge.ARCHIVED]: {
+    color: "default",
+    description:
+      "The file the roots answer with is inside a .db volume. It reads and shows like any other, and nothing can " +
+      "write it where it is.",
+    label: "Archived",
   },
 };
 
@@ -142,6 +159,7 @@ export function buildTextureNodes(
       halves: collectHalves(summary, byReference),
       reference: entry.reference,
       role: entry.role,
+      source: entry.source,
       summary,
       texture: entry.texture,
     });
@@ -253,6 +271,10 @@ function collectBadges(
 
   if (entry.role !== "texture" && !declaredBy.has(entry.reference)) {
     badges.add(ETextureBadge.UNREFERENCED);
+  }
+
+  if (entry.texture?.container.kind === "archive") {
+    badges.add(ETextureBadge.ARCHIVED);
   }
 
   return badges;

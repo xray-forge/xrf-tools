@@ -68,7 +68,7 @@ describe("TexturesExplorerApplication", () => {
     // Inside `act`, because selecting settles two flows - the descriptor and the decoded preview - and each one
     // re-renders the workspace through mobx after the await the test is holding.
     await act(async () => {
-      await service.select(MOCK_TEXTURE);
+      await service.select({ kind: "asset", reference: MOCK_TEXTURE });
     });
 
     await waitFor(() => expect(selectionService.preview.isLoading).toBe(false));

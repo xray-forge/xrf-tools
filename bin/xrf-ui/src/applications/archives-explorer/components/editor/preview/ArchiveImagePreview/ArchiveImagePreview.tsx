@@ -1,12 +1,12 @@
 import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useMemo, useState } from "react";
+import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
 import { describeTextureShape } from "@/core/assets/lib";
-import { AssetService } from "@/core/assets/services";
+import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -22,10 +22,6 @@ const ARCHIVE_IMAGE_ASSET_KEY: string = "archive-image";
  */
 export function ArchiveImagePreview(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const assetService: AssetService = useInjection(AssetService);
-
-  const [url, setUrl] = useState<Nullable<string>>(null);
-
   const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
 
   // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
@@ -39,12 +35,7 @@ export function ArchiveImagePreview(): ReactElement {
   const shape: Nullable<AssetTextureShape> = image?.descriptor.shape ?? null;
   const bytes: Nullable<TArchiveBytes> = image?.bytes ?? null;
 
-  // Blobbed from the view rather than its buffer, so a byte offset cannot silently widen the picture.
-  const blob: Nullable<Blob> = useMemo(() => (bytes ? new Blob([bytes], { type: "image/png" }) : null), [bytes]);
-
-  useEffect(() => {
-    setUrl(blob ? assetService.swap(ARCHIVE_IMAGE_ASSET_KEY, blob) : null);
-  }, [assetService, blob]);
+  const url: Nullable<string> = useAssetUrl(ARCHIVE_IMAGE_ASSET_KEY, bytes, "image/png");
 
   if (content.error) {
     return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;

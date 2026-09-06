@@ -96,6 +96,17 @@ export class TextureSelectionService {
   }
 
   /**
+   * Open whatever a listing addressed, however it addressed it.
+   *
+   * @param source - What to inspect, as the listing reported it.
+   * @param roots - Roots that listing came from, so both read the same world.
+   */
+  @LatestFlow("selected")
+  public *open(source: TextureSource, roots: XrayRoots): TFlow {
+    yield* this.describe(source, source.kind === "file" ? this.toFileRoots(source.path) : roots);
+  }
+
+  /**
    * Ask again for whatever the last inspection asked for, or do nothing when nothing has been asked for yet.
    */
   @LatestFlow("selected")

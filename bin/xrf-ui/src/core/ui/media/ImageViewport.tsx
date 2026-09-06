@@ -3,7 +3,17 @@ import { default as FitScreenIcon } from "@mui/icons-material/FitScreen";
 import { default as ZoomInIcon } from "@mui/icons-material/ZoomIn";
 import { default as ZoomOutIcon } from "@mui/icons-material/ZoomOut";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
-import { MouseEvent, ReactElement, useCallback, useEffect, useRef, useState, WheelEvent } from "react";
+import {
+  Dispatch,
+  MouseEvent,
+  ReactElement,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  WheelEvent,
+} from "react";
 
 import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
 import {
@@ -22,16 +32,32 @@ interface IImageViewportProps {
   alt: string;
   width: number;
   height: number;
+  /** Pan and zoom held by the caller, for two viewports that must show the same part of two pictures. */
+  state?: IPanZoomState;
+  onStateChange?: Dispatch<SetStateAction<IPanZoomState>>;
+  /** Whether this viewport draws the zoom controls. Off for the second of a pair, which the first one moves. */
+  hasControls?: boolean;
 }
 
 /**
  * Pannable, zoomable viewport for a single image.
  */
-export function ImageViewport({ src, alt, width, height }: IImageViewportProps): ReactElement {
+export function ImageViewport({
+  src,
+  alt,
+  width,
+  height,
+  state: controlledState,
+  hasControls = true,
+  onStateChange,
+}: IImageViewportProps): ReactElement {
   const viewportRef = useRef<Nullable<HTMLDivElement>>(null);
   const dragOriginRef = useRef<Nullable<{ x: number; y: number }>>(null);
 
-  const [state, setState] = useState<IPanZoomState>(PAN_ZOOM_IDENTITY);
+  const [ownState, setOwnState] = useState<IPanZoomState>(PAN_ZOOM_IDENTITY);
+
+  const state: IPanZoomState = controlledState ?? ownState;
+  const setState: Dispatch<SetStateAction<IPanZoomState>> = onStateChange ?? setOwnState;
 
   const getViewportSize = useCallback((): { x: number; y: number } => {
     const element: Nullable<HTMLDivElement> = viewportRef.current;
@@ -41,19 +67,22 @@ export function ImageViewport({ src, alt, width, height }: IImageViewportProps):
 
   const onFit = useCallback(() => {
     setState(fitToViewport({ x: width, y: height }, getViewportSize()));
-  }, [getViewportSize, height, width]);
+  }, [getViewportSize, height, setState, width]);
 
-  const onWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
-    const bounds: Nullable<DOMRect> = viewportRef.current?.getBoundingClientRect() ?? null;
+  const onWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      const bounds: Nullable<DOMRect> = viewportRef.current?.getBoundingClientRect() ?? null;
 
-    if (!bounds) {
-      return;
-    }
+      if (!bounds) {
+        return;
+      }
 
-    const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+      const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
 
-    setState((current: IPanZoomState) => zoomByWheel(current, point, event.deltaY));
-  }, []);
+      setState((current: IPanZoomState) => zoomByWheel(current, point, event.deltaY));
+    },
+    [setState]
+  );
 
   const onZoomStep = useCallback(
     (factor: number) => {
@@ -63,33 +92,36 @@ export function ImageViewport({ src, alt, width, height }: IImageViewportProps):
         zoomAround(current, { x: size.x / 2, y: size.y / 2 }, current.scale * factor)
       );
     },
-    [getViewportSize]
+    [getViewportSize, setState]
   );
 
   const onActualSize = useCallback(() => {
     const size = getViewportSize();
 
     setState((current: IPanZoomState) => zoomAround(current, { x: size.x / 2, y: size.y / 2 }, 1));
-  }, [getViewportSize]);
+  }, [getViewportSize, setState]);
 
   const onMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
   }, []);
 
-  const onMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    const origin: Nullable<{ x: number; y: number }> = dragOriginRef.current;
+  const onMouseMove = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const origin: Nullable<{ x: number; y: number }> = dragOriginRef.current;
 
-    if (!origin) {
-      return;
-    }
+      if (!origin) {
+        return;
+      }
 
-    const deltaX: number = event.clientX - origin.x;
-    const deltaY: number = event.clientY - origin.y;
+      const deltaX: number = event.clientX - origin.x;
+      const deltaY: number = event.clientY - origin.y;
 
-    dragOriginRef.current = { x: event.clientX, y: event.clientY };
+      dragOriginRef.current = { x: event.clientX, y: event.clientY };
 
-    setState((current: IPanZoomState) => panBy(current, deltaX, deltaY));
-  }, []);
+      setState((current: IPanZoomState) => panBy(current, deltaX, deltaY));
+    },
+    [setState]
+  );
 
   const onRelease = useCallback(() => {
     dragOriginRef.current = null;
@@ -99,7 +131,7 @@ export function ImageViewport({ src, alt, width, height }: IImageViewportProps):
   // somewhere off screen.
   useEffect(() => {
     setState(fitToViewport({ x: width, y: height }, getViewportSize()));
-  }, [getViewportSize, height, src, width]);
+  }, [getViewportSize, height, setState, src, width]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
@@ -139,46 +171,48 @@ export function ImageViewport({ src, alt, width, height }: IImageViewportProps):
           }}
         />
 
-        <Paper
-          variant={"outlined"}
-          sx={{
-            position: "absolute",
-            right: 8,
-            bottom: 8,
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            padding: 0.5,
-          }}
-        >
-          <Tooltip describeChild title={"Zoom out"}>
-            <IconButton aria-label={"Zoom out"} size={"small"} onClick={() => onZoomStep(1 / 1.2)}>
-              <ZoomOutIcon fontSize={"small"} />
-            </IconButton>
-          </Tooltip>
+        {hasControls ? (
+          <Paper
+            variant={"outlined"}
+            sx={{
+              position: "absolute",
+              right: 8,
+              bottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              padding: 0.5,
+            }}
+          >
+            <Tooltip describeChild title={"Zoom out"}>
+              <IconButton aria-label={"Zoom out"} size={"small"} onClick={() => onZoomStep(1 / 1.2)}>
+                <ZoomOutIcon fontSize={"small"} />
+              </IconButton>
+            </Tooltip>
 
-          <Typography variant={"caption"} sx={{ minWidth: 44, textAlign: "center", color: "text.secondary" }}>
-            {Math.round(clampScale(state.scale) * 100)}%
-          </Typography>
+            <Typography variant={"caption"} sx={{ minWidth: 44, textAlign: "center", color: "text.secondary" }}>
+              {Math.round(clampScale(state.scale) * 100)}%
+            </Typography>
 
-          <Tooltip describeChild title={"Zoom in"}>
-            <IconButton aria-label={"Zoom in"} size={"small"} onClick={() => onZoomStep(1.2)}>
-              <ZoomInIcon fontSize={"small"} />
-            </IconButton>
-          </Tooltip>
+            <Tooltip describeChild title={"Zoom in"}>
+              <IconButton aria-label={"Zoom in"} size={"small"} onClick={() => onZoomStep(1.2)}>
+                <ZoomInIcon fontSize={"small"} />
+              </IconButton>
+            </Tooltip>
 
-          <Tooltip describeChild title={"Actual size"}>
-            <IconButton aria-label={"Actual size"} size={"small"} onClick={onActualSize}>
-              <CenterFocusStrongIcon fontSize={"small"} />
-            </IconButton>
-          </Tooltip>
+            <Tooltip describeChild title={"Actual size"}>
+              <IconButton aria-label={"Actual size"} size={"small"} onClick={onActualSize}>
+                <CenterFocusStrongIcon fontSize={"small"} />
+              </IconButton>
+            </Tooltip>
 
-          <Tooltip describeChild title={"Fit to view"}>
-            <IconButton aria-label={"Fit to view"} size={"small"} onClick={onFit}>
-              <FitScreenIcon fontSize={"small"} />
-            </IconButton>
-          </Tooltip>
-        </Paper>
+            <Tooltip describeChild title={"Fit to view"}>
+              <IconButton aria-label={"Fit to view"} size={"small"} onClick={onFit}>
+                <FitScreenIcon fontSize={"small"} />
+              </IconButton>
+            </Tooltip>
+          </Paper>
+        ) : null}
       </Box>
     </Box>
   );

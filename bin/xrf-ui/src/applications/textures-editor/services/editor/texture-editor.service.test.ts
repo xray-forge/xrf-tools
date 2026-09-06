@@ -244,7 +244,7 @@ describe("TextureEditorService", () => {
       ["plugin:textures|get_vocabulary"]: VOCABULARY,
       ["plugin:textures|read_texture"]: new ArrayBuffer(0),
       ["plugin:textures|save"]: {
-        format: null,
+        descriptorFormat: null,
         outcome: "completed",
         written: [`C:\\gamedata\\textures\\${MOCK_TEXTURE}.thm`],
       },

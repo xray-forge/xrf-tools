@@ -1,16 +1,14 @@
-use std::sync::{Arc, MutexGuard};
+use std::sync::Arc;
 
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_dds::DdsFile;
 use xrf_job::{JobHandle, JobProgress};
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingSession};
 use crate::plugins::textures::lease::SAVE_JOB_KIND;
 use crate::plugins::textures::request::TexturesSaveRequest;
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
@@ -33,8 +31,10 @@ pub async fn textures_save(
     request.texture.is_some()
   );
 
+  // Serialized before the job is registered, so a save that cannot claim the bytes it was asked to write fails here
+  // rather than after taking a lease on the files.
   let texture_bytes: Option<Vec<u8>> = match &request.texture {
-    Some(save) => Some(read_held_encoding(&state, save.format)?),
+    Some(save) => Some(state.with_held_encoding(save.format, |file| file.write_to_bytes().map_err(error_to_string))?),
     None => None,
   };
 
@@ -53,23 +53,4 @@ pub async fn textures_save(
     |outcome| outcome.outcome,
   )
   .await
-}
-
-/// The bytes of one held candidate, serialized while the session that produced them is still the held one.
-fn read_held_encoding(state: &TextureState, format: TextureEncodingFormat) -> TauriResult<Vec<u8>> {
-  let held: MutexGuard<Option<TextureEncodingSession>> = state
-    .encodings
-    .lock()
-    .map_err(|error| format!("Failed to save - the held texture encodings are unavailable: {error}"))?;
-  let session: &TextureEncodingSession = held
-    .as_ref()
-    .ok_or_else(|| String::from("No encoded texture is held; compare the formats before saving one"))?;
-  let file: &DdsFile = session.get(format).ok_or_else(|| {
-    format!(
-      "The held comparison of '{}' does not carry that format; compare the formats again before saving one",
-      session.label
-    )
-  })?;
-
-  file.write_to_bytes().map_err(error_to_string)
 }

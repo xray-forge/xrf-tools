@@ -11,7 +11,7 @@ use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAssetType, XrayLookupScope, XrayMountId, XrayMountMode, XrayProbe, XrayRoots, XrayVfs};
 
-use crate::plugins::textures::catalog::{TextureCatalog, TextureEntry, TextureRole};
+use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::summary::{TextureBadges, TextureMaterialSummary};
@@ -39,7 +39,7 @@ fn roots_of(tree: &ThmFixtureTree) -> XrayRoots {
 fn catalog(tree: &ThmFixtureTree) -> TextureCatalog {
   let (vfs, id) = mount(tree);
 
-  TextureCatalog::list(&probe_over(&vfs, id), roots_of(tree))
+  TextureCatalog::list(&probe_over(&vfs, id), roots_of(tree), TextureCatalogMode::Roots)
 }
 
 /// The sweep as the command runs it: over every descriptor the probe lists.
@@ -500,4 +500,60 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
   assert_eq!(description.reference, "wall");
   assert!(description.form.is_some());
   assert!(description.base.is_some(), "expect the dds beside the descriptor");
+}
+
+#[test]
+fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
+  // The case decision 21 exists for: a folder somebody is authoring in yields no engine reference for anything, so
+  // listed as a game tree it is an empty tree with a count beside it. Listed as itself, every file is the point.
+  let root: PathBuf = loose_directory("loose_listing");
+
+  std::fs::create_dir_all(root.join("wall")).expect("nested directory");
+  std::fs::write(root.join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+  std::fs::write(root.join("brick01.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
+  std::fs::write(root.join("wall").join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let id: XrayMountId = vfs
+    .mount_directory("", &root)
+    .expect("a plain directory mounts as a root");
+  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+
+  let listed: TextureCatalog =
+    TextureCatalog::list(&probe_over(&vfs, id), roots.clone(), TextureCatalogMode::LooseDirectory);
+
+  assert_eq!(listed.mode, TextureCatalogMode::LooseDirectory);
+  assert_eq!(
+    listed.entries.len(),
+    2,
+    "expect both textures listed, and the descriptor folded onto the one it sits beside"
+  );
+  assert_eq!(
+    listed.outside_textures_count, 0,
+    "expect nothing counted as outside, because in this mode there is no inside"
+  );
+
+  let nested: &TextureEntry = entry(&listed, "wall\\brick01");
+
+  assert_eq!(
+    nested.source,
+    file_source(root.join("wall").join("brick01.dds")),
+    "expect a loose row to be opened by its own file rather than by a reference nothing can resolve"
+  );
+
+  let beside: &TextureEntry = entry(&listed, "brick01");
+
+  assert!(
+    beside.descriptor.is_some(),
+    "expect the .thm beside a texture to fold onto it"
+  );
+
+  // Keyed by the path below the root rather than by the stem, or these two would have folded into one row.
+  assert_ne!(beside.reference, nested.reference);
+
+  // The same directory listed as a game tree, which is what the mode is choosing between.
+  let as_tree: TextureCatalog = TextureCatalog::list(&probe_over(&vfs, id), roots, TextureCatalogMode::Roots);
+
+  assert!(as_tree.entries.is_empty());
+  assert_eq!(as_tree.outside_textures_count, 2);
 }

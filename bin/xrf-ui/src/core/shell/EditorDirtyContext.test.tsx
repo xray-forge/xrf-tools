@@ -3,13 +3,22 @@ import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
-import { EditorDirtyProvider, useEditorDirty, useRequestLeave } from "@/core/shell/EditorDirtyContext";
+import { EditorDirtyProvider, EditorSaver, useEditorDirty, useRequestLeave } from "@/core/shell/EditorDirtyContext";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Nullable } from "@/lib/types/general";
 
-function Leaver({ dirtyCount, onLeave }: { dirtyCount: number; onLeave: () => void }): ReactElement {
+function Leaver({
+  dirtyCount,
+  onLeave,
+  save = null,
+}: {
+  dirtyCount: number;
+  onLeave: () => void;
+  save?: Nullable<EditorSaver>;
+}): ReactElement {
   const requestLeave: (leave: () => void) => void = useRequestLeave();
 
-  useEditorDirty(dirtyCount);
+  useEditorDirty(dirtyCount, save);
 
   return (
     <button type={"button"} onClick={() => requestLeave(onLeave)}>
@@ -92,5 +101,56 @@ describe("EditorDirtyContext", () => {
     await userEvent.click(getByText("Leave"));
 
     expect(getByText(/1 file has edits/)).toBeInTheDocument();
+  });
+
+  it("offers no save for an editor that published nothing to save with", async () => {
+    // A file served out of an archive can be edited and read but has nowhere to be written, so the honest choice is
+    // between discarding and staying rather than a button that would do nothing.
+    const { getByText, queryByText } = renderWithProviders(
+      <EditorDirtyProvider>
+        <Leaver dirtyCount={1} onLeave={jest.fn()} />
+      </EditorDirtyProvider>
+    );
+
+    await userEvent.click(getByText("Leave"));
+
+    expect(queryByText("Save and leave")).not.toBeInTheDocument();
+  });
+
+  it("writes the work and then leaves", async () => {
+    const onLeave = jest.fn();
+    const save = jest.fn(async (): Promise<boolean> => true);
+
+    const { getByText } = renderWithProviders(
+      <EditorDirtyProvider>
+        <Leaver dirtyCount={1} onLeave={onLeave} save={save} />
+      </EditorDirtyProvider>
+    );
+
+    await userEvent.click(getByText("Leave"));
+    await userEvent.click(getByText("Save and leave"));
+
+    await waitFor(() => expect(onLeave).toHaveBeenCalledTimes(1));
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays put when the save was refused", async () => {
+    // Stale stamps, or a file taken away underneath the editor. Leaving anyway would discard the work the person
+    // just asked to keep, and the notice explaining why is on the screen behind this dialog.
+    const onLeave = jest.fn();
+    const save = jest.fn(async (): Promise<boolean> => false);
+
+    const { getByText } = renderWithProviders(
+      <EditorDirtyProvider>
+        <Leaver dirtyCount={1} onLeave={onLeave} save={save} />
+      </EditorDirtyProvider>
+    );
+
+    await userEvent.click(getByText("Leave"));
+    await userEvent.click(getByText("Save and leave"));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(onLeave).not.toHaveBeenCalled();
+    expect(getByText("Leave without saving?")).toBeInTheDocument();
   });
 });

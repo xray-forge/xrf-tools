@@ -100,7 +100,7 @@ macro_rules! for_each_tauri_command_domain {
         compare_encodings => crate::plugins::textures::commands::compare_encodings::textures_compare_encodings,
         describe => crate::plugins::textures::commands::describe::textures_describe,
         describe_catalog => crate::plugins::textures::commands::describe_catalog::textures_describe_catalog,
-        get_roots => crate::plugins::textures::commands::get_roots::textures_get_roots,
+        get_session => crate::plugins::textures::commands::get_session::textures_get_session,
         get_vocabulary => crate::plugins::textures::commands::get_vocabulary::textures_get_vocabulary,
         make_bump => crate::plugins::textures::commands::make_bump::textures_make_bump,
         open => crate::plugins::textures::commands::open::textures_open,
@@ -108,6 +108,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
       @raw {
+        read_candidate(format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::commands::read_texture::textures_read_texture,
       }
       visuals => "visuals" {

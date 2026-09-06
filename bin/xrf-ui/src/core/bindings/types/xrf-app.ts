@@ -308,6 +308,18 @@ export type TextureBadges = {
   isUnreadable: boolean;
 };
 
+/**
+ * A browsing session the backend is holding: what is mounted, and how it was listed.
+ *
+ * The mode travels with the roots because a reload has to come back to the listing it left. The same directory is a
+ * game tree or a folder of loose files depending on nothing but this, and restoring the wrong one shows an empty
+ * tree over a session that was there a moment ago.
+ */
+export type TextureBrowseSession = {
+  roots: XrayRoots;
+  mode: TextureCatalogMode;
+};
+
 /** One recipe field the descriptor asks for that this build does not carry out. */
 export type TextureBuildOmissionReport = {
   /** The descriptor field this sits beside, under the name the SDK gives it. */
@@ -345,6 +357,8 @@ export type TextureBumpPair = {
 
 /** Every texture the roots hold, once per reference, in reference order. */
 export type TextureCatalog = {
+  /** How this listing was made, which decides what its rows are addressed by and whether a sweep can badge them. */
+  mode: TextureCatalogMode;
   /** The roots the catalog was listed from, so a later read searches what the listing searched. */
   roots: XrayRoots;
   /** A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says where it matters. */
@@ -358,6 +372,19 @@ export type TextureCatalog = {
    */
   outsideTexturesCount: number;
 };
+
+/**
+ * How a listing addressed what it found.
+ *
+ * Two shapes rather than one because the two cases want opposite defaults. In a game tree the files that yield no
+ * engine reference are a level's lightmaps, and burying two thousand named textures in them is the bug; in a folder
+ * somebody is authoring in, those files are the entire point and there are no references to be had at all.
+ */
+export type TextureCatalogMode =
+  /** The game tree: listed by engine reference, archives included, files outside `textures\` counted not listed. */
+  | "roots"
+  /** A plain directory: every `.dds` under it, addressed by its own path. */
+  | "looseDirectory";
 
 /** Everything the inspection panels say about one texture, resolved in one call. */
 export type TextureDescription = {
@@ -519,8 +546,15 @@ export type TextureEncodingSave = {
 
 /** One texture name and the files the roots hold for it. */
 export type TextureEntry = {
-  /** The engine reference, such as `ston\ston_beton05`. */
+  /**
+   * What to call this row: an engine reference such as `ston\ston_beton05`, or a loose file's path below its root.
+   *
+   * Unique within one listing either way, so a tree can key on it. It is a label rather than an address; what to
+   * open is `source`, because a loose file has no reference to be resolved back into.
+   */
   reference: string;
+  /** How to open this row, which is the address the describe and every write take. */
+  source: TextureSource;
   role: TextureRole;
   /** The `.dds` the roots answer for this reference, winner first. */
   texture: XrayAsset | null;

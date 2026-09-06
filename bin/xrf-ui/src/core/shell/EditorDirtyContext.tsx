@@ -1,17 +1,24 @@
 import { createContext, ReactElement, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { UnsavedChangesDialog } from "@/core/ui/dialog/UnsavedChangesDialog";
 import { Nullable } from "@/lib/types/general";
+
+/**
+ * Writes everything the active editor is holding.
+ */
+export type EditorSaver = () => Promise<boolean>;
 
 interface IEditorDirtyContextValue {
   dirtyCount: number;
-  setDirtyCount: (dirtyCount: number) => void;
+  save: Nullable<EditorSaver>;
+  publish: (dirtyCount: number, save: Nullable<EditorSaver>) => void;
   requestLeave: (leave: () => void) => void;
 }
 
 const EditorDirtyContext = createContext<IEditorDirtyContextValue>({
   dirtyCount: 0,
-  setDirtyCount: () => {},
+  save: null,
+  publish: () => {},
   requestLeave: (leave: () => void) => leave(),
 });
 
@@ -30,28 +37,40 @@ export function useRequestLeave(): (leave: () => void) => void {
 }
 
 /**
- * Publishes how much unsaved work the active editor is holding.
+ * Publishes how much unsaved work the active editor is holding, and what can write it.
+ *
+ * Call this from whatever owns the edited node rather than from a panel: a draft that stops being published because
+ * somebody switched panels would be silently discardable, which is the state the prompt exists to prevent.
  *
  * @param dirtyCount - Number of files holding edits that have not been written.
+ * @param save - Writes them, or null when this editor cannot - which makes the prompt offer only discarding. Memoize
+ *   it, since it is published on every change of identity.
  */
-export function useEditorDirty(dirtyCount: number): void {
-  const { setDirtyCount } = useContext(EditorDirtyContext);
+export function useEditorDirty(dirtyCount: number, save: Nullable<EditorSaver> = null): void {
+  const { publish } = useContext(EditorDirtyContext);
 
   useEffect(() => {
-    setDirtyCount(dirtyCount);
+    publish(dirtyCount, save);
 
-    return () => setDirtyCount(0);
-  }, [dirtyCount, setDirtyCount]);
+    return () => publish(0, null);
+  }, [dirtyCount, save, publish]);
 }
 
 export function EditorDirtyProvider({ children }: { children: ReactNode }): ReactElement {
   const [dirtyCount, setDirtyCount] = useState<number>(0);
+  const [save, setSave] = useState<Nullable<EditorSaver>>(null);
   const [pendingLeave, setPendingLeave] = useState<Nullable<() => void>>(null);
+  const [isSaving, setSaving] = useState<boolean>(false);
+
+  // Both stored as thunks, so `useState` invokes nothing while it holds a callback.
+  const publish = useCallback((nextDirtyCount: number, nextSave: Nullable<EditorSaver>) => {
+    setDirtyCount(nextDirtyCount);
+    setSave(() => nextSave);
+  }, []);
 
   const requestLeave = useCallback(
     (leave: () => void) => {
       if (dirtyCount > 0) {
-        // Stored as a thunk, so `useState` invokes nothing while it holds the callback.
         setPendingLeave(() => leave);
       } else {
         leave();
@@ -61,11 +80,11 @@ export function EditorDirtyProvider({ children }: { children: ReactNode }): Reac
   );
 
   const value: IEditorDirtyContextValue = useMemo(
-    () => ({ dirtyCount, setDirtyCount, requestLeave }),
-    [dirtyCount, requestLeave]
+    () => ({ dirtyCount, publish, requestLeave, save }),
+    [dirtyCount, publish, requestLeave, save]
   );
 
-  const onConfirm = useCallback(() => {
+  const onLeave = useCallback(() => {
     pendingLeave?.();
     setPendingLeave(null);
   }, [pendingLeave]);
@@ -74,21 +93,36 @@ export function EditorDirtyProvider({ children }: { children: ReactNode }): Reac
     setPendingLeave(null);
   }, []);
 
+  const onSave = useCallback(() => {
+    if (!save) {
+      return;
+    }
+
+    setSaving(true);
+
+    void save()
+      .then((isWritten: boolean) => {
+        // A refused save keeps the dialog up rather than leaving anyway, so the work is still there to look at.
+        if (isWritten) {
+          onLeave();
+        }
+      })
+      .finally(() => setSaving(false));
+  }, [onLeave, save]);
+
   return (
     <EditorDirtyContext.Provider value={value}>
       {children}
 
-      <ConfirmDialog
-        isDestructive={true}
+      <UnsavedChangesDialog
         isOpen={pendingLeave !== null}
-        title={"Leave without saving?"}
+        isSaving={isSaving}
         description={
           `${dirtyCount} ${dirtyCount === 1 ? "file has" : "files have"} edits that are not written to disk. ` +
           "Leaving discards them."
         }
-        confirmLabel={"Discard and leave"}
-        cancelLabel={"Stay"}
-        onConfirm={onConfirm}
+        onSave={save ? onSave : null}
+        onDiscard={onLeave}
         onClose={onClose}
       />
     </EditorDirtyContext.Provider>

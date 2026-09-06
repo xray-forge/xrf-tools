@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
@@ -45,8 +45,6 @@ export function TextureDescriptorPanel({
       editorService.edit({ flags: withTextureFlag(editorService.draft?.flags ?? 0, bit, isSet) }),
     [editorService]
   );
-
-  useEffect(() => editorService.bind(description), [editorService, description]);
 
   if (!description || !draft || !vocabulary) {
     return (

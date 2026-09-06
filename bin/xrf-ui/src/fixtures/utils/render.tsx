@@ -10,6 +10,7 @@ import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
+import { EditorDirtyProvider } from "@/core/shell/EditorDirtyContext";
 import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
 import {
   EditorPanelsProvider,
@@ -89,8 +90,10 @@ export function renderWithProviders(
             <EditorBusyProvider>
               <EditorStatusProvider>
                 <EditorPanelsProvider>
-                  {children}
-                  <LeftPanelsOutlet />
+                  <EditorDirtyProvider>
+                    {children}
+                    <LeftPanelsOutlet />
+                  </EditorDirtyProvider>
                 </EditorPanelsProvider>
               </EditorStatusProvider>
             </EditorBusyProvider>

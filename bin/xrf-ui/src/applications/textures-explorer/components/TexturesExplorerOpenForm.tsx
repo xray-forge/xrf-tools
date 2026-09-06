@@ -15,8 +15,19 @@ import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-/** Which of the two things the picker is opening. */
-type TOpenMode = "folder" | "texture";
+/** Which of the three things the picker is opening. */
+type TOpenMode = "folder" | "looseFolder" | "texture";
+
+/** What each mode reads, said before it runs rather than after. */
+const MODE_DESCRIPTIONS: Record<TOpenMode, string> = {
+  folder:
+    "Lists every texture under the root, archives included, and reads what each descriptor declares. Files outside " +
+    "the textures directory are counted rather than listed. Nothing is written.",
+  looseFolder:
+    "Lists every dds under the folder by its own path, for textures that are not in a game tree and have no engine " +
+    "reference. Descriptors are not swept, because there are no references to sweep them by. Nothing is written.",
+  texture: "Reads one texture and the descriptor beside it. Nothing is written.",
+};
 
 interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
   /**
@@ -64,7 +75,16 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     seed,
   });
 
-  const field: IPathField = mode === "folder" ? root : texture;
+  const looseFolder: IPathField = usePathField({
+    application: EApplicationId.TEXTURES_EXPLORER,
+    id: "loose-folder",
+    title: "Select a folder of textures",
+    isDirectory: true,
+    isDisabled: isLoading,
+    seed,
+  });
+
+  const field: IPathField = { folder: root, looseFolder, texture }[mode];
 
   const onOpen = useCallback(async () => {
     if (!field.value) {
@@ -77,6 +97,8 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     // texture from a previous root has nothing to do with the roots being opened now.
     if (mode === "folder") {
       await catalogService.openRoot(field.value);
+    } else if (mode === "looseFolder") {
+      await catalogService.openLooseDirectory(field.value);
     } else {
       await catalogService.close();
       await selectionService.openFile(field.value);
@@ -89,18 +111,17 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     <PickerForm
       isLoading={isLoading}
       title={"Open game textures"}
-      description={
-        mode === "folder"
-          ? "Lists every texture under the root, archives included, and reads what each descriptor declares. Nothing " +
-            "is written."
-          : "Reads one texture and the descriptor beside it. Nothing is written."
-      }
+      description={MODE_DESCRIPTIONS[mode]}
       error={catalogService.catalog.error?.message ?? selectionService.selected.error?.message}
-      submitLabel={mode === "folder" ? "Browse" : "Open"}
+      submitLabel={mode === "texture" ? "Open" : "Browse"}
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
-      <FormRow label={"Open"} description={"Browse a whole root, or one texture on its own"} isRequired={false}>
+      <FormRow
+        label={"Open"}
+        description={"A game tree, a folder of loose textures, or one texture on its own"}
+        isRequired={false}
+      >
         <ToggleButtonGroup
           exclusive
           size={"small"}
@@ -111,6 +132,9 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
         >
           <ToggleButton value={"folder"} aria-label={"Open folder"}>
             Folder
+          </ToggleButton>
+          <ToggleButton value={"looseFolder"} aria-label={"Open loose folder"}>
+            Loose folder
           </ToggleButton>
           <ToggleButton value={"texture"} aria-label={"Open texture"}>
             Texture
@@ -125,14 +149,25 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
           isDisabled={isLoading}
           field={root}
         />
-      ) : (
+      ) : null}
+
+      {mode === "looseFolder" ? (
+        <PathFormRow
+          label={"Textures folder"}
+          description={"Any directory holding dds files, in a game tree or not"}
+          isDisabled={isLoading}
+          field={looseFolder}
+        />
+      ) : null}
+
+      {mode === "texture" ? (
         <PathFormRow
           label={"Texture file"}
           description={"Dds texture, or the thm descriptor beside it"}
           isDisabled={isLoading}
           field={texture}
         />
-      )}
+      ) : null}
     </PickerForm>
   );
 }

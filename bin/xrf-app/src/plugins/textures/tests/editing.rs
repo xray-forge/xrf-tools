@@ -1,6 +1,8 @@
 //! Pins what the editor writes: the descriptor form's round trip, where a save lands, and what it refuses.
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 use xrf_db::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType, XRayByteOrder};
 use xrf_dds::{
@@ -24,6 +26,7 @@ use crate::plugins::textures::request::{
 };
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
 use crate::plugins::textures::source::TextureSource;
+use crate::plugins::textures::state::TextureState;
 
 const BASE: &str = "ston\\ston_beton05";
 
@@ -43,6 +46,24 @@ fn target(path: &Path) -> TextureSaveTarget {
     path: path.display().to_string(),
     expected: TextureFileStamp::read(path).expect("stamp is readable"),
   }
+}
+
+/// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
+///
+/// The stamp is size and modification time, and these fixtures rewrite a descriptor with one float changed - same
+/// size, and, two statements apart, the same millisecond. What "somebody else rewrote it" means is that the rewrite
+/// happened afterwards, so the test says so rather than depending on the clock ticking mid-test.
+fn rewritten_later(path: &Path) {
+  let file: File = File::options().write(true).open(path).expect("descriptor is writable");
+  let modified: SystemTime = file
+    .metadata()
+    .expect("metadata")
+    .modified()
+    .expect("modification time");
+
+  file
+    .set_modified(modified + Duration::from_secs(1))
+    .expect("modification time is writable");
 }
 
 fn read_descriptor(path: &Path) -> ThmFile {
@@ -243,6 +264,8 @@ fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
 
   // Somebody else rewrote it - an SDK, a converter, another window - after the editor read it.
   std::fs::write(&path, ThmFixture::image().with_virtual_height(0.25).to_bytes()).expect("descriptor is writable");
+
+  rewritten_later(&path);
 
   let refused = write_save(
     &JobHandle::inert(),
@@ -597,6 +620,8 @@ fn a_save_still_refuses_a_stale_target_before_it_looks_at_cancellation() {
 
   std::fs::write(&path, ThmFixture::image().with_virtual_height(0.25).to_bytes()).expect("descriptor is writable");
 
+  rewritten_later(&path);
+
   let job: JobHandle = JobHandle::inert();
 
   job.cancel();
@@ -643,5 +668,44 @@ fn a_bump_generation_asked_to_stop_leaves_neither_half() {
   assert!(
     result.gloss_power > 0.0,
     "expect the gloss it did measure to be reported, since a dark mask is worth saying even about a stopped run"
+  );
+}
+
+#[test]
+fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() {
+  // What the A/B preview reads. The bytes it draws are the encode the comparison measured, so a picture of a format
+  // can only exist while that measurement does - and the failure, when the session has moved on, has to say so rather
+  // than serve a picture of something else.
+  let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
+  let state: TextureState = TextureState::new();
+
+  let missing = state.with_held_encoding(TextureEncodingFormat::Bc3, |_| Ok(()));
+
+  assert!(
+    missing.is_err_and(|error| error.contains("No encoded texture is held")),
+    "expect nothing to read before anything has been weighed"
+  );
+
+  *state.encodings.lock().expect("encodings") = Some(TextureEncodingSession {
+    source: TextureSource::Asset {
+      reference: String::from(BASE),
+    },
+    label: String::from(BASE),
+    attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
+  });
+
+  let png: Vec<u8> = state
+    .with_held_encoding(TextureEncodingFormat::Bc3, |file| {
+      Ok(file.to_png().map_err(|error| error.to_string())?.bytes)
+    })
+    .expect("the weighed candidate decodes");
+
+  assert!(!png.is_empty(), "expect the held encode to decode to a picture");
+
+  let unweighed = state.with_held_encoding(TextureEncodingFormat::Bc7, |_| Ok(()));
+
+  assert!(
+    unweighed.is_err_and(|error| error.contains("does not carry that format")),
+    "expect a format this comparison never encoded to be named as absent rather than answered with another"
   );
 }

@@ -1,13 +1,13 @@
 import { Box, Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useMemo, useState } from "react";
+import { ReactElement } from "react";
 
 import { ArchiveFileDetailRow } from "@/applications/archives-explorer/components/editor/file-details/ArchiveFileDetailRow";
 import { formatAudioChannels } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview/ArchiveAudioPreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
-import { AssetService } from "@/core/assets/services";
+import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
@@ -27,10 +27,6 @@ const ARCHIVE_AUDIO_PREVIEW_WIDTH: number = 640;
  */
 export function ArchiveAudioPreview(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const assetService: AssetService = useInjection(AssetService);
-
-  const [url, setUrl] = useState<Nullable<string>>(null);
-
   const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
 
   // The previous sound stays on screen while the next one loads, so the transport is never torn down mid-selection.
@@ -41,11 +37,7 @@ export function ArchiveAudioPreview(): ReactElement {
 
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
   const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
-  const blob: Nullable<Blob> = useMemo(() => (bytes ? new Blob([bytes], { type: "audio/ogg" }) : null), [bytes]);
-
-  useEffect(() => {
-    setUrl(blob ? assetService.swap(ARCHIVE_AUDIO_ASSET_KEY, blob) : null);
-  }, [assetService, blob]);
+  const url: Nullable<string> = useAssetUrl(ARCHIVE_AUDIO_ASSET_KEY, bytes, "audio/ogg");
 
   if (content.error) {
     return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;

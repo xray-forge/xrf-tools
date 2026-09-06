@@ -47,6 +47,7 @@ export function mockTextureEntry(reference: string, overrides: Partial<TextureEn
     descriptor: mockTextureAsset(`textures\\${reference}.thm`),
     reference,
     role: roleOf(reference),
+    source: { kind: "asset", reference },
     texture: mockTextureAsset(`textures\\${reference}.dds`),
     ...overrides,
   };
@@ -80,7 +81,14 @@ export function mockTextureCatalog(
   entries: Array<TextureEntry>,
   overrides: Partial<TextureCatalog> = {}
 ): TextureCatalog {
-  return { entries, outsideTexturesCount: 0, roots: mockTextureRoots(), texturesLtx: null, ...overrides };
+  return {
+    entries,
+    mode: "roots",
+    outsideTexturesCount: 0,
+    roots: mockTextureRoots(),
+    texturesLtx: null,
+    ...overrides,
+  };
 }
 
 /** A material the engine reads nothing from, which is what most textures have. */

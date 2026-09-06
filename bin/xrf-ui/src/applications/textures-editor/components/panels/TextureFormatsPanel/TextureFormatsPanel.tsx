@@ -78,7 +78,7 @@ export function TextureFormatsPanel({
                 data-testid={`texture-format-${candidate.format}`}
                 candidate={candidate}
                 isChosen={encodingService.chosen === candidate.format}
-                onChoose={() => encodingService.choose(candidate.format)}
+                onChoose={() => void encodingService.choose(candidate.format)}
               />
             ))}
           </List>

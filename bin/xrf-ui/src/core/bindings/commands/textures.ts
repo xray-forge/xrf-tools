@@ -5,6 +5,7 @@ import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 import {
   TextureBuildOutcome,
   TextureCatalog,
+  TextureCatalogMode,
   TextureDescription,
   TextureEncodingComparison,
   TextureMakeBumpOutcome,
@@ -18,7 +19,7 @@ import {
   TextureVocabulary,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const texturesCommands = {
@@ -59,18 +60,12 @@ export const texturesCommands = {
   /** Read every descriptor the roots hold and say what each makes of its texture. */
   describeCatalog: (roots: XrayRoots) =>
     __TAURI_INVOKE<Array<TextureMaterialSummary>>("plugin:textures|describe_catalog", { roots }),
-  /** The roots the explorer was browsing, or null when nothing is open. */
-  getRoots: () =>
+  /** The session the explorer was browsing, or null when nothing is open. */
+  getSession: () =>
     __TAURI_INVOKE<{
-      /**
-       * Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
-       *
-       * This is what finds a texture shipped beside a model rather than in the shared tree.
-       */
-      asset: string | null;
-      /** Roots searched after the asset's own, in the order given. */
-      roots: Array<XrayRoot>;
-    } | null>("plugin:textures|get_roots"),
+      roots: XrayRoots;
+      mode: TextureCatalogMode;
+    } | null>("plugin:textures|get_session"),
   /**
    * The names the SDK gives the numbers a descriptor stores.
    *
@@ -88,7 +83,8 @@ export const texturesCommands = {
    * on screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
    * person browses while it runs rather than waiting on it.
    */
-  open: (roots: XrayRoots) => __TAURI_INVOKE<TextureCatalog>("plugin:textures|open", { roots }),
+  open: (roots: XrayRoots, mode: TextureCatalogMode) =>
+    __TAURI_INVOKE<TextureCatalog>("plugin:textures|open", { roots, mode }),
   /** Write one node's pending files: its descriptor, its base texture, or both. */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>("plugin:textures|save", { request, jobId, progress }),

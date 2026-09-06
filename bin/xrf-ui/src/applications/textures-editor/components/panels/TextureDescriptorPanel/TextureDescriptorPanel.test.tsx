@@ -35,7 +35,13 @@ async function renderPanel(
   ]);
   const service: TextureEditorService = container.get(TextureEditorService);
 
-  await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
+  const selectionService: TextureSelectionService = container.get(TextureSelectionService);
+
+  await selectionService.openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
+
+  // As the workspace does. The panel renders the draft rather than making it, so a test of the panel alone has to
+  // stand in for the screen that owns it.
+  service.bind(selectionService.selected.value);
 
   const render: RenderResult = renderWithProviders(<TextureDescriptorPanel />, { container });
 

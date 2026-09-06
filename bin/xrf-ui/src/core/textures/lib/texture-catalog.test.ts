@@ -12,6 +12,7 @@ import {
   MOCK_BUMP,
   MOCK_COMPANION,
   MOCK_TEXTURE,
+  mockArchivedTextureAsset,
   mockBumpedTextureSummary,
   mockTextureBadges,
   mockTextureEntry,
@@ -94,6 +95,33 @@ describe("buildTextureNodes", () => {
     expect(referencesOf(nodes)).toEqual([MOCK_TEXTURE, "ston\\ston_beton06"]);
     expect(nodes[0].halves).toHaveLength(1);
     expect(nodes[1].halves).toHaveLength(1);
+  });
+
+  it("marks a texture served out of an archive rather than hiding or disabling it", () => {
+    // Decision 20 as it survives decision 24. The only tree left is the read-only one, where an archived texture is
+    // fully inspectable, so the row says what a person can act on: this file cannot be written where it is.
+    const nodes: Array<ITextureNode> = buildTextureNodes(
+      [mockTextureEntry(MOCK_TEXTURE, { texture: mockArchivedTextureAsset(`textures\\${MOCK_TEXTURE}.dds`) })],
+      []
+    );
+
+    expect(referencesOf(nodes)).toEqual([MOCK_TEXTURE]);
+    expect(nodes[0].badges.has(ETextureBadge.ARCHIVED)).toBe(true);
+  });
+
+  it("carries the address a row is opened by, which is not always its label", () => {
+    // A loose listing labels rows by path and opens them by file; a game tree labels and opens by reference. The row
+    // is the only thing that knows which of the two it is.
+    const nodes: Array<ITextureNode> = buildTextureNodes(
+      [
+        mockTextureEntry(MOCK_TEXTURE),
+        mockTextureEntry("brick01", { source: { kind: "file", path: "C:\\work\\brick01.dds" } }),
+      ],
+      []
+    );
+
+    expect(nodes[0].source).toEqual({ kind: "asset", reference: MOCK_TEXTURE });
+    expect(nodes[1].source).toEqual({ kind: "file", path: "C:\\work\\brick01.dds" });
   });
 });
 
