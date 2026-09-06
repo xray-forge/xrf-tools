@@ -1,6 +1,6 @@
 import { Box, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useState } from "react";
+import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
@@ -17,7 +17,7 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { IPanZoomState, PAN_ZOOM_IDENTITY } from "@/lib/media/pan-zoom";
+import { IPanZoomState, PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
 import { TextureImagePane } from "./TextureImagePane";
@@ -58,12 +58,17 @@ export function TexturePreview({
 
   // Held here rather than in either pane, so a pair moves together: panning one picture to a corner and finding the
   // other still centred is the one thing a comparison must not do.
-  const [panZoom, setPanZoom] = useState<IPanZoomState>(PAN_ZOOM_IDENTITY);
+  const [panZoom, setPanZoom] = useState<IPanZoomState>(PAN_ZOOM_FIT);
 
   // The description of the texture being replaced is still here while the next one is read, so what says a read is in
   // progress is the loadable rather than the absence of a description.
   const isReading: boolean = selectionService.selected.isLoading || selectionService.preview.isLoading;
   const description: Nullable<TextureDescription> = selectionService.selected.value;
+
+  // Keyed on the texture rather than on either pane's url, which is what holding the camera for a pair means here: the
+  // second picture is another encoding of the first, and re-encoding while zoomed into a block must not throw the
+  // person back out to the fit.
+  useEffect(() => setPanZoom(PAN_ZOOM_FIT), [description?.reference]);
 
   if (selectionService.selected.error) {
     return (
