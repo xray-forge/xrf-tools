@@ -1,56 +1,31 @@
-import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { DialogElementDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IDialogInspectorSectionProps {
+export interface IDialogInspectorSectionProps extends BaseComponentProps {
   title: string;
   caption: string;
   elements: ReadonlyArray<DialogElementDescriptor>;
-  /** Suppresses the leading divider, so the first group does not draw one against the band above it. */
-  isFirst?: boolean;
 }
 
 /**
  * One titled group of a node's elements.
  */
 export function DialogInspectorSection({
+  "data-testid": dataTestId,
+  id,
+  className,
   title,
   caption,
   elements,
-  isFirst,
 }: IDialogInspectorSectionProps): ReactElement {
   return (
-    <Box sx={{ paddingBottom: 1.5, paddingTop: isFirst ? 0 : 1.5, paddingX: 2 }}>
-      {isFirst ? null : <Divider sx={{ marginBottom: 1.5, marginX: -2 }} />}
-
-      <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-        {title}
-      </Typography>
-
-      <Typography variant={"caption"} sx={{ color: "text.disabled", display: "block" }}>
-        {caption}
-      </Typography>
-
-      <Box sx={{ marginTop: 1 }}>
-        {elements.map((element: DialogElementDescriptor, index: number) => (
-          <Box
-            key={`${element.name}-${index}`}
-            sx={{ alignItems: "baseline", display: "flex", gap: 1.5, lineHeight: 1.6, paddingY: 0.4 }}
-          >
-            <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0 }}>
-              {element.name}
-            </Typography>
-
-            <Typography
-              variant={"body2"}
-              sx={{ fontFamily: "monospace", marginLeft: "auto", overflowWrap: "anywhere", textAlign: "right" }}
-            >
-              {element.value}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
-    </Box>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={title} caption={caption}>
+      {elements.map((element: DialogElementDescriptor, index: number) => (
+        <EditorPanelRow key={`${element.name}-${index}`} label={element.name} value={element.value} isMonospace />
+      ))}
+    </EditorPanelSection>
   );
 }

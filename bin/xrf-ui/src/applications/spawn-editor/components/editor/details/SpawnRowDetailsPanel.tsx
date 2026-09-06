@@ -1,13 +1,13 @@
-import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { ISpawnRowSelection, SpawnFileService } from "@/core/spawn/services";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 import { formatSpawnRowDetailsValue } from "./SpawnRowDetailsPanel.utils";
 
-export interface ISpawnRowDetailsPanelProps {
+export interface ISpawnRowDetailsPanelProps extends BaseComponentProps {
   spawnFileService: SpawnFileService;
 }
 
@@ -17,37 +17,31 @@ export interface ISpawnRowDetailsPanelProps {
  * The tables keep their columns terse because this exists: a spawn record has more fields than fit on a
  * screen, and most of them are only wanted once you have found the row you care about.
  */
-export function SpawnRowDetailsPanel({ spawnFileService }: ISpawnRowDetailsPanelProps): ReactElement {
+export function SpawnRowDetailsPanel({
+  "data-testid": dataTestId = "spawn-row-details-panel",
+  id,
+  className,
+  spawnFileService,
+}: ISpawnRowDetailsPanelProps): ReactElement {
   const selection: Nullable<ISpawnRowSelection> = spawnFileService.selectedRow;
 
   if (!selection) {
-    return <EmptyState title={"Nothing selected"} description={"Pick a row in any chunk table to inspect it here."} />;
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Nothing selected"}>
+        <EditorPanelEmpty label={"Pick a row in any chunk table to inspect it here."} />
+      </EditorPanel>
+    );
   }
 
   const entries: Array<[string, unknown]> = Object.entries(selection.row);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <Box sx={{ paddingX: 1.5, paddingY: 1, borderBottom: 1, borderColor: "divider" }}>
-        <Typography variant={"subtitle2"}>{selection.source}</Typography>
-      </Box>
-
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={selection.source}>
+      <EditorPanelSection title={"Properties"} isFirst>
         {entries.map(([key, value]: [string, unknown]) => (
-          <Box key={key} sx={{ paddingX: 1.5, paddingY: 0.75, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant={"caption"} sx={{ display: "block", color: "text.secondary" }}>
-              {key}
-            </Typography>
-
-            <Typography
-              variant={"body2"}
-              sx={{ fontFamily: "'Cascadia Mono', 'Consolas', monospace", overflowWrap: "anywhere" }}
-            >
-              {formatSpawnRowDetailsValue(value)}
-            </Typography>
-          </Box>
+          <EditorPanelRow key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace isStacked />
         ))}
-      </Box>
-    </Box>
+      </EditorPanelSection>
+    </EditorPanel>
   );
 }

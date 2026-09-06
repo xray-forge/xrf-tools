@@ -1,11 +1,16 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { MONOSPACE } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelRowProps extends BaseComponentProps {
   label: string;
   value: ReactNode;
+  /** Places long values below their labels instead of beside them. */
+  isStacked?: boolean;
+  /** Uses the shared identifier and path typography for the value. */
+  isMonospace?: boolean;
 }
 
 /**
@@ -20,6 +25,8 @@ export function EditorPanelRow({
   className,
   label,
   value,
+  isStacked = false,
+  isMonospace = false,
 }: IEditorPanelRowProps): ReactElement {
   return (
     <Box
@@ -28,18 +35,33 @@ export function EditorPanelRow({
       className={className}
       sx={{
         display: "flex",
+        flexDirection: isStacked ? "column" : "row",
         justifyContent: "space-between",
         alignItems: "baseline",
-        gap: 2,
-        paddingY: 0.4,
+        gap: isStacked ? 0.25 : 2,
+        paddingY: isStacked ? 0.75 : 0.4,
+        minWidth: 0,
         lineHeight: 1.6,
       }}
     >
-      <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+      <Typography
+        variant={isStacked ? "caption" : "body2"}
+        sx={{ color: "text.secondary", flexShrink: 0, maxWidth: "100%", overflowWrap: "anywhere" }}
+      >
         {label}
       </Typography>
 
-      <Typography component={"span"} variant={"body2"} sx={{ textAlign: "right", wordBreak: "break-all" }}>
+      <Typography
+        component={"span"}
+        variant={"body2"}
+        sx={{
+          ...(isMonospace ? MONOSPACE : null),
+          minWidth: 0,
+          maxWidth: "100%",
+          textAlign: isStacked ? "left" : "right",
+          overflowWrap: "anywhere",
+        }}
+      >
         {value}
       </Typography>
     </Box>

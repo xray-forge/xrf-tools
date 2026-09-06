@@ -1,4 +1,4 @@
-import { Box, Chip, Divider, Stack, Typography } from "@mui/material";
+import { Chip, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
@@ -7,21 +7,18 @@ import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
-
-/** How every identifier in this panel reads: monospace, wrapping, and quieter than the prose above it. */
-const IDENTIFIER_SX = {
-  color: "text.secondary",
-  display: "block",
-  fontFamily: "monospace",
-  overflowWrap: "anywhere",
-} as const;
 
 /**
  * What one node of the open dialog carries.
  */
-export function DialogInspectorPanel(): ReactElement {
+export function DialogInspectorPanel({
+  "data-testid": dataTestId = "dialog-inspector-panel",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
   const dialog: Nullable<DialogDescriptor> = dialogsService.dialog.value;
@@ -45,17 +42,20 @@ export function DialogInspectorPanel(): ReactElement {
 
   if (!dialog || !nodeId) {
     return (
-      <EmptyState
-        title={"Nothing selected"}
-        description={"Pick a node on the canvas to see the text and conditions it carries."}
-      />
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Nothing selected"}>
+        <EditorPanelEmpty label={"Pick a node on the canvas to see the text and conditions it carries."} />
+      </EditorPanel>
     );
   }
 
   // A node the dialog no longer holds. Reachable while a language switch is in flight, because the
   // canvas keeps its selection across the re-fetch.
   if (!isDialogRoot && !phrase) {
-    return <EmptyState title={"Phrase is gone"} description={`This dialog no longer declares '${nodeId}'.`} />;
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Phrase is gone"}>
+        <EditorPanelEmpty label={`This dialog no longer declares '${nodeId}'.`} />
+      </EditorPanel>
+    );
   }
 
   const badges: Array<ReactElement> = [
@@ -74,13 +74,9 @@ export function DialogInspectorPanel(): ReactElement {
   ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      <Box sx={{ padding: 2 }}>
-        <Typography variant={"subtitle2"}>{isDialogRoot ? "Dialog" : "Phrase"}</Typography>
-
-        <Typography variant={"caption"} sx={{ ...IDENTIFIER_SX, marginTop: 0.25 }}>
-          {isDialogRoot ? dialog.id : phrase?.id}
-        </Typography>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={isDialogRoot ? "Dialog" : "Phrase"}>
+      <EditorPanelSection title={"Details"} isFirst>
+        <EditorPanelRow label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
 
         {isDialogRoot ? (
           <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 1 }}>
@@ -94,9 +90,7 @@ export function DialogInspectorPanel(): ReactElement {
             </Typography>
 
             {phrase?.textKey ? (
-              <Typography variant={"caption"} sx={{ ...IDENTIFIER_SX, marginTop: 0.5 }}>
-                {phrase.textKey}
-              </Typography>
+              <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace isStacked />
             ) : null}
           </>
         )}
@@ -106,27 +100,22 @@ export function DialogInspectorPanel(): ReactElement {
             {badges}
           </Stack>
         ) : null}
-      </Box>
+      </EditorPanelSection>
 
-      <Divider />
-
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", paddingY: 1.5 }}>
-        {groups.length ? (
-          groups.map((group: IDialogElementGroup, index: number) => (
-            <DialogInspectorSection
-              key={group.id}
-              title={group.title}
-              caption={group.caption}
-              elements={group.elements}
-              isFirst={index === 0}
-            />
-          ))
-        ) : (
-          <Typography variant={"body2"} sx={{ color: "text.secondary", paddingX: 2 }}>
-            {isDialogRoot ? "This dialog gates nothing." : "This phrase carries no conditions or effects."}
-          </Typography>
-        )}
-      </Box>
-    </Box>
+      {groups.length ? (
+        groups.map((group: IDialogElementGroup) => (
+          <DialogInspectorSection
+            key={group.id}
+            title={group.title}
+            caption={group.caption}
+            elements={group.elements}
+          />
+        ))
+      ) : (
+        <EditorPanelEmpty
+          label={isDialogRoot ? "This dialog gates nothing." : "This phrase carries no conditions or effects."}
+        />
+      )}
+    </EditorPanel>
   );
 }
