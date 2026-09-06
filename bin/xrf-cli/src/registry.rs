@@ -24,7 +24,12 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       slug: "dds",
       label: "DDS",
       about: "DDS texture file tools",
-      commands: vec![dds::crop::CropCommand::new_box(), dds::info::InfoCommand::new_box()],
+      commands: vec![
+        dds::convert::ConvertCommand::new_box(),
+        dds::crop::CropCommand::new_box(),
+        dds::info::InfoCommand::new_box(),
+        dds::make_bump::MakeBumpCommand::new_box(),
+      ],
     },
     CommandGroup {
       slug: "dialog",

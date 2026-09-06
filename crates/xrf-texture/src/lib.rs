@@ -23,3 +23,4 @@ pub use crate::equipment::{
   EquipmentGridOverlap, InventorySpriteDescriptor, PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult,
   UnpackEquipmentOptions, UnpackEquipmentProcessor, VerifyEquipmentGridProcessor,
 };
+pub use crate::image_file::read_image_as_rgba;

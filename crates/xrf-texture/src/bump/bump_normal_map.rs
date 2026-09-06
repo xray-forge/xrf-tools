@@ -84,8 +84,13 @@ impl GreyPlane {
   }
 
   /// The mean of every value, in the `0..=1` range the plane holds.
+  ///
+  /// Accumulated in `f64` rather than in the plane's own `f32`. A texture is millions of texels, and once an `f32`
+  /// running total passes a million its steps are coarser than the values still being added to it: summing 0.6 two
+  /// million times that way answers 0.613. That figure is what the gloss verdict is measured against, so the drift
+  /// would decide whether a surface is called too dark by how large it is.
   pub(crate) fn average(&self) -> f32 {
-    self.values.iter().sum::<f32>() / self.values.len() as f32
+    (self.values.iter().map(|value| f64::from(*value)).sum::<f64>() / self.values.len() as f64) as f32
   }
 }
 
@@ -147,6 +152,19 @@ mod tests {
     assert!(
       steep.get_pixel(4, 0).0[0] < gentle.get_pixel(4, 0).0[0],
       "expected the taller height to lean further"
+    );
+  }
+
+  #[test]
+  fn the_average_does_not_drift_over_a_texture_sized_plane() {
+    // The failing size: two million texels of one value. Accumulated in `f32` this answers 0.613 rather than 0.6,
+    // because the running total outgrows the steps being added to it, and the gloss verdict reads that number.
+    let plane: GreyPlane = plane(1024, 2048, |_, _| 153);
+
+    assert!(
+      (plane.average() - 153.0 / 255.0).abs() < 1e-5,
+      "expected the mean to stay put, got {}",
+      plane.average()
     );
   }
 
