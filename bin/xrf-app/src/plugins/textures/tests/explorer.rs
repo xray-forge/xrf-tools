@@ -14,6 +14,7 @@ use xrf_vfs::{XrayAssetType, XrayLookupScope, XrayMountId, XrayMountMode, XrayPr
 use crate::core::assets::{read_located_asset, read_referenced_asset};
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
 use crate::plugins::textures::description::TextureDescription;
+use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::summary::{TextureBadges, TextureMaterialSummary};
 
@@ -662,5 +663,44 @@ fn a_source_naming_the_descriptor_still_answers_the_texture_beside_it() {
     file_source(descriptor.clone()).physical_path(),
     Some(descriptor.as_path()),
     "expect the named file to be reported as named, for anything centring roots or saying what was opened"
+  );
+}
+
+#[test]
+fn the_two_files_a_texture_is_are_named_from_either_half() {
+  // The rule the whole plugin rests on, pinned at its owner rather than at each of the four surfaces that used to
+  // spell it: a description reads both halves, a save writes both, a comparison decodes the texture, and a person
+  // opens whichever of the two they picked.
+  let root: PathBuf = loose_directory("texture_files");
+  let texture: PathBuf = root.join("wall.dds");
+  let descriptor: PathBuf = root.join("wall.thm");
+  let expected: TextureFiles = TextureFiles {
+    texture: texture.clone(),
+    descriptor: descriptor.clone(),
+  };
+
+  assert_eq!(
+    TextureFiles::of(&texture),
+    expected,
+    "expect a texture to name the pair"
+  );
+  assert_eq!(
+    TextureFiles::of(&descriptor),
+    expected,
+    "expect a descriptor to name the same pair"
+  );
+
+  // A name carrying dots keeps every one of them but the last: `wall.v2` is a stem, not an extension to preserve.
+  assert_eq!(
+    TextureFiles::of(&root.join("wall.v2.dds")).descriptor,
+    root.join("wall.v2.thm"),
+    "expect only the extension to be replaced"
+  );
+
+  // The companion half of a bump pair is an ordinary texture with a `#` in its name, and it has a descriptor too.
+  assert_eq!(
+    TextureFiles::of(&root.join("wall_bump#.dds")).descriptor,
+    root.join("wall_bump#.thm"),
+    "expect the companion's own name to survive being paired"
   );
 }

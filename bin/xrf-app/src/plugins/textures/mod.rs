@@ -8,6 +8,7 @@ pub mod descriptor_form;
 pub mod edit_targets;
 pub mod encoding;
 pub mod file_stamp;
+pub mod files;
 pub mod lease;
 pub mod plugin;
 pub mod request;

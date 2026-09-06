@@ -11,6 +11,7 @@ use crate::core::assets::AssetTextureDescriptor;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
+use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::source::TextureSource;
 
 /// Everything the inspection panels say about one texture, resolved in one call.
@@ -107,10 +108,9 @@ impl TextureDescription {
 
   /// Describes a file that sits under no X-Ray root, from its own path.
   ///
-  /// The `.thm` is the sibling with the extension swapped, which is the same rule the engine resolves a descriptor by,
-  /// and the only rule available where there is no tree to search. Nothing else is resolved: a bump name this
-  /// descriptor declares is an engine reference that means nothing until somebody says which game data to read it
-  /// against, and that is the editor's question rather than this one.
+  /// Its two files are [`TextureFiles`], which is the only rule available where there is no tree to search. Nothing
+  /// else is resolved: a bump name this descriptor declares is an engine reference that means nothing until somebody
+  /// says which game data to read it against, and that is the editor's question rather than this one.
   ///
   /// # Errors
   ///
@@ -121,8 +121,10 @@ impl TextureDescription {
       .ok_or_else(|| String::from("A texture outside every root has to be named by a file path"))?
       .to_path_buf();
 
-    let texture_path: PathBuf = path.with_extension(to_extension(XrayAssetType::Dds));
-    let descriptor_path: PathBuf = path.with_extension(to_extension(XrayAssetType::Thm));
+    let TextureFiles {
+      texture: texture_path,
+      descriptor: descriptor_path,
+    } = TextureFiles::of(&path);
     let texture: Option<XrayAsset> = texture_path.is_file().then(|| to_loose_asset(&texture_path)).flatten();
 
     // The roots this description is read back through, which have to include the folder the file is sitting in.
@@ -163,13 +165,6 @@ fn with_own_directory(roots: XrayRoots, texture_path: &Path) -> XrayRoots {
     },
     None => roots,
   }
-}
-
-/// The extension a kind of asset carries, without the leading dot `Path::with_extension` refuses.
-fn to_extension(asset_type: XrayAssetType) -> &'static str {
-  asset_type
-    .get_rules()
-    .map_or("", |rules| rules.extension.trim_start_matches('.'))
 }
 
 /// A loose file as the VFS would report it, rooted at its own directory.

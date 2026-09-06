@@ -1,10 +1,11 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use xrf_vfs::{XrayAsset, XrayAssetType};
+use xrf_vfs::XrayAsset;
 
 use crate::core::types::TauriResult;
 use crate::plugins::textures::file_stamp::TextureFileStamp;
+use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::request::TextureSaveTarget;
 
 /// Where an edit of one texture would write, and what was there when the editor read it.
@@ -30,10 +31,9 @@ pub struct TextureEditTargets {
 impl TextureEditTargets {
   /// The two files an edit of `texture` writes, or nothing when the texture has no file on disk.
   ///
-  /// The descriptor's path is the texture's with its extension swapped, which is the same rule
-  /// [`XrayAssetType::Thm`] resolves a reference by: the engine looks for `<name>.thm` beside `<name>.dds` and nowhere
-  /// else. Taking it from the located `.thm` instead would work only for the textures that already have one, which is
-  /// exactly the case the editor does not need help with.
+  /// Where the descriptor goes when the roots hold none is [`TextureFiles`]. Taking it from the located `.thm`
+  /// instead would work only for the textures that already have one, which is exactly the case the editor does not
+  /// need help with.
   ///
   /// # Errors
   ///
@@ -47,7 +47,7 @@ impl TextureEditTargets {
     // rewritten rather than a fresh one appearing beside the texture.
     let descriptor_path: PathBuf = descriptor
       .and_then(XrayAsset::to_physical_path)
-      .unwrap_or_else(|| to_descriptor_path(&texture_path));
+      .unwrap_or_else(|| TextureFiles::of(&texture_path).descriptor);
 
     Ok(Some(Self::of_paths(&descriptor_path, &texture_path)?))
   }
@@ -66,15 +66,6 @@ impl TextureEditTargets {
       texture: to_target(texture)?,
     })
   }
-}
-
-/// The descriptor that belongs beside a texture file.
-fn to_descriptor_path(texture: &Path) -> PathBuf {
-  texture.with_extension(
-    XrayAssetType::Thm
-      .get_rules()
-      .map_or("thm", |rules| rules.extension.trim_start_matches('.')),
-  )
 }
 
 fn to_target(path: &Path) -> TauriResult<TextureSaveTarget> {

@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayMountPlan};
 
+use crate::plugins::textures::files::TextureFiles;
+
 /// Where a texture is named from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -37,9 +39,7 @@ impl TextureSource {
   /// picking either the `.dds` or the `.thm` beside it, so the file they named is not always the file the pixels are
   /// in. Anything reading bytes to decode wants this; anything reporting what was opened wants the other.
   pub fn to_texture_path(&self) -> Option<PathBuf> {
-    let extension: &str = XrayAssetType::Dds.get_rules()?.extension.trim_start_matches('.');
-
-    Some(self.physical_path()?.with_extension(extension))
+    Some(TextureFiles::of(self.physical_path()?).texture)
   }
 
   /// The engine reference this source names, or `None` for a file that names none.
