@@ -11,7 +11,11 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { IEquipmentSectionDescriptor, IEquipmentSpriteMetadata } from "@/core/sprite-equipment/equipment";
+import {
+  IEquipmentSectionDescriptor,
+  IEquipmentSpriteMetadata,
+  IPackEquipmentResult,
+} from "@/core/sprite-equipment/equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { createLoadable, Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
@@ -203,7 +207,7 @@ export class SpriteEquipmentEditorService {
     }
   }
 
-  @LatestFlow("spriteImage")
+  @ExclusiveFlow("spriteImage")
   public *repackAndOpenProject(): TFlow {
     const { spriteImage, repackSourcePath } = this;
 
@@ -220,7 +224,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      yield* call(
+      const result: Nullable<IPackEquipmentResult> = yield* call(
         flowResult(
           this.packerService.packEquipmentSprite(
             repackSourcePath,
@@ -230,6 +234,12 @@ export class SpriteEquipmentEditorService {
           )
         )
       );
+
+      if (!result || result.outcome !== "completed") {
+        this.spriteImage = this.spriteImage.asReady();
+
+        return;
+      }
 
       this.repackedAt = Date.now();
 

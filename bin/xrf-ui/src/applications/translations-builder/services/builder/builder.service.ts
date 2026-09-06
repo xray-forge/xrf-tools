@@ -8,7 +8,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The translation build and what it produced.
@@ -35,8 +35,12 @@ export class TranslationsBuilderService {
    * @param outputDir - Directory the string tables are written into.
    * @param isSorted - Whether to sort entries within each table.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *build(sources: string, language: string, outputDir: string, isSorted: boolean): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Building translations:", sources, language, outputDir);
 
     yield* this.operation.run({

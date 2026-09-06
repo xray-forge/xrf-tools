@@ -7,7 +7,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The translations formatting run and what it rewrote.
@@ -35,8 +35,12 @@ export class TranslationsFormatterService {
    * @param directory - Directory of JSON translation sources.
    * @param isCheck - Whether to report the formatting rather than repair it.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *format(directory: string, isCheck: boolean): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Formatting translations:", directory, isCheck);
 
     yield* this.operation.run({

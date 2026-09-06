@@ -7,7 +7,8 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
 import { describePackSpriteOutcome } from "@/core/sprite-equipment/lib/describe-pack-sprite-outcome";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { Nullable } from "@/lib/types/general";
 
 /** Packing shared by the standalone runner and the editor's repack action. */
 @Injectable()
@@ -31,15 +32,19 @@ export class SpriteEquipmentPackerService {
    * @param outputPath - File the sheet is written to.
    * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
    * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect.
-   * @returns What the run produced.
+   * @returns What the run produced, or null when another scope already owns a pack.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *packEquipmentSprite(
     sourcePath: string,
     outputPath: string,
     systemLtxPath: string,
     isDltx: boolean
-  ): TFlow<IPackEquipmentResult> {
+  ): TFlow<Nullable<IPackEquipmentResult>> {
+    if (this.operation.isRunning) {
+      return null;
+    }
+
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
     const completion: JobCompletion<IPackEquipmentResult> = yield* this.operation.run({

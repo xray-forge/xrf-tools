@@ -191,9 +191,7 @@ export class PackerService {
   /**
    * Reads the packing defaults the backend reports.
    *
-   * Exclusive rather than latest: an operation the user started owns the packer, and a defaults read that has not
-   * finished must join it rather than land on top. Every user operation takes the lane the other way round, which
-   * is the same mutual exclusion `isBusy` reports to the form.
+   * Defaults, configuration I/O and packing share an exclusive lane so they cannot overwrite each other's state.
    */
   @ExclusiveFlow("isBusy")
   private *restore(): TFlow {
@@ -268,9 +266,9 @@ export class PackerService {
    *
    * @param path - Configuration file to read.
    */
-  @LatestFlow("isBusy")
+  @ExclusiveFlow("isBusy")
   public *importConfig(path: string): TFlow {
-    if (!this.config) {
+    if (!this.config || this.job) {
       return;
     }
 
@@ -295,7 +293,7 @@ export class PackerService {
 
       this.error = transformError(error).message;
     } finally {
-      // Reached on cancellation too, so a superseded import does not leave the form disabled.
+      // Deactivation also releases the form's local busy state.
       this.isBusy = false;
     }
   }
@@ -305,11 +303,11 @@ export class PackerService {
    *
    * @param path - Configuration file to write.
    */
-  @LatestFlow("isBusy")
+  @ExclusiveFlow("isBusy")
   public *exportConfig(path: string): TFlow {
     const config: Nullable<ArchivePackConfig> = this.config;
 
-    if (!config) {
+    if (!config || this.job) {
       return;
     }
 
@@ -352,8 +350,12 @@ export class PackerService {
    * @param config - Configuration with the source and destination filled in.
    * @param isForced - Whether the user agreed to replace volumes the destination already holds.
    */
-  @LatestFlow("isBusy")
+  @ExclusiveFlow("isBusy")
   public *pack(config: ArchivePackConfig, isForced: boolean): TFlow {
+    if (this.job) {
+      return;
+    }
+
     const timer: Timer = new Timer();
 
     this.log.info("Packing:", config.source);

@@ -8,7 +8,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The configs verification run and what it found.
@@ -30,8 +30,12 @@ export class VerifierService {
    * @param isDltx - Whether to resolve with the Monolith/Anomaly DLTX patch dialect, which applies any
    *   `mod_<base>_*.ltx` beside a config rather than reading it as a config of its own.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *verify(directory: string, isDltx: boolean): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Verifying:", directory);
 
     yield* this.operation.run({

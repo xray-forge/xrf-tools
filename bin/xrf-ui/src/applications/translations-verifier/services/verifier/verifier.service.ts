@@ -8,7 +8,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The translation completeness check and what it found.
@@ -29,8 +29,12 @@ export class TranslationsVerifierService {
    * @param sources - Source tree to check.
    * @param language - Language to narrow to, or `all`.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *verify(sources: string, language: string): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Verifying translations:", sources, language);
 
     yield* this.operation.run({

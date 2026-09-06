@@ -7,7 +7,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The translation import and what it wrote.
@@ -32,8 +32,12 @@ export class TranslationsParserService {
    * @param isOverwrite - Whether incoming text may replace existing text that differs.
    * @param isDryRun - Whether to compute the answer without writing it.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *parse(sources: string, language: string, outputDir: string, isOverwrite: boolean, isDryRun: boolean): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Importing translations:", sources, language, outputDir);
 
     yield* this.operation.run({

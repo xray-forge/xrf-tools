@@ -7,7 +7,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The gamedata verification run and what it found.
@@ -31,8 +31,12 @@ export class GamedataVerifierService {
    * @param root - Gamedata root to verify.
    * @param isStrict - Whether a check that would warn should fail instead.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *verify(root: string, isStrict: boolean): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Verifying gamedata:", root, isStrict);
 
     yield* this.operation.run({

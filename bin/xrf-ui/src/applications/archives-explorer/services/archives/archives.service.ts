@@ -109,7 +109,7 @@ export class ArchivesService {
    */
   @Computed()
   public get isWriting(): boolean {
-    return this.operation.isLoading;
+    return this.operation.isLoading || this.job !== null;
   }
 
   /** The extraction this service started, while it runs. */
@@ -345,8 +345,12 @@ export class ArchivesService {
    * @param destination - Output file path.
    * @returns Resolves after the extraction outcome is published.
    */
-  @LatestFlow("operation")
+  @ExclusiveFlow("operation")
   public *extractFile(descriptor: ArchiveFileDescriptor, destination: string): TFlow {
+    if (this.isWriting) {
+      return;
+    }
+
     const timer: Timer = new Timer();
 
     this.log.info("Extracting archive file:", descriptor.name, destination);
@@ -388,8 +392,12 @@ export class ArchivesService {
    * @param prefix - Archive-relative directory prefix; an empty string selects the archive root.
    * @param destination - Output directory path.
    */
-  @LatestFlow("operation")
+  @ExclusiveFlow("operation")
   public *extractArchiveDirectory(prefix: string, destination: string): TFlow {
+    if (this.isWriting) {
+      return;
+    }
+
     const timer: Timer = new Timer();
 
     this.log.info("Extracting archive directory:", prefix || "<root>", destination);

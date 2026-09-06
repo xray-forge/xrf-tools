@@ -112,6 +112,40 @@ function toBoundDescriptor(key: PropertyKey, run: (...args: Array<any>) => Promi
 }
 
 /**
+ * Tracks a lane until its flow settles, preserving its result for the caller.
+ *
+ * @param instance - Instance owning the flow.
+ * @param slot - Lane shared by the participating methods.
+ * @param promise - Flow to track until completion or cancellation.
+ * @returns The flow's result, with cancellation settled quietly.
+ */
+function trackFlow<T>(instance: object, slot: PropertyKey, promise: TCancellablePromise<T>): Promise<T | void> {
+  const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(instance) ?? new Map();
+
+  slots.set(slot, promise);
+  RUNNING.set(instance, slots);
+
+  function forget(): void {
+    if (RUNNING.get(instance)?.get(slot) === promise) {
+      RUNNING.get(instance)?.delete(slot);
+    }
+  }
+
+  return promise.then(
+    (result: T) => {
+      forget();
+
+      return result;
+    },
+    (error: unknown) => {
+      forget();
+
+      return swallowCancellation(error);
+    }
+  );
+}
+
+/**
  * Runs a generator method as a flow, cancelling whatever the previous call left running.
  *
  * Cancelling resumes the generator with a return completion, so the lines after the `yield` in flight never execute -
@@ -135,13 +169,7 @@ export function LatestFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
     function runLatest(this: object, ...args: Array<any>): Promise<any> {
       cancelLane(this, slot);
 
-      const promise: TCancellablePromise<any> = runner.apply(this, args);
-      const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(this) ?? new Map();
-
-      slots.set(slot, promise);
-      RUNNING.set(this, slots);
-
-      return promise.catch(swallowCancellation);
+      return trackFlow(this, slot, runner.apply(this, args));
     }
 
     return toBoundDescriptor(key, runLatest);
@@ -175,25 +203,7 @@ export function ExclusiveFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
         return running.catch(swallowCancellation);
       }
 
-      const promise: TCancellablePromise<any> = runner.apply(this, args);
-      const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(this) ?? new Map();
-
-      slots.set(slot, promise);
-      RUNNING.set(this, slots);
-
-      // Cleared when it settles, so the lane is askable again. `LatestFlow` has no equivalent because its next call
-      // replaces the entry outright.
-      const forget: () => void = () => {
-        if (RUNNING.get(this)?.get(slot) === promise) {
-          RUNNING.get(this)?.delete(slot);
-        }
-      };
-
-      return promise.then(forget, (error: unknown) => {
-        forget();
-
-        return swallowCancellation(error);
-      });
+      return trackFlow(this, slot, runner.apply(this, args));
     }
 
     return toBoundDescriptor(key, runExclusive);

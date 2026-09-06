@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { EventBus } from "@wirestate/core";
 
+import { EJobKind } from "@/core/jobs/lib";
+import { JobsService } from "@/core/jobs/services/jobs";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
@@ -85,5 +89,50 @@ describe("SpriteEquipmentEditorService", () => {
 
     expect(service.spriteImage.error).toBeNull();
     expect(service.spriteImage.isLoading).toBe(false);
+  });
+
+  it.each(["busy", "cancelled"])("does not report or reload a %s repack", async (outcome) => {
+    const { service, container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const notices: Array<unknown> = [];
+
+    container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
+    service.spriteImage = service.spriteImage.asUpdated({
+      isDltx: false,
+      ltxPath: "system.ltx",
+      descriptors: [],
+      path: "equipment.dds",
+      name: "equipment.dds",
+      blob: new Blob(),
+      image: new Image(),
+    });
+    service.repackSourcePath = "icons";
+
+    if (outcome === "busy") {
+      container.get(JobsService).jobs = [
+        {
+          id: "running",
+          kind: EJobKind.SPRITE_EQUIPMENT_PACK,
+          progress: null,
+          request: null,
+          isCancelRequested: false,
+          isAdopted: true,
+        },
+      ];
+    } else {
+      setMockInvokeResponses({ "plugin:sprite-equipment|pack_sprite": { outcome: "cancelled" } });
+    }
+
+    await service.repackAndOpenProject();
+
+    expect(service.spriteImage.isLoading).toBe(false);
+    expect(service.repackedAt).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reopen_sprite", expect.anything());
+    expect(notices).not.toContainEqual(expect.objectContaining({ severity: ENotificationSeverity.SUCCESS }));
+
+    if (outcome === "busy") {
+      expect(mockInvoke).not.toHaveBeenCalled();
+    }
+
+    container.unbindAll();
   });
 });

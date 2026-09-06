@@ -7,7 +7,7 @@ import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVEN
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
-import { LatestFlow, TFlow } from "@/lib/mobx";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The unpacking run and what it produced.
@@ -32,8 +32,12 @@ export class UnpackerService {
    * @param source - Directory holding the packed archives.
    * @param destination - Directory the archives are unpacked into.
    */
-  @LatestFlow()
+  @ExclusiveFlow("operation")
   public *unpack(source: string, destination: string): TFlow {
+    if (this.operation.isRunning) {
+      return;
+    }
+
     this.log.info("Unpacking:", source);
 
     yield* this.operation.run({
