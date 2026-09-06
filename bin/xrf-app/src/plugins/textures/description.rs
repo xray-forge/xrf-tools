@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use xrf_db::{ThmFile, XRayByteOrder};
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver};
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayProbe, XrayRoots};
+use xrf_vfs::{
+  XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayMountMode, XrayProbe, XrayRoot, XrayRoots,
+};
 
 use crate::core::assets::AssetTextureDescriptor;
 use crate::core::types::TauriResult;
@@ -123,6 +125,11 @@ impl TextureDescription {
     let descriptor_path: PathBuf = path.with_extension(to_extension(XrayAssetType::Thm));
     let texture: Option<XrayAsset> = texture_path.is_file().then(|| to_loose_asset(&texture_path)).flatten();
 
+    // The roots this description is read back through, which have to include the folder the file is sitting in.
+    // Everything downstream asks for bytes by logical path - the preview's decode, the lit surface's upload - and a
+    // file no tree can place answers to its own name in its own directory or to nothing at all.
+    let roots: XrayRoots = with_own_directory(roots, &texture_path);
+
     Ok(Self {
       form: read_descriptor_from_path(&descriptor_path)
         .as_ref()
@@ -139,6 +146,22 @@ impl TextureDescription {
       roots,
       texture,
     })
+  }
+}
+
+/// The given roots with the file's own directory searched first.
+///
+/// Prepended rather than appended: the file the caller named is the one they mean, and a configured tree that happens
+/// to hold a texture of the same name must not answer for it.
+fn with_own_directory(roots: XrayRoots, texture_path: &Path) -> XrayRoots {
+  match texture_path.parent() {
+    Some(directory) => XrayRoots {
+      asset: roots.asset,
+      roots: std::iter::once(XrayRoot::new(directory.to_path_buf(), XrayMountMode::Directory))
+        .chain(roots.roots)
+        .collect(),
+    },
+    None => roots,
   }
 }
 

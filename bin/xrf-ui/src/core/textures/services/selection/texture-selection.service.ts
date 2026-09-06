@@ -151,7 +151,7 @@ export class TextureSelectionService {
 
       this.log.info("Inspecting texture:", description.reference);
 
-      yield* this.decode(description, roots);
+      yield* this.decode(description);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -170,9 +170,8 @@ export class TextureSelectionService {
    * half of the answer that does not depend on the picture.
    *
    * @param description - The texture just resolved.
-   * @param roots - Roots it was resolved in, so the read reaches the same file.
    */
-  private *decode(description: TextureDescription, roots: XrayRoots): TFlow {
+  private *decode(description: TextureDescription): TFlow {
     const logicalPath: Nullable<string> = description.texture?.logicalPath ?? null;
 
     if (!logicalPath) {
@@ -184,7 +183,7 @@ export class TextureSelectionService {
     this.preview = this.preview.asLoading(null);
 
     try {
-      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readTexture(roots, logicalPath));
+      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readTexture(description.roots, logicalPath));
 
       this.preview = this.preview.asReady(bytes);
     } catch (error: unknown) {

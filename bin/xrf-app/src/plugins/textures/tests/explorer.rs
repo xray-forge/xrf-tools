@@ -11,6 +11,7 @@ use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAssetType, XrayLookupScope, XrayMountId, XrayMountMode, XrayProbe, XrayRoots, XrayVfs};
 
+use crate::core::assets::{read_located_asset, read_referenced_asset};
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::source::TextureSource;
@@ -556,4 +557,82 @@ fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
 
   assert!(as_tree.entries.is_empty());
   assert_eq!(as_tree.outside_textures_count, 2);
+}
+
+#[test]
+fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
+  // The description is not the end of the story: the preview decodes the texture and the lit surface uploads it, and
+  // both ask for bytes by logical path through these roots. A file no tree can place answers to its own name in its
+  // own folder, so that folder has to be one of them - without it the panels read a texture that resolves nowhere and
+  // the screen says the picture is unavailable while the descriptor beside it renders perfectly.
+  let root: PathBuf = loose_directory("readable_back");
+  let texture: PathBuf = root.join("wall.dds");
+
+  std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
+
+  let (vfs, id) = mount(&ThmFixtureTree::new("textures_readable_back_roots"));
+  let description: TextureDescription = TextureDescription::describe(
+    &probe_over(&vfs, id),
+    file_source(texture.clone()),
+    XrayRoots::default(),
+  )
+  .expect("a loose texture is described");
+
+  let logical_path: String = description
+    .texture
+    .as_ref()
+    .expect("the file is located")
+    .get_logical_path()
+    .as_str()
+    .to_owned();
+
+  assert_eq!(logical_path, "wall.dds");
+  assert_eq!(
+    description.roots.roots.first().map(|it| it.path.as_path()),
+    Some(root.as_path()),
+    "expect the file's own folder searched first, so the name it answers to is the one it was described under"
+  );
+
+  // What the preview does, over the roots the description came back with.
+  let mut reader: XrayVfs = XrayVfs::new();
+  let steps = description
+    .roots
+    .to_probe_plan()
+    .expect("the answered roots plan")
+    .mount_into(&mut reader)
+    .expect("the answered roots mount");
+
+  assert!(
+    reader
+      .probe()
+      .with_steps(steps)
+      .find(&logical_path)
+      .expect("lookup")
+      .get_asset()
+      .is_some(),
+    "expect the texture to resolve back through the roots its own description answered with"
+  );
+}
+
+#[test]
+fn a_texture_is_read_by_its_reference_and_not_by_its_reference_as_a_path() {
+  // The defect this pins broke weighing for every texture that has an engine reference, which is every texture in a
+  // game tree. A reference such as `ston\\ston_beton05` and the logical path `textures\\ston\\ston_beton05.dds` are
+  // different strings for the same file, and a reader given the wrong one resolves nothing at all - so the reader that
+  // takes a reference has to be the one a caller holding a reference reaches for.
+  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_read_by_reference").with_texture(BASE);
+  let (vfs, id) = mount(&tree);
+  let probe: XrayProbe = probe_over(&vfs, id);
+
+  assert!(
+    read_referenced_asset(&probe, XrayAssetType::Dds, BASE).is_ok(),
+    "expect an engine reference to reach the file it names"
+  );
+  assert!(
+    read_located_asset(&probe, BASE).is_err(),
+    "expect a reference read as a logical path to resolve to nothing, which is what made this worth pinning"
+  );
+
+  // And the logical path the listing reports is what the path reader wants.
+  assert!(read_located_asset(&probe, "textures\\ston\\ston_beton05.dds").is_ok());
 }

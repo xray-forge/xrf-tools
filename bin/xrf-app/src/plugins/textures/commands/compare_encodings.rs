@@ -7,8 +7,9 @@ use uuid::Uuid;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMetadata, DdsMipChain, DdsMipmaps, RgbaImage};
 use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
 use xrf_utils::format_path;
+use xrf_vfs::XrayAssetType;
 
-use crate::core::assets::{AssetMountState, read_located_asset};
+use crate::core::assets::{AssetMountState, read_referenced_asset};
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
@@ -92,15 +93,13 @@ pub async fn textures_compare_encodings(
 
 /// The stored bytes of whatever the request names.
 ///
-/// Two doors, because a texture has two kinds of address. One inside a tree is read through the probe, so an archived
-/// entry answers as readily as a loose file and the roots decide which of several wins. One outside every tree is read
-/// from its path, because no mount holds it and the path is the whole address.
+/// Two doors, because a texture has two kinds of address, and which door to take is what the source says rather than
+/// what can be derived from it. A file names its own bytes, whether or not a tree could place it; a reference names a
+/// texture without saying where it lives, so the roots decide which of several wins and an archived entry answers as
+/// readily as a loose one.
 fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest) -> TauriResult<Vec<u8>> {
-  match request.source.to_reference() {
-    Some(reference) => assets
-      .with_probe(&request.roots, |probe| read_located_asset(probe, &reference))?
-      .map_err(error_to_string),
-    None => {
+  match &request.source {
+    TextureSource::File { .. } => {
       let path: &Path = request
         .source
         .physical_path()
@@ -108,6 +107,11 @@ fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest
 
       std::fs::read(path).map_err(|error| format!("Cannot read '{}': {error}", format_path(path)))
     }
+    TextureSource::Asset { reference } => assets
+      .with_probe(&request.roots, |probe| {
+        read_referenced_asset(probe, XrayAssetType::Dds, reference)
+      })?
+      .map_err(error_to_string),
   }
 }
 
