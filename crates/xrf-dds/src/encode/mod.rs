@@ -6,6 +6,6 @@ pub(crate) mod dds_encoding;
 pub(crate) mod dds_image_difference;
 
 pub use dds_encode_attempt::DdsEncodeAttempt;
-pub use dds_encode_candidate::DdsEncodeCandidate;
+pub use dds_encode_candidate::{DDS_BLOCK_SIZE, DdsEncodeCandidate};
 pub use dds_encoding::DdsEncoding;
 pub use dds_image_difference::DdsImageDifference;

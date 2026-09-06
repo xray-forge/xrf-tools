@@ -2,9 +2,10 @@ use image::GenericImageView;
 use xrf_dds::DdsMipmaps;
 use xrf_error::XrfResult;
 
-use crate::constants::DDS_EXTENSION;
-use crate::data::InventorySpriteDescriptor;
-use crate::{UnpackEquipmentOptions, save_image_as_ui_dds};
+use crate::equipment::InventorySpriteDescriptor;
+use crate::equipment::UnpackEquipmentOptions;
+use crate::image_file::DDS_EXTENSION;
+use crate::image_file::save_image_as_ui_dds;
 
 pub struct UnpackEquipmentProcessor {}
 

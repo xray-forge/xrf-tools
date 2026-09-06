@@ -8,14 +8,15 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::constants::{
-  DDS_EXTENSION, EXTENSIONS_DIRECTORY, LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX,
-  LTX_PATH_GAMEDATA_MARKER, LTX_PATH_GAMEDATA_MARKER_PREFIX, PNG_EXTENSION, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
-  UI_MIPMAP_LEVELS, UI_MIPMAPS,
+use crate::equipment::InventorySpriteDescriptor;
+use crate::equipment::{
+  EXTENSIONS_DIRECTORY, LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
+  LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
-use crate::data::InventorySpriteDescriptor;
-use crate::utils::{fit_image_into_bounds, warn_on_reshaped_ui_dds};
-use crate::{PackEquipmentOptions, PackEquipmentResult, save_image_as_ui_dds};
+use crate::equipment::{PackEquipmentOptions, PackEquipmentResult};
+use crate::image_file::save_image_as_ui_dds;
+use crate::image_file::{DDS_EXTENSION, PNG_EXTENSION, UI_MIPMAP_LEVELS, UI_MIPMAPS};
+use crate::image_file::{fit_image_into_bounds, warn_on_reshaped_ui_dds};
 
 pub struct PackEquipmentProcessor {}
 

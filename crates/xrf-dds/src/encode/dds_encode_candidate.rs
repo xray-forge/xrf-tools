@@ -4,6 +4,12 @@ use image_dds::ImageFormat;
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
 
+/// Pixels along one edge of a block, which every block-compressed family in this format shares.
+///
+/// A texture whose sides are not multiples of it still stores whole blocks, padded, so a caller sizing a canvas it
+/// intends to compress rounds up to this rather than leaving the encoder to pad.
+pub const DDS_BLOCK_SIZE: u32 = 4;
+
 /// A format a texture can be re-encoded into, of the five worth offering.
 ///
 /// The list is short on purpose. It is what the engine's own textures are authored in - the three DXT families and

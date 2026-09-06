@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::constants::DDS_BLOCK_ALIGNMENT;
-use crate::data::TextureSpriteDescriptor;
+use crate::description::TextureSpriteDescriptor;
+use xrf_dds::DDS_BLOCK_SIZE;
 
 pub struct TextureFileDescriptor {
   pub name: String,
@@ -35,7 +35,7 @@ impl TextureFileDescriptor {
     Ok(XrayLogicalPath::new(&self.name)?.to_host_relative_path())
   }
 
-  /// Smallest `DDS_BLOCK_ALIGNMENT`-aligned canvas that holds every described sprite.
+  /// Smallest `DDS_BLOCK_SIZE`-aligned canvas that holds every described sprite.
   ///
   /// The rounding only ever adds what alignment needs, at most three pixels per axis. A canvas that is
   /// already aligned is returned untouched.
@@ -51,8 +51,8 @@ impl TextureFileDescriptor {
     }
 
     (
-      max_width.next_multiple_of(DDS_BLOCK_ALIGNMENT),
-      max_height.next_multiple_of(DDS_BLOCK_ALIGNMENT),
+      max_width.next_multiple_of(DDS_BLOCK_SIZE),
+      max_height.next_multiple_of(DDS_BLOCK_SIZE),
     )
   }
 }
@@ -61,7 +61,7 @@ impl TextureFileDescriptor {
 mod tests {
   use std::path::PathBuf;
 
-  use crate::data::{TextureFileDescriptor, TextureSpriteDescriptor};
+  use crate::description::{TextureFileDescriptor, TextureSpriteDescriptor};
 
   fn descriptor_of(sprites: &[(u32, u32, u32, u32)]) -> TextureFileDescriptor {
     let mut descriptor: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\ui_actor_weapons");

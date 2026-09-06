@@ -9,10 +9,11 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::format_path;
 
-use crate::constants::DDS_EXTENSION;
-use crate::data::TextureFileDescriptor;
+use crate::description::PackDescriptionOptions;
+use crate::description::TextureFileDescriptor;
 use crate::description::XmlDescriptionCollection;
-use crate::{PackDescriptionOptions, save_image_as_ui_dds};
+use crate::image_file::DDS_EXTENSION;
+use crate::image_file::save_image_as_ui_dds;
 
 pub struct UnpackDescriptionProcessor {}
 

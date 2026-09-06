@@ -1,6 +1,8 @@
 use xrf_xml::XmlElement;
 
-use crate::constants::{XML_ATTRIBUTE_HEIGHT, XML_ATTRIBUTE_ID, XML_ATTRIBUTE_WIDTH, XML_ATTRIBUTE_X, XML_ATTRIBUTE_Y};
+use crate::description::{
+  XML_ATTRIBUTE_HEIGHT, XML_ATTRIBUTE_ID, XML_ATTRIBUTE_WIDTH, XML_ATTRIBUTE_X, XML_ATTRIBUTE_Y,
+};
 
 /// Description of single texture sprite.
 pub struct TextureSpriteDescriptor {

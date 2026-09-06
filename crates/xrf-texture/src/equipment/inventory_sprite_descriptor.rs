@@ -5,10 +5,11 @@ use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
 
-use crate::constants::{
-  DDS_BLOCK_ALIGNMENT, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INV_GRID_HEIGHT, LTX_FIELD_INV_GRID_WIDTH,
-  LTX_FIELD_INV_GRID_X, LTX_FIELD_INV_GRID_Y, LTX_FIELD_INVENTORY_ICON, LTX_FIELD_INVENTORY_ICON_PATH,
+use crate::equipment::{
+  INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INV_GRID_HEIGHT, LTX_FIELD_INV_GRID_WIDTH, LTX_FIELD_INV_GRID_X,
+  LTX_FIELD_INV_GRID_Y, LTX_FIELD_INVENTORY_ICON, LTX_FIELD_INVENTORY_ICON_PATH,
 };
+use xrf_dds::DDS_BLOCK_SIZE;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -104,7 +105,7 @@ impl InventorySpriteDescriptor {
     }
   }
 
-  /// Smallest `DDS_BLOCK_ALIGNMENT`-aligned canvas that holds every icon claiming a grid slot.
+  /// Smallest `DDS_BLOCK_SIZE`-aligned canvas that holds every icon claiming a grid slot.
   ///
   /// A grid square is 50 pixels, so a slot boundary lands on a whole block only every other column and
   /// row, and the rounding adds at most two pixels per axis. An already aligned canvas is returned
@@ -121,8 +122,8 @@ impl InventorySpriteDescriptor {
     }
 
     (
-      max_width.next_multiple_of(DDS_BLOCK_ALIGNMENT),
-      max_height.next_multiple_of(DDS_BLOCK_ALIGNMENT),
+      max_width.next_multiple_of(DDS_BLOCK_SIZE),
+      max_height.next_multiple_of(DDS_BLOCK_SIZE),
     )
   }
 }

@@ -3,9 +3,9 @@ use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::constants::PNG_EXTENSION;
 use crate::crop::{CropTextureOptions, CropTextureResult};
-use crate::utils::{fit_image_into_bounds, save_image_as_ui_dds, save_image_as_ui_png};
+use crate::image_file::PNG_EXTENSION;
+use crate::image_file::{fit_image_into_bounds, save_image_as_ui_dds, save_image_as_ui_png};
 
 pub struct CropTextureProcessor {}
 

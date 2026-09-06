@@ -7,9 +7,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 use xrf_xml::{XmlDocument, XmlElement, XmlParseOptions};
 
-use crate::constants::{XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW};
-use crate::data::{TextureFileDescriptor, TextureSpriteDescriptor};
 use crate::description::PackDescriptionOptions;
+use crate::description::{TextureFileDescriptor, TextureSpriteDescriptor};
+use crate::description::{XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW};
 
 pub struct XmlDescriptionCollection {
   pub files: HashMap<String, TextureFileDescriptor>,
@@ -264,8 +264,8 @@ mod select_files_tests {
   use xrf_dds::ImageFormat;
 
   use super::XmlDescriptionCollection;
-  use crate::data::TextureFileDescriptor;
   use crate::description::PackDescriptionOptions;
+  use crate::description::TextureFileDescriptor;
 
   fn collection_of(names: &[&str]) -> XmlDescriptionCollection {
     let mut files: HashMap<String, TextureFileDescriptor> = HashMap::new();

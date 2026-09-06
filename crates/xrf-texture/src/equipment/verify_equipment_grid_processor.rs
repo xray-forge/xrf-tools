@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use xrf_ltx::Ltx;
 
-use crate::data::InventorySpriteDescriptor;
+use crate::equipment::InventorySpriteDescriptor;
 
 /// Two sections whose inventory icon rectangles cover a common cell.
 #[derive(Clone, Debug, PartialEq)]
