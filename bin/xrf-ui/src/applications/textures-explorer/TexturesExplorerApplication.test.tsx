@@ -3,8 +3,9 @@ import { act, RenderResult, waitFor } from "@testing-library/react";
 import { Binding, Container } from "@wirestate/core";
 
 import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer/application";
-import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { TexturesExplorerApplication } from "@/applications/textures-explorer/TexturesExplorerApplication";
+import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
@@ -34,7 +35,7 @@ describe("TexturesExplorerApplication", () => {
 
     const container: Container = await mockApplicationContainer();
 
-    await container.get(TexturesService).onProvision();
+    await container.get(TextureCatalogService).onProvision();
 
     const render: RenderResult = renderWithProviders(<TexturesExplorerApplication />, { container });
 
@@ -52,24 +53,26 @@ describe("TexturesExplorerApplication", () => {
     });
 
     const container: Container = await mockApplicationContainer();
-    const service: TexturesService = container.get(TexturesService);
+    const service: TextureCatalogService = container.get(TextureCatalogService);
+    const selectionService: TextureSelectionService = container.get(TextureSelectionService);
 
     await service.onProvision();
     await service.openRoot("C:\\gamedata");
 
     const render: RenderResult = renderWithProviders(<TexturesExplorerApplication />, { container });
 
-    // The editor mounts its viewport and its panels; a missing binding throws here rather than failing an assertion.
+    // The workspace mounts its viewport and its panels; a missing binding throws here rather than failing an
+    // assertion.
     await waitFor(() => expect(render.getByTestId("textures-explorer-application")).toBeInTheDocument());
 
     // Inside `act`, because selecting settles two flows - the descriptor and the decoded preview - and each one
-    // re-renders the editor through mobx after the await the test is holding.
+    // re-renders the workspace through mobx after the await the test is holding.
     await act(async () => {
       await service.select(MOCK_TEXTURE);
     });
 
-    await waitFor(() => expect(service.preview.isLoading).toBe(false));
+    await waitFor(() => expect(selectionService.preview.isLoading).toBe(false));
 
-    expect(service.selectedReference).toBe(MOCK_TEXTURE);
+    expect(selectionService.reference).toBe(MOCK_TEXTURE);
   });
 });

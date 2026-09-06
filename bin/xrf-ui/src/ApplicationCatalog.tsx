@@ -31,6 +31,7 @@ import { SPRITE_EQUIPMENT_EDITOR_APPLICATION } from "@/applications/sprite-equip
 import { SPRITE_EQUIPMENT_PACKER_APPLICATION } from "@/applications/sprite-equipment-packer";
 import { SPRITE_EQUIPMENT_UNPACKER_APPLICATION } from "@/applications/sprite-equipment-unpacker";
 import { TASKS_EXPLORER_APPLICATION } from "@/applications/tasks-explorer";
+import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor";
 import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer";
 import { TRANSLATIONS_BUILDER_APPLICATION } from "@/applications/translations-builder";
 import { TRANSLATIONS_EDITOR_APPLICATION } from "@/applications/translations-editor";
@@ -74,6 +75,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     SPRITE_DESCRIPTION_PACKER_APPLICATION,
     SPRITE_DESCRIPTION_UNPACKER_APPLICATION,
     TEXTURES_EXPLORER_APPLICATION,
+    TEXTURES_EDITOR_APPLICATION,
     TRANSLATIONS_EDITOR_APPLICATION,
     TRANSLATIONS_PARSER_APPLICATION,
     TRANSLATIONS_BUILDER_APPLICATION,

@@ -6903,10 +6903,10 @@
           "markdownDescription": "Denies the reveal_path command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`",
           "type": "string",
           "const": "textures:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-build-from-source`\n- `allow-close`\n- `allow-compare-encodings`\n- `allow-describe`\n- `allow-describe-catalog`\n- `allow-get-roots`\n- `allow-get-vocabulary`\n- `allow-make-bump`\n- `allow-open`\n- `allow-save`\n- `allow-read-texture`"
         },
         {
           "description": "Enables the build_from_source command without any pre-configured scope.",
@@ -6943,6 +6943,12 @@
           "type": "string",
           "const": "textures:allow-get-roots",
           "markdownDescription": "Enables the get_roots command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_vocabulary command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:allow-get-vocabulary",
+          "markdownDescription": "Enables the get_vocabulary command without any pre-configured scope."
         },
         {
           "description": "Enables the make_bump command without any pre-configured scope.",
@@ -7003,6 +7009,12 @@
           "type": "string",
           "const": "textures:deny-get-roots",
           "markdownDescription": "Denies the get_roots command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_vocabulary command without any pre-configured scope.",
+          "type": "string",
+          "const": "textures:deny-get-vocabulary",
+          "markdownDescription": "Denies the get_vocabulary command without any pre-configured scope."
         },
         {
           "description": "Denies the make_bump command without any pre-configured scope.",

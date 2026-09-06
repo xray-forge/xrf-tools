@@ -15,6 +15,7 @@ import {
   TexturesMakeBumpRequest,
   TextureSource,
   TexturesSaveRequest,
+  TextureVocabulary,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -43,14 +44,6 @@ export const texturesCommands = {
    * comparison weighs formats rather than weighing one format against a differently built chain. Every figure is
    * relative to the current file as decoded, which for a texture already stored in a DXT family is itself lossy - so
    * what is reported is the loss a re-encode adds, never distance from an original.
-   *
-   * The encodes are held rather than returned. A `save` naming one of them writes the bytes this call produced, and the
-   * next comparison replaces the session whole: an encode belonging to a texture nobody is looking at any more is not
-   * something a later save should be able to reach.
-   *
-   * Writes nothing, so it holds no file. It joins the encode group because it spends the pool the way a generation
-   * does, and it is the one command here where cancelling buys something real: the candidates are weighed cheapest
-   * first, so a stop lands within tens of milliseconds unless BC7 has already begun.
    */
   compareEncodings: (request: TexturesCompareRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureEncodingComparison>("plugin:textures|compare_encodings", { request, jobId, progress }),
@@ -79,15 +72,13 @@ export const texturesCommands = {
       roots: Array<XrayRoot>;
     } | null>("plugin:textures|get_roots"),
   /**
-   * Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map.
+   * The names the SDK gives the numbers a descriptor stores.
    *
-   * Holds both halves it would write, so a save or a build aimed at either is refused rather than allowed to race it,
-   * and joins the encode group: this is about two seconds of pool-saturating work on a large height map, and a second
-   * one running beside it would not finish sooner for having started.
-   *
-   * The images are read here rather than on the blocking thread, before the job is registered, so a path that is not an
-   * image is a request the caller got wrong rather than a run that started and failed.
+   * A static table, asked for once when the editor opens. It takes no roots and reads nothing off disk: what a `tfDXT5`
+   * or a `flBinaryAlpha` is called is a property of the format, not of the tree being edited.
    */
+  getVocabulary: () => __TAURI_INVOKE<TextureVocabulary>("plugin:textures|get_vocabulary"),
+  /** Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map. */
   makeBump: (request: TexturesMakeBumpRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureMakeBumpOutcome>("plugin:textures|make_bump", { request, jobId, progress }),
   /**
@@ -98,18 +89,7 @@ export const texturesCommands = {
    * person browses while it runs rather than waiting on it.
    */
   open: (roots: XrayRoots) => __TAURI_INVOKE<TextureCatalog>("plugin:textures|open", { roots }),
-  /**
-   * Write one node's pending files: its descriptor, its base texture, or both.
-   *
-   * Holds each file it would write, so a build or a generation aimed at the same texture is refused rather than allowed
-   * to race it. It takes no action group: a save is two staged writes and refusing to save one node because another is
-   * being compared would exclude nothing worth excluding.
-   *
-   * The encoded texture comes from the comparison this plugin is holding rather than from the request, because that is
-   * where it already is - the webview was told what each candidate cost, not handed megabytes of block data to give
-   * back. The bytes are taken under the session's lock and before the hop, so a re-selection arriving mid-save cannot
-   * change what gets written.
-   */
+  /** Write one node's pending files: its descriptor, its base texture, or both. */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>("plugin:textures|save", { request, jobId, progress }),
 };

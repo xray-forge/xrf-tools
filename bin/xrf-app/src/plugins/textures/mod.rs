@@ -15,6 +15,7 @@ pub mod save;
 pub mod source;
 pub mod state;
 pub mod summary;
+pub mod vocabulary;
 
 #[cfg(test)]
 mod tests;

@@ -1,0 +1,189 @@
+import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+
+import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
+import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
+import { texturesCommands } from "@/core/bindings/commands/textures";
+import {
+  TextureDescription,
+  TextureDescriptorForm,
+  TextureSaveOutcome,
+  TextureVocabulary,
+} from "@/core/bindings/types/xrf-app";
+import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { JobsService } from "@/core/jobs/services/jobs";
+import { TextureSelectionService } from "@/core/textures/services/selection";
+import { Loadable } from "@/lib/loadable";
+import { Logger } from "@/lib/logging";
+import { ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { Nullable } from "@/lib/types/general";
+
+/**
+ * The descriptor being edited: what is on disk, what has been typed over it, and the save that publishes the two.
+ */
+@Injectable()
+export class TextureEditorService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  public readonly save: JobOperation<TextureSaveOutcome>;
+
+  /** The names the SDK gives the numbers a descriptor stores, asked for once when the editor opens. */
+  @Observable()
+  public vocabulary: Loadable<Nullable<TextureVocabulary>> = Loadable.idle(null);
+
+  /** The form as edited, or null when no texture is selected. */
+  @Observable()
+  public draft: Nullable<TextureDescriptorForm> = null;
+
+  /**
+   * The reference the draft belongs to, so a selection change is told from a re-describe of the same texture.
+   *
+   * A re-describe after a save must not throw the draft away; choosing another row must. Only the reference separates
+   * them, because both arrive as a new description object.
+   */
+  @Observable()
+  private draftReference: Nullable<string> = null;
+
+  /** The form as the backend last reported it, which is what dirtiness is measured against. */
+  @Observable()
+  private baseline: Nullable<TextureDescriptorForm> = null;
+
+  /**
+   * @returns Whether the draft says anything the file on disk does not.
+   */
+  @Computed()
+  public get isDirty(): boolean {
+    return !isSameDescriptorForm(this.draft, this.baseline);
+  }
+
+  /**
+   * @returns Whether a save can be asked for: something to write, and nothing already writing.
+   */
+  @Computed()
+  public get canSave(): boolean {
+    return this.isDirty && !this.save.isRunning && this.targets !== null;
+  }
+
+  /**
+   * @returns Where a save would write, or null for a texture served out of an archive.
+   */
+  @Computed()
+  public get targets(): Nullable<TextureDescription["targets"]> {
+    return this.selectionService.selected.value?.targets ?? null;
+  }
+
+  public constructor(
+    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
+    jobsService: JobsService = inject(JobsService)
+  ) {
+    this.save = new JobOperation(jobsService, [EJobKind.TEXTURES_SAVE], this.log);
+  }
+
+  /**
+   * Ask for the vocabulary the form's numeric fields are named by.
+   */
+  @OnProvision()
+  public async onProvision(): Promise<void> {
+    runInAction(() => {
+      this.vocabulary = this.vocabulary.asLoading();
+    });
+
+    try {
+      const vocabulary: TextureVocabulary = await texturesCommands.getVocabulary();
+
+      runInAction(() => {
+        this.vocabulary = this.vocabulary.asReady(vocabulary);
+      });
+    } catch (error) {
+      this.log.error("Failed to read the texture vocabulary:", error);
+
+      runInAction(() => {
+        this.vocabulary = this.vocabulary.asFailed(error as Error, null);
+      });
+    }
+  }
+
+  /**
+   * Bind the form to a described texture, keeping a draft that belongs to it.
+   *
+   * Called whenever a description arrives, which includes the re-describe a save triggers. A description of the texture
+   * already being edited refreshes the baseline and leaves the draft alone: a save answers with what it wrote, and
+   * throwing away the fields somebody is still typing into would be the wrong reading of that.
+   *
+   * @param description - What the backend answered, or null when nothing is selected.
+   */
+  @BoundAction()
+  public bind(description: Nullable<TextureDescription>): void {
+    const reference: Nullable<string> = description?.reference ?? null;
+    const form: Nullable<TextureDescriptorForm> = toEditableForm(description);
+
+    this.baseline = form;
+
+    if (reference !== this.draftReference) {
+      this.draftReference = reference;
+      this.draft = form;
+    }
+  }
+
+  /**
+   * Change one or more fields of the draft.
+   *
+   * @param patch - The fields to change and what to change them to.
+   */
+  @BoundAction()
+  public edit(patch: Partial<TextureDescriptorForm>): void {
+    if (this.draft) {
+      this.draft = { ...this.draft, ...patch };
+    }
+  }
+
+  /**
+   * Throw the draft away and go back to what the file says.
+   */
+  @BoundAction()
+  public discard(): void {
+    this.draft = this.baseline;
+  }
+
+  /**
+   * Write the draft, then re-read the texture so the panels show what landed.
+   *
+   * The re-describe is not optional. A save can change the descriptor's own format - writing a BC1 texture makes it
+   * `tfDXT1` or `tfADXT1` by its alpha flag - and it always changes the modification stamp every target is guarded by,
+   * so a second save against the stamps this one started from would be refused.
+   */
+  @ExclusiveFlow("save")
+  public *commit(): TFlow {
+    const targets: Nullable<TextureDescription["targets"]> = this.targets;
+    const draft: Nullable<TextureDescriptorForm> = this.draft;
+
+    if (!targets || !draft || !this.isDirty) {
+      return;
+    }
+
+    const reference: Nullable<string> = this.draftReference;
+
+    this.log.info("Saving texture descriptor:", reference);
+
+    const { error } = yield* this.save.run({
+      kind: EJobKind.TEXTURES_SAVE,
+      invoke: (id: string, progress) =>
+        texturesCommands.save({ descriptor: { form: draft, target: targets.descriptor }, texture: null }, id, progress),
+      describe: (outcome: IJobOutcome<TextureSaveOutcome>): IJobNotice =>
+        describeTextureSaveOutcome(reference ?? "texture", outcome),
+    });
+
+    if (error) {
+      return;
+    }
+
+    // Re-read through the browsing service, so the tree, the material panel and the preview all move together.
+    yield* this.selectionService.retry();
+  }
+
+  @OnEvent(JOB_SETTLED_EVENT)
+  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
+    this.save.adopt(event.payload);
+  }
+}

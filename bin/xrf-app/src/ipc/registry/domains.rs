@@ -101,6 +101,7 @@ macro_rules! for_each_tauri_command_domain {
         describe => crate::plugins::textures::commands::describe::textures_describe,
         describe_catalog => crate::plugins::textures::commands::describe_catalog::textures_describe_catalog,
         get_roots => crate::plugins::textures::commands::get_roots::textures_get_roots,
+        get_vocabulary => crate::plugins::textures::commands::get_vocabulary::textures_get_vocabulary,
         make_bump => crate::plugins::textures::commands::make_bump::textures_make_bump,
         open => crate::plugins::textures::commands::open::textures_open,
         save => crate::plugins::textures::commands::save::textures_save,

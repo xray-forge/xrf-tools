@@ -25,6 +25,7 @@ export enum EApplicationId {
   SPRITE_EQUIPMENT_PACKER = "sprite-equipment-packer",
   SPRITE_EQUIPMENT_UNPACKER = "sprite-equipment-unpacker",
   TASKS_EXPLORER = "tasks-explorer",
+  TEXTURES_EDITOR = "textures-editor",
   TEXTURES_EXPLORER = "textures-explorer",
   TRANSLATIONS_BUILDER = "translations-builder",
   TRANSLATIONS_EDITOR = "translations-editor",

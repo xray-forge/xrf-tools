@@ -61,8 +61,8 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "Leaving the application closes the browsed roots.",
   ],
   limitations: [
-    "Read-only: no editing, saving, or export. Authoring a descriptor, generating a bump pair and re-encoding a " +
-      "texture belong to the textures editor, which is not built yet.",
+    "Read-only: no editing, saving, or export. Changing what a descriptor declares is the textures editor, which " +
+      "opens the same tree and writes only when you save.",
     "The channel tiles have no texel readout. Hovering one names no numbers, because a bump pair the SDK wrote is " +
       "always DXT5 and no cpu copy of a compressed plane exists to read.",
     "A `.dds` layout the backend cannot decode shows no picture; its descriptor and its files are still reported.",
@@ -73,5 +73,5 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "therefore has to sit under one; a `.dds` on a desktop belongs to no tree and names no texture. A tree holding " +
       "only textures is enough, and the configured game data is still searched behind it for the bump pair.",
   ],
-  relatedTools: [EApplicationId.VISUALS_EXPLORER, EApplicationId.ARCHIVES_EXPLORER],
+  relatedTools: [EApplicationId.TEXTURES_EDITOR, EApplicationId.VISUALS_EXPLORER, EApplicationId.ARCHIVES_EXPLORER],
 };

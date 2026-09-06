@@ -2,12 +2,13 @@ import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TexturesService } from "@/applications/textures-explorer/services/textures";
 import { EApplicationId } from "@/core/routing/application";
 import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
 import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
@@ -28,12 +29,13 @@ interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
  * The way into the explorer: browse a root, or inspect one texture.
  */
 export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
-  const texturesService: TexturesService = useInjection(TexturesService);
+  const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const isLoading: boolean = texturesService.catalog.isLoading || texturesService.selected.isLoading;
+  const isLoading: boolean = catalogService.catalog.isLoading || selectionService.selected.isLoading;
 
   // Browsing is the primary workflow, so it is the default whenever a tree is configured to browse.
   const [mode, setMode] = useState<TOpenMode>(
@@ -74,14 +76,14 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     // Either mode starts a session rather than adding to one, so whatever the other mode had open is closed first: a
     // texture from a previous root has nothing to do with the roots being opened now.
     if (mode === "folder") {
-      await texturesService.openRoot(field.value);
+      await catalogService.openRoot(field.value);
     } else {
-      await texturesService.close();
-      await texturesService.openFile(field.value);
+      await catalogService.close();
+      await selectionService.openFile(field.value);
     }
 
     onFinished?.();
-  }, [field.value, log, mode, onFinished, texturesService]);
+  }, [catalogService, field.value, log, mode, onFinished, selectionService]);
 
   return (
     <PickerForm
@@ -93,7 +95,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
             "is written."
           : "Reads one texture and the descriptor beside it. Nothing is written."
       }
-      error={texturesService.catalog.error?.message ?? texturesService.selected.error?.message}
+      error={catalogService.catalog.error?.message ?? selectionService.selected.error?.message}
       submitLabel={mode === "folder" ? "Browse" : "Open"}
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}

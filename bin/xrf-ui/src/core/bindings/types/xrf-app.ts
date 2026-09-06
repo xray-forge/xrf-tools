@@ -386,20 +386,7 @@ export type TextureDescription = {
   targets: TextureEditTargets | null;
 };
 
-/**
- * The descriptor fields the editor owns, read off a `.thm` and written back onto one.
- *
- * A form rather than the file itself, for two things a round trip through the webview cannot honour. The thumbnail is
- * a compressed picture nothing in these tools can rebuild, and [`ThmFile::extra`] carries whatever a later SDK wrote
- * that this reader could not fold; both would have to travel out and back untouched to survive an edit. Applying a
- * form onto the file as it is on disk keeps them by construction, and keeps the payload to the couple of dozen values
- * a person can actually change.
- *
- * Every enum crosses as the number it is stored as, which is how [`ThmFormat`] and its siblings already serialize -
- * `#[serde(from = "u32", into = "u32")]` on each, with an `Unknown(u32)` variant for a value the SDK never named. A
- * surface naming them is naming numbers either way, and a form that dropped an unnamed value would silently rewrite
- * somebody's descriptor.
- */
+/** The descriptor fields the editor owns, read off a `.thm` and written back onto one. */
 export type TextureDescriptorForm = {
   /** The thumbnail's texture type, which is the gate `LoadTHM` reads before anything else. */
   textureType: number;
@@ -513,12 +500,7 @@ export type TextureEncodingReport = {
   /** Bytes once uploaded, which is the whole mip chain without the header. */
   gpuBytes: number;
   encodeDuration: number;
-  /**
-   * Peak signal-to-noise ratio, absent where nothing was lost.
-   *
-   * Additional loss relative to the current file. That file is itself lossy for every texture already stored in a
-   * DXT family, so this is what a re-encode costs on top - never distance from an original nobody has.
-   */
+  /** Peak signal-to-noise ratio, absent where nothing was lost. */
   psnr: number | null;
   /** Root mean square error per channel, in the eight-bit units the pixels are stored in. */
   channelRmse: [number | null, number | null, number | null, number | null];
@@ -555,6 +537,13 @@ export type TextureFileStamp = {
   size: number;
   /** Milliseconds since the Unix epoch, as the platform reports the file's modification time. */
   modifiedMs: number;
+};
+
+/** One bit of the `STextureParams` flag word. */
+export type TextureFlagEntry = {
+  /** The bit, as a mask rather than an index, because the SDK's own bits are not contiguous. */
+  bit: number;
+  label: string;
 };
 
 /** What a generated pair came to. */
@@ -648,6 +637,32 @@ export type TextureSource =
   | { kind: "file"; path: string }
   /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
   | { kind: "asset"; reference: string };
+
+/**
+ * Every named value the descriptor form's numeric fields can take.
+ *
+ * Answered once when the editor opens rather than carried on every description: it is the same table for every
+ * texture in every root, and a description that repeated it would spend it thousands of times over a sweep.
+ */
+export type TextureVocabulary = {
+  /** The gate `LoadTHM` reads before anything else. */
+  textureTypes: Array<TextureVocabularyEntry>;
+  formats: Array<TextureVocabularyEntry>;
+  /** Fifteen values, of which fourteen are kernels and `Advanced` is the SDK's own chain. */
+  mipFilters: Array<TextureVocabularyEntry>;
+  materials: Array<TextureVocabularyEntry>;
+  bumpModes: Array<TextureVocabularyEntry>;
+  /** The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show. */
+  flags: Array<TextureFlagEntry>;
+};
+
+/** One value a descriptor field can take, under the name the SDK gives it. */
+export type TextureVocabularyEntry = {
+  /** The number stored in the file. */
+  value: number;
+  /** The SDK's own identifier for it, which is the name an author of a `.thm` would recognise. */
+  label: string;
+};
 
 /** What a texture rebuild was asked to do. */
 export type TexturesBuildRequest = {

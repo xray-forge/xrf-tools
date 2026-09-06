@@ -1,10 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TexturesEditor } from "@/applications/textures-explorer/components/editor/TexturesEditor";
 import { TexturesExplorerOpenForm } from "@/applications/textures-explorer/components/TexturesExplorerOpenForm";
-import { TexturesService } from "@/applications/textures-explorer/services/textures";
+import { TexturesExplorerWorkspace } from "@/applications/textures-explorer/components/TexturesExplorerWorkspace";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ITexturesExplorerApplicationProps extends BaseComponentProps {}
@@ -15,14 +16,15 @@ export interface ITexturesExplorerApplicationProps extends BaseComponentProps {}
 export function TexturesExplorerApplication({
   "data-testid": dataTestId = "textures-explorer-application",
 }: ITexturesExplorerApplicationProps): ReactElement {
-  const texturesService: TexturesService = useInjection(TexturesService);
-  const isOpen: boolean = texturesService.isBrowsing || texturesService.selected.value !== null;
+  const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+  const isOpen: boolean = catalogService.isBrowsing || selectionService.selected.value !== null;
 
   const [isPickerOpen, setPickerOpen] = useState<boolean>(false);
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
-  if (!texturesService.isReady) {
+  if (!catalogService.isReady) {
     return <ApplicationLoader />;
   }
 
@@ -30,5 +32,5 @@ export function TexturesExplorerApplication({
     return <TexturesExplorerOpenForm data-testid={dataTestId} onFinished={onFinished} />;
   }
 
-  return <TexturesEditor data-testid={dataTestId} />;
+  return <TexturesExplorerWorkspace data-testid={dataTestId} />;
 }
