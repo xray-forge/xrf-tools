@@ -2,7 +2,7 @@ use std::path::Path;
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
-use xrf_dds::{DdsEncodeOptions, DdsFile, ImageFormat as DDSImageFormat, Mipmaps, Quality};
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat as DDSImageFormat, Quality};
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
 use xrf_utils::{assert, format_path};
@@ -70,8 +70,10 @@ pub fn fit_image_into_bounds(image: DynamicImage, width: u32, height: u32, sourc
 /// Dimensions do not have to be multiples of 4. The block compressor pads every mip level out to whole
 /// 4x4 blocks itself and records the unpadded size in the header, so the file keeps the exact
 /// dimensions the image was built with.
-pub fn save_image_as_ui_dds(path: &Path, image: &RgbaImage, format: DDSImageFormat, mipmaps: Mipmaps) -> XrfResult {
-  DdsFile::encode_rgba(image, DdsEncodeOptions::new(format, Quality::Slow, mipmaps))?.write_to_path(path)
+pub fn save_image_as_ui_dds(path: &Path, image: &RgbaImage, format: DDSImageFormat, mipmaps: DdsMipmaps) -> XrfResult {
+  DdsEncoding::new(format, Quality::Slow)
+    .encode(&DdsMipChain::build(image, mipmaps)?)?
+    .write_to_path(path)
 }
 
 /// Warn when the sheet about to be written at `path` is shaped differently from the one it replaces.

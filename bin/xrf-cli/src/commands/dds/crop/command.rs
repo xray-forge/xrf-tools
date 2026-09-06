@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_dds::{ImageFormat, Mipmaps};
+use xrf_dds::{DdsMipmaps, ImageFormat};
 use xrf_output::OutputOptions;
 use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 use xrf_utils::format_path;
@@ -109,7 +109,7 @@ impl GenericCommand for CropCommand {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       // A cropped region is packing input read at its base level, so a mip chain would only cost
       // space.
-      dds_mipmaps: Mipmaps::Disabled,
+      dds_mipmaps: DdsMipmaps::Disabled,
     };
 
     let result: CropTextureResult = CropTextureProcessor::crop(&options)?;

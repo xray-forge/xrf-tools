@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use image::{GenericImageView, RgbaImage};
 use rayon::prelude::*;
-use xrf_dds::{DdsFile, Mipmaps};
+use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::format_path;
@@ -124,7 +124,7 @@ impl UnpackDescriptionProcessor {
         &destination.join(format!("{}.{}", sprite.id, DDS_EXTENSION)),
         &dds.view(sprite.x, sprite.y, sprite.w, sprite.h).to_image(),
         options.dds_compression_format,
-        Mipmaps::Disabled,
+        DdsMipmaps::Disabled,
       )?;
     }
 

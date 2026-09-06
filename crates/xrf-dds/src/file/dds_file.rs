@@ -5,34 +5,19 @@ use std::path::Path;
 use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, ImageEncoder, RgbaImage};
-use image_dds::{ImageFormat, Mipmaps, Quality, dds_from_image};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::uncompressed::decode_uncompressed;
-use crate::{DdsMetadata, DdsPng};
+use crate::file::dds_metadata::DdsMetadata;
+use crate::file::dds_png::DdsPng;
+use crate::file::dds_uncompressed::decode_uncompressed;
+use crate::renderer::dds_format_support::DdsFormatSupport;
+use crate::renderer::dds_renderer::DdsRenderer;
 
 /// Bytes a DDS header occupies, with and without the DX10 extension.
 const HEADER_SIZE: u64 = 128;
 const DX10_HEADER_SIZE: u64 = 148;
 const MAXIMUM_HEADER_SIZE: u64 = DX10_HEADER_SIZE;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct DdsEncodeOptions {
-  pub format: ImageFormat,
-  pub quality: Quality,
-  pub mipmaps: Mipmaps,
-}
-
-impl DdsEncodeOptions {
-  pub fn new(format: ImageFormat, quality: Quality, mipmaps: Mipmaps) -> Self {
-    Self {
-      format,
-      quality,
-      mipmaps,
-    }
-  }
-}
 
 /// Parsed DDS file with format behavior behind one interface.
 pub struct DdsFile {
@@ -123,9 +108,8 @@ impl DdsFile {
     Self::from_parsed(dds, file_size)
   }
 
-  pub fn encode_rgba(image: &RgbaImage, options: DdsEncodeOptions) -> XrfResult<Self> {
-    let dds: Dds = dds_from_image(image, options.format, options.quality, options.mipmaps)
-      .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+  /// Wraps a freshly encoded texture, deriving the sizes its header and payload occupy.
+  pub(crate) fn from_encoded(dds: Dds) -> XrfResult<Self> {
     let data_size: u64 = u64::try_from(dds.data.len())
       .map_err(|_| XrfError::new_texture_processing_error("Encoded DDS exceeds the supported size range"))?;
     let metadata_size: u64 = if dds.header10.is_some() {
@@ -218,26 +202,33 @@ impl DdsFile {
     Ok(bytes)
   }
 
+  /// Whether the renderer the engine ships with will load this texture.
+  ///
+  /// Asked of the D3D9 path, which is the narrowest of the three and therefore the one that decides whether a texture
+  /// works everywhere. A layout nothing here can name answers `true`: this is a check for a texture that is known to
+  /// be refused, not a whitelist, and reporting an unnamed layout as broken would be an accusation rather than a
+  /// finding.
   pub fn is_xray_compatible(&self) -> bool {
-    if let Some(header10) = &self.dds.header10 {
-      Self::is_xray_supported_format(header10.dxgi_format)
-    } else if let Some(format) = DxgiFormat::try_from_pixel_format(&self.dds.header.spf) {
-      Self::is_xray_supported_format(format)
-    } else {
-      true
-    }
+    self.renderer_support(DdsRenderer::Dx9) != DdsFormatSupport::Unsupported
   }
 
-  pub fn is_xray_supported_format(format: DxgiFormat) -> bool {
-    matches!(
-      format,
-      DxgiFormat::BC1_UNorm
-        | DxgiFormat::BC1_UNorm_sRGB
-        | DxgiFormat::BC2_UNorm
-        | DxgiFormat::BC2_UNorm_sRGB
-        | DxgiFormat::BC3_UNorm
-        | DxgiFormat::BC3_UNorm_sRGB
-    )
+  /// Whether one renderer path loads this file's layout.
+  ///
+  /// A file whose header names no format the modern table knows answers [`DdsFormatSupport::Unverified`]: it is a
+  /// layout this crate has no claim about either way, which is not the same as one a renderer refuses.
+  pub fn renderer_support(&self, renderer: DdsRenderer) -> DdsFormatSupport {
+    if let Some(header10) = &self.dds.header10 {
+      return renderer.supports(header10.dxgi_format);
+    }
+
+    if let Some(format) = self.dds.get_d3d_format() {
+      return renderer.supports_d3d(format);
+    }
+
+    match DxgiFormat::try_from_pixel_format(&self.dds.header.spf) {
+      Some(format) => renderer.supports(format),
+      None => DdsFormatSupport::Unverified,
+    }
   }
 
   fn from_parsed(dds: Dds, file_size: u64) -> XrfResult<Self> {
@@ -259,17 +250,24 @@ impl DdsFile {
 mod tests {
   use ddsfile::{AlphaMode, D3D10ResourceDimension, Dds, DxgiFormat, NewDxgiParams};
   use image::RgbaImage;
-  use image_dds::{ImageFormat, Mipmaps, Quality};
+  use image_dds::{ImageFormat, Quality};
   use xrf_test_utils::utils::write_generated_test_resource;
 
-  use super::{DdsEncodeOptions, DdsFile};
+  use super::DdsFile;
+  use crate::encode::dds_encoding::DdsEncoding;
+  use crate::mip::dds_mip_chain::DdsMipChain;
+  use crate::mip::dds_mip_filter::DdsMipFilter;
+  use crate::mip::dds_mipmaps::DdsMipmaps;
+  use crate::renderer::dds_format_support::DdsFormatSupport;
+  use crate::renderer::dds_renderer::DdsRenderer;
 
-  fn encoded_file(width: u32, height: u32, mipmaps: Mipmaps) -> DdsFile {
-    DdsFile::encode_rgba(
-      &RgbaImage::new(width, height),
-      DdsEncodeOptions::new(ImageFormat::BC3RgbaUnorm, Quality::Slow, mipmaps),
-    )
-    .expect("expect the DDS to encode")
+  /// A texture to read facts back off, built through the encoder rather than hand-assembled.
+  fn encoded_file(width: u32, height: u32, mipmaps: DdsMipmaps) -> DdsFile {
+    let chain: DdsMipChain = DdsMipChain::build(&RgbaImage::new(width, height), mipmaps).expect("expect a chain");
+
+    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Slow)
+      .encode(&chain)
+      .expect("expect the DDS to encode")
   }
 
   fn dx10_file(format: DxgiFormat) -> DdsFile {
@@ -295,25 +293,16 @@ mod tests {
 
   #[test]
   fn keeps_dimensions_that_are_not_multiples_of_four() {
-    let metadata = encoded_file(1023, 1020, Mipmaps::Disabled).metadata();
+    let metadata = encoded_file(1023, 1020, DdsMipmaps::Disabled).metadata();
 
     assert_eq!((metadata.width, metadata.height), (1023, 1020));
-  }
-
-  #[test]
-  fn writes_the_requested_mip_chain() {
-    let generated = encoded_file(1023, 1020, Mipmaps::GeneratedAutomatic).metadata();
-    let flat = encoded_file(1023, 1020, Mipmaps::Disabled).metadata();
-
-    assert_eq!(generated.mipmap_levels, 10);
-    assert_eq!(flat.mipmap_levels, 1);
   }
 
   #[test]
   fn reads_the_same_metadata_from_the_header_alone() {
     // The header-only read exists so a survey can answer format questions without reading gigabytes of payload. It is
     // only worth having if it agrees with the full read, mip count and payload size included.
-    let encoded: DdsFile = encoded_file(256, 128, Mipmaps::GeneratedAutomatic);
+    let encoded: DdsFile = encoded_file(256, 128, DdsMipmaps::Filtered(DdsMipFilter::Box));
     let bytes: Vec<u8> = encoded.write_to_bytes().expect("expect DDS bytes");
     let path = write_generated_test_resource("xrf-dds/header-only.dds", &bytes).expect("expect scratch DDS");
 
@@ -338,7 +327,7 @@ mod tests {
 
   #[test]
   fn reads_the_same_metadata_from_bytes_and_path() {
-    let encoded: DdsFile = encoded_file(64, 32, Mipmaps::Disabled);
+    let encoded: DdsFile = encoded_file(64, 32, DdsMipmaps::Disabled);
     let bytes: Vec<u8> = encoded.write_to_bytes().expect("expect DDS bytes");
     let path = write_generated_test_resource("xrf-dds/read-path.dds", &bytes).expect("expect scratch DDS");
 
@@ -352,7 +341,7 @@ mod tests {
 
   #[test]
   fn transcodes_the_base_mip_to_png() {
-    let png = encoded_file(16, 8, Mipmaps::Disabled)
+    let png = encoded_file(16, 8, DdsMipmaps::Disabled)
       .to_png()
       .expect("expect the DDS to transcode");
 
@@ -365,6 +354,27 @@ mod tests {
     assert!(dx10_file(DxgiFormat::BC1_UNorm_sRGB).is_xray_compatible());
     assert!(dx10_file(DxgiFormat::BC3_UNorm).is_xray_compatible());
     assert!(!dx10_file(DxgiFormat::BC4_UNorm).is_xray_compatible());
+  }
+
+  #[test]
+  fn reports_which_renderer_paths_load_a_file() {
+    // BC3 is what the engine's own textures are, and BC7 is the candidate that costs the D3D9 path.
+    assert_eq!(
+      dx10_file(DxgiFormat::BC3_UNorm).renderer_support(DdsRenderer::Dx9),
+      DdsFormatSupport::Supported
+    );
+    assert_eq!(
+      dx10_file(DxgiFormat::BC7_UNorm).renderer_support(DdsRenderer::Dx9),
+      DdsFormatSupport::Unsupported
+    );
+    assert_eq!(
+      dx10_file(DxgiFormat::BC7_UNorm).renderer_support(DdsRenderer::Dx11),
+      DdsFormatSupport::Supported
+    );
+    assert_eq!(
+      dx10_file(DxgiFormat::BC7_UNorm).renderer_support(DdsRenderer::OpenGl),
+      DdsFormatSupport::Unverified
+    );
   }
 
   #[test]

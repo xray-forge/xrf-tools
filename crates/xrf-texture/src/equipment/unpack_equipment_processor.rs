@@ -1,5 +1,5 @@
 use image::GenericImageView;
-use xrf_dds::Mipmaps;
+use xrf_dds::DdsMipmaps;
 use xrf_error::XrfResult;
 
 use crate::constants::DDS_EXTENSION;
@@ -64,7 +64,7 @@ impl UnpackEquipmentProcessor {
           .join(format!("{}.{}", sprite.section, DDS_EXTENSION)),
         &options.source.view(x, y, w, h).to_image(),
         options.dds_compression_format,
-        Mipmaps::Disabled,
+        DdsMipmaps::Disabled,
       )?;
 
       Ok(true)

@@ -72,7 +72,7 @@ mod tests {
   use std::path::PathBuf;
 
   use image::RgbaImage;
-  use xrf_dds::{DdsEncodeOptions, DdsFile, ImageFormat, Mipmaps, Quality};
+  use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality};
   use xrf_test_utils::utils::write_generated_test_resource;
 
   use super::CropTextureProcessor;
@@ -82,13 +82,14 @@ mod tests {
     let resource: String = format!("xrf-texture/crop/{name}-source.dds");
     let source: PathBuf = write_generated_test_resource(&resource, []).expect("expect scratch source");
 
-    DdsFile::encode_rgba(
-      &RgbaImage::new(8, 8),
-      DdsEncodeOptions::new(ImageFormat::BC3RgbaUnorm, Quality::Slow, Mipmaps::Disabled),
-    )
-    .expect("expect source DDS to encode")
-    .write_to_path(&source)
-    .expect("expect source DDS to be written");
+    let chain: DdsMipChain =
+      DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled).expect("expect a source chain");
+
+    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Slow)
+      .encode(&chain)
+      .expect("expect source DDS to encode")
+      .write_to_path(&source)
+      .expect("expect source DDS to be written");
 
     CropTextureOptions {
       output_path: source.with_file_name(format!("{name}-output.dds")),
@@ -101,7 +102,7 @@ mod tests {
       fit_width: None,
       fit_height: None,
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
-      dds_mipmaps: Mipmaps::Disabled,
+      dds_mipmaps: DdsMipmaps::Disabled,
     }
   }
 
