@@ -52,6 +52,9 @@ export const LAYOUT = {
  * box instead, and `creation.ts` applies them to every small input so font size and height stay independent.
  */
 export const CONTROL = {
+  /** Compact editor actions, both in the caption and beside content. */
+  editorActionSize: 24,
+  editorActionIconSize: 16,
   /** Every `size="small"` input, which is all of them: the theme makes `small` the default. */
   smallHeight: 38,
   /** MUI's own `sizeSmall` padding above and below the input; the line box is whatever height is left. */

@@ -8,6 +8,7 @@ import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
 import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPathSeparator";
 import { useIsEditorBusy } from "@/core/shell/EditorBusyContext";
 import { useRequestLeave } from "@/core/shell/EditorDirtyContext";
+import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -101,8 +102,12 @@ export function EditorToolbar({
               display: "flex",
               alignItems: "center",
               flexShrink: 0,
-              "& .MuiIconButton-root": { width: 24, height: 24, padding: 0 },
-              "& .MuiSvgIcon-root": { fontSize: 16 },
+              "& .MuiIconButton-root": {
+                width: CONTROL.editorActionSize,
+                height: CONTROL.editorActionSize,
+                padding: 0,
+              },
+              "& .MuiSvgIcon-root": { fontSize: CONTROL.editorActionIconSize },
             }}
           >
             {actions}

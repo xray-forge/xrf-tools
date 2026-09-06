@@ -1,8 +1,10 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 import { default as FileOpenIcon } from "@mui/icons-material/FileOpen";
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { Button, IconButton, Stack, Tooltip } from "@mui/material";
+import { Button, Stack, Tooltip } from "@mui/material";
 import { ReactElement } from "react";
+
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 interface IPackerToolbarActionsProps {
   isBusy: boolean;
@@ -28,21 +30,21 @@ export function PackerToolbarActions({
 }: IPackerToolbarActionsProps): ReactElement {
   return (
     <Stack direction={"row"} spacing={0.5} sx={{ alignItems: "center", mr: 0.5 }}>
-      <Tooltip describeChild title={"Import a packing configuration"}>
-        <span>
-          <IconButton aria-label={"Import packing configuration"} disabled={isBusy} onClick={onImport}>
-            <FileOpenIcon />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={"Import packing configuration"}
+        description={"Import a packing configuration"}
+        icon={<FileOpenIcon />}
+        isDisabled={isBusy}
+        onClick={onImport}
+      />
 
-      <Tooltip describeChild title={"Export these rules as a packing configuration"}>
-        <span>
-          <IconButton aria-label={"Export packing configuration"} disabled={isBusy} onClick={onExport}>
-            <SaveAltIcon />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={"Export packing configuration"}
+        description={"Export these rules as a packing configuration"}
+        icon={<SaveAltIcon />}
+        isDisabled={isBusy}
+        onClick={onExport}
+      />
 
       <Tooltip describeChild title={isPackDisabled ? "Choose a source and an output first" : "Write the volumes"}>
         <span>

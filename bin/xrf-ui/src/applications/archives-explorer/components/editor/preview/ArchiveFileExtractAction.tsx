@@ -1,24 +1,30 @@
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { IconButton, Tooltip } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { getFileExtension } from "@/lib/path/extension";
 import { Nullable } from "@/lib/types/general";
 
-export interface IArchiveFileExtractActionProps {
+export interface IArchiveFileExtractActionProps extends BaseComponentProps {
   descriptor: ArchiveFileDescriptor;
 }
 
 /**
  * Writes the selected archived file out to disk.
  */
-export function ArchiveFileExtractAction({ descriptor }: IArchiveFileExtractActionProps): ReactElement {
+export function ArchiveFileExtractAction({
+  "data-testid": dataTestId,
+  id,
+  className,
+  descriptor,
+}: IArchiveFileExtractActionProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
@@ -49,18 +55,15 @@ export function ArchiveFileExtractAction({ descriptor }: IArchiveFileExtractActi
   }, [archivesService, descriptor, log]);
 
   return (
-    <Tooltip describeChild title={"Extract this file to disk"}>
-      <span>
-        <IconButton
-          aria-label={"Extract file"}
-          color={"inherit"}
-          disabled={isExtracting}
-          size={"small"}
-          onClick={onExtract}
-        >
-          <SaveAltIcon fontSize={"small"} />
-        </IconButton>
-      </span>
-    </Tooltip>
+    <EditorIconAction
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      label={"Extract file"}
+      description={"Extract this file to disk"}
+      icon={<SaveAltIcon />}
+      isDisabled={isExtracting}
+      onClick={onExtract}
+    />
   );
 }
