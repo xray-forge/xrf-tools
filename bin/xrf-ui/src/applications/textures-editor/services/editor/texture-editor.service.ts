@@ -3,10 +3,12 @@ import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx"
 
 import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
 import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import {
   TextureDescription,
   TextureDescriptorForm,
+  TextureEncodingFormat,
   TextureSaveOutcome,
   TextureVocabulary,
 } from "@/core/bindings/types/xrf-app";
@@ -50,11 +52,19 @@ export class TextureEditorService {
   private baseline: Nullable<TextureDescriptorForm> = null;
 
   /**
-   * @returns Whether the draft says anything the file on disk does not.
+   * @returns Whether the descriptor form says anything the file on disk does not.
+   */
+  @Computed()
+  public get isDescriptorDirty(): boolean {
+    return !isSameDescriptorForm(this.draft, this.baseline);
+  }
+
+  /**
+   * @returns Whether this node has anything pending at all, in its descriptor or in its pixels.
    */
   @Computed()
   public get isDirty(): boolean {
-    return !isSameDescriptorForm(this.draft, this.baseline);
+    return this.isDescriptorDirty || this.encodingService.isDirty;
   }
 
   /**
@@ -75,6 +85,7 @@ export class TextureEditorService {
 
   public constructor(
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
+    private readonly encodingService: TextureEncodingService = inject(TextureEncodingService),
     jobsService: JobsService = inject(JobsService)
   ) {
     this.save = new JobOperation(jobsService, [EJobKind.TEXTURES_SAVE], this.log);
@@ -144,6 +155,7 @@ export class TextureEditorService {
   @BoundAction()
   public discard(): void {
     this.draft = this.baseline;
+    this.encodingService.clear();
   }
 
   /**
@@ -162,6 +174,8 @@ export class TextureEditorService {
       return;
     }
 
+    const chosen: Nullable<TextureEncodingFormat> = this.encodingService.chosen;
+
     const reference: Nullable<string> = this.draftReference;
 
     this.log.info("Saving texture descriptor:", reference);
@@ -169,7 +183,16 @@ export class TextureEditorService {
     const { error } = yield* this.save.run({
       kind: EJobKind.TEXTURES_SAVE,
       invoke: (id: string, progress) =>
-        texturesCommands.save({ descriptor: { form: draft, target: targets.descriptor }, texture: null }, id, progress),
+        texturesCommands.save(
+          {
+            // The descriptor goes every time, because writing a texture can change the format it names and the two
+            // must not disagree on disk even for the moment between two writes.
+            descriptor: { form: draft, target: targets.descriptor },
+            texture: chosen === null ? null : { format: chosen, target: targets.texture },
+          },
+          id,
+          progress
+        ),
       describe: (outcome: IJobOutcome<TextureSaveOutcome>): IJobNotice =>
         describeTextureSaveOutcome(reference ?? "texture", outcome),
     });
@@ -178,7 +201,11 @@ export class TextureEditorService {
       return;
     }
 
-    // Re-read through the browsing service, so the tree, the material panel and the preview all move together.
+    // The held comparison is priced against bytes this save has just replaced, so it is no longer an answer about
+    // anything on disk.
+    this.encodingService.clear();
+
+    // Re-read, so every panel and the preview move together onto what was written.
     yield* this.selectionService.retry();
   }
 

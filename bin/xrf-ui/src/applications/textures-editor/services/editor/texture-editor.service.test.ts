@@ -3,6 +3,7 @@ import { Container } from "@wirestate/core";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { EMPTY_TEXTURE_DESCRIPTOR_FORM } from "@/applications/textures-editor/lib/texture-descriptor-form";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -43,7 +44,12 @@ function mockEditorService(): TextureEditorService {
     ["plugin:textures|get_vocabulary"]: VOCABULARY,
   });
 
-  const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEditorService]);
+  const container: Container = mockContainer([
+    JobsService,
+    TextureSelectionService,
+    TextureEncodingService,
+    TextureEditorService,
+  ]);
 
   return container.get(TextureEditorService);
 }
@@ -167,5 +173,58 @@ describe("TextureEditorService", () => {
     expect(service.draft).toBeNull();
     expect(service.isDirty).toBe(false);
     expect(service.canSave).toBe(false);
+  });
+
+  it("is dirty when a candidate is held, even with every field untouched", async () => {
+    // One flag per node, over two owners. A person who re-encoded and changed nothing else has pending work, and the
+    // save and the prompt both have to know it.
+    const container: Container = mockContainer([
+      JobsService,
+      TextureSelectionService,
+      TextureEncodingService,
+      TextureEditorService,
+    ]);
+    const service: TextureEditorService = container.get(TextureEditorService);
+    const encodingService: TextureEncodingService = container.get(TextureEncodingService);
+
+    setMockInvokeResponses({
+      ["plugin:textures|compare_encodings"]: {
+        candidates: [
+          {
+            channelRmse: [0, 0, 0, 0],
+            compatibility: [],
+            encodeDuration: 30,
+            fileBytes: 1024,
+            format: "bc3",
+            gpuBytes: 512,
+            label: "BC3 (DXT5)",
+            psnr: 42,
+            supportSummary: "all renderers, GL unverified",
+          },
+        ],
+        current: { fileBytes: 2048, gpuBytes: 1024, height: 16, label: "DXT5", mipmapLevels: 1, width: 16 },
+        outcome: "completed",
+        reference: MOCK_TEXTURE,
+      },
+      ["plugin:textures|describe"]: mockTextureDescription(),
+      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
+
+    service.bind(describedTexture(MOCK_TEXTURE));
+
+    expect(service.isDirty).toBe(false);
+
+    await encodingService.run(null);
+    encodingService.choose("bc3");
+
+    expect(service.isDescriptorDirty).toBe(false);
+    expect(service.isDirty).toBe(true);
+
+    // Discarding is one act over the node, so it releases the candidate as well as the fields.
+    service.discard();
+
+    expect(service.isDirty).toBe(false);
   });
 });

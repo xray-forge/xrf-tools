@@ -10,7 +10,13 @@ describe("createTexturesEditorPanels", () => {
     // beside it would make it a browser that happens to write, which is what this application exists not to be.
     const panels: Array<IEditorPanel> = createTexturesEditorPanels();
 
-    expect(panels.map((panel: IEditorPanel) => panel.id)).toEqual(["descriptor", "material", "files", "channels"]);
+    expect(panels.map((panel: IEditorPanel) => panel.id)).toEqual([
+      "descriptor",
+      "formats",
+      "material",
+      "files",
+      "channels",
+    ]);
     expect(panels.some((panel: IEditorPanel) => panel.side === "left")).toBe(false);
   });
 

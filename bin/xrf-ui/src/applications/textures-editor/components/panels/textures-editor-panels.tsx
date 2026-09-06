@@ -1,9 +1,11 @@
+import { default as CompareIcon } from "@mui/icons-material/Compare";
 import { default as EditNoteIcon } from "@mui/icons-material/EditNote";
 import { default as InfoIcon } from "@mui/icons-material/Info";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as TuneIcon } from "@mui/icons-material/Tune";
 
 import { TextureDescriptorPanel } from "@/applications/textures-editor/components/panels/TextureDescriptorPanel";
+import { TextureFormatsPanel } from "@/applications/textures-editor/components/panels/TextureFormatsPanel";
 import { IEditorPanel } from "@/core/shell/panel/context";
 import { TextureChannelsPanel } from "@/core/textures/components/panels/TextureChannelsPanel";
 import { TextureFilesPanel } from "@/core/textures/components/panels/TextureFilesPanel";
@@ -22,6 +24,13 @@ export function createTexturesEditorPanels(): Array<IEditorPanel> {
       isOpenByDefault: true,
       label: "Descriptor",
       render: () => <TextureDescriptorPanel />,
+    },
+    {
+      icon: <CompareIcon />,
+      id: "formats",
+      isOpenByDefault: false,
+      label: "Formats",
+      render: () => <TextureFormatsPanel />,
     },
     {
       icon: <InfoIcon />,

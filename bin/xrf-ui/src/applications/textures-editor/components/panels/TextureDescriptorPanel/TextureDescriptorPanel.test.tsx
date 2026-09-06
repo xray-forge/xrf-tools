@@ -3,6 +3,7 @@ import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription, TextureVocabulary } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -45,7 +46,12 @@ async function renderPanel(
     ["plugin:textures|get_vocabulary"]: VOCABULARY,
   });
 
-  const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEditorService]);
+  const container: Container = mockContainer([
+    JobsService,
+    TextureSelectionService,
+    TextureEncodingService,
+    TextureEditorService,
+  ]);
   const service: TextureEditorService = container.get(TextureEditorService);
 
   await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
@@ -188,7 +194,12 @@ describe("TextureDescriptorPanel", () => {
     resetMockInvoke();
     setMockInvokeResponses({ ["plugin:textures|get_roots"]: null, ["plugin:textures|get_vocabulary"]: VOCABULARY });
 
-    const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEditorService]);
+    const container: Container = mockContainer([
+      JobsService,
+      TextureSelectionService,
+      TextureEncodingService,
+      TextureEditorService,
+    ]);
     const render: RenderResult = renderWithProviders(<TextureDescriptorPanel />, { container });
 
     await settle();
