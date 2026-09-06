@@ -7,6 +7,7 @@ import { Box, Divider, IconButton, Popover, ToggleButton, ToggleButtonGroup, Too
 import { MouseEvent, ReactElement, useCallback, useState } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceShape, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
@@ -15,8 +16,8 @@ import { Nullable } from "@/lib/types/general";
 import { describeUnavailableBump, SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";
 
 interface ITextureWorkspaceToolbarProps {
-  /** The open texture, as the last breadcrumb segment. */
-  subtitle?: string;
+  /** Where the open texture is, as the last breadcrumb segment. */
+  location: Nullable<IEditorLocation>;
   options: ITexturePreviewOptions;
   /** Whether the open texture declares a bump pair, which is what makes shading with one worth offering. */
   hasBump: boolean;
@@ -30,7 +31,7 @@ interface ITextureWorkspaceToolbarProps {
  * The textures explorer's toolbar: what the preview is showing, and how.
  */
 export function TextureWorkspaceToolbar({
-  subtitle,
+  location,
   options,
   hasBump,
   onChangeOptions,
@@ -57,7 +58,7 @@ export function TextureWorkspaceToolbar({
 
   return (
     <EditorToolbar
-      subtitle={subtitle}
+      subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
       onBack={onBack}
       actions={
         <>

@@ -1,19 +1,20 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { Alert, Box, Tooltip } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { createArchiveEditorPanels } from "@/applications/archives-explorer/components/editor/archive-panels";
 import { ArchivesFileContent } from "@/applications/archives-explorer/components/editor/preview/ArchivesFileContent";
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { getArchiveVolumeOf } from "@/core/archive";
+import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
@@ -34,6 +35,16 @@ export function ArchivesEditor(): ReactElement {
   const fileCount: number = archivesService.files.length;
   const totalSize: number = project?.sizeReal ?? 0;
   const projectRoot: string = project?.root ?? "";
+
+  // The volume holding the selected entry, which is the file that actually exists: an entry is a name inside it, and
+  // the two together are the only honest answer to where a packed file is. With nothing chosen, the project stands in.
+  const selectedFile: Nullable<ArchiveFileDescriptor> = archivesService.selectedFile;
+  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(project, selectedFile);
+  const location: Nullable<IEditorLocation> = volume
+    ? { entry: selectedFile?.name, path: volume.path }
+    : projectRoot
+      ? { path: projectRoot }
+      : null;
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
   // finds it again instead of showing an idle tree over files it is still writing.
@@ -83,15 +94,7 @@ export function ArchivesEditor(): ReactElement {
     <EditorLayout
       toolbar={
         <EditorToolbar
-          subtitle={
-            projectRoot ? (
-              <Tooltip title={projectRoot}>
-                <Box component={"span"} sx={{ fontFamily: ARCHIVE_EDITOR_MONOSPACE_FONT }}>
-                  {projectRoot}
-                </Box>
-              </Tooltip>
-            ) : null
-          }
+          subtitle={location ? <EditorToolbarLocation location={location} /> : null}
           onBack={() => void onClose()}
         />
       }

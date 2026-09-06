@@ -1,8 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
+import { toAssetLocation } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
+import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
@@ -29,6 +31,10 @@ interface ITexturePreviewLayoutProps extends BaseComponentProps {
   onBack: () => void;
   /** Another encoding of the open texture to show beside it, for an application that can produce one. */
   comparison?: Nullable<ITexturePreviewComparison>;
+  /**
+   * Where the session is, for the toolbar to fall back to while no one texture is open.
+   */
+  sessionLocation?: Nullable<IEditorLocation>;
 }
 
 /**
@@ -42,6 +48,7 @@ export function TexturePreviewLayout({
   status,
   banner,
   comparison = null,
+  sessionLocation = null,
   onBack,
 }: ITexturePreviewLayoutProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
@@ -77,7 +84,7 @@ export function TexturePreviewLayout({
       className={className}
       toolbar={
         <TextureWorkspaceToolbar
-          subtitle={selectionService.reference ?? undefined}
+          location={toAssetLocation(description?.texture ?? null) ?? sessionLocation}
           options={previewOptions}
           hasBump={Boolean(description?.material?.bump)}
           onChangeOptions={setPreviewOptions}

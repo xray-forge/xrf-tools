@@ -2,7 +2,9 @@ import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
+import { describeRoots } from "@/core/assets/lib";
 import { TextureCatalog } from "@/core/bindings/types/xrf-app";
+import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel } from "@/core/shell/panel/context";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { selectUnreadTexturesLtx } from "@/core/textures/lib/texture-catalog";
@@ -34,6 +36,9 @@ export function TexturesExplorerWorkspace({
   const isLtxNoticeShown: boolean = Boolean(texturesLtx) && !isLtxNoticeDismissed;
 
   const panels: Array<IEditorPanel> = useMemo(() => createTexturesExplorerPanels(isBrowsing), [isBrowsing]);
+
+  // What the toolbar says while no one texture is chosen: the root set being browsed, which is the session itself.
+  const sessionLocation: Nullable<IEditorLocation> = catalog ? { path: describeRoots(catalog.roots) } : null;
   const onBack = useCallback(() => void catalogService.close(), [catalogService]);
 
   return (
@@ -45,6 +50,7 @@ export function TexturesExplorerWorkspace({
       // Counted after the fold, so this says the same number the tree does: the listing holds an entry per engine
       // reference, and the halves of a declared pair are not rows a person can count.
       status={describeTexturesStatus(catalog, catalogService.nodes.length, catalogService.summaries.value?.length ?? 0)}
+      sessionLocation={sessionLocation}
       banner={
         isLtxNoticeShown ? (
           <Alert

@@ -34,6 +34,7 @@ export function EditorToolbarCrumb({
   const crumb: ReactElement = (
     <Typography
       aria-label={accessibleName}
+      noWrap={true}
       component={"button"}
       disabled={isDisabled}
       variant={"subtitle2"}

@@ -18,6 +18,7 @@ function renderToolbar(
 ): RenderResult {
   return renderWithProviders(
     <TextureWorkspaceToolbar
+      location={null}
       options={options}
       hasBump={hasBump}
       onChangeOptions={onChangeOptions}
