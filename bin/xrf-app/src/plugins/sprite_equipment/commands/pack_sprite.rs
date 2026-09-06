@@ -50,6 +50,7 @@ pub async fn sprite_equipment_pack_sprite(
   // installation is thousands of files and most of the wait.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, PACK_SPRITE_JOB_KIND)
+      .with_exclusion_group(PACK_SPRITE_JOB_KIND)
       .with_lease_keys(vec![to_pack_sprite_lease_key(&output)])
       .with_request(&json!({ "source": source, "output": output, "systemLtx": system_ltx }))
       .with_progress(progress),

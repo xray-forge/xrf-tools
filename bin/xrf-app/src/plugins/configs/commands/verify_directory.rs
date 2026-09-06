@@ -35,6 +35,7 @@ pub async fn configs_verify_directory(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, VERIFY_JOB_KIND)
+      .with_exclusion_group(VERIFY_JOB_KIND)
       .with_request(&json!({ "roots": roots, "prefix": prefix, "isDltx": is_dltx }))
       .with_progress(progress),
   )?;

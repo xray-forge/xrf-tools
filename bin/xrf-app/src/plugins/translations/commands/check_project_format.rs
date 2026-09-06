@@ -11,15 +11,13 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::format_project::run;
-use crate::plugins::translations::lease::CHECK_FORMAT_JOB_KIND;
+use crate::plugins::translations::lease::{CHECK_FORMAT_JOB_KIND, FORMAT_JOB_KIND};
 use crate::plugins::translations::request::TranslationsFormatRequest;
 
 /// Report which JSON translation sources under a directory are not normalized.
 ///
-/// Read-only, so no lease is taken and no open editor session is refused: two readers of one tree have nothing to
-/// collide over, and a check that leaves every file exactly as it found it cannot make a buffer stale. A separate kind
-/// from the rewrite it reports on, because they are different work with different consequences — one answers a
-/// question, the other changes the files.
+/// Shares the formatter's exclusion group. Open editor sessions are allowed because checking does not rewrite files
+/// or make their buffers stale; the separate job kind preserves that distinction in the reported outcome.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_project_format"))]
 #[tauri::command(rename = "check_project_format")]
 pub async fn translations_check_project_format(
@@ -38,6 +36,7 @@ pub async fn translations_check_project_format(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, CHECK_FORMAT_JOB_KIND)
+      .with_exclusion_group(FORMAT_JOB_KIND)
       .with_request(&json!({ "directory": directory, "lineEndings": line_endings }))
       .with_progress(progress),
   )?;

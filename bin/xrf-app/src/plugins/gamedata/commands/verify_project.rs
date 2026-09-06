@@ -71,8 +71,8 @@ pub struct GamedataVerifyRequest {
 
 /// Run the selected checks over a gamedata project.
 ///
-/// Takes no lease: verification only reads, so two runs over one project have nothing to collide over. It is still a
-/// job, because a full run over an installation is minutes of work that somebody may want to watch or call off.
+/// Holds the verification action group across windows. A full run over an installation is minutes of work that
+/// somebody may want to watch or call off.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
 #[tauri::command(rename = "verify_project")]
 pub async fn gamedata_verify_project(
@@ -94,6 +94,7 @@ pub async fn gamedata_verify_project(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, VERIFY_JOB_KIND)
+      .with_exclusion_group(VERIFY_JOB_KIND)
       .with_request(&json!({ "root": request.root, "checks": request.checks }))
       .with_progress(progress),
   )?;

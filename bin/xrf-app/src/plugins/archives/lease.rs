@@ -1,8 +1,7 @@
 //! What an archive job holds exclusively while it runs.
 //!
 //! The registry never interprets a lease key, so deciding what two runs may not do at once is this domain's business.
-//! Both rules below name a destination, because that is where these operations collide: two runs reading one archive
-//! are harmless, and two runs writing one tree are not.
+//! Each job kind owns an action group. The destination keys below also exclude conflicting writes across groups.
 
 use std::path::Path;
 
@@ -34,10 +33,8 @@ const DESTINATION_TREE_LEASE: &str = "archives.tree";
 
 /// The destination a pack would publish to, as a lease key.
 ///
-/// Both the directory and the volume basename, because a destination directory can legitimately hold several named
-/// sets: packing `gamedata` and `textures` into one folder is normal, and keying on the folder alone would serialize
-/// them for no reason. Keying on the name alone would let two runs write `gamedata.db0` in different folders — which
-/// is fine — but also the same one twice, which is not.
+/// Both directory and volume basename identify one published set. The constant action group separately limits
+/// packing to one run across windows, regardless of which set it targets.
 ///
 /// The path is canonicalized where it exists and lexically absolute where it does not, because a destination is
 /// commonly typed before it is created and `canonicalize` refuses a path that is not there yet. Two spellings of an
@@ -73,8 +70,7 @@ mod tests {
 
   #[test]
   fn two_named_sets_in_one_directory_do_not_collide() {
-    // Packing several sets into one output folder is ordinary. Keying on the folder alone would serialize them for no
-    // reason at all.
+    // Destination identity stays distinct even though the action group excludes concurrent packs.
     assert_ne!(
       to_pack_lease_key(&config("C:\\out", "gamedata")),
       to_pack_lease_key(&config("C:\\out", "textures"))

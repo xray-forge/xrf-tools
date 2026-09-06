@@ -80,7 +80,7 @@ fn register_conversion(
 ) -> TauriResult<(JobHandle, JobRegistration)> {
   registry.register(
     JobStart::new(job_id, operation.job_kind())
-      .with_lease_keys(vec![CONVERSION_LEASE.to_owned()])
+      .with_exclusion_group(CONVERSION_LEASE)
       .with_request(request)
       .with_progress(progress),
   )

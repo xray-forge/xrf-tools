@@ -46,6 +46,7 @@ pub async fn archives_extract_directory(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, EXTRACT_JOB_KIND)
+      .with_exclusion_group(EXTRACT_JOB_KIND)
       .with_lease_keys(vec![to_destination_tree_lease_key(&destination)])
       .with_request(&json!({ "prefix": prefix, "destination": destination }))
       .with_progress(progress),

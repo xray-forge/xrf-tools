@@ -51,6 +51,7 @@ pub async fn translations_format_project(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, FORMAT_JOB_KIND)
+      .with_exclusion_group(FORMAT_JOB_KIND)
       .with_lease_keys(vec![to_output_lease_key(&directory)])
       .with_request(&json!({ "directory": directory, "lineEndings": line_endings }))
       .with_progress(progress),

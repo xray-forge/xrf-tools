@@ -39,6 +39,7 @@ pub async fn configs_format_directory(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, FORMAT_JOB_KIND)
+      .with_exclusion_group(FORMAT_JOB_KIND)
       .with_lease_keys(vec![to_format_lease_key(&roots, prefix.as_deref())])
       .with_request(&json!({ "roots": roots, "prefix": prefix }))
       .with_progress(progress),

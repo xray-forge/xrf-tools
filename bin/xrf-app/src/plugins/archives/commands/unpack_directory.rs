@@ -53,6 +53,7 @@ pub async fn archives_unpack_directory(
   // no holder and both write the same tree.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, UNPACK_JOB_KIND)
+      .with_exclusion_group(UNPACK_JOB_KIND)
       .with_lease_keys(vec![to_destination_tree_lease_key(&destination)])
       .with_request(&ArchiveUnpackRequest {
         source: &source,

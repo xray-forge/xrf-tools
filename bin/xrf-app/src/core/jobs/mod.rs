@@ -10,6 +10,8 @@ mod job_start;
 mod lease_path;
 
 #[cfg(test)]
+mod exclusion_tests;
+#[cfg(test)]
 mod tests;
 
 pub use job_description::JobDescription;

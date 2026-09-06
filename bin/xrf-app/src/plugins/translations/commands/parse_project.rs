@@ -92,6 +92,7 @@ pub async fn translations_parse_project(
   // say what it was actually asked to do rather than a summary somebody chose in advance.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, PARSE_JOB_KIND)
+      .with_exclusion_group(PARSE_JOB_KIND)
       .with_lease_keys(vec![to_output_lease_key(&request.output_dir)])
       .with_request(&request)
       .with_progress(progress),

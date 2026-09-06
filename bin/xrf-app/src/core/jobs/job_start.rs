@@ -7,7 +7,7 @@ use xrf_job::JobProgress;
 /// What a command hands the registry to start a job.
 ///
 /// A described start rather than a list of arguments: every field here is something only the calling command knows,
-/// and three of the five are easy to swap for one another at a call site reading `(id, kind, keys, request, progress)`.
+/// and several are easy to swap for one another in a positional argument list.
 /// Named fields also mean the next thing a job has to carry is added without touching the commands that do not carry
 /// it.
 pub struct JobStart {
@@ -17,6 +17,8 @@ pub struct JobStart {
   pub kind: String,
   /// What this job holds exclusively while it runs, so a second request for the same destination is refused.
   pub lease_keys: Vec<String>,
+  /// Action group held independently of destination leases, including read-only jobs and paired modes.
+  pub(super) exclusion_group: Option<String>,
   /// What the job was asked to do, serialized by the command that knows the type and never read by the registry.
   ///
   /// Kept so a window that did not start the run can still say what is running: after a reload the arguments live
@@ -33,6 +35,7 @@ impl JobStart {
       id,
       kind: kind.into(),
       lease_keys: Vec::new(),
+      exclusion_group: None,
       request: None,
       progress: None,
     }
@@ -41,6 +44,15 @@ impl JobStart {
   /// Hold `lease_keys` for as long as the job runs.
   pub fn with_lease_keys(mut self, lease_keys: Vec<String>) -> Self {
     self.lease_keys = lease_keys;
+
+    self
+  }
+
+  /// Hold one action group across all windows until the job settles.
+  ///
+  /// Paired modes share a group. Kept separately until registration so adding destination leases cannot replace it.
+  pub fn with_exclusion_group(mut self, group: impl Into<String>) -> Self {
+    self.exclusion_group = Some(group.into());
 
     self
   }

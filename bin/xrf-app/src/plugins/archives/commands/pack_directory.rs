@@ -46,6 +46,7 @@ pub async fn archives_pack_directory(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, PACK_JOB_KIND)
+      .with_exclusion_group(PACK_JOB_KIND)
       .with_lease_keys(vec![to_pack_lease_key(&config)])
       .with_request(&config)
       .with_progress(progress),

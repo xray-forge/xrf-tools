@@ -11,15 +11,14 @@ use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart};
 use crate::core::types::TauriResult;
-use crate::plugins::configs::lease::CHECK_FORMAT_JOB_KIND;
+use crate::plugins::configs::lease::{CHECK_FORMAT_JOB_KIND, FORMAT_JOB_KIND};
 use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
 /// Report which LTX configs roots exposes are misformatted.
 ///
-/// Read-only, so an archived config is checked like any other, and no lease is taken: two readers of one project have
-/// nothing to collide over. A separate kind from the rewrite it reports on, because they are different work with
-/// different consequences — one answers a question, the other changes the files.
+/// Reads archived configs too. Shares the formatter's exclusion group while retaining a separate job kind because
+/// checking reports findings without rewriting files.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_directory_format"))]
 #[tauri::command(rename = "check_directory_format")]
 pub async fn configs_check_directory_format(
@@ -35,6 +34,7 @@ pub async fn configs_check_directory_format(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, CHECK_FORMAT_JOB_KIND)
+      .with_exclusion_group(FORMAT_JOB_KIND)
       .with_request(&json!({ "roots": roots, "prefix": prefix }))
       .with_progress(progress),
   )?;

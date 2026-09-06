@@ -63,6 +63,7 @@ pub async fn translations_verify_project(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, VERIFY_JOB_KIND)
+      .with_exclusion_group(VERIFY_JOB_KIND)
       .with_request(&json!({ "language": language.to_string() }))
       .with_progress(progress),
   )?;

@@ -149,10 +149,15 @@ impl JobRegistry {
     let JobStart {
       id,
       kind,
-      lease_keys,
+      mut lease_keys,
+      exclusion_group,
       request,
       progress,
     } = start;
+
+    if let Some(group) = exclusion_group {
+      lease_keys.push(group);
+    }
 
     let sink: Arc<JobProgressSink> = Arc::new(match progress {
       Some(channel) => JobProgressSink::new(channel),

@@ -1,7 +1,6 @@
-//! What a translation job registers itself as, and what a writing one holds exclusively.
+//! Translation job identities, action groups and write destinations.
 //!
-//! Only the writers take a lease. A verification and a format check read, and two readers of one project have nothing
-//! to collide over.
+//! Each action owns a group across windows; formatting and format checks share one. Writers also lease their output.
 
 use std::path::Path;
 
@@ -24,7 +23,7 @@ pub const FORMAT_JOB_KIND: &str = "translations.format";
 /// What a formatting check registers itself as.
 ///
 /// Separate from the rewrite it reports on: one answers a question and the other changes the files, so they are
-/// different work to watch, to attribute, and to decide about. Only the rewrite takes a lease.
+/// different work to watch and attribute. Both hold the `FORMAT_JOB_KIND` exclusion group.
 pub const CHECK_FORMAT_JOB_KIND: &str = "translations.check-format";
 
 /// Prefix of every lease over a translation output directory.

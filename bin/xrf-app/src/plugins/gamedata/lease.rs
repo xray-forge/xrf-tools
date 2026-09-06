@@ -1,7 +1,6 @@
-//! What a gamedata job registers itself as.
+//! Gamedata verification identity and exclusion group.
 //!
-//! No lease: verification only reads, and two readers of one project have nothing to collide over. A run that wrote
-//! would want one keyed on the root it wrote to.
+//! The constant group allows one verification across all windows, independently of the selected root.
 
 /// What a gamedata verification registers itself as.
 ///

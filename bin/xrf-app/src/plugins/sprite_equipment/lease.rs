@@ -11,8 +11,7 @@ pub const PACK_SPRITE_JOB_KIND: &str = "sprite-equipment.pack";
 
 /// The sheet a run would write, as a lease key.
 ///
-/// The output file itself rather than its directory: a sprite sheet is one image written once, so two runs collide
-/// only where they would write the same file, and unrelated sheets in one folder have no reason to queue.
+/// Identifies one output image. The constant action group separately excludes concurrent packs of different sheets.
 pub fn to_pack_sprite_lease_key(output_path: &Path) -> String {
   format!("{PACK_SPRITE_JOB_KIND}:{}", to_comparable_path(output_path))
 }

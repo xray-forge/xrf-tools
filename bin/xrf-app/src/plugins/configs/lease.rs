@@ -1,6 +1,6 @@
-//! What a configs job registers itself as, and what a rewriting one holds exclusively.
+//! Configs job identities, action groups and rewrite destinations.
 //!
-//! Only formatting takes a lease. Verification reads, and two readers of one project have nothing to collide over.
+//! Verification owns its action group; formatting and format checks share one. Rewrites also lease their roots.
 
 use xrf_vfs::{XrayRoot, XrayRoots};
 
@@ -17,7 +17,7 @@ pub const FORMAT_JOB_KIND: &str = "configs.format";
 /// What a configs formatting check registers itself as.
 ///
 /// Separate from the rewrite it reports on: one answers a question and the other changes the files, so they are
-/// different work to watch, to attribute, and to decide about. Only the rewrite takes a lease.
+/// different work to watch and attribute. Both hold the `FORMAT_JOB_KIND` exclusion group.
 pub const CHECK_FORMAT_JOB_KIND: &str = "configs.check-format";
 
 /// The configs a formatting run would rewrite, as a lease key.
