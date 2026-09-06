@@ -90,7 +90,7 @@ export function DialogInspectorPanel({
             </Typography>
 
             {phrase?.textKey ? (
-              <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace isStacked />
+              <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace />
             ) : null}
           </>
         )}

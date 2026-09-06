@@ -20,7 +20,6 @@ import { TextureCatalogService } from "@/core/textures/services/catalog";
 import {
   getFileItemPath,
   IPathTreeItem,
-  LOGICAL_PATH_SEPARATOR,
   parsePathTree,
   splitLogicalPath,
   toFileItemId,
@@ -29,6 +28,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";

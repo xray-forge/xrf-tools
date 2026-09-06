@@ -23,6 +23,7 @@ import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-l
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
+import { findLastSeparator } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -179,7 +180,7 @@ export class VisualsService implements IVisualInspection {
       return null;
     }
 
-    const separatorAt: number = Math.max(source.path.lastIndexOf("\\"), source.path.lastIndexOf("/"));
+    const separatorAt: number = findLastSeparator(source.path);
 
     return separatorAt > 0 ? source.path.slice(0, separatorAt) : null;
   }

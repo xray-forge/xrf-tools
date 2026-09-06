@@ -2,13 +2,13 @@ import { Box, Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ArchiveFileDetailRow } from "@/applications/archives-explorer/components/editor/file-details/ArchiveFileDetailRow";
 import { formatAudioChannels } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview/ArchiveAudioPreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
+import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -67,8 +67,8 @@ export function ArchiveAudioPreview(): ReactElement {
       <Box sx={{ flexShrink: 0, width: "100%", maxWidth: ARCHIVE_AUDIO_PREVIEW_WIDTH }}>
         <Typography variant={"subtitle2"}>Stream</Typography>
 
-        <ArchiveFileDetailRow label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
-        <ArchiveFileDetailRow
+        <EditorPanelRow label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
+        <EditorPanelRow
           label={"Sample rate"}
           value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"}
         />
@@ -79,16 +79,16 @@ export function ArchiveAudioPreview(): ReactElement {
 
         {descriptor.parameters ? (
           <>
-            <ArchiveFileDetailRow label={"Min distance"} value={`${descriptor.parameters.minDistance} m`} />
-            <ArchiveFileDetailRow label={"Max distance"} value={`${descriptor.parameters.maxDistance} m`} />
-            <ArchiveFileDetailRow label={"Max AI distance"} value={`${descriptor.parameters.maxAiDistance} m`} />
-            <ArchiveFileDetailRow
+            <EditorPanelRow label={"Min distance"} value={`${descriptor.parameters.minDistance} m`} />
+            <EditorPanelRow label={"Max distance"} value={`${descriptor.parameters.maxDistance} m`} />
+            <EditorPanelRow label={"Max AI distance"} value={`${descriptor.parameters.maxAiDistance} m`} />
+            <EditorPanelRow
               label={"Base volume"}
               value={`${descriptor.parameters.baseVolume ?? 0} (${Math.round(
                 (descriptor.parameters.baseVolume ?? 0) * 100
               )}%)`}
             />
-            <ArchiveFileDetailRow label={"Game type"} value={String(descriptor.parameters.gameType)} mono />
+            <EditorPanelRow label={"Game type"} value={String(descriptor.parameters.gameType)} isMonospace />
           </>
         ) : (
           <Typography variant={"body2"} sx={{ marginTop: 1, color: "text.secondary" }}>

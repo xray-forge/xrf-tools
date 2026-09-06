@@ -39,7 +39,7 @@ export function SpawnRowDetailsPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={selection.source}>
       <EditorPanelSection title={"Properties"} isFirst>
         {entries.map(([key, value]: [string, unknown]) => (
-          <EditorPanelRow key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace isStacked />
+          <EditorPanelRow key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace />
         ))}
       </EditorPanelSection>
     </EditorPanel>

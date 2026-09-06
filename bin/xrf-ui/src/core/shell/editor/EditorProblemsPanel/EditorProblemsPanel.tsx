@@ -3,8 +3,9 @@ import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { MONOSPACE } from "@/core/theme/tokens";
-import { LOGICAL_PATH_SEPARATOR, splitLogicalPath } from "@/core/ui/tree/path-tree";
+import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** A problem reported while reading an editor project. */

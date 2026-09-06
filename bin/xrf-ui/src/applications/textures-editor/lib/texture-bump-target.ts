@@ -1,4 +1,5 @@
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { findLastSeparator } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** What the engine appends to a bump name to reach the other half of the pair. */
@@ -25,7 +26,7 @@ export function toBumpTarget(description: Nullable<TextureDescription>): Nullabl
   }
 
   const dot: number = path.lastIndexOf(".");
-  const separator: number = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
+  const separator: number = findLastSeparator(path);
 
   return dot > separator ? path.slice(0, dot) : path;
 }

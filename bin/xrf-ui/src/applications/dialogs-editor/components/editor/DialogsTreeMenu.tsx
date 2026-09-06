@@ -12,7 +12,6 @@ import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import {
   IPathTreeItem,
-  LOGICAL_PATH_SEPARATOR,
   parsePathTree,
   splitLogicalPath,
   toFileItemId,
@@ -21,6 +20,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /**

@@ -2,11 +2,11 @@ import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
-import { ArchiveFileDetailRow } from "@/applications/archives-explorer/components/editor/file-details/ArchiveFileDetailRow";
 import { ArchiveSharedPayloadDetail } from "@/applications/archives-explorer/components/editor/file-details/ArchiveSharedPayloadDetail";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf } from "@/core/archive/files";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
@@ -51,21 +51,21 @@ export function ArchiveFileDetailsPanel({ archivesService }: IArchiveFileDetails
       <Divider />
 
       <Box sx={{ padding: 2 }}>
-        <ArchiveFileDetailRow label={"Extension"} value={getFileExtension(descriptor.name) || "-"} />
-        <ArchiveFileDetailRow label={"Source archive"} value={volume?.path ?? "-"} isPath />
-        <ArchiveFileDetailRow label={"Destination root"} value={volume?.outputRootPath ?? "-"} isPath />
-        <ArchiveFileDetailRow label={"Real size"} value={formatBytes(descriptor.sizeReal)} />
-        <ArchiveFileDetailRow label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
-        <ArchiveFileDetailRow label={"Compression"} value={getCompressionLabel(descriptor)} />
-        <ArchiveFileDetailRow
+        <EditorPanelRow label={"Extension"} value={getFileExtension(descriptor.name) || "-"} />
+        <EditorPanelRow label={"Source archive"} value={volume?.path ?? "-"} isMonospace />
+        <EditorPanelRow label={"Destination root"} value={volume?.outputRootPath ?? "-"} isMonospace />
+        <EditorPanelRow label={"Real size"} value={formatBytes(descriptor.sizeReal)} />
+        <EditorPanelRow label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
+        <EditorPanelRow label={"Compression"} value={getCompressionLabel(descriptor)} />
+        <EditorPanelRow
           label={"CRC32"}
           value={`0x${descriptor.crc.toString(16).padStart(8, "0").toUpperCase()}`}
-          mono
+          isMonospace
         />
-        <ArchiveFileDetailRow
+        <EditorPanelRow
           label={"Offset"}
           value={`${formatBytes(descriptor.offset)} (${descriptor.offset})`}
-          mono
+          isMonospace
         />
         <ArchiveSharedPayloadDetail descriptor={descriptor} sharedPayloads={archivesService.sharedPayloads} />
       </Box>

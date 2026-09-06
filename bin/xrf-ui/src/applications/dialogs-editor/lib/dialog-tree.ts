@@ -3,7 +3,7 @@ import {
   DialogProjectDescriptor,
   DialogSummaryDescriptor,
 } from "@/core/bindings/types/xrf-dialog";
-import { LOGICAL_PATH_SEPARATOR } from "@/core/ui/tree/path-tree";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** Which dialog a tree leaf stands for: the pair that addresses one. */

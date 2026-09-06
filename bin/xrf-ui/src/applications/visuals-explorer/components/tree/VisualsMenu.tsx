@@ -15,7 +15,6 @@ import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import {
   getFileItemPath,
   IPathTreeItem,
-  LOGICAL_PATH_SEPARATOR,
   parsePathTree,
   splitLogicalPath,
   toFileItemId,
@@ -24,6 +23,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */

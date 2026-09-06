@@ -1,4 +1,5 @@
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -14,9 +15,6 @@ export const TREE_ITEM_ID = {
 
 /** Id of the synthetic root, which stands for the whole tree rather than for a path. */
 export const TREE_ROOT_ID: string = `${TREE_ITEM_ID.directory}~`;
-
-/** Separator of the engine paths these trees are built from: `\`-separated, as every X-Ray logical path is. */
-export const LOGICAL_PATH_SEPARATOR: string = "\\";
 
 /** A logical path split where a reader needs it: the file's own name, and the directories standing above it. */
 export interface ILogicalPathParts {
