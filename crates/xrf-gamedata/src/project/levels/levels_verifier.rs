@@ -27,10 +27,12 @@ impl<'a> LevelsVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::heading!(self.options.output, "Verify levels:");
 
     let started_at: Instant = Instant::now();
-    let mut roster: LevelRoster = LevelRoster::read(self.project)?;
+    let mut roster: LevelRoster = LevelRoster::read(self.project, &self.options.job)?;
 
     if !roster.has_source() {
       xrf_output::info!(
@@ -55,9 +57,11 @@ impl<'a> LevelsVerifier<'a> {
     let mut invalid_levels_count: u32 = 0;
 
     for name in &bundles {
+      self.options.job.check_cancelled()?;
+
       xrf_output::verbose!(self.options.output, "Verify level bundle: {name}");
 
-      let bundle: LevelBundle = LevelBundle::new(self.project, name);
+      let bundle: LevelBundle = LevelBundle::new(self.project, name, &self.options.job);
       let level = roster.find(name);
 
       let mut bundle_findings: Vec<Finding> = LevelManifestVerifier::new(&bundle).verify(level);
@@ -114,6 +118,8 @@ impl<'a> LevelsVerifier<'a> {
       result.checked_references_count - result.invalid_references_count,
       result.checked_references_count,
     );
+
+    self.options.job.check_cancelled()?;
 
     Ok(result)
   }

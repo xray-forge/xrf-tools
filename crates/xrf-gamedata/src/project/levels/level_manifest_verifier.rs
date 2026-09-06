@@ -21,6 +21,10 @@ impl<'a> LevelManifestVerifier<'a> {
   }
 
   pub(crate) fn verify(&self, level: Option<&RosterLevel>) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let mut findings: Vec<Finding> = self.verify_required_files(level);
 
     findings.extend(self.verify_details_pair());
@@ -30,6 +34,10 @@ impl<'a> LevelManifestVerifier<'a> {
   }
 
   fn verify_required_files(&self, level: Option<&RosterLevel>) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let mut findings: Vec<Finding> = Vec::new();
     let mut required: Vec<&str> = REQUIRED_LEVEL_FILES.to_vec();
 
@@ -40,6 +48,10 @@ impl<'a> LevelManifestVerifier<'a> {
     }
 
     for file in required {
+      if self.bundle.job().is_cancelled() {
+        break;
+      }
+
       match self.bundle.file_size(file) {
         None => findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LevelsMissingFile,
@@ -66,6 +78,10 @@ impl<'a> LevelManifestVerifier<'a> {
 
   /// Detail model description and its compiled texture atlas always ship together.
   fn verify_details_pair(&self) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let has_details: bool = self.bundle.contains(LEVEL_DETAILS_FILE);
     let has_details_texture: bool = self.bundle.contains(LEVEL_DETAILS_TEXTURE_FILE);
 
@@ -90,6 +106,10 @@ impl<'a> LevelManifestVerifier<'a> {
   }
 
   fn verify_level_ltx(&self) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let Some(path): Option<String> = self.bundle.resolved_file(LEVEL_LTX_FILE) else {
       // Absence is already reported by the required files rule.
       return Vec::new();

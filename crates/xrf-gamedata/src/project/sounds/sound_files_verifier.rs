@@ -29,6 +29,8 @@ impl<'a> SoundFilesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataSoundFilesVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     let checked_sounds_count: u32 = u32::try_from(self.sound_paths.len())
       .map_err(|_| XrfError::new_verify_error("Sound count exceeds the supported result range"))?;
 
@@ -40,6 +42,7 @@ impl<'a> SoundFilesVerifier<'a> {
       .sound_paths
       .par_iter()
       .enumerate()
+      .filter(|_| !self.options.job.is_cancelled())
       .filter_map(|(index, relative_path)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -76,10 +79,14 @@ impl<'a> SoundFilesVerifier<'a> {
       })
       .collect();
 
+    self.options.job.check_cancelled()?;
+
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
     let invalid_sounds_count: u32 = u32::try_from(findings.len())
       .map_err(|_| XrfError::new_verify_error("Invalid sound count exceeds the supported result range"))?;
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataSoundFilesVerificationResult {
       checked_sounds_count,

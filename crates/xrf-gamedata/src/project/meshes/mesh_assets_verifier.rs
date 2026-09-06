@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
 use xrf_db::{OgfFile, OgfResidueCause, OmfFile, ShaderLibraryFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -30,6 +31,8 @@ impl<'a> MeshAssetsVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataMeshAssetsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     let options = self.options;
     let shader_library = self.shader_library;
     // Enumerated through the VFS, so an installation's archived meshes are verified too.
@@ -52,6 +55,7 @@ impl<'a> MeshAssetsVerifier<'a> {
     let mesh_findings: Vec<Vec<Finding>> = mesh_paths
       .par_iter()
       .enumerate()
+      .filter(|_| !self.options.job.is_cancelled())
       .map(|(index, relative_path)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -99,10 +103,14 @@ impl<'a> MeshAssetsVerifier<'a> {
 
     let mut findings: Vec<Finding> = mesh_findings.into_iter().flatten().collect();
 
+    self.options.job.check_cancelled()?;
+
     // A referenced animation bank is verified once per visual that names it, and hundreds of hands models share one
     // bank. The finding is about the bank, so report it once rather than once per visual that led there.
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
     findings.dedup();
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataMeshAssetsVerificationResult {
       findings,
@@ -120,6 +128,8 @@ impl<'a> MeshAssetsVerifier<'a> {
     mesh_path: Option<&str>,
     inherited_bones_count: Option<usize>,
   ) -> XrfResult<Vec<Finding>> {
+    self.options.job.check_cancelled()?;
+
     let bones_count: Option<usize> = ogf
       .bones
       .as_ref()
@@ -141,6 +151,8 @@ impl<'a> MeshAssetsVerifier<'a> {
     // Verify all nested children in mesh object.
     if let Some(children) = &ogf.children {
       for child in &children.nested {
+        self.options.job.check_cancelled()?;
+
         findings.extend(self.verify_mesh_findings(output, shader_library, child, mesh_path, bones_count)?);
       }
     }
@@ -148,6 +160,8 @@ impl<'a> MeshAssetsVerifier<'a> {
     // Verify all motion refs injected in OGF file.
     if let Some(kinematics) = &ogf.kinematics {
       for motion_ref in &kinematics.motion_refs {
+        self.options.job.check_cancelled()?;
+
         let motion_paths: Vec<String> = self
           .project
           .vfs()
@@ -167,6 +181,8 @@ impl<'a> MeshAssetsVerifier<'a> {
           ));
         } else {
           for motion_path in motion_paths {
+            self.options.job.check_cancelled()?;
+
             // Retained per path, because a shared animation bank is referenced by hundreds of visuals and each read is
             // a whole-entry decompression: four Anomaly banks account for 47GB of a sweep's 77GB without this.
             match self.project.read_parsed(AssetType::Omf, &motion_path, |chunk| {
@@ -210,6 +226,8 @@ impl<'a> MeshAssetsVerifier<'a> {
     }
 
     // todo: Verify LOD?
+
+    self.options.job.check_cancelled()?;
 
     Ok(findings)
   }
@@ -285,6 +303,7 @@ impl<'a> MeshAssetsVerifier<'a> {
         .bones
         .iter()
         .map(|bone| (bone.name.as_str(), bone.parent.as_str())),
+      &self.options.job,
     )
     .into_iter()
     .map(|message| Self::new_mesh_finding(GamedataVerificationRule::MeshesValidation, mesh_path, message))
@@ -316,7 +335,10 @@ impl<'a> MeshAssetsVerifier<'a> {
       }
 
       if let Some(vertex_count) = geometry.vertex_count
-        && let Some(index) = indices.iter().find(|index| **index as u32 >= vertex_count)
+        && let Some(index) = indices
+          .iter()
+          .take_while(|_| !self.options.job.is_cancelled())
+          .find(|index| **index as u32 >= vertex_count)
       {
         findings.push(Self::new_mesh_finding(
           GamedataVerificationRule::MeshesValidation,
@@ -332,6 +354,7 @@ impl<'a> MeshAssetsVerifier<'a> {
           if let Some(bone_index) = geometry
             .skin_bone_indices
             .iter()
+            .take_while(|_| !self.options.job.is_cancelled())
             .find(|index| **index as usize >= bones_count)
           {
             findings.push(Self::new_mesh_finding(
@@ -354,12 +377,19 @@ impl<'a> MeshAssetsVerifier<'a> {
     findings
   }
 
-  fn skeleton_topology_findings<'bone>(bones: impl IntoIterator<Item = (&'bone str, &'bone str)>) -> Vec<String> {
+  fn skeleton_topology_findings<'bone>(
+    bones: impl IntoIterator<Item = (&'bone str, &'bone str)>,
+    job: &JobHandle,
+  ) -> Vec<String> {
     let bones: Vec<(&str, &str)> = bones.into_iter().collect();
     let mut findings: Vec<String> = Vec::new();
     let mut parents_by_name: HashMap<String, &str> = HashMap::with_capacity(bones.len());
 
     for (name, parent) in &bones {
+      if job.is_cancelled() {
+        return findings;
+      }
+
       if name.is_empty() {
         findings.push("Mesh skeleton contains a bone with an empty name".to_string());
         continue;
@@ -381,6 +411,10 @@ impl<'a> MeshAssetsVerifier<'a> {
     }
 
     for (name, parent) in &bones {
+      if job.is_cancelled() {
+        return findings;
+      }
+
       if !name.is_empty() && !parent.is_empty() && !parents_by_name.contains_key(&parent.to_ascii_lowercase()) {
         findings.push(format!(
           "Mesh skeleton bone '{name}' references missing parent '{parent}'"
@@ -392,6 +426,10 @@ impl<'a> MeshAssetsVerifier<'a> {
     let mut reported_cycles: HashSet<String> = HashSet::new();
 
     for (name, _) in &bones {
+      if job.is_cancelled() {
+        return findings;
+      }
+
       let name: String = name.to_ascii_lowercase();
 
       if name.is_empty() || !checked_cycle_starts.insert(name.clone()) {
@@ -402,6 +440,10 @@ impl<'a> MeshAssetsVerifier<'a> {
       let mut current: String = name;
 
       while let Some(parent) = parents_by_name.get(&current) {
+        if job.is_cancelled() {
+          return findings;
+        }
+
         if parent.is_empty() || !parents_by_name.contains_key(&parent.to_ascii_lowercase()) {
           break;
         }
@@ -441,6 +483,8 @@ impl<'a> MeshAssetsVerifier<'a> {
     omf: &OmfFile,
     motion_path: Option<&str>,
   ) -> XrfResult<Vec<Finding>> {
+    self.options.job.check_cancelled()?;
+
     let mut findings: Vec<Finding> = Vec::new();
 
     if let Some(bones) = &ogf.bones {
@@ -502,6 +546,8 @@ impl<'a> MeshAssetsVerifier<'a> {
       omf.get_motions().count(),
       motion_path,
     ));
+
+    self.options.job.check_cancelled()?;
 
     Ok(findings)
   }
@@ -575,21 +621,26 @@ mod tests {
 
   #[test]
   fn accepts_a_connected_skeleton_with_one_root() {
-    let findings: Vec<String> =
-      MeshAssetsVerifier::skeleton_topology_findings([("root", ""), ("spine", "root"), ("head", "spine")]);
+    let findings: Vec<String> = MeshAssetsVerifier::skeleton_topology_findings(
+      [("root", ""), ("spine", "root"), ("head", "spine")],
+      &xrf_job::JobHandle::inert(),
+    );
 
     assert!(findings.is_empty());
   }
 
   #[test]
   fn reports_invalid_skeleton_topology() {
-    let findings: Vec<String> = MeshAssetsVerifier::skeleton_topology_findings([
-      ("root", ""),
-      ("arm", "missing"),
-      ("arm", "root"),
-      ("leg", "foot"),
-      ("foot", "leg"),
-    ]);
+    let findings: Vec<String> = MeshAssetsVerifier::skeleton_topology_findings(
+      [
+        ("root", ""),
+        ("arm", "missing"),
+        ("arm", "root"),
+        ("leg", "foot"),
+        ("foot", "leg"),
+      ],
+      &xrf_job::JobHandle::inert(),
+    );
 
     assert!(
       findings

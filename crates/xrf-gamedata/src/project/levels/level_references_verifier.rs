@@ -41,10 +41,18 @@ impl<'a> LevelReferencesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self, shaders: &LevelShadersChunk) -> LevelReferencesOutcome {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let mut outcome: LevelReferencesOutcome = LevelReferencesOutcome::default();
     let asset_path: String = self.bundle.file_path(LEVEL_FILE);
 
     for malformed in shaders.malformed() {
+      if self.bundle.job().is_cancelled() {
+        break;
+      }
+
       outcome.findings.push(GamedataFindingFactory::for_asset(
         GamedataVerificationRule::LevelsShaderReference,
         &asset_path,
@@ -55,6 +63,10 @@ impl<'a> LevelReferencesVerifier<'a> {
     }
 
     for reference in shaders.references() {
+      if self.bundle.job().is_cancelled() {
+        break;
+      }
+
       self.verify_reference(&asset_path, reference, &mut outcome);
     }
 
@@ -79,6 +91,10 @@ impl<'a> LevelReferencesVerifier<'a> {
     }
 
     for texture in &reference.textures {
+      if self.bundle.job().is_cancelled() {
+        break;
+      }
+
       outcome.checked_count += 1;
 
       if !self.bundle.resolves_texture(texture) {

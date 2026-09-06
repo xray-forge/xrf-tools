@@ -15,11 +15,13 @@ impl GamedataProject {
   ///
   /// # Errors
   ///
-  /// Infallible today, and fallible in signature because every check reports through the same seam.
+  /// Returns a cancellation error when the job is stopped before all findings are collected.
   pub fn verify_collisions(
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataCollisionsVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify path collisions:");
 
     let started_at: Instant = Instant::now();
@@ -27,6 +29,7 @@ impl GamedataProject {
 
     let findings: Vec<Finding> = collisions
       .iter()
+      .take_while(|_| !options.job.is_cancelled())
       .map(|collision| {
         xrf_output::info!(
           options.output,
@@ -39,6 +42,8 @@ impl GamedataProject {
         Self::path_collision_finding(collision)
       })
       .collect();
+
+    options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
 

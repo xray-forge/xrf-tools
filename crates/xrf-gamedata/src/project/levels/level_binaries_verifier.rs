@@ -35,6 +35,10 @@ impl<'a> LevelBinariesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self, level: Option<&RosterLevel>) -> LevelBinariesOutcome {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let mut outcome: LevelBinariesOutcome = self.verify_level_file();
 
     outcome.findings.extend(self.verify_cform());
@@ -46,6 +50,10 @@ impl<'a> LevelBinariesVerifier<'a> {
   /// `R_ASSERT2(XRCL_PRODUCTION_VERSION == H.XRLC_version, "Incompatible level version.")` and
   /// `R_ASSERT2(chunk, "Level doesn't builded correctly.")`.
   fn verify_level_file(&self) -> LevelBinariesOutcome {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let Some(path): Option<String> = self.bundle.resolved_file(LEVEL_FILE) else {
       return LevelBinariesOutcome::default();
     };
@@ -97,6 +105,10 @@ impl<'a> LevelBinariesVerifier<'a> {
 
   /// `R_ASSERT(CFORM_CURRENT_VERSION == H.version)`.
   fn verify_cform(&self) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let Some(path): Option<String> = self.bundle.resolved_file(LEVEL_CFORM_FILE) else {
       return Vec::new();
     };
@@ -141,6 +153,10 @@ impl<'a> LevelBinariesVerifier<'a> {
 
   /// `ASSERT_XRAI_VERSION_MATCH` plus the three guid assertions raised by `AISpaceBase::Load`.
   fn verify_ai_map(&self, level: Option<&RosterLevel>) -> Vec<Finding> {
+    if self.bundle.job().is_cancelled() {
+      return Default::default();
+    }
+
     let Some(path): Option<String> = self.bundle.resolved_file(LEVEL_AI_FILE) else {
       return Vec::new();
     };

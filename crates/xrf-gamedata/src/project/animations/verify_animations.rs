@@ -16,6 +16,8 @@ impl GamedataProject {
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataAnimationsVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify animations:");
 
     let started_at: Instant = Instant::now();
@@ -46,6 +48,8 @@ impl GamedataProject {
       xrf_utils::format_duration(result.duration),
       result.get_failure_message()
     );
+
+    options.job.check_cancelled()?;
 
     Ok(result)
   }

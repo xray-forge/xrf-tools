@@ -4,6 +4,7 @@ use uuid::Uuid;
 use xrf_chunk::ChunkReader;
 use xrf_db::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -40,7 +41,8 @@ impl LevelRoster {
   /// A spawn file that cannot be read at all is a checker error rather than a finding: the roster
   /// is unknown, and falling back to the directory listing would make every reconciliation rule
   /// vacuously pass.
-  pub(crate) fn read(project: &GamedataProject) -> XrfResult<Self> {
+  pub(crate) fn read(project: &GamedataProject, job: &JobHandle) -> XrfResult<Self> {
+    job.check_cancelled()?;
     let mut roster: Self = Self {
       levels: Vec::new(),
       findings: Vec::new(),
@@ -57,6 +59,7 @@ impl LevelRoster {
       .collect();
 
     for source in &sources {
+      job.check_cancelled()?;
       let path: &String = source;
 
       // Narrow read rather than the parsed seam: this needs the graphs chunk of a spawn that runs to 97MB in a shipped
@@ -76,6 +79,8 @@ impl LevelRoster {
     roster
       .findings
       .sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
+
+    job.check_cancelled()?;
 
     Ok(roster)
   }

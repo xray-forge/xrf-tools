@@ -26,6 +26,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataPlayerHudAnimationsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::verbose!(self.options.output, "Verify player hud animations");
 
     let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
@@ -45,6 +47,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     let mut findings: Vec<Finding> = player_hud_sections
       .par_iter()
       .enumerate()
+      .filter(|_| !self.options.job.is_cancelled())
       .filter_map(|(index, (section_name, section))| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -68,6 +71,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       })
       .collect();
 
+    self.options.job.check_cancelled()?;
+
     let invalid_huds_count: u32 = u32::try_from(findings.len())
       .map_err(|_| XrfError::new_verify_error("Invalid player HUD count exceeds the supported result range"))?;
 
@@ -79,6 +84,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     );
 
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataPlayerHudAnimationsVerificationResult {
       checked_huds_count,
@@ -94,6 +101,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    self.options.job.check_cancelled()?;
+
     let mut is_valid: bool = true;
     let mut hud_motions: HashSet<String> = HashSet::new();
 
@@ -125,6 +134,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
           );
 
           for linked_visual in &linked_visuals {
+            self.options.job.check_cancelled()?;
+
             match self
               .project
               .read_parsed(AssetType::Omf, linked_visual, |chunk| {
@@ -145,6 +156,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
                 }
 
                 for motion in motions {
+                  self.options.job.check_cancelled()?;
+
                   hud_motions.insert(motion);
                 }
               }
@@ -198,6 +211,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       is_valid = false;
     }
 
+    self.options.job.check_cancelled()?;
+
     Ok(is_valid)
   }
 
@@ -208,11 +223,15 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     section_name: &str,
     motions: &HashSet<String>,
   ) -> XrfResult<bool> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::verbose!(output, "Verify weapons animations for [{section_name}]");
 
     let mut is_valid: bool = true;
 
     for (weapon_section_name, weapon_section) in system_ltx.iter() {
+      self.options.job.check_cancelled()?;
+
       if !is_weapon_section(weapon_section) {
         continue;
       }
@@ -220,6 +239,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       if let Some(hud_section_name) = weapon_section.get("hud") {
         if let Some(hud_section) = system_ltx.section(hud_section_name) {
           for (field_name, field_value) in hud_section {
+            self.options.job.check_cancelled()?;
+
             if !field_name.starts_with("anm_") {
               continue;
             }
@@ -249,10 +270,14 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       }
     }
 
+    self.options.job.check_cancelled()?;
+
     Ok(is_valid)
   }
 
   fn read_motion_refs(&self, path: &str) -> XrfResult<HashSet<String>> {
+    self.options.job.check_cancelled()?;
+
     // todo: Fix and use read_parsed.
     // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
     // reads fine, and this check must still see those refs.
@@ -262,17 +287,22 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     let mut assets: HashSet<String> = HashSet::new();
 
     for motion_ref in &motion_refs {
+      self.options.job.check_cancelled()?;
+
       for location in self
         .project
         .vfs()
         .scoped(self.project.scope())
         .resolve_all(AssetType::Omf, motion_ref)?
       {
+        self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.insert(location.get_logical_path().to_string());
         }
       }
     }
+
+    self.options.job.check_cancelled()?;
 
     Ok(assets)
   }

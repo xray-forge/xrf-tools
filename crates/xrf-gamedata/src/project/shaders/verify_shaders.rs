@@ -6,6 +6,12 @@ use crate::{GamedataProject, GamedataProjectVerifyOptions};
 
 impl GamedataProject {
   pub fn verify_shaders(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataShadersVerificationResult> {
-    Ok(ShadersVerifier::new(self.vfs(), self.scope(), options).verify())
+    options.job.check_cancelled()?;
+
+    let result = ShadersVerifier::new(self.vfs(), self.scope(), options).verify();
+
+    options.job.check_cancelled()?;
+
+    Ok(result)
   }
 }

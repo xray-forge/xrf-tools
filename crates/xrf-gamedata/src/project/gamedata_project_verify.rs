@@ -84,8 +84,7 @@ impl GamedataProject {
         .map(|(offset, check)| {
           let index: usize = wave * window + offset;
 
-          // Before a check starts, never inside one. A check already running is left to finish: they parallelise
-          // internally and have no boundary of their own, so the only safe place to stop is where one has not begun.
+          // Do not start another check after cancellation. Running checks stop at their own iteration boundaries.
           if options.job.is_cancelled() {
             return None;
           }

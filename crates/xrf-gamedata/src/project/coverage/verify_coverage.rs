@@ -22,11 +22,13 @@ impl GamedataProject {
   ///
   /// # Errors
   ///
-  /// Infallible today, and fallible in signature because every check reports through the same seam.
+  /// Returns a cancellation error when the job is stopped before all findings are collected.
   pub fn verify_coverage(
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataCoverageVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify declared source coverage:");
 
     let started_at: Instant = Instant::now();
@@ -36,6 +38,7 @@ impl GamedataProject {
     // counts must be read.
     let findings: Vec<Finding> = skipped
       .iter()
+      .take_while(|_| !options.job.is_cancelled())
       .map(|skipped| {
         xrf_output::warning!(
           options.output,
@@ -48,6 +51,8 @@ impl GamedataProject {
         Self::skipped_mount_finding(skipped)
       })
       .collect();
+
+    options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
 

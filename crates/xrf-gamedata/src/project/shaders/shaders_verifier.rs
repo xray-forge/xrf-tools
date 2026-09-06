@@ -40,6 +40,10 @@ impl<'a> ShadersVerifier<'a> {
     let mut result: GamedataShadersVerificationResult = GamedataShadersVerificationResult::default();
 
     for renderer in [ShaderRenderer::DirectX11, ShaderRenderer::OpenGl] {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       self.verify_renderer(renderer, &mut result);
     }
 
@@ -106,12 +110,17 @@ impl<'a> ShadersVerifier<'a> {
 
     self.verify_root_shader_scripts(&renderer_root, &renderer_prefix, result);
 
-    let source_loader: GamedataShaderSourceLoader<'_> = GamedataShaderSourceLoader::new(self.vfs, self.scope);
+    let source_loader: GamedataShaderSourceLoader<'_> = GamedataShaderSourceLoader::new(self.vfs, self.scope)
+      .with_job(self.options.job.clone());
     let mut checked_sources: HashSet<PathBuf> = HashSet::new();
 
     // Scripts and sources are different sets: a `.s` script is Lua the renderer runs, so a renderer holding only scripts is
     // still checked rather than reported absent.
     for source in entries.iter().filter(|path| is_shader_source_path(Path::new(path))) {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       self.verify_shader_source(
         Path::new(source),
         renderer,
@@ -126,6 +135,8 @@ impl<'a> ShadersVerifier<'a> {
   ///
   /// Sorted so a run reports in a stable order, which a single directory walk gave for free and enumeration across mounts does not.
   fn renderer_entries(&self, renderer_prefix: &str) -> XrfResult<Vec<String>> {
+    self.options.job.check_cancelled()?;
+
     let scope: XrayLookupScope = self.scope.clone().with_prefix(renderer_prefix)?;
     let mut entries: Vec<String> = self
       .vfs
@@ -136,6 +147,8 @@ impl<'a> ShadersVerifier<'a> {
       .collect();
 
     entries.sort();
+
+    self.options.job.check_cancelled()?;
 
     Ok(entries)
   }
@@ -161,6 +174,10 @@ impl<'a> ShadersVerifier<'a> {
     };
 
     for file in listing.files {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       if !file
         .get_logical_path()
         .has_extension(&format!(".{SHADER_SCRIPT_FILE_EXTENSION}"))
@@ -194,6 +211,8 @@ impl<'a> ShadersVerifier<'a> {
 
   /// Reads one shader script as text, through the same mounts its sources come from.
   fn read_script(&self, logical_path: &str) -> Result<String, XrfError> {
+    self.options.job.check_cancelled()?;
+
     let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
 
     String::from_utf8(bytes).map_err(|error| XrfError::new_read_error(format!("not valid utf-8: {error}")))

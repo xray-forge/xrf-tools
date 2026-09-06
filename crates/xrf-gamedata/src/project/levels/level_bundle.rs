@@ -1,3 +1,4 @@
+use xrf_job::JobHandle;
 use xrf_vfs::XrayAssetType;
 
 use crate::GamedataProject;
@@ -8,13 +9,18 @@ use crate::project::levels::level_engine_constants::LEVELS_DIRECTORY;
 /// Rules receive a bundle rather than a name so that finding subjects, on-disk lookups and
 /// level-local asset resolution all derive from one place.
 pub(crate) struct LevelBundle<'a> {
+  job: &'a JobHandle,
   project: &'a GamedataProject,
   name: &'a str,
 }
 
 impl<'a> LevelBundle<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, name: &'a str) -> Self {
-    Self { project, name }
+  pub(crate) fn new(project: &'a GamedataProject, name: &'a str, job: &'a JobHandle) -> Self {
+    Self { project, name, job }
+  }
+
+  pub(crate) fn job(&self) -> &JobHandle {
+    self.job
   }
 
   pub(crate) fn name(&self) -> &str {

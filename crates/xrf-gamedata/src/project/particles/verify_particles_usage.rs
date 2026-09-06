@@ -26,10 +26,12 @@ impl GamedataProject {
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataParticlesUsageVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify particles usage:");
 
     let started_at: Instant = Instant::now();
-    let particle_names: HashSet<String> = self.read_particle_names()?;
+    let particle_names: HashSet<String> = self.read_particle_names(options)?;
 
     let mut result: GamedataParticlesUsageVerificationResult = GamedataParticlesUsageVerificationResult::default();
 
@@ -52,23 +54,29 @@ impl GamedataProject {
       result.unparsed_custom_data_count
     );
 
+    options.job.check_cancelled()?;
+
     Ok(result)
   }
 
   /// Collect known particle effect and group names from all particle files in gamedata roots.
-  fn read_particle_names(&self) -> XrfResult<HashSet<String>> {
+  fn read_particle_names(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<HashSet<String>> {
+    options.job.check_cancelled()?;
     let mut names: HashSet<String> = HashSet::new();
 
     for library in self.entries_with_suffix("particles.xr")? {
+      options.job.check_cancelled()?;
       // Read from the source that answered the enumeration, rather than searching the mounts again by path.
       let mut chunks = self.read_resolved_chunks(&library)?;
       let particles_file: ParticlesFile = ParticlesFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks)?;
 
       for effect in &particles_file.effects.effects {
+        options.job.check_cancelled()?;
         names.insert(Self::normalize_particle_name(&effect.name));
       }
 
       for group in &particles_file.groups.groups {
+        options.job.check_cancelled()?;
         names.insert(Self::normalize_particle_name(&group.name));
       }
     }
@@ -83,6 +91,10 @@ impl GamedataProject {
     result: &mut GamedataParticlesUsageVerificationResult,
   ) {
     for path in &self.ltx_project.ltx_file_entries {
+      if options.job.is_cancelled() {
+        break;
+      }
+
       if LtxProject::is_ltx_scheme_path(path) {
         continue;
       }
@@ -121,6 +133,10 @@ impl GamedataProject {
       .collect();
 
     for relative_path in &spawn_files {
+      if options.job.is_cancelled() {
+        break;
+      }
+
       result.checked_spawn_files_count += 1;
 
       let Some(spawn_path) = self
@@ -166,6 +182,10 @@ impl GamedataProject {
       };
 
       for object in &spawn_file.alife_spawn.objects {
+        if options.job.is_cancelled() {
+          break;
+        }
+
         let Some(custom_data) = object.inherited.get_custom_data() else {
           continue;
         };
@@ -207,12 +227,24 @@ impl GamedataProject {
     result: &mut GamedataParticlesUsageVerificationResult,
   ) {
     for (section_name, section) in ltx.iter() {
+      if options.job.is_cancelled() {
+        break;
+      }
+
       for (key, value) in section.iter() {
+        if options.job.is_cancelled() {
+          break;
+        }
+
         if !Self::is_particle_reference_key(section_name, key) {
           continue;
         }
 
         for reference in value.split(',') {
+          if options.job.is_cancelled() {
+            break;
+          }
+
           let reference: &str = reference.trim();
 
           if reference.is_empty() || SKIPPED_REFERENCE_VALUES.contains(&reference) {

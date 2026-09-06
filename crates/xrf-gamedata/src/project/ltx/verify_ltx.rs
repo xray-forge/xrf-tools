@@ -10,6 +10,8 @@ use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVeri
 
 impl GamedataProject {
   pub fn verify_ltx(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataLtxVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify LTX files");
 
     let started_at: Instant = Instant::now();
@@ -25,6 +27,8 @@ impl GamedataProject {
       "Verified gamedata ltx files in {}",
       xrf_utils::format_duration(duration),
     );
+
+    options.job.check_cancelled()?;
 
     Ok(GamedataLtxVerificationResult {
       duration,
@@ -78,17 +82,20 @@ impl GamedataProject {
   }
 
   fn verify_ltx_format(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<LtxProjectFormatResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify LTX files formatting");
 
-    // todo: Inert until gamedata verification is a job of its own. When it is, this is one of the levels
-    // todo: it nests: the run counts its checks, and this check counts the files it reads.
     self.ltx_project.check_format_all_files_opt(LtxFormatOptions {
       output: options.output.clone(),
+      job: options.job.clone(),
       ..Default::default()
     })
   }
 
   fn verify_ltx_schemes(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify LTX schemas");
 
     self.ltx_project.verify_entries_opt(LtxVerifyOptions {

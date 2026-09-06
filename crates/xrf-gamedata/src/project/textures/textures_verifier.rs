@@ -19,6 +19,8 @@ impl<'a> TexturesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataTexturesVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::heading!(self.options.output, "Verify textures:");
 
     let started_at: Instant = Instant::now();
@@ -35,6 +37,8 @@ impl<'a> TexturesVerifier<'a> {
       xrf_utils::format_duration(result.duration),
       result.get_failure_message()
     );
+
+    self.options.job.check_cancelled()?;
 
     Ok(result)
   }

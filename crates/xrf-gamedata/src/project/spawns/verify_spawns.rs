@@ -13,6 +13,8 @@ use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVeri
 impl GamedataProject {
   /// Verify spawn files in spawns directories, not levels spawn files.
   pub fn verify_spawns(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataSpawnsVerificationResult> {
+    options.job.check_cancelled()?;
+
     let started_at: Instant = Instant::now();
 
     let spawn_files: Vec<String> = self
@@ -42,6 +44,8 @@ impl GamedataProject {
     let mut invalid_spawns: u32 = 0;
 
     for relative_path in &spawn_files {
+      options.job.check_cancelled()?;
+
       total_spawns += 1;
 
       // Read through the VFS, so an archived spawn file is verified rather than reported missing.
@@ -73,6 +77,8 @@ impl GamedataProject {
       total_spawns - invalid_spawns,
       total_spawns
     );
+
+    options.job.check_cancelled()?;
 
     Ok(GamedataSpawnsVerificationResult {
       duration,

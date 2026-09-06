@@ -28,6 +28,8 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
   }
 
   pub fn verify(&self) -> XrfResult<GamedataHudMotionCollisionsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::verbose!(self.options.output, "Verify hud motion collisions");
 
     let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
@@ -43,6 +45,7 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
 
     let mut messages: Vec<String> = hud_sections
       .par_iter()
+      .filter(|_| !self.options.job.is_cancelled())
       .flat_map(|(_, section)| self.collect_collisions(section))
       .collect();
 
@@ -72,7 +75,11 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
       })
       .collect();
 
+    self.options.job.check_cancelled()?;
+
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataHudMotionCollisionsVerificationResult {
       checked_huds_count,
@@ -106,6 +113,10 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     let mut owners: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
     for bank in &banks {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       // The whole bank, shared with the meshes and hud-item checks rather than parsed once per reader.
       let Ok(omf) = self.project.read_parsed(AssetType::Omf, bank, |chunk| {
         OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
@@ -119,6 +130,10 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
       let bank_name: String = bank.rsplit('\\').next().unwrap_or(bank).to_string();
 
       for motion in motions {
+        if self.options.job.is_cancelled() {
+          break;
+        }
+
         owners.entry(motion).or_default().push(bank_name.clone());
       }
     }
@@ -140,6 +155,8 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
 
   /// Resolve omf assets linked by the model motion refs, wildcards included.
   fn read_motion_refs(&self, path: &str) -> XrfResult<Vec<String>> {
+    self.options.job.check_cancelled()?;
+
     let mut assets: Vec<String> = Vec::new();
     // todo: Review why full read fails and use plain read_parsed.
     // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
@@ -147,12 +164,15 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(self.project.read_bytes(path)?)?;
 
     for motion_ref in &OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)? {
+      self.options.job.check_cancelled()?;
+
       for location in self
         .project
         .vfs()
         .scoped(self.project.scope())
         .resolve_all(AssetType::Omf, motion_ref)?
       {
+        self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.push(location.get_logical_path().to_string());
         }
@@ -161,6 +181,8 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
 
     assets.sort();
     assets.dedup();
+
+    self.options.job.check_cancelled()?;
 
     Ok(assets)
   }

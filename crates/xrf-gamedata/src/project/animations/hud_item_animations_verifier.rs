@@ -35,6 +35,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataHudItemAnimationsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     xrf_output::verbose!(self.options.output, "Verify hud item animations");
 
     let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
@@ -51,6 +53,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     // Each section is verified once, reading its model and omf files a single time.
     let messages_per_item: Vec<Vec<String>> = item_sections
       .par_iter()
+      .filter(|_| !self.options.job.is_cancelled())
       .map(|(section_name, section)| self.verify_item_animations(section_name, section))
       .collect();
 
@@ -65,6 +68,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
       })
       .collect();
 
+    self.options.job.check_cancelled()?;
+
     xrf_output::info!(
       self.options.output,
       "Verified gamedata hud items, {}/{} valid",
@@ -73,6 +78,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     );
 
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataHudItemAnimationsVerificationResult {
       checked_items_count,
@@ -108,6 +115,10 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     }
 
     for expected in Self::collect_expected_item_motions(section) {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       if !item_motions.contains(&expected.motion_name) {
         messages.push(format!(
           "Hud item section [{section_name}] {}={} -> explicitly requested item motion is not found in '{item_visual}'",
@@ -151,6 +162,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
 
   /// Read motions provided by the model, or `None` when the model carries no animations at all.
   fn read_model_motions(&self, visual: &str) -> XrfResult<Option<HashSet<String>>> {
+    self.options.job.check_cancelled()?;
+
     // Resolved and read through the VFS, so a visual and its animations inside archive volumes are checked too.
     let Some(visual_path) = self
       .project
@@ -171,6 +184,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     let mut motions: HashSet<String> = HashSet::new();
 
     for linked in linked_assets {
+      self.options.job.check_cancelled()?;
+
       let omf: Arc<OmfFile> = self.project.read_parsed(AssetType::Omf, &linked, |chunk| {
         OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
       })?;
@@ -178,11 +193,15 @@ impl<'a> HudItemAnimationsVerifier<'a> {
       motions.extend(omf.get_motion_names().into_iter().map(str::to_owned));
     }
 
+    self.options.job.check_cancelled()?;
+
     Ok(Some(motions))
   }
 
   /// Resolve omf assets linked by the model motion refs, or `None` when the model has no refs.
   fn read_motion_refs(&self, path: &str) -> XrfResult<Option<HashSet<String>>> {
+    self.options.job.check_cancelled()?;
+
     // todo: Review why full read fails and use plain read_parsed.
     // Narrow read, assembled here rather than taken through the parsed seam: a full visual parse fails on visuals whose
     // geometry will not read, while their motion refs chunk reads fine, and this check must still see those refs.
@@ -202,17 +221,22 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     let mut assets: HashSet<String> = HashSet::new();
 
     for motion_ref in &motion_refs {
+      self.options.job.check_cancelled()?;
+
       for location in self
         .project
         .vfs()
         .scoped(&self.project.scope)
         .resolve_all(AssetType::Omf, motion_ref)?
       {
+        self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.insert(location.get_logical_path().to_string());
         }
       }
     }
+
+    self.options.job.check_cancelled()?;
 
     Ok(Some(assets))
   }

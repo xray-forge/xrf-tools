@@ -26,8 +26,12 @@ impl<'a> LevelReconciliationVerifier<'a> {
   ///
   /// Files stored directly under the levels root, such as `root.ltx`, are not bundles.
   pub(crate) fn bundle_names(&self) -> XrfResult<BTreeSet<String>> {
+    self.options.job.check_cancelled()?;
+
     // The directories directly inside the levels root are the bundles; a file sitting there, such as `root.ltx`, is not one.
     // `children` answers exactly that distinction, where a prefix enumeration would have to rediscover it.
+    self.options.job.check_cancelled()?;
+
     Ok(
       self
         .project
@@ -41,10 +45,14 @@ impl<'a> LevelReconciliationVerifier<'a> {
   }
 
   pub(crate) fn verify(&self, roster: &LevelRoster, bundles: &BTreeSet<String>) -> XrfResult<Vec<Finding>> {
+    self.options.job.check_cancelled()?;
+
     let mut findings: Vec<Finding> = Vec::new();
     let declared_maps: BTreeSet<String> = self.declared_map_levels()?;
 
     for level in &roster.levels {
+      self.options.job.check_cancelled()?;
+
       if !bundles.contains(&level.name) {
         findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LevelsMissingBundle,
@@ -71,6 +79,8 @@ impl<'a> LevelReconciliationVerifier<'a> {
     let roster_names: BTreeSet<&str> = roster.names();
 
     for bundle in bundles {
+      self.options.job.check_cancelled()?;
+
       if !roster_names.contains(bundle.as_str()) {
         findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LevelsOrphanBundle,
@@ -80,11 +90,15 @@ impl<'a> LevelReconciliationVerifier<'a> {
       }
     }
 
+    self.options.job.check_cancelled()?;
+
     Ok(findings)
   }
 
   /// Levels declared in single player and multiplayer map configurations.
   fn declared_map_levels(&self) -> XrfResult<BTreeSet<String>> {
+    self.options.job.check_cancelled()?;
+
     let mut declared: BTreeSet<String> = BTreeSet::new();
 
     for (file, section_name) in [
@@ -92,6 +106,8 @@ impl<'a> LevelReconciliationVerifier<'a> {
       (MULTIPLAYER_MAPS_FILE, MULTIPLAYER_MAPS_SECTION),
     ] {
       for location in self.project.entries_with_suffix(file)? {
+        self.options.job.check_cancelled()?;
+
         let path: &str = location.get_logical_path().as_str();
 
         // Malformed configurations are reported by the ltx check, not this one. Resolved under the project's dialect
@@ -111,6 +127,8 @@ impl<'a> LevelReconciliationVerifier<'a> {
         }
       }
     }
+
+    self.options.job.check_cancelled()?;
 
     Ok(declared)
   }

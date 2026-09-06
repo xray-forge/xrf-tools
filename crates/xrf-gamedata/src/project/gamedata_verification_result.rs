@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobOutcome;
 use xrf_report::{CheckId, CheckReport, Finding, Report};
 
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GamedataVerificationCheckReport {
+  outcome: JobOutcome,
   report: CheckReport,
   summary: String,
   verification_type: GamedataVerificationType,
@@ -40,7 +42,7 @@ impl GamedataVerificationReport {
     &self.checks
   }
 
-  /// Whether every selected check ran, or the run was stopped between them.
+  /// Whether every selected check finished, or the run stopped before or inside a check.
   ///
   /// What separates a clean verdict from a partial one: the checks that never ran report nothing, and nothing about
   /// their silence says they would have passed.
@@ -61,6 +63,10 @@ impl GamedataVerificationReport {
   }
 
   pub(crate) fn add_report(&mut self, report: GamedataVerificationCheckReport) {
+    if report.outcome == JobOutcome::Cancelled {
+      self.outcome = JobOutcome::Cancelled;
+    }
+
     self.checks.push(report);
   }
 
@@ -68,7 +74,7 @@ impl GamedataVerificationReport {
   where
     T: GamedataCheckResult,
   {
-    self.checks.push(GamedataVerificationCheckReport::from_check_result(
+    self.add_report(GamedataVerificationCheckReport::from_check_result(
       verification_type,
       result,
     ));
@@ -79,7 +85,7 @@ impl GamedataVerificationReport {
   }
 
   pub fn is_valid(&self) -> bool {
-    self.get_status() == GamedataVerificationStatus::Passed
+    self.outcome == JobOutcome::Completed && self.get_status() == GamedataVerificationStatus::Passed
   }
 
   pub fn get_failure_messages(&self) -> Vec<String> {
@@ -136,6 +142,7 @@ impl GamedataVerificationCheckReport {
   {
     match result {
       Ok(result) => Self {
+        outcome: JobOutcome::Completed,
         report: CheckReport::new(
           Self::check_id(verification_type),
           result.get_status(),
@@ -145,7 +152,19 @@ impl GamedataVerificationCheckReport {
         summary: result.get_failure_message(),
         verification_type,
       },
+      Err(XrfError::Cancelled { .. }) => Self {
+        outcome: JobOutcome::Cancelled,
+        report: CheckReport::new(
+          Self::check_id(verification_type),
+          GamedataVerificationStatus::Incomplete,
+          None,
+          Vec::new(),
+        ),
+        summary: format!("Stopped checking {verification_type}; verification is incomplete"),
+        verification_type,
+      },
       Err(error) => Self {
+        outcome: JobOutcome::Completed,
         report: CheckReport::new(
           Self::check_id(verification_type),
           GamedataVerificationStatus::Error,

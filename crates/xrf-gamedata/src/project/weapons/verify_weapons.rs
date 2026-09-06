@@ -20,6 +20,8 @@ use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVeri
 
 impl GamedataProject {
   pub fn verify_weapons(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataWeaponVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify weapons:");
 
     let started_at: Instant = Instant::now();
@@ -43,6 +45,7 @@ impl GamedataProject {
     let mut findings: Vec<Finding> = weapons
       .par_iter()
       .enumerate()
+      .filter(|_| !options.job.is_cancelled())
       .flat_map(|(index, (section_name, section))| {
         let slot: OutputSlot = sequence.new_slot(index);
         let scoped: GamedataProjectVerifyOptions = options.with_output(slot.get_output().clone());
@@ -74,6 +77,8 @@ impl GamedataProject {
       })
       .collect();
 
+    options.job.check_cancelled()?;
+
     // One finding per invalid section, so the count is what the sweep collected rather than a second tally that could
     // disagree with it.
     let invalid_weapons_count: u32 = findings.len() as u32;
@@ -90,6 +95,8 @@ impl GamedataProject {
       checked_weapons_count
     );
 
+    options.job.check_cancelled()?;
+
     Ok(GamedataWeaponVerificationResult {
       duration,
       checked_weapons_count,
@@ -105,6 +112,8 @@ impl GamedataProject {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     xrf_output::verbose!(options.output, "Verify weapon ltx config [{section_name}]");
 
     let mut is_weapon_valid: bool = true;
@@ -133,6 +142,8 @@ impl GamedataProject {
       is_weapon_valid = false;
     }
 
+    options.job.check_cancelled()?;
+
     Ok(is_weapon_valid)
   }
 
@@ -150,6 +161,8 @@ impl GamedataProject {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     // Only weapons that can carry a launcher ever reach the grenade launcher bore branch.
     if section.get("grenade_launcher_status").is_none_or(|it| it.trim() == "0") {
       return Ok(true);
@@ -167,6 +180,8 @@ impl GamedataProject {
     let mut is_valid: bool = true;
 
     for required in ["anm_bore_g", "anm_bore_w_gl"] {
+      options.job.check_cancelled()?;
+
       if hud_section.get(required).is_none() {
         xrf_output::error!(
           options.output,
@@ -176,6 +191,8 @@ impl GamedataProject {
         is_valid = false;
       }
     }
+
+    options.job.check_cancelled()?;
 
     Ok(is_valid)
   }
@@ -187,6 +204,8 @@ impl GamedataProject {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     let mut is_valid: bool = true;
 
     // Resolved and read through the VFS, so a visual inside an archive volume is checked too.
@@ -250,6 +269,8 @@ impl GamedataProject {
             let mut ref_animations: Vec<String> = Vec::new();
 
             for motion_ref in motion_refs {
+              options.job.check_cancelled()?;
+
               if let Some(motion_file_path) = self
                 .omf(motion_ref)
                 .ok()
@@ -295,6 +316,8 @@ impl GamedataProject {
             }
 
             for (field_name, field_value) in hud_section {
+              options.job.check_cancelled()?;
+
               if !field_name.starts_with("anm_") {
                 continue;
               }
@@ -334,6 +357,8 @@ impl GamedataProject {
       is_valid = false;
     }
 
+    options.job.check_cancelled()?;
+
     Ok(is_valid)
   }
 
@@ -344,9 +369,13 @@ impl GamedataProject {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     let mut are_sounds_valid: bool = true;
 
     for sound_section in ["snd_draw", "snd_empty", "snd_holster", "snd_reload", "snd_shoot"] {
+      options.job.check_cancelled()?;
+
       if !section.contains_key(sound_section) {
         xrf_output::error!(
           options.output,
@@ -358,6 +387,8 @@ impl GamedataProject {
     }
 
     for (field_name, field_value) in section {
+      options.job.check_cancelled()?;
+
       if !field_name.starts_with("snd_") {
         continue;
       }
@@ -399,6 +430,8 @@ impl GamedataProject {
       }
     }
 
+    options.job.check_cancelled()?;
+
     Ok(are_sounds_valid)
   }
 
@@ -408,10 +441,14 @@ impl GamedataProject {
     section_name: &str,
     section: &Section,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     let issues: Vec<WeaponSoundLayerIssue> = weapon_sound_layer_issues(section);
     let mut is_valid: bool = issues.is_empty();
 
     for issue in issues {
+      options.job.check_cancelled()?;
+
       match issue {
         WeaponSoundLayerIssue::InvalidFieldName { field_name } => {
           let field_value: Option<&str> = section.get(&field_name);
@@ -452,6 +489,8 @@ impl GamedataProject {
     }
 
     for (field_name, field_value) in section {
+      options.job.check_cancelled()?;
+
       // Metadata fields such as `$scheme` describe the section, they are not sound references.
       if field_name.starts_with(LTX_SYMBOL_SCHEME) {
         continue;
@@ -469,6 +508,8 @@ impl GamedataProject {
       xrf_output::verbose!(options.output, "Sound layers section verified: [{section_name}]");
     }
 
+    options.job.check_cancelled()?;
+
     Ok(is_valid)
   }
 
@@ -479,6 +520,8 @@ impl GamedataProject {
     field_name: &str,
     field_value: &str,
   ) -> XrfResult<bool> {
+    options.job.check_cancelled()?;
+
     let mut is_valid: bool = true;
 
     // Sounds field is 1-3 comma separated values. The reference may name the sound with or without its extension, which
@@ -505,6 +548,8 @@ impl GamedataProject {
 
       is_valid = false;
     }
+
+    options.job.check_cancelled()?;
 
     Ok(is_valid)
   }

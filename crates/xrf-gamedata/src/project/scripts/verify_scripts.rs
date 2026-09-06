@@ -17,6 +17,8 @@ use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVeri
 
 impl GamedataProject {
   pub fn verify_scripts(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataScriptsVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify scripts:");
 
     let started_at: Instant = Instant::now();
@@ -37,6 +39,7 @@ impl GamedataProject {
     let mut findings: Vec<Finding> = script_paths
       .par_iter()
       .enumerate()
+      .filter(|_| !options.job.is_cancelled())
       .filter_map(|(index, relative_path)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -82,6 +85,8 @@ impl GamedataProject {
       })
       .collect();
 
+    options.job.check_cancelled()?;
+
     let duration: Duration = started_at.elapsed();
     let invalid_scripts_count: u32 = u32::try_from(findings.len())
       .map_err(|_| XrfError::new_verify_error("Invalid script count exceeds the supported result range"))?;
@@ -103,6 +108,8 @@ impl GamedataProject {
         xrf_utils::format_duration(duration),
       );
     }
+
+    options.job.check_cancelled()?;
 
     Ok(GamedataScriptsVerificationResult {
       duration,

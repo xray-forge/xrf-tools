@@ -38,6 +38,8 @@ pub fn verify_weather_findings_with_definitions(
   definitions: &WeatherDefinitions,
   definition_load_errors: &mut BTreeSet<String>,
 ) -> XrfResult<Vec<Finding>> {
+  options.job.check_cancelled()?;
+
   // The logical path reads the config; findings need the path a person can act on.
   let reported: PathBuf = project.ltx_project.path_of(config_path);
   let ltx: Arc<Ltx> = match project.ltx_project.read_full(config_path) {
@@ -71,11 +73,15 @@ pub fn verify_weather_findings_with_definitions(
   let mut execution_times: HashSet<u32> = HashSet::new();
 
   for section_name in weather_sections {
+    options.job.check_cancelled()?;
+
     let section: &Section = ltx
       .section(section_name)
       .expect("Expected discovered weather section to exist");
 
     for field_name in WEATHER_REQUIRED_FIELDS {
+      options.job.check_cancelled()?;
+
       if !section.contains_key(field_name) {
         findings.push(report_weather_finding(
           options,
@@ -96,6 +102,8 @@ pub fn verify_weather_findings_with_definitions(
     }
 
     for (field_name, value) in section {
+      options.job.check_cancelled()?;
+
       if !is_valid_weather_field_value(field_name, value) {
         findings.push(report_weather_finding(
           options,
@@ -199,6 +207,8 @@ pub fn verify_weather_findings_with_definitions(
 
     if let Some(sky_texture) = section.get("sky_texture") {
       for texture_reference in [sky_texture.to_string(), format!("{sky_texture}#small")] {
+        options.job.check_cancelled()?;
+
         if project
           .vfs()
           .scoped(project.scope())

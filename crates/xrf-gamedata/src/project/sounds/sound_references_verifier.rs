@@ -33,12 +33,16 @@ impl<'a> SoundReferencesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataSoundReferencesVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     let sound_names: HashSet<String> = Self::read_sound_names(self.sound_paths);
     let sound_roots: HashSet<String> = Self::read_sound_roots(&sound_names);
     let mut result: GamedataSoundReferencesVerificationResult = Default::default();
 
     self.verify_references_in_configs(&sound_names, &sound_roots, &mut result);
     self.verify_references_in_xml(&sound_names, &sound_roots, &mut result);
+
+    self.options.job.check_cancelled()?;
 
     Ok(result)
   }
@@ -64,6 +68,10 @@ impl<'a> SoundReferencesVerifier<'a> {
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
     for path in &self.project.ltx_project.ltx_file_entries {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       if LtxProject::is_ltx_scheme_path(path) {
         continue;
       }
@@ -92,6 +100,10 @@ impl<'a> SoundReferencesVerifier<'a> {
     // Enumerated and read through the VFS, so an installation's archived UI XML is inspected too. Reported by the path a
     // person can act on, which for an archived entry is its logical path.
     for location in self.project.entries() {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       let logical_path: &XrayLogicalPath = location.get_logical_path();
 
       if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension(".xml") {
@@ -131,6 +143,10 @@ impl<'a> SoundReferencesVerifier<'a> {
       };
 
       for sound in document.elements_named("sound") {
+        if self.options.job.is_cancelled() {
+          break;
+        }
+
         let reference: &str = sound.text();
         if Self::is_direct_sound_reference(sound_roots, reference) {
           self.verify_reference(sound_names, reference, &path, "<sound>", result);
@@ -148,12 +164,24 @@ impl<'a> SoundReferencesVerifier<'a> {
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
     for (section_name, section) in ltx.iter() {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       for (key, value) in section.iter() {
+        if self.options.job.is_cancelled() {
+          break;
+        }
+
         if !Self::is_sound_reference_key(key) {
           continue;
         }
 
         for reference in value.split(',') {
+          if self.options.job.is_cancelled() {
+            break;
+          }
+
           let reference: &str = reference.trim();
 
           if !Self::is_direct_sound_reference(sound_roots, reference) {

@@ -19,6 +19,8 @@ impl<'a> TextureFilesVerifier<'a> {
   }
 
   pub(crate) fn verify(&self) -> XrfResult<GamedataTextureFilesVerificationResult> {
+    self.options.job.check_cancelled()?;
+
     let texture_paths: Vec<String> = self
       .project
       .entries_of_type(AssetType::Dds)
@@ -36,6 +38,7 @@ impl<'a> TextureFilesVerifier<'a> {
     let mut findings: Vec<Finding> = texture_paths
       .par_iter()
       .enumerate()
+      .filter(|_| !self.options.job.is_cancelled())
       .filter_map(|(index, path)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -66,10 +69,14 @@ impl<'a> TextureFilesVerifier<'a> {
       })
       .collect();
 
+    self.options.job.check_cancelled()?;
+
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
     let invalid_textures_count: u32 = u32::try_from(findings.len())
       .map_err(|_| XrfError::new_verify_error("Invalid texture count exceeds the supported result range"))?;
+
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataTextureFilesVerificationResult {
       checked_textures_count,

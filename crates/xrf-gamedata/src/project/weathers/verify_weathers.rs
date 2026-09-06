@@ -27,6 +27,8 @@ impl GamedataProject {
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataWeathersVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify weathers:");
 
     let started_at: Instant = Instant::now();
@@ -50,6 +52,8 @@ impl GamedataProject {
     let mut invalid_weather_files_count: u32 = 0;
 
     for weather_config in weather_configs {
+      options.job.check_cancelled()?;
+
       let weather_findings: Vec<Finding> = verify_weather_findings_with_definitions(
         self,
         options,
@@ -76,6 +80,8 @@ impl GamedataProject {
     let duration = started_at.elapsed();
 
     for error in definition_load_errors {
+      options.job.check_cancelled()?;
+
       options.output.error(error);
     }
 
@@ -94,6 +100,8 @@ impl GamedataProject {
         checked_weather_files_count
       );
     }
+
+    options.job.check_cancelled()?;
 
     Ok(GamedataWeathersVerificationResult {
       duration,

@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -15,6 +16,8 @@ impl GamedataProject {
     &self,
     options: &GamedataProjectVerifyOptions,
   ) -> XrfResult<GamedataParticlesVerificationResult> {
+    options.job.check_cancelled()?;
+
     xrf_output::heading!(options.output, "Verify particles:");
 
     let started_at: Instant = Instant::now();
@@ -35,6 +38,7 @@ impl GamedataProject {
     let particle_findings: Vec<Vec<Finding>> = particle_paths
       .par_iter()
       .enumerate()
+      .filter(|_| !options.job.is_cancelled())
       .map(|(index, path)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -45,7 +49,7 @@ impl GamedataProject {
           ParticlesFile::read_from_chunk::<XRayByteOrder, _>(chunk)
         }) {
           Ok(particles_file) => {
-            let particle_findings: Vec<Finding> = self.verify_particle(output, &particles_file, path);
+            let particle_findings: Vec<Finding> = self.verify_particle_with_job(output, &particles_file, path, &options.job);
 
             if !particle_findings.is_empty() {
               xrf_output::info!(output, "Particle library is invalid: {}", path);
@@ -73,6 +77,8 @@ impl GamedataProject {
 
     let mut findings: Vec<Finding> = particle_findings.into_iter().flatten().collect();
 
+    options.job.check_cancelled()?;
+
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
     xrf_output::info!(
@@ -82,6 +88,8 @@ impl GamedataProject {
       checked_particle_files_count - invalid_particle_files_count,
       checked_particle_files_count
     );
+
+    options.job.check_cancelled()?;
 
     Ok(GamedataParticlesVerificationResult {
       duration,
@@ -97,12 +105,28 @@ impl GamedataProject {
     particles_file: &ParticlesFile,
     particle_library_path: &str,
   ) -> Vec<Finding> {
+    self.verify_particle_with_job(output, particles_file, particle_library_path, &JobHandle::inert())
+  }
+
+  fn verify_particle_with_job(
+    &self,
+    output: &OutputOptions,
+    particles_file: &ParticlesFile,
+    particle_library_path: &str,
+    job: &JobHandle,
+  ) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
 
     for particle in &particles_file.effects.effects {
+      if job.is_cancelled() {
+        break;
+      }
       xrf_output::verbose!(output, "Verify particle: {}", particle.name);
 
       for texture_relative_path in particle.sprite.texture_name.split(",") {
+        if job.is_cancelled() {
+          break;
+        }
         if let Some(texture) = self
           .dds_texture(texture_relative_path)
           .ok()

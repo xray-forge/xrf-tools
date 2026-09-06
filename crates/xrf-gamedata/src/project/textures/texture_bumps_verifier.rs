@@ -47,6 +47,7 @@ impl<'a> TextureBumpsVerifier<'a> {
     let verifications: Vec<TextureBumpVerification> = descriptors
       .par_iter()
       .enumerate()
+      .filter(|_| !self.options.job.is_cancelled())
       .map(|(index, descriptor)| {
         let slot: OutputSlot = sequence.new_slot(index);
         let output: &OutputOptions = slot.get_output();
@@ -66,6 +67,10 @@ impl<'a> TextureBumpsVerifier<'a> {
     };
 
     for verification in verifications {
+      if self.options.job.is_cancelled() {
+        break;
+      }
+
       match verification.verdict {
         TextureBumpVerdict::Undeclared => {}
         TextureBumpVerdict::Bound {
