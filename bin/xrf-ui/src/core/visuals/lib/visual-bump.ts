@@ -68,8 +68,15 @@ export const XRAY_BUMP_NORMAL_GLSL: string = "xrayNu.wzy + (xrayNuE.xyz - 1.0)";
 /** Gloss is the bump's red channel squared, `S.gloss = Nu.x * Nu.x`. */
 export const XRAY_BUMP_GLOSS_GLSL: string = "xrayNu.x * xrayNu.x";
 
-/** Height is the companion's blue channel, which `it_height_rev` moved there. */
-export const XRAY_BUMP_HEIGHT_GLSL: string = "xrayNuE.z";
+/**
+ * Height is the companion's alpha channel, where `it_height_rev` puts it (`xrDXT/NormalMapGen.cpp`).
+ *
+ * The engine reads it from two different channels. `UpdateTC` and the steep parallax loop take `.a`, which is this
+ * one; `surface_bumped` assigns `S.height = NuE.z`, which is the normal's z error rather than any height.
+ * This follows the generator and the parallax path, because they agree with each other and with what
+ * the file actually stores.
+ */
+export const XRAY_BUMP_HEIGHT_GLSL: string = "xrayNuE.w";
 
 /**
  * Reconstructs what the engine reads from one texel of a bump pair.
@@ -77,6 +84,9 @@ export const XRAY_BUMP_HEIGHT_GLSL: string = "xrayNuE.z";
  * `Nu.wzy` is (alpha, blue, green) of the bump, and the companion's rgb is the quantisation error the packer left, so
  * the normal is `Nu.wzy + (NuE.xyz - 1.0)` component by component. Not normalised, as the engine does not normalise
  * here either; the shader normalises after rotating through the tangent basis.
+ *
+ * Height comes from the companion's alpha, which is what the generator writes and what parallax samples; see
+ * {@link XRAY_BUMP_HEIGHT_GLSL} for why that is not the channel `surface_bumped` reads.
  *
  * @param nu - Texel of the bump, `normal.gloss`.
  * @param nuE - Texel of the companion, `normal_error.height`.
@@ -86,7 +96,7 @@ export function decodeXrayBumpTexel(nu: TVisualTexel, nuE: TVisualTexel): IVisua
   return {
     normal: [nu[3] + (nuE[0] - 1), nu[2] + (nuE[1] - 1), nu[1] + (nuE[2] - 1)],
     gloss: nu[0] * nu[0],
-    height: nuE[2],
+    height: nuE[3],
   };
 }
 

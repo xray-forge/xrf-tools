@@ -16,13 +16,13 @@ import {
 export enum EVisualBumpView {
   /** `normal.gloss` as uploaded: the normal reversed into green, blue and alpha, gloss in red. */
   BUMP = "bump",
-  /** `normal_error.height` as uploaded: the quantisation error in rgb, height in blue. */
+  /** `normal_error.height` as uploaded: the quantisation error of the three normal channels in rgb, height in alpha. */
   COMPANION = "companion",
   /** The tangent-space normal the engine reconstructs, mapped into the unit range to be looked at. */
   NORMAL = "normal",
   /** Gloss, which the engine feeds to a specular power. */
   GLOSS = "gloss",
-  /** Authored height, which the renderer never reads. */
+  /** Height as the file stores it, which the parallax path samples and the deferred loader does not. */
   HEIGHT = "height",
 }
 

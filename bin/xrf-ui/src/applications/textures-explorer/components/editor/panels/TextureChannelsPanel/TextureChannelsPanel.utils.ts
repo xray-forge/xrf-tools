@@ -41,7 +41,7 @@ export const TEXTURE_CHANNEL_TILES: ReadonlyArray<ITextureChannelTile> = [
   {
     view: EVisualBumpView.HEIGHT,
     label: "Height",
-    caption: "authored, never read by the renderer",
+    caption: "stored in alpha; the deferred loader reads the z error instead",
   },
 ];
 

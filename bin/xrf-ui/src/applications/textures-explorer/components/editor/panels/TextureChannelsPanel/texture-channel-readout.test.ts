@@ -27,8 +27,8 @@ function mockPair(): ITextureBumpTexels {
     ]),
     companion: mockPlane([
       [0, 0, 0, 0],
-      // The quantisation error, centred on 255, and height in blue.
-      [255, 200, 64, 0],
+      // The quantisation error of the normal's three channels, and the height in alpha where the packer puts it.
+      [255, 200, 64, 20],
       [0, 0, 0, 0],
       [0, 0, 0, 0],
     ]),
@@ -41,7 +41,7 @@ describe("describeTextureTexel", () => {
 
     expect(readout.position).toBe("1, 0 of 2 x 2");
     expect(readout.bump).toBe("128, 40, 90, 200");
-    expect(readout.companion).toBe("255, 200, 64, 0");
+    expect(readout.companion).toBe("255, 200, 64, 20");
   });
 
   it("reconstructs the normal as the engine does, component by component", () => {
@@ -55,11 +55,13 @@ describe("describeTextureTexel", () => {
     expect(readout.normal).toBe([x, y, z].map((it: number) => it.toFixed(3)).join(", "));
   });
 
-  it("reconstructs gloss as the bump's red squared and height as the companion's blue", () => {
+  it("reconstructs gloss as the bump's red squared and height as the companion's alpha", () => {
+    // Height is alpha, not the blue beside it: blue is the error of the normal's z and is already spent correcting
+    // it above, which is the discrepancy `issues/0149` records in the engine's own loader.
     const readout: ITextureTexelReadout = describeTextureTexel(mockPair(), { x: 1, y: 0 });
 
     expect(readout.gloss).toBe(((128 / 255) * (128 / 255)).toFixed(3));
-    expect(readout.height).toBe((64 / 255).toFixed(3));
+    expect(readout.height).toBe((20 / 255).toFixed(3));
   });
 
   it("reads the row a file stores first as the row at the top", () => {
