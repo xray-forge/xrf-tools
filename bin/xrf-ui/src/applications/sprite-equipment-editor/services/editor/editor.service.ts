@@ -17,7 +17,7 @@ import {
   IPackEquipmentResult,
 } from "@/core/sprite-equipment/equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { all, call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -51,7 +51,7 @@ export class SpriteEquipmentEditorService {
   public gridSize: number = 50;
 
   @Observable()
-  public spriteImage: Loadable<Nullable<IEquipmentPngDescriptor>> = createLoadable(null);
+  public spriteImage: Loadable<Nullable<IEquipmentPngDescriptor>> = Loadable.idle(null);
 
   /**
    * Directory the sprite can be rebuilt from, or null when there is nothing to rebuild from.
@@ -96,6 +96,7 @@ export class SpriteEquipmentEditorService {
 
     if (!response) {
       this.log.info("No existing sprite detected file");
+      this.spriteImage = this.spriteImage.asReady(null);
       this.isReady = true;
 
       return;
@@ -106,7 +107,7 @@ export class SpriteEquipmentEditorService {
 
     const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
 
-    this.spriteImage = createLoadable(spriteImage);
+    this.spriteImage = this.spriteImage.asReady(spriteImage);
 
     yield* this.resolveRepackSource(spriteImage.path);
   }
@@ -121,7 +122,9 @@ export class SpriteEquipmentEditorService {
    */
   @BoundAction()
   public clearSpriteError(): void {
-    this.spriteImage = this.spriteImage.asReady();
+    if (this.spriteImage.isFailed) {
+      this.spriteImage = this.spriteImage.value === null ? this.spriteImage.asIdle() : this.spriteImage.asReady();
+    }
   }
 
   @BoundAction()
@@ -143,7 +146,7 @@ export class SpriteEquipmentEditorService {
 
     try {
       this.assetService.releaseKey(SPRITE_ASSET_KEY);
-      this.spriteImage = createLoadable(null, true);
+      this.spriteImage = this.spriteImage.asLoading(null);
 
       const response: IEquipmentSpriteMetadata = yield* call(
         spriteEquipmentCommands.openSprite(equipmentDdsPath, systemLtxPath, isDltx)
@@ -153,13 +156,13 @@ export class SpriteEquipmentEditorService {
 
       const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
 
-      this.spriteImage = createLoadable(spriteImage);
+      this.spriteImage = this.spriteImage.asReady(spriteImage);
 
       yield* this.resolveRepackSource(spriteImage.path);
     } catch (error) {
       this.log.error("Failed to open equipment editor project:", error);
 
-      this.spriteImage = createLoadable(null, false, error as Error);
+      this.spriteImage = this.spriteImage.asFailed(error as Error, null);
 
       emitNotification(this.eventBus, {
         details: `${equipmentDdsPath}\n${transformError(error).message}`,
@@ -193,7 +196,7 @@ export class SpriteEquipmentEditorService {
 
       const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
 
-      this.spriteImage = createLoadable(spriteImage);
+      this.spriteImage = this.spriteImage.asReady(spriteImage);
 
       yield* this.resolveRepackSource(spriteImage.path);
     } catch (error) {
@@ -236,7 +239,7 @@ export class SpriteEquipmentEditorService {
       );
 
       if (!result || result.outcome !== "completed") {
-        this.spriteImage = this.spriteImage.asReady();
+        this.spriteImage = spriteImage;
 
         return;
       }
@@ -307,7 +310,7 @@ export class SpriteEquipmentEditorService {
 
       this.log.info("Equipment project closed");
 
-      this.spriteImage = createLoadable(null);
+      this.spriteImage = this.spriteImage.asIdle();
       this.repackSourcePath = null;
       this.repackedAt = null;
     } catch (error) {

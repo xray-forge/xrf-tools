@@ -8,7 +8,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 
 const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "textures\\ui\\wall.dds",
@@ -40,7 +40,7 @@ const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 function createService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = createLoadable(mockArchivesProject([TEXTURE, TEXT]));
+  service.project = Loadable.ready(mockArchivesProject([TEXTURE, TEXT]));
 
   return service;
 }

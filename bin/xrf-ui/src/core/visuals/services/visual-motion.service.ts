@@ -6,7 +6,7 @@ import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -37,10 +37,10 @@ export class VisualMotionService {
    * each, and most models are opened to be looked at rather than played.
    */
   @Observable()
-  public motions: Loadable<Array<string>> = createLoadable([]);
+  public motions: Loadable<Array<string>> = Loadable.idle([]);
 
   @Observable()
-  public posed: Loadable<Nullable<IPosedMotion>> = createLoadable(null);
+  public posed: Loadable<Nullable<IPosedMotion>> = Loadable.idle(null);
 
   @Observable()
   public frame: number = 0;
@@ -221,8 +221,8 @@ export class VisualMotionService {
     this.stopTicker();
     this.isPlaying = false;
     this.frame = 0;
-    this.posed = createLoadable(null);
-    this.motions = createLoadable([]);
+    this.posed = this.posed.asIdle();
+    this.motions = this.motions.asIdle([]);
   }
 
   /** One frame on, wrapping or stopping at the end depending on the loop toggle. */

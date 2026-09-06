@@ -16,7 +16,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { configuredAssetRoots } from "@/core/settings/lib/path/role";
 import { PathsService } from "@/core/settings/services/paths/paths.service";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -36,19 +36,19 @@ export class TexturesService {
 
   /** Every texture of the browsed roots, or null when a single texture was opened directly. */
   @Observable()
-  public catalog: Loadable<Nullable<TextureCatalog>> = createLoadable(null);
+  public catalog: Loadable<Nullable<TextureCatalog>> = Loadable.idle(null);
 
   /** What each descriptor of those roots declares, empty until the sweep behind the listing finishes. */
   @Observable()
-  public summaries: Loadable<Array<TextureMaterialSummary>> = createLoadable([]);
+  public summaries: Loadable<Array<TextureMaterialSummary>> = Loadable.idle([]);
 
   /** The texture being inspected, or null when none has been chosen. */
   @Observable()
-  public selected: Loadable<Nullable<TextureDescription>> = createLoadable(null);
+  public selected: Loadable<Nullable<TextureDescription>> = Loadable.idle(null);
 
   /** The selected texture decoded to png, or null when it is a descriptor with no texture to show. */
   @Observable()
-  public preview: Loadable<Nullable<ArrayBuffer>> = createLoadable(null);
+  public preview: Loadable<Nullable<ArrayBuffer>> = Loadable.idle(null);
 
   /**
    * What the last inspection asked for, so a failed one can be asked for again.
@@ -139,10 +139,10 @@ export class TexturesService {
     this.log.info("Deactivating and releasing the browsed roots");
 
     runInAction(() => {
-      this.catalog = createLoadable(null);
-      this.summaries = createLoadable([]);
-      this.selected = createLoadable(null);
-      this.preview = createLoadable(null);
+      this.catalog = this.catalog.asIdle();
+      this.summaries = this.summaries.asIdle([]);
+      this.selected = this.selected.asIdle();
+      this.preview = this.preview.asIdle();
     });
 
     releaseEditorProject(texturesCommands.close);
@@ -166,10 +166,10 @@ export class TexturesService {
    */
   @LatestFlow("catalog")
   public *close(): TFlow {
-    this.catalog = createLoadable(null);
-    this.summaries = createLoadable([]);
-    this.selected = createLoadable(null);
-    this.preview = createLoadable(null);
+    this.catalog = this.catalog.asIdle();
+    this.summaries = this.summaries.asIdle([]);
+    this.selected = this.selected.asIdle();
+    this.preview = this.preview.asIdle();
     this.attempt = null;
 
     try {
@@ -253,7 +253,7 @@ export class TexturesService {
    */
   private *list(roots: XrayRoots): TFlow {
     this.catalog = this.catalog.asLoading();
-    this.summaries = createLoadable([]);
+    this.summaries = this.summaries.asIdle([]);
 
     try {
       const catalog: TextureCatalog = yield* call(texturesCommands.open(roots));
@@ -324,7 +324,7 @@ export class TexturesService {
       this.log.error("Failed to inspect texture:", transformed);
 
       this.selected = this.selected.asFailed(transformed, null);
-      this.preview = createLoadable(null);
+      this.preview = this.preview.asIdle();
     }
   }
 
@@ -342,7 +342,7 @@ export class TexturesService {
     const logicalPath: Nullable<string> = description.texture?.logicalPath ?? null;
 
     if (!logicalPath) {
-      this.preview = createLoadable(null);
+      this.preview = this.preview.asIdle();
 
       return;
     }

@@ -5,7 +5,7 @@ import { EJobKind } from "@/core/jobs/lib/job-kinds";
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "@/core/jobs/lib/jobs-types";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { formatDuration } from "@/lib/format/duration";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -20,7 +20,7 @@ export type JobCompletion<T> = { result: T; error: null } | { result: null; erro
  */
 export class JobOperation<T> {
   @Observable()
-  private state: Loadable<T> = createLoadable<T>();
+  private state: Loadable<T> = Loadable.idle<T>();
 
   @Observable()
   private jobId: Nullable<string> = null;
@@ -60,7 +60,7 @@ export class JobOperation<T> {
   /** Clears the displayed outcome without cancelling work in progress. */
   @BoundAction()
   public reset(): void {
-    this.state = createLoadable<T>(null, this.state.isLoading);
+    this.state = this.state.isLoading ? this.state.asLoading(null) : this.state.asIdle();
   }
 
   public constructor(
@@ -86,7 +86,7 @@ export class JobOperation<T> {
   public *run(descriptor: IJobDescriptor<T>): TFlow<JobCompletion<T>> {
     const timer: Timer = new Timer();
 
-    this.state = createLoadable<T>(null, true);
+    this.state = this.state.asLoading(null);
 
     try {
       const run: IJobRun<T> = this.jobsService.run(descriptor);
@@ -95,21 +95,21 @@ export class JobOperation<T> {
 
       const result: T = yield* call(run.promise);
 
-      this.state = createLoadable(result);
+      this.state = this.state.asReady(result);
       this.log.info("Job finished:", descriptor.kind, formatDuration(timer.elapsed()));
 
       return { result, error: null };
     } catch (caught: unknown) {
       const error: Error = transformError(caught);
 
-      this.state = createLoadable<T>(null, false, error);
+      this.state = this.state.asFailed(error, null);
       this.log.error("Job failed:", descriptor.kind, formatDuration(timer.elapsed()), error);
 
       return { result: null, error };
     } finally {
       // Abandoning the owner stops publication, not the backend job or its terminal notification.
       if (this.state.isLoading) {
-        this.state = this.state.asReady();
+        this.state = this.state.asIdle();
       }
 
       this.jobId = null;
@@ -124,10 +124,9 @@ export class JobOperation<T> {
     }
 
     // The owner pairs these kinds with T from the generated binding. Retained backend results use that same shape.
-    this.state = createLoadable<T>(
-      (settled.result as Nullable<T>) ?? null,
-      false,
-      settled.error === null ? null : new Error(settled.error)
-    );
+    const result: Nullable<T> = (settled.result as Nullable<T>) ?? null;
+
+    this.state =
+      settled.error === null ? this.state.asReady(result) : this.state.asFailed(new Error(settled.error), result);
   }
 }

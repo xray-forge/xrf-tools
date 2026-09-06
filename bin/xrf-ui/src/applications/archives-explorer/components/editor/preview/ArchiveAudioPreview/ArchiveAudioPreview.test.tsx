@@ -7,7 +7,7 @@ import { TArchiveBytes } from "@/core/archive";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x4f, 0x67, 0x67, 0x53]);
@@ -27,7 +27,7 @@ const FULL: AudioDescriptor = {
 function renderPreview(descriptor: Nullable<AudioDescriptor>): RenderResult {
   const { service, container } = mockInjectedService(ArchivesService);
 
-  service.content = createLoadable(descriptor ? { kind: "audio" as const, descriptor, bytes: BYTES } : null);
+  service.content = Loadable.ready(descriptor ? { kind: "audio" as const, descriptor, bytes: BYTES } : null);
 
   return renderWithProviders(<ArchiveAudioPreview />, { container });
 }

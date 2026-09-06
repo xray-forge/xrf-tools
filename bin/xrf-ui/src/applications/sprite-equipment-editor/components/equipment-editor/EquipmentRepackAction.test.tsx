@@ -40,10 +40,13 @@ function captureRendered(service: SpriteEquipmentEditorService): void {
  */
 @Injectable()
 class TestSpriteEquipmentEditorService extends SpriteEquipmentEditorService {
+  /** The fixture already contains the restored sprite and does not read a backend project. */
+  public override async onProvision(): Promise<void> {}
+
   public constructor() {
     super();
 
-    this.spriteImage = this.spriteImage.asUpdated(SPRITE);
+    this.spriteImage = this.spriteImage.asReady(SPRITE);
     this.repackSourcePath = seed.repackSourcePath;
 
     captureRendered(this);

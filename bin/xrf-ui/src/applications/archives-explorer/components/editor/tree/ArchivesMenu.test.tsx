@@ -10,7 +10,6 @@ import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
 
 interface IRenderedMenu {
   render: RenderResult;
@@ -18,17 +17,22 @@ interface IRenderedMenu {
   service: ArchivesService;
 }
 
-/** Renders the menu over a service that has already opened a project. */
-function renderMenu(files: Array<ArchiveFileDescriptor>): IRenderedMenu {
+/** Renders the menu after the service restores its open project. */
+async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
+    ["plugin:archives|get_project"]: mockArchivesProject(files),
+    ["plugin:archives|list_collisions"]: [],
+    ["plugin:archives|list_shared_payloads"]: [],
     ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
   });
 
   const { container, service } = mockInjectedService(ArchivesService);
 
-  service.project = createLoadable(mockArchivesProject(files));
+  const render = renderWithProviders(<ArchivesMenu />, { container });
 
-  return { container, service, render: renderWithProviders(<ArchivesMenu />, { container }) };
+  await waitFor(() => expect(service.isReady).toBe(true));
+
+  return { container, service, render };
 }
 
 function fileRow(render: RenderResult, label: string): HTMLElement {
@@ -37,7 +41,7 @@ function fileRow(render: RenderResult, label: string): HTMLElement {
 
 describe("ArchivesMenu", () => {
   it("selects a file on one click without reading it", async () => {
-    const { render } = renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
     fireEvent.click(await render.findByText("system.ltx"));
@@ -47,7 +51,7 @@ describe("ArchivesMenu", () => {
   });
 
   it("reads a file on a double click", async () => {
-    const { render } = renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
     fireEvent.dblClick(await render.findByText("system.ltx"));
@@ -58,7 +62,7 @@ describe("ArchivesMenu", () => {
   });
 
   it("takes a directory as the extraction target on a double click, and opens it", async () => {
-    const { render, service } = renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.click(render.getByText("configs"));
 
@@ -71,14 +75,14 @@ describe("ArchivesMenu", () => {
   });
 
   it("keeps browsing free while a read is in flight, and supersedes it with the next open", async () => {
-    const { render, service } = renderMenu([
+    const { render, service } = await renderMenu([
       mockArchiveFileDescriptor({ name: "configs\\system.ltx" }),
       mockArchiveFileDescriptor({ name: "configs\\game.ltx" }),
     ]);
 
     fireEvent.dblClick(render.getByText("configs"));
 
-    act(() => runInAction(() => (service.content = createLoadable(null, true))));
+    act(() => runInAction(() => (service.content = service.content.asLoading(null))));
 
     fireEvent.click(await render.findByText("game.ltx"));
 
@@ -94,12 +98,12 @@ describe("ArchivesMenu", () => {
   });
 
   it("refuses to open anything while an extraction is writing to disk", async () => {
-    const { render, service } = renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
 
     // A write leaves the archive and cannot be abandoned the way a read can, so it still holds an open back.
-    act(() => runInAction(() => (service.operation = createLoadable(null, true))));
+    act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
 
     fireEvent.dblClick(await render.findByText("system.ltx"));
 

@@ -22,7 +22,7 @@ import {
   IVisualTextureTexels,
   readDdsTexels,
 } from "@/core/visuals/lib/visual-texture";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -41,7 +41,7 @@ export class TextureSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
-  public textures: Loadable<ITextureSurfaceTextures> = createLoadable(EMPTY_TEXTURE_SURFACE);
+  public textures: Loadable<ITextureSurfaceTextures> = Loadable.idle(EMPTY_TEXTURE_SURFACE);
 
   /**
    * Which texture the uploads above belong to, once one has been attempted for it.
@@ -138,7 +138,7 @@ export class TextureSurfaceService {
     this.disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
     runInAction(() => {
-      this.textures = createLoadable(EMPTY_TEXTURE_SURFACE);
+      this.textures = this.textures.asIdle(EMPTY_TEXTURE_SURFACE);
       this.uploaded = null;
       this.bumpTexels = null;
     });

@@ -7,7 +7,7 @@ import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 import { TexturePreview } from "./TexturePreview";
@@ -19,8 +19,8 @@ const SHAPED: TextureDescription = mockTextureDescription("ston\\ston_beton05", 
 function renderPreview(selected: Nullable<TextureDescription>, isReading: boolean = false): RenderResult {
   const { service, container } = mockInjectedService(TexturesService, [AssetService]);
 
-  service.selected = isReading ? createLoadable(selected, true) : createLoadable(selected);
-  service.preview = createLoadable(selected ? new ArrayBuffer(4) : null);
+  service.selected = isReading ? Loadable.loading(selected) : Loadable.ready(selected);
+  service.preview = Loadable.ready(selected ? new ArrayBuffer(4) : null);
 
   return renderWithProviders(<TexturePreview />, { container });
 }

@@ -7,7 +7,7 @@ import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -27,7 +27,7 @@ export class VisualsBrowseService {
   public browsed: Nullable<XrayRoots> = null;
 
   @Observable()
-  public visuals: Loadable<Array<XrayAsset>> = createLoadable([]);
+  public visuals: Loadable<Array<XrayAsset>> = Loadable.idle([]);
 
   /**
    * @returns Whether anything is open, which is what publishes the tree panel.
@@ -84,7 +84,7 @@ export class VisualsBrowseService {
 
     runInAction(() => {
       this.browsed = null;
-      this.visuals = createLoadable([]);
+      this.visuals = this.visuals.asIdle([]);
     });
 
     releaseEditorProject(visualsCommands.closeBrowse);
@@ -109,7 +109,7 @@ export class VisualsBrowseService {
   @LatestFlow("visuals")
   public *close(): TFlow {
     this.browsed = null;
-    this.visuals = createLoadable([]);
+    this.visuals = this.visuals.asIdle([]);
 
     try {
       yield* call(visualsCommands.closeBrowse());

@@ -7,7 +7,7 @@ import { TArchiveBytes } from "@/core/archive";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
@@ -26,7 +26,7 @@ const MIPPED: AssetTextureDescriptor = {
 function renderPreview(descriptor: Nullable<AssetTextureDescriptor>): RenderResult {
   const { service, container } = mockInjectedService(ArchivesService);
 
-  service.content = createLoadable(descriptor ? { kind: "image" as const, descriptor, bytes: BYTES } : null);
+  service.content = Loadable.ready(descriptor ? { kind: "image" as const, descriptor, bytes: BYTES } : null);
 
   return renderWithProviders(<ArchiveImagePreview />, { container });
 }

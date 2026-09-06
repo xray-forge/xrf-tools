@@ -9,7 +9,7 @@ import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 export interface IExportSourceViewProps extends BaseComponentProps {
@@ -22,17 +22,19 @@ export interface IExportSourceViewProps extends BaseComponentProps {
 export function ExportSourceView({ name }: IExportSourceViewProps): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
-  const [source, setSource] = useState<Loadable<Nullable<ExportSourceContent>>>(() => createLoadable(null, true));
+  const [source, setSource] = useState<Loadable<Nullable<ExportSourceContent>>>(() =>
+    Loadable.loading<ExportSourceContent>()
+  );
 
   useEffect(() => {
     let isActive: boolean = true;
 
-    setSource(createLoadable(null, true));
+    setSource((current) => current.asLoading(null));
 
     exportsService
       .readExportSource(name)
-      .then((result: ExportSourceContent) => isActive && setSource(createLoadable(result)))
-      .catch((error: unknown) => isActive && setSource(createLoadable(null, false, transformError(error))));
+      .then((result: ExportSourceContent) => isActive && setSource((current) => current.asReady(result)))
+      .catch((error: unknown) => isActive && setSource((current) => current.asFailed(transformError(error), null)));
 
     // Reads need not come back in order, so one abandoned by a newer selection is dropped here.
     return () => {

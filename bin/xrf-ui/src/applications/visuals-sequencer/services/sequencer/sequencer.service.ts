@@ -19,7 +19,7 @@ import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visua
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -35,7 +35,7 @@ export class SequencerService implements IVisualInspection {
 
   /** Every motion the open visual can play, which is what clips are picked from. */
   @Observable()
-  public motions: Loadable<Array<string>> = createLoadable([]);
+  public motions: Loadable<Array<string>> = Loadable.idle([]);
 
   /**
    * @returns The visual being shown, straight from the loader.
@@ -158,7 +158,7 @@ export class SequencerService implements IVisualInspection {
     this.loadService.clear();
 
     runInAction(() => {
-      this.motions = createLoadable([]);
+      this.motions = this.motions.asIdle([]);
     });
 
     try {
@@ -179,7 +179,7 @@ export class SequencerService implements IVisualInspection {
     this.sequenceService.clear();
 
     runInAction(() => {
-      this.motions = createLoadable([]);
+      this.motions = this.motions.asIdle([]);
     });
 
     await this.loadService.load(source, await this.getRoots(asset));

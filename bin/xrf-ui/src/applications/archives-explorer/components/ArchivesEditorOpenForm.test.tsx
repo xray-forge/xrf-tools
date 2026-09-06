@@ -117,10 +117,10 @@ describe("ArchivesEditorOpenForm", () => {
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_project", { path: ARCHIVE_VOLUME });
   });
 
-  it("defaults to a volume when no project names a directory to browse", () => {
-    const { getByText } = renderForm(null);
+  it("defaults to a volume when no project names a directory to browse", async () => {
+    const { findByText } = renderForm(null);
 
-    expect(getByText("Indexes one archive volume for browsing. Nothing is written.")).toBeInTheDocument();
+    expect(await findByText("Indexes one archive volume for browsing. Nothing is written.")).toBeInTheDocument();
   });
 
   it("keeps each mode's path across a switch", async () => {

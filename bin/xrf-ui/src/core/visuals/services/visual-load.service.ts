@@ -21,7 +21,7 @@ import {
 } from "@/core/visuals/lib/visual-texture";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { formatDuration } from "@/lib/format/duration";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -72,7 +72,7 @@ export class VisualLoadService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
-  public visual: Loadable<Nullable<IOpenVisual>> = createLoadable(null);
+  public visual: Loadable<Nullable<IOpenVisual>> = Loadable.idle(null);
 
   /**
    * Uploaded textures by submesh index, for a viewport to apply.
@@ -170,7 +170,7 @@ export class VisualLoadService {
     cancelFlow(this, "visual");
 
     runInAction(() => {
-      this.visual = createLoadable(null);
+      this.visual = this.visual.asIdle();
       this.releaseTextures();
       this.textureStatuses = new Map();
       this.bumpStatuses = new Map();

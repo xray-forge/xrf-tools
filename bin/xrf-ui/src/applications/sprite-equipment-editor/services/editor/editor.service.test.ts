@@ -35,7 +35,7 @@ describe("SpriteEquipmentEditorService", () => {
   it("refuses to repack when nothing has been unpacked beside the sprite", async () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
-    service.spriteImage = service.spriteImage.asUpdated({
+    service.spriteImage = service.spriteImage.asReady({
       isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
@@ -55,7 +55,7 @@ describe("SpriteEquipmentEditorService", () => {
   it("keeps a failed repack reported rather than silently returning to ready", async () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
-    service.spriteImage = service.spriteImage.asUpdated({
+    service.spriteImage = service.spriteImage.asReady({
       isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
@@ -78,9 +78,17 @@ describe("SpriteEquipmentEditorService", () => {
     expect(String(service.spriteImage.error)).toContain("pack failed");
     // A repack that wrote nothing must not claim a write happened.
     expect(service.repackedAt).toBeNull();
+
+    const sprite = service.spriteImage.value;
+
+    service.clearSpriteError();
+
+    expect(service.spriteImage.isReady).toBe(true);
+    expect(service.spriteImage.value).toBe(sprite);
+    expect(service.spriteImage.error).toBeNull();
   });
 
-  it("clears a reported failure without discarding the sprite behind it", () => {
+  it("resets a dismissed failure with no sprite to idle", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asFailed(new Error("boom"), null);
@@ -88,7 +96,16 @@ describe("SpriteEquipmentEditorService", () => {
     service.clearSpriteError();
 
     expect(service.spriteImage.error).toBeNull();
-    expect(service.spriteImage.isLoading).toBe(false);
+    expect(service.spriteImage.isIdle).toBe(true);
+  });
+
+  it("does not mark an in-progress load ready when dismissing an error", () => {
+    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+
+    service.spriteImage = service.spriteImage.asLoading();
+    service.clearSpriteError();
+
+    expect(service.spriteImage.isLoading).toBe(true);
   });
 
   it.each(["busy", "cancelled"])("does not report or reload a %s repack", async (outcome) => {
@@ -96,7 +113,7 @@ describe("SpriteEquipmentEditorService", () => {
     const notices: Array<unknown> = [];
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
-    service.spriteImage = service.spriteImage.asUpdated({
+    service.spriteImage = service.spriteImage.asReady({
       isDltx: false,
       ltxPath: "system.ltx",
       descriptors: [],
@@ -106,6 +123,10 @@ describe("SpriteEquipmentEditorService", () => {
       image: new Image(),
     });
     service.repackSourcePath = "icons";
+
+    const previous = service.spriteImage.asFailed(new Error("previous failure"));
+
+    service.spriteImage = previous;
 
     if (outcome === "busy") {
       container.get(JobsService).jobs = [
@@ -124,6 +145,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     await service.repackAndOpenProject();
 
+    expect(service.spriteImage).toBe(previous);
     expect(service.spriteImage.isLoading).toBe(false);
     expect(service.repackedAt).toBeNull();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reopen_sprite", expect.anything());

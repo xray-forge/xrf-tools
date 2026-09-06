@@ -1,45 +1,118 @@
 import { Nullable } from "@/lib/types/general";
 
+/** Lifecycle status, independent of whether a resource has a value. */
+export const enum ELoadableStatus {
+  IDLE = "idle",
+  LOADING = "loading",
+  READY = "ready",
+  FAILED = "failed",
+}
+
+/** A failure is required only for the failed state. */
+type TLoadableState<E> =
+  | { readonly status: ELoadableStatus.IDLE | ELoadableStatus.LOADING | ELoadableStatus.READY }
+  | { readonly status: ELoadableStatus.FAILED; readonly error: E };
+
 /**
- * Immutable value, loading, and failure state for an asynchronous resource.
+ * Immutable lifecycle and value for an asynchronous resource.
  *
- * `value` may remain available while a refresh is loading or has failed, so callers can keep showing the last
- * successful result. The transition helpers return a new instance and clear the state that no longer applies.
+ * Loading and failure can retain previous content. A ready value may be empty; an idle value may be a fallback.
  */
 export class Loadable<T, E = Error> {
   /**
-   * Creates a resource state.
+   * Creates an idle resource with an optional fallback.
    *
-   * @param value - The latest value, including a stale value during loading or after failure.
-   * @param isLoading - Whether the resource is currently being fetched or produced.
-   * @param error - The latest failure, or `null` when the state is not failed.
+   * @param value - Initial fallback, or null when no value is available.
+   * @returns A new idle state.
    */
-  public constructor(
-    public readonly value: Nullable<T> = null,
-    public readonly isLoading: boolean = false,
-    public readonly error: Nullable<E> = null
-  ) {}
+  public static idle<T, E = Error>(value: Nullable<T> = null): Loadable<T, E> {
+    return new Loadable<T, E>(value, { status: ELoadableStatus.IDLE });
+  }
 
   /**
-   * Marks the resource ready and clears any loading or failure state.
+   * Creates a resource for a successful request, including an empty result.
+   *
+   * @param value - Successful result.
+   * @returns A new ready state.
+   */
+  public static ready<T, E = Error>(value: Nullable<T>): Loadable<T, E> {
+    return new Loadable<T, E>(value, { status: ELoadableStatus.READY });
+  }
+
+  /**
+   * Creates a resource for a request in progress.
+   *
+   * @param value - Optional content to expose while loading.
+   * @returns A new loading state.
+   */
+  public static loading<T, E = Error>(value: Nullable<T> = null): Loadable<T, E> {
+    return new Loadable<T, E>(value, { status: ELoadableStatus.LOADING });
+  }
+
+  /**
+   * Creates a resource for a failed request.
+   *
+   * @param error - Failure to expose.
+   * @param value - Optional content to expose after failure.
+   * @returns A new failed state.
+   */
+  public static failed<T, E = Error>(error: E, value: Nullable<T> = null): Loadable<T, E> {
+    return new Loadable<T, E>(value, { status: ELoadableStatus.FAILED, error });
+  }
+
+  private constructor(
+    public readonly value: Nullable<T>,
+    private readonly state: TLoadableState<E>
+  ) {}
+
+  /** @returns The resource lifecycle, independent of its value. */
+  public get status(): ELoadableStatus {
+    return this.state.status;
+  }
+
+  /** @returns Whether the resource has been initialized or reset without a completed request. */
+  public get isIdle(): boolean {
+    return this.status === ELoadableStatus.IDLE;
+  }
+
+  /** @returns Whether a request is in progress. */
+  public get isLoading(): boolean {
+    return this.status === ELoadableStatus.LOADING;
+  }
+
+  /** @returns Whether the request succeeded, including an empty result. */
+  public get isReady(): boolean {
+    return this.status === ELoadableStatus.READY;
+  }
+
+  /** @returns Whether the request failed. */
+  public get isFailed(): boolean {
+    return this.status === ELoadableStatus.FAILED;
+  }
+
+  /** @returns The failure, or null outside the failed state. */
+  public get error(): Nullable<E> {
+    return this.state.status === ELoadableStatus.FAILED ? this.state.error : null;
+  }
+
+  /**
+   * Resets the resource and clears its failure and previous value.
+   *
+   * @param value - Optional fallback for the reset resource.
+   * @returns A new idle state.
+   */
+  public asIdle(value: Nullable<T> = null): Loadable<T, E> {
+    return Loadable.idle<T, E>(value);
+  }
+
+  /**
+   * Marks the resource ready and clears any previous failure.
    *
    * @param value - Ready value, defaulting to the current value.
    * @returns A new ready state.
    */
   public asReady(value: Nullable<T> = this.value): Loadable<T, E> {
-    return createLoadable<T, E>(value, false, null);
-  }
-
-  /**
-   * Replaces the value while preserving loading and error state by default.
-   *
-   * @param value - Replacement value.
-   * @param isLoading - Loading state to retain or replace.
-   * @param error - Failure to retain or replace.
-   * @returns A new state with the supplied fields.
-   */
-  public asUpdated(value: T, isLoading: boolean = this.isLoading, error: Nullable<E> = this.error): Loadable<T, E> {
-    return createLoadable(value, isLoading, error);
+    return Loadable.ready<T, E>(value);
   }
 
   /**
@@ -49,7 +122,7 @@ export class Loadable<T, E = Error> {
    * @returns A new loading state.
    */
   public asLoading(value: Nullable<T> = this.value): Loadable<T, E> {
-    return createLoadable<T, E>(value, true, null);
+    return Loadable.loading<T, E>(value);
   }
 
   /**
@@ -60,22 +133,6 @@ export class Loadable<T, E = Error> {
    * @returns A new failed state.
    */
   public asFailed(error: E, value: Nullable<T> = this.value): Loadable<T, E> {
-    return createLoadable(value, false, error);
+    return Loadable.failed<T, E>(error, value);
   }
-}
-
-/**
- * Creates an immutable asynchronous-resource state.
- *
- * @param value - Current value, or `null` when no value is available.
- * @param isLoading - Whether production of the value is still in progress.
- * @param error - Failure to expose, or `null` when the state is not failed.
- * @returns A new loadable state containing the supplied fields.
- */
-export function createLoadable<T, E = Error>(
-  value: Nullable<T> = null,
-  isLoading: boolean = false,
-  error: Nullable<E> = null
-): Loadable<T, E> {
-  return new Loadable(value, isLoading, error);
 }

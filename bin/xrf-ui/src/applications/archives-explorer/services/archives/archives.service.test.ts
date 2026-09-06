@@ -7,14 +7,14 @@ import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 
 function ignoreReadResult(): void {}
 
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = createLoadable(mockArchivesProject(files));
+  service.project = Loadable.ready(mockArchivesProject(files));
 
   return service;
 }

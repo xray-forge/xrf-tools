@@ -8,7 +8,7 @@ import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 const DIALOG: DialogDescriptor = {
@@ -41,7 +41,7 @@ function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor
   const container = mockContainer([DialogsService]);
   const service: DialogsService = container.get(DialogsService);
 
-  service.dialog = createLoadable(dialog);
+  service.dialog = Loadable.ready(dialog);
   service.inspectedNodeId = nodeId;
 
   return renderWithProviders(<DialogInspectorPanel />, { container });

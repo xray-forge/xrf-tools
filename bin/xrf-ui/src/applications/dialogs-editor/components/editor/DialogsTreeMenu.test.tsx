@@ -8,7 +8,6 @@ import { DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { createLoadable } from "@/lib/loadable";
 
 const PROJECT: DialogProjectDescriptor = {
   mode: "gamedata",
@@ -29,19 +28,20 @@ const PROJECT: DialogProjectDescriptor = {
   findings: [],
 };
 
-function renderMenu(): { render: RenderResult; container: Container } {
-  setMockInvokeResponses({ ["plugin:dialogs|get_dialog"]: null });
+async function renderMenu(): Promise<{ render: RenderResult; container: Container }> {
+  setMockInvokeResponses({ ["plugin:dialogs|get_project"]: PROJECT, ["plugin:dialogs|get_dialog"]: null });
 
   const { container, service } = mockInjectedService(DialogsService);
+  const render = renderWithProviders(<DialogsTreeMenu />, { container });
 
-  service.project = createLoadable(PROJECT);
+  await waitFor(() => expect(service.isReady).toBe(true));
 
-  return { container, render: renderWithProviders(<DialogsTreeMenu />, { container }) };
+  return { container, render };
 }
 
 describe("DialogsTreeMenu", () => {
   it("reads a dialog on a double click, never on a single one", async () => {
-    const { render } = renderMenu();
+    const { render } = await renderMenu();
 
     fireEvent.dblClick(render.getByText("dialogs.xml"));
 

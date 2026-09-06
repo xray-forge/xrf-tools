@@ -8,7 +8,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { createLoadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 
 const SOUND: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "sounds\\ambient\\wind.ogg",
@@ -36,7 +36,7 @@ const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 function createService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = createLoadable(mockArchivesProject([SOUND, TEXTURE]));
+  service.project = Loadable.ready(mockArchivesProject([SOUND, TEXTURE]));
 
   return service;
 }

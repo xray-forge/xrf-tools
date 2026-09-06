@@ -7,7 +7,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -20,7 +20,7 @@ export class ExportsService {
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<ExportsProject>> = createLoadable(null);
+  public project: Loadable<Nullable<ExportsProject>> = Loadable.idle(null);
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
@@ -48,7 +48,7 @@ export class ExportsService {
 
       this.log.info(project ? "Existing exports project detected" : "No existing exports project");
 
-      this.project = createLoadable(project);
+      this.project = this.project.asReady(project);
       this.isReady = true;
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
@@ -138,23 +138,23 @@ export class ExportsService {
 
   @ExclusiveFlow("project")
   public *closeExportsProject(): TFlow {
-    const existing: Nullable<ExportsProject> = this.project.value;
+    const previous: Loadable<Nullable<ExportsProject>> = this.project;
 
     this.log.info("Closing exports project");
-    this.project = this.project.asLoading(existing);
+    this.project = this.project.asLoading();
 
     try {
       yield* call(exportsCommands.closeProject());
       // Cleared on purpose: closing swaps the viewer for the application's picker in place. It used to
       // hold the project until the caller navigated away, because clearing it unmounted the editor
       // before React Router could process that navigation. Nothing navigates on close any more.
-      this.project = this.project.asReady(null);
+      this.project = this.project.asIdle();
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to close exports project:", transformed);
 
-      this.project = this.project.asReady(existing);
+      this.project = previous;
 
       emitNotification(this.eventBus, {
         details: transformed.message,

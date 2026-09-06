@@ -15,7 +15,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -43,7 +43,7 @@ export class TranslationsService {
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<TranslationProjectDescriptor>> = createLoadable(null);
+  public project: Loadable<Nullable<TranslationProjectDescriptor>> = Loadable.idle(null);
 
   /**
    * Edits made but not written.
@@ -89,9 +89,7 @@ export class TranslationsService {
 
     this.isReady = true;
 
-    if (response) {
-      this.project = createLoadable(response);
-    }
+    this.project = this.project.asReady(response);
   }
 
   /**
@@ -166,18 +164,18 @@ export class TranslationsService {
     this.log.info("Opening translations project:", describeRoots(roots), mode, prefix);
 
     try {
-      this.project = createLoadable(null, true);
+      this.project = this.project.asLoading(null);
 
       const response: TranslationProjectDescriptor = yield* call(translationsCommands.openProject(roots, mode, prefix));
 
       this.log.info("Translations project opened:", Object.keys(response.files).length, "files");
 
-      this.project = createLoadable(response);
+      this.project = this.project.asReady(response);
       this.edits = {};
     } catch (error) {
       this.log.error("Failed to open translations project:", error);
 
-      this.project = createLoadable(null, false, error as Error);
+      this.project = this.project.asFailed(error as Error, null);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -240,7 +238,7 @@ ${transformError(error).message}`,
         return false;
       }
 
-      this.project = createLoadable(response.project);
+      this.project = this.project.asReady(response.project);
 
       return true;
     } catch (error) {
@@ -269,7 +267,7 @@ ${transformError(error).message}`,
 
     yield* call(translationsCommands.closeProject());
 
-    this.project = createLoadable(null);
+    this.project = this.project.asIdle();
 
     this.log.info("Translations project closed");
   }

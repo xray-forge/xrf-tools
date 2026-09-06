@@ -26,7 +26,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -39,7 +39,7 @@ export class ArchivesService {
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<ArchiveProject>> = createLoadable(null);
+  public project: Loadable<Nullable<ArchiveProject>> = Loadable.idle(null);
 
   /**
    * Entries the open volume set holds that no engine lookup can reach.
@@ -49,13 +49,13 @@ export class ArchivesService {
    * is still browsable when nobody could tell what is unreachable in it.
    */
   @Observable()
-  public collisions: Loadable<Array<XrayPathCollision>> = createLoadable([]);
+  public collisions: Loadable<Array<XrayPathCollision>> = Loadable.idle([]);
 
   /**
    * Payloads several entries of the open volume set read at once.
    */
   @Observable()
-  public sharedPayloads: Loadable<Array<ArchiveSharedPayload>> = createLoadable([]);
+  public sharedPayloads: Loadable<Array<ArchiveSharedPayload>> = Loadable.idle([]);
 
   /** What the explorer points at. Exactly one kind at a time, by construction. */
   @Observable()
@@ -63,11 +63,11 @@ export class ArchivesService {
 
   /** Whatever was loaded for the selection - text, or a decoded texture or sound with its description. */
   @Observable()
-  public content: Loadable<Nullable<TArchiveContent>> = createLoadable(null);
+  public content: Loadable<Nullable<TArchiveContent>> = Loadable.idle(null);
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
-  public operation: Loadable<Nullable<TArchiveOperation>> = createLoadable(null);
+  public operation: Loadable<Nullable<TArchiveOperation>> = Loadable.idle(null);
 
   /**
    * Returns the files the opened project holds, without the directories its volumes record.
@@ -183,9 +183,9 @@ export class ArchivesService {
 
     this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
 
-    if (existing) {
-      this.project = createLoadable(existing);
+    this.project = this.project.asReady(existing);
 
+    if (existing) {
       yield* this.loadCollisions();
       yield* this.loadSharedPayloads();
     }
@@ -198,9 +198,9 @@ export class ArchivesService {
     this.log.info("Reset archives project");
 
     this.clearFileSelection();
-    this.project = createLoadable(null);
-    this.collisions = createLoadable([]);
-    this.sharedPayloads = createLoadable([]);
+    this.project = this.project.asIdle();
+    this.collisions = this.collisions.asIdle([]);
+    this.sharedPayloads = this.sharedPayloads.asIdle([]);
   }
 
   @LatestFlow("project")
@@ -211,22 +211,22 @@ export class ArchivesService {
 
     try {
       this.clearFileSelection();
-      this.project = createLoadable(null, true);
-      this.collisions = createLoadable([]);
-      this.sharedPayloads = createLoadable([]);
+      this.project = this.project.asLoading(null);
+      this.collisions = this.collisions.asIdle([]);
+      this.sharedPayloads = this.sharedPayloads.asIdle([]);
 
       const response: ArchiveProject = yield* call(archivesCommands.openProject(path));
 
       this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
 
-      this.project = createLoadable(response, false);
+      this.project = this.project.asReady(response);
 
       yield* this.loadCollisions();
       yield* this.loadSharedPayloads();
     } catch (error: unknown) {
       this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
-      this.project = createLoadable(null, false, transformError(error));
+      this.project = this.project.asFailed(transformError(error), null);
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -252,9 +252,9 @@ export class ArchivesService {
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 
       this.clearFileSelection();
-      this.project = createLoadable(null);
-      this.collisions = createLoadable([]);
-      this.sharedPayloads = createLoadable([]);
+      this.project = this.project.asIdle();
+      this.collisions = this.collisions.asIdle([]);
+      this.sharedPayloads = this.sharedPayloads.asIdle([]);
     } catch (error: unknown) {
       this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
 
@@ -270,17 +270,17 @@ export class ArchivesService {
    */
   private *loadCollisions(): TFlow {
     try {
-      this.collisions = createLoadable([], true);
+      this.collisions = this.collisions.asLoading([]);
 
       const collisions: Array<XrayPathCollision> = yield* call(archivesCommands.listCollisions());
 
       this.log.info("Archives project unreachable entries:", collisions.length);
 
-      this.collisions = createLoadable(collisions, false);
+      this.collisions = this.collisions.asReady(collisions);
     } catch (error: unknown) {
       this.log.error("Failed to list archives project collisions:", error);
 
-      this.collisions = createLoadable([], false, transformError(error));
+      this.collisions = this.collisions.asFailed(transformError(error), []);
     }
   }
 
@@ -291,17 +291,17 @@ export class ArchivesService {
    */
   private *loadSharedPayloads(): TFlow {
     try {
-      this.sharedPayloads = createLoadable([], true);
+      this.sharedPayloads = this.sharedPayloads.asLoading([]);
 
       const payloads: Array<ArchiveSharedPayload> = yield* call(archivesCommands.listSharedPayloads());
 
       this.log.info("Archives project shared payloads:", payloads.length);
 
-      this.sharedPayloads = createLoadable(payloads, false);
+      this.sharedPayloads = this.sharedPayloads.asReady(payloads);
     } catch (error: unknown) {
       this.log.error("Failed to list archives project shared payloads:", error);
 
-      this.sharedPayloads = createLoadable([], false, transformError(error));
+      this.sharedPayloads = this.sharedPayloads.asFailed(transformError(error), []);
     }
   }
 
@@ -310,7 +310,7 @@ export class ArchivesService {
     this.log.info("Select archive file:", descriptor);
 
     this.selection = { kind: "file", descriptor };
-    this.content = createLoadable(null);
+    this.content = this.content.asIdle();
 
     yield* this.loadSelectedContent(descriptor);
   }
@@ -325,8 +325,8 @@ export class ArchivesService {
     cancelFlow(this, "content");
 
     this.selection = { kind: "directory", path };
-    this.content = createLoadable(null);
-    this.operation = createLoadable(null);
+    this.content = this.content.asIdle();
+    this.operation = this.operation.asIdle();
   }
 
   @LatestFlow("content")
@@ -356,13 +356,13 @@ export class ArchivesService {
     this.log.info("Extracting archive file:", descriptor.name, destination);
 
     try {
-      this.operation = createLoadable(null, true);
+      this.operation = this.operation.asLoading(null);
 
       yield* call(archivesCommands.extractFile(descriptor.name, destination));
 
       this.log.info("Archive file extracted in:", formatDuration(timer.elapsed()));
 
-      this.operation = createLoadable({ kind: "extract-file", destination });
+      this.operation = this.operation.asReady({ kind: "extract-file", destination });
 
       emitNotification(this.eventBus, {
         details: destination,
@@ -373,7 +373,7 @@ export class ArchivesService {
     } catch (error: unknown) {
       this.log.error("Failed to extract archive file after:", formatDuration(timer.elapsed()), error);
 
-      this.operation = createLoadable(null, false, transformError(error));
+      this.operation = this.operation.asFailed(transformError(error), null);
 
       emitNotification(this.eventBus, {
         details: `${destination}\n${transformError(error).message}`,
@@ -403,7 +403,7 @@ export class ArchivesService {
     this.log.info("Extracting archive directory:", prefix || "<root>", destination);
 
     try {
-      this.operation = createLoadable(null, true);
+      this.operation = this.operation.asLoading(null);
 
       // Started through the jobs service rather than invoked here: an empty prefix extracts the whole archive, so this
       // writes as much as an unpack does and wants the same identity, lease, and cancel control.
@@ -420,11 +420,11 @@ export class ArchivesService {
 
       this.log.info("Archive directory extracted in:", formatDuration(timer.elapsed()));
 
-      this.operation = createLoadable({ kind: "extract-directory", result });
+      this.operation = this.operation.asReady({ kind: "extract-directory", result });
     } catch (error: unknown) {
       this.log.error("Failed to extract archive directory after:", formatDuration(timer.elapsed()), error);
 
-      this.operation = createLoadable(null, false, transformError(error));
+      this.operation = this.operation.asFailed(transformError(error), null);
 
       throw transformError(error);
     } finally {
@@ -437,7 +437,7 @@ export class ArchivesService {
    */
   @BoundAction()
   public clearOperation(): void {
-    this.operation = createLoadable(null);
+    this.operation = this.operation.asIdle();
   }
 
   @BoundAction()
@@ -445,8 +445,8 @@ export class ArchivesService {
     cancelFlow(this, "content");
 
     this.selection = { kind: "none" };
-    this.content = createLoadable(null);
-    this.operation = createLoadable(null);
+    this.content = this.content.asIdle();
+    this.operation = this.operation.asIdle();
   }
 
   /**
@@ -534,7 +534,7 @@ export class ArchivesService {
     const timer: Timer = new Timer();
 
     this.log.info("Reading archive content:", kind, descriptor.name);
-    this.content = createLoadable(null, true);
+    this.content = this.content.asLoading(null);
 
     try {
       const content: TArchiveContent = yield* call(
@@ -547,11 +547,11 @@ export class ArchivesService {
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 
-      this.content = createLoadable(content);
+      this.content = this.content.asReady(content);
     } catch (error: unknown) {
       this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), descriptor.name, error);
 
-      this.content = createLoadable(null, false, transformError(error));
+      this.content = this.content.asFailed(transformError(error), null);
     }
   }
 }

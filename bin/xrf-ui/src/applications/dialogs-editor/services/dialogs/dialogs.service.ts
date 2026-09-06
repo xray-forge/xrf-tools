@@ -9,7 +9,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -28,13 +28,13 @@ export class DialogsService {
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<DialogProjectDescriptor>> = createLoadable(null);
+  public project: Loadable<Nullable<DialogProjectDescriptor>> = Loadable.idle(null);
 
   /**
    * The dialog being looked at, fetched on selection.
    */
   @Observable()
-  public dialog: Loadable<Nullable<DialogDescriptor>> = createLoadable(null);
+  public dialog: Loadable<Nullable<DialogDescriptor>> = Loadable.idle(null);
 
   @Observable()
   public selection: Nullable<IDialogSelection> = null;
@@ -85,9 +85,7 @@ export class DialogsService {
 
     this.isReady = true;
 
-    if (response) {
-      this.project = createLoadable(response);
-    }
+    this.project = this.project.asReady(response);
   }
 
   /** Reports the layout roots look like, so the open form can preselect it. */
@@ -106,7 +104,7 @@ export class DialogsService {
     this.log.info("Opening dialogs project:", describeRoots(roots), mode);
 
     try {
-      this.project = createLoadable(null, true);
+      this.project = this.project.asLoading(null);
 
       const response: DialogProjectDescriptor = yield* call(
         dialogsCommands.openProject({ roots, mode, dialogsPrefix: null, translationsPrefix: null })
@@ -120,15 +118,15 @@ export class DialogsService {
         "text keys"
       );
 
-      this.project = createLoadable(response);
+      this.project = this.project.asReady(response);
       this.selection = null;
-      this.dialog = createLoadable(null);
+      this.dialog = this.dialog.asIdle();
       this.inspectedNodeId = null;
       this.language = null;
     } catch (error) {
       this.log.error("Failed to open dialogs project:", error);
 
-      this.project = createLoadable(null, false, error as Error);
+      this.project = this.project.asFailed(error as Error, null);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -144,8 +142,8 @@ ${transformError(error).message}`,
   public *closeProject(): TFlow {
     yield* call(dialogsCommands.closeProject());
 
-    this.project = createLoadable(null);
-    this.dialog = createLoadable(null);
+    this.project = this.project.asIdle();
+    this.dialog = this.dialog.asIdle();
     this.selection = null;
     this.inspectedNodeId = null;
     this.language = null;
@@ -167,16 +165,16 @@ ${transformError(error).message}`,
     }
 
     this.selection = { id, logicalPath };
-    this.dialog = createLoadable(null, true);
+    this.dialog = this.dialog.asLoading(null);
 
     try {
       const response: DialogDescriptor = yield* call(dialogsCommands.getDialog(logicalPath, id, this.language));
 
-      this.dialog = createLoadable(response);
+      this.dialog = this.dialog.asReady(response);
     } catch (error) {
       this.log.error("Failed to read dialog:", logicalPath, id, error);
 
-      this.dialog = createLoadable(null, false, error as Error);
+      this.dialog = this.dialog.asFailed(error as Error, null);
     }
   }
 

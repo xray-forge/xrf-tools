@@ -13,7 +13,7 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { createLoadable, Loadable } from "@/lib/loadable";
+import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { AnyObject, Nullable } from "@/lib/types/general";
@@ -41,23 +41,23 @@ export class SpawnFileService {
   public path: Nullable<string> = null;
 
   @Observable()
-  public header: Loadable<Nullable<SpawnHeaderChunk>> = createLoadable(null);
+  public header: Loadable<Nullable<SpawnHeaderChunk>> = Loadable.idle(null);
 
   @Observable()
-  public alifeSpawn: Loadable<Nullable<SpawnALifeSpawnsChunk>> = createLoadable(null);
+  public alifeSpawn: Loadable<Nullable<SpawnALifeSpawnsChunk>> = Loadable.idle(null);
 
   @Observable()
-  public artefactSpawn: Loadable<Nullable<SpawnArtefactSpawnsChunk>> = createLoadable(null);
+  public artefactSpawn: Loadable<Nullable<SpawnArtefactSpawnsChunk>> = Loadable.idle(null);
 
   @Observable()
-  public patrols: Loadable<Nullable<SpawnPatrolsChunk>> = createLoadable(null);
+  public patrols: Loadable<Nullable<SpawnPatrolsChunk>> = Loadable.idle(null);
 
   @Observable()
-  public graphs: Loadable<Nullable<SpawnGraphsChunk>> = createLoadable(null);
+  public graphs: Loadable<Nullable<SpawnGraphsChunk>> = Loadable.idle(null);
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
-  public operation: Loadable<Nullable<string>> = createLoadable(null);
+  public operation: Loadable<Nullable<string>> = Loadable.idle(null);
 
   /**
    * The row the details panel is showing.
@@ -127,6 +127,9 @@ export class SpawnFileService {
    */
   @ExclusiveFlow("header")
   private *restore(): TFlow {
+    this.resetChunks();
+    this.header = this.header.asIdle();
+
     try {
       const isOpen: boolean = yield* call(spawnCommands.hasFile());
 
@@ -152,20 +155,20 @@ export class SpawnFileService {
     this.log.info("Opening spawn file:", path);
 
     this.resetChunks();
-    this.header = createLoadable(null, true);
+    this.header = this.header.asLoading(null);
 
     try {
       const header: SpawnHeaderChunk = yield* call(spawnCommands.openFile(path));
 
       this.log.info("Spawn file opened");
 
-      this.header = createLoadable(header);
+      this.header = this.header.asReady(header);
       this.isOpen = true;
       this.path = path;
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", error);
 
-      this.header = createLoadable(null, false, transformError(error));
+      this.header = this.header.asFailed(transformError(error), null);
       this.isOpen = false;
       this.path = null;
 
@@ -187,8 +190,8 @@ export class SpawnFileService {
 
       this.isOpen = false;
       this.path = null;
-      this.header = createLoadable(null);
-      this.operation = createLoadable(null);
+      this.header = this.header.asIdle();
+      this.operation = this.operation.asIdle();
       this.resetChunks();
     } catch (error: unknown) {
       this.log.error("Failed to close spawn file:", error);
@@ -206,12 +209,12 @@ export class SpawnFileService {
   public *saveFile(path: string): TFlow {
     this.log.info("Saving spawn file:", path);
 
-    this.operation = createLoadable(null, true);
+    this.operation = this.operation.asLoading(null);
 
     try {
       yield* call(spawnCommands.saveFile(path));
 
-      this.operation = createLoadable("save");
+      this.operation = this.operation.asReady("save");
 
       emitNotification(this.eventBus, {
         details: path,
@@ -222,7 +225,7 @@ export class SpawnFileService {
     } catch (error: unknown) {
       this.log.error("Failed to save spawn file:", error);
 
-      this.operation = createLoadable(null, false, transformError(error));
+      this.operation = this.operation.asFailed(transformError(error), null);
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -237,12 +240,12 @@ export class SpawnFileService {
   public *saveUnpackedDirectory(path: string): TFlow {
     this.log.info("Exporting spawn file:", path);
 
-    this.operation = createLoadable(null, true);
+    this.operation = this.operation.asLoading(null);
 
     try {
       yield* call(spawnCommands.saveUnpackedDirectory(path));
 
-      this.operation = createLoadable("export");
+      this.operation = this.operation.asReady("export");
 
       emitNotification(this.eventBus, {
         details: path,
@@ -253,7 +256,7 @@ export class SpawnFileService {
     } catch (error: unknown) {
       this.log.error("Failed to export spawn file:", error);
 
-      this.operation = createLoadable(null, false, transformError(error));
+      this.operation = this.operation.asFailed(transformError(error), null);
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -269,7 +272,7 @@ export class SpawnFileService {
    */
   @BoundAction()
   public clearOperation(): void {
-    this.operation = createLoadable(null);
+    this.operation = this.operation.asIdle();
   }
 
   @BoundAction()
@@ -325,25 +328,24 @@ export class SpawnFileService {
   ): TFlow {
     const current: Loadable<unknown> = this[key];
 
-    // Deliberately not gated on `isOpen`: that is set asynchronously while provisioning, so a chunk view
-    // mounting first would load nothing and never retry. The backend answers null when nothing is open,
-    // which is the same empty state by a shorter route.
-    // todo: A chunk that legitimately reads as null is refetched on every remount. Telling "never asked" from "asked
-    //   and empty" needs an idle state, which the loadable rework owns.
-    if (current.isLoading || current.value !== null) {
+    // Views may mount before provisioning discovers the open file. Opening or restoring another file resets
+    // this cache, including successful empty reads made while the backend had nothing open.
+    if (current.isLoading || current.isReady) {
       return;
     }
 
-    (this[key] as Loadable<unknown>) = createLoadable(null, true);
+    const loading: Loadable<unknown> = current.asLoading(null);
+
+    (this[key] as Loadable<unknown>) = loading;
 
     try {
       const chunk: unknown = yield* call(request());
 
-      (this[key] as Loadable<unknown>) = createLoadable(chunk);
+      (this[key] as Loadable<unknown>) = loading.asReady(chunk);
     } catch (error: unknown) {
       this.log.error("Failed to read spawn chunk:", key, error);
 
-      (this[key] as Loadable<unknown>) = createLoadable(null, false, transformError(error));
+      (this[key] as Loadable<unknown>) = loading.asFailed(transformError(error));
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,
@@ -351,6 +353,11 @@ export class SpawnFileService {
         source: EApplicationGroupId.SPAWNS,
         title: `Could not read the ${key} chunk`,
       });
+    } finally {
+      // Cancelling a read leaves it retryable without replacing a newer state.
+      if (this[key] === loading) {
+        (this[key] as Loadable<unknown>) = current;
+      }
     }
   }
 
@@ -369,10 +376,10 @@ export class SpawnFileService {
       cancelFlow(this, lane);
     }
 
-    this.alifeSpawn = createLoadable(null);
-    this.artefactSpawn = createLoadable(null);
-    this.patrols = createLoadable(null);
-    this.graphs = createLoadable(null);
+    this.alifeSpawn = this.alifeSpawn.asIdle();
+    this.artefactSpawn = this.artefactSpawn.asIdle();
+    this.patrols = this.patrols.asIdle();
+    this.graphs = this.graphs.asIdle();
     // A selection outlives its table, so it has to be dropped with the data it pointed into.
     this.selectedRow = null;
   }
