@@ -656,6 +656,14 @@ export type TextureVocabulary = {
   bumpModes: Array<TextureVocabularyEntry>;
   /** The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show. */
   flags: Array<TextureFlagEntry>;
+  /**
+   * The bump mode that makes the engine bind a pair.
+   *
+   * Named rather than left to a surface to recognise, because a tool that has just written a pair has to point the
+   * descriptor at it and there is exactly one value that does. Matching on the display label would work until
+   * somebody rewords it; matching on the number would work until it is spelled differently in two places.
+   */
+  bumpModeUse: number;
 };
 
 /** One value a descriptor field can take, under the name the SDK gives it. */

@@ -1,5 +1,5 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
 import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
@@ -18,7 +18,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -73,6 +73,17 @@ export class TextureEditorService {
   @Computed()
   public get canSave(): boolean {
     return this.isDirty && !this.save.isRunning && this.targets !== null;
+  }
+
+  /**
+   * @returns The bump mode that makes the engine bind a pair, as the backend names it.
+   *
+   * Zero before the vocabulary arrives, which is a value no descriptor field is ever set to from here: nothing offers
+   * to generate a pair until the form it would be set from can render.
+   */
+  @Computed()
+  public get bumpUseMode(): number {
+    return this.vocabulary.value?.bumpModeUse ?? 0;
   }
 
   /**
@@ -206,7 +217,9 @@ export class TextureEditorService {
     this.encodingService.clear();
 
     // Re-read, so every panel and the preview move together onto what was written.
-    yield* this.selectionService.retry();
+    // Through `flowResult`, because the lane decorator hands back a cancellable rather than a generator:
+    // `yield*` on it iterates nothing and the re-read silently never happens.
+    yield* call(flowResult(this.selectionService.retry()));
   }
 
   @OnEvent(JOB_SETTLED_EVENT)

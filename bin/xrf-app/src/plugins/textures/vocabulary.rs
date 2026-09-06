@@ -46,6 +46,12 @@ pub struct TextureVocabulary {
   pub bump_modes: Vec<TextureVocabularyEntry>,
   /// The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show.
   pub flags: Vec<TextureFlagEntry>,
+  /// The bump mode that makes the engine bind a pair.
+  ///
+  /// Named rather than left to a surface to recognise, because a tool that has just written a pair has to point the
+  /// descriptor at it and there is exactly one value that does. Matching on the display label would work until
+  /// somebody rewords it; matching on the number would work until it is spelled differently in two places.
+  pub bump_mode_use: u32,
 }
 
 impl TextureVocabulary {
@@ -61,6 +67,7 @@ impl TextureVocabulary {
       materials: to_entries(ThmMaterial::NAMED, ThmMaterial::label),
       bump_modes: to_entries(ThmBumpMode::NAMED, ThmBumpMode::label),
       flags: to_flag_entries(),
+      bump_mode_use: ThmBumpMode::Use.into(),
     }
   }
 }

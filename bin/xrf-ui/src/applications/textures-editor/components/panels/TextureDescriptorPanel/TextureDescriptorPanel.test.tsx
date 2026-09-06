@@ -8,32 +8,13 @@ import { TextureDescription, TextureVocabulary } from "@/core/bindings/types/xrf
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TextureDescriptorPanel } from "./TextureDescriptorPanel";
 
-const VOCABULARY: TextureVocabulary = {
-  bumpModes: [
-    { label: "none", value: 0 },
-    { label: "use", value: 1 },
-  ],
-  flags: [
-    { bit: 1, label: "flGenerateMipMaps" },
-    { bit: 1 << 25, label: "flHasAlpha" },
-  ],
-  formats: [
-    { label: "tfDXT1", value: 0 },
-    { label: "tfDXT5", value: 4 },
-  ],
-  materials: [{ label: "mtOrenNayar_Blin", value: 0 }],
-  mipFilters: [{ label: "kMIPFilterBox", value: 1 }],
-  textureTypes: [
-    { label: "ttImage", value: 0 },
-    { label: "ttTerrain", value: 4 },
-  ],
-};
+const VOCABULARY: TextureVocabulary = mockTextureVocabulary();
 
 async function renderPanel(
   description: TextureDescription

@@ -8,20 +8,13 @@ import { TextureVocabulary } from "@/core/bindings/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TexturesEditorApplication } from "./TexturesEditorApplication";
 
-const VOCABULARY: TextureVocabulary = {
-  bumpModes: [{ label: "none", value: 0 }],
-  flags: [{ bit: 1, label: "flGenerateMipMaps" }],
-  formats: [{ label: "tfDXT1", value: 0 }],
-  materials: [],
-  mipFilters: [],
-  textureTypes: [{ label: "ttImage", value: 0 }],
-};
+const VOCABULARY: TextureVocabulary = mockTextureVocabulary();
 
 /**
  * Builds the container out of the application's deferred runtime bindings.

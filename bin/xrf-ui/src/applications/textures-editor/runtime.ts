@@ -1,3 +1,4 @@
+import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { AssetService } from "@/core/assets/services";
@@ -14,6 +15,7 @@ export const container: ContainerDefinition = {
     TextureSurfaceService,
     TextureEncodingService,
     TextureEditorService,
+    TextureBumpService,
   ],
 };
 

@@ -5,6 +5,7 @@ import {
   TextureEntry,
   TextureMaterialSummary,
   TextureRole,
+  TextureVocabulary,
 } from "@/core/bindings/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
 import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -120,4 +121,38 @@ function roleOf(reference: string): TextureRole {
   }
 
   return reference.endsWith("_bump") ? "bump" : "texture";
+}
+
+/**
+ * The names the SDK gives a descriptor's numbers, as the backend answers them.
+ *
+ * Short rather than complete: a test asserting how a field is named needs one entry it can point at, and a full table
+ * would make every one of them a place to remember when the format gains a value.
+ *
+ * @param overrides - Fields to replace.
+ * @returns A vocabulary a form can render.
+ */
+export function mockTextureVocabulary(overrides: Partial<TextureVocabulary> = {}): TextureVocabulary {
+  return {
+    bumpModes: [
+      { label: "None", value: 1 },
+      { label: "Use", value: 2 },
+    ],
+    bumpModeUse: 2,
+    flags: [
+      { bit: 1, label: "flGenerateMipMaps" },
+      { bit: 1 << 25, label: "flHasAlpha" },
+    ],
+    formats: [
+      { label: "tfDXT1", value: 0 },
+      { label: "tfDXT5", value: 4 },
+    ],
+    materials: [{ label: "mtOrenNayar_Blin", value: 0 }],
+    mipFilters: [{ label: "kMIPFilterBox", value: 1 }],
+    textureTypes: [
+      { label: "ttImage", value: 0 },
+      { label: "ttTerrain", value: 4 },
+    ],
+    ...overrides,
+  };
 }

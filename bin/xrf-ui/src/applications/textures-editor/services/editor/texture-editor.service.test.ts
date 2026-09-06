@@ -8,19 +8,12 @@ import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { TextureEditorService } from "./texture-editor.service";
 
-const VOCABULARY: TextureVocabulary = {
-  bumpModes: [{ label: "none", value: 0 }],
-  flags: [{ bit: 1, label: "flGenerateMipMaps" }],
-  formats: [{ label: "tfDXT1", value: 0 }],
-  materials: [],
-  mipFilters: [],
-  textureTypes: [{ label: "Image", value: 0 }],
-};
+const VOCABULARY: TextureVocabulary = mockTextureVocabulary();
 
 function form(overrides: Partial<TextureDescriptorForm> = {}): TextureDescriptorForm {
   return { ...EMPTY_TEXTURE_DESCRIPTOR_FORM, ...overrides };
@@ -226,5 +219,46 @@ describe("TextureEditorService", () => {
     service.discard();
 
     expect(service.isDirty).toBe(false);
+  });
+
+  it("re-reads the texture after a save, so nothing on screen is priced against replaced bytes", async () => {
+    // A save changes the stamps every target is guarded by, so panels left showing the pre-save description would
+    // refuse the next save. The re-read is the line that keeps them together, and it runs across two services.
+    const container: Container = mockContainer([
+      JobsService,
+      TextureSelectionService,
+      TextureEncodingService,
+      TextureEditorService,
+    ]);
+    const service: TextureEditorService = container.get(TextureEditorService);
+    const selectionService: TextureSelectionService = container.get(TextureSelectionService);
+
+    let describeCount: number = 0;
+
+    setMockInvokeResponses({
+      ["plugin:textures|describe"]: () => {
+        describeCount += 1;
+
+        return describedTexture(MOCK_TEXTURE, { form: form({ bumpName: `read-${describeCount}` }) });
+      },
+      ["plugin:textures|get_vocabulary"]: VOCABULARY,
+      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+      ["plugin:textures|save"]: {
+        format: null,
+        outcome: "completed",
+        written: [`C:\\gamedata\\textures\\${MOCK_TEXTURE}.thm`],
+      },
+    });
+
+    await selectionService.openFile(`C:\\gamedata\\textures\\${MOCK_TEXTURE}.dds`);
+
+    service.bind(selectionService.selected.value);
+    service.edit({ bumpName: "ston\\other_bump" });
+
+    await service.commit();
+
+    // The second read is the proof: without it the panels would still be holding the description the save invalidated.
+    expect(describeCount).toBe(2);
+    expect(selectionService.selected.value?.form?.bumpName).toBe("read-2");
   });
 });

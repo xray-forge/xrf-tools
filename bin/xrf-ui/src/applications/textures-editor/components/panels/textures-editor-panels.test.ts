@@ -13,6 +13,7 @@ describe("createTexturesEditorPanels", () => {
     expect(panels.map((panel: IEditorPanel) => panel.id)).toEqual([
       "descriptor",
       "formats",
+      "bump",
       "material",
       "files",
       "channels",
