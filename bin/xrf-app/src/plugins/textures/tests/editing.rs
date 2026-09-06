@@ -5,48 +5,23 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use xrf_db::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType, XRayByteOrder};
-use xrf_dds::{
-  DdsEncodeAttempt, DdsEncodeCandidate, DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat,
-  Quality, Rgba, RgbaImage,
-};
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
 
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
-use crate::plugins::textures::encoding::{
-  TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingFormat, TextureEncodingSession,
-};
+use crate::plugins::textures::encoding::TextureEncodingFormat;
 use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::request::{
   TextureDescriptorSave, TextureEncodingSave, TextureSaveTarget, TexturesSaveRequest,
 };
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
-use crate::plugins::textures::source::TextureSource;
-use crate::plugins::textures::state::TextureState;
-
-const BASE: &str = "ston\\ston_beton05";
-
-/// A scratch directory of its own per case, so a save that writes files cannot reach another's.
-fn case_directory(case: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("textures_editing/{case}"));
-
-  let _ = std::fs::remove_dir_all(&root);
-  std::fs::create_dir_all(&root).expect("case directory");
-
-  root
-}
-
-/// The target a save carries for a file, stamped as the editor would have stamped it.
-fn target(path: &Path) -> TextureSaveTarget {
-  TextureSaveTarget {
-    path: path.display().to_string(),
-    expected: TextureFileStamp::read(path).expect("stamp is readable"),
-  }
-}
+use crate::plugins::textures::tests::fixtures::{
+  BASE, editing_directory, loose_asset, read_descriptor, source_image, target,
+};
 
 /// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
 ///
@@ -64,33 +39,6 @@ fn rewritten_later(path: &Path) {
   file
     .set_modified(modified + Duration::from_secs(1))
     .expect("modification time is writable");
-}
-
-fn read_descriptor(path: &Path) -> ThmFile {
-  ThmFile::read_from_path::<XRayByteOrder, _>(&path).expect("written descriptor parses")
-}
-
-/// A loose asset at `path`, as the VFS would have reported it.
-fn loose_asset(root: &Path, relative: &str) -> XrayAsset {
-  XrayAsset::new(
-    XrayLogicalPath::new(relative).expect("logical path"),
-    XrayAssetContainer::Directory {
-      root: root.to_path_buf(),
-      relative_path: PathBuf::from(relative.replace('\\', "/")),
-    },
-  )
-}
-
-/// A picture with detail in every channel and a half-transparent side, so a lossy candidate has something to lose.
-fn source_image(size: u32) -> RgbaImage {
-  RgbaImage::from_fn(size, size, |x, y| {
-    Rgba([
-      (x * 7 + y * 13) as u8,
-      (x * 31 + y * 3) as u8,
-      (x * 17) as u8,
-      if x < size / 2 { 0 } else { u8::MAX },
-    ])
-  })
 }
 
 #[test]
@@ -187,7 +135,7 @@ fn an_archived_texture_has_nothing_to_write() {
 
 #[test]
 fn saving_a_descriptor_writes_it_and_says_where() {
-  let root: PathBuf = case_directory("descriptor");
+  let root: PathBuf = editing_directory("descriptor");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
@@ -225,7 +173,7 @@ fn saving_a_descriptor_writes_it_and_says_where() {
 
 #[test]
 fn saving_a_descriptor_that_is_not_there_yet_creates_one() {
-  let root: PathBuf = case_directory("authored");
+  let root: PathBuf = editing_directory("authored");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   let outcome: TextureSaveOutcome = write_save(
@@ -254,7 +202,7 @@ fn saving_a_descriptor_that_is_not_there_yet_creates_one() {
 
 #[test]
 fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
-  let root: PathBuf = case_directory("stale");
+  let root: PathBuf = editing_directory("stale");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
@@ -289,7 +237,7 @@ fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
 
 #[test]
 fn a_file_that_appeared_where_the_editor_saw_none_is_refused_too() {
-  let root: PathBuf = case_directory("appeared");
+  let root: PathBuf = editing_directory("appeared");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
@@ -315,7 +263,7 @@ fn a_file_that_appeared_where_the_editor_saw_none_is_refused_too() {
 
 #[test]
 fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
-  let root: PathBuf = case_directory("texture");
+  let root: PathBuf = editing_directory("texture");
   let texture_path: PathBuf = root.join("ston_beton05.dds");
   let descriptor_path: PathBuf = root.join("ston_beton05.thm");
 
@@ -373,7 +321,7 @@ fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
   // `tfDXT1` and `tfADXT1` are one encoder told apart by whether the alpha means anything, so only the descriptor's
   // own flags can say which of them a written BC1 texture is.
   for (has_alpha, expected) in [(false, ThmFormat::Dxt1), (true, ThmFormat::Dxt1Alpha)] {
-    let root: PathBuf = case_directory(if has_alpha { "bc1_alpha" } else { "bc1_opaque" });
+    let root: PathBuf = editing_directory(if has_alpha { "bc1_alpha" } else { "bc1_opaque" });
     let texture_path: PathBuf = root.join("ston_beton05.dds");
     let descriptor_path: PathBuf = root.join("ston_beton05.thm");
 
@@ -416,7 +364,7 @@ fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
 fn a_bc7_texture_leaves_the_descriptors_format_alone() {
   // `ETFormat` has no member for BC7, so the descriptor keeps whatever it said and the panel states that an SDK
   // rebuild would return the texture to the named format.
-  let root: PathBuf = case_directory("bc7");
+  let root: PathBuf = editing_directory("bc7");
   let texture_path: PathBuf = root.join("ston_beton05.dds");
 
   std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
@@ -445,7 +393,7 @@ fn a_bc7_texture_leaves_the_descriptors_format_alone() {
 
 #[test]
 fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
-  let root: PathBuf = case_directory("unencoded");
+  let root: PathBuf = editing_directory("unencoded");
   let texture_path: PathBuf = root.join("ston_beton05.dds");
 
   std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
@@ -471,65 +419,8 @@ fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
 }
 
 #[test]
-fn a_held_session_answers_for_the_candidates_it_weighed_and_no_others() {
-  let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
-  let session: TextureEncodingSession = TextureEncodingSession {
-    source: TextureSource::Asset {
-      reference: String::from(BASE),
-    },
-    label: String::from(BASE),
-    attempts: vec![
-      DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3"),
-      DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Rgba8, Quality::Fast).expect("rgba8"),
-    ],
-  };
-
-  assert!(session.get(TextureEncodingFormat::Bc3).is_some());
-  assert!(
-    session.get(TextureEncodingFormat::Bc7).is_none(),
-    "expect a save to be unable to reach a candidate this comparison never encoded"
-  );
-
-  let comparison: TextureEncodingComparison = session.to_comparison(
-    TextureEncodingCurrent {
-      label: String::from("DXT5"),
-      file_bytes: 0,
-      gpu_bytes: 0,
-      width: 16,
-      height: 16,
-      mipmap_levels: 1,
-    },
-    JobOutcome::Cancelled,
-  );
-
-  assert_eq!(comparison.reference, BASE);
-  assert_eq!(
-    comparison.outcome,
-    JobOutcome::Cancelled,
-    "expect a stopped comparison to still report the candidates it reached"
-  );
-  assert_eq!(comparison.candidates.len(), 2);
-
-  // Uncompressed is the one candidate that loses nothing, and it is the largest.
-  let uncompressed = comparison
-    .candidates
-    .iter()
-    .find(|candidate| candidate.format == TextureEncodingFormat::Rgba8)
-    .expect("rgba8 is reported");
-  let compressed = comparison
-    .candidates
-    .iter()
-    .find(|candidate| candidate.format == TextureEncodingFormat::Bc3)
-    .expect("bc3 is reported");
-
-  assert_eq!(uncompressed.psnr, None);
-  assert!(compressed.psnr.is_some_and(|psnr| psnr > 0.0));
-  assert!(uncompressed.gpu_bytes > compressed.gpu_bytes);
-}
-
-#[test]
 fn a_stamp_tells_a_missing_file_from_an_unreadable_one() {
-  let root: PathBuf = case_directory("stamp");
+  let root: PathBuf = editing_directory("stamp");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   assert_eq!(TextureFileStamp::read(&path).expect("absent is not an error"), None);
@@ -566,7 +457,7 @@ fn a_stamp_is_the_size_and_the_modification_time_together() {
 fn a_save_asked_to_stop_before_it_writes_writes_nothing() {
   // The one boundary a save has. Everything before it reads and builds; everything after only publishes, so stopping
   // between two staged writes - a texture whose descriptor still describes the old one - is a state it cannot reach.
-  let root: PathBuf = case_directory("cancelled");
+  let root: PathBuf = editing_directory("cancelled");
   let texture_path: PathBuf = root.join("ston_beton05.dds");
   let descriptor_path: PathBuf = root.join("ston_beton05.thm");
 
@@ -611,7 +502,7 @@ fn a_save_asked_to_stop_before_it_writes_writes_nothing() {
 fn a_save_still_refuses_a_stale_target_before_it_looks_at_cancellation() {
   // Order matters: a stale target is a request the editor got wrong and should hear about, whether or not somebody
   // also pressed stop. Reporting it as a clean cancellation would lose the reason to reload.
-  let root: PathBuf = case_directory("cancelled_stale");
+  let root: PathBuf = editing_directory("cancelled_stale");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
@@ -646,7 +537,7 @@ fn a_save_still_refuses_a_stale_target_before_it_looks_at_cancellation() {
 fn a_bump_generation_asked_to_stop_leaves_neither_half() {
   // Both halves are encoded before either is written, so there is no point at which stopping could leave a `_bump`
   // whose `_bump#` never arrived - which is the pair half of a bumped surface the engine would then substitute for.
-  let root: PathBuf = case_directory("cancelled_bump");
+  let root: PathBuf = editing_directory("cancelled_bump");
   let job: JobHandle = JobHandle::inert();
 
   job.cancel();
@@ -668,44 +559,5 @@ fn a_bump_generation_asked_to_stop_leaves_neither_half() {
   assert!(
     result.gloss_power > 0.0,
     "expect the gloss it did measure to be reported, since a dark mask is worth saying even about a stopped run"
-  );
-}
-
-#[test]
-fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() {
-  // What the A/B preview reads. The bytes it draws are the encode the comparison measured, so a picture of a format
-  // can only exist while that measurement does - and the failure, when the session has moved on, has to say so rather
-  // than serve a picture of something else.
-  let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
-  let state: TextureState = TextureState::new();
-
-  let missing = state.with_held_encoding(TextureEncodingFormat::Bc3, |_| Ok(()));
-
-  assert!(
-    missing.is_err_and(|error| error.contains("No encoded texture is held")),
-    "expect nothing to read before anything has been weighed"
-  );
-
-  *state.encodings.lock().expect("encodings") = Some(TextureEncodingSession {
-    source: TextureSource::Asset {
-      reference: String::from(BASE),
-    },
-    label: String::from(BASE),
-    attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
-  });
-
-  let png: Vec<u8> = state
-    .with_held_encoding(TextureEncodingFormat::Bc3, |file| {
-      Ok(file.to_png().map_err(|error| error.to_string())?.bytes)
-    })
-    .expect("the weighed candidate decodes");
-
-  assert!(!png.is_empty(), "expect the held encode to decode to a picture");
-
-  let unweighed = state.with_held_encoding(TextureEncodingFormat::Bc7, |_| Ok(()));
-
-  assert!(
-    unweighed.is_err_and(|error| error.contains("does not carry that format")),
-    "expect a format this comparison never encoded to be named as absent rather than answered with another"
   );
 }

@@ -1,2 +1,7 @@
+mod addressing;
+mod catalog;
+mod description;
 mod editing;
-mod explorer;
+mod encoding;
+
+mod fixtures;
