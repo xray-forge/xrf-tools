@@ -3,7 +3,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { TextureGlossField } from "@/applications/textures-editor/components/panels/TextureBumpPanel/TextureGlossField";
+import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { toBumpReference, toCompanionReference } from "@/applications/textures-editor/lib/texture-bump-target";
+import { DEFAULT_VIRTUAL_HEIGHT } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
@@ -14,9 +16,6 @@ import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
-
-/** A gloss above the SDK's warning threshold, for a surface with no mask to read one from. */
-const DEFAULT_GLOSS: number = 0.5;
 
 /** Images the generator can read a plane out of, which is whatever `image` decodes. */
 const IMAGE_FILTERS = [{ extensions: ["png", "tga", "bmp", "jpg", "jpeg"], name: "Image" }];
@@ -37,7 +36,7 @@ export function TextureBumpPanel({
   const editorService: TextureEditorService = useInjection(TextureEditorService);
   const bumpService: TextureBumpService = useInjection(TextureBumpService);
 
-  const [glossConstant, setGlossConstant] = useState<number>(DEFAULT_GLOSS);
+  const [glossConstant, setGlossConstant] = useState<number>(DEFAULT_GLOSS_POWER);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
   const isRunning: boolean = bumpService.generate.isRunning;
@@ -74,7 +73,7 @@ export function TextureBumpPanel({
         height: height.value ?? "",
         normalMap: normalMap.value,
         // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
-        virtualHeight: editorService.draft?.virtualHeight ?? 0.05,
+        virtualHeight: editorService.draft?.virtualHeight ?? DEFAULT_VIRTUAL_HEIGHT,
       }),
     [bumpService, editorService.draft?.virtualHeight, gloss.value, glossConstant, height.value, normalMap.value]
   );

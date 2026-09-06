@@ -1,10 +1,8 @@
 import { Box, Slider, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** Below this the SDK answers "Invalid gloss mask" and keeps the files it wrote. */
-const MINIMUM_GLOSS_POWER: number = 0.1;
 
 interface ITextureGlossFieldProps extends BaseComponentProps {
   value: number;

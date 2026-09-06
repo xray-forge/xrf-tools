@@ -18,6 +18,13 @@ export function describeTexturesStatus(
     return ["One texture"];
   }
 
+  // A loose listing is never swept - there are no engine references to sweep by - so a descriptor count here would be
+  // a zero that reads as "the sweep found nothing" rather than "no sweep applies". What is worth saying in its place
+  // is how these rows are named, since a folder listed by path looks much like a tree listed by reference.
+  if (catalog.mode === "looseDirectory") {
+    return [`${textureCount} textures`, "listed by path"];
+  }
+
   const status: Array<string> = [`${textureCount} textures`, `${describedCount} descriptors`];
 
   if (catalog.outsideTexturesCount) {

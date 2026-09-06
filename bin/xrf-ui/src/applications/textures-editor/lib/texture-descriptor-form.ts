@@ -2,6 +2,15 @@ import { TextureDescription, TextureDescriptorForm } from "@/core/bindings/types
 import { Nullable } from "@/lib/types/general";
 
 /**
+ * The relief depth a descriptor starts at.
+ *
+ * The SDK's own `bump_virtual_height` default. Named rather than spelled where it is needed, because the field is
+ * nullable on the wire and every surface that fills that null in has to fill it in with the same number - the form a
+ * new descriptor opens on, and the depth a bump generation derives at when the draft has yet to say.
+ */
+export const DEFAULT_VIRTUAL_HEIGHT: number = 0.05;
+
+/**
  * The form a texture with no descriptor starts from.
  *
  * What the editor shows before anybody touches it, and nothing more. A save of an authored descriptor applies the form
@@ -26,7 +35,7 @@ export const EMPTY_TEXTURE_DESCRIPTOR_FORM: TextureDescriptorForm = {
   materialWeight: 0,
   mipFilter: 0,
   textureType: 0,
-  virtualHeight: 0.05,
+  virtualHeight: DEFAULT_VIRTUAL_HEIGHT,
   width: 0,
 };
 

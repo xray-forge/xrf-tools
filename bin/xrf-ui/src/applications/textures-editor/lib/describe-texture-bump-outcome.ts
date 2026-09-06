@@ -1,9 +1,7 @@
+import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { TextureMakeBumpOutcome } from "@/core/bindings/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-
-/** Below this the SDK answers "Invalid gloss mask" and keeps the files it wrote. */
-const MINIMUM_GLOSS_POWER: number = 0.1;
 
 /**
  * What the notification centre says when a bump generation ends.

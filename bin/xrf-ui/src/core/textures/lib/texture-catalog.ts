@@ -1,4 +1,5 @@
 import {
+  TextureBadges,
   TextureCatalog,
   TextureEntry,
   TextureMaterialSummary,
@@ -237,7 +238,23 @@ function collectHalves(
     .filter((entry: Optional<TextureEntry>): entry is TextureEntry => Boolean(entry));
 }
 
-/** What a node is, from its own descriptor and from where it stands in the listing. */
+/**
+ * The badge each verdict of the sweep shows as.
+ *
+ * Keyed by the backend's own type, so a badge added there stops this file compiling until it has somewhere to show.
+ * The alternative - a condition per verdict - compiles perfectly while the new one silently never reaches a row.
+ */
+const SWEEP_BADGES: Record<keyof TextureBadges, ETextureBadge> = {
+  isBumped: ETextureBadge.BUMPED,
+  isDegraded: ETextureBadge.DEGRADED,
+  isDetailAssociated: ETextureBadge.DETAIL,
+  isEngineSkipped: ETextureBadge.ENGINE_SKIPPED,
+  isUnreadable: ETextureBadge.UNREADABLE,
+};
+
+/**
+ * What a node is, from its own descriptor and from where it stands in the listing.
+ */
 function collectBadges(
   entry: TextureEntry,
   summary: Nullable<TextureMaterialSummary>,
@@ -245,24 +262,10 @@ function collectBadges(
 ): ReadonlySet<ETextureBadge> {
   const badges: Set<ETextureBadge> = new Set();
 
-  if (summary?.badges.isBumped) {
-    badges.add(ETextureBadge.BUMPED);
-  }
-
-  if (summary?.badges.isDegraded) {
-    badges.add(ETextureBadge.DEGRADED);
-  }
-
-  if (summary?.badges.isDetailAssociated) {
-    badges.add(ETextureBadge.DETAIL);
-  }
-
-  if (summary?.badges.isEngineSkipped) {
-    badges.add(ETextureBadge.ENGINE_SKIPPED);
-  }
-
-  if (summary?.badges.isUnreadable) {
-    badges.add(ETextureBadge.UNREADABLE);
+  for (const [verdict, badge] of Object.entries(SWEEP_BADGES) as Array<[keyof TextureBadges, ETextureBadge]>) {
+    if (summary?.badges[verdict]) {
+      badges.add(badge);
+    }
   }
 
   if (!entry.texture && entry.descriptor) {
