@@ -1,4 +1,3 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -8,14 +7,26 @@ import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import {
+  ChoiceFormRow,
+  IChoiceFormRowOption,
+  IPathField,
+  PathFormRow,
+  usePathField,
+  useRememberedValue,
+} from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
 type TOpenMode = "folder" | "model";
 
-const OPEN_MODES: ReadonlyArray<TOpenMode> = ["folder", "model"];
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TOpenMode>> = [
+  { value: "folder", label: "Folder", "aria-label": "Open folder" },
+  { value: "model", label: "Model", "aria-label": "Open model" },
+];
+
+const OPEN_MODES: ReadonlyArray<TOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
 
 interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
   /**
@@ -105,23 +116,15 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
-      <FormRow label={"Open"} description={"Browse a whole root, or one model on its own"} isRequired={false}>
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={mode}
-          disabled={isLoading}
-          aria-label={"Open mode"}
-          onChange={(_, next: TOpenMode) => next && setMode(next)}
-        >
-          <ToggleButton value={"folder"} aria-label={"Open folder"}>
-            Folder
-          </ToggleButton>
-          <ToggleButton value={"model"} aria-label={"Open model"}>
-            Model
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </FormRow>
+      <ChoiceFormRow
+        label={"Open"}
+        description={"Browse a whole root, or one model on its own"}
+        options={OPEN_MODE_OPTIONS}
+        value={mode}
+        isRequired={false}
+        isDisabled={isLoading}
+        onChange={setMode}
+      />
 
       {mode === "folder" ? (
         <PathFormRow

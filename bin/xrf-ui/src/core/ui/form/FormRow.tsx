@@ -3,7 +3,7 @@ import { ReactElement, ReactNode, useId } from "react";
 
 import { Nullable, Optional } from "@/lib/types/general";
 
-/** Attributes that associate a single control with its row's label and visible messages. */
+/** Attributes that associate a control or group with its row's label and visible messages. */
 export interface IFormRowControlProps {
   "aria-describedby": Optional<string>;
   "aria-invalid": boolean;
@@ -29,7 +29,9 @@ interface IFormRowProps {
    * Puts the control beside the label instead of under it.
    */
   isInline?: boolean;
-  /** A single control can receive its accessibility attributes; groups may supply ordinary content. */
+  /** Labels a group through ARIA instead of pointing a native label at one input. */
+  isGroup?: boolean;
+  /** Supplies accessibility attributes to a control or group, or renders ordinary content. */
   children: ReactNode | ((props: IFormRowControlProps) => ReactNode);
 }
 
@@ -44,6 +46,7 @@ export function FormRow({
   fact,
   controlId,
   isInline,
+  isGroup = false,
   children,
 }: IFormRowProps): ReactElement {
   const generatedId: string = useId();
@@ -58,8 +61,8 @@ export function FormRow({
     <Box sx={{ minWidth: 0 }}>
       <Typography
         id={labelId}
-        component={"label"}
-        htmlFor={typeof children === "function" ? fieldId : controlId}
+        component={isGroup ? "span" : "label"}
+        htmlFor={isGroup ? undefined : typeof children === "function" ? fieldId : controlId}
         variant={"subtitle2"}
         sx={{ display: "block" }}
       >

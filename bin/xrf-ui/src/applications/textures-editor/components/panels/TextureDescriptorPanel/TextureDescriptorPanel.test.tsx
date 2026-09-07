@@ -113,7 +113,7 @@ describe("TextureDescriptorPanel", () => {
 
     expect((render.getByTestId("texture-descriptor-save") as HTMLButtonElement).disabled).toBe(true);
 
-    service.edit({ bumpName: "ston\\other_bump" });
+    act(() => service.edit({ bumpName: "ston\\other_bump" }));
 
     await waitFor(() =>
       expect((render.getByTestId("texture-descriptor-save") as HTMLButtonElement).disabled).toBe(false)
@@ -161,7 +161,7 @@ describe("TextureDescriptorPanel", () => {
 
     await waitFor(() => expect(render.getByTestId("texture-descriptor-save")).toBeTruthy());
 
-    service.edit({ bumpName: "ston\\other_bump" });
+    act(() => service.edit({ bumpName: "ston\\other_bump" }));
 
     await waitFor(() =>
       expect((render.getByTestId("texture-descriptor-save") as HTMLButtonElement).disabled).toBe(true)

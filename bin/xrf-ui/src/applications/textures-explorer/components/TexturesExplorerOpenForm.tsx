@@ -1,4 +1,3 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -15,10 +14,24 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import {
+  ChoiceFormRow,
+  IChoiceFormRowOption,
+  IPathField,
+  PathFormRow,
+  usePathField,
+  useRememberedValue,
+} from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
+
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
+  (mode: ITextureOpenModeDescriptor) => ({
+    "aria-label": `Open ${mode.label.toLowerCase()}`,
+    value: mode.id,
+    label: mode.label,
+  })
+);
 
 interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
   /**
@@ -100,26 +113,15 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
-      <FormRow
+      <ChoiceFormRow
         label={"Open"}
         description={"A game tree, a folder of loose textures, or one texture on its own"}
+        options={OPEN_MODE_OPTIONS}
+        value={modeId}
         isRequired={false}
-      >
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={modeId}
-          disabled={isLoading}
-          aria-label={"Open mode"}
-          onChange={(_, next: Nullable<ETextureOpenMode>) => next && setModeId(next)}
-        >
-          {TEXTURE_OPEN_MODES.map((it: ITextureOpenModeDescriptor) => (
-            <ToggleButton key={it.id} value={it.id} aria-label={`Open ${it.label.toLowerCase()}`}>
-              {it.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </FormRow>
+        isDisabled={isLoading}
+        onChange={setModeId}
+      />
 
       <PathFormRow label={mode.field.label} description={mode.field.description} isDisabled={isLoading} field={field} />
 

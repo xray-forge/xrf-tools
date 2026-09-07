@@ -1,4 +1,3 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -7,14 +6,14 @@ import { createRoots } from "@/core/assets/lib/roots";
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
-const MODE_LABELS: Record<DialogProjectMode, string> = {
-  gamedata: "Game data",
-  source: "Project sources",
-};
+const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<DialogProjectMode>> = [
+  { value: "gamedata", label: "Game data" },
+  { value: "source", label: "Project sources" },
+];
 
 const MODE_DESCRIPTIONS: Record<DialogProjectMode, string> = {
   gamedata: "Dialogs under configs\\gameplay, their text under configs\\text, as the game ships them.",
@@ -85,21 +84,14 @@ export function DialogsEditorOpenForm(): ReactElement {
         field={dialogs}
       />
 
-      <FormRow label={"Layout"} description={"Where the dialogs keep their text, and therefore what resolves"}>
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={mode}
-          disabled={isLoading}
-          onChange={(_, next: Nullable<DialogProjectMode>) => next && setMode(next)}
-        >
-          {(Object.keys(MODE_LABELS) as Array<DialogProjectMode>).map((it: DialogProjectMode) => (
-            <ToggleButton key={it} value={it}>
-              {MODE_LABELS[it]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </FormRow>
+      <ChoiceFormRow
+        label={"Layout"}
+        description={"Where the dialogs keep their text, and therefore what resolves"}
+        options={MODE_OPTIONS}
+        value={mode}
+        isDisabled={isLoading}
+        onChange={setMode}
+      />
     </PickerForm>
   );
 }

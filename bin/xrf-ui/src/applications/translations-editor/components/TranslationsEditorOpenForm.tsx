@@ -1,4 +1,3 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -7,14 +6,14 @@ import { createRoots } from "@/core/assets/lib/roots";
 import { TranslationProjectMode } from "@/core/bindings/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
-const MODE_LABELS: Record<TranslationProjectMode, string> = {
-  source: "Project sources",
-  gamedata: "Game data",
-};
+const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TranslationProjectMode>> = [
+  { value: "source", label: "Project sources" },
+  { value: "gamedata", label: "Game data" },
+];
 
 const MODE_DESCRIPTIONS: Record<TranslationProjectMode, string> = {
   source: "Multi-language JSON and language-suffixed XML, as the project authors them.",
@@ -83,21 +82,14 @@ export function TranslationsEditorOpenForm(): ReactElement {
         field={translations}
       />
 
-      <FormRow label={"Layout"} description={"What the directory holds, and therefore what a save writes"}>
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={mode}
-          disabled={isLoading}
-          onChange={(_, next: Nullable<TranslationProjectMode>) => next && setMode(next)}
-        >
-          {(Object.keys(MODE_LABELS) as Array<TranslationProjectMode>).map((it: TranslationProjectMode) => (
-            <ToggleButton key={it} value={it}>
-              {MODE_LABELS[it]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </FormRow>
+      <ChoiceFormRow
+        label={"Layout"}
+        description={"What the directory holds, and therefore what a save writes"}
+        options={MODE_OPTIONS}
+        value={mode}
+        isDisabled={isLoading}
+        onChange={setMode}
+      />
     </PickerForm>
   );
 }
