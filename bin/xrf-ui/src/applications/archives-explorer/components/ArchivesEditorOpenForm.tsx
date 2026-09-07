@@ -79,15 +79,15 @@ export function ArchivesEditorOpenForm(): ReactElement {
       title={"Open game archives"}
       description={
         mode === "directory"
-          ? "Indexes every archive in the directory for browsing. Nothing is written."
-          : "Indexes one archive volume for browsing. Nothing is written."
+          ? "Indexes every archive in the directory for browsing."
+          : "Indexes one archive volume for browsing."
       }
       error={archivesService.project.error ? archivesService.project.error.message : undefined}
       submitLabel={"Open"}
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
-      <FormRow label={"Open"} description={"Browse a whole directory, or one archive on its own"} isRequired={false}>
+      <FormRow label={"Open"} description={"Browse a whole directory, or one archive on its own"}>
         <ToggleButtonGroup
           aria-label={"Open mode"}
           exclusive={true}

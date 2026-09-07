@@ -1,4 +1,5 @@
 import jsPlugin from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
 import importPlugin from "eslint-plugin-import";
 import jestPlugin from "eslint-plugin-jest";
 import jsdocPlugin from "eslint-plugin-jsdoc";
@@ -111,16 +112,6 @@ export default [
           ignoreDeclarationSort: true,
           ignoreMemberSort: false,
           allowSeparatedGroups: false,
-        },
-      ],
-      "comma-dangle": [
-        "error",
-        {
-          arrays: "always-multiline",
-          objects: "always-multiline",
-          imports: "always-multiline",
-          exports: "never",
-          functions: "never",
         },
       ],
       eqeqeq: "error",
@@ -241,4 +232,5 @@ export default [
       "unused-imports/no-unused-vars": "off",
     },
   },
+  eslintConfigPrettier,
 ];

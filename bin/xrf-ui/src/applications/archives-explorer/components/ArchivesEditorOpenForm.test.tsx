@@ -35,7 +35,7 @@ describe("ArchivesEditorOpenForm", () => {
 
     const { getByLabelText, getByText } = renderForm();
 
-    expect(getByText("Indexes every archive in the directory for browsing. Nothing is written.")).toBeInTheDocument();
+    expect(getByText("Indexes every archive in the directory for browsing.")).toBeInTheDocument();
 
     await userEvent.click(getByLabelText("Browse"));
 
@@ -55,7 +55,7 @@ describe("ArchivesEditorOpenForm", () => {
 
     await userEvent.click(getByLabelText("Open archive"));
 
-    expect(getByText("Indexes one archive volume for browsing. Nothing is written.")).toBeInTheDocument();
+    expect(getByText("Indexes one archive volume for browsing.")).toBeInTheDocument();
 
     await userEvent.click(getByLabelText("Browse"));
 
@@ -111,9 +111,7 @@ describe("ArchivesEditorOpenForm", () => {
   it("opens on the directory mode until something else is chosen", async () => {
     const { findByText } = renderForm();
 
-    expect(
-      await findByText("Indexes every archive in the directory for browsing. Nothing is written.")
-    ).toBeInTheDocument();
+    expect(await findByText("Indexes every archive in the directory for browsing.")).toBeInTheDocument();
   });
 
   it("comes back on the mode last used, because that is a better guess than the common one", async () => {
@@ -124,7 +122,7 @@ describe("ArchivesEditorOpenForm", () => {
 
     const { findByText } = renderForm();
 
-    expect(await findByText("Indexes one archive volume for browsing. Nothing is written.")).toBeInTheDocument();
+    expect(await findByText("Indexes one archive volume for browsing.")).toBeInTheDocument();
   });
 
   it("keeps each mode's path across a switch", async () => {
