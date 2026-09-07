@@ -128,6 +128,12 @@ describe("VisualMotionsPanel", () => {
     expect(await render.findByText("crouch_walk_fwd")).toBeInTheDocument();
     expect(render.queryByText("crouch_walk_back")).toBeNull();
     expect(render.queryByText("stand (2)")).toBeNull();
+
+    fireEvent.click(render.getByRole("button", { name: "Clear filter" }));
+
+    expect(await render.findByText("stand (2)")).toBeInTheDocument();
+    expect(render.getByRole("textbox", { name: "Filter motions" })).toHaveValue("");
+    expect(render.getByRole("textbox", { name: "Filter motions" })).toHaveFocus();
   });
 
   it("says how much it searched when a filter matches nothing", async () => {

@@ -1,6 +1,6 @@
-import { Box, TextField } from "@mui/material";
+import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useEffect, useState } from "react";
 
 import { VisualMotionList } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionList";
 import { VisualMotionNames } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionNames";
@@ -9,6 +9,7 @@ import { VisualMotionTransport } from "@/applications/visuals-explorer/component
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -32,8 +33,6 @@ export function VisualMotionsPanel({
   const embedded: Array<string> = selected?.description.embeddedMotions ?? [];
   const hasMotions: boolean = visualsService.hasMotions;
   const playable: number = motionService.motions.value?.length ?? 0;
-
-  const onFilter = useCallback((event: ChangeEvent<HTMLInputElement>) => setFilter(event.target.value), []);
 
   // Listed when this panel is on screen rather than when a model lands: naming motions means reading every animation
   // file the visual references, about fifty milliseconds each, and most models are opened to be looked at. Depending
@@ -71,15 +70,14 @@ export function VisualMotionsPanel({
         >
           <VisualMotionTransport />
 
-          <TextField
-            fullWidth
-            size={"small"}
-            value={filter}
-            placeholder={"Filter motions"}
-            sx={{ marginTop: 1 }}
-            slotProps={{ htmlInput: { "aria-label": "Filter motions" } }}
-            onChange={onFilter}
-          />
+          <Box sx={{ marginTop: 1 }}>
+            <EditorFilterInput
+              query={filter}
+              placeholder={"Filter motions"}
+              ariaLabel={"Filter motions"}
+              onQueryChange={setFilter}
+            />
+          </Box>
         </Box>
 
         <EditorPanelSection

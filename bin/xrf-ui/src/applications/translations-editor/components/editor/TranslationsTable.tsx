@@ -1,7 +1,8 @@
-import { Box, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo, useState } from "react";
 
+import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { Nullable } from "@/lib/types/general";
 
 /** One id, as the pair of languages currently in view sees it. */
@@ -100,14 +101,14 @@ export function TranslationsTable({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, gap: 1 }}>
-      <TextField
-        size={"small"}
-        value={search}
-        placeholder={"Filter by id or text"}
-        slotProps={{ htmlInput: { "aria-label": "Filter translations" } }}
-        sx={{ maxWidth: 320 }}
-        onChange={(event) => setSearch(event.target.value)}
-      />
+      <Box sx={{ maxWidth: 320 }}>
+        <EditorFilterInput
+          ariaLabel={"Filter translations"}
+          query={search}
+          placeholder={"Filter by id or text"}
+          onQueryChange={setSearch}
+        />
+      </Box>
 
       <DataGrid<ITranslationRow>
         rows={filtered}

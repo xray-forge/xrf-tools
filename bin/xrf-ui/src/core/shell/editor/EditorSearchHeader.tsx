@@ -1,10 +1,8 @@
-import { default as ClearIcon } from "@mui/icons-material/Clear";
-import { default as SearchIcon } from "@mui/icons-material/Search";
-import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
-import { ChangeEvent, KeyboardEvent, ReactElement } from "react";
+import { KeyboardEvent, ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { EditorFilterInput } from "./EditorFilterInput";
 import { EditorPanelHeader } from "./EditorPanelHeader";
 
 interface IEditorSearchHeaderProps extends BaseComponentProps {
@@ -39,32 +37,13 @@ export function EditorSearchHeader({
 }: IEditorSearchHeaderProps): ReactElement {
   return (
     <EditorPanelHeader data-testid={dataTestId} id={id} className={className} title={title} caption={count}>
-      <TextField
-        value={query}
+      <EditorFilterInput
+        query={query}
         placeholder={placeholder}
-        slotProps={{
-          htmlInput: {
-            "aria-label": ariaLabel,
-          },
-          input: {
-            startAdornment: (
-              <InputAdornment position={"start"}>
-                <SearchIcon fontSize={"small"} />
-              </InputAdornment>
-            ),
-            endAdornment: query ? (
-              <InputAdornment position={"end"}>
-                <Tooltip title={"Clear filter"}>
-                  <IconButton aria-label={"Clear filter"} edge={"end"} onClick={onClear}>
-                    <ClearIcon fontSize={"small"} />
-                  </IconButton>
-                </Tooltip>
-              </InputAdornment>
-            ) : null,
-          },
-        }}
+        ariaLabel={ariaLabel}
+        onClear={onClear}
         onKeyDown={onKeyDown}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
+        onQueryChange={onQueryChange}
       />
     </EditorPanelHeader>
   );
