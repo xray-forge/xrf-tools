@@ -131,7 +131,11 @@ describe("AudioPlayer", () => {
     act(() => void fireEvent.loadedMetadata(audio));
     act(() => void fireEvent.play(audio));
 
-    rerender(<AudioPlayer src={"blob:mock/other"} />);
+    rerender(
+      <>
+        <AudioPlayer src={"blob:mock/other"} />
+      </>
+    );
 
     // Replacing the source stops playback without an event, so nothing about the last sound may linger.
     expect(getByText("00:00 / 00:00")).toBeInTheDocument();
@@ -146,6 +150,70 @@ describe("AudioPlayer", () => {
     await userEvent.click(getByLabelText("Loop"));
 
     expect(getAudio(container).loop).toBe(true);
+  });
+
+  it("seeks repeatedly from the keyboard and clamps to the sound's bounds", async () => {
+    const { container, getByRole } = renderWithProviders(<AudioPlayer src={SRC} />);
+    const audio = getAudio(container);
+    const waveform = getByRole("slider", { name: "Seek" });
+
+    jest.spyOn(audio, "duration", "get").mockReturnValue(12);
+    fireEvent.loadedMetadata(audio);
+
+    await userEvent.tab();
+
+    expect(waveform).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
+
+    expect(audio.currentTime).toBe(12);
+    expect(waveform).toHaveAttribute("aria-valuenow", "12");
+    expect(waveform).toHaveAttribute("aria-valuetext", "00:12 of 00:12");
+
+    await userEvent.keyboard("{ArrowLeft}{ArrowDown}");
+
+    expect(audio.currentTime).toBe(2);
+
+    await userEvent.keyboard("{Home}{ArrowLeft}");
+
+    expect(audio.currentTime).toBe(0);
+
+    await userEvent.keyboard("{End}");
+
+    expect(audio.currentTime).toBe(12);
+  });
+
+  it("keeps playback shortcuts available when duration is unknown but does not seek", async () => {
+    const { container, getByRole } = renderWithProviders(<AudioPlayer src={SRC} />);
+    const audio = getAudio(container);
+    const setCurrentTime = jest.spyOn(audio, "currentTime", "set");
+
+    jest.spyOn(audio, "duration", "get").mockReturnValue(Infinity);
+    fireEvent.loadedMetadata(audio);
+
+    expect(getByRole("slider", { name: "Seek" })).toHaveAttribute("aria-valuemax", "0");
+
+    await userEvent.tab();
+    await userEvent.keyboard("{ArrowRight}{Home}{End} ");
+
+    expect(setCurrentTime).not.toHaveBeenCalled();
+    expect(getByRole("button", { name: "Pause" })).toBeInTheDocument();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(getByRole("button", { name: "Play" })).toBeInTheDocument();
+  });
+
+  it("ignores a click while the waveform has no width", () => {
+    const { container, getByRole } = renderWithProviders(<AudioPlayer src={SRC} />);
+    const audio = getAudio(container);
+    const setCurrentTime = jest.spyOn(audio, "currentTime", "set");
+
+    jest.spyOn(audio, "duration", "get").mockReturnValue(100);
+    fireEvent.loadedMetadata(audio);
+    fireEvent.click(getByRole("slider", { name: "Seek" }), { clientX: 100 });
+
+    expect(setCurrentTime).not.toHaveBeenCalled();
   });
 
   it("carries the volume slider through to the element", () => {
