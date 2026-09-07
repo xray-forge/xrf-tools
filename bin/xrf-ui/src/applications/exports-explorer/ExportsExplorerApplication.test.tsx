@@ -36,7 +36,7 @@ describe("ExportsExplorerApplication", () => {
             <Route path={"/"} element={<div>Application home</div>} />
           </Routes>
         </ApplicationShell>,
-        { route }
+        { route, hasShell: true }
       )
     );
   }

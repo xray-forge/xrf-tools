@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { TEditorPanelSide } from "@/core/shell/panel/context";
+import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { clampPanelWidth } from "@/core/shell/panel/panel-width";
 import { PANEL } from "@/core/theme/tokens";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";

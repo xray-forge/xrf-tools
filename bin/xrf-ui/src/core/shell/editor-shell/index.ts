@@ -1,3 +1,3 @@
 export * from "./editor-panel";
-export * from "./EditorPanelsContext";
 export * from "./use-editor-panels";
+export * from "./use-editor-status";

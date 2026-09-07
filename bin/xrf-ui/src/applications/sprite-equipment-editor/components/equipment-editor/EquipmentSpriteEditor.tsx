@@ -14,7 +14,7 @@ import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorStatus } from "@/core/shell/EditorStatusContext";
+import { useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 

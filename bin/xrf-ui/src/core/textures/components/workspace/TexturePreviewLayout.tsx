@@ -5,8 +5,7 @@ import { toAssetLocation } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
-import { useEditorStatus } from "@/core/shell/EditorStatusContext";
-import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
+import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,

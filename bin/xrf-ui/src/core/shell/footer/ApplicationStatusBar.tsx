@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { useEditorStatusSegments } from "@/core/shell/EditorStatusContext";
+import { useEditorStatusSegments } from "@/core/shell/editor-shell";
 import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -13,7 +13,7 @@ export function ApplicationStatusBar({
   id = "application-status-bar",
   className,
 }: BaseComponentProps): ReactElement {
-  const segments: Array<string> = useEditorStatusSegments();
+  const segments: ReadonlyArray<string> = useEditorStatusSegments();
 
   return (
     <Box

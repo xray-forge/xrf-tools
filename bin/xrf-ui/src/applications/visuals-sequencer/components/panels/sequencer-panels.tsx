@@ -3,7 +3,7 @@ import { default as PlaylistPlayIcon } from "@mui/icons-material/PlaylistPlay";
 
 import { SequenceMotionsPanel } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel";
 import { SequenceTrackPanel } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel";
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { VISUAL_PANELS } from "@/core/visuals/components/panels/visual-panels";
 
 /**

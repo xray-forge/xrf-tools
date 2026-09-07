@@ -185,7 +185,8 @@ describe("createApplicationDescriptor", () => {
               <ApplicationShell>
                 <application.Component />
               </ApplicationShell>
-            </CurrentApplicationProvider>
+            </CurrentApplicationProvider>,
+            { hasShell: true }
           )
         );
 

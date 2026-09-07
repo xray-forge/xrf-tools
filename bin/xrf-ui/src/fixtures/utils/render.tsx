@@ -10,13 +10,7 @@ import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
-import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
-import {
-  EditorPanelsProvider,
-  IEditorPanel,
-  selectPanelsOnSide,
-  useEditorPanelsRegistry,
-} from "@/core/shell/panel/context";
+import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { Nullable } from "@/lib/types/general";
 
 export interface IRenderOptions {
@@ -26,6 +20,8 @@ export interface IRenderOptions {
   bindings?: ContainerConfig["bindings"];
   /** Existing service container to provision and provide instead of creating one from `bindings`. */
   container?: Container;
+  /** The subject renders shell outlets itself; omit the fixture's panel and leave-dialog hosts. */
+  hasShell?: boolean;
 }
 
 /**
@@ -51,11 +47,12 @@ function LeftPanelsOutlet(): ReactElement {
  * @param options.route - Initial route for the memory router.
  * @param options.bindings - Service bindings added to the test container.
  * @param options.container - Existing service container to provide instead of creating one from bindings.
+ * @param options.hasShell - Whether the subject supplies its own shell outlets.
  * @returns The Testing Library render result.
  */
 export function renderWithProviders(
   ui: ReactNode,
-  { route = "/", bindings = [], container }: IRenderOptions = {}
+  { route = "/", bindings = [], container, hasShell = false }: IRenderOptions = {}
 ): RenderResult {
   const config: ContainerConfig = {
     bindings: [...ROOT_BINDINGS, ...bindings.filter((it) => !ROOT_BINDINGS.includes(it))],
@@ -86,14 +83,11 @@ export function renderWithProviders(
       <ApplicationProvider router={TestRouter}>
         <TestCurrentApplication>
           <TestContainer>
-            <EditorStatusProvider>
-              <EditorPanelsProvider>
-                {children}
-                <LeftPanelsOutlet />
-              </EditorPanelsProvider>
-            </EditorStatusProvider>
+            {children}
 
-            <EditorLeaveDialog />
+            {hasShell ? null : <LeftPanelsOutlet />}
+
+            {hasShell ? null : <EditorLeaveDialog />}
           </TestContainer>
         </TestCurrentApplication>
       </ApplicationProvider>

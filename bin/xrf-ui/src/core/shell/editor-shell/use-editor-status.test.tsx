@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
-import { useEditorStatus } from "@/core/shell/EditorStatusContext";
+import { useEditorStatus } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

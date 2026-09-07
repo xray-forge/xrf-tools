@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 
 import { createTexturesEditorPanels } from "./textures-editor-panels";
 

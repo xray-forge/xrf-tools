@@ -6,7 +6,7 @@ import { TextureEditorService } from "@/applications/textures-editor/services/ed
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";

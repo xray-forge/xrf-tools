@@ -5,7 +5,7 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 import { describeRoots } from "@/core/assets/lib";
 import { TextureCatalog } from "@/core/bindings/types/xrf-app";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { selectUnreadTexturesLtx } from "@/core/textures/lib/texture-catalog";
 import { TextureCatalogService } from "@/core/textures/services/catalog";

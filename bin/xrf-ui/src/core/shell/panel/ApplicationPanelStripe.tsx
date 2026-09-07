@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { IEditorPanel, TEditorPanelSide } from "@/core/shell/panel/context";
+import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";
 import { LAYOUT } from "@/core/theme/tokens";
 import { Nullable } from "@/lib/types/general";

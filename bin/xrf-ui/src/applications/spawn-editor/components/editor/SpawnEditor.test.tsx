@@ -6,8 +6,8 @@ import { Route, Routes } from "react-router-dom";
 
 import { SpawnEditor } from "@/applications/spawn-editor/components/editor/SpawnEditor";
 import { SpawnFile, SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
+import { IEditorPanel, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { IEditorPanel, useEditorPanelsRegistry } from "@/core/shell/panel/context";
 import { SpawnFileService } from "@/core/spawn/services";
 import { mockSpawnFile } from "@/fixtures/mocks/spawn.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -48,8 +48,7 @@ describe("SpawnEditor", () => {
   });
 
   function renderEditor(route: string = "/spawn-editor/header"): RenderResult {
-    // No `EditorPanelsProvider` of its own: the fixture supplies one and renders the left panels, which
-    // is where the chunk menu lives now that it is no longer drawn inline by the editor.
+    // The fixture renders panels published through the root shell service, including the chunk menu.
     return renderWithProviders(
       <>
         <Routes>

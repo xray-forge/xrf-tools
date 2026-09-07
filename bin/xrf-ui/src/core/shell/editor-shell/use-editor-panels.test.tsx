@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { Fragment, ReactElement, useState } from "react";
 
-import { IEditorPanel, useEditorPanels, useEditorPanelsRegistry } from "@/core/shell/panel/context/index";
+import { IEditorPanel, useEditorPanels, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function DynamicPublisher(): ReactElement {
@@ -36,6 +36,25 @@ function PanelOutlet(): ReactElement {
 }
 
 describe("useEditorPanels", () => {
+  it("releases panels when their publisher unmounts", async () => {
+    const { findByText, queryByText, rerender } = renderWithProviders(
+      <>
+        <DynamicPublisher />
+        <PanelOutlet />
+      </>
+    );
+
+    expect(await findByText("First")).toBeInTheDocument();
+
+    rerender(
+      <>
+        <PanelOutlet />
+      </>
+    );
+
+    expect(queryByText("First")).not.toBeInTheDocument();
+  });
+
   it("publishes a new renderer when the panel array changes", async () => {
     const { findByText, getByText, queryByText } = renderWithProviders(
       <>

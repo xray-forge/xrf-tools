@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
-import { EditorPanelsProvider, useEditorPanels } from "@/core/shell/panel/context";
+import { useEditorPanels } from "@/core/shell/editor-shell";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -53,12 +53,10 @@ function EditorWithRouter(): ReactElement {
 }
 
 function renderFrame(children: ReactNode, route: string = "/"): RenderResult {
-  return renderWithProviders(
-    <EditorPanelsProvider>
-      <ApplicationShellFrame>{children}</ApplicationShellFrame>
-    </EditorPanelsProvider>,
-    { bindings: [NotificationsService], route }
-  );
+  return renderWithProviders(<ApplicationShellFrame>{children}</ApplicationShellFrame>, {
+    bindings: [NotificationsService],
+    route,
+  });
 }
 
 describe("ApplicationShellFrame", () => {

@@ -7,7 +7,7 @@ import { NavigateFunction, Route, Routes, useLocation, useNavigate } from "react
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
-import { useEditorPanels } from "@/core/shell/panel/context";
+import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -21,6 +21,8 @@ function ArchivesScopedPanel(): ReactElement {
 /** Publishes a left panel bound to its own application's container, as the archives editor does. */
 function ArchivesLikeEditor(): ReactElement {
   const navigate: NavigateFunction = useNavigate();
+
+  useEditorStatus(["Archive project status"]);
 
   useEditorPanels(
     () => [
@@ -62,7 +64,7 @@ describe("panel handover between applications", () => {
         <ApplicationShell>
           <ArchivesNavigationProbe onObserve={onObserve} />
         </ApplicationShell>,
-        { route: "/archives-explorer" }
+        { route: "/archives-explorer", hasShell: true }
       )
     );
 
@@ -86,15 +88,18 @@ describe("panel handover between applications", () => {
             <Route path={"/spawn-editor/*"} element={<div>spawn editor</div>} />
           </Routes>
         </ApplicationShell>,
-        { route: "/archives-explorer" }
+        { route: "/archives-explorer", hasShell: true }
       )
     );
 
     expect(await findByText(/archives panel/)).toBeInTheDocument();
+    expect(getByText("Archive project status")).toBeInTheDocument();
 
     await act(async () => fireEvent.click(getByText("leave")));
 
     expect(await findByText("spawn editor")).toBeInTheDocument();
     expect(queryByText(/archives panel/)).not.toBeInTheDocument();
+    expect(queryByText("Archive project status")).not.toBeInTheDocument();
+    expect(getByText("Ready")).toBeInTheDocument();
   });
 });

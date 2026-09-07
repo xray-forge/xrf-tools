@@ -8,7 +8,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { TextureBumpPanel } from "@/applications/textures-editor/components/panels/TextureBumpPanel";
 import { TextureDescriptorPanel } from "@/applications/textures-editor/components/panels/TextureDescriptorPanel";
 import { TextureFormatsPanel } from "@/applications/textures-editor/components/panels/TextureFormatsPanel";
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TextureChannelsPanel } from "@/core/textures/components/panels/TextureChannelsPanel";
 import { TextureFilesPanel } from "@/core/textures/components/panels/TextureFilesPanel";
 import { TextureMaterialPanel } from "@/core/textures/components/panels/TextureMaterialPanel";

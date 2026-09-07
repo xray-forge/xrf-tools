@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { IEditorPanel } from "@/core/shell/panel/context";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const PANELS: Array<IEditorPanel> = [

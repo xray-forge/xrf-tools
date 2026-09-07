@@ -10,6 +10,7 @@ import { useCurrentApplication } from "@/core/routing/current-application.contex
 import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import { useIsEditorBusy } from "@/core/shell/editor-lifecycle";
+import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationCrash } from "@/core/shell/error/ApplicationCrash";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { EditorToolbarHostContext } from "@/core/shell/header/editor-toolbar-host";
@@ -17,7 +18,6 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { ApplicationRail } from "@/core/shell/panel/ApplicationRail";
-import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/panel/context";
 import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
 import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";

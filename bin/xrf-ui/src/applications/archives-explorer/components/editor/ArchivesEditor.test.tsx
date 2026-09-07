@@ -9,7 +9,6 @@ import { AssetService } from "@/core/assets/services";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { EditorPanelsProvider } from "@/core/shell/panel/context";
 import {
   mockArchiveFileDescriptor,
   mockArchiveSharedPayload,
@@ -190,12 +189,10 @@ describe("opened archives editor", () => {
   it("keeps file details collapsed until its tool button is used", async () => {
     const { findByLabelText, findByText, queryByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 
@@ -211,12 +208,10 @@ describe("opened archives editor", () => {
   it("renders the selected file metadata in Details", async () => {
     const { findByLabelText, findByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 
@@ -245,12 +240,10 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 
@@ -278,12 +271,10 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 
@@ -303,12 +294,10 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByText, queryByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 
@@ -365,12 +354,10 @@ describe("opened archives editor", () => {
 
     const { findByLabelText, findByText, getByLabelText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <ApplicationShellFrame>
-            <ArchivesExplorerApplication />
-          </ApplicationShellFrame>
-        </EditorPanelsProvider>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService] }
+        <ApplicationShellFrame>
+          <ArchivesExplorerApplication />
+        </ApplicationShellFrame>,
+        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
       )
     );
 

@@ -12,13 +12,7 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
-import {
-  EditorPanelsProvider,
-  IEditorPanel,
-  selectPanelsOnSide,
-  useEditorPanels,
-  useEditorPanelsRegistry,
-} from "@/core/shell/panel/context";
+import { IEditorPanel, selectPanelsOnSide, useEditorPanels, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -95,14 +89,13 @@ describe("ApplicationScope", () => {
     // reason the shell owns the scope around both surfaces.
     const { findByText } = await act(async () =>
       renderWithProviders(
-        <EditorPanelsProvider>
-          <Suspense fallback={null}>
-            <ApplicationScope application={APPLICATION}>
-              <Publisher />
-              <PanelSlot />
-            </ApplicationScope>
-          </Suspense>
-        </EditorPanelsProvider>
+        <Suspense fallback={null}>
+          <ApplicationScope application={APPLICATION}>
+            <Publisher />
+            <PanelSlot />
+          </ApplicationScope>
+        </Suspense>,
+        { hasShell: true }
       )
     );
 

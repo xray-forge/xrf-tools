@@ -3,7 +3,7 @@ import { default as InfoIcon } from "@mui/icons-material/Info";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as TuneIcon } from "@mui/icons-material/Tune";
 
-import { IEditorPanel } from "@/core/shell/panel/context";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TextureChannelsPanel } from "@/core/textures/components/panels/TextureChannelsPanel";
 import { TextureFilesPanel } from "@/core/textures/components/panels/TextureFilesPanel";
 import { TextureMaterialPanel } from "@/core/textures/components/panels/TextureMaterialPanel";

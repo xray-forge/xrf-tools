@@ -8,8 +8,8 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { REPOSITORY_URL } from "@/core/configs";
 import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { IEditorPanel } from "@/core/shell/panel/context";
 import { RailButton } from "@/core/shell/panel/RailButton";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";

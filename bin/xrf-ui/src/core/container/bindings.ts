@@ -5,6 +5,7 @@ import { ErrorCaptureService } from "@/core/notifications/services/error-capture
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
+import { EditorShellService } from "@/core/shell/services/editor-shell";
 
 /**
  * The services the root container binds, which every application resolves through.
@@ -15,4 +16,5 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   ErrorCaptureService,
   JobsService,
   EditorLifecycleService,
+  EditorShellService,
 ];

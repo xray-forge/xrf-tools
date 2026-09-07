@@ -4,8 +4,7 @@ import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 import { Texture } from "three";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
-import { useEditorStatus } from "@/core/shell/EditorStatusContext";
-import { IEditorPanel, useEditorPanels } from "@/core/shell/panel/context";
+import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import {
   IVisualPreviewViewportProps,

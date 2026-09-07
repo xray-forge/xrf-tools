@@ -11,8 +11,7 @@ import { TranslationFinding, TranslationProjectDescriptor } from "@/core/binding
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { useEditorStatus } from "@/core/shell/EditorStatusContext";
-import { useEditorPanels } from "@/core/shell/panel/context";
+import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
