@@ -8,16 +8,16 @@ import { default as OpacityIcon } from "@mui/icons-material/Opacity";
 import { default as PolylineIcon } from "@mui/icons-material/Polyline";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
-import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Box, Divider, IconButton, Popover, Slider, Tooltip, Typography } from "@mui/material";
-import { MouseEvent, ReactElement, useCallback, useState } from "react";
+import { Divider } from "@mui/material";
+import { ReactElement, useCallback } from "react";
 
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { LAYOUT } from "@/core/theme/tokens";
 import { IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
+
+import { VisualMeshDetail } from "./VisualMeshDetail";
 
 interface IVisualPreviewToolbarProps extends BaseComponentProps {
   subtitle?: string;
@@ -41,12 +41,7 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
 }
 
 /**
- * View toggles and the detail control, both live and driving the scene.
- *
- * Detail is a slider rather than a list of levels because an X-Ray slide-window table is one entry per edge collapse:
- * a measured character submesh carries 948 of them, so there is nothing to enumerate. Moving it costs a draw range
- * and nothing else, since every level is already in the uploaded index buffer. A model with nothing to decimate shows
- * the control disabled rather than hidden, so the toolbar does not change shape as the user steps through a tree.
+ * Composes scene commands, mesh detail, and view toggles in the editor toolbar.
  */
 export function VisualPreviewToolbar({
   "data-testid": dataTestId,
@@ -66,25 +61,6 @@ export function VisualPreviewToolbar({
   onOpen,
   onBrowse,
 }: IVisualPreviewToolbarProps): ReactElement {
-  const [detailAnchor, setDetailAnchor] = useState<Nullable<HTMLElement>>(null);
-
-  const onOpenDetail = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    setDetailAnchor(event.currentTarget);
-  }, []);
-
-  const onCloseDetail = useCallback(() => setDetailAnchor(null), []);
-
-  /**
-   * The slider reads as quality - right is the full mesh - while the stored value is how far down each collapse chain
-   * to go, so the two are inverses of each other. Inverting only one of them draws 25% quality as 25% decimation.
-   */
-  const onSlideDetail = useCallback(
-    (_: Event, value: number | Array<number>) => {
-      onChangeDetail(1 - (value as number) / 100);
-    },
-    [onChangeDetail]
-  );
-
   /**
    * Flips one view option, which is the only thing any of these toggles does.
    *
@@ -106,63 +82,24 @@ export function VisualPreviewToolbar({
       subtitle={subtitle}
       actions={
         <>
-          <Tooltip title={isOpenEnabled ? "Open visual" : "Open visual (not available here)"}>
-            <span>
-              <IconButton aria-label={"Open visual"} color={"inherit"} disabled={!isOpenEnabled} onClick={onOpen}>
-                <FolderOpenIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
+          <EditorIconAction
+            label={"Open visual"}
+            description={isOpenEnabled ? "Open visual" : "Open visual (not available here)"}
+            icon={<FolderOpenIcon />}
+            isDisabled={!isOpenEnabled}
+            onClick={() => onOpen?.()}
+          />
 
           {onBrowse ? (
-            <Tooltip title={"Browse the folder this model sits in"}>
-              <IconButton aria-label={"Browse folder"} color={"inherit"} onClick={onBrowse}>
-                <AccountTreeIcon />
-              </IconButton>
-            </Tooltip>
+            <EditorIconAction
+              label={"Browse folder"}
+              description={"Browse the folder this model sits in"}
+              icon={<AccountTreeIcon />}
+              onClick={onBrowse}
+            />
           ) : null}
 
-          <Tooltip
-            title={hasDetailLevels ? `Mesh detail: ${Math.round((1 - detail) * 100)}%` : "Nothing to decimate"}
-            describeChild
-          >
-            <span>
-              <IconButton
-                aria-label={"Mesh detail"}
-                aria-haspopup={"dialog"}
-                color={detail && hasDetailLevels ? "primary" : "inherit"}
-                disabled={!hasDetailLevels}
-                onClick={onOpenDetail}
-              >
-                <TuneIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Popover
-            anchorEl={detailAnchor}
-            open={Boolean(detailAnchor)}
-            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            transformOrigin={{ vertical: "top", horizontal: "center" }}
-            onClose={onCloseDetail}
-          >
-            <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>
-              <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-                Mesh detail
-              </Typography>
-
-              <Slider
-                size={"small"}
-                min={0}
-                max={100}
-                value={Math.round((1 - detail) * 100)}
-                valueLabelDisplay={"auto"}
-                valueLabelFormat={(value: number) => `${value}%`}
-                aria-label={"Mesh detail"}
-                onChange={onSlideDetail}
-              />
-            </Box>
-          </Popover>
+          <VisualMeshDetail detail={detail} hasDetailLevels={hasDetailLevels} onChange={onChangeDetail} />
 
           <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
@@ -221,11 +158,12 @@ export function VisualPreviewToolbar({
             onToggle={() => onToggle("isAxesVisible")}
           />
 
-          <Tooltip title={"Reset camera"}>
-            <IconButton aria-label={"Reset camera"} color={"inherit"} onClick={onResetCamera}>
-              <CenterFocusStrongIcon />
-            </IconButton>
-          </Tooltip>
+          <EditorIconAction
+            label={"Reset camera"}
+            description={"Reset camera"}
+            icon={<CenterFocusStrongIcon />}
+            onClick={onResetCamera}
+          />
         </>
       }
     />

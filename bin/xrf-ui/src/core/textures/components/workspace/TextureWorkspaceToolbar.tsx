@@ -2,17 +2,17 @@ import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocu
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { default as ViewQuiltIcon } from "@mui/icons-material/ViewQuilt";
-import { Box, Divider, IconButton, Popover, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from "@mui/material";
-import { MouseEvent, ReactElement, useCallback, useState } from "react";
+import { Divider } from "@mui/material";
+import { ReactElement, useCallback } from "react";
 
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
-import { describeTextureSurfaceShape, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
+import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 import { Nullable } from "@/lib/types/general";
 
+import { TextureBodyOptions } from "./TextureBodyOptions";
 import { describeUnavailableBump, SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";
 
 interface ITextureWorkspaceToolbarProps {
@@ -38,16 +38,7 @@ export function TextureWorkspaceToolbar({
   onResetCamera,
   onBack,
 }: ITextureWorkspaceToolbarProps): ReactElement {
-  const [bodyAnchor, setBodyAnchor] = useState<Nullable<HTMLElement>>(null);
-
   const isSurface: boolean = options.mode === ETexturePreviewMode.SURFACE;
-  const bodyTitle: string = isSurface
-    ? `Body: ${describeTextureSurfaceShape(options.shape)}, ${options.tiling}×`
-    : SURFACE_ONLY;
-
-  const onOpenBody = useCallback((event: MouseEvent<HTMLButtonElement>) => setBodyAnchor(event.currentTarget), []);
-
-  const onCloseBody = useCallback(() => setBodyAnchor(null), []);
 
   const onToggleMode = useCallback(() => {
     onChangeOptions({
@@ -66,67 +57,7 @@ export function TextureWorkspaceToolbar({
 
           <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
-          <Tooltip title={bodyTitle}>
-            <span>
-              <IconButton
-                aria-label={"Body"}
-                aria-haspopup={"dialog"}
-                color={"inherit"}
-                disabled={!isSurface}
-                onClick={onOpenBody}
-              >
-                <ViewQuiltIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Popover
-            anchorEl={bodyAnchor}
-            open={Boolean(bodyAnchor)}
-            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            transformOrigin={{ vertical: "top", horizontal: "center" }}
-            onClose={onCloseBody}
-          >
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, paddingX: 2, paddingY: 1 }}>
-              <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-                Body
-              </Typography>
-
-              <ToggleButtonGroup
-                exclusive
-                size={"small"}
-                value={options.shape}
-                aria-label={"Body shape"}
-                onChange={(_, next: Nullable<ETextureSurfaceShape>) =>
-                  next && onChangeOptions({ ...options, shape: next })
-                }
-              >
-                {Object.values(ETextureSurfaceShape).map((value: ETextureSurfaceShape) => (
-                  <ToggleButton key={value} value={value}>
-                    {describeTextureSurfaceShape(value)}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-
-              <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-                Tiling
-              </Typography>
-
-              <ToggleButtonGroup
-                exclusive
-                size={"small"}
-                value={options.tiling}
-                aria-label={"Tiling"}
-                onChange={(_, next: Nullable<number>) => next && onChangeOptions({ ...options, tiling: next })}
-              >
-                {TEXTURE_TILING_STEPS.map((value: number) => (
-                  <ToggleButton key={value} value={value} aria-label={`Tile ${value} by ${value}`}>
-                    {`${value}×`}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
-          </Popover>
+          <TextureBodyOptions options={options} onChangeOptions={onChangeOptions} />
 
           <EditorViewToggle
             label={"Light"}
@@ -146,13 +77,13 @@ export function TextureWorkspaceToolbar({
             onToggle={() => onChangeOptions({ ...options, isBumped: !options.isBumped })}
           />
 
-          <Tooltip title={isSurface ? "Reset camera and light" : SURFACE_ONLY}>
-            <span>
-              <IconButton aria-label={"Reset camera"} color={"inherit"} disabled={!isSurface} onClick={onResetCamera}>
-                <CenterFocusStrongIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
+          <EditorIconAction
+            label={"Reset camera"}
+            description={isSurface ? "Reset camera and light" : SURFACE_ONLY}
+            icon={<CenterFocusStrongIcon />}
+            isDisabled={!isSurface}
+            onClick={onResetCamera}
+          />
         </>
       }
     />
