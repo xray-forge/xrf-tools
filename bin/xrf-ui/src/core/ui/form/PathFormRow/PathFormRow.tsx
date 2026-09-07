@@ -1,13 +1,16 @@
-import { ReactElement, useId } from "react";
+import { ReactElement } from "react";
 
 import { FilePickerInput } from "@/core/ui/form/file-picker/FilePickerInput";
 import { useCommitOnSubmit } from "@/core/ui/form/form-commit";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
+import { Nullable } from "@/lib/types/general";
 
 interface IPathFormRowProps {
   label: string;
   description?: string;
+  /** Describes the current path when there is no validation error. */
+  fact?: Nullable<string>;
   isRequired?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
@@ -23,28 +26,30 @@ interface IPathFormRowProps {
 export function PathFormRow({
   label,
   description,
+  fact,
   isRequired = true,
   isDisabled,
   placeholder,
   field,
 }: IPathFormRowProps): ReactElement {
-  const controlId: string = useId();
-
   useCommitOnSubmit(field.commit);
 
   return (
-    <FormRow label={label} description={description} isRequired={isRequired} error={field.error} controlId={controlId}>
-      <FilePickerInput
-        id={controlId}
-        placeholder={placeholder}
-        value={field.value}
-        isDisabled={isDisabled}
-        isInvalid={Boolean(field.error)}
-        recents={field.recents}
-        onSelect={field.select}
-        onChange={field.setValue}
-        onClear={field.clear}
-      />
+    <FormRow label={label} description={description} isRequired={isRequired} error={field.error} fact={fact}>
+      {({ "aria-describedby": describedBy, "aria-invalid": isInvalid, id }) => (
+        <FilePickerInput
+          id={id}
+          aria-describedby={describedBy}
+          placeholder={placeholder}
+          value={field.value}
+          isDisabled={isDisabled}
+          isInvalid={isInvalid}
+          recents={field.recents}
+          onSelect={field.select}
+          onChange={field.setValue}
+          onClear={field.clear}
+        />
+      )}
     </FormRow>
   );
 }

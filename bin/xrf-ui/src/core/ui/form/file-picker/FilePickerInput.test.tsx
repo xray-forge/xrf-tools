@@ -94,12 +94,16 @@ describe("FilePickerInput", () => {
     expect(getByRole("textbox")).toBeDisabled();
   });
 
-  it("describes what the path is for", () => {
-    const { getByText } = renderWithProviders(
-      <FilePickerInput label={"Configs"} description={"Directory of LTX files to validate"} onSelect={jest.fn()} />
+  it("associates the input with its externally supplied label and description", () => {
+    const { getByRole } = renderWithProviders(
+      <>
+        <label htmlFor={"configs"}>Configs</label>
+        <p id={"configs-description"}>Directory of LTX files to validate</p>
+        <FilePickerInput id={"configs"} aria-describedby={"configs-description"} onSelect={jest.fn()} />
+      </>
     );
 
-    expect(getByText("Directory of LTX files to validate")).toBeInTheDocument();
+    expect(getByRole("textbox", { name: "Configs" })).toHaveAccessibleDescription("Directory of LTX files to validate");
   });
 
   describe("history", () => {

@@ -36,11 +36,14 @@ describe("AssetRootFormRow", () => {
       ["plugin:assets|probe_root"]: { evidence: [], kind: "installation", mounts: 12 },
     });
 
-    const { findByText } = renderWithProviders(<AssetRootFormRow field={mockField(INSTALLATION)} />);
+    const { findByText, getByRole } = renderWithProviders(<AssetRootFormRow field={mockField(INSTALLATION)} />);
 
     // The whole reason the probe survived the settings section: a root named by hand is a guess until something
     // confirms it, and "installation" is the confirmation.
     expect(await findByText("Game installation, 12 sources")).toBeInTheDocument();
+    expect(getByRole("textbox", { name: /Also search in/ })).toHaveAccessibleDescription(
+      /Game installation, 12 sources/
+    );
   });
 
   it("asks nothing about an empty field", () => {
@@ -55,12 +58,14 @@ describe("AssetRootFormRow", () => {
       ["plugin:assets|probe_root"]: { evidence: ["textures"], kind: "root", mounts: 1 },
     });
 
-    const { findByText, queryByText } = renderWithProviders(
+    const { findByText, queryByText, getByRole } = renderWithProviders(
       <AssetRootFormRow field={mockField("Q:\\gone", "Path does not exist")} />
     );
 
     // An error wins the line, and nothing is probed: describing a directory that is not there would contradict it.
     expect(await findByText("Path does not exist")).toBeInTheDocument();
     expect(queryByText(/Game data/)).not.toBeInTheDocument();
+    expect(getByRole("textbox", { name: /Also search in/ })).toHaveAccessibleDescription(/Path does not exist/);
+    expect(getByRole("textbox", { name: /Also search in/ })).toHaveAttribute("aria-invalid", "true");
   });
 });

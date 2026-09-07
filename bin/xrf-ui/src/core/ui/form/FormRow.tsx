@@ -1,7 +1,14 @@
 import { Box, Typography } from "@mui/material";
-import { ReactElement, ReactNode } from "react";
+import { ReactElement, ReactNode, useId } from "react";
 
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
+
+/** Attributes that associate a single control with its row's label and visible messages. */
+export interface IFormRowControlProps {
+  "aria-describedby": Optional<string>;
+  "aria-invalid": boolean;
+  id: string;
+}
 
 interface IFormRowProps {
   label: string;
@@ -15,13 +22,14 @@ interface IFormRowProps {
    * installation is answering the person, not correcting them. An error wins the line when both are present.
    */
   fact?: Nullable<string>;
-  /** Ties the label to the control it names. Without it the field reads as unlabelled. */
+  /** Overrides the generated ID for a rendered control, or identifies a manually composed control. */
   controlId?: string;
   /**
    * Puts the control beside the label instead of under it.
    */
   isInline?: boolean;
-  children: ReactNode;
+  /** A single control can receive its accessibility attributes; groups may supply ordinary content. */
+  children: ReactNode | ((props: IFormRowControlProps) => ReactNode);
 }
 
 /**
@@ -37,9 +45,21 @@ export function FormRow({
   isInline,
   children,
 }: IFormRowProps): ReactElement {
+  const generatedId: string = useId();
+  const fieldId: string = controlId ?? generatedId;
+  const message: Nullable<string> = error || fact || null;
+  const descriptionId: Optional<string> = description ? `${fieldId}-description` : undefined;
+  const messageId: Optional<string> = message ? `${fieldId}-message` : undefined;
+  const describedBy: Optional<string> = [descriptionId, messageId].filter(Boolean).join(" ") || undefined;
+
   const heading: ReactElement = (
     <Box sx={{ minWidth: 0 }}>
-      <Typography component={"label"} htmlFor={controlId} variant={"subtitle2"} sx={{ display: "block" }}>
+      <Typography
+        component={"label"}
+        htmlFor={typeof children === "function" ? fieldId : controlId}
+        variant={"subtitle2"}
+        sx={{ display: "block" }}
+      >
         {label}
 
         {isRequired ? null : (
@@ -50,7 +70,7 @@ export function FormRow({
       </Typography>
 
       {description ? (
-        <Typography variant={"caption"} sx={{ display: "block", color: "text.secondary" }}>
+        <Typography id={descriptionId} variant={"caption"} sx={{ display: "block", color: "text.secondary" }}>
           {description}
         </Typography>
       ) : null}
@@ -67,11 +87,15 @@ export function FormRow({
     >
       {heading}
 
-      <Box sx={{ minWidth: 0, flexShrink: isInline ? 0 : undefined }}>{children}</Box>
+      <Box sx={{ minWidth: 0, flexShrink: isInline ? 0 : undefined }}>
+        {typeof children === "function"
+          ? children({ id: fieldId, "aria-describedby": describedBy, "aria-invalid": Boolean(error) })
+          : children}
+      </Box>
 
-      {error || fact ? (
-        <Typography variant={"caption"} sx={{ color: error ? "error.main" : "text.secondary" }}>
-          {error ?? fact}
+      {message ? (
+        <Typography id={messageId} variant={"caption"} sx={{ color: error ? "error.main" : "text.secondary" }}>
+          {message}
         </Typography>
       ) : null}
     </Box>

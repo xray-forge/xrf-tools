@@ -6,20 +6,15 @@ import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { MONOSPACE } from "@/core/theme/tokens";
 import { FilePickerRecentsMenu } from "@/core/ui/form/file-picker/FilePickerRecentsMenu";
-import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathFieldRecents } from "@/core/ui/form/path-recents";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 interface IFilePickerInputProps extends BaseComponentProps {
-  /** When given, the control labels itself by composing a `FormRow`. */
-  label?: string;
-  description?: string;
-  isRequired?: boolean;
-  error?: Nullable<string>;
+  /** IDs of the description and validation message rendered by the enclosing row. */
+  "aria-describedby"?: string;
   placeholder?: string;
   value?: Nullable<string>;
-  /** Ties this control to a label a caller already rendered. */
   isDisabled?: boolean;
   isInvalid?: boolean;
   onSelect: () => void;
@@ -37,12 +32,9 @@ interface IFilePickerInputProps extends BaseComponentProps {
  */
 export function FilePickerInput({
   "data-testid": dataTestId,
+  "aria-describedby": describedBy,
   id,
   className,
-  label,
-  description,
-  isRequired,
-  error,
   placeholder = "Not selected",
   value,
   isDisabled,
@@ -79,6 +71,7 @@ export function FilePickerInput({
       sx={{ "& .MuiInputBase-input": MONOSPACE }}
       slotProps={{
         htmlInput: {
+          "aria-describedby": describedBy,
           spellCheck: false,
           // Paths are compared and edited from the end far more often than from the start.
           autoComplete: "off",
@@ -124,7 +117,7 @@ export function FilePickerInput({
 
   // Beside the field rather than inside its adornment: the menu is a portal either way, and nesting a popover in the
   // input put its own focus trap inside the control.
-  const controlWithHistory: ReactElement = (
+  return (
     <>
       {control}
 
@@ -138,13 +131,5 @@ export function FilePickerInput({
         />
       ) : null}
     </>
-  );
-
-  return label ? (
-    <FormRow label={label} description={description} isRequired={isRequired} error={error} controlId={controlId}>
-      {controlWithHistory}
-    </FormRow>
-  ) : (
-    controlWithHistory
   );
 }
