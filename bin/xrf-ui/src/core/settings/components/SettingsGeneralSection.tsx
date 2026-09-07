@@ -1,12 +1,12 @@
-import { Box, Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
 import { SettingsService } from "@/core/settings/services/settings";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
-import { Nullable } from "@/lib/types/general";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
 const COLOR_SCHEME_MODE_LABELS: Record<ColorSchemeMode, string> = {
   light: "Light",
@@ -14,50 +14,36 @@ const COLOR_SCHEME_MODE_LABELS: Record<ColorSchemeMode, string> = {
   system: "System",
 };
 
+const COLOR_SCHEME_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ColorSchemeMode>> = COLOR_SCHEME_MODES.map((value) => ({
+  value,
+  label: COLOR_SCHEME_MODE_LABELS[value],
+}));
+
 /** Switches that belong to the application rather than to any one editor. */
 export function SettingsGeneralSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const { mode, setMode } = useColorScheme();
 
-  const onChangeDevMode = useCallback(
-    (_: ChangeEvent<HTMLInputElement>, checked: boolean) => settingsService.setDevModeEnabled(checked),
-    [settingsService]
-  );
-
-  const onChangeMode = useCallback(
-    (_: unknown, value: Nullable<ColorSchemeMode>) => {
-      if (value) {
-        setMode(value);
-      }
-    },
-    [setMode]
-  );
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <SettingsSection title={"Appearance"} description={"Follow the system theme, or pin the application to one."}>
-        <ToggleButtonGroup exclusive size={"small"} value={mode ?? DEFAULT_COLOR_SCHEME_MODE} onChange={onChangeMode}>
-          {COLOR_SCHEME_MODES.map((it: ColorSchemeMode) => (
-            <ToggleButton key={it} value={it}>
-              {COLOR_SCHEME_MODE_LABELS[it]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </SettingsSection>
+      <ChoiceFormRow
+        label={"Appearance"}
+        description={"Follow the system theme, or pin the application to one."}
+        options={COLOR_SCHEME_OPTIONS}
+        value={mode ?? DEFAULT_COLOR_SCHEME_MODE}
+        onChange={setMode}
+      />
 
-      <SettingsSection
-        title={"Diagnostics"}
+      <CheckboxFormRow
+        label={"Developer mode"}
         description={
           "Show tracing and captured runtime errors in the notifications panel. Recorded either way, so turning this " +
           "on also reveals what happened before it was switched."
         }
-      >
-        <FormControlLabel
-          control={<Checkbox checked={settingsService.isDevModeEnabled} onChange={onChangeDevMode} />}
-          label={"Developer mode"}
-        />
-      </SettingsSection>
+        isChecked={settingsService.isDevModeEnabled}
+        onChange={settingsService.setDevModeEnabled}
+      />
     </Box>
   );
 }
