@@ -6,7 +6,7 @@ import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolutio
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -42,30 +42,30 @@ export function VisualSubmeshTexture({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelRow
+      <EditorPanelProperty
         label={"Texture"}
         value={<Chip size={"small"} color={descriptor.color} variant={"outlined"} label={descriptor.label} />}
       />
-      <EditorPanelRow label={"Resolution"} value={describeResolution(resolution)} />
+      <EditorPanelProperty label={"Resolution"} value={describeResolution(resolution)} />
 
       {located ? <AssetTextureDetails asset={located} descriptor={textures?.[located.logicalPath] ?? null} /> : null}
 
       {resolution.kind === "missing"
         ? resolution.roots.map((root: string) => (
-            <EditorPanelRow key={root} label={"Searched"} value={root} isMonospace />
+            <EditorPanelProperty key={root} label={"Searched"} value={root} isMonospace />
           ))
         : null}
 
-      {resolution.kind === "rejected" ? <EditorPanelRow label={"Rejected"} value={resolution.reason} /> : null}
+      {resolution.kind === "rejected" ? <EditorPanelProperty label={"Rejected"} value={resolution.reason} /> : null}
 
       {state === EVisualTextureState.DECODED ? (
-        <EditorPanelRow
+        <EditorPanelProperty
           label={"Upload"}
           value={"Expanded from a layout the renderer cannot read, so it is uploaded without a mip chain"}
         />
       ) : null}
 
-      {status?.reason ? <EditorPanelRow label={"Texture error"} value={status.reason} /> : null}
+      {status?.reason ? <EditorPanelProperty label={"Texture error"} value={status.reason} /> : null}
     </div>
   );
 }

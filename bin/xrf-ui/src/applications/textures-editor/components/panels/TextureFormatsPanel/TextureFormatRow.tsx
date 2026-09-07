@@ -2,7 +2,7 @@ import { Box, Chip, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { TextureEncodingReport } from "@/core/bindings/types/xrf-app";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { PANEL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
@@ -45,13 +45,13 @@ export function TextureFormatRow({
       </Box>
 
       <Box>
-        <EditorPanelRow label={"On disk"} value={formatBytes(candidate.fileBytes)} />
-        <EditorPanelRow label={"Uploaded"} value={formatBytes(candidate.gpuBytes)} />
-        <EditorPanelRow
+        <EditorPanelProperty label={"On disk"} value={formatBytes(candidate.fileBytes)} />
+        <EditorPanelProperty label={"Uploaded"} value={formatBytes(candidate.gpuBytes)} />
+        <EditorPanelProperty
           label={"Quality"}
           value={candidate.psnr === null ? "lossless" : `${candidate.psnr.toFixed(1)} dB additional`}
         />
-        <EditorPanelRow label={"Encoding time"} value={`${candidate.encodeDuration} ms`} />
+        <EditorPanelProperty label={"Encoding time"} value={`${candidate.encodeDuration} ms`} />
       </Box>
     </ListItemButton>
   );

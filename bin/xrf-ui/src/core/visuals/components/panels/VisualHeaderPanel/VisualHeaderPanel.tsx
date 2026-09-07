@@ -2,7 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { VisualDescription } from "@/core/bindings/types/xrf-visual";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBoundsSection } from "@/core/visuals/components/panels/VisualHeaderPanel/VisualBoundsSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -27,15 +32,15 @@ export function VisualHeaderPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
       <EditorPanelSection title={"Model"} isFirst>
-        <EditorPanelRow label={"Format version"} value={description.version} />
-        <EditorPanelRow label={"Type"} value={description.modelTypeLabel} />
-        <EditorPanelRow label={"Type id"} value={description.modelType} />
-        <EditorPanelRow label={"Shader id"} value={description.shaderId} />
-        <EditorPanelRow label={"Submeshes"} value={description.submeshes.length} />
+        <EditorPanelProperty label={"Format version"} value={description.version} />
+        <EditorPanelProperty label={"Type"} value={description.modelTypeLabel} />
+        <EditorPanelProperty label={"Type id"} value={description.modelType} />
+        <EditorPanelProperty label={"Shader id"} value={description.shaderId} />
+        <EditorPanelProperty label={"Submeshes"} value={description.submeshes.length} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Source"}>
-        <EditorPanelRow label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} isMonospace />
+        <EditorPanelProperty label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} isMonospace />
       </EditorPanelSection>
 
       <VisualBoundsSection

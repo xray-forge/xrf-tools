@@ -1,6 +1,11 @@
 import { ReactElement } from "react";
 
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { ISpawnRowSelection, SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -39,7 +44,7 @@ export function SpawnRowDetailsPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={selection.source}>
       <EditorPanelSection title={"Properties"} isFirst>
         {entries.map(([key, value]: [string, unknown]) => (
-          <EditorPanelRow key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace />
+          <EditorPanelProperty key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace />
         ))}
       </EditorPanelSection>
     </EditorPanel>

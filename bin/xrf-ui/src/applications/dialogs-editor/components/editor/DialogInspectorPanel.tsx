@@ -7,7 +7,12 @@ import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -76,18 +81,18 @@ export function DialogInspectorPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={isDialogRoot ? "Dialog" : "Phrase"}>
       <EditorPanelSection title={"Details"} isFirst>
-        <EditorPanelRow label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
+        <EditorPanelProperty label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
 
         {isDialogRoot ? (
           <>
-            <EditorPanelRow label={"Phrases"} value={dialog.phrases.length} />
-            {dialog.language ? <EditorPanelRow label={"Language"} value={dialog.language} /> : null}
+            <EditorPanelProperty label={"Phrases"} value={dialog.phrases.length} />
+            {dialog.language ? <EditorPanelProperty label={"Language"} value={dialog.language} /> : null}
           </>
         ) : (
           <>
-            <EditorPanelRow label={"Text"} value={phrase?.text ?? "No text for this language."} />
+            <EditorPanelProperty label={"Text"} value={phrase?.text ?? "No text for this language."} />
 
-            {phrase?.textKey ? <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace /> : null}
+            {phrase?.textKey ? <EditorPanelProperty label={"Text key"} value={phrase.textKey} isMonospace /> : null}
           </>
         )}
 

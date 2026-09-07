@@ -9,7 +9,7 @@ import {
   describeSurfaceShading,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -37,16 +37,19 @@ export function VisualSubmeshSurface({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelRow
+      <EditorPanelProperty
         label={"Alpha"}
         value={<Chip size={"small"} color={outcome.color} variant={"outlined"} label={outcome.label} />}
       />
 
-      {draw ? <EditorPanelRow label={"Drawn"} value={draw} /> : null}
+      {draw ? <EditorPanelProperty label={"Drawn"} value={draw} /> : null}
 
-      <EditorPanelRow label={"Defined by"} value={describeSurfaceDeclaration(surface.declaration, surface.library)} />
+      <EditorPanelProperty
+        label={"Defined by"}
+        value={describeSurfaceDeclaration(surface.declaration, surface.library)}
+      />
 
-      {shading ? <EditorPanelRow label={"Sorting"} value={shading} /> : null}
+      {shading ? <EditorPanelProperty label={"Sorting"} value={shading} /> : null}
     </div>
   );
 }

@@ -11,7 +11,12 @@ import {
   describeVirtualHeight,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -57,14 +62,14 @@ export function TextureMaterialPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
       <EditorPanelSection title={"Declaration"} isFirst>
-        <EditorPanelRow label={"Texture"} value={description.reference} isMonospace />
+        <EditorPanelProperty label={"Texture"} value={description.reference} isMonospace />
 
-        <EditorPanelRow
+        <EditorPanelProperty
           label={"Bump"}
           value={<Chip size={"small"} color={outcome.color} variant={"outlined"} label={outcome.label} />}
         />
 
-        <EditorPanelRow
+        <EditorPanelProperty
           label={"Declared by"}
           value={declaration ?? "No .thm sits beside this texture in any searched root"}
         />
@@ -72,15 +77,15 @@ export function TextureMaterialPanel({
 
       {material.bump ? (
         <EditorPanelSection title={"Bump pair"} caption={"What the renderer binds, substitutions included"}>
-          <EditorPanelRow label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
-          <EditorPanelRow label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
-          <EditorPanelRow label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
+          <EditorPanelProperty label={"Bump map"} value={describeBumpInput(material.bump.bump)} />
+          <EditorPanelProperty label={"Bump#"} value={describeBumpInput(material.bump.companion)} />
+          <EditorPanelProperty label={"Height"} value={describeVirtualHeight(material.bump.virtualHeight)} />
         </EditorPanelSection>
       ) : null}
 
       {material.detail ? (
         <EditorPanelSection title={"Detail"}>
-          <EditorPanelRow label={"Association"} value={describeDetail(material.detail)} />
+          <EditorPanelProperty label={"Association"} value={describeDetail(material.detail)} />
         </EditorPanelSection>
       ) : null}
     </EditorPanel>

@@ -3,7 +3,12 @@ import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -37,7 +42,7 @@ export function TextureFilesPanel({
           {file.asset ? (
             <AssetTextureDetails asset={file.asset} descriptor={file.descriptor} />
           ) : (
-            <EditorPanelRow label={"Status"} value={"Not bound"} />
+            <EditorPanelProperty label={"Status"} value={"Not bound"} />
           )}
         </EditorPanelSection>
       ))}

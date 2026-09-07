@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
-import { EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -68,11 +68,11 @@ export function VisualSubmeshSection({
         </Box>
       }
     >
-      <EditorPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} isMonospace />
+      <EditorPanelProperty label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} isMonospace />
 
       <VisualSubmeshSurface surface={submesh.shaderName ? (surfaces?.[submesh.shaderName] ?? null) : null} />
 
-      <EditorPanelRow label={"Type"} value={submesh.modelTypeLabel} />
+      <EditorPanelProperty label={"Type"} value={submesh.modelTypeLabel} />
 
       <VisualSubmeshTexture texture={texture} status={status} textures={textures} />
 
@@ -80,19 +80,19 @@ export function VisualSubmeshSection({
 
       {content.kind === "packed" ? (
         <>
-          <EditorPanelRow label={"Vertices"} value={content.geometry.vertexCount} />
+          <EditorPanelProperty label={"Vertices"} value={content.geometry.vertexCount} />
 
-          <EditorPanelRow
+          <EditorPanelProperty
             label={"Triangles"}
             value={`${content.geometry.detailLevels[0].count / 3} of ${content.geometry.indexCount / 3}`}
           />
 
           {content.geometry.detailLevels.length > 1 ? (
-            <EditorPanelRow label={"Detail levels"} value={content.geometry.detailLevels.length} />
+            <EditorPanelProperty label={"Detail levels"} value={content.geometry.detailLevels.length} />
           ) : null}
         </>
       ) : (
-        <EditorPanelRow label={"Reason"} value={content.reason} />
+        <EditorPanelProperty label={"Reason"} value={content.reason} />
       )}
     </EditorPanelSection>
   );

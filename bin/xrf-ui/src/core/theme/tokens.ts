@@ -101,22 +101,14 @@ export const PANEL = {
   maxWidthRatio: 0.5,
   /** A panel row's own controls, one step below the severity icon so they do not read as part of the outcome. */
   actionIconSize: 16,
-  /**
-   * Width a row's value keeps beside its label before it takes a line of its own.
-   *
-   * What makes one row shape work across a panel a person drags between `minWidth` and `maxWidth`: a value narrower
-   * than this beside a label is a column of two or three broken characters, so the row wraps instead and the value
-   * gets the full width. Wide enough to be worth reading, narrow enough that short values still pair off.
-   */
-  rowValueMinWidth: "11ch",
-  /** Shared spacing for panel headings, sections, and property rows, in theme units. */
+  /** Shared spacing for panel headings, sections, and stacked properties, in theme units. */
   contentPadding: 2,
   headerPaddingY: 1.5,
   sectionPaddingY: 1.5,
   sectionContentGap: 1,
-  rowPaddingY: 0.4,
-  rowColumnGap: 2,
-  rowLineHeight: 1.6,
+  propertyPaddingY: 0.75,
+  propertyValueGap: 0.25,
+  contentLineHeight: 1.6,
 } as const;
 
 /**

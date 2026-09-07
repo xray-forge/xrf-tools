@@ -4,7 +4,12 @@ import { ArchiveSharedPayloadDetail } from "@/applications/archives-explorer/com
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf } from "@/core/archive/files";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
@@ -37,19 +42,19 @@ export function ArchiveFileDetailsPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"File details"}>
       {descriptor ? (
         <EditorPanelSection title={"Metadata"} isFirst>
-          <EditorPanelRow label={"Name"} value={descriptor.name} isMonospace />
-          <EditorPanelRow label={"Extension"} value={getFileExtension(descriptor.name) || "-"} />
-          <EditorPanelRow label={"Source archive"} value={volume?.path ?? "-"} isMonospace />
-          <EditorPanelRow label={"Destination root"} value={volume?.outputRootPath ?? "-"} isMonospace />
-          <EditorPanelRow label={"Real size"} value={formatBytes(descriptor.sizeReal)} />
-          <EditorPanelRow label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
-          <EditorPanelRow label={"Compression"} value={getCompressionLabel(descriptor)} />
-          <EditorPanelRow
+          <EditorPanelProperty label={"Name"} value={descriptor.name} isMonospace />
+          <EditorPanelProperty label={"Extension"} value={getFileExtension(descriptor.name) || "-"} />
+          <EditorPanelProperty label={"Source archive"} value={volume?.path ?? "-"} isMonospace />
+          <EditorPanelProperty label={"Destination root"} value={volume?.outputRootPath ?? "-"} isMonospace />
+          <EditorPanelProperty label={"Real size"} value={formatBytes(descriptor.sizeReal)} />
+          <EditorPanelProperty label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
+          <EditorPanelProperty label={"Compression"} value={getCompressionLabel(descriptor)} />
+          <EditorPanelProperty
             label={"CRC32"}
             value={`0x${descriptor.crc.toString(16).padStart(8, "0").toUpperCase()}`}
             isMonospace
           />
-          <EditorPanelRow
+          <EditorPanelProperty
             label={"Offset"}
             value={`${formatBytes(descriptor.offset)} (${descriptor.offset})`}
             isMonospace

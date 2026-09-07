@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 import { formatMipmapLevels } from "@/core/assets/lib/texture-shape";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -26,21 +26,21 @@ export function AssetTextureDetails({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelRow label={"Path"} value={asset.logicalPath} isMonospace />
+      <EditorPanelProperty label={"Path"} value={asset.logicalPath} isMonospace />
       {asset.container.kind === "archive" ? (
-        <EditorPanelRow label={"Archive"} value={asset.container.path} isMonospace />
+        <EditorPanelProperty label={"Archive"} value={asset.container.path} isMonospace />
       ) : (
-        <EditorPanelRow label={"Root"} value={asset.container.root} isMonospace />
+        <EditorPanelProperty label={"Root"} value={asset.container.root} isMonospace />
       )}
-      {descriptor ? <EditorPanelRow label={"Size"} value={formatBytes(descriptor.size)} /> : null}
+      {descriptor ? <EditorPanelProperty label={"Size"} value={formatBytes(descriptor.size)} /> : null}
       {shape ? (
         <>
-          <EditorPanelRow label={"Dimensions"} value={`${shape.width} × ${shape.height}`} />
-          <EditorPanelRow label={"Format"} value={shape.format} />
-          <EditorPanelRow label={"Mipmaps"} value={formatMipmapLevels(shape.mipmapLevels)} />
+          <EditorPanelProperty label={"Dimensions"} value={`${shape.width} × ${shape.height}`} />
+          <EditorPanelProperty label={"Format"} value={shape.format} />
+          <EditorPanelProperty label={"Mipmaps"} value={formatMipmapLevels(shape.mipmapLevels)} />
         </>
       ) : descriptor ? (
-        <EditorPanelRow label={"Format"} value={"Header unreadable"} />
+        <EditorPanelProperty label={"Format"} value={"Header unreadable"} />
       ) : null}
     </div>
   );

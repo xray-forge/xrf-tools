@@ -10,7 +10,12 @@ import { TextureBumpService } from "@/applications/textures-editor/services/bump
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -96,8 +101,8 @@ export function TextureBumpPanel({
       ) : null}
 
       <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
-        <EditorPanelRow label={"Bump"} value={bumpReference} isMonospace />
-        <EditorPanelRow label={"Companion"} value={toCompanionReference(bumpReference)} isMonospace />
+        <EditorPanelProperty label={"Bump"} value={bumpReference} isMonospace />
+        <EditorPanelProperty label={"Companion"} value={toCompanionReference(bumpReference)} isMonospace />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>

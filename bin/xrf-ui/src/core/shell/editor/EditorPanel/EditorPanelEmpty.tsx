@@ -20,7 +20,7 @@ export function EditorPanelEmpty({
 }: IEditorPanelEmptyProps): ReactElement {
   return (
     <Box data-testid={dataTestId} id={id} className={className} sx={{ padding: PANEL.contentPadding }}>
-      <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.rowLineHeight }}>
+      <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
         {label}
       </Typography>
     </Box>

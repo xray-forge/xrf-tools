@@ -3,7 +3,12 @@ import { ReactElement } from "react";
 
 import { SequenceClipRow } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel/SequenceClipRow";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -40,8 +45,8 @@ export function SequenceTrackPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Totals"} caption={"As the baked clips report themselves"}>
-        <EditorPanelRow label={"Playable clips"} value={`${service.playableCount} / ${clips.length}`} />
-        <EditorPanelRow label={"Duration"} value={formatDuration(Math.round(service.duration * 1000))} />
+        <EditorPanelProperty label={"Playable clips"} value={`${service.playableCount} / ${clips.length}`} />
+        <EditorPanelProperty label={"Duration"} value={formatDuration(Math.round(service.duration * 1000))} />
       </EditorPanelSection>
     </EditorPanel>
   );

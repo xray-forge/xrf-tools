@@ -8,7 +8,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -67,8 +67,11 @@ export function ArchiveAudioPreview(): ReactElement {
       <Box sx={{ flexShrink: 0, width: "100%", maxWidth: ARCHIVE_AUDIO_PREVIEW_WIDTH }}>
         <Typography variant={"subtitle2"}>Stream</Typography>
 
-        <EditorPanelRow label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
-        <EditorPanelRow label={"Sample rate"} value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"} />
+        <EditorPanelProperty label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
+        <EditorPanelProperty
+          label={"Sample rate"}
+          value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"}
+        />
 
         <Divider sx={{ marginY: 1.5 }} />
 
@@ -76,16 +79,16 @@ export function ArchiveAudioPreview(): ReactElement {
 
         {descriptor.parameters ? (
           <>
-            <EditorPanelRow label={"Min distance"} value={`${descriptor.parameters.minDistance} m`} />
-            <EditorPanelRow label={"Max distance"} value={`${descriptor.parameters.maxDistance} m`} />
-            <EditorPanelRow label={"Max AI distance"} value={`${descriptor.parameters.maxAiDistance} m`} />
-            <EditorPanelRow
+            <EditorPanelProperty label={"Min distance"} value={`${descriptor.parameters.minDistance} m`} />
+            <EditorPanelProperty label={"Max distance"} value={`${descriptor.parameters.maxDistance} m`} />
+            <EditorPanelProperty label={"Max AI distance"} value={`${descriptor.parameters.maxAiDistance} m`} />
+            <EditorPanelProperty
               label={"Base volume"}
               value={`${descriptor.parameters.baseVolume ?? 0} (${Math.round(
                 (descriptor.parameters.baseVolume ?? 0) * 100
               )}%)`}
             />
-            <EditorPanelRow label={"Game type"} value={String(descriptor.parameters.gameType)} isMonospace />
+            <EditorPanelProperty label={"Game type"} value={String(descriptor.parameters.gameType)} isMonospace />
           </>
         ) : (
           <Typography variant={"body2"} sx={{ marginTop: 1, color: "text.secondary" }}>

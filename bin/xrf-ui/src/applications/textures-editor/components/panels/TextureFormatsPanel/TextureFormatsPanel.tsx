@@ -5,7 +5,12 @@ import { ReactElement, useCallback } from "react";
 import { TextureFormatRow } from "@/applications/textures-editor/components/panels/TextureFormatsPanel/TextureFormatRow";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@/core/bindings/types/xrf-app";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
@@ -38,12 +43,17 @@ export function TextureFormatsPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Formats"}>
       <EditorPanelSection title={"Current"} isFirst>
-        <EditorPanelRow label={"Format"} value={comparison?.current.label ?? description.base?.shape?.format ?? "-"} />
-        <EditorPanelRow
+        <EditorPanelProperty
+          label={"Format"}
+          value={comparison?.current.label ?? description.base?.shape?.format ?? "-"}
+        />
+        <EditorPanelProperty
           label={"On disk"}
           value={comparison ? formatBytes(comparison.current.fileBytes) : formatBytes(description.base?.size ?? 0)}
         />
-        {comparison ? <EditorPanelRow label={"Uploaded"} value={formatBytes(comparison.current.gpuBytes)} /> : null}
+        {comparison ? (
+          <EditorPanelProperty label={"Uploaded"} value={formatBytes(comparison.current.gpuBytes)} />
+        ) : null}
       </EditorPanelSection>
 
       <EditorPanelSection

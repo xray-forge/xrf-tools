@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { DialogElementDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IDialogInspectorSectionProps extends BaseComponentProps {
@@ -24,7 +24,7 @@ export function DialogInspectorSection({
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={title} caption={caption}>
       {elements.map((element: DialogElementDescriptor, index: number) => (
-        <EditorPanelRow key={`${element.name}-${index}`} label={element.name} value={element.value} isMonospace />
+        <EditorPanelProperty key={`${element.name}-${index}`} label={element.name} value={element.value} isMonospace />
       ))}
     </EditorPanelSection>
   );

@@ -3,7 +3,12 @@ import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
 import { ITextureBumpTexels, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
@@ -135,15 +140,15 @@ export function TextureChannelsPanel({
           >
             {readout ? (
               <>
-                <EditorPanelRow label={"At"} value={readout.position} />
-                <EditorPanelRow label={"Bump"} value={readout.bump} />
-                <EditorPanelRow label={"Bump#"} value={readout.companion} />
-                <EditorPanelRow label={"Normal"} value={readout.normal} />
-                <EditorPanelRow label={"Gloss"} value={readout.gloss} />
-                <EditorPanelRow label={"Height"} value={readout.height} />
+                <EditorPanelProperty label={"At"} value={readout.position} />
+                <EditorPanelProperty label={"Bump"} value={readout.bump} />
+                <EditorPanelProperty label={"Bump#"} value={readout.companion} />
+                <EditorPanelProperty label={"Normal"} value={readout.normal} />
+                <EditorPanelProperty label={"Gloss"} value={readout.gloss} />
+                <EditorPanelProperty label={"Height"} value={readout.height} />
               </>
             ) : (
-              <EditorPanelRow
+              <EditorPanelProperty
                 label={"Readout"}
                 value={
                   texels ? "Point at a tile" : "Unavailable: this pair is stored as blocks rather than as plain texels"

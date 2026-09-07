@@ -2,7 +2,7 @@ import { ReactElement, useMemo } from "react";
 
 import { listPayloadSharersOf } from "@/core/archive/files";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
-import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
+import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Loadable } from "@/lib/loadable";
 
@@ -43,9 +43,9 @@ export function ArchiveSharedPayloadDetail({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelRow label={"Shared payload"} value={description} />
+      <EditorPanelProperty label={"Shared payload"} value={description} />
       {others.map((name: string) => (
-        <EditorPanelRow key={name} label={"Entry"} value={name} isMonospace />
+        <EditorPanelProperty key={name} label={"Entry"} value={name} isMonospace />
       ))}
     </div>
   );
