@@ -61,6 +61,16 @@ export const CONTROL = {
   smallInputPaddingY: 8.5,
 } as const;
 
+/** Shared dialog spacing in theme spacing units; the header minimum is in pixels. */
+export const DIALOG = {
+  paddingX: 3,
+  headerPaddingY: 1.5,
+  contentPaddingY: 3,
+  actionsPaddingY: 1.5,
+  gap: 1,
+  headerMinHeight: 56,
+} as const;
+
 /**
  * Explorer trees, shared by every surface that renders one.
  *

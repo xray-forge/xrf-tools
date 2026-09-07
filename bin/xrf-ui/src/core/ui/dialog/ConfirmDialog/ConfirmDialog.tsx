@@ -1,13 +1,7 @@
-import {
-  Breakpoint,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
-import { ReactElement, ReactNode } from "react";
+import { Breakpoint, Button, Dialog, DialogActions, DialogContent, DialogContentText } from "@mui/material";
+import { ReactElement, ReactNode, useId } from "react";
+
+import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 
 interface IConfirmDialogProps {
   isOpen: boolean;
@@ -15,12 +9,12 @@ interface IConfirmDialogProps {
   isDestructive?: boolean;
   /** Holds the confirming button back while the description still asks the user for something. */
   isConfirmDisabled?: boolean;
-  /** Widen it when the description is a summary to read rather than a sentence to acknowledge. */
   title: string;
   /** What the command will do, in terms of what it touches rather than what it is called. */
   description: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Widen it when the description is a summary to read rather than a sentence to acknowledge. */
   maxWidth?: Breakpoint;
   onConfirm: () => void;
   onClose: () => void;
@@ -44,12 +38,22 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
 }: IConfirmDialogProps): ReactElement {
+  const titleId: string = useId();
+  const descriptionId: string = useId();
+
   return (
-    <Dialog open={isOpen} maxWidth={maxWidth} fullWidth={true} onClose={onClose}>
-      <DialogTitle sx={{ paddingBottom: 1 }}>{title}</DialogTitle>
+    <Dialog
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      open={isOpen}
+      maxWidth={maxWidth}
+      fullWidth={true}
+      onClose={onClose}
+    >
+      <DialogHeader title={title} titleId={titleId} />
 
       <DialogContent>
-        <DialogContentText component={"div"} variant={"body2"}>
+        <DialogContentText id={descriptionId} component={"div"} variant={"body2"}>
           {description}
         </DialogContentText>
       </DialogContent>

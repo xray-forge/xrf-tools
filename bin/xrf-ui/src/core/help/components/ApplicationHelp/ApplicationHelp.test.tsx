@@ -19,11 +19,14 @@ describe("ApplicationHelp", () => {
   });
 
   it("opens the current application's help from the caption button", async () => {
-    const { getByLabelText, getByText } = renderWithProviders(<ApplicationHelp />, { route: "/archives-explorer" });
+    const { getByLabelText, getByText, getByRole } = renderWithProviders(<ApplicationHelp />, {
+      route: "/archives-explorer",
+    });
 
     await userEvent.click(getByLabelText("Help"));
 
     expect(getByText("Archives explorer")).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "Archives explorer" })).toBeInTheDocument();
     expect(getByText("Typical workflow")).toBeInTheDocument();
   });
 
@@ -47,5 +50,19 @@ describe("ApplicationHelp", () => {
     await userEvent.click(getByLabelText("Close help"));
 
     await waitFor(() => expect(queryByText("Typical workflow")).not.toBeInTheDocument());
+
+    expect(getByLabelText("Help")).toHaveFocus();
+  });
+
+  it("closes on Escape and restores focus to Help", async () => {
+    const { getByLabelText, queryByRole } = renderWithProviders(<ApplicationHelp />, { route: "/archives-explorer" });
+    const trigger = getByLabelText("Help");
+
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+
+    expect(trigger).toHaveFocus();
   });
 });

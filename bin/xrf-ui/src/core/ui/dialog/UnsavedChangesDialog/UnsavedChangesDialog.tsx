@@ -1,14 +1,7 @@
-import {
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
-import { ReactElement, ReactNode } from "react";
+import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText } from "@mui/material";
+import { ReactElement, ReactNode, useId } from "react";
 
+import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { Nullable } from "@/lib/types/general";
 
 interface IUnsavedChangesDialogProps {
@@ -36,12 +29,22 @@ export function UnsavedChangesDialog({
   onDiscard,
   onClose,
 }: IUnsavedChangesDialogProps): ReactElement {
+  const titleId: string = useId();
+  const descriptionId: string = useId();
+
   return (
-    <Dialog open={isOpen} maxWidth={"xs"} fullWidth={true} onClose={isSaving ? undefined : onClose}>
-      <DialogTitle sx={{ paddingBottom: 1 }}>{title}</DialogTitle>
+    <Dialog
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      open={isOpen}
+      maxWidth={"xs"}
+      fullWidth={true}
+      onClose={isSaving ? undefined : onClose}
+    >
+      <DialogHeader title={title} titleId={titleId} />
 
       <DialogContent>
-        <DialogContentText component={"div"} variant={"body2"}>
+        <DialogContentText id={descriptionId} component={"div"} variant={"body2"}>
           {description}
         </DialogContentText>
       </DialogContent>

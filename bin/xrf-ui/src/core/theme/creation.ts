@@ -3,7 +3,18 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { ACCENT, CONTROL, DIVIDER, LAYOUT, MONOSPACE, RADIUS, STATUS, SURFACE, TEXT } from "@/core/theme/tokens";
+import {
+  ACCENT,
+  CONTROL,
+  DIALOG,
+  DIVIDER,
+  LAYOUT,
+  MONOSPACE,
+  RADIUS,
+  STATUS,
+  SURFACE,
+  TEXT,
+} from "@/core/theme/tokens";
 
 type ColorScheme = "light" | "dark";
 
@@ -150,6 +161,30 @@ export function createApplicationTheme(): Theme {
       },
       MuiDialog: {
         defaultProps: { closeAfterTransition: false },
+      },
+      MuiDialogTitle: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            boxSizing: "border-box",
+            minHeight: DIALOG.headerMinHeight,
+            padding: theme.spacing(DIALOG.headerPaddingY, DIALOG.paddingX),
+          }),
+        },
+      },
+      MuiDialogContent: {
+        defaultProps: { dividers: true },
+        styleOverrides: {
+          root: ({ theme }) => ({ padding: theme.spacing(DIALOG.contentPaddingY, DIALOG.paddingX) }),
+        },
+      },
+      MuiDialogActions: {
+        defaultProps: { disableSpacing: true },
+        styleOverrides: {
+          root: ({ theme }) => ({
+            gap: theme.spacing(DIALOG.gap),
+            padding: theme.spacing(DIALOG.actionsPaddingY, DIALOG.paddingX),
+          }),
+        },
       },
       MuiTextField: {
         defaultProps: { size: "small" },
