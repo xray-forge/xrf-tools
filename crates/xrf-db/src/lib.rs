@@ -12,6 +12,9 @@ pub(crate) mod spawn;
 pub(crate) mod thm;
 pub(crate) mod types;
 
+#[cfg(any(test, feature = "fixtures"))]
+pub mod fixtures;
+
 pub use xrf_chunk::XRayByteOrder;
 
 pub use crate::data::ogf::ogf_bone::OgfBone;
@@ -89,6 +92,12 @@ pub use crate::ogf::survey::*;
 pub use crate::omf::omf_file::*;
 pub use crate::omf::omf_motions_processor::*;
 pub use crate::particles::particles_file::*;
+pub use crate::shader_library::shader_blender::*;
+pub use crate::shader_library::shader_blender_class::*;
+pub use crate::shader_library::shader_blender_property::*;
+pub use crate::shader_library::shader_blender_property_kind::*;
+pub use crate::shader_library::shader_blender_property_value::*;
+pub use crate::shader_library::shader_blender_token::*;
 pub use crate::shader_library::shader_library_file::*;
 pub use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
 pub use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;

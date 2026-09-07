@@ -27,6 +27,8 @@ xrf-utils = { workspace = true }
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta"]
+# Exports the file builders this crate's own tests use, so a dependant tests against the same shapes.
+fixtures = []
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }

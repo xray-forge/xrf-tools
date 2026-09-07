@@ -1,25 +1,30 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayByteOrder, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{encode_w1251_bytes_to_string, format_path};
+use xrf_utils::format_path;
 
-/// Names of compiled blender definitions stored in `shaders.xr`.
+use crate::shader_library::shader_blender::ShaderBlender;
+
+/// The compiled blender library, `shaders.xr`.
 ///
-/// The renderer resolves an OGF texture chunk's shader name against these
-/// definitions when it creates the visual.
+/// The renderer resolves the shader name an OGF texture chunk, a level surface or a config declares against these
+/// definitions when it creates the shader (`Layers/xrRender/ResourceManager.cpp`), so the library is where a
+/// surface's render states come from - alpha testing and blending included. Nothing in the mesh or in the texture
+/// says whether alpha is read: the blender does.
+///
+/// Only the blender chunk is read. The file also carries the shader script list, the constant table and the matrix
+/// table, none of which name a surface, and none of which are written back: this reader has no writer, so a library
+/// is never rewritten with three of its four chunks missing.
 #[derive(Debug, Default)]
 pub struct ShaderLibraryFile {
-  blender_names: HashSet<String>,
+  blenders: HashMap<String, ShaderBlender>,
 }
 
 impl ShaderLibraryFile {
   pub const BLENDERS_CHUNK_ID: u32 = 2;
-
-  const BLENDER_CLASS_ID_SIZE: usize = 8;
-  const BLENDER_NAME_SIZE: usize = 128;
 
   pub fn read_from_path<P: AsRef<Path>>(path: P) -> XrfResult<Self> {
     Self::read_from_file(File::open(path.as_ref()).map_err(|error| {
@@ -38,101 +43,53 @@ impl ShaderLibraryFile {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut blenders: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::BLENDERS_CHUNK_ID)?;
 
-    Self::read_blender_names(&mut blenders)
+    Self::read_blenders(&mut blenders)
   }
 
-  fn read_blender_names<T: ChunkDataSource>(blenders: &mut ChunkReader<T>) -> XrfResult<Self> {
-    let blender_chunks = blenders.read_children()?;
-    let mut blender_names: HashSet<String> = HashSet::with_capacity(blender_chunks.len());
-
-    for mut blender in blender_chunks {
-      blender.read_bytes(Self::BLENDER_CLASS_ID_SIZE)?;
-      let name_bytes: Vec<u8> = blender.read_bytes(Self::BLENDER_NAME_SIZE)?;
-      let Some(name_end) = name_bytes.iter().position(|byte| *byte == 0) else {
-        return Err(XrfError::new_no_terminator_error(
-          "Blender name in shader library is not null terminated",
-        ));
-      };
-
-      let name: String = encode_w1251_bytes_to_string(&name_bytes[..name_end])?;
-
-      if !blender_names.insert(name.clone()) {
-        return Err(XrfError::new_invalid_error(format!(
-          "Shader library contains duplicate blender '{name}'"
-        )));
-      }
-    }
-
-    Ok(Self { blender_names })
+  /// The blender a shader name resolves to, or `None` for a name the library does not define.
+  ///
+  /// An absent name is what the engine reports as `! Shader '%s' not found in library` before falling back to the
+  /// default shader (`ResourceManager.cpp`), so it is an answer rather than a failure.
+  pub fn find_blender(&self, name: &str) -> Option<&ShaderBlender> {
+    self.blenders.get(name)
   }
 
   pub fn contains_blender(&self, name: &str) -> bool {
-    self.blender_names.contains(name)
+    self.blenders.contains_key(name)
   }
 
   pub fn blenders_count(&self) -> usize {
-    self.blender_names.len()
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use std::io::Write;
-
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_sample_file_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
-  };
-
-  use super::ShaderLibraryFile;
-
-  #[test]
-  fn test_read() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read.chunk");
-    let contents: Vec<u8> = shader_library_contents(&["models\\model", "models\\model_pn_hm"])?;
-    let mut file = overwrite_generated_test_resource_as_file(&filename)?;
-
-    file.write_all(&contents)?;
-    file.flush()?;
-
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
-    assert_eq!(file.bytes_remaining(), contents.len());
-
-    let library: ShaderLibraryFile =
-      ShaderLibraryFile::read_from_path(build_absolute_generated_test_sample_file_path(file!(), "read.chunk"))?;
-
-    assert!(library.contains_blender("models\\model"));
-    assert!(library.contains_blender("models\\model_pn_hm"));
-    assert!(!library.contains_blender("models\\missing"));
-    assert_eq!(library.blenders_count(), 2);
-
-    Ok(())
+    self.blenders.len()
   }
 
-  fn shader_library_contents(blender_names: &[&str]) -> XrfResult<Vec<u8>> {
-    let mut blenders: ChunkWriter = ChunkWriter::new();
+  pub fn blenders(&self) -> impl Iterator<Item = &ShaderBlender> {
+    self.blenders.values()
+  }
 
-    for (index, name) in blender_names.iter().enumerate() {
-      let mut blender: ChunkWriter = ChunkWriter::new();
+  /// Reads every blender chunk, refusing a library that defines one name twice.
+  ///
+  /// The engine refuses it too, with `R_ASSERT2(I.second, "shader.xr - found duplicate name!!!")`
+  /// (`ResourceManager_Loader.cpp`): a duplicate means the second definition is unreachable, and which of the two
+  /// a surface gets would otherwise depend on iteration order here.
+  fn read_blenders<D: ChunkDataSource>(blenders: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let chunks: Vec<ChunkReader<D>> = blenders.read_children()?;
+    let mut library: HashMap<String, ShaderBlender> = HashMap::with_capacity(chunks.len());
 
-      blender.write_all(&[0; ShaderLibraryFile::BLENDER_CLASS_ID_SIZE])?;
+    for mut chunk in chunks {
+      let blender: ShaderBlender = ShaderBlender::read::<XRayByteOrder, D>(&mut chunk)?;
 
-      let mut name_buffer: [u8; ShaderLibraryFile::BLENDER_NAME_SIZE] = [0; ShaderLibraryFile::BLENDER_NAME_SIZE];
+      chunk.assert_read("Expect all data to be read from shader blender")?;
 
-      name_buffer[..name.len()].copy_from_slice(name.as_bytes());
-      blender.write_all(&name_buffer)?;
-      blender.write_all(&[0; 40])?;
+      if library.contains_key(&blender.name) {
+        return Err(XrfError::new_invalid_error(format!(
+          "Shader library contains duplicate blender '{}'",
+          blender.name
+        )));
+      }
 
-      blenders.write_all(&blender.flush_chunk_into_buffer::<XRayByteOrder>(index as u32)?)?;
+      library.insert(blender.name.clone(), blender);
     }
 
-    let mut library: ChunkWriter = ChunkWriter::new();
-
-    library.write_all(&blenders.flush_chunk_into_buffer::<XRayByteOrder>(ShaderLibraryFile::BLENDERS_CHUNK_ID)?)?;
-
-    library.flush_raw_into_buffer()
+    Ok(Self { blenders: library })
   }
 }
