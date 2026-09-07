@@ -12,8 +12,8 @@ export const MOTION_DEFAULT_SPEED: number = 1;
  * A floor of one frame a second because zero is what pause is for, and a ceiling of a hundred and twenty because a
  * `setInterval` cannot keep a shorter period and a viewer has nothing to learn from frames it cannot see.
  */
-const MIN_FPS: number = 1;
-const MAX_FPS: number = 120;
+export const MOTION_MIN_FPS: number = 1;
+export const MOTION_MAX_FPS: number = 120;
 
 /**
  * Holds a requested playback rate to what a ticker can actually keep.
@@ -22,7 +22,7 @@ const MAX_FPS: number = 120;
  * @returns The rate playback will run at.
  */
 export function clampMotionFps(fps: number): number {
-  return Math.max(MIN_FPS, Math.min(fps, MAX_FPS));
+  return Math.max(MOTION_MIN_FPS, Math.min(fps, MOTION_MAX_FPS));
 }
 
 /**

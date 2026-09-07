@@ -1,14 +1,14 @@
 import { default as PauseIcon } from "@mui/icons-material/Pause";
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { default as SpeedIcon } from "@mui/icons-material/Speed";
-import { Box, IconButton, Popover, Slider, Tooltip, Typography } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { MouseEvent, ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
-import { LAYOUT } from "@/core/theme/tokens";
-import { MotionFrameSlider } from "@/core/visuals/components/preview";
-import { formatMotionTiming, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
+import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
+import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
@@ -24,39 +24,22 @@ export function VisualMotionTransport({
 }: BaseComponentProps): ReactElement {
   const service: VisualMotionService = useInjection(VisualMotionService);
 
-  const [rateAnchor, setRateAnchor] = useState<Nullable<HTMLElement>>(null);
-
   const frames: number = service.frameCount;
   const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
   const speed: Nullable<number> = service.posed.value?.bake.speed ?? null;
-  const isSampleRate: boolean = service.fps === MOTION_SAMPLE_FPS;
 
   const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
-
-  const onChangeFps = useCallback(
-    (_: Event, value: number | Array<number>) => service.setFps(value as number),
-    [service]
-  );
-
-  const onOpenRate = useCallback((event: MouseEvent<HTMLElement>) => setRateAnchor(event.currentTarget), []);
-
-  const onCloseRate = useCallback(() => setRateAnchor(null), []);
 
   return (
     <Box data-testid={dataTestId} id={id} className={className}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Tooltip title={service.isPlaying ? "Pause" : "Play"}>
-          <span>
-            <IconButton
-              size={"small"}
-              aria-label={service.isPlaying ? "Pause" : "Play"}
-              disabled={!frames}
-              onClick={onTogglePlay}
-            >
-              {service.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-            </IconButton>
-          </span>
-        </Tooltip>
+        <EditorIconAction
+          label={service.isPlaying ? "Pause" : "Play"}
+          description={service.isPlaying ? "Pause playback" : "Start playback"}
+          icon={service.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+          isDisabled={!frames}
+          onClick={onTogglePlay}
+        />
 
         <MotionFrameSlider
           ariaLabel={"Motion frame"}
@@ -75,56 +58,16 @@ export function VisualMotionTransport({
           </Typography>
         </Tooltip>
 
-        <Tooltip title={`Playback rate: ${service.fps} fps`}>
-          <IconButton
-            aria-label={"Playback rate"}
-            aria-haspopup={"dialog"}
-            color={isSampleRate ? "inherit" : "primary"}
-            size={"small"}
-            onClick={onOpenRate}
-          >
-            <SpeedIcon />
-          </IconButton>
-        </Tooltip>
+        <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
 
-        <Tooltip title={service.isLooping ? "Looping" : "Play once"}>
-          <IconButton
-            aria-label={"Loop"}
-            size={"small"}
-            sx={{ opacity: service.isLooping ? 1 : 0.45 }}
-            onClick={service.toggleLoop}
-          >
-            <RepeatIcon />
-          </IconButton>
-        </Tooltip>
+        <EditorViewToggle
+          label={"Loop"}
+          description={service.isLooping ? "Looping" : "Play once"}
+          icon={<RepeatIcon />}
+          isOn={service.isLooping}
+          onToggle={service.toggleLoop}
+        />
       </Box>
-
-      <Popover
-        anchorEl={rateAnchor}
-        open={Boolean(rateAnchor)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
-        onClose={onCloseRate}
-      >
-        <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>
-          <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
-            Playback rate
-          </Typography>
-
-          <Slider
-            size={"small"}
-            min={1}
-            max={120}
-            value={service.fps}
-            valueLabelDisplay={"auto"}
-            valueLabelFormat={(value: number) => `${value} fps`}
-            // The rate the format samples at, marked so the honest speed is one click away from any other.
-            marks={[{ value: MOTION_SAMPLE_FPS, label: "30" }]}
-            aria-label={"Frames a second"}
-            onChange={onChangeFps}
-          />
-        </Box>
-      </Popover>
 
       {service.posed.error ? (
         <Typography variant={"caption"} sx={{ color: "error.main", wordBreak: "break-word" }}>
