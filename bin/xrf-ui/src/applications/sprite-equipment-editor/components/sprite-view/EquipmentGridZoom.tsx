@@ -1,7 +1,9 @@
 import { default as AddIcon } from "@mui/icons-material/AddCircle";
 import { default as RemoveIcon } from "@mui/icons-material/RemoveCircle";
-import { Box, IconButton } from "@mui/material";
+import { Box } from "@mui/material";
 import { ReactElement } from "react";
+
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 interface IEquipmentGridZoomProps {
   zoom: number;
@@ -12,15 +14,21 @@ interface IEquipmentGridZoomProps {
 export function EquipmentGridZoom({ zoom, onZoomUp, onZoomDown }: IEquipmentGridZoomProps): ReactElement {
   return (
     <Box sx={{ display: "flex", alignItems: "center", position: "absolute", right: 4, bottom: 4 }}>
-      <IconButton aria-label={"delete"} size={"small"} color={"primary"} onClick={onZoomDown}>
-        <RemoveIcon />
-      </IconButton>
+      <EditorIconAction
+        label={"Zoom out"}
+        description={"Decrease sprite magnification"}
+        icon={<RemoveIcon />}
+        onClick={onZoomDown}
+      />
 
       <Box sx={{ marginLeft: 0.5, marginRight: 0.5 }}>{zoom.toFixed(2)}</Box>
 
-      <IconButton aria-label={"delete"} size={"small"} color={"primary"} onClick={onZoomUp}>
-        <AddIcon />
-      </IconButton>
+      <EditorIconAction
+        label={"Zoom in"}
+        description={"Increase sprite magnification"}
+        icon={<AddIcon />}
+        onClick={onZoomUp}
+      />
     </Box>
   );
 }

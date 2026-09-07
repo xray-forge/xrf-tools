@@ -1,7 +1,8 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
-import { Box, Card, Divider, Grid, IconButton, Typography } from "@mui/material";
+import { Box, Card, Divider, Grid, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { GridMapper, IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment";
 import { stopPropagation } from "@/lib/dom/event";
 import { Nullable } from "@/lib/types/general";
@@ -34,9 +35,12 @@ export function EquipmentGridDetails({ gridMapper, cell, onClose }: IEquipmentGr
           <Grid container sx={{ justifyContent: "space-between", alignItems: "center", marginBottom: 1 }}>
             <Typography variant={"h6"}>{`${cell[1]}:${cell[0]}`}</Typography>
 
-            <IconButton size={"small"} onClick={onClose}>
-              <CloseIcon />
-            </IconButton>
+            <EditorIconAction
+              label={"Close cell details"}
+              description={"Hide the selected sprite cell details"}
+              icon={<CloseIcon />}
+              onClick={onClose}
+            />
           </Grid>
 
           <Divider />

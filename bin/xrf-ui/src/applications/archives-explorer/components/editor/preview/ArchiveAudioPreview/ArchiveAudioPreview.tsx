@@ -68,10 +68,7 @@ export function ArchiveAudioPreview(): ReactElement {
         <Typography variant={"subtitle2"}>Stream</Typography>
 
         <EditorPanelRow label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
-        <EditorPanelRow
-          label={"Sample rate"}
-          value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"}
-        />
+        <EditorPanelRow label={"Sample rate"} value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"} />
 
         <Divider sx={{ marginY: 1.5 }} />
 

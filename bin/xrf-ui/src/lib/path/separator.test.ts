@@ -127,4 +127,3 @@ describe("truncatePathHead", () => {
     expect(cut.startsWith("…")).toBe(true);
   });
 });
-

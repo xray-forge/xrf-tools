@@ -214,11 +214,7 @@ export class VisualPreviewMeshes {
    * @param surface - Material state the submesh's shader comes to.
    * @param isAlphaVisible - Whether to honour it, or draw the surface solid for comparison.
    */
-  private static applySurface(
-    material: MeshStandardMaterial,
-    surface: IVisualSurface,
-    isAlphaVisible: boolean
-  ): void {
+  private static applySurface(material: MeshStandardMaterial, surface: IVisualSurface, isAlphaVisible: boolean): void {
     const applied: IVisualSurface = isAlphaVisible ? surface : OPAQUE_VISUAL_SURFACE;
 
     material.alphaTest = applied.alphaTest;

@@ -1,10 +1,10 @@
 import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
 import { default as SaveIcon } from "@mui/icons-material/Save";
-import { IconButton, Tooltip } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { Nullable } from "@/lib/types/general";
@@ -54,33 +54,21 @@ export function SpawnEditorActions(): ReactElement {
 
   return (
     <>
-      <Tooltip describeChild title={"Write the open spawn file to a chosen path"}>
-        <span>
-          <IconButton
-            aria-label={"Save spawn file"}
-            color={"inherit"}
-            disabled={isBusy}
-            size={"small"}
-            onClick={onSave}
-          >
-            <SaveIcon fontSize={"small"} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={"Save spawn file"}
+        description={"Write the open spawn file to a chosen path"}
+        icon={<SaveIcon />}
+        isDisabled={isBusy}
+        onClick={onSave}
+      />
 
-      <Tooltip describeChild title={"Export the spawn file into a directory"}>
-        <span>
-          <IconButton
-            aria-label={"Export spawn file"}
-            color={"inherit"}
-            disabled={isBusy}
-            size={"small"}
-            onClick={onPickExportPath}
-          >
-            <ImportExportIcon fontSize={"small"} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={"Export spawn file"}
+        description={"Export the spawn file into a directory"}
+        icon={<ImportExportIcon />}
+        isDisabled={isBusy}
+        onClick={onPickExportPath}
+      />
 
       <ConfirmDialog
         isDestructive

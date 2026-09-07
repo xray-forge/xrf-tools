@@ -1,5 +1,5 @@
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
-import { Alert, IconButton, Tooltip, Typography } from "@mui/material";
+import { Alert, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { format } from "date-fns";
 import { ReactElement, useCallback, useEffect } from "react";
@@ -10,6 +10,7 @@ import {
   IEquipmentPngDescriptor,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
@@ -73,13 +74,13 @@ export function EquipmentSpriteEditor(): ReactElement {
             <>
               <EquipmentRepackAction />
 
-              <Tooltip describeChild title={"Reload sprite (F5)"}>
-                <span>
-                  <IconButton aria-label={"Reload sprite"} color={"inherit"} disabled={isLoading} onClick={onReload}>
-                    <RefreshIcon fontSize={"small"} />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <EditorIconAction
+                label={"Reload sprite"}
+                description={"Reload sprite (F5)"}
+                icon={<RefreshIcon />}
+                isDisabled={isLoading}
+                onClick={onReload}
+              />
             </>
           }
           onBack={onClose}

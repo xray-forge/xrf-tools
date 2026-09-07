@@ -62,9 +62,7 @@ export interface IStorageUsage {
 }
 
 /** Keys the workspace paths occupy, read from the table that declares them. */
-const WORKSPACE_PATH_KEYS: ReadonlyArray<string> = WORKSPACE_PATHS.map(
-  (it: IWorkspacePathDescriptor) => it.storageKey
-);
+const WORKSPACE_PATH_KEYS: ReadonlyArray<string> = WORKSPACE_PATHS.map((it: IWorkspacePathDescriptor) => it.storageKey);
 
 /**
  * Keys that are one switch each.

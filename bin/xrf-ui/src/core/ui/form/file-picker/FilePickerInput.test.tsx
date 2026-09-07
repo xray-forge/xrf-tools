@@ -122,10 +122,7 @@ describe("FilePickerInput", () => {
 
     it("offers each remembered path", async () => {
       const { getByLabelText, getByText } = renderWithProviders(
-        <FilePickerInput
-          onSelect={jest.fn()}
-          recents={offered(RECORDS)}
-        />
+        <FilePickerInput onSelect={jest.fn()} recents={offered(RECORDS)} />
       );
 
       await userEvent.click(getByLabelText("Recent paths"));
@@ -140,10 +137,7 @@ describe("FilePickerInput", () => {
       const long: string = "D:\\archive\\mods\\a-very-long-modification-directory-name\\gamedata\\configs";
 
       const { getByLabelText, getByText } = renderWithProviders(
-        <FilePickerInput
-          onSelect={jest.fn()}
-          recents={offered([{ at: Date.now(), path: long }])}
-        />
+        <FilePickerInput onSelect={jest.fn()} recents={offered([{ at: Date.now(), path: long }])} />
       );
 
       await userEvent.click(getByLabelText("Recent paths"));
@@ -160,10 +154,7 @@ describe("FilePickerInput", () => {
       const onPickRecent = jest.fn();
 
       const { getByLabelText, getByText } = renderWithProviders(
-        <FilePickerInput
-          onSelect={jest.fn()}
-          recents={offered(RECORDS, { pick: onPickRecent })}
-        />
+        <FilePickerInput onSelect={jest.fn()} recents={offered(RECORDS, { pick: onPickRecent })} />
       );
 
       await userEvent.click(getByLabelText("Recent paths"));

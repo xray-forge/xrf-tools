@@ -1,5 +1,4 @@
 import { default as ViewListIcon } from "@mui/icons-material/ViewList";
-import { Box, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
@@ -15,13 +14,12 @@ import { SpawnEditorMenu } from "@/applications/spawn-editor/components/editor/S
 import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { SpawnFileService } from "@/core/spawn/services";
 import { Nullable } from "@/lib/types/general";
-
-const MONOSPACE_FONT: string = "'Cascadia Mono', 'Consolas', monospace";
 
 export function SpawnEditor(): ReactElement {
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
@@ -58,15 +56,7 @@ export function SpawnEditor(): ReactElement {
       toolbar={
         <EditorToolbar
           actions={<SpawnEditorActions />}
-          subtitle={
-            path ? (
-              <Tooltip title={path}>
-                <Box component={"span"} sx={{ fontFamily: MONOSPACE_FONT }}>
-                  {path}
-                </Box>
-              </Tooltip>
-            ) : null
-          }
+          subtitle={path ? <EditorToolbarLocation location={{ path }} /> : null}
           onBack={onClose}
         />
       }

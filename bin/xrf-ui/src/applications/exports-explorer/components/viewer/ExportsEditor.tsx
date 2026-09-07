@@ -1,6 +1,6 @@
 import { default as ListAltIcon } from "@mui/icons-material/ListAlt";
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
-import { Alert, Box, IconButton, Tooltip } from "@mui/material";
+import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -9,8 +9,10 @@ import { ExportsMenu } from "@/applications/exports-explorer/components/viewer/e
 import { ExportsViewer } from "@/applications/exports-explorer/components/viewer/exports/ExportsViewer";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
@@ -82,23 +84,15 @@ export function ExportsEditor(): ReactElement {
     <EditorLayout
       toolbar={
         <EditorToolbar
-          subtitle={
-            project?.root ? (
-              <Tooltip title={project.root}>
-                <Box component={"span"} className={"monospace"}>
-                  {project.root}
-                </Box>
-              </Tooltip>
-            ) : null
-          }
+          subtitle={project?.root ? <EditorToolbarLocation location={{ path: project.root }} /> : null}
           actions={
-            <Tooltip describeChild title={"Refresh exports"}>
-              <span>
-                <IconButton color={"inherit"} aria-label={"Refresh exports"} disabled={isBusy} onClick={onRefresh}>
-                  <RefreshIcon fontSize={"small"} />
-                </IconButton>
-              </span>
-            </Tooltip>
+            <EditorIconAction
+              label={"Refresh exports"}
+              description={"Refresh exports"}
+              icon={<RefreshIcon />}
+              isDisabled={isBusy}
+              onClick={onRefresh}
+            />
           }
           onBack={() => void onClose()}
         />

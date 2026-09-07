@@ -123,12 +123,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
         </ToggleButtonGroup>
       </FormRow>
 
-      <PathFormRow
-        label={mode.field.label}
-        description={mode.field.description}
-        isDisabled={isLoading}
-        field={field}
-      />
+      <PathFormRow label={mode.field.label} description={mode.field.description} isDisabled={isLoading} field={field} />
     </PickerForm>
   );
 }

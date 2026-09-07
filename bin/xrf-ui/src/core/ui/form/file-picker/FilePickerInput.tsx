@@ -100,11 +100,7 @@ export function FilePickerInput({
               {hasRecents ? (
                 <Tooltip describeChild title={"Recent paths"}>
                   <span>
-                    <IconButton
-                      aria-label={"Recent paths"}
-                      disabled={isDisabled}
-                      onClick={() => setRecentsOpen(true)}
-                    >
+                    <IconButton aria-label={"Recent paths"} disabled={isDisabled} onClick={() => setRecentsOpen(true)}>
                       <HistoryIcon fontSize={"small"} />
                     </IconButton>
                   </span>

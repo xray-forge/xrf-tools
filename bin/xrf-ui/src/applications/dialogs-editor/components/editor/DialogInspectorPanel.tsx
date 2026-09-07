@@ -89,9 +89,7 @@ export function DialogInspectorPanel({
               {phrase?.text ?? "No text for this language."}
             </Typography>
 
-            {phrase?.textKey ? (
-              <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace />
-            ) : null}
+            {phrase?.textKey ? <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace /> : null}
           </>
         )}
 

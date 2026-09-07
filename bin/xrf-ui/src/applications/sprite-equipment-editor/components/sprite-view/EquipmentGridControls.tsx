@@ -1,7 +1,9 @@
 import { default as AddIcon } from "@mui/icons-material/AddCircle";
 import { default as RemoveIcon } from "@mui/icons-material/RemoveCircle";
-import { Box, FormControlLabel, IconButton, Switch } from "@mui/material";
+import { Box, FormControlLabel, Switch } from "@mui/material";
 import { ReactElement, useCallback } from "react";
+
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 interface IEquipmentGridControlsProps {
   isGridVisible: boolean;
@@ -38,15 +40,21 @@ export function EquipmentGridControls({
 
       <Box sx={{ margin: 1 }} />
 
-      <IconButton size={"small"} onClick={onDecreaseGridSize}>
-        <RemoveIcon />
-      </IconButton>
+      <EditorIconAction
+        label={"Decrease grid size"}
+        description={"Decrease the grid cell size by 5 pixels"}
+        icon={<RemoveIcon />}
+        onClick={onDecreaseGridSize}
+      />
 
       <Box sx={{ marginLeft: 0.5, marginRight: 0.5 }}>{gridSize}</Box>
 
-      <IconButton size={"small"} onClick={onIncreaseGridSize}>
-        <AddIcon />
-      </IconButton>
+      <EditorIconAction
+        label={"Increase grid size"}
+        description={"Increase the grid cell size by 5 pixels"}
+        icon={<AddIcon />}
+        onClick={onIncreaseGridSize}
+      />
     </Box>
   );
 }

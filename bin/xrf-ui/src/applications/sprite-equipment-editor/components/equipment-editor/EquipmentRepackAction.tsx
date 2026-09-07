@@ -1,9 +1,10 @@
 import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
-import { IconButton, Tooltip, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
@@ -39,22 +40,15 @@ export function EquipmentRepackAction(): ReactElement {
 
   return (
     <>
-      <Tooltip
-        describeChild
-        title={repackSourcePath ? "Rebuild the sprite from its unpacked icons" : "No unpacked icons beside the sprite"}
-      >
-        <span>
-          <IconButton
-            aria-label={"Repack sprite"}
-            color={"inherit"}
-            size={"small"}
-            disabled={isLoading || !repackSourcePath}
-            onClick={onOpenConfirmation}
-          >
-            <Inventory2Icon fontSize={"small"} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={"Repack sprite"}
+        description={
+          repackSourcePath ? "Rebuild the sprite from its unpacked icons" : "No unpacked icons beside the sprite"
+        }
+        icon={<Inventory2Icon />}
+        isDisabled={isLoading || !repackSourcePath}
+        onClick={onOpenConfirmation}
+      />
 
       <ConfirmDialog
         isOpen={isConfirmOpen}

@@ -12,12 +12,7 @@ import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
-import {
-  getDirectoryItemPath,
-  getFileItemPath,
-  splitLogicalPath,
-  toFileItemId,
-} from "@/core/ui/tree/path-tree";
+import { getDirectoryItemPath, getFileItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";

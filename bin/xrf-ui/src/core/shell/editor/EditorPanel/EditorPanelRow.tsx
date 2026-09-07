@@ -13,18 +13,18 @@ import { splitAfterSeparators } from "@/lib/path/separator";
  * where a reader would fold it; the wrap rule stays behind it for a single name longer than the panel.
  */
 function toBreakableSegments(value: string): ReactNode {
-    const segments: Array<string> = splitAfterSeparators(value);
+  const segments: Array<string> = splitAfterSeparators(value);
 
-    if (segments.length < 2) {
-        return value;
-    }
+  if (segments.length < 2) {
+    return value;
+  }
 
-    return segments.map((segment: string, index: number) => (
-        <Fragment key={index}>
-            {segment}
-            <wbr />
-        </Fragment>
-    ));
+  return segments.map((segment: string, index: number) => (
+    <Fragment key={index}>
+      {segment}
+      <wbr />
+    </Fragment>
+  ));
 }
 
 interface IEditorPanelRowProps extends BaseComponentProps {

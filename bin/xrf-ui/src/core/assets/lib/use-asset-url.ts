@@ -15,11 +15,7 @@ import { Nullable } from "@/lib/types/general";
  * @param type - Mime type of those bytes.
  * @returns The url to point an `img` at, or null while there is nothing to show.
  */
-export function useAssetUrl(
-  key: string,
-  bytes: Nullable<BlobPart>,
-  type: string = "image/png"
-): Nullable<string> {
+export function useAssetUrl(key: string, bytes: Nullable<BlobPart>, type: string = "image/png"): Nullable<string> {
   const assetService: AssetService = useInjection(AssetService);
 
   const [url, setUrl] = useState<Nullable<string>>(null);

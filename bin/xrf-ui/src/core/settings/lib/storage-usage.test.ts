@@ -127,9 +127,7 @@ describe("groupStorageEntries", () => {
     const usage: IStorageUsage = groupStorageEntries([]);
 
     expect(usage.total).toBe(0);
-    expect(usage.groups.map((it: IStorageGroupUsage) => it.descriptor.id)).toEqual(
-      STORAGE_GROUPS.map((it) => it.id)
-    );
+    expect(usage.groups.map((it: IStorageGroupUsage) => it.descriptor.id)).toEqual(STORAGE_GROUPS.map((it) => it.id));
   });
 });
 
@@ -160,4 +158,3 @@ describe("clearStorageGroup", () => {
     expect(window.localStorage.getItem("xrf-gamedata-path")).toBe("C:\\gamedata");
   });
 });
-
