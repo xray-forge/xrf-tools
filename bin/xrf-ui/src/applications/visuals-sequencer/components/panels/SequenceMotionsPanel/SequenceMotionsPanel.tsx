@@ -1,8 +1,8 @@
-import { default as AddIcon } from "@mui/icons-material/Add";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo, useState } from "react";
 
+import { SequenceMotionRow } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel/SequenceMotionRow";
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
@@ -91,26 +91,7 @@ export function SequenceMotionsPanel({
 
       <Box sx={{ paddingX: 1, paddingY: 1 }}>
         {matched.slice(0, SHOWN_LIMIT).map((name: string) => (
-          <Box
-            key={name}
-            sx={{ display: "flex", alignItems: "center", gap: 1, paddingLeft: 1, paddingY: 0.2, lineHeight: 1.6 }}
-          >
-            <Typography variant={"body2"} sx={{ flexGrow: 1, wordBreak: "break-all" }}>
-              {name}
-            </Typography>
-
-            {used.get(name) ? (
-              <Typography variant={"caption"} sx={{ color: "text.disabled", flexShrink: 0 }}>
-                {`×${used.get(name)}`}
-              </Typography>
-            ) : null}
-
-            <Tooltip title={"Add to the track"}>
-              <IconButton size={"small"} aria-label={`Add ${name}`} onClick={() => sequenceService.add(name)}>
-                <AddIcon fontSize={"small"} />
-              </IconButton>
-            </Tooltip>
-          </Box>
+          <SequenceMotionRow key={name} motion={name} usageCount={used.get(name) ?? 0} onAdd={sequenceService.add} />
         ))}
 
         {matched.length === 0 ? (

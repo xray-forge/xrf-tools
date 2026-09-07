@@ -1,7 +1,7 @@
 import { default as ArrowDownwardIcon } from "@mui/icons-material/ArrowDownward";
 import { default as ArrowUpwardIcon } from "@mui/icons-material/ArrowUpward";
 import { default as DeleteOutlinedIcon } from "@mui/icons-material/DeleteOutlined";
-import { Box, Chip, IconButton, Tooltip, Typography } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -11,6 +11,7 @@ import {
   ISequenceMotion,
   VisualSequenceService,
 } from "@/applications/visuals-sequencer/services/sequence";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { Nullable } from "@/lib/types/general";
@@ -61,8 +62,22 @@ export function SequenceClipRow({
 
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         <Typography
+          component={"button"}
+          type={"button"}
+          aria-label={`Seek to ${clip.motion}`}
           variant={"body2"}
-          sx={{ wordBreak: "break-all", cursor: "pointer" }}
+          sx={{
+            display: "block",
+            padding: 0,
+            border: 0,
+            borderRadius: 0.5,
+            background: "none",
+            color: "inherit",
+            textAlign: "left",
+            wordBreak: "break-all",
+            cursor: "pointer",
+            "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 },
+          }}
           onClick={() => service.seek(position, 0)}
         >
           {clip.motion}
@@ -89,37 +104,28 @@ export function SequenceClipRow({
         ) : null}
       </Box>
 
-      <Tooltip title={"Move earlier"}>
-        <span>
-          <IconButton
-            size={"small"}
-            aria-label={`Move ${clip.motion} earlier`}
-            disabled={position === 0}
-            onClick={() => service.move(clip.id, -1)}
-          >
-            <ArrowUpwardIcon fontSize={"small"} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={`Move ${clip.motion} earlier`}
+        description={position === 0 ? "Already first in the track" : "Move earlier"}
+        icon={<ArrowUpwardIcon />}
+        isDisabled={position === 0}
+        onClick={() => service.move(clip.id, -1)}
+      />
 
-      <Tooltip title={"Move later"}>
-        <span>
-          <IconButton
-            size={"small"}
-            aria-label={`Move ${clip.motion} later`}
-            disabled={position === length - 1}
-            onClick={() => service.move(clip.id, 1)}
-          >
-            <ArrowDownwardIcon fontSize={"small"} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <EditorIconAction
+        label={`Move ${clip.motion} later`}
+        description={position === length - 1 ? "Already last in the track" : "Move later"}
+        icon={<ArrowDownwardIcon />}
+        isDisabled={position === length - 1}
+        onClick={() => service.move(clip.id, 1)}
+      />
 
-      <Tooltip title={"Remove from the track"}>
-        <IconButton size={"small"} aria-label={`Remove ${clip.motion}`} onClick={() => service.remove(clip.id)}>
-          <DeleteOutlinedIcon fontSize={"small"} />
-        </IconButton>
-      </Tooltip>
+      <EditorIconAction
+        label={`Remove ${clip.motion}`}
+        description={"Remove from the track"}
+        icon={<DeleteOutlinedIcon />}
+        onClick={() => service.remove(clip.id)}
+      />
     </Box>
   );
 }
