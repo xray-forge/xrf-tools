@@ -6,8 +6,6 @@ import { VisualsService } from "@/applications/visuals-explorer/services/visuals
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
-import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -332,9 +330,7 @@ describe("VisualsService opening", () => {
     // Reading by resolved path rather than by reference is what keeps the bytes and the reported outcome describing the
     // same file - including a substituted dummy, which by reference would resolve to nothing.
     const { selected, buffer } = mockOpenableVisual();
-    const { container, service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
-
-    container.get(PathsService).setPath(EWorkspacePath.GAMEDATA, "C:\\gamedata");
+    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     let readParameters: Nullable<Record<string, unknown>> = null;
 
@@ -353,15 +349,16 @@ describe("VisualsService opening", () => {
       },
     });
 
-    await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
+    await service.openFile("C:\\gamedata\\wpn_ak74.ogf", "C:\\Games\\stalker");
 
     // Textures are loaded beside the open rather than inside it, so a model shows its geometry without waiting on them.
     await waitFor(() => expect(service.textures.size).toBe(1));
 
     expect(readParameters).toEqual({
       logicalPath: "textures\\wpn\\wpn_ak74.dds",
-      // Centred on the model: the texture resolved through the model's own tree, so it is read back through it too.
-      roots: createRoots(["C:\\gamedata"], "C:\\gamedata\\wpn_ak74.ogf"),
+      // Centred on the model, so the texture resolved through the model's own tree and is read back through it - with
+      // the root the open was given behind it, and no ambient set anywhere.
+      roots: createRoots(["C:\\Games\\stalker"], "C:\\gamedata\\wpn_ak74.ogf"),
     });
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
   });

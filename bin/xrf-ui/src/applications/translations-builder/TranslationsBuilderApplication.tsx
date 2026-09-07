@@ -7,8 +7,6 @@ import { TranslationsBuilderService } from "@/applications/translations-builder/
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES } from "@/core/translations";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -18,7 +16,6 @@ import { Nullable } from "@/lib/types/general";
 const LANGUAGE_CHOICES: ReadonlyArray<string> = [ALL_TRANSLATION_LANGUAGES, ...TRANSLATION_LANGUAGES];
 
 export function TranslationsBuilderApplication(): ReactElement {
-  const pathsService: PathsService = useInjection(PathsService);
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
 
   // The run rather than this view's own flag: a build survives the window being reloaded.
@@ -39,7 +36,6 @@ export function TranslationsBuilderApplication(): ReactElement {
     title: "Select translations sources",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -49,7 +45,6 @@ export function TranslationsBuilderApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.GAMEDATA, pathsService.paths),
   });
 
   const sourcesPath: Nullable<string> = sources.value;

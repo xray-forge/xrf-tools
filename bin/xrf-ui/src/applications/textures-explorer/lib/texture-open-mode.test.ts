@@ -9,6 +9,7 @@ import {
 } from "@/applications/textures-explorer/lib/texture-open-mode";
 
 const PATH: string = "C:\\gamedata";
+const ASSET_ROOT: string = "C:\\Games\\stalker";
 
 function mockSession(): ITextureOpenSession & {
   calls: Array<string>;
@@ -16,13 +17,17 @@ function mockSession(): ITextureOpenSession & {
   const calls: Array<string> = [];
 
   return {
+    assetRoot: ASSET_ROOT,
     calls,
     catalogService: {
       close: jest.fn(() => void calls.push("close")),
       openLooseDirectory: jest.fn(() => void calls.push("openLooseDirectory")),
       openRoot: jest.fn(() => void calls.push("openRoot")),
     },
-    selectionService: { openFile: jest.fn(() => void calls.push("openFile")) },
+    selectionService: {
+      openFile: jest.fn(() => void calls.push("openFile")),
+      setAssetRoot: jest.fn(() => void calls.push("setAssetRoot")),
+    },
   } as unknown as ITextureOpenSession & { calls: Array<string> };
 }
 
@@ -52,7 +57,9 @@ describe("TEXTURE_OPEN_MODES", () => {
 
     await getTextureOpenMode(ETextureOpenMode.FOLDER).open(PATH, session);
 
-    expect(session.calls).toEqual(["openRoot"]);
+    // The named root joins the listing here, which is what folds a mod tree with the tree behind it.
+    expect(session.calls).toEqual(["setAssetRoot", "openRoot"]);
+    expect(session.catalogService.openRoot).toHaveBeenCalledWith(PATH, ASSET_ROOT);
   });
 
   it("browses a loose folder by its path", async () => {
@@ -60,7 +67,10 @@ describe("TEXTURE_OPEN_MODES", () => {
 
     await getTextureOpenMode(ETextureOpenMode.LOOSE_FOLDER).open(PATH, session);
 
-    expect(session.calls).toEqual(["openLooseDirectory"]);
+    // The selection is told the root so a descriptor beside a loose file can still resolve the pair it names, but the
+    // listing stays exactly what is under the folder.
+    expect(session.calls).toEqual(["setAssetRoot", "openLooseDirectory"]);
+    expect(session.catalogService.openLooseDirectory).toHaveBeenCalledWith(PATH);
   });
 
   it("closes the browsed session before opening one texture on its own", async () => {
@@ -70,6 +80,6 @@ describe("TEXTURE_OPEN_MODES", () => {
 
     await getTextureOpenMode(ETextureOpenMode.TEXTURE).open(PATH, session);
 
-    expect(session.calls).toEqual(["close", "openFile"]);
+    expect(session.calls).toEqual(["close", "setAssetRoot", "openFile"]);
   });
 });

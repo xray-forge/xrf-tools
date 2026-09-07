@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
 import { TextureCatalogMode } from "@/core/bindings/types/xrf-app";
-import { PathsService } from "@/core/settings/services/paths";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -48,7 +47,7 @@ function mockService(): { service: TextureCatalogService; asked: IAsked } {
     ["plugin:textures|read_texture"]: new ArrayBuffer(0),
   });
 
-  const container: Container = mockContainer([PathsService, TextureSelectionService, TextureCatalogService]);
+  const container: Container = mockContainer([TextureSelectionService, TextureCatalogService]);
 
   return { asked, service: container.get(TextureCatalogService) };
 }

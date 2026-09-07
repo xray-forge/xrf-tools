@@ -21,8 +21,7 @@ import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveOutputPath, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
+import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
@@ -40,7 +39,6 @@ const IMPORT_CONFIG_FILTERS = [{ name: "Packing configuration", extensions: [...
 const EXPORT_CONFIG_FILTERS = PACK_CONFIG_EXTENSIONS.map((it) => ({ name: it, extensions: [it] }));
 
 export function ArchivesPackerApplication(): ReactElement {
-  const pathsService: PathsService = useInjection(PathsService);
   const packerService: PackerService = useInjection(PackerService);
 
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
@@ -60,7 +58,6 @@ export function ArchivesPackerApplication(): ReactElement {
     title: "Select directory to pack",
     isDirectory: true,
     isDisabled: isBusy,
-    seed: () => resolvePathRole(EPathRole.GAMEDATA, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -70,7 +67,7 @@ export function ArchivesPackerApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isBusy,
-    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_PACKER, pathsService.paths),
+    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_PACKER),
   });
 
   /** The configuration as it would be packed, with the fields the editor owns folded back in. */

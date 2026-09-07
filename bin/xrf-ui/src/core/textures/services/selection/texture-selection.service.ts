@@ -1,5 +1,5 @@
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Injectable, OnDeactivation } from "@wirestate/core";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/bindings/commands/textures";
@@ -7,8 +7,6 @@ import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import { TextureDescription, TextureSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { configuredAssetRoots } from "@/core/settings/lib/path/role";
-import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
@@ -52,7 +50,25 @@ export class TextureSelectionService {
     return this.selected.value?.roots ?? null;
   }
 
-  public constructor(private readonly pathsService: PathsService = inject(PathsService)) {}
+  /**
+   * The extra tree this surface was opened with.
+   *
+   * Held rather than passed on every call, because a file is resolved again by paths a form is no longer on screen
+   * for - picking a row, retrying a failed read - and all of them have to search what the open searched.
+   */
+  private assetRoot: Nullable<string> = null;
+
+  /**
+   * Say which further tree a loose file is resolved against.
+   *
+   * Called by the surface as it opens, so a later read of a file reaches the same tree the open did.
+   *
+   * @param path - The tree, or null to resolve a file in its own neighbourhood alone.
+   */
+  @BoundAction()
+  public setAssetRoot(path: Nullable<string>): void {
+    this.assetRoot = path;
+  }
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -131,7 +147,7 @@ export class TextureSelectionService {
    * @returns Roots centred on it.
    */
   private toFileRoots(path: string): XrayRoots {
-    return createRoots(configuredAssetRoots(this.pathsService.paths), path);
+    return createRoots([this.assetRoot], path);
   }
 
   /**

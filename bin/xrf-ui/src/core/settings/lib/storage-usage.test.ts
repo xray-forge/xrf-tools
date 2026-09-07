@@ -78,10 +78,10 @@ describe("measureLocalStorage", () => {
       "xrf.form-recents.configs-verifier.directory",
     ]);
     expect(keysOf(findGroup(usage, EStorageGroup.FORM_VALUES))).toEqual(["xrf.form.configs-verifier.directory"]);
-    expect(keysOf(findGroup(usage, EStorageGroup.WORKSPACE_PATHS))).toEqual(["xrf-gamedata-path"]);
     expect(keysOf(findGroup(usage, EStorageGroup.LAYOUT))).toEqual(["xrf.panels.left.width"]);
     expect(keysOf(findGroup(usage, EStorageGroup.PREFERENCES))).toEqual(["theme"]);
-    expect(keysOf(findGroup(usage, EStorageGroup.OTHER))).toEqual([]);
+    // A key from a retired feature has no group of its own any more, which is what the catch-all is for.
+    expect(keysOf(findGroup(usage, EStorageGroup.OTHER))).toEqual(["xrf-gamedata-path"]);
   });
 
   it("gives an unclaimed key to the catch-all rather than dropping it", () => {

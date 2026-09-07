@@ -4,8 +4,6 @@ import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -13,7 +11,6 @@ import { Logger, useLogger } from "@/lib/logging";
 export function SpriteEquipmentOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
@@ -24,7 +21,6 @@ export function SpriteEquipmentOpenForm(): ReactElement {
     title: "Select equipment sprite",
     filters: [{ name: "dds", extensions: ["dds"] }],
     isDisabled: isLoading,
-    seed: () => resolveExistingPathRole(EPathRole.EQUIPMENT_SPRITE, pathsService.paths),
   });
 
   const systemLtx: IPathField = usePathField({
@@ -33,7 +29,6 @@ export function SpriteEquipmentOpenForm(): ReactElement {
     title: "Select system.ltx",
     filters: [{ name: "ltx", extensions: ["ltx"] }],
     isDisabled: isLoading,
-    seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
   // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the

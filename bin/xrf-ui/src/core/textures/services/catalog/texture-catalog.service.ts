@@ -13,8 +13,6 @@ import {
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
-import { configuredAssetRoots } from "@/core/settings/lib/path/role";
-import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Loadable } from "@/lib/loadable";
@@ -72,8 +70,7 @@ export class TextureCatalogService {
   }
 
   public constructor(
-    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
-    private readonly pathsService: PathsService = inject(PathsService)
+    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)
   ) {}
 
   /**
@@ -132,10 +129,13 @@ export class TextureCatalogService {
    * Browse a root and list every texture the engine would find in it.
    *
    * @param root - Filesystem path of the directory or installation to browse.
+   * @param assetRoot - A further tree listed and searched behind it, or null to list only the root itself.
    */
   @LatestFlow("catalog")
-  public *openRoot(root: string): TFlow {
-    yield* this.list(createRoots([root, ...configuredAssetRoots(this.pathsService.paths)]), "roots");
+  public *openRoot(root: string, assetRoot: Nullable<string> = null): TFlow {
+    // The named root joins the listing, not just the resolution: a mod tree carrying only what it changed folds with
+    // the tree behind it, which is what makes one row per engine reference the right shape.
+    yield* this.list(createRoots([root, assetRoot]), "roots");
   }
 
   /**

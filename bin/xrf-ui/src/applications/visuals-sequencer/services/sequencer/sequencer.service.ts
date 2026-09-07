@@ -12,8 +12,6 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { configuredAssetRoots } from "@/core/settings/lib/path/role";
-import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -103,7 +101,6 @@ export class SequencerService implements IVisualInspection {
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly pathsService: PathsService = inject(PathsService),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly sequenceService: VisualSequenceService = inject(VisualSequenceService)
   ) {}
@@ -144,11 +141,13 @@ export class SequencerService implements IVisualInspection {
    * Open a loose visual from disk and list what it can play.
    *
    * @param path - Filesystem path of the `.ogf` file.
+   * @param assetRoot - A further tree its references are searched in, or null to search only its own.
    */
   @BoundAction()
-  public async openFile(path: string): Promise<void> {
-    // Centred on the file, so its own tree and installation are searched for its textures and its animation banks.
-    await this.open({ kind: "file", path }, path);
+  public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
+    // Centred on the file, so its own tree is searched for its textures and its animation banks, with the named root
+    // behind it.
+    await this.open({ kind: "file", path }, path, assetRoot);
   }
 
   /** Close what is open, on screen and in the backend. */
@@ -173,8 +172,13 @@ export class SequencerService implements IVisualInspection {
    *
    * @param source - Visual source to open.
    * @param asset - Asset the roots are centred on, whose own tree is searched first.
+   * @param assetRoot - A further tree searched behind it.
    */
-  private async open(source: VisualSource, asset: Nullable<string> = null): Promise<void> {
+  private async open(
+    source: VisualSource,
+    asset: Nullable<string> = null,
+    assetRoot: Nullable<string> = null
+  ): Promise<void> {
     // A track names motions of the model it was written against, and the backend is about to park a different one.
     this.sequenceService.clear();
 
@@ -182,7 +186,7 @@ export class SequencerService implements IVisualInspection {
       this.motions = this.motions.asIdle([]);
     });
 
-    await this.loadService.load(source, await this.getRoots(asset));
+    await this.loadService.load(source, await this.getRoots(asset, assetRoot));
 
     const error: Nullable<Error> = this.visual.error;
 
@@ -233,9 +237,10 @@ export class SequencerService implements IVisualInspection {
    * The roots a visual's references are searched in, after the visual's own tree.
    *
    * @param asset - Asset the roots are centred on.
+   * @param assetRoot - A further tree searched behind it.
    * @returns The roots spec to open with.
    */
-  private async getRoots(asset: Nullable<string> = null): Promise<XrayRoots> {
-    return createRoots(configuredAssetRoots(this.pathsService.paths), asset);
+  private async getRoots(asset: Nullable<string> = null, assetRoot: Nullable<string> = null): Promise<XrayRoots> {
+    return createRoots([assetRoot], asset);
   }
 }

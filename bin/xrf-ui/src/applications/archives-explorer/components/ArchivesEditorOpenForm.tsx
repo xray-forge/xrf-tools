@@ -1,19 +1,18 @@
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
 type TOpenMode = "directory" | "archive";
+
+const OPEN_MODES: ReadonlyArray<TOpenMode> = ["directory", "archive"];
 
 /** Volume extensions offered by the dialog. */
 const ARCHIVE_FILTERS: Array<DialogFilter> = [
@@ -32,17 +31,19 @@ const ARCHIVE_FILTERS: Array<DialogFilter> = [
  */
 export function ArchivesEditorOpenForm(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = archivesService.project.isLoading;
 
-  // Browsing a directory is the primary workflow, so it is the default whenever an installation is configured to
-  // browse. Without one, the likelier intent is the isolated volume that was downloaded or extracted on its own.
-  const [mode, setMode] = useState<TOpenMode>(
-    pathsService.getPath(EWorkspacePath.GAME_INSTALLATION) ? "directory" : "archive"
-  );
+  // Browsing a directory is the primary workflow, so it is the fallback - and after that, whichever of the two was
+  // last used, because someone who opens single volumes they downloaded does so every time.
+  const [mode, setMode] = useRememberedValue<TOpenMode>({
+    allowed: OPEN_MODES,
+    application: EApplicationId.ARCHIVES_EXPLORER,
+    fallback: "directory",
+    id: "mode",
+  });
 
   const directory: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_EXPLORER,
@@ -50,7 +51,6 @@ export function ArchivesEditorOpenForm(): ReactElement {
     title: "Select archives directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: () => resolveExistingPathRole(EPathRole.ARCHIVES, pathsService.paths),
   });
 
   // Unseeded on purpose: the only path a project offers is a directory, which would sit in a volume field looking like

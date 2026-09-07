@@ -3,8 +3,7 @@ import { ReactElement, useCallback, useEffect } from "react";
 
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { EApplicationId } from "@/core/routing/application";
-import { resolveOutputPath } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
+import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
@@ -17,7 +16,6 @@ import { Logger, useLogger } from "@/lib/logging";
 export function SpawnEditorPackForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const conversionService: SpawnConversionService = useInjection(SpawnConversionService);
   const isLoading: boolean = conversionService.operation.isRunning;
 
@@ -27,7 +25,7 @@ export function SpawnEditorPackForm(): ReactElement {
     title: "Select unpacked spawn directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed: () => resolveOutputPath(EApplicationId.SPAWN_UNPACKER, pathsService.paths),
+    seed: () => resolveOutputPath(EApplicationId.SPAWN_UNPACKER),
   });
 
   const destination: IPathField = usePathField({
@@ -37,7 +35,7 @@ export function SpawnEditorPackForm(): ReactElement {
     filters: [{ name: "spawn", extensions: ["spawn"] }],
     isSave: true,
     isDisabled: isLoading,
-    seed: () => resolveOutputPath(EApplicationId.SPAWN_PACKER, pathsService.paths, "all.spawn"),
+    seed: () => resolveOutputPath(EApplicationId.SPAWN_PACKER, "all.spawn"),
   });
 
   const onPack = useCallback(async () => {

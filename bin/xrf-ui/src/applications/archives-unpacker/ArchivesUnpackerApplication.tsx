@@ -6,8 +6,7 @@ import { UnpackerService } from "@/applications/archives-unpacker/services/unpac
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole, resolveOutputPath } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
+import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -16,7 +15,6 @@ import { Nullable } from "@/lib/types/general";
 export function ArchivesUnpackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const unpackerService: UnpackerService = useInjection(UnpackerService);
 
   const job: Nullable<IJobState> = unpackerService.operation.job;
@@ -28,7 +26,6 @@ export function ArchivesUnpackerApplication(): ReactElement {
     title: "Select archives directory",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolveExistingPathRole(EPathRole.ARCHIVES, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -38,7 +35,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isRunning,
-    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_UNPACKER, pathsService.paths),
+    seed: () => resolveOutputPath(EApplicationId.ARCHIVES_UNPACKER),
   });
 
   const archivesPath: Nullable<string> = source.value;

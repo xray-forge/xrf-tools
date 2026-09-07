@@ -25,7 +25,12 @@ export interface IPathFieldOptions {
   isSave?: boolean;
   isDisabled?: boolean;
   isRequired?: boolean;
-  /** Produces a first guess when nothing has been remembered yet, usually from the configured paths. */
+  /**
+   * Produces a first guess when nothing has been remembered yet.
+   *
+   * Only the output fields have one: a destination is a fact about the application, so it can be guessed. Every other
+   * path is named where it is used, and its history is what offers it again.
+   */
   seed?: TPathSeed;
 }
 
@@ -50,7 +55,7 @@ export interface IPathField {
  * storage, so no session can overwrite or erase what an earlier one remembered while its own state is still empty.
  *
  * Clearing asks for the guess again rather than leaving the field blank, which is what makes clearing read as "back to
- * the default" once configured paths supply those defaults. It empties the value and keeps the history, which are
+ * the default" for the fields that have one. It empties the value and keeps the history, which are
  * separate keys for exactly that reason.
  *
  * Beside the value the field keeps a short history, written only when a path was picked from the dialog or carried

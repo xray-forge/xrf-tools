@@ -7,8 +7,6 @@ import { EquipmentPackResult } from "@/applications/sprite-equipment-packer/comp
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -19,8 +17,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const packerService: SpriteEquipmentPackerService = useInjection(SpriteEquipmentPackerService);
-
-  const pathsService: PathsService = useInjection(PathsService);
 
   // Rediscover a running pack after reload so the form cannot offer a second pack against the same output.
   const job: Nullable<IJobState> = packerService.operation.job;
@@ -36,7 +32,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     title: "Select source icons directory",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolveExistingPathRole(EPathRole.EQUIPMENT_ICON_SOURCES, pathsService.paths),
   });
 
   const output: IPathField = usePathField({
@@ -46,7 +41,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     filters: [{ name: "dds", extensions: ["dds"] }],
     isSave: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.EQUIPMENT_SPRITE, pathsService.paths),
   });
 
   const systemLtx: IPathField = usePathField({
@@ -55,7 +49,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     title: "Select system.ltx",
     filters: [{ name: "ltx", extensions: ["ltx"] }],
     isDisabled: isRunning,
-    seed: () => resolveExistingPathRole(EPathRole.SYSTEM_LTX, pathsService.paths),
   });
 
   // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the

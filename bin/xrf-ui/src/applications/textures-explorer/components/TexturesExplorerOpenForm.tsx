@@ -1,21 +1,21 @@
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
 import {
   ETextureOpenMode,
   getTextureOpenMode,
   ITextureOpenModeDescriptor,
+  TEXTURE_OPEN_MODE_IDS,
   TEXTURE_OPEN_MODES,
 } from "@/applications/textures-explorer/lib/texture-open-mode";
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
@@ -33,20 +33,19 @@ interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
 export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = catalogService.catalog.isLoading || selectionService.selected.isLoading;
 
-  // Browsing is the primary workflow, so it is the default whenever a tree is configured to browse.
-  const [modeId, setModeId] = useState<ETextureOpenMode>(
-    (pathsService.getPath(EWorkspacePath.GAMEDATA) ?? pathsService.getPath(EWorkspacePath.GAME_INSTALLATION))
-      ? ETextureOpenMode.FOLDER
-      : ETextureOpenMode.TEXTURE
-  );
-
-  const seed = useCallback(() => resolveExistingPathRole(EPathRole.TEXTURES, pathsService.paths), [pathsService.paths]);
+  // Browsing is the primary workflow, so it is the fallback - but what someone last opened is a better guess, and
+  // someone authoring single textures should not re-pick the mode every session.
+  const [modeId, setModeId] = useRememberedValue<ETextureOpenMode>({
+    allowed: TEXTURE_OPEN_MODE_IDS,
+    application: EApplicationId.TEXTURES_EXPLORER,
+    fallback: ETextureOpenMode.FOLDER,
+    id: "mode",
+  });
 
   // One picker per mode rather than one that changes shape: each remembers its own path, and a directory picker and a
   // file picker are different dialogs. Called unconditionally, since a hook cannot be chosen the way the rest is.
@@ -56,7 +55,6 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       id: "root",
       isDirectory: true,
       isDisabled: isLoading,
-      seed,
       title: "Select gamedata or textures directory",
     }),
     [ETextureOpenMode.LOOSE_FOLDER]: usePathField({
@@ -64,7 +62,6 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       id: "loose-folder",
       isDirectory: true,
       isDisabled: isLoading,
-      seed,
       title: "Select a folder of textures",
     }),
     [ETextureOpenMode.TEXTURE]: usePathField({
@@ -72,10 +69,11 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       filters: [{ extensions: ["dds", "thm"], name: "Texture or descriptor" }],
       id: "texture",
       isDisabled: isLoading,
-      seed,
       title: "Select dds texture or thm descriptor",
     }),
   };
+
+  const assetRoot: IPathField = useAssetRootField(EApplicationId.TEXTURES_EXPLORER, isLoading);
 
   const mode: ITextureOpenModeDescriptor = getTextureOpenMode(modeId);
   const field: IPathField = fields[modeId];
@@ -87,10 +85,10 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       return;
     }
 
-    await mode.open(field.value, { catalogService, selectionService });
+    await mode.open(field.value, { assetRoot: assetRoot.value, catalogService, selectionService });
 
     onFinished?.();
-  }, [catalogService, field.value, log, mode, onFinished, selectionService]);
+  }, [assetRoot.value, catalogService, field.value, log, mode, onFinished, selectionService]);
 
   return (
     <PickerForm
@@ -124,6 +122,8 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       </FormRow>
 
       <PathFormRow label={mode.field.label} description={mode.field.description} isDisabled={isLoading} field={field} />
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
     </PickerForm>
   );
 }

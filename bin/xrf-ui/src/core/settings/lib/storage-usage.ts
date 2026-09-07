@@ -1,4 +1,3 @@
-import { IWorkspacePathDescriptor, WORKSPACE_PATHS } from "@/core/settings/lib/workspace-path";
 import { isFieldRecentsStorageKey, isFieldValueStorageKey } from "@/core/ui/form/field-storage";
 import { setLocalStorageValue } from "@/lib/local-storage";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
@@ -20,7 +19,6 @@ const BYTES_PER_CODE_UNIT: number = 2;
 export enum EStorageGroup {
   RECENT_PATHS = "recentPaths",
   FORM_VALUES = "formValues",
-  WORKSPACE_PATHS = "workspacePaths",
   LAYOUT = "layout",
   PREFERENCES = "preferences",
   OTHER = "other",
@@ -41,8 +39,8 @@ export interface IStorageGroupDescriptor {
   /**
    * Whether this section offers to empty it.
    *
-   * False for anything the application needs or another section owns: configured paths are cleared per row in the
-   * Paths section, and clearing a preference here would be a second, worse way to change a setting.
+   * False for a preference, because clearing one here would be a second and worse way to change a setting. True for
+   * the catch-all, which is the group most likely to hold keys left behind by a feature that is gone.
    */
   isClearable: boolean;
   /** Whether a key belongs here. Matched in table order, so the catch-all claims what the others declined. */
@@ -60,9 +58,6 @@ export interface IStorageUsage {
   total: number;
   groups: Array<IStorageGroupUsage>;
 }
-
-/** Keys the workspace paths occupy, read from the table that declares them. */
-const WORKSPACE_PATH_KEYS: ReadonlyArray<string> = WORKSPACE_PATHS.map((it: IWorkspacePathDescriptor) => it.storageKey);
 
 /**
  * Keys that are one switch each.
@@ -95,13 +90,6 @@ export const STORAGE_GROUPS: ReadonlyArray<IStorageGroupDescriptor> = [
     matches: isFieldValueStorageKey,
   },
   {
-    description: "Game data and its overrides. Cleared one at a time in Paths, because every tool derives from them.",
-    id: EStorageGroup.WORKSPACE_PATHS,
-    isClearable: false,
-    label: "Workspace paths",
-    matches: (key: string) => WORKSPACE_PATH_KEYS.includes(key),
-  },
-  {
     description: "Which side panels are open, and how wide they are.",
     id: EStorageGroup.LAYOUT,
     isClearable: true,
@@ -116,9 +104,9 @@ export const STORAGE_GROUPS: ReadonlyArray<IStorageGroupDescriptor> = [
     matches: (key: string) => PREFERENCE_KEYS.includes(key),
   },
   {
-    description: "Anything else the application has left here.",
+    description: "Anything else the application has left here, including keys left by features that are gone.",
     id: EStorageGroup.OTHER,
-    isClearable: false,
+    isClearable: true,
     label: "Other",
     matches: () => true,
   },

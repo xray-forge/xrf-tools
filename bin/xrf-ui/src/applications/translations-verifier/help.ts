@@ -6,8 +6,8 @@ export const TRANSLATIONS_VERIFIER_HELP: IApplicationHelp = {
     "answers one question for each of them: how many ids does this language have " +
     "text for, and how many is it still short. Nothing is written.",
   workflow: [
-    "Pick the translations directory, source tree, or installation holding the JSON sources. It starts from the " +
-      "configured translations path, or `configs\\text` under game data.",
+    "Pick the translations directory, source tree, or installation holding the JSON sources - usually " +
+      "`configs\\text` under a game data tree. The picker offers the directories it was last pointed at.",
     "Pick one language, or `all` to report every language the build compiles.",
     "`Verify` answers with a row per file and language, sortable by how much each is missing.",
   ],

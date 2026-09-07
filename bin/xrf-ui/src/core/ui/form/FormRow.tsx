@@ -8,6 +8,13 @@ interface IFormRowProps {
   description?: string;
   isRequired?: boolean;
   error?: Nullable<string>;
+  /**
+   * What the value currently amounts to, said under the control.
+   *
+   * Neutral rather than wrong, which is why it is not an `error`: a row reporting that a directory is a game
+   * installation is answering the person, not correcting them. An error wins the line when both are present.
+   */
+  fact?: Nullable<string>;
   /** Ties the label to the control it names. Without it the field reads as unlabelled. */
   controlId?: string;
   /**
@@ -25,6 +32,7 @@ export function FormRow({
   description,
   isRequired = true,
   error,
+  fact,
   controlId,
   isInline,
   children,
@@ -61,9 +69,9 @@ export function FormRow({
 
       <Box sx={{ minWidth: 0, flexShrink: isInline ? 0 : undefined }}>{children}</Box>
 
-      {error ? (
-        <Typography variant={"caption"} sx={{ color: "error.main" }}>
-          {error}
+      {error || fact ? (
+        <Typography variant={"caption"} sx={{ color: error ? "error.main" : "text.secondary" }}>
+          {error ?? fact}
         </Typography>
       ) : null}
     </Box>

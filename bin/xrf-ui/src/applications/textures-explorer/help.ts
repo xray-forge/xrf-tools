@@ -39,8 +39,8 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "bumped.",
     "`Height` on a bumped material is the authored virtual height, which the renderer never reads; parallax depth " +
       "comes from the `r2_parallax_h` console variable.",
-    "The configured game data and installation are searched behind the root being browsed, so a mod tree carrying " +
-      "only what it changed still resolves - and reports - the bumps it did not.",
+    "Whatever `Also search in` names is searched behind the root being browsed and folds into the same listing, so a " +
+      "mod tree carrying only what it changed still resolves - and reports - the bumps it did not.",
     "Textures the engine loads but no reference names, such as a level's lightmaps, are counted in the status bar " +
       "rather than listed: they sit outside `textures\\`, so no descriptor can describe them.",
     "The `Channels` panel draws through the same decode the lit surface is shaded by, on small unlit quads: a " +
@@ -71,7 +71,7 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
     "`Texture` mode accepts only loose files on disk. A texture inside an archive is reached through `Folder` mode.",
     "A single file is opened by its engine reference, which is its path below a `textures` directory. The file " +
       "therefore has to sit under one; a `.dds` on a desktop belongs to no tree and names no texture. A tree holding " +
-      "only textures is enough, and the configured game data is still searched behind it for the bump pair.",
+      "only textures is enough, and whatever `Also search in` names is still searched behind it for the bump pair.",
   ],
   relatedTools: [EApplicationId.TEXTURES_EDITOR, EApplicationId.VISUALS_EXPLORER, EApplicationId.ARCHIVES_EXPLORER],
 };

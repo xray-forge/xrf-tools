@@ -7,8 +7,6 @@ import { VerifierService } from "@/applications/configs-verifier/services/verifi
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -17,7 +15,6 @@ import { Nullable } from "@/lib/types/general";
 export function ConfigsVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const verifierService: VerifierService = useInjection(VerifierService);
 
   // The run rather than this view's own flag: a verification survives the window being reloaded, so returning here
@@ -31,7 +28,6 @@ export function ConfigsVerifierApplication(): ReactElement {
     title: "Select configs directory",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.CONFIGS, pathsService.paths),
   });
 
   const directory: Nullable<string> = configs.value;

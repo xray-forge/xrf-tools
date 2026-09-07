@@ -1,5 +1,6 @@
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { Nullable } from "@/lib/types/general";
 
 /** Which of the three things the picker is opening. */
 export enum ETextureOpenMode {
@@ -15,6 +16,10 @@ export enum ETextureOpenMode {
 export interface ITextureOpenSession {
   catalogService: TextureCatalogService;
   selectionService: TextureSelectionService;
+  /**
+   * A further tree the session searches behind whatever it opened.
+   */
+  assetRoot: Nullable<string>;
 }
 
 /** Everything about one way in: what it is called, what it reads, and what opening it does. */
@@ -54,8 +59,10 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
     field: { description: "Gamedata directory to browse", label: "Textures root" },
     id: ETextureOpenMode.FOLDER,
     label: "Folder",
-    open: async (path: string, { catalogService }: ITextureOpenSession): Promise<void> => {
-      await catalogService.openRoot(path);
+    open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
+      selectionService.setAssetRoot(assetRoot);
+
+      await catalogService.openRoot(path, assetRoot);
     },
     submitLabel: "Browse",
   },
@@ -67,7 +74,9 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
     field: { description: "Any directory holding dds files, in a game tree or not", label: "Textures folder" },
     id: ETextureOpenMode.LOOSE_FOLDER,
     label: "Loose folder",
-    open: async (path: string, { catalogService }: ITextureOpenSession): Promise<void> => {
+    open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
+      selectionService.setAssetRoot(assetRoot);
+
       await catalogService.openLooseDirectory(path);
     },
     submitLabel: "Browse",
@@ -77,13 +86,21 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
     field: { description: "Dds texture, or the thm descriptor beside it", label: "Texture file" },
     id: ETextureOpenMode.TEXTURE,
     label: "Texture",
-    open: async (path: string, { catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
+    open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
       await catalogService.close();
+
+      selectionService.setAssetRoot(assetRoot);
+
       await selectionService.openFile(path);
     },
     submitLabel: "Open",
   },
 ];
+
+/** Every mode identity, for a remembered choice that has to reject a value the toggle no longer offers. */
+export const TEXTURE_OPEN_MODE_IDS: ReadonlyArray<ETextureOpenMode> = TEXTURE_OPEN_MODES.map(
+  (it: ITextureOpenModeDescriptor) => it.id
+);
 
 /**
  * @param id - The mode to describe.

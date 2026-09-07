@@ -6,8 +6,8 @@ export const TRANSLATIONS_BUILDER_HELP: IApplicationHelp = {
     "file per source per language, written in that language's code page. This is the last step " +
     "before packaging, and the only one that produces files the engine reads directly.",
   workflow: [
-    "Pick the translations directory, source tree, or installation holding the JSON sources. It starts from the " +
-      "configured translations path, or `configs\\text` under game data.",
+    "Pick the translations directory, source tree, or installation holding the JSON sources - usually " +
+      "`configs\\text` under a game data tree. The picker offers the directories it was last pointed at.",
     "Pick a language, or `all` to compile every language the build supports.",
     "Pick the output directory. Tables land under `<output>/<language>/<name>.xml`.",
     "`Build` reports a row per language with how many tables it wrote and how many ids each holds.",

@@ -2,9 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -20,13 +20,10 @@ interface IVisualsSequencerOpenFormProps extends BaseComponentProps {
  */
 export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFormProps): ReactElement {
   const sequencerService: SequencerService = useInjection(SequencerService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = sequencerService.visual.isLoading;
-
-  const seed = useCallback(() => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths), [pathsService.paths]);
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_SEQUENCER,
@@ -34,8 +31,9 @@ export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFo
     title: "Select ogf visual",
     filters: [{ name: "Ogf visual", extensions: ["ogf"] }],
     isDisabled: isLoading,
-    seed,
   });
+
+  const assetRoot: IPathField = useAssetRootField(EApplicationId.VISUALS_SEQUENCER, isLoading);
 
   const onOpen = useCallback(async () => {
     if (!visual.value) {
@@ -44,10 +42,10 @@ export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFo
       return;
     }
 
-    await sequencerService.openFile(visual.value);
+    await sequencerService.openFile(visual.value, assetRoot.value);
 
     onFinished?.();
-  }, [log, onFinished, sequencerService, visual.value]);
+  }, [assetRoot.value, log, onFinished, sequencerService, visual.value]);
 
   return (
     <PickerForm
@@ -65,6 +63,8 @@ export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFo
         isDisabled={isLoading}
         field={visual}
       />
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
     </PickerForm>
   );
 }

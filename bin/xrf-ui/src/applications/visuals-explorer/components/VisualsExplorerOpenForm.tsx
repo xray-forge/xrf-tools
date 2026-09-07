@@ -1,20 +1,21 @@
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
 type TOpenMode = "folder" | "model";
+
+const OPEN_MODES: ReadonlyArray<TOpenMode> = ["folder", "model"];
 
 interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
   /**
@@ -35,20 +36,19 @@ interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
 export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenFormProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = visualsService.visual.isLoading || browseService.visuals.isLoading;
 
-  // Browsing is the primary workflow, so it is the default whenever a tree is configured to browse.
-  const [mode, setMode] = useState<TOpenMode>(
-    (pathsService.getPath(EWorkspacePath.GAMEDATA) ?? pathsService.getPath(EWorkspacePath.GAME_INSTALLATION))
-      ? "folder"
-      : "model"
-  );
-
-  const seed = useCallback(() => resolveExistingPathRole(EPathRole.VISUALS, pathsService.paths), [pathsService.paths]);
+  // Browsing is the primary workflow, so it is the fallback - but what someone last opened is a better guess than
+  // that, and a person who only ever looks at single models should not re-pick the mode every session.
+  const [mode, setMode] = useRememberedValue<TOpenMode>({
+    allowed: OPEN_MODES,
+    application: EApplicationId.VISUALS_EXPLORER,
+    fallback: "folder",
+    id: "mode",
+  });
 
   const visual: IPathField = usePathField({
     application: EApplicationId.VISUALS_EXPLORER,
@@ -56,7 +56,6 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
     title: "Select ogf visual",
     filters: [{ name: "Ogf visual", extensions: ["ogf"] }],
     isDisabled: isLoading,
-    seed,
   });
 
   const root: IPathField = usePathField({
@@ -65,8 +64,9 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
     title: "Select gamedata or meshes directory",
     isDirectory: true,
     isDisabled: isLoading,
-    seed,
   });
+
+  const assetRoot: IPathField = useAssetRootField(EApplicationId.VISUALS_EXPLORER, isLoading);
 
   const field: IPathField = mode === "folder" ? root : visual;
 
@@ -82,14 +82,14 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
     // tree that does not contain it is the kind of disagreement the viewport is supposed to prevent.
     if (mode === "folder") {
       await visualsService.close();
-      await browseService.openRoot(field.value);
+      await browseService.openRoot(field.value, assetRoot.value);
     } else {
       await browseService.close();
-      await visualsService.openFile(field.value);
+      await visualsService.openFile(field.value, assetRoot.value);
     }
 
     onFinished?.();
-  }, [browseService, field.value, log, mode, onFinished, visualsService]);
+  }, [assetRoot.value, browseService, field.value, log, mode, onFinished, visualsService]);
 
   return (
     <PickerForm
@@ -133,6 +133,8 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
       ) : (
         <PathFormRow label={"Visual file"} description={"Ogf model to preview"} isDisabled={isLoading} field={visual} />
       )}
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
     </PickerForm>
   );
 }

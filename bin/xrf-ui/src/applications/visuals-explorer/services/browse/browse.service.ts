@@ -94,10 +94,13 @@ export class VisualsBrowseService {
    * Browse a root and list every visual in it.
    *
    * @param root - Filesystem path of the directory or installation to browse.
+   * @param assetRoot - A further tree searched behind it, or null to read only the root itself.
    */
   @LatestFlow("visuals")
-  public *openRoot(root: string): TFlow {
-    const roots: XrayRoots = createRoots([root]);
+  public *openRoot(root: string, assetRoot: Nullable<string> = null): TFlow {
+    // Both go to the backend, which keeps them for the session: a reload restores the pair rather than the first of
+    // them, so a later read searches what the open searched.
+    const roots: XrayRoots = createRoots([root, assetRoot]);
 
     this.log.info("Browsing root:", root);
 

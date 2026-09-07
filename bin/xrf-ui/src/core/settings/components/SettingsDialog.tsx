@@ -16,28 +16,24 @@ import { ReactElement, useState } from "react";
 
 import { SettingsBuildInfo } from "@/core/settings/components/SettingsBuildInfo";
 import { SettingsGeneralSection } from "@/core/settings/components/SettingsGeneralSection";
-import { SettingsPathsSection } from "@/core/settings/components/SettingsPathsSection";
 import { SettingsStorageSection } from "@/core/settings/components/SettingsStorageSection";
 import { inline } from "@/lib/callbacks/inline";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
 const enum ESettingsSection {
   GENERAL = "general",
-  PATHS = "paths",
   STORAGE = "storage",
   ABOUT = "about",
 }
 
 const SECTION_LABELS: Record<ESettingsSection, string> = {
   [ESettingsSection.GENERAL]: "General",
-  [ESettingsSection.PATHS]: "Paths",
   [ESettingsSection.STORAGE]: "Storage",
   [ESettingsSection.ABOUT]: "About",
 };
 
 const SECTIONS: ReadonlyArray<ESettingsSection> = [
   ESettingsSection.GENERAL,
-  ESettingsSection.PATHS,
   ESettingsSection.STORAGE,
   ESettingsSection.ABOUT,
 ];
@@ -99,8 +95,6 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
             switch (section) {
               case ESettingsSection.GENERAL:
                 return <SettingsGeneralSection />;
-              case ESettingsSection.PATHS:
-                return <SettingsPathsSection />;
               case ESettingsSection.STORAGE:
                 return <SettingsStorageSection />;
               case ESettingsSection.ABOUT:

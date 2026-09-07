@@ -7,15 +7,12 @@ import { TranslationsParserService } from "@/applications/translations-parser/se
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 export function TranslationsParserApplication(): ReactElement {
-  const pathsService: PathsService = useInjection(PathsService);
   const parserService: TranslationsParserService = useInjection(TranslationsParserService);
 
   // The run rather than this view's own flag: an import survives the window being reloaded.
@@ -39,7 +36,6 @@ export function TranslationsParserApplication(): ReactElement {
     title: "Select translations source",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolveExistingPathRole(EPathRole.BUILT_TRANSLATIONS, pathsService.paths),
   });
 
   const destination: IPathField = usePathField({
@@ -49,7 +45,6 @@ export function TranslationsParserApplication(): ReactElement {
     isDirectory: true,
     isSave: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
   const sourcePath: Nullable<string> = source.value;

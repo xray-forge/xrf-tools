@@ -2,8 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnFileService } from "@/core/spawn/services";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -13,7 +11,6 @@ export function SpawnEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const isLoading: boolean = spawnFileService.header.isLoading;
 
@@ -23,7 +20,6 @@ export function SpawnEditorOpenForm(): ReactElement {
     title: "Select spawn file",
     filters: [{ name: "spawn", extensions: ["spawn"] }],
     isDisabled: isLoading,
-    seed: () => resolveExistingPathRole(EPathRole.ALL_SPAWN, pathsService.paths),
   });
 
   const onOpen = useCallback(() => {

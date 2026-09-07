@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -19,7 +19,6 @@ export function TexturesEditorOpenForm({
   className,
 }: BaseComponentProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
-  const pathsService: PathsService = useInjection(PathsService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
@@ -31,8 +30,9 @@ export function TexturesEditorOpenForm({
     title: "Select dds texture or thm descriptor",
     filters: [{ name: "Texture or descriptor", extensions: ["dds", "thm"] }],
     isDisabled: isLoading,
-    seed: useCallback(() => resolveExistingPathRole(EPathRole.TEXTURES, pathsService.paths), [pathsService.paths]),
   });
+
+  const assetRoot: IPathField = useAssetRootField(EApplicationId.TEXTURES_EDITOR, isLoading);
 
   const onOpen = useCallback(async () => {
     if (!texture.value) {
@@ -41,8 +41,10 @@ export function TexturesEditorOpenForm({
       return;
     }
 
+    selectionService.setAssetRoot(assetRoot.value);
+
     await selectionService.openFile(texture.value);
-  }, [log, selectionService, texture.value]);
+  }, [assetRoot.value, log, selectionService, texture.value]);
 
   return (
     <PickerForm
@@ -53,7 +55,7 @@ export function TexturesEditorOpenForm({
       title={"Open a texture to work on"}
       description={
         "Opens one texture and the descriptor beside it, authoring a descriptor where there is none. The bump pair " +
-        "and detail texture it names are resolved through the configured game data."
+        "and detail texture it names are resolved in its own tree, and in whatever further tree is named below."
       }
       error={selectionService.selected.error?.message}
       submitLabel={"Open"}
@@ -66,6 +68,8 @@ export function TexturesEditorOpenForm({
         isDisabled={isLoading}
         field={texture}
       />
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
     </PickerForm>
   );
 }

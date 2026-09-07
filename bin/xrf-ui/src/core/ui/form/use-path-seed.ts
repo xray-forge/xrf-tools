@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 
 import { Nullable, Optional } from "@/lib/types/general";
 
-/** Produces a first guess at a path, usually from the configured paths. */
+/** Produces a first guess at a path, which today is only ever an application's own output directory. */
 export type TPathSeed = () => Promise<Nullable<string>>;
 
 export interface IPathSeedOptions {

@@ -7,14 +7,10 @@ import { Container } from "@wirestate/core";
 import { ArchivesEditorOpenForm } from "@/applications/archives-explorer/components/ArchivesEditorOpenForm";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
-import { PathsService } from "@/core/settings/services/paths";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
-const INSTALLATION_PATH: string = "C:\\Games\\stalker";
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
 
@@ -28,15 +24,8 @@ describe("ArchivesEditorOpenForm", () => {
     });
   });
 
-  /**
-   * The mode defaults from the configured installation, which the root container resolves long before this form
-   * mounts. A test container is provisioned as the form renders, so the path is set on the service rather than
-   * awaited.
-   */
-  function renderForm(installationPath: Nullable<string> = INSTALLATION_PATH): RenderResult {
-    const container: Container = mockContainer([AssetService, PathsService, ArchivesService]);
-
-    container.get(PathsService).setPath(EWorkspacePath.GAME_INSTALLATION, installationPath);
+  function renderForm(): RenderResult {
+    const container: Container = mockContainer([AssetService, ArchivesService]);
 
     return renderWithProviders(<ArchivesEditorOpenForm />, { route: "/archives-explorer", container });
   }
@@ -54,8 +43,8 @@ describe("ArchivesEditorOpenForm", () => {
       title: "Select archives directory",
       filters: undefined,
       directory: true,
-      // Opened where the field already points, rather than wherever the host last put a dialog for anything at all.
-      defaultPath: INSTALLATION_PATH,
+      // Nothing is configured and nothing has been picked here yet, so the host decides where to open.
+      defaultPath: undefined,
     });
   });
 
@@ -119,8 +108,21 @@ describe("ArchivesEditorOpenForm", () => {
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_project", { path: ARCHIVE_VOLUME });
   });
 
-  it("defaults to a volume when no project names a directory to browse", async () => {
-    const { findByText } = renderForm(null);
+  it("opens on the directory mode until something else is chosen", async () => {
+    const { findByText } = renderForm();
+
+    expect(
+      await findByText("Indexes every archive in the directory for browsing. Nothing is written.")
+    ).toBeInTheDocument();
+  });
+
+  it("comes back on the mode last used, because that is a better guess than the common one", async () => {
+    const first = renderForm();
+
+    await userEvent.click(first.getByLabelText("Open archive"));
+    first.unmount();
+
+    const { findByText } = renderForm();
 
     expect(await findByText("Indexes one archive volume for browsing. Nothing is written.")).toBeInTheDocument();
   });

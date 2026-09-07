@@ -12,8 +12,6 @@ import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { configuredAssetRoots } from "@/core/settings/lib/path/role";
-import { PathsService } from "@/core/settings/services/paths/paths.service";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
@@ -29,12 +27,12 @@ import { Nullable, Optional } from "@/lib/types/general";
 /**
  * What one open asked for, kept so the same request can be made again.
  *
- * The arguments rather than the roots they resolved to: a retry re-derives them, so a configured path corrected after
+ * The arguments rather than the roots they resolved to: a retry re-derives them, so a root corrected after
  * the failure is picked up instead of being repeated as it was wrong.
  */
 interface IVisualOpenAttempt {
   source: VisualSource;
-  roots: Array<string>;
+  roots: Array<Nullable<string>>;
   asset: Nullable<string>;
 }
 
@@ -194,7 +192,6 @@ export class VisualsService implements IVisualInspection {
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly pathsService: PathsService = inject(PathsService),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly motionService: VisualMotionService = inject(VisualMotionService)
   ) {}
@@ -268,12 +265,13 @@ export class VisualsService implements IVisualInspection {
    * Open a loose visual from disk.
    *
    * @param path - Filesystem path of the `.ogf` file.
+   * @param assetRoot - A further tree its references are searched in, or null to search only its own.
    */
   @BoundAction()
-  public async openFile(path: string): Promise<void> {
-    // Centred on the file, so its own tree and installation are searched for its textures - and searched again when
-    // those textures are read, because the roots travels with the description.
-    await this.open({ kind: "file", path }, [], path);
+  public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
+    // Centred on the file, so its own tree is searched for its textures - and searched again when those textures are
+    // read, because the roots travel with the description. The named root falls in behind it.
+    await this.open({ kind: "file", path }, [assetRoot], path);
   }
 
   /**
@@ -286,7 +284,7 @@ export class VisualsService implements IVisualInspection {
    * @param roots - Roots searched ahead of the project's own, usually the browsed one.
    */
   @BoundAction()
-  public async openAsset(logicalPath: string, roots: Array<string>): Promise<void> {
+  public async openAsset(logicalPath: string, roots: Array<Nullable<string>>): Promise<void> {
     await this.open({ kind: "asset", logicalPath }, roots);
   }
 
@@ -325,7 +323,11 @@ export class VisualsService implements IVisualInspection {
    * @param roots - Roots searched ahead of the project's own.
    * @param asset - Asset the roots is centred on, whose own tree is searched first.
    */
-  private async open(source: VisualSource, roots: Array<string> = [], asset: Nullable<string> = null): Promise<void> {
+  private async open(
+    source: VisualSource,
+    roots: Array<Nullable<string>> = [],
+    asset: Nullable<string> = null
+  ): Promise<void> {
     // Recorded before the read rather than after it, so a retry repeats the request even when the read never returns.
     this.attempt = { asset, roots, source };
 
@@ -357,8 +359,9 @@ export class VisualsService implements IVisualInspection {
    * @param asset - Asset the roots is centred on.
    * @returns The roots spec to open with.
    */
-  private async getRoots(roots: Array<string> = [], asset: Nullable<string> = null): Promise<XrayRoots> {
-    // The caller's roots come first: a browsed tree is the nearer answer, and the configured ones fall in behind it.
-    return createRoots([...roots, ...configuredAssetRoots(this.pathsService.paths)], asset);
+  private async getRoots(roots: Array<Nullable<string>> = [], asset: Nullable<string> = null): Promise<XrayRoots> {
+    // Whatever the caller named, in the order it named them, and nothing else: a browsed session already carries the
+    // extra root it was opened with, so there is no ambient set to fall in behind them.
+    return createRoots([...roots], asset);
   }
 }

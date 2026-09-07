@@ -7,8 +7,6 @@ import { FormatterService } from "@/applications/configs-formatter/services/form
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -17,7 +15,6 @@ import { Nullable } from "@/lib/types/general";
 export function ConfigsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const formatterService: FormatterService = useInjection(FormatterService);
 
   const [isCheck, setIsCheck] = useState(true);
@@ -33,7 +30,6 @@ export function ConfigsFormatterApplication(): ReactElement {
     title: "Select configs directory",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.CONFIGS, pathsService.paths),
   });
 
   const directory: Nullable<string> = configs.value;

@@ -7,8 +7,6 @@ import { TranslationsFormatterService } from "@/applications/translations-format
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
-import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -17,7 +15,6 @@ import { Nullable } from "@/lib/types/general";
 export function TranslationsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const pathsService: PathsService = useInjection(PathsService);
   const formatterService: TranslationsFormatterService = useInjection(TranslationsFormatterService);
 
   const [isCheck, setIsCheck] = useState(true);
@@ -33,7 +30,6 @@ export function TranslationsFormatterApplication(): ReactElement {
     title: "Select translations sources",
     isDirectory: true,
     isDisabled: isRunning,
-    seed: () => resolvePathRole(EPathRole.TRANSLATIONS, pathsService.paths),
   });
 
   const directory: Nullable<string> = sources.value;
