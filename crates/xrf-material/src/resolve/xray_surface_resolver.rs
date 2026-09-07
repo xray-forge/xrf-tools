@@ -60,19 +60,6 @@ impl XraySurfaceResolver {
     }
   }
 
-  /// The library the answers come from, when one was located, whether or not it could be read.
-  pub fn library(&self) -> Option<&XrayAsset> {
-    match &self.source {
-      XraySurfaceSource::Absent => None,
-      XraySurfaceSource::Unreadable { asset, .. } | XraySurfaceSource::Read { asset, .. } => Some(asset),
-    }
-  }
-
-  /// Whether a surface's answer can come from a blender rather than from the absence of one.
-  pub fn is_readable(&self) -> bool {
-    matches!(self.source, XraySurfaceSource::Read { .. })
-  }
-
   /// How the renderer draws a surface naming this shader.
   ///
   /// The name is taken as the mesh spells it, which is how the engine looks it up: `CResourceManager::_GetBlender`

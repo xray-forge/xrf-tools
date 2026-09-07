@@ -10,6 +10,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
 import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
+import { createVisualSurfaces, IVisualSurface, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
   createDdsTexture,
   createDecodedTexture,
@@ -191,12 +192,17 @@ export class VisualLoadService {
 
     this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
 
-    const views: IVisualModelViews = createVisualViews(selected.description, buffer);
+    // Joined once, and read by both the meshes that draw the surfaces and the uploads that have to carry their alpha.
+    const surfaces: Map<number, IVisualSurface> = createVisualSurfaces(
+      selected.description.submeshes,
+      selected.surfaces
+    );
+    const views: IVisualModelViews = createVisualViews(selected.description, buffer, surfaces);
 
     this.log.info("Visual views built in:", formatDuration(timer.lap()));
 
     const reads: Map<string, IVisualTextureRead> = yield* call(this.readTextures(selected));
-    const loaded: IVisualTextureLoad = this.uploadTextures(selected, reads);
+    const loaded: IVisualTextureLoad = this.uploadTextures(selected, surfaces, reads);
 
     this.log.info(`Loaded ${reads.size} texture files in:`, formatDuration(timer.lap()));
 
@@ -282,11 +288,13 @@ export class VisualLoadService {
    * a cancelled load skip it entirely.
    *
    * @param selected - Visual the textures belong to.
+   * @param surfaces - Material state per submesh index, which decides whether a file's alpha has to survive upload.
    * @param reads - What each texture read produced.
    * @returns Uploaded textures by submesh index, and every submesh's outcome.
    */
   private uploadTextures(
     selected: SelectedVisualDescription,
+    surfaces: ReadonlyMap<number, IVisualSurface>,
     reads: Map<string, IVisualTextureRead>
   ): IVisualTextureLoad {
     const statuses: Map<number, IVisualTextureStatus> = new Map(
@@ -298,6 +306,9 @@ export class VisualLoadService {
     const textures: Map<number, Texture> = new Map();
     // One upload per file, shared by every submesh naming it.
     const uploads: Map<string, Nullable<Texture>> = new Map();
+    // Per file rather than per submesh, because the upload is: a DXT1 file drawn by a cut-out surface has to keep the
+    // alpha bit its blocks carry, and one upload serves every submesh naming it.
+    const alpha: ReadonlySet<string> = toAlphaTexturePaths(surfaces, selected.dependencies.textures);
 
     for (const { submeshIndex, logicalPath } of toLoadableTextures(selected.dependencies.textures)) {
       const read: Optional<IVisualTextureRead> = reads.get(logicalPath);
@@ -309,7 +320,7 @@ export class VisualLoadService {
       }
 
       if (!uploads.has(logicalPath)) {
-        uploads.set(logicalPath, createDdsTexture(read.bytes));
+        uploads.set(logicalPath, createDdsTexture(read.bytes, alpha.has(logicalPath)));
       }
 
       const uploaded: Nullable<Texture> = uploads.get(logicalPath) ?? null;

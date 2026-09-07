@@ -34,18 +34,3 @@ pub enum XraySurfaceDeclaration {
     is_strict_sorting: bool,
   },
 }
-
-impl XraySurfaceDeclaration {
-  /// The class tag, for a declaration that reached one.
-  pub fn class(&self) -> Option<&str> {
-    match self {
-      Self::Unmodelled { class } | Self::Described { class, .. } => Some(class),
-      Self::NoLibrary | Self::Unreadable { .. } | Self::Undefined => None,
-    }
-  }
-
-  /// Whether the answer describes the blender the engine would use, rather than saying why it cannot.
-  pub fn is_described(&self) -> bool {
-    matches!(self, Self::Described { .. })
-  }
-}

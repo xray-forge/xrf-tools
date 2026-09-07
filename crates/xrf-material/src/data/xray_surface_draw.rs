@@ -26,25 +26,9 @@ pub enum XraySurfaceDraw {
 }
 
 impl XraySurfaceDraw {
+  /// What a cut-out surface tests against: `def_aref`, the deferred pixel shader's own constant.
+  ///
   /// Published beside the variant it fills because it is the number that surprises: the authored `Alpha ref` is not
   /// it, and a consumer comparing the two needs both.
   pub const DEFERRED_ALPHA_REFERENCE: u8 = 200;
-
-  /// The reference a surface tests against, or `None` for one that reads no alpha.
-  pub fn reference(self) -> Option<u8> {
-    match self {
-      Self::Opaque => None,
-      Self::AlphaTested { reference } | Self::Blended { reference } => Some(reference),
-    }
-  }
-
-  /// Whether the surface reads the texture's alpha channel at all.
-  pub fn is_alpha_read(self) -> bool {
-    !matches!(self, Self::Opaque)
-  }
-
-  /// Whether the surface is drawn in a blended pass rather than written into the g-buffer.
-  pub fn is_blended(self) -> bool {
-    matches!(self, Self::Blended { .. })
-  }
 }

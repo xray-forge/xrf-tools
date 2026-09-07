@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription, VisualSubmesh } from "@/core/bindings/types/xrf-visual";
+import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,
   createVisualCameraFit,
@@ -11,6 +12,7 @@ import {
   IVisualSkeletonViews,
 } from "@/core/visuals/lib/visual-views";
 import {
+  mockAlphaSurfaceDescriptor,
   mockPackedSubmesh,
   mockSkippedSubmesh,
   mockVisualBone,
@@ -34,6 +36,28 @@ describe("visual views", () => {
     expect(Array.from(views.submeshes[0].positions)).toEqual([0, 0, 0, 1, 0, 0, 0, 1, 0]);
     expect(Array.from(views.submeshes[0].uvs)).toEqual([0, 0, 1, 0, 0, 1]);
     expect(Array.from(views.submeshes[0].indices)).toEqual([0, 1, 2]);
+  });
+
+  it("carries the material state each submesh's shader compiles to", () => {
+    // With the geometry rather than after it, so a cut-out is never drawn solid on the way in.
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description: VisualDescription = mockVisualDescription({
+      submeshes: [
+        mockPackedSubmesh(buffer, { index: 0, shaderName: "models\\model_aref" }),
+        mockPackedSubmesh(buffer, { index: 1, shaderName: "models\\model" }),
+      ],
+      bufferLength: buffer.byteLength,
+    });
+
+    const views: IVisualModelViews = createVisualViews(
+      description,
+      buffer.toArrayBuffer(),
+      createVisualSurfaces(description.submeshes, { "models\\model_aref": mockAlphaSurfaceDescriptor() })
+    );
+
+    expect(views.submeshes[0].surface.alphaTest).toBeCloseTo(200 / 255);
+    // A shader the map has no answer for is opaque, which is what a model opened without a library gets.
+    expect(views.submeshes[1].surface).toEqual({ alphaTest: 0, isDepthWritten: true, isTransparent: false });
   });
 
   it("rejects a buffer whose length disagrees with its description", () => {

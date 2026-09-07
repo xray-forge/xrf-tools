@@ -36,6 +36,7 @@ export const DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS: IVisualPreviewViewOptions = {
   isCheckerVisible: false,
   isSkeletonVisible: false,
   isBumpVisible: true,
+  isAlphaVisible: true,
 };
 
 /** Radius assumed when a model reports no usable extent, so the camera and helpers still have a scale. */
@@ -74,6 +75,14 @@ export interface IVisualPreviewViewOptions {
    * all survive the switch.
    */
   isBumpVisible: boolean;
+  /**
+   * Cuts out and blends the surfaces whose shader reads alpha, the way the game does, or draws them solid.
+   *
+   * On by default, for the same reason the bump is: the point is what the game draws. Off is the comparison, and it is
+   * the only way to see the geometry a cut-out is authored on - a hole in the alpha channel and a hole in the mesh
+   * look identical until the surface is drawn solid.
+   */
+  isAlphaVisible: boolean;
 }
 
 /**

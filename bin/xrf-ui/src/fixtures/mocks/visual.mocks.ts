@@ -1,7 +1,7 @@
 import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import {
   VisualBone,
   VisualBounds,
@@ -226,9 +226,54 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     roots: createRoots([]),
     textures: {},
     materials: {},
+    surfaces: {},
     texturesLtx: null,
     ...overrides,
   };
+}
+
+/**
+ * Creates a surface descriptor fixture: a plain `models\model`, which reads no alpha.
+ *
+ * @param overrides - Field values to override.
+ * @returns A surface descriptor fixture.
+ */
+export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
+  return {
+    library: {
+      container: { kind: "directory", relativePath: "shaders.xr", root: "C:\\gamedata" },
+      logicalPath: "shaders.xr",
+    },
+    declaration: {
+      kind: "described",
+      class: "MODEL",
+      isAlphaUsed: false,
+      alphaReference: 32,
+      isStrictSorting: false,
+    },
+    draw: { kind: "opaque" },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a surface descriptor fixture that cuts out, the way `models\model_aref` does.
+ *
+ * @param overrides - Field values to override.
+ * @returns A surface descriptor fixture whose draw reads alpha.
+ */
+export function mockAlphaSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
+  return mockSurfaceDescriptor({
+    declaration: {
+      kind: "described",
+      class: "MODEL",
+      isAlphaUsed: true,
+      alphaReference: 128,
+      isStrictSorting: false,
+    },
+    draw: { kind: "alphaTested", reference: 200 },
+    ...overrides,
+  });
 }
 
 /**

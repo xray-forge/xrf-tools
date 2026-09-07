@@ -8,6 +8,7 @@ import {
   VisualSubmesh,
   VisualTransform,
 } from "@/core/bindings/types/xrf-visual";
+import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**
@@ -60,6 +61,14 @@ export interface IVisualSubmeshViews {
   skinWeights: Nullable<Float32Array>;
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
+  /**
+   * The material state its shader compiles to: whether alpha is read, and how.
+   *
+   * Carried with the geometry rather than applied later like a texture, because it arrives with the description: the
+   * shader name and the library answer are both in hand before a mesh is built, so a cut-out is never drawn solid for
+   * a frame.
+   */
+  surface: IVisualSurface;
 }
 
 /** Segment endpoints of a skeleton, which bones each segment joins, and every bone's bind transform. */
@@ -178,9 +187,15 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
  *
  * @param description - What the backend said the buffer contains.
  * @param buffer - The packed attribute bytes.
- * @returns Per submesh views, draw ranges and camera framing.
+ * @param surfaces - Material state per submesh index, as `createVisualSurfaces` joined it. A submesh with no entry
+ *   is drawn opaque, which is how a model opened without a shader library is drawn.
+ * @returns Per submesh views, draw ranges, material states and camera framing.
  */
-export function createVisualViews(description: VisualDescription, buffer: ArrayBuffer): IVisualModelViews {
+export function createVisualViews(
+  description: VisualDescription,
+  buffer: ArrayBuffer,
+  surfaces: ReadonlyMap<number, IVisualSurface> = new Map()
+): IVisualModelViews {
   if (buffer.byteLength !== description.bufferLength) {
     throw new Error(
       `Geometry buffer is ${buffer.byteLength} bytes but its description covers ${description.bufferLength}. ` +
@@ -221,6 +236,7 @@ export function createVisualViews(description: VisualDescription, buffer: ArrayB
       skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
       skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
+      surface: surfaces.get(submesh.index) ?? OPAQUE_VISUAL_SURFACE,
     });
   }
 

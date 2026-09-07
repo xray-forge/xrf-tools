@@ -15,6 +15,7 @@ import {
 } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { isAlphaVisualSurface } from "@/core/visuals/lib/visual-surface";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -100,6 +101,7 @@ export function VisualPreviewLayout({
   const hasSkeleton: boolean = Boolean(model?.skeleton);
   // A dummy pair counts: it is uploaded and shaded, and comparing it flat is how a modder sees that it adds nothing.
   const hasBump: boolean = Boolean(model && bumps && bumps.size > 0);
+  const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaVisualSurface(submesh.surface)));
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
@@ -139,6 +141,7 @@ export function VisualPreviewLayout({
           hasDetailLevels={hasDetailLevels}
           hasSkeleton={hasSkeleton}
           hasBump={hasBump}
+          hasAlpha={hasAlpha}
           subtitle={subtitle}
           options={options}
           detail={detail}

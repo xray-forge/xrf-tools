@@ -14,11 +14,12 @@ function renderToolbar(
   return renderWithProviders(
     <VisualPreviewToolbar
       options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-      isOpenEnabled
+      isOpenEnabled={true}
       detail={detail}
       hasDetailLevels={hasDetailLevels}
-      hasSkeleton
-      hasBump
+      hasSkeleton={true}
+      hasBump={true}
+      hasAlpha={true}
       onChangeOptions={jest.fn()}
       onChangeDetail={onChangeDetail}
       onResetCamera={jest.fn()}
@@ -33,11 +34,12 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
     const render: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        isOpenEnabled
         detail={0}
+        isOpenEnabled={true}
         hasDetailLevels
         hasSkeleton={false}
-        hasBump
+        hasBump={true}
+        hasAlpha={true}
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -52,11 +54,12 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
     const render: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        isOpenEnabled
         detail={0}
-        hasDetailLevels
-        hasSkeleton
-        hasBump
+        isOpenEnabled={true}
+        hasDetailLevels={true}
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -76,11 +79,12 @@ describe("VisualPreviewToolbar bump toggle", () => {
     const { getByRole } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        isOpenEnabled
         detail={0}
-        hasDetailLevels
-        hasSkeleton
+        isOpenEnabled={true}
+        hasDetailLevels={true}
+        hasSkeleton={true}
         hasBump={false}
+        hasAlpha={true}
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -95,11 +99,12 @@ describe("VisualPreviewToolbar bump toggle", () => {
     const { getByRole } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        isOpenEnabled
         detail={0}
-        hasDetailLevels
-        hasSkeleton
-        hasBump
+        isOpenEnabled={true}
+        hasDetailLevels={true}
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
         onResetCamera={jest.fn()}
@@ -112,6 +117,53 @@ describe("VisualPreviewToolbar bump toggle", () => {
 
     expect(changes).toHaveLength(1);
     expect(changes[0].isBumpVisible).toBe(false);
+  });
+});
+
+describe("VisualPreviewToolbar alpha toggle", () => {
+  it("offers nothing to compare on a model whose every surface is opaque", () => {
+    const render: RenderResult = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        detail={0}
+        isOpenEnabled={true}
+        hasDetailLevels={true}
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={false}
+        onChangeOptions={jest.fn()}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    expect(render.getByRole("button", { name: "Alpha" })).toBeDisabled();
+  });
+
+  it("starts on and asks to draw the surfaces solid for comparison", () => {
+    // Solid is what makes a hole in the alpha channel tellable from a hole in the mesh.
+    const changes: Array<IVisualPreviewViewOptions> = [];
+    const { getByRole } = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        detail={0}
+        isOpenEnabled={true}
+        hasDetailLevels={true}
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={true}
+        onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeDetail={jest.fn()}
+        onResetCamera={jest.fn()}
+      />
+    );
+
+    expect(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS.isAlphaVisible).toBe(true);
+
+    fireEvent.click(getByRole("button", { name: "Alpha" }));
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].isAlphaVisible).toBe(false);
   });
 });
 

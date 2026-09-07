@@ -1,5 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-import { CompressedTexture, LinearFilter, RepeatWrapping, RGB_S3TC_DXT1_Format, RGBA_S3TC_DXT5_Format } from "three";
+import {
+  CompressedTexture,
+  LinearFilter,
+  RepeatWrapping,
+  RGB_S3TC_DXT1_Format,
+  RGBA_S3TC_DXT1_Format,
+  RGBA_S3TC_DXT5_Format,
+} from "three";
 
 import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import {
@@ -49,6 +56,20 @@ describe("createDdsTexture", () => {
     expect(texture!.format).toBe(RGB_S3TC_DXT1_Format);
     expect(texture!.image.width).toBe(4);
     expect(texture!.mipmaps).toHaveLength(3);
+  });
+
+  it("keeps dxt1's alpha bit for a surface that reads alpha, and drops it otherwise", () => {
+    const read: Nullable<CompressedTexture> = createDdsTexture(mockDdsFile({ fourCC: "DXT1" }), true);
+    const ignored: Nullable<CompressedTexture> = createDdsTexture(mockDdsFile({ fourCC: "DXT1" }), false);
+
+    expect(read!.format).toBe(RGBA_S3TC_DXT1_Format);
+    // Not applied always: the transparent-black block mode occurs in files authored opaque, and reading those as rgba
+    // would punch holes in surfaces the engine draws solid.
+    expect(ignored!.format).toBe(RGB_S3TC_DXT1_Format);
+  });
+
+  it("leaves a format that already carries alpha alone", () => {
+    expect(createDdsTexture(mockDdsFile({ fourCC: "DXT5" }), true)!.format).toBe(RGBA_S3TC_DXT5_Format);
   });
 
   it("drops to a non mipmap filter when the file carries no mip chain", () => {

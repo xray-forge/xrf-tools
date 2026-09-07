@@ -294,11 +294,13 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(&probe);
 
-  assert!(resolver.is_readable());
-  assert_eq!(resolver.describe("models\\model").draw, XraySurfaceDraw::Opaque);
+  let opaque: XraySurfaceDescriptor = resolver.describe("models\\model");
+
+  assert_eq!(opaque.draw, XraySurfaceDraw::Opaque);
   assert_eq!(resolver.describe("models\\model_fur").draw, CUT_OUT);
+  // Every answer names the library it came from, which is what a panel says once for the whole model.
   assert_eq!(
-    resolver.library().map(|it| it.get_logical_path().as_str()),
-    Some(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH)
+    opaque.library.map(|it| it.get_logical_path().to_string()),
+    Some(String::from(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH))
   );
 }

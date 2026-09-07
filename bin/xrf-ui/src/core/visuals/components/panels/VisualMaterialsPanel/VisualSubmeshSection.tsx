@@ -2,7 +2,7 @@ import { Box, Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
 import { EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
@@ -12,6 +12,7 @@ import { ABSENT_VALUE } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
 import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";
+import { VisualSubmeshSurface } from "./VisualSubmeshSurface";
 import { VisualSubmeshTexture } from "./VisualSubmeshTexture";
 
 interface IVisualSubmeshSectionProps extends BaseComponentProps {
@@ -27,6 +28,8 @@ interface IVisualSubmeshSectionProps extends BaseComponentProps {
   textures?: Record<string, AssetTextureDescriptor>;
   /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
   materials?: Record<string, XrayMaterialDescriptor>;
+  /** How the renderer draws each declared shader, keyed by the shader name as the mesh declares it. */
+  surfaces?: Record<string, XraySurfaceDescriptor>;
 }
 
 /**
@@ -43,6 +46,7 @@ export function VisualSubmeshSection({
   bumpStatus = null,
   textures,
   materials,
+  surfaces,
 }: IVisualSubmeshSectionProps): ReactElement {
   const { content } = submesh;
 
@@ -65,6 +69,8 @@ export function VisualSubmeshSection({
       }
     >
       <EditorPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} />
+
+      <VisualSubmeshSurface surface={submesh.shaderName ? (surfaces?.[submesh.shaderName] ?? null) : null} />
 
       <EditorPanelRow label={"Type"} value={submesh.modelTypeLabel} />
 

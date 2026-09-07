@@ -4,6 +4,7 @@ import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
+import { default as OpacityIcon } from "@mui/icons-material/Opacity";
 import { default as PolylineIcon } from "@mui/icons-material/Polyline";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
@@ -28,6 +29,8 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   hasSkeleton: boolean;
   /** Whether any of the open model's materials bound a bump pair to shade with. */
   hasBump: boolean;
+  /** Whether any of the open model's surfaces reads its texture's alpha channel. */
+  hasAlpha: boolean;
   /** Whether the open model has anything to decimate. */
   hasDetailLevels: boolean;
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
@@ -56,6 +59,7 @@ export function VisualPreviewToolbar({
   hasDetailLevels,
   hasSkeleton,
   hasBump,
+  hasAlpha,
   onChangeOptions,
   onChangeDetail,
   onResetCamera,
@@ -174,6 +178,15 @@ export function VisualPreviewToolbar({
             icon={<TextureIcon />}
             isOn={options.isCheckerVisible}
             onToggle={() => onToggle("isCheckerVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Alpha"}
+            icon={<OpacityIcon />}
+            isOn={options.isAlphaVisible}
+            isDisabled={!hasAlpha}
+            unavailableTitle={"No surface of this model reads alpha"}
+            onToggle={() => onToggle("isAlphaVisible")}
           />
 
           <EditorViewToggle

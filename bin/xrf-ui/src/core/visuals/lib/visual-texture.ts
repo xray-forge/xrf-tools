@@ -4,6 +4,8 @@ import {
   CompressedTextureMipmap,
   LinearFilter,
   RepeatWrapping,
+  RGB_S3TC_DXT1_Format,
+  RGBA_S3TC_DXT1_Format,
   RGBAFormat,
   Texture,
 } from "three";
@@ -99,9 +101,11 @@ export function toInitialTextureState(resolution: XrayResolution): EVisualTextur
  * steps is load-bearing: a texture carrying no mip chain must drop to `LinearFilter`, or webgl samples an incomplete
  * texture and renders black. Not an edge case here - 1,805 of Anomaly's 2,197 distinct textures ship without mips.
  *
+ * @param bytes - The file as read.
+ * @param isAlphaRead - Whether any surface drawn with this file samples its alpha channel; see {@link toDdsFormat}.
  * @returns The texture, or null when three.js cannot upload this file.
  */
-export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture> {
+export function createDdsTexture(bytes: ArrayBuffer, isAlphaRead: boolean = false): Nullable<CompressedTexture> {
   const parsed: DDS = DDS_LOADER.parse(bytes, true);
 
   // The declared type is not nullable, but the parser initialises `format` to null and leaves it there when it refuses.
@@ -121,7 +125,7 @@ export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture
     parsed.height,
     // `DDSLoader` reports `RGBAFormat` for an uncompressed file, which the typings do not admit here even though
     // three's own `CompressedTextureLoader` assigns exactly that to a `CompressedTexture`.
-    parsed.format as CompressedPixelFormat
+    toDdsFormat(parsed.format as CompressedPixelFormat, isAlphaRead)
   );
 
   // X-Ray samples base diffuse with wrap addressing: `r_Sampler` defaults to `D3DTADDRESS_WRAP`
@@ -137,6 +141,24 @@ export function createDdsTexture(bytes: ArrayBuffer): Nullable<CompressedTexture
   texture.needsUpdate = true;
 
   return texture;
+}
+
+/**
+ * The upload format for a parsed file, recovering DXT1's one bit of alpha for the surfaces that read it.
+ *
+ * `DDSLoader` maps every `DXT1` fourcc to `RGB_S3TC_DXT1_Format`, which tells webgl to ignore the alpha bit the block
+ * format carries. That is right for the vast majority of files and wrong for X-Ray's `tfADXT1`.
+ *
+ * The block layout of the two formats is identical, so this is a reinterpretation and not a conversion. It is keyed on
+ * the surface rather than applied always because the transparent-black block mode occurs in files authored as opaque
+ * too, and reading those as `RGBA` would punch holes in surfaces the engine draws solid.
+ *
+ * @param format - What `DDSLoader` reported.
+ * @param isAlphaRead - Whether any surface drawn with this file samples its alpha channel.
+ * @returns The format to upload with.
+ */
+function toDdsFormat(format: CompressedPixelFormat, isAlphaRead: boolean): CompressedPixelFormat {
+  return isAlphaRead && format === RGB_S3TC_DXT1_Format ? RGBA_S3TC_DXT1_Format : format;
 }
 
 /** A texture's top mip on the cpu, for a layout that stores its texels plainly. */

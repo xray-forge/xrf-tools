@@ -30,9 +30,4 @@ impl XraySurfaceDescriptor {
       draw: XraySurfaceDraw::Opaque,
     }
   }
-
-  /// Whether the surface reads its texture's alpha channel.
-  pub fn is_alpha_read(&self) -> bool {
-    self.draw.is_alpha_read()
-  }
 }

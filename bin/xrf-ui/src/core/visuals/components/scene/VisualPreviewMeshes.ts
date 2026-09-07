@@ -18,6 +18,7 @@ import {
   XRAY_BINORMAL_ATTRIBUTE,
   XRAY_TANGENT_ATTRIBUTE,
 } from "@/core/visuals/lib/visual-bump";
+import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import {
   getVisualSubmeshLevel,
   IVisualModelViews,
@@ -37,6 +38,13 @@ export interface IVisualMeshMaterialOptions {
   isCheckerVisible: boolean;
   /** Whether a submesh whose material bound a bump pair is shaded with it, or drawn flat for comparison. */
   isBumpVisible: boolean;
+  /**
+   * Whether a submesh whose shader reads alpha is cut out and blended as the engine does, or drawn solid.
+   *
+   * Solid is the comparison rather than the truth: it shows the geometry a cut-out surface is authored on, which is
+   * what makes a hole in the alpha channel tellable from a hole in the mesh.
+   */
+  isAlphaVisible: boolean;
 }
 
 /** What drawing a model's submeshes needs beyond the model itself. */
@@ -181,18 +189,41 @@ export class VisualPreviewMeshes {
    * Retained as well as applied, because a texture or a bump pair arriving later has to know whether the checkerboard
    * is currently standing in for it and whether the bump is being compared away.
    *
-   * @param options - Whether to draw as wireframe, whether the checkerboard covers every texture, and whether bumps
-   *   are shaded.
+   * @param options - Whether to draw as wireframe, whether the checkerboard covers every texture, whether bumps are
+   *   shaded, and whether alpha is read.
    */
   public applyMaterialOptions(options: IVisualMeshMaterialOptions): void {
     this.materialOptions = options;
 
-    for (const { mesh, texture, bump } of this.meshes.values()) {
+    for (const { mesh, submesh, texture, bump } of this.meshes.values()) {
       mesh.material.wireframe = options.isWireframe;
       mesh.material.map = options.isCheckerVisible ? this.checker : texture;
+      VisualPreviewMeshes.applySurface(mesh.material, submesh.surface, options.isAlphaVisible);
       mesh.material.needsUpdate = true;
       bump?.setEnabled(options.isBumpVisible);
     }
+  }
+
+  /**
+   * Puts one submesh's material into the state its shader compiles to, or into the solid comparison.
+   *
+   * `alphaTest` changes the compiled program, so a material that has drawn already needs its recompile flagged; the
+   * caller does that once for every change it makes rather than once per field.
+   *
+   * @param material - Material being configured.
+   * @param surface - Material state the submesh's shader comes to.
+   * @param isAlphaVisible - Whether to honour it, or draw the surface solid for comparison.
+   */
+  private static applySurface(
+    material: MeshStandardMaterial,
+    surface: IVisualSurface,
+    isAlphaVisible: boolean
+  ): void {
+    const applied: IVisualSurface = isAlphaVisible ? surface : OPAQUE_VISUAL_SURFACE;
+
+    material.alphaTest = applied.alphaTest;
+    material.transparent = applied.isTransparent;
+    material.depthWrite = applied.isDepthWritten;
   }
 
   /**
@@ -228,6 +259,10 @@ export class VisualPreviewMeshes {
       metalness: MESH_METALNESS,
       roughness: MESH_ROUGHNESS,
     });
+
+    // Before the mesh is ever drawn, since the shader's answer arrives with the description rather than with the
+    // texture: a cut-out surface is never shown solid on the way in.
+    VisualPreviewMeshes.applySurface(material, submesh.surface, this.materialOptions?.isAlphaVisible ?? true);
 
     // Skinned only when this submesh carries links and the model carries bones to bind them to.
     const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && options.skin);

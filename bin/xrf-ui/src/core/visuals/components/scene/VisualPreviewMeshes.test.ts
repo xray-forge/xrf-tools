@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { BufferGeometry, Mesh, MeshStandardMaterial, Object3D, Skeleton, SkinnedMesh, Texture } from "three";
 
 import { IVisualPreviewMeshesOptions, VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
+import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
@@ -13,9 +14,14 @@ const CHECKER: Texture = new Texture();
  *
  * @param index - Submesh index, which is what a texture is addressed by.
  * @param isSkinned - Whether the submesh carries the links that make it drawable by a skinned mesh.
+ * @param surface - Material state its shader compiles to, opaque unless a test is about alpha.
  * @returns Views over arrays built for this test.
  */
-function mockSubmesh(index: number, isSkinned: boolean = false): IVisualSubmeshViews {
+function mockSubmesh(
+  index: number,
+  isSkinned: boolean = false,
+  surface: IVisualSurface = OPAQUE_VISUAL_SURFACE
+): IVisualSubmeshViews {
   return {
     index,
     label: `submesh ${index}`,
@@ -31,6 +37,7 @@ function mockSubmesh(index: number, isSkinned: boolean = false): IVisualSubmeshV
       { start: 0, count: 3, triangleCount: 1 },
       { start: 0, count: 0, triangleCount: 0 },
     ],
+    surface,
   };
 }
 
@@ -96,7 +103,12 @@ describe("VisualPreviewMeshes", () => {
     const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: false,
+      isWireframe: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
     meshes.applyTexture(0, texture);
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
@@ -152,11 +164,21 @@ describe("VisualPreviewMeshes", () => {
     const texture: Texture = new Texture();
 
     meshes.applyTexture(0, texture);
-    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: true,
+      isWireframe: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(CHECKER);
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: false,
+      isWireframe: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
@@ -165,12 +187,22 @@ describe("VisualPreviewMeshes", () => {
     const { meshes, parent } = mockMeshes();
     const texture: Texture = new Texture();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: true, isWireframe: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: true,
+      isWireframe: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
     meshes.applyTexture(0, texture);
 
     expect(attachedMeshes(parent)[0].material.map).toBe(CHECKER);
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: false,
+      isWireframe: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
 
     expect(attachedMeshes(parent)[0].material.map).toBe(texture);
   });
@@ -178,7 +210,12 @@ describe("VisualPreviewMeshes", () => {
   it("draws wireframe when asked", () => {
     const { meshes, parent } = mockMeshes();
 
-    meshes.applyMaterialOptions({ isCheckerVisible: false, isWireframe: true, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isCheckerVisible: false,
+      isWireframe: true,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
 
     expect(attachedMeshes(parent)[0].material.wireframe).toBe(true);
   });
@@ -255,11 +292,21 @@ describe("VisualPreviewMeshes bump shading", () => {
 
     expect(shader.uniforms.xrayBumpEnabled.value).toBe(1);
 
-    meshes.applyMaterialOptions({ isWireframe: false, isCheckerVisible: false, isBumpVisible: false });
+    meshes.applyMaterialOptions({
+      isWireframe: false,
+      isCheckerVisible: false,
+      isBumpVisible: false,
+      isAlphaVisible: true,
+    });
 
     expect(shader.uniforms.xrayBumpEnabled.value).toBe(0);
 
-    meshes.applyMaterialOptions({ isWireframe: false, isCheckerVisible: false, isBumpVisible: true });
+    meshes.applyMaterialOptions({
+      isWireframe: false,
+      isCheckerVisible: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
 
     expect(shader.uniforms.xrayBumpEnabled.value).toBe(1);
   });
@@ -268,5 +315,74 @@ describe("VisualPreviewMeshes bump shading", () => {
     const { meshes } = mockMeshes();
 
     expect(() => meshes.applyBump(7, { bump: new Texture(), companion: new Texture() })).not.toThrow();
+  });
+});
+
+describe("VisualPreviewMeshes surfaces", () => {
+  const cutOut: IVisualSurface = { alphaTest: 200 / 255, isDepthWritten: true, isTransparent: false };
+  const blended: IVisualSurface = { alphaTest: 32 / 255, isDepthWritten: false, isTransparent: true };
+
+  it("cuts a surface out before it is ever drawn", () => {
+    // Applied at build time rather than with the texture, because the shader's answer arrives with the description:
+    // a cut-out shown solid for a frame is exactly the bug this exists to fix.
+    const { parent } = mockMeshes(mockVisualModelViews({ submeshes: [mockSubmesh(0, false, cutOut)] }));
+    const [mesh] = attachedMeshes(parent);
+
+    expect(mesh.material.alphaTest).toBeCloseTo(200 / 255);
+    expect(mesh.material.transparent).toBe(false);
+    expect(mesh.material.depthWrite).toBe(true);
+  });
+
+  it("composites a blended surface without writing depth", () => {
+    const { parent } = mockMeshes(mockVisualModelViews({ submeshes: [mockSubmesh(0, false, blended)] }));
+    const [mesh] = attachedMeshes(parent);
+
+    expect(mesh.material.alphaTest).toBeCloseTo(32 / 255);
+    expect(mesh.material.transparent).toBe(true);
+    expect(mesh.material.depthWrite).toBe(false);
+  });
+
+  it("draws every surface solid while the alpha toggle is off, and restores each on its own", () => {
+    const { meshes, parent } = mockMeshes(
+      mockVisualModelViews({ submeshes: [mockSubmesh(0, false, cutOut), mockSubmesh(1, false, blended)] })
+    );
+    const [cut, blend] = attachedMeshes(parent);
+
+    meshes.applyMaterialOptions({
+      isWireframe: false,
+      isCheckerVisible: false,
+      isBumpVisible: true,
+      isAlphaVisible: false,
+    });
+
+    expect([cut.material.alphaTest, blend.material.alphaTest]).toEqual([0, 0]);
+    expect([cut.material.transparent, blend.material.transparent]).toEqual([false, false]);
+    expect([cut.material.depthWrite, blend.material.depthWrite]).toEqual([true, true]);
+
+    meshes.applyMaterialOptions({
+      isWireframe: false,
+      isCheckerVisible: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
+
+    expect(cut.material.alphaTest).toBeCloseTo(200 / 255);
+    expect(blend.material.transparent).toBe(true);
+    expect(blend.material.depthWrite).toBe(false);
+  });
+
+  it("keeps an opaque surface opaque whatever the toggle says", () => {
+    const { meshes, parent } = mockMeshes();
+    const [mesh] = attachedMeshes(parent);
+
+    meshes.applyMaterialOptions({
+      isWireframe: false,
+      isCheckerVisible: false,
+      isBumpVisible: true,
+      isAlphaVisible: true,
+    });
+
+    expect(mesh.material.alphaTest).toBe(0);
+    expect(mesh.material.transparent).toBe(false);
   });
 });

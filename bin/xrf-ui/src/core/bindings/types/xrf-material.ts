@@ -119,14 +119,7 @@ export type XrayMaterialDetail = {
   usage: XrayDetailUsage | null;
 };
 
-/**
- * What the shader library says about a surface, as the renderer would read it.
- *
- * Five different things, all of which draw opaque in a viewer that does not look: a library nobody shipped, a name no
- * blender defines, a class whose rules are not modelled here, and a blender that genuinely asks for an opaque
- * surface. They are opposite fixes for a modder, so they are kept apart the way
- * [`crate::XrayMaterialDeclaration`] keeps the bump ones apart.
- */
+/** What the shader library says about a surface, as the renderer would read it. */
 export type XraySurfaceDeclaration =
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   | { kind: "noLibrary" }
@@ -197,22 +190,14 @@ export type XraySurfaceDescriptor = {
 export type XraySurfaceDraw =
   /** Alpha is not read: whatever the texture carries in its fourth channel is ignored, and every texel is drawn. */
   | { kind: "opaque" }
-  /**
-   * Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass.
-   *
-   * The reference is the pixel shader's `def_aref`, `200/255` (`gamedata/shaders/r2/common.h:232`), and not the
-   * blender's own `Alpha ref`: `uber_deffer` selects an `_aref` variant of the shader and that variant clips against
-   * the constant (`Layers/xrRender/blenders/uber_deffer.cpp:56`, `deffer_base_aref_flat.ps`). The authored reference
-   * decides only whether this path is taken at all, which is why a `models\model_aref` authored at 128 cuts out at
-   * 200 in the game and has to here too.
-   */
+  /** Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass. */
   | { kind: "alphaTested"; reference: number }
   /**
    * Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
    *
    * Reached when the author asked for something the g-buffer cannot hold - a partly transparent surface, or one it
    * wants sorted - so the surface leaves the deferred path entirely. Depth is tested and not written
-   * (`Layers/xrRender/blenders/blender_deffer_model.cpp:81`), which is what lets one blended surface show through
+   * (`Layers/xrRender/blenders/blender_deffer_model.cpp`), which is what lets one blended surface show through
    * another.
    */
   | { kind: "blended"; reference: number };
