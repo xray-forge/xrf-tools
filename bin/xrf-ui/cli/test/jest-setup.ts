@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 
-import { afterEach } from "@jest/globals";
+import { afterEach, jest } from "@jest/globals";
 import { cleanup } from "@testing-library/react";
 
 import { resetMockAppWindow, resetMockInvoke, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
@@ -9,6 +9,9 @@ import { mockTauri } from "@/fixtures/setup/mock-tauri";
 
 mockLogger();
 mockTauri();
+
+// jsdom has no layout or native scrolling.
+Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: jest.fn() });
 
 afterEach(async () => {
   cleanup();

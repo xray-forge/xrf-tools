@@ -143,7 +143,7 @@ export function ArchivesMenu({
           total={search.total}
           activeIndex={search.activeIndex}
           onHoverIndex={search.setActiveIndex}
-          onSelect={onOpenPath}
+          onSelect={(row) => onOpenPath(row.id)}
         />
       ) : items.length ? (
         <VirtualizedTree<ArchiveFileDescriptor>

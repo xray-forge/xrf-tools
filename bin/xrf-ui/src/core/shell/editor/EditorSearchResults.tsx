@@ -1,17 +1,18 @@
-import { Box, LinearProgress, List, ListItemButton, ListItemText, Typography } from "@mui/material";
-import { ReactElement, useEffect, useRef } from "react";
+import { Box, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { ReactElement, ReactNode, useEffect, useRef } from "react";
 
 export interface IEditorSearchResultRow {
   id: string;
   label: string;
   /** Shown muted beneath the label, for the directory a match came from. */
   description?: string;
+  icon?: ReactNode;
 }
 
-export interface IEditorSearchResultsProps {
+export interface IEditorSearchResultsProps<T extends IEditorSearchResultRow> {
   ariaLabel: string;
   emptyLabel: string;
-  rows: Array<IEditorSearchResultRow>;
+  rows: Array<T>;
   /** Matches found, which exceeds `rows.length` once the limit applies. */
   total: number;
   activeIndex: number;
@@ -19,13 +20,13 @@ export interface IEditorSearchResultsProps {
   /** Set while a read or write is in flight, so a second selection cannot outrun the first. */
   isDisabled?: boolean;
   onHoverIndex: (index: number) => void;
-  onSelect: (id: string) => void;
+  onSelect: (row: T) => void;
 }
 
 /**
  * Flat result list for filter-as-you-type panels.
  */
-export function EditorSearchResults({
+export function EditorSearchResults<T extends IEditorSearchResultRow>({
   ariaLabel,
   emptyLabel,
   rows,
@@ -35,13 +36,13 @@ export function EditorSearchResults({
   isDisabled,
   onHoverIndex,
   onSelect,
-}: IEditorSearchResultsProps): ReactElement {
+}: IEditorSearchResultsProps<T>): ReactElement {
   const activeRef = useRef<HTMLDivElement>(null);
 
   // Keyboard selection is useless if the row it lands on is below the fold.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex]);
+  }, [activeIndex, rows]);
 
   if (!rows.length) {
     // While stale the list belongs to an older query, so an empty one means "not filtered yet", not
@@ -71,7 +72,7 @@ export function EditorSearchResults({
       ) : null}
 
       <List aria-label={ariaLabel} dense={true} disablePadding={true} sx={{ minHeight: 0, overflowY: "auto" }}>
-        {rows.map((row: IEditorSearchResultRow, index: number) => (
+        {rows.map((row: T, index: number) => (
           <ListItemButton
             key={row.id}
             ref={index === activeIndex ? activeRef : undefined}
@@ -79,8 +80,10 @@ export function EditorSearchResults({
             selected={index === activeIndex}
             sx={{ paddingY: 0.25 }}
             onMouseEnter={() => onHoverIndex(index)}
-            onClick={() => onSelect(row.id)}
+            onClick={() => onSelect(row)}
           >
+            {row.icon ? <ListItemIcon sx={{ minWidth: 40 }}>{row.icon}</ListItemIcon> : null}
+
             <ListItemText
               primary={row.label}
               secondary={row.description}

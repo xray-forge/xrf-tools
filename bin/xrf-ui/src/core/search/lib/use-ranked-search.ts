@@ -79,6 +79,8 @@ export function useRankedSearch<T>({
     [index, deferredQuery, limit]
   );
 
+  const currentIndex: number = Math.min(activeIndex, Math.max(0, outcome.results.length - 1));
+
   const setQuery = useCallback((next: string) => {
     setQueryValue(next);
     setActiveIndex(0);
@@ -99,16 +101,18 @@ export function useRankedSearch<T>({
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setActiveIndex((current: number) => (current + 1) % results.length);
+        setActiveIndex((current: number) => (Math.min(current, results.length - 1) + 1) % results.length);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
-        setActiveIndex((current: number) => (current - 1 + results.length) % results.length);
+        setActiveIndex(
+          (current: number) => (Math.min(current, results.length - 1) - 1 + results.length) % results.length
+        );
       } else if (event.key === "Enter") {
         event.preventDefault();
-        onSelect?.(results[Math.min(activeIndex, results.length - 1)].item);
+        onSelect?.(results[currentIndex].item);
       }
     },
-    [activeIndex, onSelect, outcome]
+    [currentIndex, onSelect, outcome]
   );
 
   return {
@@ -119,7 +123,7 @@ export function useRankedSearch<T>({
     total: outcome.total,
     isSearching: Boolean(query.trim()),
     isStale: query !== deferredQuery,
-    activeIndex,
+    activeIndex: currentIndex,
     setActiveIndex,
     onInputKeyDown,
   };

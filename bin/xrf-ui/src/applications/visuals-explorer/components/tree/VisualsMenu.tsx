@@ -8,10 +8,7 @@ import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
+import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {
   getFileItemPath,
   IPathTreeItem,
@@ -104,22 +101,6 @@ export function VisualsMenu({
     [browseService.rootPaths, reveal, visualsService]
   );
 
-  const search: IUseRankedSearch<XrayAsset> = useRankedSearch({
-    items: visuals,
-    toSearchText: (it: XrayAsset) => it.logicalPath,
-    onSelect: (asset: XrayAsset) => onOpenPath(asset.logicalPath),
-  });
-
-  const rows: Array<IEditorSearchResultRow> = useMemo(
-    () =>
-      search.results.map((result: ISearchResult<XrayAsset>) => {
-        const { name, directory } = splitLogicalPath(result.item.logicalPath);
-
-        return { id: result.item.logicalPath, label: name, description: directory ?? undefined };
-      }),
-    [search.results]
-  );
-
   const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
 
   const onActivateAsset = useCallback(
@@ -134,36 +115,24 @@ export function VisualsMenu({
   );
 
   return (
-    <EditorSideMenu
+    <EditorSearchMenu
       data-testid={dataTestId}
       id={id}
       className={className}
       sx={sx}
-      header={
-        <EditorSearchHeader
-          title={"Visuals"}
-          count={visuals.length}
-          query={search.query}
-          placeholder={"Filter visuals"}
-          ariaLabel={"Filter visuals"}
-          onClear={search.clear}
-          onKeyDown={search.onInputKeyDown}
-          onQueryChange={search.setQuery}
-        />
-      }
+      title={"Visuals"}
+      searchLabel={"Filter visuals"}
+      resultsLabel={"Visual search results"}
+      items={visuals}
+      toSearchText={(asset: XrayAsset) => asset.logicalPath}
+      toRow={(asset) => {
+        const { name, directory } = splitLogicalPath(asset.logicalPath);
+
+        return { id: asset.logicalPath, label: name, description: directory ?? undefined };
+      }}
+      onSelect={(asset) => onOpenPath(asset.logicalPath)}
     >
-      {search.isSearching ? (
-        <EditorSearchResults
-          ariaLabel={"Visual search results"}
-          isStale={search.isStale}
-          emptyLabel={`No visuals match ${search.query.trim()}.`}
-          rows={rows}
-          total={search.total}
-          activeIndex={search.activeIndex}
-          onHoverIndex={search.setActiveIndex}
-          onSelect={onOpenPath}
-        />
-      ) : items.length ? (
+      {items.length ? (
         <VirtualizedTree<XrayAsset>
           ariaLabel={"Visuals"}
           icons={VISUAL_TREE_ICONS}
@@ -182,6 +151,6 @@ export function VisualsMenu({
           </Typography>
         </Box>
       )}
-    </EditorSideMenu>
+    </EditorSearchMenu>
   );
 }

@@ -5,10 +5,7 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
+import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { TextureBadgeFilters } from "@/core/textures/components/tree/TextureBadgeFilters";
 import {
   countTextureBadges,
@@ -17,19 +14,12 @@ import {
   ITextureNode,
 } from "@/core/textures/lib/texture-catalog";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
-import {
-  getFileItemPath,
-  IPathTreeItem,
-  parsePathTree,
-  splitLogicalPath,
-  toFileItemId,
-} from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";
@@ -94,87 +84,37 @@ export function TexturesMenu({
     [reveal, catalogService]
   );
 
-  const search: IUseRankedSearch<ITextureNode> = useRankedSearch({
-    items: filtered,
-    toSearchText: (node: ITextureNode) => node.reference,
-    onSelect: onOpenNode,
-  });
-
-  const rows: Array<IEditorSearchResultRow> = useMemo(
-    () =>
-      search.results.map((result: ISearchResult<ITextureNode>) => {
-        const { name, directory } = splitLogicalPath(result.item.reference);
-
-        return { id: result.item.reference, label: name, description: directory ?? undefined };
-      }),
-    [search.results]
-  );
-
   const onSelectNode = useCallback((item: ITreeNode<ITextureNode>) => tree.select(item.id), [tree]);
-
-  // The tree and the search list both hand back what a row is called, and what to open is what the row carries.
-  const byReference: Map<string, ITextureNode> = useMemo(
-    () => new Map(nodes.map((node: ITextureNode) => [node.reference, node])),
-    [nodes]
-  );
-
-  const onOpenReference = useCallback(
-    (reference: string) => {
-      const node: Optional<ITextureNode> = byReference.get(reference);
-
-      if (node) {
-        onOpenNode(node);
-      }
-    },
-    [byReference, onOpenNode]
-  );
 
   const onActivateNode = useCallback(
     (item: ITreeNode<ITextureNode>) => {
-      const reference: Nullable<string> = getFileItemPath(item.id);
-
-      if (reference) {
-        onOpenReference(reference);
+      if (item.payload) {
+        onOpenNode(item.payload);
       }
     },
-    [onOpenReference]
+    [onOpenNode]
   );
 
   return (
-    <EditorSideMenu
+    <EditorSearchMenu
       data-testid={dataTestId}
       id={id}
       className={className}
       sx={sx}
-      header={
-        <>
-          <EditorSearchHeader
-            title={"Textures"}
-            count={filtered.length}
-            query={search.query}
-            placeholder={"Filter textures"}
-            ariaLabel={"Filter textures"}
-            onClear={search.clear}
-            onKeyDown={search.onInputKeyDown}
-            onQueryChange={search.setQuery}
-          />
+      title={"Textures"}
+      searchLabel={"Filter textures"}
+      resultsLabel={"Texture search results"}
+      items={filtered}
+      toSearchText={(node: ITextureNode) => node.reference}
+      toRow={(node) => {
+        const { name, directory } = splitLogicalPath(node.reference);
 
-          <TextureBadgeFilters counts={counts} selected={badges} onChange={setBadges} />
-        </>
-      }
+        return { id: node.reference, label: name, description: directory ?? undefined };
+      }}
+      onSelect={onOpenNode}
+      header={<TextureBadgeFilters counts={counts} selected={badges} onChange={setBadges} />}
     >
-      {search.isSearching ? (
-        <EditorSearchResults
-          ariaLabel={"Texture search results"}
-          isStale={search.isStale}
-          emptyLabel={`No textures match ${search.query.trim()}.`}
-          rows={rows}
-          total={search.total}
-          activeIndex={search.activeIndex}
-          onHoverIndex={search.setActiveIndex}
-          onSelect={onOpenReference}
-        />
-      ) : items.length ? (
+      {items.length ? (
         <VirtualizedTree<ITextureNode>
           ariaLabel={"Textures"}
           icons={TEXTURE_TREE_ICONS}
@@ -193,6 +133,6 @@ export function TexturesMenu({
           </Typography>
         </Box>
       )}
-    </EditorSideMenu>
+    </EditorSearchMenu>
   );
 }
