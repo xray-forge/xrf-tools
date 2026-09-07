@@ -1,6 +1,7 @@
 import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
+import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
@@ -11,7 +12,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
-import { VisualSubmeshTextureSource } from "./VisualSubmeshTextureSource";
 
 interface IVisualSubmeshTextureProps extends BaseComponentProps {
   texture: Nullable<VisualTextureDependency>;
@@ -48,12 +48,12 @@ export function VisualSubmeshTexture({
       />
       <EditorPanelRow label={"Resolution"} value={describeResolution(resolution)} />
 
-      {located ? (
-        <VisualSubmeshTextureSource asset={located} descriptor={textures?.[located.logicalPath] ?? null} />
-      ) : null}
+      {located ? <AssetTextureDetails asset={located} descriptor={textures?.[located.logicalPath] ?? null} /> : null}
 
       {resolution.kind === "missing"
-        ? resolution.roots.map((root: string) => <EditorPanelRow key={root} label={"Searched"} value={root} />)
+        ? resolution.roots.map((root: string) => (
+            <EditorPanelRow key={root} label={"Searched"} value={root} isMonospace />
+          ))
         : null}
 
       {resolution.kind === "rejected" ? <EditorPanelRow label={"Rejected"} value={resolution.reason} /> : null}

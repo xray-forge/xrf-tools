@@ -68,7 +68,7 @@ export function VisualSubmeshSection({
         </Box>
       }
     >
-      <EditorPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} />
+      <EditorPanelRow label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} isMonospace />
 
       <VisualSubmeshSurface surface={submesh.shaderName ? (surfaces?.[submesh.shaderName] ?? null) : null} />
 

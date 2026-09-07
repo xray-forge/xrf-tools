@@ -35,7 +35,7 @@ export function VisualHeaderPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Source"}>
-        <EditorPanelRow label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} />
+        <EditorPanelRow label={"Built from"} value={description.sourceFile ?? ABSENT_VALUE} isMonospace />
       </EditorPanelSection>
 
       <VisualBoundsSection

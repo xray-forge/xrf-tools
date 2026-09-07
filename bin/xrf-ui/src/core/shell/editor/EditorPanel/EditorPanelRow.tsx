@@ -43,7 +43,7 @@ interface IEditorPanelRowProps extends BaseComponentProps {
  * usable width, and an engine path stops being three broken characters in a corner.
  */
 export function EditorPanelRow({
-  "data-testid": dataTestId = "visual-panel-row",
+  "data-testid": dataTestId = "editor-panel-row",
   id,
   className,
   label,
@@ -55,32 +55,44 @@ export function EditorPanelRow({
       data-testid={dataTestId}
       id={id}
       className={className}
+      component={"dl"}
       sx={{
         display: "flex",
         flexWrap: "wrap",
         justifyContent: "space-between",
         alignItems: "baseline",
-        columnGap: 2,
-        paddingY: 0.4,
+        columnGap: PANEL.rowColumnGap,
+        margin: 0,
+        paddingY: PANEL.rowPaddingY,
         minWidth: 0,
-        lineHeight: 1.6,
+        lineHeight: PANEL.rowLineHeight,
       }}
     >
       <Typography
+        component={"dt"}
         variant={"body2"}
-        sx={{ color: "text.secondary", flex: "0 0 auto", maxWidth: "100%", overflowWrap: "anywhere" }}
+        sx={{
+          color: "text.secondary",
+          flex: "0 0 auto",
+          maxWidth: "100%",
+          overflowWrap: "anywhere",
+          lineHeight: "inherit",
+        }}
       >
         {label}
       </Typography>
 
       <Typography
-        component={"span"}
+        component={"dd"}
         variant={"body2"}
         sx={{
           ...(isMonospace ? MONOSPACE : null),
           // Hugging its content rather than filling the row is what leaves the value where it belongs on both
           // shapes: pushed to the right beside a label, and reading from the left once it is on its own line.
           flex: "0 1 auto",
+          margin: 0,
+          lineHeight: "inherit",
+          whiteSpace: "pre-wrap",
           minWidth: PANEL.rowValueMinWidth,
           maxWidth: "100%",
           overflowWrap: "anywhere",

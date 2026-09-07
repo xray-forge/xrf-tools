@@ -109,6 +109,14 @@ export const PANEL = {
    * gets the full width. Wide enough to be worth reading, narrow enough that short values still pair off.
    */
   rowValueMinWidth: "11ch",
+  /** Shared spacing for panel headings, sections, and property rows, in theme units. */
+  contentPadding: 2,
+  headerPaddingY: 1.5,
+  sectionPaddingY: 1.5,
+  sectionContentGap: 1,
+  rowPaddingY: 0.4,
+  rowColumnGap: 2,
+  rowLineHeight: 1.6,
 } as const;
 
 /**

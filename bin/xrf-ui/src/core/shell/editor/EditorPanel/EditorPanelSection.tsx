@@ -1,6 +1,7 @@
 import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { PANEL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelSectionProps extends BaseComponentProps {
@@ -20,7 +21,7 @@ interface IEditorPanelSectionProps extends BaseComponentProps {
  * A titled group of rows.
  */
 export function EditorPanelSection({
-  "data-testid": dataTestId = "visual-panel-section",
+  "data-testid": dataTestId = "editor-panel-section",
   id,
   className,
   title,
@@ -35,15 +36,16 @@ export function EditorPanelSection({
       id={id}
       className={className}
       sx={{
-        paddingX: 2,
-        paddingTop: isFirst ? 2 : 1.5,
-        paddingBottom: 1.5,
+        minWidth: 0,
+        paddingX: PANEL.contentPadding,
+        paddingTop: isFirst ? PANEL.contentPadding : PANEL.sectionPaddingY,
+        paddingBottom: PANEL.sectionPaddingY,
         ...(isFilling ? { display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 } : null),
       }}
     >
-      {isFirst ? null : <Divider sx={{ marginBottom: 1.5, marginX: -2 }} />}
+      {isFirst ? null : <Divider sx={{ marginBottom: PANEL.sectionPaddingY, marginX: -PANEL.contentPadding }} />}
 
-      <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+      <Typography component={"h3"} variant={"overline"} sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
         {title}
       </Typography>
 
@@ -53,7 +55,11 @@ export function EditorPanelSection({
         </Typography>
       ) : null}
 
-      <Box sx={{ marginTop: 1, ...(isFilling ? { flexGrow: 1, minHeight: 0 } : null) }}>{children}</Box>
+      <Box
+        sx={{ marginTop: PANEL.sectionContentGap, minWidth: 0, ...(isFilling ? { flexGrow: 1, minHeight: 0 } : null) }}
+      >
+        {children}
+      </Box>
     </Box>
   );
 }

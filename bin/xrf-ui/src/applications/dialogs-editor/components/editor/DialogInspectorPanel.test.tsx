@@ -90,7 +90,8 @@ describe("DialogInspectorPanel", () => {
     expect(getByText("Dialog")).toBeInTheDocument();
     expect(getByText("priority -5")).toBeInTheDocument();
     expect(getByText("precondition")).toBeInTheDocument();
-    expect(getByText("2 phrases · eng")).toBeInTheDocument();
+    expect(getByText("Phrases").parentElement).toHaveTextContent("2");
+    expect(getByText("Language").parentElement).toHaveTextContent("eng");
     // A dialog gates a conversation; a phrase carries elements. The band says which it is looking at.
     expect(getByText("Conditions")).toBeInTheDocument();
   });

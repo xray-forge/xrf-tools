@@ -1,13 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { describeTextureFile, ITextureFile, selectBoundTextureFiles } from "./TextureFilesPanel.utils";
+import { ITextureFile, selectBoundTextureFiles } from "./TextureFilesPanel.utils";
 
 /**
  * The files behind the selected texture: the base the reference resolves to, and the pair the engine binds.
@@ -31,11 +32,15 @@ export function TextureFilesPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
-      <EditorPanelSection title={"Bound files"} caption={"What the engine reads for this surface"} isFirst>
-        {selectBoundTextureFiles(description).map((file: ITextureFile) => (
-          <EditorPanelRow key={file.label} label={file.label} value={describeTextureFile(file)} />
-        ))}
-      </EditorPanelSection>
+      {selectBoundTextureFiles(description).map((file: ITextureFile, index: number) => (
+        <EditorPanelSection key={file.label} title={file.label} isFirst={index === 0}>
+          {file.asset ? (
+            <AssetTextureDetails asset={file.asset} descriptor={file.descriptor} />
+          ) : (
+            <EditorPanelRow label={"Status"} value={"Not bound"} />
+          )}
+        </EditorPanelSection>
+      ))}
     </EditorPanel>
   );
 }

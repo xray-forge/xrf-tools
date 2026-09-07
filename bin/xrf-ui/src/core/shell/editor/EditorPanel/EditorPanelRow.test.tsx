@@ -12,22 +12,22 @@ function renderRow(value: string, isMonospace: boolean = false): HTMLElement {
     <EditorPanelRow label={"Texture"} value={value} isMonospace={isMonospace} />
   );
 
-  return render.getByTestId("visual-panel-row");
+  return render.getByTestId("editor-panel-row");
 }
 
 describe("EditorPanelRow", () => {
   it("shows the label and the value", () => {
     const row: HTMLElement = renderRow("DXT5");
 
-    expect(row).toHaveTextContent("Texture");
-    expect(row).toHaveTextContent("DXT5");
+    expect(row.querySelector("dt")).toHaveTextContent("Texture");
+    expect(row.querySelector("dd")).toHaveTextContent("DXT5");
   });
 
   it("lets the value take a line of its own rather than shrink to nothing", () => {
     // The row is the only thing that knows how much room it was given: the panel is dragged between a couple of
     // hundred pixels and six hundred, and no caller can be asked to guess which shape it will need.
     const row: HTMLElement = renderRow(REFERENCE);
-    const value: HTMLElement = row.querySelector("span") as HTMLElement;
+    const value: HTMLElement = row.querySelector("dd") as HTMLElement;
 
     expect(row).toHaveStyle({ flexWrap: "wrap" });
     expect(value).toHaveStyle({ minWidth: PANEL.rowValueMinWidth });

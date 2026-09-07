@@ -57,7 +57,7 @@ export function TextureMaterialPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
       <EditorPanelSection title={"Declaration"} isFirst>
-        <EditorPanelRow label={"Texture"} value={description.reference} />
+        <EditorPanelRow label={"Texture"} value={description.reference} isMonospace />
 
         <EditorPanelRow
           label={"Bump"}

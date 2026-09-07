@@ -1,9 +1,8 @@
-import { Box, Typography } from "@mui/material";
 import { ReactElement, useMemo } from "react";
 
-import { ARCHIVE_PATH_TEXT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { listPayloadSharersOf } from "@/core/archive/files";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
+import { EditorPanelRow } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Loadable } from "@/lib/loadable";
 
@@ -16,6 +15,9 @@ interface IArchiveSharedPayloadDetailProps extends BaseComponentProps {
  * Which other entries read the selected file's bytes.
  */
 export function ArchiveSharedPayloadDetail({
+  "data-testid": dataTestId,
+  id,
+  className,
   descriptor,
   sharedPayloads,
 }: IArchiveSharedPayloadDetailProps): ReactElement {
@@ -40,20 +42,11 @@ export function ArchiveSharedPayloadDetail({
   }, [others.length, sharedPayloads.error, sharedPayloads.isLoading]);
 
   return (
-    <Box sx={{ marginBottom: 1.5 }}>
-      <Typography variant={"caption"} sx={{ display: "block", color: "text.secondary" }}>
-        Shared payload
-      </Typography>
-
-      <Typography variant={"body2"} sx={{ overflowWrap: "anywhere" }}>
-        {description}
-      </Typography>
-
+    <div data-testid={dataTestId} id={id} className={className}>
+      <EditorPanelRow label={"Shared payload"} value={description} />
       {others.map((name: string) => (
-        <Typography key={name} variant={"body2"} sx={ARCHIVE_PATH_TEXT}>
-          {name}
-        </Typography>
+        <EditorPanelRow key={name} label={"Entry"} value={name} isMonospace />
       ))}
-    </Box>
+    </div>
   );
 }

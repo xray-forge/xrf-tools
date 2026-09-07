@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { mergeSx } from "@/core/theme/merge-sx";
+import { PANEL } from "@/core/theme/tokens";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelHeaderProps extends StyledComponentProps {
@@ -34,16 +35,22 @@ export function EditorPanelHeader({
         {
           display: "flex",
           flexDirection: "column",
-          gap: 1,
-          padding: 1,
+          gap: PANEL.sectionContentGap,
+          paddingX: PANEL.contentPadding,
+          paddingY: PANEL.headerPaddingY,
+          flexShrink: 0,
           borderBottom: 1,
           borderColor: "divider",
         },
         sx
       )}
     >
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, paddingX: 0.5 }}>
-        <Typography variant={"subtitle2"} sx={{ color: "text.primary" }}>
+      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, minWidth: 0 }}>
+        <Typography
+          component={"h2"}
+          variant={"subtitle2"}
+          sx={{ color: "text.primary", overflowWrap: "anywhere", minWidth: 0 }}
+        >
           {title}
         </Typography>
 

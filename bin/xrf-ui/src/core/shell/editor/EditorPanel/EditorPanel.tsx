@@ -1,6 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
@@ -14,7 +15,7 @@ interface IEditorPanelProps extends StyledComponentProps {
  * One panel, titled with the name its stripe button carries.
  */
 export function EditorPanel({
-  "data-testid": dataTestId = "visual-panel",
+  "data-testid": dataTestId = "editor-panel",
   id,
   className,
   sx,
@@ -26,13 +27,11 @@ export function EditorPanel({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={mergeSx({ display: "flex", flexDirection: "column", minHeight: 0 }, sx)}
+      sx={mergeSx({ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }, sx)}
     >
-      <Box sx={{ paddingX: 2, paddingY: 1.5, borderBottom: 1, borderColor: "divider" }}>
-        <Typography variant={"subtitle1"}>{title}</Typography>
-      </Box>
+      <EditorPanelHeader title={title} />
 
-      <Box sx={{ flexGrow: 1, minHeight: 0 }}>{children}</Box>
+      <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}>{children}</Box>
     </Box>
   );
 }

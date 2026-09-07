@@ -1,4 +1,4 @@
-import { Chip, Stack, Typography } from "@mui/material";
+import { Chip, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
@@ -79,15 +79,13 @@ export function DialogInspectorPanel({
         <EditorPanelRow label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
 
         {isDialogRoot ? (
-          <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 1 }}>
-            {dialog.phrases.length} {dialog.phrases.length === 1 ? "phrase" : "phrases"}
-            {dialog.language ? ` · ${dialog.language}` : ""}
-          </Typography>
+          <>
+            <EditorPanelRow label={"Phrases"} value={dialog.phrases.length} />
+            {dialog.language ? <EditorPanelRow label={"Language"} value={dialog.language} /> : null}
+          </>
         ) : (
           <>
-            <Typography variant={"body2"} sx={{ marginTop: 1, overflowWrap: "anywhere" }}>
-              {phrase?.text ?? "No text for this language."}
-            </Typography>
+            <EditorPanelRow label={"Text"} value={phrase?.text ?? "No text for this language."} />
 
             {phrase?.textKey ? <EditorPanelRow label={"Text key"} value={phrase.textKey} isMonospace /> : null}
           </>

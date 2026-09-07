@@ -96,8 +96,8 @@ export function TextureBumpPanel({
       ) : null}
 
       <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
-        <EditorPanelRow label={"Bump"} value={bumpReference} />
-        <EditorPanelRow label={"Companion"} value={toCompanionReference(bumpReference)} />
+        <EditorPanelRow label={"Bump"} value={bumpReference} isMonospace />
+        <EditorPanelRow label={"Companion"} value={toCompanionReference(bumpReference)} isMonospace />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>

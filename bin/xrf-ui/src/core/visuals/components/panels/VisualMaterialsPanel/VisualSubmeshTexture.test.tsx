@@ -91,7 +91,9 @@ describe("VisualSubmeshTexture", () => {
     );
 
     expect(render_.getByText("2 KB")).toBeInTheDocument();
-    expect(render_.getByText("1024×1024 · BC7_UNorm · no mips")).toBeInTheDocument();
+    expect(render_.getByText("1024 × 1024")).toBeInTheDocument();
+    expect(render_.getByText("BC7_UNorm")).toBeInTheDocument();
+    expect(render_.getByText("no mips")).toBeInTheDocument();
   });
 
   it("shows no size for a located file the backend could not describe", () => {
