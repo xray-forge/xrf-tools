@@ -1,16 +1,13 @@
-import { default as AddIcon } from "@mui/icons-material/Add";
-import { default as DeleteIcon } from "@mui/icons-material/Delete";
-import { Alert, Box, IconButton, Stack, Switch, TextField, Typography } from "@mui/material";
-import { ChangeEvent, ReactElement, useCallback, useState } from "react";
+import { Alert, Stack, Switch, TextField } from "@mui/material";
+import { ChangeEvent, ReactElement } from "react";
 
+import { PackerHeaderEntries } from "@/applications/archives-packer/components/controls/PackerHeaderEntries";
 import {
   DEFAULT_ENTRY_POINT,
   HEADER_AUTO_LOAD,
   HEADER_ENTRY_POINT,
-  readHeaderEntries,
   readHeaderFlag,
   readHeaderValue,
-  RESERVED_HEADER_KEYS,
   writeHeaderFlag,
   writeHeaderValue,
 } from "@/applications/archives-packer/lib/pack-config";
@@ -28,32 +25,8 @@ interface IPackerHeaderSectionProps {
  * The header written into the archive, which is how the engine decides where its contents mount.
  */
 export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHeaderSectionProps): ReactElement {
-  const [newKey, setNewKey] = useState<string>("");
-  const [newValue, setNewValue] = useState<string>("");
-
   const entryPoint: Nullable<string> = readHeaderValue(config.header, HEADER_ENTRY_POINT);
   const isAutoLoad: boolean = readHeaderFlag(config.header, HEADER_AUTO_LOAD);
-
-  const customEntries: Array<[string, string]> = readHeaderEntries(config.header).filter(
-    ([key]) => !RESERVED_HEADER_KEYS.includes(key)
-  );
-
-  const trimmedKey: string = newKey.trim();
-  const isDuplicateKey: boolean = Boolean(
-    trimmedKey && readHeaderEntries(config.header).some(([key]) => key === trimmedKey)
-  );
-  const keyError: Nullable<string> = isDuplicateKey ? "That key is already in the header" : null;
-
-  const onAddEntry = useCallback((): void => {
-    if (!trimmedKey || isDuplicateKey) {
-      return;
-    }
-
-    onChange({ header: writeHeaderValue(config.header, trimmedKey, newValue) });
-
-    setNewKey("");
-    setNewValue("");
-  }, [config.header, isDuplicateKey, newValue, onChange, trimmedKey]);
 
   return (
     <Stack spacing={2}>
@@ -100,72 +73,7 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
         />
       </FormRow>
 
-      <FormRow label={"Other header values"} description={"Carried into the archive as they are"} error={keyError}>
-        <Stack spacing={1}>
-          {customEntries.length ? (
-            customEntries.map(([key, value]) => (
-              <Stack key={key} direction={"row"} spacing={1} sx={{ alignItems: "center" }}>
-                <Typography variant={"body2"} className={"monospace"} sx={{ minWidth: 200, flexShrink: 0 }}>
-                  {key}
-                </Typography>
-
-                <TextField
-                  size={"small"}
-                  fullWidth
-                  disabled={isDisabled}
-                  value={value}
-                  slotProps={{ htmlInput: { "aria-label": `Value of ${key}` } }}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                    onChange({ header: writeHeaderValue(config.header, key, event.target.value) })
-                  }
-                />
-
-                <IconButton
-                  aria-label={`Remove ${key}`}
-                  size={"small"}
-                  disabled={isDisabled}
-                  onClick={() => onChange({ header: writeHeaderValue(config.header, key, "") })}
-                >
-                  <DeleteIcon fontSize={"small"} />
-                </IconButton>
-              </Stack>
-            ))
-          ) : (
-            <Typography variant={"body2"} color={"text.secondary"}>
-              None. Importing a configuration brings its header along.
-            </Typography>
-          )}
-
-          <Stack direction={"row"} spacing={1} sx={{ alignItems: "center" }}>
-            <TextField
-              size={"small"}
-              disabled={isDisabled}
-              value={newKey}
-              placeholder={"key"}
-              error={isDuplicateKey}
-              slotProps={{ htmlInput: { "aria-label": "New header key" } }}
-              sx={{ minWidth: 200, flexShrink: 0 }}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewKey(event.target.value)}
-            />
-
-            <TextField
-              size={"small"}
-              fullWidth
-              disabled={isDisabled}
-              value={newValue}
-              placeholder={"value"}
-              slotProps={{ htmlInput: { "aria-label": "New header value" } }}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewValue(event.target.value)}
-            />
-
-            <Box>
-              <IconButton size={"small"} disabled={isDisabled || !trimmedKey || isDuplicateKey} onClick={onAddEntry}>
-                <AddIcon fontSize={"small"} />
-              </IconButton>
-            </Box>
-          </Stack>
-        </Stack>
-      </FormRow>
+      <PackerHeaderEntries header={config.header} isDisabled={isDisabled} onChange={(header) => onChange({ header })} />
     </Stack>
   );
 }

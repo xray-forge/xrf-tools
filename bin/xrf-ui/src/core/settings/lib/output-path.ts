@@ -18,10 +18,7 @@ import { Nullable } from "@/lib/types/general";
  * @param fileName - File inside that directory, when the field names a file rather than a directory.
  * @returns The suggested output path, or `null` when no root could be resolved.
  */
-export async function resolveOutputPath(
-  application: EApplicationId,
-  fileName?: string
-): Promise<Nullable<string>> {
+export async function resolveOutputPath(application: EApplicationId, fileName?: string): Promise<Nullable<string>> {
   const root: Nullable<string> = await getDefaultOutputRoot();
 
   if (!root) {

@@ -5,7 +5,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 export function ConfigsExplorerApplication(): ReactElement {
-
   const configs: IPathField = usePathField({
     application: EApplicationId.CONFIGS_EXPLORER,
     id: "directory",

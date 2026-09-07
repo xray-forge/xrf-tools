@@ -69,9 +69,7 @@ export class TextureCatalogService {
     return buildTextureNodes(this.catalog.value?.entries ?? [], this.summaries.value ?? []);
   }
 
-  public constructor(
-    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)
-  ) {}
+  public constructor(private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)) {}
 
   /**
    * Restore whatever roots the backend is still browsing.
