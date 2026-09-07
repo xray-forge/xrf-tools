@@ -9,7 +9,7 @@ import { APPLICATION_SOURCE, IApplicationDescriptor } from "@/core/routing/appli
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
-import { useIsEditorBusy } from "@/core/shell/EditorBusyContext";
+import { useIsEditorBusy } from "@/core/shell/editor-lifecycle";
 import { ApplicationCrash } from "@/core/shell/error/ApplicationCrash";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { EditorToolbarHostContext } from "@/core/shell/header/editor-toolbar-host";

@@ -24,8 +24,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/EditorBusyContext";
-import { useEditorDirty } from "@/core/shell/EditorDirtyContext";
+import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
@@ -157,9 +156,11 @@ export function ArchivesPackerApplication(): ReactElement {
     ...(packerService.result ? [`${packerService.result.volumes.length} volume(s)`] : []),
   ]);
 
-  useEditorBusy(isBusy || isPacking);
-
-  useEditorDirty(packerService.isDirty ? 1 : 0);
+  useEditorLifecycle({
+    isBusy: isBusy || isPacking,
+    dirtyCount: packerService.isDirty ? 1 : 0,
+    save: null,
+  });
 
   if (!config) {
     return (

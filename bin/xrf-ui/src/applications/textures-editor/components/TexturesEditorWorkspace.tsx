@@ -5,7 +5,7 @@ import { createTexturesEditorPanels } from "@/applications/textures-editor/compo
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { EditorSaver, useEditorDirty, useRequestLeave } from "@/core/shell/EditorDirtyContext";
+import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel } from "@/core/shell/panel/context";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
@@ -27,8 +27,6 @@ export function TexturesEditorWorkspace({
   const editorService: TextureEditorService = useInjection(TextureEditorService);
   const encodingService: TextureEncodingService = useInjection(TextureEncodingService);
 
-  const requestLeave: (leave: () => void) => void = useRequestLeave();
-
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
   const panels: Array<IEditorPanel> = useMemo(() => createTexturesEditorPanels(), []);
@@ -45,8 +43,7 @@ export function TexturesEditorWorkspace({
     return !editorService.isDirty;
   }, [editorService]);
 
-  // Closing the texture abandons the draft with it, which is the same question the toolbar's crumbs ask.
-  const onBack = useCallback(() => requestLeave(() => selectionService.clear()), [requestLeave, selectionService]);
+  const onBack = useCallback(() => selectionService.clear(), [selectionService]);
 
   // The draft belongs to the texture that is open rather than to whichever panel is on screen, so it is bound here.
   // Bound from a panel it would exist only while that panel is mounted, and everything downstream of it - the save,
@@ -55,7 +52,11 @@ export function TexturesEditorWorkspace({
 
   // One texture, so the count is one or none. The saver is published only when there is somewhere to write: a texture
   // served out of an archive can be edited and read, and the prompt says so by offering nothing but discarding.
-  useEditorDirty(editorService.isDirty ? 1 : 0, editorService.canSave ? onSave : null);
+  useEditorLifecycle({
+    isBusy: editorService.save.isRunning,
+    dirtyCount: editorService.isDirty ? 1 : 0,
+    save: editorService.canSave ? onSave : null,
+  });
 
   return (
     <TexturePreviewLayout

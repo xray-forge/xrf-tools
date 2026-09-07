@@ -3,7 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorBusyProvider, useEditorBusy } from "@/core/shell/EditorBusyContext";
+import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function Busy({ isBusy }: { isBusy: boolean }): ReactElement {
@@ -31,10 +31,10 @@ function Unmountable(): ReactElement {
  */
 function renderToolbar(editor: ReactElement) {
   return renderWithProviders(
-    <EditorBusyProvider>
+    <>
       {editor}
       <EditorToolbar />
-    </EditorBusyProvider>
+    </>
   );
 }
 

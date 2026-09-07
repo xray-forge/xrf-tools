@@ -1,8 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
-import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
-import { EditorDirtyProvider } from "@/core/shell/EditorDirtyContext";
+import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
 import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
 import { EditorPanelsProvider } from "@/core/shell/panel/context";
 
@@ -19,11 +18,9 @@ export function ApplicationShell({ children }: IApplicationShellProps): ReactEle
   return (
     <EditorStatusProvider>
       <EditorPanelsProvider>
-        <EditorBusyProvider>
-          <EditorDirtyProvider>
-            <ApplicationShellFrame>{children}</ApplicationShellFrame>
-          </EditorDirtyProvider>
-        </EditorBusyProvider>
+        <ApplicationShellFrame>{children}</ApplicationShellFrame>
+
+        <EditorLeaveDialog />
       </EditorPanelsProvider>
     </EditorStatusProvider>
   );

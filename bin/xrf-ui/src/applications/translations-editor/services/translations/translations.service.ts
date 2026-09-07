@@ -195,6 +195,24 @@ ${transformError(error).message}`,
    */
   @LatestFlow("project")
   public *saveFile(file: string): TFlow<boolean> {
+    return yield* this.saveFileEdits(file);
+  }
+
+  /** Writes pending files sequentially, stopping at the first refused or failed save. */
+  @ExclusiveFlow("project")
+  public *saveAll(): TFlow<boolean> {
+    // Every save refreshes the project, so the whole batch holds the project lane.
+    for (const file of this.dirtyFiles) {
+      if (!(yield* this.saveFileEdits(file))) {
+        return false;
+      }
+    }
+
+    return this.dirtyFiles.length === 0;
+  }
+
+  /** Shares the write implementation without re-entering the project's flow lane. */
+  private *saveFileEdits(file: string): TFlow<boolean> {
     const pending: Record<string, Record<string, TPendingValue>> | undefined = this.edits[file];
 
     if (!pending) {

@@ -17,7 +17,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/EditorBusyContext";
+import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -102,7 +102,9 @@ export function PickerForm({
     [fields, isSubmitDisabled, isLoading, onSubmit]
   );
 
-  const onLeave = useCallback(() => navigate("/", { replace: true }), [navigate]);
+  const requestLeave = useRequestLeave();
+
+  const onLeave = useCallback(() => requestLeave(() => navigate("/", { replace: true })), [navigate, requestLeave]);
 
   const onFormKeyDown = useCallback(
     (event: KeyboardEvent) => {

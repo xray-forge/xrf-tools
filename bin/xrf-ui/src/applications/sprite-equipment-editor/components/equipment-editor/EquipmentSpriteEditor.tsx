@@ -13,7 +13,7 @@ import {
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/EditorBusyContext";
+import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";

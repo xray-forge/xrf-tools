@@ -13,6 +13,7 @@ import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogFinding, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { Logger, useLogger } from "@/lib/logging";
@@ -37,6 +38,8 @@ export function DialogsEditor(): ReactElement {
 
     await dialogsService.closeProject();
   }, [dialogsService, log]);
+
+  useEditorBusy(dialogsService.project.isLoading);
 
   useEditorPanels(
     () => [

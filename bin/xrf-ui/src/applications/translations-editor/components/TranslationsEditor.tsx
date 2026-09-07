@@ -1,4 +1,5 @@
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -9,7 +10,7 @@ import { TranslationsService } from "@/applications/translations-editor/services
 import { TranslationFinding, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorDirty } from "@/core/shell/EditorDirtyContext";
+import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { Logger, useLogger } from "@/lib/logging";
@@ -31,6 +32,8 @@ export function TranslationsEditor(): ReactElement {
 
     await translationsService.closeProject();
   }, [log, translationsService]);
+
+  const onSave: EditorSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
 
   useEditorPanels(
     () => [
@@ -55,7 +58,11 @@ export function TranslationsEditor(): ReactElement {
     ...(project?.findings.length ? [`${project.findings.length} problems`] : []),
   ]);
 
-  useEditorDirty(dirtyCount);
+  useEditorLifecycle({
+    isBusy: translationsService.project.isLoading || translationsService.savingFile !== null,
+    dirtyCount,
+    save: project?.isEditable ? onSave : null,
+  });
 
   return (
     <EditorLayout toolbar={<EditorToolbar actions={<TranslationsEditorActions />} onBack={onClose} />}>

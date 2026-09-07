@@ -6,8 +6,7 @@ import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
 import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPathSeparator";
-import { useIsEditorBusy } from "@/core/shell/EditorBusyContext";
-import { useRequestLeave } from "@/core/shell/EditorDirtyContext";
+import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -18,10 +17,7 @@ interface IEditorToolbarProps extends BaseComponentProps {
   /** The open document, as the last breadcrumb segment. Counts and state belong in the status bar. */
   subtitle?: ReactNode;
   actions?: ReactNode;
-  /**
-   * Returns to the application's own level, which is the level with nothing open, so this closes the
-   * open document. Omit it and the segment is inert.
-   */
+  /** Closes the document after the shared leave guard allows it. Omit it to make the segment inert. */
   onBack?: () => void;
 }
 
@@ -48,6 +44,12 @@ export function EditorToolbar({
   // Asks first when the editor is holding unsaved work; goes straight home when it is not.
   const onGoHome = useCallback(() => requestLeave(() => navigate("/", { replace: true })), [navigate, requestLeave]);
 
+  const onGoBack = useCallback(() => {
+    if (onBack) {
+      requestLeave(onBack);
+    }
+  }, [onBack, requestLeave]);
+
   return (
     <Box
       data-testid={dataTestId}
@@ -66,7 +68,7 @@ export function EditorToolbar({
             isDisabled={isBusy}
             accessibleName={onBack ? `Back to ${label}` : undefined}
             hint={onBack ? `Back to ${label}, closing what is open` : undefined}
-            onClick={onBack}
+            onClick={onBack ? onGoBack : undefined}
           />
         </>
       ) : null}

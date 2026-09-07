@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { act, RenderResult } from "@testing-library/react";
+import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationsEditorApplication } from "@/applications/translations-editor/TranslationsEditorApplication";
 import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -55,6 +56,50 @@ interface ITranslationsEditorView extends RenderResult {
 }
 
 const pending: Array<IPendingValidation> = [];
+
+describe("translation editor lifecycle", () => {
+  it.each(["saved", "failed"])("guards closing and handles a %s save", async (outcome) => {
+    const { service, container } = mockInjectedService(TranslationsService);
+
+    setMockInvokeResponses({
+      ["plugin:translations|get_project"]: PROJECT,
+      ["plugin:translations|save_file"]: () => {
+        if (outcome === "failed") {
+          throw new Error("write failed");
+        }
+
+        return { kind: "saved", project: PROJECT };
+      },
+    });
+
+    const { findByRole, getByRole, queryByRole } = renderWithProviders(<TranslationsEditorApplication />, {
+      container,
+      route: "/translations-editor",
+    });
+
+    await findByRole("button", { name: "Back to Translations editor" });
+    act(() => service.setEdit(FIRST_FILE, "rus", "shared_id", "changed"));
+
+    await userEvent.click(getByRole("button", { name: "Back to Translations editor" }));
+
+    expect(getByRole("dialog", { name: "Leave without saving?" })).toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:translations|close_project", expect.anything());
+    expect(service.project.value).toBe(PROJECT);
+
+    await userEvent.click(getByRole("button", { name: "Save and leave" }));
+
+    if (outcome === "saved") {
+      await waitFor(() => expect(service.project.value).toBeNull());
+      await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+
+      expect(service.dirtyFiles).toEqual([]);
+    } else {
+      expect(service.project.value).toBe(PROJECT);
+      expect(service.dirtyFiles).toEqual([FIRST_FILE]);
+      expect(getByRole("dialog", { name: "Leave without saving?" })).toBeInTheDocument();
+    }
+  });
+});
 
 function renderEditor(): ITranslationsEditorView {
   const view: RenderResult = renderWithProviders(<TranslationsEditorApplication />, {

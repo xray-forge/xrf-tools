@@ -9,8 +9,7 @@ import { ApplicationProvider } from "@/ApplicationProvider";
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
-import { EditorBusyProvider } from "@/core/shell/EditorBusyContext";
-import { EditorDirtyProvider } from "@/core/shell/EditorDirtyContext";
+import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
 import { EditorStatusProvider } from "@/core/shell/EditorStatusContext";
 import {
   EditorPanelsProvider,
@@ -87,16 +86,14 @@ export function renderWithProviders(
       <ApplicationProvider router={TestRouter}>
         <TestCurrentApplication>
           <TestContainer>
-            <EditorBusyProvider>
-              <EditorStatusProvider>
-                <EditorPanelsProvider>
-                  <EditorDirtyProvider>
-                    {children}
-                    <LeftPanelsOutlet />
-                  </EditorDirtyProvider>
-                </EditorPanelsProvider>
-              </EditorStatusProvider>
-            </EditorBusyProvider>
+            <EditorStatusProvider>
+              <EditorPanelsProvider>
+                {children}
+                <LeftPanelsOutlet />
+              </EditorPanelsProvider>
+            </EditorStatusProvider>
+
+            <EditorLeaveDialog />
           </TestContainer>
         </TestCurrentApplication>
       </ApplicationProvider>

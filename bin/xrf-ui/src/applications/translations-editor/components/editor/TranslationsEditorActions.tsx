@@ -17,13 +17,7 @@ export function TranslationsEditorActions(): ReactElement {
   const isBusy: boolean = translationsService.savingFile !== null;
 
   const onSaveAll = useCallback(async () => {
-    // Sequential rather than concurrent: each save re-reads the project, so overlapping them would
-    // race the descriptor every one of them returns.
-    for (const file of translationsService.dirtyFiles) {
-      if (!(await flowResult(translationsService.saveFile(file)))) {
-        return;
-      }
-    }
+    await flowResult(translationsService.saveAll());
   }, [translationsService]);
 
   const onDiscardAll = useCallback(() => {

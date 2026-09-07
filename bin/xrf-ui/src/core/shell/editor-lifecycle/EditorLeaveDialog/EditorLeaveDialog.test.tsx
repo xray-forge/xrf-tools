@@ -3,7 +3,7 @@ import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
-import { EditorDirtyProvider, EditorSaver, useEditorDirty, useRequestLeave } from "@/core/shell/EditorDirtyContext";
+import { EditorSaver, useEditorDirty, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -27,14 +27,14 @@ function Leaver({
   );
 }
 
-describe("EditorDirtyContext", () => {
+describe("EditorLeaveDialog", () => {
   it("leaves immediately when nothing is unsaved", async () => {
     const onLeave = jest.fn();
 
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={0} onLeave={onLeave} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -47,9 +47,9 @@ describe("EditorDirtyContext", () => {
     const onLeave = jest.fn();
 
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={3} onLeave={onLeave} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -63,9 +63,9 @@ describe("EditorDirtyContext", () => {
     const onLeave = jest.fn();
 
     const { getByText, queryByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={onLeave} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -80,9 +80,9 @@ describe("EditorDirtyContext", () => {
     const onLeave = jest.fn();
 
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={onLeave} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -93,9 +93,9 @@ describe("EditorDirtyContext", () => {
 
   it("phrases a single file as one", async () => {
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={jest.fn()} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -107,9 +107,9 @@ describe("EditorDirtyContext", () => {
     // A file served out of an archive can be edited and read but has nowhere to be written, so the honest choice is
     // between discarding and staying rather than a button that would do nothing.
     const { getByText, queryByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={jest.fn()} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -122,9 +122,9 @@ describe("EditorDirtyContext", () => {
     const save = jest.fn(async (): Promise<boolean> => true);
 
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={onLeave} save={save} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));
@@ -141,9 +141,9 @@ describe("EditorDirtyContext", () => {
     const save = jest.fn(async (): Promise<boolean> => false);
 
     const { getByText } = renderWithProviders(
-      <EditorDirtyProvider>
+      <>
         <Leaver dirtyCount={1} onLeave={onLeave} save={save} />
-      </EditorDirtyProvider>
+      </>
     );
 
     await userEvent.click(getByText("Leave"));

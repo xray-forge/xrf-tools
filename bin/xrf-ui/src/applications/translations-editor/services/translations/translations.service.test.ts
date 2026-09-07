@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
+import { TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
 import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -49,6 +50,68 @@ async function openWithEdit(service: TranslationsService): Promise<void> {
 describe("TranslationsService", () => {
   beforeEach(() => {
     setMockInvokeResponses({ ["plugin:translations|get_project"]: () => null });
+  });
+
+  it("saves all dirty files sequentially and excludes another batch", async () => {
+    const { service } = mockInjectedService(TranslationsService);
+    let finish: (value: TranslationSaveOutcome) => void = noop;
+    const answer = new Promise<TranslationSaveOutcome>((resolve) => {
+      finish = resolve;
+    });
+    const write = jest
+      .fn()
+      .mockImplementationOnce(() => answer)
+      .mockImplementation(() => ({ kind: "saved", project: PROJECT }));
+
+    setMockInvokeResponses({
+      ["plugin:translations|open_project"]: PROJECT,
+      ["plugin:translations|save_file"]: write,
+    });
+
+    await openWithEdit(service);
+    service.setEdit("second.json", LANGUAGE, ID, "second edit");
+
+    const saving = flowResult(service.saveAll());
+
+    const overlapping = flowResult(service.saveAll());
+
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(service.savingFile).toBe(FILE);
+
+    finish({ kind: "saved", project: PROJECT });
+
+    expect(await saving).toBe(true);
+    expect(await overlapping).toBe(true);
+    expect(write).toHaveBeenNthCalledWith(2, {
+      file: "second.json",
+      edits: { [LANGUAGE]: [{ kind: "set", id: ID, value: "second edit" }] },
+    });
+    expect(service.dirtyFiles).toEqual([]);
+    expect(service.savingFile).toBeNull();
+  });
+
+  it.each(["failed", "stale"])("stops a batch at the first %s file", async (outcome) => {
+    const { service } = mockInjectedService(TranslationsService);
+    const write = jest.fn(() => {
+      if (outcome === "failed") {
+        throw new Error("write failed");
+      }
+
+      return { kind: "stale" };
+    });
+
+    setMockInvokeResponses({
+      ["plugin:translations|open_project"]: PROJECT,
+      ["plugin:translations|save_file"]: write,
+    });
+
+    await openWithEdit(service);
+    service.setEdit("second.json", LANGUAGE, ID, "second edit");
+
+    expect(await flowResult(service.saveAll())).toBe(false);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(service.dirtyFiles).toContain("second.json");
+    expect(service.savingFile).toBeNull();
   });
 
   it("adopts what a save left on disk", async () => {
