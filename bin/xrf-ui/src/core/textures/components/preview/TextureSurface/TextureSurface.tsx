@@ -145,7 +145,7 @@ export function TextureSurface({
 
       {isUploading ? (
         <Box sx={OVERLAY_STYLES}>
-          <DelayedProgress />
+          <DelayedProgress label={"Preparing texture surface…"} />
         </Box>
       ) : null}
 

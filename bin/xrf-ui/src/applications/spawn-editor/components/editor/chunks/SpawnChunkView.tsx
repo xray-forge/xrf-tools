@@ -3,6 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { Loadable } from "@/lib/loadable";
 import { useMountEffect } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
@@ -23,11 +24,11 @@ export function SpawnChunkView<T>({ chunk, onLoad, render }: ISpawnChunkViewProp
   useMountEffect(() => void onLoad());
 
   if (chunk.isLoading) {
-    return <DelayedProgress />;
+    return <DelayedProgress label={"Reading spawn chunk…"} />;
   }
 
   if (chunk.error) {
-    return <EmptyState title={"Could not read this chunk"} description={String(chunk.error)} />;
+    return <ErrorState title={"Could not read this chunk"} description={chunk.error.message} onRetry={onLoad} />;
   }
 
   if (!chunk.value) {

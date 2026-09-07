@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
 
@@ -99,6 +100,33 @@ describe("SpawnEditor", () => {
     expect(await findByText("version 124")).toBeInTheDocument();
     expect(getByText("2 objects")).toBeInTheDocument();
     expect(getByText("1 levels")).toBeInTheDocument();
+  });
+
+  it("retries a failed chunk through the shared error state", async () => {
+    const file: SpawnFile = mockSpawnFile();
+    let isFailing: boolean = true;
+
+    setMockInvokeResponses({
+      ["plugin:spawn|has_file"]: true,
+      ["plugin:spawn|get_path"]: SPAWN_PATH,
+      ["plugin:spawn|get_header"]: () => {
+        if (isFailing) {
+          throw new Error("Chunk read failed");
+        }
+
+        return file.header;
+      },
+    });
+
+    const { findByRole, getByRole, findByText, queryByRole } = renderEditor();
+
+    expect(await findByRole("alert")).toHaveTextContent("Chunk read failed");
+
+    isFailing = false;
+    await userEvent.click(getByRole("button", { name: "Retry" }));
+
+    expect(await findByText("version 124")).toBeInTheDocument();
+    expect(queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("reflects the fixture rather than a fixed string", async () => {

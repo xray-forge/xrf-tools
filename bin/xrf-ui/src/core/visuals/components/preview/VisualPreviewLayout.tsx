@@ -188,7 +188,7 @@ export function VisualPreviewLayout({
               pointerEvents: "none",
             }}
           >
-            <DelayedProgress />
+            <DelayedProgress label={"Loading visual…"} />
           </Box>
         ) : null}
       </Box>

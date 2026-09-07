@@ -3,7 +3,7 @@ import { Dispatch, ReactElement, SetStateAction } from "react";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Loadable } from "@/lib/loadable";
@@ -50,9 +50,11 @@ export function TextureImagePane({
 
   return (
     <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption}>
-      {preview.error ? <EmptyState title={"Could not show this encoding"} description={preview.error.message} /> : null}
+      {preview.error ? <ErrorState title={"Could not show this encoding"} description={preview.error.message} /> : null}
 
-      {!preview.error && (preview.isLoading || !url || !shape) ? <DelayedProgress /> : null}
+      {!preview.error && (preview.isLoading || !url || !shape) ? (
+        <DelayedProgress label={`Reading ${caption}…`} />
+      ) : null}
 
       {!preview.error && url && shape ? (
         <ImageViewport

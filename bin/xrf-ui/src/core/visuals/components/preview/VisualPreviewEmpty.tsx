@@ -1,8 +1,8 @@
-import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
-import { Box, Button } from "@mui/material";
+import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualPreviewEmptyProps extends BaseComponentProps {
@@ -29,18 +29,11 @@ export function VisualPreviewEmpty({
       className={className}
       sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}
     >
-      <EmptyState
-        title={error ? "Could not open this visual" : "No visual open"}
-        description={error ?? "Pick a model from the tree to preview it."}
-        icon={error ? <ErrorOutlineIcon /> : undefined}
-        action={
-          error && onRetry ? (
-            <Button variant={"outlined"} onClick={() => void onRetry()}>
-              Retry
-            </Button>
-          ) : undefined
-        }
-      />
+      {error ? (
+        <ErrorState title={"Could not open this visual"} description={error} onRetry={onRetry} />
+      ) : (
+        <EmptyState title={"No visual open"} description={"Pick a model from the tree to preview it."} />
+      )}
     </Box>
   );
 }

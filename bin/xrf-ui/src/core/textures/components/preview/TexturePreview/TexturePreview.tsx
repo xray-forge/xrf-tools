@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
@@ -16,6 +16,7 @@ import {
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IPanZoomState, PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
@@ -72,15 +73,13 @@ export function TexturePreview({
 
   if (selectionService.selected.error) {
     return (
-      <EmptyState
+      <ErrorState
         data-testid={dataTestId}
+        id={id}
+        className={className}
         title={"Could not read this texture"}
         description={selectionService.selected.error.message}
-        action={
-          <Button variant={"outlined"} onClick={() => void selectionService.retry()}>
-            Retry
-          </Button>
-        }
+        onRetry={() => void selectionService.retry()}
       />
     );
   }
@@ -89,6 +88,8 @@ export function TexturePreview({
     return (
       <EmptyState
         data-testid={dataTestId}
+        id={id}
+        className={className}
         title={"No texture open"}
         description={"Pick a texture in the tree to see it, and what its descriptor declares."}
       />
@@ -98,7 +99,7 @@ export function TexturePreview({
   if (isReading || !description) {
     return (
       <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={"Reading…"}>
-        <DelayedProgress />
+        <DelayedProgress label={"Reading texture…"} />
       </TexturePreviewFrame>
     );
   }

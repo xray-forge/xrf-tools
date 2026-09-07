@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 
 import { ExportSourceView } from "@/applications/exports-explorer/components/viewer/exports/ExportSourceView";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -41,16 +42,27 @@ describe("ExportSourceView", () => {
     expect(gutter?.textContent).toBe("18\n19\n20");
   });
 
-  it("reports a read that failed", async () => {
+  it("reports a failed read and retries the same declaration", async () => {
     setMockInvokeResponses({
       ["plugin:exports|get_source"]: () => {
         throw new Error("declaration file is gone");
       },
     });
 
-    const { findByText } = renderSource("play");
+    const { findByRole, getByRole, findByLabelText, queryByRole } = renderSource("play");
 
-    expect(await findByText(/declaration file is gone/)).toBeInTheDocument();
+    expect(await findByRole("alert")).toHaveTextContent("declaration file is gone");
+
+    setMockInvokeResponses({ ["plugin:exports|get_source"]: mockSource("play", "restored source") });
+
+    await userEvent.click(getByRole("button", { name: "Retry" }));
+
+    expect(await findByLabelText("Source of play")).toHaveTextContent("restored source");
+    expect(queryByRole("alert")).not.toBeInTheDocument();
+    expect(mockInvoke.mock.calls.filter(([command]) => command === "plugin:exports|get_source")).toEqual([
+      ["plugin:exports|get_source", { name: "play" }],
+      ["plugin:exports|get_source", { name: "play" }],
+    ]);
   });
 
   it("ignores a read abandoned by a newer selection", async () => {
@@ -67,7 +79,11 @@ describe("ExportSourceView", () => {
 
     const { rerender, findByLabelText } = renderSource("first");
 
-    rerender(<ExportSourceView name={"second"} />);
+    rerender(
+      <>
+        <ExportSourceView name={"second"} />
+      </>
+    );
 
     pending.second(mockSource("second", "body of second"));
 

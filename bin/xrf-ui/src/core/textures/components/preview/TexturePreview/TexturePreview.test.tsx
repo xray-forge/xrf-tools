@@ -46,7 +46,7 @@ describe("TexturePreview", () => {
     const { getByTestId, getByText, queryByText } = renderPreview(SHAPED, true);
 
     expect(getByTestId("texture-preview")).toBeTruthy();
-    expect(getByText(/Reading/)).toBeTruthy();
+    expect(getByText("Reading…")).toBeTruthy();
     expect(queryByText("256 x 128 · DXT5 · 9 mips")).toBeNull();
   });
 

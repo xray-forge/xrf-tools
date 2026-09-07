@@ -1,6 +1,5 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
@@ -8,6 +7,8 @@ import { transformError } from "@/core/error/lib";
 import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
+import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
@@ -19,12 +20,20 @@ export interface IExportSourceViewProps extends BaseComponentProps {
 /**
  * The source that declares one extern, read back from the project on demand.
  */
-export function ExportSourceView({ name }: IExportSourceViewProps): ReactElement {
+export function ExportSourceView({
+  "data-testid": dataTestId,
+  id,
+  className,
+  name,
+}: IExportSourceViewProps): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
   const [source, setSource] = useState<Loadable<Nullable<ExportSourceContent>>>(() =>
     Loadable.loading<ExportSourceContent>()
   );
+  const [retry, setRetry] = useState(0);
+
+  const onRetry = useCallback(() => setRetry((current) => current + 1), []);
 
   useEffect(() => {
     let isActive: boolean = true;
@@ -40,20 +49,28 @@ export function ExportSourceView({ name }: IExportSourceViewProps): ReactElement
     return () => {
       isActive = false;
     };
-  }, [exportsService, name]);
+  }, [exportsService, name, retry]);
 
   if (source.isLoading) {
-    return <DelayedProgress />;
+    return <DelayedProgress data-testid={dataTestId} id={id} className={className} label={"Reading export source…"} />;
   } else if (source.error) {
     return (
-      <Typography variant={"body2"} sx={{ color: "error.main" }}>
-        {String(source.error)}
-      </Typography>
+      <ErrorState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Could not read this source"}
+        description={source.error.message}
+        onRetry={onRetry}
+      />
     );
   }
 
   return source.value ? (
     <CodeView
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       label={`Source of ${source.value.name}`}
       content={source.value.content}
       language={getSyntaxLanguage(source.value.path)}
@@ -61,8 +78,12 @@ export function ExportSourceView({ name }: IExportSourceViewProps): ReactElement
       sx={{ borderRadius: 1, backgroundColor: "background.default" }}
     />
   ) : (
-    <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
-      The source of this declaration could not be read.
-    </Typography>
+    <EmptyState
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      title={"Source unavailable"}
+      description={"The source of this declaration could not be read."}
+    />
   );
 }

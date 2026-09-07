@@ -155,6 +155,14 @@ export const TEXT = {
   secondary: { light: "rgba(0, 0, 0, 0.6)", dark: "#969b9f" },
 } as const;
 
+/** Shared content-state measurements. Spacing values use theme units. */
+export const CONTENT_STATE = {
+  padding: 3,
+  gap: 1,
+  iconSize: 40,
+  descriptionMaxWidth: 440,
+} as const;
+
 export const DIVIDER = {
   light: "rgba(20, 28, 35, 0.1)",
   dark: "rgba(220, 228, 235, 0.08)",
