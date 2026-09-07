@@ -2,14 +2,14 @@
 
 use xrf_db::{ThmTextureFlag, ThmTextureType};
 
-use crate::fixtures::{ThmFixture, ThmFixtureTree};
+use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, describe};
 use crate::{XrayDetailUsage, XrayMaterialDescriptor};
 
 #[test]
 fn a_detail_with_the_bump_flag_is_a_bump_detail() {
   let descriptor: XrayMaterialDescriptor =
-    describe(&ThmFixtureTree::new("detail_bump").with_texture(BASE).with_descriptor(
+    describe(&FixtureTree::new("detail_bump").with_texture(BASE).with_descriptor(
       BASE,
       &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 4.0, &[ThmTextureFlag::BumpDetail]),
     ));
@@ -24,7 +24,7 @@ fn a_detail_with_the_bump_flag_is_a_bump_detail() {
 #[test]
 fn a_detail_with_both_flags_is_diffuse_and_bump() {
   let descriptor: XrayMaterialDescriptor =
-    describe(&ThmFixtureTree::new("detail_both").with_texture(BASE).with_descriptor(
+    describe(&FixtureTree::new("detail_both").with_texture(BASE).with_descriptor(
       BASE,
       &ThmFixture::image().with_detail(
         "detail\\detail_grnd_grass",
@@ -42,7 +42,7 @@ fn a_detail_with_both_flags_is_diffuse_and_bump() {
 #[test]
 fn a_detail_name_without_a_flag_is_reported_as_not_applied() {
   let descriptor: XrayMaterialDescriptor =
-    describe(&ThmFixtureTree::new("detail_dead").with_texture(BASE).with_descriptor(
+    describe(&FixtureTree::new("detail_dead").with_texture(BASE).with_descriptor(
       BASE,
       &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 4.0, &[]),
     ));
@@ -55,7 +55,7 @@ fn a_detail_name_without_a_flag_is_reported_as_not_applied() {
 #[test]
 fn a_detail_is_not_read_from_a_disqualified_descriptor() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("detail_disqualified")
+    &FixtureTree::new("detail_disqualified")
       .with_texture(BASE)
       .with_descriptor(
         BASE,

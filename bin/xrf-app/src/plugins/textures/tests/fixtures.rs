@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_db::{ThmBumpMode, ThmFile, XRayByteOrder};
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
-use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayMountMode,
@@ -28,7 +28,7 @@ pub const BUMP: &str = "ston\\ston_beton05_bump";
 pub const COMPANION: &str = "ston\\ston_beton05_bump#";
 
 /// One mounted tree and a probe naming it.
-pub fn mount(tree: &ThmFixtureTree) -> (XrayVfs, XrayMountId) {
+pub fn mount(tree: &FixtureTree) -> (XrayVfs, XrayMountId) {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
@@ -39,18 +39,18 @@ pub fn probe_over(vfs: &XrayVfs, id: XrayMountId) -> XrayProbe<'_> {
   vfs.probe().with_step("tree", XrayLookupScope::only([id]))
 }
 
-pub fn roots_of(tree: &ThmFixtureTree) -> XrayRoots {
+pub fn roots_of(tree: &FixtureTree) -> XrayRoots {
   XrayRoots::one(tree.root().to_path_buf(), XrayMountMode::Directory)
 }
 
-pub fn catalog(tree: &ThmFixtureTree) -> TextureCatalog {
+pub fn catalog(tree: &FixtureTree) -> TextureCatalog {
   let (vfs, id) = mount(tree);
 
   TextureCatalog::list(&probe_over(&vfs, id), roots_of(tree), TextureCatalogMode::Roots)
 }
 
 /// The sweep as the command runs it: over every descriptor the probe lists.
-pub fn sweep(tree: &ThmFixtureTree) -> Vec<TextureMaterialSummary> {
+pub fn sweep(tree: &FixtureTree) -> Vec<TextureMaterialSummary> {
   let (vfs, id) = mount(tree);
   let probe: XrayProbe = probe_over(&vfs, id);
 
@@ -73,8 +73,8 @@ pub fn summary<'a>(summaries: &'a [TextureMaterialSummary], reference: &str) -> 
 }
 
 /// A tree with a declared pair that resolves, which is the shape most of these start from.
-pub fn bumped_tree(case: &str) -> ThmFixtureTree {
-  ThmFixtureTree::new(&format!("textures_{case}"))
+pub fn bumped_tree(case: &str) -> FixtureTree {
+  FixtureTree::new(&format!("textures_{case}"))
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
@@ -82,8 +82,8 @@ pub fn bumped_tree(case: &str) -> ThmFixtureTree {
 }
 
 /// The fixture tree made an X-Ray root the VFS implies: it holds textures already, so a `meshes` directory completes it.
-pub fn implied_root_tree(case: &str) -> ThmFixtureTree {
-  let tree: ThmFixtureTree = ThmFixtureTree::new(&format!("textures_{case}")).with_texture(BASE);
+pub fn implied_root_tree(case: &str) -> FixtureTree {
+  let tree: FixtureTree = FixtureTree::new(&format!("textures_{case}")).with_texture(BASE);
 
   fs::create_dir_all(tree.root().join("meshes")).expect("meshes directory");
 

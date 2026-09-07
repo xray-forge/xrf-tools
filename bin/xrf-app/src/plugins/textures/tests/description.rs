@@ -4,7 +4,7 @@ use crate::plugins::textures::source::TextureSource;
 use std::path::PathBuf;
 
 use xrf_material::XrayMaterialDescriptor;
-use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_vfs::{XrayProbe, XrayRoots, XrayVfs};
 
 use crate::plugins::textures::description::TextureDescription;
@@ -14,7 +14,7 @@ use crate::plugins::textures::tests::fixtures::{
 
 #[test]
 fn a_description_carries_the_texture_the_material_and_both_bound_halves() {
-  let tree: ThmFixtureTree = bumped_tree("description");
+  let tree: FixtureTree = bumped_tree("description");
   let (vfs, id) = mount(&tree);
   let description: TextureDescription = TextureDescription::describe(
     &probe_over(&vfs, id),
@@ -52,8 +52,7 @@ fn a_description_carries_the_texture_the_material_and_both_bound_halves() {
 
 #[test]
 fn a_descriptor_without_a_texture_describes_with_no_base() {
-  let tree: ThmFixtureTree =
-    ThmFixtureTree::new("textures_describe_orphan").with_descriptor(BASE, &ThmFixture::image());
+  let tree: FixtureTree = FixtureTree::new("textures_describe_orphan").with_descriptor(BASE, &ThmFixture::image());
   let (vfs, id) = mount(&tree);
   let description: TextureDescription = TextureDescription::describe(
     &probe_over(&vfs, id),
@@ -82,7 +81,7 @@ fn a_texture_outside_every_root_is_described_from_its_own_path() {
 
   std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
 
-  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_roots"));
+  let (vfs, id) = mount(&FixtureTree::new("textures_standalone_roots"));
   let description: TextureDescription = TextureDescription::describe(
     &probe_over(&vfs, id),
     file_source(texture.clone()),
@@ -117,7 +116,7 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
 
   std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
 
-  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_descriptor_roots"));
+  let (vfs, id) = mount(&FixtureTree::new("textures_standalone_descriptor_roots"));
   let probe: XrayProbe = probe_over(&vfs, id);
 
   // With no `.thm` beside it the form is absent and the editor authors one; the target says so by expecting nothing.
@@ -162,7 +161,7 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
   std::fs::write(root.join("wall.dds"), to_dds_bytes(8)).expect("texture is writable");
   std::fs::write(root.join("wall.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
-  let (vfs, id) = mount(&ThmFixtureTree::new("textures_standalone_thm_roots"));
+  let (vfs, id) = mount(&FixtureTree::new("textures_standalone_thm_roots"));
   let description: TextureDescription = TextureDescription::describe(
     &probe_over(&vfs, id),
     file_source(root.join("wall.thm")),
@@ -186,7 +185,7 @@ fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
 
   std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
 
-  let (vfs, id) = mount(&ThmFixtureTree::new("textures_readable_back_roots"));
+  let (vfs, id) = mount(&FixtureTree::new("textures_readable_back_roots"));
   let description: TextureDescription = TextureDescription::describe(
     &probe_over(&vfs, id),
     file_source(texture.clone()),

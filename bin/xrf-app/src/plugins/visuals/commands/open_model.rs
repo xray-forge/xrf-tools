@@ -3,9 +3,9 @@ use std::sync::MutexGuard;
 
 use tauri::State;
 use xrf_db::OgfFile;
-use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver};
 use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
-use xrf_visual::{VisualDependencies, VisualPackage, VisualPacker};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
 use crate::core::types::TauriResult;
@@ -37,25 +37,28 @@ pub async fn visuals_open_model(
 
   // Read, resolve and describe inside one probe, so the model, its references and the files behind them are all looked
   // for in the same roots: a second probe could mount a source between the calls and answer differently.
-  let (package, dependencies, textures, materials, textures_ltx, skeleton) = assets.with_probe(&roots, |probe| {
-    // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
-    // no second read of a file that may sit inside a volume.
-    let file: OgfFile = read_source(&source, probe)?;
-    let package: VisualPackage = VisualPacker::pack(&file);
-    let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
-    let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
-    let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(probe, &dependencies);
-    let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(probe);
+  let (package, dependencies, textures, materials, surfaces, textures_ltx, skeleton) =
+    assets.with_probe(&roots, |probe| {
+      // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
+      // no second read of a file that may sit inside a volume.
+      let file: OgfFile = read_source(&source, probe)?;
+      let package: VisualPackage = VisualPacker::pack(&file);
+      let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
+      let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
+      let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(probe, &dependencies);
+      let surfaces: HashMap<String, XraySurfaceDescriptor> = describe_surfaces(probe, &package.description);
+      let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(probe);
 
-    TauriResult::Ok((
-      package,
-      dependencies,
-      textures,
-      materials,
-      textures_ltx,
-      SelectedSkeleton::of(&file),
-    ))
-  })??;
+      TauriResult::Ok((
+        package,
+        dependencies,
+        textures,
+        materials,
+        surfaces,
+        textures_ltx,
+        SelectedSkeleton::of(&file),
+      ))
+    })??;
 
   let description: SelectedVisualDescription = SelectedVisualDescription {
     source: source.clone(),
@@ -64,6 +67,7 @@ pub async fn visuals_open_model(
     dependencies: dependencies.clone(),
     textures: textures.clone(),
     materials: materials.clone(),
+    surfaces: surfaces.clone(),
     textures_ltx: textures_ltx.clone(),
   };
 
@@ -81,6 +85,7 @@ pub async fn visuals_open_model(
     posed: None,
     textures,
     materials,
+    surfaces,
     textures_ltx,
   });
 
@@ -129,6 +134,33 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
       texture.reference.clone(),
       XrayMaterialResolver::describe_texture(probe, &texture.reference),
     );
+  }
+
+  described
+}
+
+/// Describes how the renderer draws every shader the model's submeshes declare, once per shader name.
+///
+/// The library is opened once for the whole model rather than per submesh: one `shaders.xr` answers every surface of
+/// every model in a tree, and it is a 190KB chunked file.
+///
+/// Keyed by the shader name as the mesh spells it, which is how the engine looks a blender up, so the frontend joins
+/// with `surfaces[submesh.shaderName]`. A submesh declaring no shader has no entry, which is the normal case for a
+/// skeleton's own record.
+fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> HashMap<String, XraySurfaceDescriptor> {
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
+  let mut described: HashMap<String, XraySurfaceDescriptor> = HashMap::new();
+
+  for submesh in &description.submeshes {
+    let Some(shader) = submesh.shader_name.as_ref() else {
+      continue;
+    };
+
+    if described.contains_key(shader) {
+      continue;
+    }
+
+    described.insert(shader.clone(), resolver.describe(shader));
   }
 
   described

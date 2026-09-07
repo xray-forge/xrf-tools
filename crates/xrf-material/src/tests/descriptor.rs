@@ -2,21 +2,21 @@
 
 use xrf_db::{ThmTextureFlag, ThmTextureType};
 
-use crate::fixtures::{ThmFixture, ThmFixtureTree};
+use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, used_bump};
 use crate::{XrayBumpNaming, XrayMaterialDescriptor};
 
 #[test]
 fn a_declared_bump_is_named_and_a_flat_material_names_none() {
   let declared: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("predicate_declared")
+    &FixtureTree::new("predicate_declared")
       .with_texture(BASE)
       .with_texture(BUMP)
       .with_texture(COMPANION)
       .with_descriptor(BASE, &used_bump()),
   );
   let flat: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("predicate_flat")
+    &FixtureTree::new("predicate_flat")
       .with_texture(BASE)
       .with_descriptor(BASE, &ThmFixture::image()),
   );
@@ -29,12 +29,12 @@ fn a_declared_bump_is_named_and_a_flat_material_names_none() {
 #[test]
 fn a_skipped_type_and_an_unreadable_file_are_told_apart() {
   let skipped: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("predicate_skipped")
+    &FixtureTree::new("predicate_skipped")
       .with_texture(BASE)
       .with_descriptor(BASE, &used_bump().with_texture_type(ThmTextureType::BumpMap)),
   );
   let unreadable: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("predicate_unreadable")
+    &FixtureTree::new("predicate_unreadable")
       .with_texture(BASE)
       .with_unreadable_descriptor(BASE),
   );
@@ -50,11 +50,11 @@ fn a_skipped_type_and_an_unreadable_file_are_told_apart() {
 
 #[test]
 fn a_detail_is_associated_only_when_a_flag_switches_it_on() {
-  let live: XrayMaterialDescriptor = describe(&ThmFixtureTree::new("predicate_detail_live").with_descriptor(
+  let live: XrayMaterialDescriptor = describe(&FixtureTree::new("predicate_detail_live").with_descriptor(
     BASE,
     &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[ThmTextureFlag::BumpDetail]),
   ));
-  let dead: XrayMaterialDescriptor = describe(&ThmFixtureTree::new("predicate_detail_dead").with_descriptor(
+  let dead: XrayMaterialDescriptor = describe(&FixtureTree::new("predicate_detail_dead").with_descriptor(
     BASE,
     &ThmFixture::image().with_detail("detail\\detail_grnd_grass", 1.0, &[]),
   ));

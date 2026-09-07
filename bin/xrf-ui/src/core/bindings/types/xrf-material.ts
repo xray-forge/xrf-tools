@@ -118,3 +118,101 @@ export type XrayMaterialDetail = {
    */
   usage: XrayDetailUsage | null;
 };
+
+/**
+ * What the shader library says about a surface, as the renderer would read it.
+ *
+ * Five different things, all of which draw opaque in a viewer that does not look: a library nobody shipped, a name no
+ * blender defines, a class whose rules are not modelled here, and a blender that genuinely asks for an opaque
+ * surface. They are opposite fixes for a modder, so they are kept apart the way
+ * [`crate::XrayMaterialDeclaration`] keeps the bump ones apart.
+ */
+export type XraySurfaceDeclaration =
+  /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
+  | { kind: "noLibrary" }
+  /** A library was located and could not be read as one. */
+  | { kind: "unreadable"; reason: string }
+  /**
+   * The library holds no blender of that name.
+   *
+   * What the engine reports as `! Shader '%s' not found in library` before falling back to the default shader
+   * (`Layers/xrRender/ResourceManager.cpp:40`), so the surface still draws - opaque, and not as authored.
+   */
+  | { kind: "undefined" }
+  /**
+   * A blender whose class this crate does not derive a draw mode for, such as a particle or screen space class a
+   * mesh has no business naming, or one a mod's renderer added.
+   */
+  | { kind: "unmodelled"; class: string }
+  /** A blender whose class decides the surface from the knobs below. */
+  | {
+      kind: "described";
+      /** The class tag, as `Blender_CLSID.h` spells it: `MODEL`, `MODELEbB`, `LM_AREF`. */
+      class: string;
+      /**
+       * The class's own alpha switch, or `None` for a class that writes none and is therefore always opaque.
+       *
+       * The engine spells it differently per class - `Use alpha-channel` for `B_MODEL`, `Alpha-blend` for
+       * `B_DEFAULT_AREF`, `Alpha-Blend` for `B_MODEL_EbB` - and the reader keeps those apart.
+       */
+      isAlphaUsed: boolean | null;
+      /**
+       * The authored `Alpha ref`, or `None` for a class that writes none.
+       *
+       * Not necessarily what the surface tests against: see [`crate::XraySurfaceDraw::AlphaTested`].
+       */
+      alphaReference: number | null;
+      /** `Strict sorting`, which every class writes and which pushes a model surface out of the deferred path. */
+      isStrictSorting: boolean;
+    };
+
+/**
+ * How the renderer draws one surface, resolved from the shader name it declares.
+ *
+ * The counterpart of [`crate::XrayMaterialDescriptor`], which answers the same question for a texture from its `.thm`.
+ * Between them they are what a surface is made of: the shader decides whether alpha is read and how, the descriptor
+ * decides what is bound beside the diffuse.
+ */
+export type XraySurfaceDescriptor = {
+  /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
+  library: XrayAsset | null;
+  declaration: XraySurfaceDeclaration;
+  /**
+   * What to draw. Always answerable: a surface nothing could be read for is drawn the way the engine draws one whose
+   * shader it could not resolve, which is opaque.
+   */
+  draw: XraySurfaceDraw;
+};
+
+/**
+ * How the renderer draws a surface once its blender is compiled: opaque, cut out, or blended.
+ *
+ * The three cases a viewer has to reproduce, and the only three a mesh surface reaches. Which one a blender comes to
+ * is [`crate::XraySurfaceResolver`]'s answer; what each one means is here.
+ *
+ * Modelled for the deferred renderer, R2 and above, because that is what the game runs and what a preview is compared
+ * against. R1 differs in one place and the descriptor carries the knobs to say so: there the switch alone selects an
+ * alpha blended pass and the authored reference is the test, where the deferred path tests against a constant.
+ */
+export type XraySurfaceDraw =
+  /** Alpha is not read: whatever the texture carries in its fourth channel is ignored, and every texel is drawn. */
+  | { kind: "opaque" }
+  /**
+   * Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass.
+   *
+   * The reference is the pixel shader's `def_aref`, `200/255` (`gamedata/shaders/r2/common.h:232`), and not the
+   * blender's own `Alpha ref`: `uber_deffer` selects an `_aref` variant of the shader and that variant clips against
+   * the constant (`Layers/xrRender/blenders/uber_deffer.cpp:56`, `deffer_base_aref_flat.ps`). The authored reference
+   * decides only whether this path is taken at all, which is why a `models\model_aref` authored at 128 cuts out at
+   * 200 in the game and has to here too.
+   */
+  | { kind: "alphaTested"; reference: number }
+  /**
+   * Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
+   *
+   * Reached when the author asked for something the g-buffer cannot hold - a partly transparent surface, or one it
+   * wants sorted - so the surface leaves the deferred path entirely. Depth is tested and not written
+   * (`Layers/xrRender/blenders/blender_deffer_model.cpp:81`), which is what lets one blended surface show through
+   * another.
+   */
+  | { kind: "blended"; reference: number };

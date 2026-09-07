@@ -1,6 +1,6 @@
 //! Pins how a texture is named: the reference a file answers to, the two files it is, and which reader reaches it.
 use crate::plugins::textures::source::TextureSource;
-use xrf_material::fixtures::ThmFixtureTree;
+use xrf_material::fixtures::FixtureTree;
 
 use std::path::{Path, PathBuf};
 
@@ -14,7 +14,7 @@ use crate::plugins::textures::tests::fixtures::{
 
 #[test]
 fn a_file_source_is_named_inside_the_root_the_vfs_implies_for_it() {
-  let tree: ThmFixtureTree = implied_root_tree("file_source");
+  let tree: FixtureTree = implied_root_tree("file_source");
   let texture: PathBuf = tree.root().join("textures").join("ston").join("ston_beton05.dds");
   let descriptor: PathBuf = tree.root().join("textures").join("ston").join("ston_beton05.thm");
 
@@ -36,8 +36,8 @@ fn a_file_source_is_named_inside_the_root_the_vfs_implies_for_it() {
 
 #[test]
 fn a_file_outside_any_root_or_outside_textures_names_no_reference() {
-  let loose: ThmFixtureTree = ThmFixtureTree::new("textures_file_loose").with_texture(BASE);
-  let rooted: ThmFixtureTree = implied_root_tree("file_misplaced");
+  let loose: FixtureTree = FixtureTree::new("textures_file_loose").with_texture(BASE);
+  let rooted: FixtureTree = implied_root_tree("file_misplaced");
 
   assert_eq!(
     file_source(loose.root().join("textures").join("ston").join("ston_beton05.dds")).to_reference(),
@@ -129,7 +129,7 @@ fn a_texture_is_read_by_its_reference_and_not_by_its_reference_as_a_path() {
   // game tree. A reference such as `ston\\ston_beton05` and the logical path `textures\\ston\\ston_beton05.dds` are
   // different strings for the same file, and a reader given the wrong one resolves nothing at all - so the reader that
   // takes a reference has to be the one a caller holding a reference reaches for.
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_read_by_reference").with_texture(BASE);
+  let tree: FixtureTree = FixtureTree::new("textures_read_by_reference").with_texture(BASE);
   let (vfs, id) = mount(&tree);
   let probe: XrayProbe = probe_over(&vfs, id);
 

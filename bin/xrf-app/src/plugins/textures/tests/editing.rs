@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 use xrf_db::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType, XRayByteOrder};
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality};
 use xrf_job::{JobHandle, JobOutcome};
-use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
 
@@ -100,7 +100,7 @@ fn a_chunk_that_was_absent_is_added_only_when_the_form_asks_for_something() {
 
 #[test]
 fn the_targets_of_a_texture_name_the_descriptor_beside_it_whether_or_not_one_is_there() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_targets").with_texture(BASE);
+  let tree: FixtureTree = FixtureTree::new("textures_targets").with_texture(BASE);
   let texture: XrayAsset = loose_asset(tree.root(), "textures\\ston\\ston_beton05.dds");
 
   let targets: TextureEditTargets = TextureEditTargets::of(&texture, None)

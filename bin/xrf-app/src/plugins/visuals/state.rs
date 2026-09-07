@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
-use xrf_material::XrayMaterialDescriptor;
+use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualPackage};
 
@@ -50,6 +50,8 @@ pub struct SelectedVisual {
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
   pub materials: HashMap<String, XrayMaterialDescriptor>,
+  /// How the renderer draws each declared shader, keyed by the shader name as the mesh declares it.
+  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// The `textures.ltx` the roots hold, when they hold one, since its declarations are not read.
   pub textures_ltx: Option<XrayAsset>,
 }
@@ -106,6 +108,8 @@ pub struct SelectedVisualDescription {
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
   pub materials: HashMap<String, XrayMaterialDescriptor>,
+  /// How the renderer draws each declared shader, keyed by the shader name as the mesh declares it.
+  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// A `textures.ltx` the searched roots hold, or `None`.
   pub textures_ltx: Option<XrayAsset>,
 }

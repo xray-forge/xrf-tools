@@ -18,11 +18,12 @@ xrf-test-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
 
 [dev-dependencies]
+xrf-db = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 [features]
 typescript-bindings = ["specta", "xrf-vfs/typescript-bindings"]
-fixtures = ["xrf-test-utils"]
+fixtures = ["xrf-test-utils", "xrf-db/fixtures"]
 
 [lints]
 workspace = true

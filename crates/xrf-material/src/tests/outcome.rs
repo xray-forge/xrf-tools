@@ -3,14 +3,14 @@
 use xrf_db::ThmBumpMode;
 use xrf_vfs::XrayResolution;
 
-use crate::fixtures::{ThmFixture, ThmFixtureTree};
+use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, located_path, used_bump};
 use crate::{XrayBumpFallback, XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor};
 
 #[test]
 fn a_declaration_resolving_both_inputs_is_bumped() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("bumped")
+    &FixtureTree::new("bumped")
       .with_texture(BASE)
       .with_texture(BUMP)
       .with_texture(COMPANION)
@@ -49,7 +49,7 @@ fn a_declaration_resolving_both_inputs_is_bumped() {
 fn a_missing_companion_alone_makes_the_pair_dummy() {
   // The bump exists and the # does not: the engine binds the real bump beside the dummy companion.
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("companion_missing")
+    &FixtureTree::new("companion_missing")
       .with_engine_dummies()
       .with_texture(BASE)
       .with_texture(BUMP)
@@ -73,7 +73,7 @@ fn a_missing_companion_alone_makes_the_pair_dummy() {
 #[test]
 fn a_missing_name_containing_bump_falls_to_the_dummy_pair() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("dummy")
+    &FixtureTree::new("dummy")
       .with_engine_dummies()
       .with_texture(BASE)
       .with_descriptor(BASE, &used_bump()),
@@ -95,7 +95,7 @@ fn a_missing_name_containing_bump_falls_to_the_dummy_pair() {
 #[test]
 fn a_missing_name_without_the_marker_falls_to_the_not_existing_texture() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("missing")
+    &FixtureTree::new("missing")
       .with_engine_dummies()
       .with_texture(BASE)
       .with_descriptor(
@@ -121,7 +121,7 @@ fn a_missing_name_without_the_marker_falls_to_the_not_existing_texture() {
 #[test]
 fn a_missing_pair_with_no_dummies_is_missing() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("missing_no_dummies")
+    &FixtureTree::new("missing_no_dummies")
       .with_texture(BASE)
       .with_descriptor(BASE, &used_bump()),
   );
@@ -135,7 +135,7 @@ fn a_missing_pair_with_no_dummies_is_missing() {
 #[test]
 fn a_parallax_declaration_is_reported_as_parallax() {
   let descriptor: XrayMaterialDescriptor = describe(
-    &ThmFixtureTree::new("parallax")
+    &FixtureTree::new("parallax")
       .with_texture(BASE)
       .with_texture(BUMP)
       .with_texture(COMPANION)

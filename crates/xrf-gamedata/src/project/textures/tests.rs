@@ -6,7 +6,7 @@
 use std::fs;
 
 use xrf_db::{ThmBumpMode, ThmTextureType};
-use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
 
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
 use crate::{
@@ -19,7 +19,7 @@ const BUMP: &str = "act\\act_stalker_bump";
 const COMPANION: &str = "act\\act_stalker_bump#";
 
 /// A gamedata root over the fixture tree, which needs only a `system.ltx` to be a project.
-fn project(tree: &ThmFixtureTree) -> GamedataProject {
+fn project(tree: &FixtureTree) -> GamedataProject {
   let configs = tree.root().join("configs");
 
   fs::create_dir_all(&configs).expect("configs directory");
@@ -33,7 +33,7 @@ fn project(tree: &ThmFixtureTree) -> GamedataProject {
   .expect("project opens")
 }
 
-fn verify(tree: &ThmFixtureTree) -> GamedataTexturesVerificationResult {
+fn verify(tree: &FixtureTree) -> GamedataTexturesVerificationResult {
   project(tree)
     .verify_textures(&GamedataProjectVerifyOptions::default())
     .expect("textures verified")
@@ -50,7 +50,7 @@ fn rules_of(result: &GamedataTexturesVerificationResult) -> Vec<String> {
 
 #[test]
 fn a_pair_that_resolves_counts_as_a_resolved_bump() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_resolved")
+  let tree: FixtureTree = FixtureTree::new("gamedata_resolved")
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
@@ -67,7 +67,7 @@ fn a_pair_that_resolves_counts_as_a_resolved_bump() {
 fn a_missing_companion_is_its_own_rule_and_its_own_count() {
   // The case the previous check never saw: the bump exists, the # does not, and the engine draws a dummy companion.
   // Counted apart from a missing bump, because only strict fails on it.
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_companion")
+  let tree: FixtureTree = FixtureTree::new("gamedata_companion")
     .with_engine_dummies()
     .with_texture(BASE)
     .with_texture(BUMP)
@@ -102,7 +102,7 @@ fn a_missing_companion_is_its_own_rule_and_its_own_count() {
 #[test]
 fn a_missing_bump_is_one_finding_however_much_of_the_pair_is_missing() {
   // The companion is missing with it, and generating the pair is the one fix, so the companion rule stays quiet.
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_missing")
+  let tree: FixtureTree = FixtureTree::new("gamedata_missing")
     .with_engine_dummies()
     .with_texture(BASE)
     .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
@@ -116,7 +116,7 @@ fn a_missing_bump_is_one_finding_however_much_of_the_pair_is_missing() {
 
 #[test]
 fn a_declaration_the_engine_skips_for_its_type_is_invalid_rather_than_unresolved() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_type")
+  let tree: FixtureTree = FixtureTree::new("gamedata_type")
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
@@ -146,7 +146,7 @@ fn a_declaration_the_engine_skips_for_its_type_is_invalid_rather_than_unresolved
 
 #[test]
 fn a_used_mode_with_an_empty_name_is_an_invalid_declaration() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_empty")
+  let tree: FixtureTree = FixtureTree::new("gamedata_empty")
     .with_texture(BASE)
     .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, ""));
   let result: GamedataTexturesVerificationResult = verify(&tree);
@@ -161,7 +161,7 @@ fn a_used_mode_with_an_empty_name_is_an_invalid_declaration() {
 #[test]
 fn a_disabled_declaration_and_an_orphan_descriptor_are_checked_and_clean() {
   // The orphan has no texture beside it and is still walked, because `LoadTHM` walks descriptors rather than textures.
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_disabled")
+  let tree: FixtureTree = FixtureTree::new("gamedata_disabled")
     .with_texture(BASE)
     .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::None, BUMP))
     .with_texture(BUMP)
@@ -183,7 +183,7 @@ fn a_disabled_declaration_and_an_orphan_descriptor_are_checked_and_clean() {
 
 #[test]
 fn an_unreadable_descriptor_is_reported_under_the_read_rule() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("gamedata_unreadable")
+  let tree: FixtureTree = FixtureTree::new("gamedata_unreadable")
     .with_texture(BASE)
     .with_unreadable_descriptor(BASE);
   let result: GamedataTexturesVerificationResult = verify(&tree);

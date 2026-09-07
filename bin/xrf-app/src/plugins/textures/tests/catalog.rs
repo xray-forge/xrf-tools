@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_db::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
-use xrf_material::fixtures::{ThmFixture, ThmFixtureTree};
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XrayVfs};
 
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
@@ -17,7 +17,7 @@ use crate::plugins::textures::tests::fixtures::{
 
 #[test]
 fn a_texture_and_its_descriptor_fold_onto_one_entry_by_reference() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_fold")
+  let tree: FixtureTree = FixtureTree::new("textures_fold")
     .with_texture(BASE)
     .with_descriptor(BASE, &ThmFixture::image());
   let catalog: TextureCatalog = catalog(&tree);
@@ -39,7 +39,7 @@ fn a_texture_and_its_descriptor_fold_onto_one_entry_by_reference() {
 
 #[test]
 fn bump_halves_are_listed_with_their_roles_and_the_declared_name_folds_them() {
-  let tree: ThmFixtureTree = bumped_tree("roles");
+  let tree: FixtureTree = bumped_tree("roles");
   let catalog: TextureCatalog = catalog(&tree);
 
   assert_eq!(entry(&catalog, BASE).role, TextureRole::Texture);
@@ -60,7 +60,7 @@ fn bump_halves_are_listed_with_their_roles_and_the_declared_name_folds_them() {
 
 #[test]
 fn a_descriptor_without_a_texture_is_an_entry_of_its_own() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_orphan").with_descriptor(BASE, &ThmFixture::image());
+  let tree: FixtureTree = FixtureTree::new("textures_orphan").with_descriptor(BASE, &ThmFixture::image());
   let catalog: TextureCatalog = catalog(&tree);
   let entry: &TextureEntry = entry(&catalog, BASE);
 
@@ -70,7 +70,7 @@ fn a_descriptor_without_a_texture_is_an_entry_of_its_own() {
 
 #[test]
 fn a_texture_outside_the_textures_directory_is_counted_and_left_out() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_outside").with_texture(BASE);
+  let tree: FixtureTree = FixtureTree::new("textures_outside").with_texture(BASE);
   let lightmap: PathBuf = tree.root().join("levels").join("l01_escape").join("lmap#0_1.dds");
 
   fs::create_dir_all(lightmap.parent().expect("lightmap sits in a directory")).expect("level directory");
@@ -84,7 +84,7 @@ fn a_texture_outside_the_textures_directory_is_counted_and_left_out() {
 
 #[test]
 fn entries_come_back_in_reference_order() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_order")
+  let tree: FixtureTree = FixtureTree::new("textures_order")
     .with_texture("wpn\\wpn_ak74")
     .with_texture("act\\act_stalker")
     .with_texture("ston\\ston_beton05");
@@ -168,7 +168,7 @@ fn a_resolving_pair_is_bumped_and_nothing_else() {
 
 #[test]
 fn a_declared_bump_the_dummy_stands_in_for_is_degraded() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_degraded")
+  let tree: FixtureTree = FixtureTree::new("textures_degraded")
     .with_engine_dummies()
     .with_texture(BASE)
     .with_descriptor(BASE, &ThmFixture::image().with_bump(ThmBumpMode::Use, BUMP));
@@ -185,7 +185,7 @@ fn a_declared_bump_the_dummy_stands_in_for_is_degraded() {
 
 #[test]
 fn a_type_the_engine_skips_is_engine_skipped_and_binds_nothing() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_skipped")
+  let tree: FixtureTree = FixtureTree::new("textures_skipped")
     .with_texture(BASE)
     .with_texture(BUMP)
     .with_texture(COMPANION)
@@ -210,7 +210,7 @@ fn a_type_the_engine_skips_is_engine_skipped_and_binds_nothing() {
 
 #[test]
 fn a_detail_with_a_live_flag_is_detail_associated_and_a_dead_one_is_not() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_detail")
+  let tree: FixtureTree = FixtureTree::new("textures_detail")
     .with_texture("live")
     .with_descriptor(
       "live",
@@ -229,7 +229,7 @@ fn a_detail_with_a_live_flag_is_detail_associated_and_a_dead_one_is_not() {
 
 #[test]
 fn a_descriptor_that_does_not_parse_is_unreadable() {
-  let tree: ThmFixtureTree = ThmFixtureTree::new("textures_unreadable")
+  let tree: FixtureTree = FixtureTree::new("textures_unreadable")
     .with_texture(BASE)
     .with_unreadable_descriptor(BASE);
   let summaries: Vec<TextureMaterialSummary> = sweep(&tree);
@@ -245,7 +245,7 @@ fn a_descriptor_that_does_not_parse_is_unreadable() {
 
 #[test]
 fn the_sweep_describes_every_descriptor_and_only_descriptors() {
-  let tree: ThmFixtureTree = bumped_tree("coverage")
+  let tree: FixtureTree = bumped_tree("coverage")
     .with_texture("wpn\\wpn_ak74")
     .with_descriptor("act\\act_stalker", &ThmFixture::image());
   let mut references: Vec<String> = sweep(&tree).into_iter().map(|summary| summary.reference).collect();

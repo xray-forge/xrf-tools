@@ -2,7 +2,7 @@
 
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
@@ -274,6 +274,8 @@ export type SelectedVisualDescription = {
   textures: { [key in string]: AssetTextureDescriptor };
   /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
   materials: { [key in string]: XrayMaterialDescriptor };
+  /** How the renderer draws each declared shader, keyed by the shader name as the mesh declares it. */
+  surfaces: { [key in string]: XraySurfaceDescriptor };
   /** A `textures.ltx` the searched roots hold, or `None`. */
   texturesLtx: XrayAsset | null;
 };

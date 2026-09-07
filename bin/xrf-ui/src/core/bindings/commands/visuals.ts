@@ -3,7 +3,7 @@
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 import { AssetTextureDescriptor, SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription, VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 
@@ -52,6 +52,8 @@ export const visualsCommands = {
       textures: { [key in string]: AssetTextureDescriptor };
       /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
       materials: { [key in string]: XrayMaterialDescriptor };
+      /** How the renderer draws each declared shader, keyed by the shader name as the mesh declares it. */
+      surfaces: { [key in string]: XraySurfaceDescriptor };
       /** A `textures.ltx` the searched roots hold, or `None`. */
       texturesLtx: XrayAsset | null;
     } | null>("plugin:visuals|get_model"),
