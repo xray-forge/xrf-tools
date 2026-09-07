@@ -9,9 +9,7 @@ import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
 import { EWorkspacePath } from "@/core/settings/lib/workspace-path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow } from "@/core/ui/form/FormRow";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { FormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 

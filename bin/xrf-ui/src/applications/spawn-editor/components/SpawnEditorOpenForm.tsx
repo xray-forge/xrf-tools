@@ -6,8 +6,7 @@ import { EPathRole, resolveExistingPathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnFileService } from "@/core/spawn/services";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function SpawnEditorOpenForm(): ReactElement {

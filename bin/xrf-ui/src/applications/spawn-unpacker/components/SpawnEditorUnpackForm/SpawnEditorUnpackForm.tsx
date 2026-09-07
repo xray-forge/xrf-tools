@@ -8,8 +8,7 @@ import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 /**

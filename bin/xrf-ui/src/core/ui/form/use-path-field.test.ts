@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { exists } from "@tauri-apps/plugin-fs";
 import { act, renderHook } from "@testing-library/react";
 import { StrictMode } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
+import { IPathRecord } from "@/core/ui/form/path-recents";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Nullable } from "@/lib/types/general";
 
 describe("usePathField", () => {
   const STORAGE_KEY: string = "xrf.form.archives-packer.source";
+
+  /** The remembered paths of a field, newest first. */
+  function recentPaths(field: IPathField): Array<string> {
+    return field.recents.records.map((it: IPathRecord) => it.path);
+  }
 
   function renderField(seed?: () => Promise<Nullable<string>>) {
     return renderHook(() => usePathField({ application: EApplicationId.ARCHIVES_PACKER, id: "source", seed }), {
@@ -38,6 +45,10 @@ describe("usePathField", () => {
   beforeEach(() => {
     window.localStorage.clear();
     jest.mocked(open).mockResolvedValue(null);
+    jest.mocked(save).mockResolvedValue(null);
+    // Restated rather than left to the module factory: `clearMocks` clears calls but keeps implementations, so a test
+    // that says a path is absent would otherwise say it for every test after it.
+    jest.mocked(exists).mockResolvedValue(true);
   });
 
   it("restores the remembered path on the first render", () => {
@@ -234,5 +245,183 @@ describe("usePathField", () => {
     await act(async () => undefined);
 
     expect(result.current.value).toBe("C:\\projects\\seeded");
+  });
+
+  describe("where the dialog opens", () => {
+    function renderSaveField() {
+      return renderHook(
+        () => usePathField({ application: EApplicationId.ARCHIVES_PACKER, id: "source", isSave: true }),
+        { wrapper: StrictMode }
+      );
+    }
+
+    it("opens at the path the field is holding", async () => {
+      window.localStorage.setItem(STORAGE_KEY, "C:\\projects\\stored");
+      jest.mocked(exists).mockResolvedValue(true);
+
+      const { result } = renderField();
+
+      await act(() => result.current.select());
+
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "C:\\projects\\stored" }));
+    });
+
+    it("opens at the directory above a path that is no longer there", async () => {
+      window.localStorage.setItem(STORAGE_KEY, "C:\\projects\\gone\\all.spawn");
+      // Absent itself, present one level up: the directory it would have been in is still the right place to look.
+      jest.mocked(exists).mockImplementation(async (path: unknown) => path === "C:\\projects\\gone");
+
+      const { result } = renderField();
+
+      await act(() => result.current.select());
+
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "C:\\projects\\gone" }));
+    });
+
+    it("leaves it to the host when the field leads nowhere", async () => {
+      window.localStorage.setItem(STORAGE_KEY, "Q:\\nothing\\here");
+      jest.mocked(exists).mockResolvedValue(false);
+
+      const { result } = renderField();
+
+      await act(() => result.current.select());
+
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: undefined }));
+    });
+
+    it("leaves it to the host for an empty field", async () => {
+      const { result } = renderField();
+
+      await act(() => result.current.select());
+
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: undefined }));
+    });
+
+    it("offers a destination back whole, so the name chosen for it survives", async () => {
+      window.localStorage.setItem(STORAGE_KEY, "C:\\output\\packed.db");
+      jest.mocked(exists).mockImplementation(async (path: unknown) => path === "C:\\output");
+
+      const { result } = renderSaveField();
+
+      await act(() => result.current.select());
+
+      // A destination need not exist. Falling back to its directory would throw away the file name.
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "C:\\output\\packed.db" }));
+    });
+  });
+
+  describe("history", () => {
+    const RECENTS_KEY: string = "xrf.form-recents.archives-packer.source";
+
+    it("records nothing for a typed path, however much is typed", () => {
+      const { result } = renderField();
+
+      // The field is written on every keystroke, so this is what a path being typed looks like. Recording any of it
+      // would remember six prefixes of one directory, which is the whole reason typing is excluded.
+      act(() => result.current.setValue("C"));
+      act(() => result.current.setValue("C:"));
+      act(() => result.current.setValue("C:\\pro"));
+      act(() => result.current.setValue("C:\\projects"));
+
+      expect(result.current.recents.records).toHaveLength(0);
+      expect(window.localStorage.getItem(RECENTS_KEY)).toBeNull();
+    });
+
+    it("records what the dialog returned", async () => {
+      jest.mocked(open).mockResolvedValue("C:\\projects\\picked");
+
+      const { result } = renderField();
+
+      await act(() => result.current.select());
+
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\picked"]);
+      expect(window.localStorage.getItem(RECENTS_KEY)).toContain("C:\\\\projects\\\\picked");
+    });
+
+    it("records the value when the form it is in was submitted", () => {
+      const { result } = renderField();
+
+      act(() => result.current.setValue("C:\\projects\\typed"));
+      act(() => result.current.commit());
+
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\typed"]);
+    });
+
+    it("records nothing on submission when the field is empty", () => {
+      const { result } = renderField();
+
+      act(() => result.current.commit());
+
+      expect(result.current.recents.records).toHaveLength(0);
+    });
+
+    it("keeps the history when the field is cleared, because clearing is not forgetting", () => {
+      window.localStorage.setItem(STORAGE_KEY, "C:\\projects\\stored");
+
+      const { result } = renderField();
+
+      act(() => result.current.commit());
+      act(() => result.current.clear());
+
+      expect(result.current.value).toBeNull();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\stored"]);
+    });
+
+    it("offers nothing for a value that was never picked or run here", async () => {
+      window.localStorage.setItem(STORAGE_KEY, "C:\\projects\\stored");
+
+      const { result } = renderField(async () => "C:\\projects\\seeded");
+
+      await act(async () => undefined);
+
+      // The history holds what was used, never what happens to be in the field. Standing a value in for an empty
+      // history made an entry appear for a stored path and not for a seeded one, which are indistinguishable on
+      // screen.
+      expect(result.current.recents.records).toHaveLength(0);
+      expect(window.localStorage.getItem(RECENTS_KEY)).toBeNull();
+    });
+
+    it("records a seeded path only once it has been run", async () => {
+      const { result } = renderField(async () => "C:\\projects\\seeded");
+
+      await act(async () => undefined);
+
+      expect(result.current.value).toBe("C:\\projects\\seeded");
+      expect(result.current.recents.records).toHaveLength(0);
+
+      act(() => result.current.commit());
+
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\seeded"]);
+    });
+
+    it("takes a path from the history the way it takes one from the dialog", () => {
+      const { result } = renderField();
+
+      act(() => result.current.setValue("C:\\projects\\first"));
+      act(() => result.current.commit());
+      act(() => result.current.setValue("C:\\projects\\second"));
+      act(() => result.current.commit());
+
+      act(() => result.current.recents.pick("C:\\projects\\first"));
+
+      expect(result.current.value).toBe("C:\\projects\\first");
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("C:\\projects\\first");
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\first", "C:\\projects\\second"]);
+    });
+
+    it("forgets one entry without touching the others or the field", () => {
+      const { result } = renderField();
+
+      act(() => result.current.setValue("C:\\projects\\first"));
+      act(() => result.current.commit());
+      act(() => result.current.setValue("C:\\projects\\second"));
+      act(() => result.current.commit());
+
+      act(() => result.current.recents.forget("C:\\projects\\first"));
+
+      expect(result.current.value).toBe("C:\\projects\\second");
+      expect(recentPaths(result.current)).toEqual(["C:\\projects\\second"]);
+    });
   });
 });

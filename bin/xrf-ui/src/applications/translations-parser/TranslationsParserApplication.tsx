@@ -11,10 +11,7 @@ import { EPathRole, resolveExistingPathRole, resolvePathRole } from "@/core/sett
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations";
-import { FormRow } from "@/core/ui/form/FormRow";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
-import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
+import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 export function TranslationsParserApplication(): ReactElement {

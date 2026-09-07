@@ -2,9 +2,7 @@ import { Stack, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
-import { FormRow } from "@/core/ui/form/FormRow";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField } from "@/core/ui/form/use-path-field";
+import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
 
 interface IPackerOutputSectionProps {
   config: ArchivePackConfig;

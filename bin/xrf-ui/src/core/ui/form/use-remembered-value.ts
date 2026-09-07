@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
+import { getFieldValueStorageKey } from "@/core/ui/form/field-storage";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
-
-const STORAGE_PREFIX: string = "xrf.form.";
 
 export interface IRememberedValueOptions<T extends string> {
   /** The application that owns this field. */
@@ -33,7 +32,7 @@ export function useRememberedValue<T extends string>({
   fallback,
   allowed,
 }: IRememberedValueOptions<T>): [T, (value: T) => void] {
-  const storageKey: string = `${STORAGE_PREFIX}${application}.${id}`;
+  const storageKey: string = getFieldValueStorageKey(application, id);
 
   // Read once, on the first render. Nothing about mounting or remounting writes, so no session can
   // overwrite what an earlier one remembered while its own state is still empty.

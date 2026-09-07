@@ -4,8 +4,7 @@ import { ReactElement, useCallback } from "react";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function ExportsOpenForm(): ReactElement {

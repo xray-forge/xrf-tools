@@ -30,7 +30,7 @@ import { useEditorDirty } from "@/core/shell/EditorDirtyContext";
 import { useEditorStatus } from "@/core/shell/EditorStatusContext";
 import { useEditorPanels } from "@/core/shell/panel/context";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { IPathField, usePathField } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
@@ -128,8 +128,11 @@ export function ArchivesPackerApplication(): ReactElement {
 
     setIsConfirming(false);
 
+    source.commit();
+    destination.commit();
+
     await packerService.pack(resolved, isForced);
-  }, [packerService, resolved, isForced]);
+  }, [destination, packerService, resolved, isForced, source]);
 
   useEffect(() => {
     packerService.resetResult();

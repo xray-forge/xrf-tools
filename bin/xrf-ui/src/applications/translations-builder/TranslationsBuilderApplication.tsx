@@ -11,10 +11,7 @@ import { EPathRole, resolvePathRole } from "@/core/settings/lib/path";
 import { PathsService } from "@/core/settings/services/paths";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES } from "@/core/translations";
-import { FormRow } from "@/core/ui/form/FormRow";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
-import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
+import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 /** Every language at once, which is the ordinary build. */

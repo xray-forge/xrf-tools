@@ -1,3 +1,4 @@
+import { bumpLocalStorageRevision } from "@/lib/local-storage/revision";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -31,6 +32,8 @@ export function setLocalStorageValue(key: string, value: Nullable<string>): void
   } else {
     window.localStorage.setItem(key, value);
   }
+
+  bumpLocalStorageRevision();
 }
 
 /**
@@ -49,4 +52,43 @@ export function parseLocalStorageValue<T>(key: string): Nullable<T> {
   const raw: Nullable<string> = window.localStorage.getItem(key) ?? null;
 
   return raw === null ? null : JSON.parse(raw);
+}
+
+/**
+ * Parses a JSON value that the application can do without.
+ *
+ * The counterpart to {@link parseLocalStorageValue} for data that is a convenience rather than configuration: unusable
+ * content reads as absent instead of throwing. Deliberately not the default, because a key carrying something the
+ * application needs is better read loudly than quietly discarded.
+ *
+ * @param key - Storage key to read.
+ * @returns The parsed value, or `null` when storage is unavailable, the key is absent, or the content does not parse.
+ */
+export function parseLocalStorageValueSafe<T>(key: string): Nullable<T> {
+  try {
+    return parseLocalStorageValue<T>(key);
+  } catch (error: unknown) {
+    Logger.warn("Discarding unreadable local storage value:", key, error);
+
+    return null;
+  }
+}
+
+/**
+ * Stores a value the application can do without, reporting failure rather than raising it.
+ *
+ * Writes fail for reasons a caller of this kind cannot act on - an exhausted quota, a mode that refuses storage - and
+ * the work that asked for the write is worth finishing anyway.
+ *
+ * @param key - Storage key to write.
+ * @param value - Value to persist, or `null` to clear the key.
+ */
+export function setLocalStorageValueSafe(key: string, value: Nullable<string>): void {
+  try {
+    setLocalStorageValue(key, value);
+  } catch (error: unknown) {
+    // Reported rather than answered: a caller of this kind has nothing to do about an exhausted quota, and the
+    // Settings storage section is where a person sees the size and clears it.
+    Logger.warn("Failed to write local storage value:", key, error);
+  }
 }

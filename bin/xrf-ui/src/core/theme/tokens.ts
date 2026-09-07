@@ -113,6 +113,11 @@ export const MONOSPACE = {
   fontSize: "0.75rem",
 } as const;
 
+/**
+ * Advance width of one {@link MONOSPACE} character, in pixels.
+ */
+export const MONOSPACE_CHARACTER_WIDTH: number = 7.25;
+
 export const ACCENT = {
   primary: {
     main: { light: "#8a5e0c", dark: "#ffb51a" },

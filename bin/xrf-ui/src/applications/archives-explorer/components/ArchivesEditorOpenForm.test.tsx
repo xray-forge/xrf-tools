@@ -54,6 +54,8 @@ describe("ArchivesEditorOpenForm", () => {
       title: "Select archives directory",
       filters: undefined,
       directory: true,
+      // Opened where the field already points, rather than wherever the host last put a dialog for anything at all.
+      defaultPath: INSTALLATION_PATH,
     });
   });
 

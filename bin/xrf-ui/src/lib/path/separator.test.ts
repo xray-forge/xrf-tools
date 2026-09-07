@@ -2,9 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   findLastSeparator,
+  getPathDirectory,
   getPathName,
+  isSamePath,
   LOGICAL_PATH_SEPARATOR,
   splitAfterSeparators,
+  toComparablePath,
+  truncatePathHead,
 } from "@/lib/path/separator";
 
 describe("findLastSeparator", () => {
@@ -47,3 +51,80 @@ describe("LOGICAL_PATH_SEPARATOR", () => {
     expect(LOGICAL_PATH_SEPARATOR).toBe("\\");
   });
 });
+
+describe("getPathDirectory", () => {
+  it("answers the directory above a path, in either style", () => {
+    expect(getPathDirectory("C:\\gamedata\\configs\\system.ltx")).toBe("C:\\gamedata\\configs");
+    expect(getPathDirectory("/home/user/textures/act.dds")).toBe("/home/user/textures");
+  });
+
+  it("keeps the separator that closes a root, because a drive without it names something else", () => {
+    expect(getPathDirectory("C:\\gamedata")).toBe("C:\\");
+    expect(getPathDirectory("/gamedata")).toBe("/");
+  });
+
+  it("answers nothing for a bare name, which names no location", () => {
+    expect(getPathDirectory("act.dds")).toBe("");
+  });
+});
+
+describe("toComparablePath", () => {
+  it("folds the spellings windows accepts for one directory together", () => {
+    const expected: string = "c:\\projects\\gamedata";
+
+    expect(toComparablePath("C:\\Projects\\gamedata")).toBe(expected);
+    expect(toComparablePath("C:/Projects/gamedata")).toBe(expected);
+    expect(toComparablePath("c:\\projects\\gamedata\\")).toBe(expected);
+    expect(toComparablePath("C:\\Projects/gamedata//")).toBe(expected);
+  });
+
+  it("keeps a root a root, because a drive without its separator names something else", () => {
+    expect(toComparablePath("C:\\")).toBe("c:\\");
+    expect(toComparablePath("C:/")).toBe("c:\\");
+    expect(toComparablePath("/")).toBe("\\");
+  });
+
+  it("tells different paths apart", () => {
+    expect(toComparablePath("C:\\gamedata")).not.toBe(toComparablePath("C:\\gamedata-anomaly"));
+  });
+
+  it("leaves repeated separators inside a path alone, so a unc prefix survives", () => {
+    expect(toComparablePath("\\\\server\\share\\configs")).toBe("\\\\server\\share\\configs");
+  });
+});
+
+describe("isSamePath", () => {
+  it("compares by the folded spelling, so one directory is one path", () => {
+    expect(isSamePath("C:\\Projects\\Gamedata", "c:/projects/gamedata\\")).toBe(true);
+  });
+
+  it("tells two paths apart", () => {
+    expect(isSamePath("C:\\gamedata", "C:\\gamedata-anomaly")).toBe(false);
+  });
+});
+
+describe("truncatePathHead", () => {
+  it("leaves a path that fits", () => {
+    expect(truncatePathHead("C:\\gamedata", 40)).toBe("C:\\gamedata");
+  });
+
+  it("cuts the front, because the tail is what tells two paths apart", () => {
+    const left: string = truncatePathHead("C:\\Projects\\stalker\\gamedata\\configs", 20);
+    const right: string = truncatePathHead("C:\\Projects\\stalker\\gamedata-anomaly\\configs", 20);
+
+    expect(left.startsWith("…")).toBe(true);
+    expect(left).not.toBe(right);
+  });
+
+  it("keeps whole segments, so a name is never shown cut in half", () => {
+    expect(truncatePathHead("C:\\Projects\\stalker\\gamedata\\configs", 20)).toBe("…gamedata\\configs");
+  });
+
+  it("cuts inside a segment that has no separator to break at", () => {
+    const cut: string = truncatePathHead("averyverylongsinglesegmentname", 10);
+
+    expect(cut).toHaveLength(10);
+    expect(cut.startsWith("…")).toBe(true);
+  });
+});
+

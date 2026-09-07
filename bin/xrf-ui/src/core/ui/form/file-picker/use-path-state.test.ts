@@ -7,12 +7,11 @@ import { mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 import { Nullable } from "@/lib/types/general";
 
 describe("usePathState", () => {
-  function select(options: IPathStateOptions): void {
+  // Awaited because the hook asks where to open before it opens: the dialog call is no longer reached synchronously.
+  async function select(options: IPathStateOptions): Promise<void> {
     const { result } = renderHook(() => usePathState(options));
 
-    act(() => {
-      void (result.current as TPathState)[2]();
-    });
+    await act(() => (result.current as TPathState)[2]());
   }
 
   beforeEach(() => {
@@ -20,22 +19,22 @@ describe("usePathState", () => {
     jest.mocked(save).mockResolvedValue(null);
   });
 
-  it("asks for a file to read by default", () => {
-    select({ title: "Pick a file" });
+  it("asks for a file to read by default", async () => {
+    await select({ title: "Pick a file" });
 
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: false }));
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("asks for a directory when one is wanted", () => {
-    select({ title: "Pick a directory", isDirectory: true });
+  it("asks for a directory when one is wanted", async () => {
+    await select({ title: "Pick a directory", isDirectory: true });
 
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true }));
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("asks where to save a file when the destination is a file that need not exist", () => {
-    select({ title: "Pick an output sprite", isSave: true });
+  it("asks where to save a file when the destination is a file that need not exist", async () => {
+    await select({ title: "Pick an output sprite", isSave: true });
 
     expect(save).toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
@@ -51,15 +50,15 @@ describe("usePathState", () => {
    * whether the path must already exist, which is a question for validation, not for which dialog to
    * open; `isDirectory` says what kind of thing is being picked, and a save dialog cannot pick one.
    */
-  it("still asks for a directory when the destination is a directory that need not exist", () => {
-    select({ title: "Select output directory", isDirectory: true, isSave: true });
+  it("still asks for a directory when the destination is a directory that need not exist", async () => {
+    await select({ title: "Select output directory", isDirectory: true, isSave: true });
 
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true }));
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("opens nothing while disabled", () => {
-    select({ title: "Pick a directory", isDirectory: true, isDisabled: true });
+  it("opens nothing while disabled", async () => {
+    await select({ title: "Pick a directory", isDirectory: true, isDisabled: true });
 
     expect(open).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();

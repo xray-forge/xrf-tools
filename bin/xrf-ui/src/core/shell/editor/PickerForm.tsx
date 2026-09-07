@@ -18,6 +18,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/EditorBusyContext";
+import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Maybe } from "@/lib/types/general";
@@ -69,8 +70,9 @@ export function PickerForm({
 }: IPickerFormProps): ReactElement {
   const navigate: NavigateFunction = useNavigate();
 
-  // Blocks navigation away from a running command, not just this form controls.
-  useEditorBusy(Boolean(isLoading));
+  // Submission is the only moment this shell knows a parameter was meant rather than merely typed, and the rows are
+  // the ones that know which fields they hold.
+  const fields: IFormCommitRegistry = useFormCommitRegistry();
 
   const parametersRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setCollapsed] = useState<boolean>(false);
@@ -93,10 +95,11 @@ export function PickerForm({
       event.preventDefault();
 
       if (onSubmit && !isSubmitDisabled && !isLoading) {
+        fields.commit();
         onSubmit();
       }
     },
-    [isSubmitDisabled, isLoading, onSubmit]
+    [fields, isSubmitDisabled, isLoading, onSubmit]
   );
 
   const onLeave = useCallback(() => navigate("/", { replace: true }), [navigate]);
@@ -130,6 +133,9 @@ export function PickerForm({
       setCollapsed(false);
     }
   }, [hasResult]);
+
+  // Blocks navigation away from a running command, not just this form controls.
+  useEditorBusy(Boolean(isLoading));
 
   return (
     <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
@@ -190,7 +196,7 @@ export function PickerForm({
                 <Divider />
 
                 <Stack ref={parametersRef} spacing={2} sx={{ padding: 2 }}>
-                  {children}
+                  <FormCommitContext.Provider value={fields}>{children}</FormCommitContext.Provider>
 
                   {error ? (
                     <Alert severity={"error"} variant={"outlined"}>

@@ -12,8 +12,7 @@ import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 import { EditorPanel, EditorPanelEmpty, EditorPanelRow, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { PathFormRow } from "@/core/ui/form/PathFormRow";
-import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

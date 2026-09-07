@@ -5,7 +5,7 @@ import { PackerDirectoryList } from "@/applications/archives-packer/components/c
 import { PackerStringList } from "@/applications/archives-packer/components/controls/PackerStringList";
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
-import { FormRow } from "@/core/ui/form/FormRow";
+import { FormRow } from "@/core/ui/form";
 
 interface IPackerSelectionSectionProps {
   config: ArchivePackConfig;

@@ -1,8 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 export interface IPathStateOptions {
   title?: string;
@@ -18,6 +18,8 @@ export interface IPathStateOptions {
   isSave?: boolean;
   /** Produces the starting path, read once on the first render. */
   initial?: () => Nullable<string>;
+  /** Where the dialog should open, asked each time it is about to. */
+  defaultPath?: () => Promise<Optional<string>>;
 }
 
 export type TPathState = [Nullable<string>, (value: Nullable<string>) => void, () => Promise<Nullable<string>>];
@@ -35,6 +37,7 @@ export type TPathState = [Nullable<string>, (value: Nullable<string>) => void, (
  * @param options.isDirectory - Whether the dialog selects a directory.
  * @param options.isSave - Whether the dialog selects an output path.
  * @param options.initial - Starting path, evaluated once.
+ * @param options.defaultPath - Where the dialog should open, asked each time.
  * @returns The selected path, its setter, and the selection action reporting what was picked.
  */
 export function usePathState({
@@ -44,8 +47,15 @@ export function usePathState({
   isDirectory = false,
   isSave = false,
   initial,
+  defaultPath,
 }: IPathStateOptions = {}): TPathState {
   const [pathState, setPathState] = useState<Nullable<string>>(() => initial?.() ?? null);
+
+  // Held rather than closed over, so the callback stays stable while callers pass a fresh arrow every render - and
+  // still reads the newest one, which is what makes it see the path the field is holding right now.
+  const defaultPathRef = useRef<Optional<() => Promise<Optional<string>>>>(defaultPath);
+
+  defaultPathRef.current = defaultPath;
 
   // Filters are declared inline by callers, so their identity changes every render. Comparing by
   // content keeps the callback stable without asking every caller to memoise.
@@ -56,14 +66,18 @@ export function usePathState({
       return null;
     }
 
+    // Asked as the dialog opens rather than held, because it describes where the field currently points and that
+    // changes under this callback. A failure to answer is no answer, never a refusal to open the dialog.
+    const from: Optional<string> = await defaultPathRef.current?.().catch(() => undefined);
+
     // `isDirectory` decides which dialog, because a save dialog cannot pick one and asking for a
     // directory is not negotiable — an output directory is still a directory when it is also new.
     // `isSave` only relaxes the existence check, which `usePathField` applies. Branching on `isSave`
     // first put a file-name dialog in front of every screen whose destination is a folder.
     const pathResponse: Nullable<string> =
       isSave && !isDirectory
-        ? await save({ title, filters: filters ? filters : undefined })
-        : await open({ title, filters: filters ? filters : undefined, directory: isDirectory });
+        ? await save({ defaultPath: from, title, filters: filters ? filters : undefined })
+        : await open({ defaultPath: from, title, filters: filters ? filters : undefined, directory: isDirectory });
 
     // Cancelling resolves null. Keeping the previous value is deliberate: replacing a good path with
     // nothing because someone opened the dialog and thought better of it is never what was wanted.

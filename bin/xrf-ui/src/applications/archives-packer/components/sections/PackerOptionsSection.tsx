@@ -7,7 +7,7 @@ import {
   ARCHIVE_VOLUME_SUFFIX,
 } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
-import { FormRow } from "@/core/ui/form/FormRow";
+import { FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 interface IPackerOptionsSectionProps {

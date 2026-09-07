@@ -1,14 +1,17 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
+import { getFieldRecentsStorageKey, getFieldValueStorageKey } from "@/core/ui/form/field-storage";
+import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
+import { IPathFieldRecents } from "@/core/ui/form/path-recents";
+import { IPathRecents, usePathRecents } from "@/core/ui/form/use-path-recents";
 import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
 
-const STORAGE_PREFIX: string = "xrf.form.";
 const VALIDATE_DEBOUNCE_MS: number = 250;
 
 export interface IPathFieldOptions {
@@ -33,6 +36,10 @@ export interface IPathField {
   select: () => Promise<void>;
   clear: () => void;
   setValue: (value: Nullable<string>) => void;
+  /** Paths this field was given before. Travels whole, so no surface holds the list apart from its actions. */
+  recents: IPathFieldRecents;
+  /** Records the current value as used. */
+  commit: () => void;
 }
 
 /**
@@ -43,7 +50,12 @@ export interface IPathField {
  * storage, so no session can overwrite or erase what an earlier one remembered while its own state is still empty.
  *
  * Clearing asks for the guess again rather than leaving the field blank, which is what makes clearing read as "back to
- * the default" once configured paths supply those defaults.
+ * the default" once configured paths supply those defaults. It empties the value and keeps the history, which are
+ * separate keys for exactly that reason.
+ *
+ * Beside the value the field keeps a short history, written only when a path was picked from the dialog or carried
+ * into a submission. Typing is excluded deliberately: the value is stored on every keystroke, so recording those
+ * would remember every prefix of every path anyone ever typed here.
  *
  * @param options - Field identity, dialog behavior, and validation options.
  * @param options.application - Application the field belongs to, used to scope persistence.
@@ -68,7 +80,10 @@ export function usePathField({
   isRequired = true,
   seed,
 }: IPathFieldOptions): IPathField {
-  const storageKey: string = `${STORAGE_PREFIX}${application}.${id}`;
+  const storageKey: string = getFieldValueStorageKey(application, id);
+
+  // Read by the dialog resolver below, which cannot close over a value this same call produces.
+  const valueRef = useRef<Nullable<string>>(null);
 
   const [value, setPath, selectPath] = usePathState({
     title,
@@ -77,11 +92,17 @@ export function usePathField({
     isSave,
     isDisabled,
     initial: () => getLocalStorageValue(storageKey),
+    defaultPath: () => resolveDialogStart(valueRef.current, { isSave }),
   });
+
+  valueRef.current = value;
+
   const [error, setError] = useState<Nullable<string>>(null);
 
   // A guess fills the field without being stored, so every session re-derives it until the user picks a path.
   const { request: requestSeed, supersede: supersedeSeed }: IPathSeed = usePathSeed({ seed, onSeeded: setPath });
+
+  const history: IPathRecents = usePathRecents(getFieldRecentsStorageKey(application, id));
 
   const setValue = useCallback(
     (next: Nullable<string>): void => {
@@ -116,7 +137,30 @@ export function usePathField({
     }
 
     setLocalStorageValue(storageKey, picked);
-  }, [requestSeed, selectPath, storageKey, supersedeSeed, value]);
+
+    history.record(picked);
+  }, [history, requestSeed, selectPath, storageKey, supersedeSeed, value]);
+
+  const recents: IPathFieldRecents = useMemo(
+    () => ({
+      forget: history.forget,
+      pick: (path: string): void => {
+        setValue(path);
+        history.record(path);
+      },
+      records: history.records,
+    }),
+    [history, setValue]
+  );
+
+  const commit = useCallback((): void => {
+    // Guarded by what the field already knows: an empty optional field has nothing to remember, and a path the
+    // validation says is absent is not worth offering again. For a destination there is nothing to check, and nothing
+    // to check is not a failure.
+    if (value && !error) {
+      history.record(value);
+    }
+  }, [error, history, value]);
 
   // Asked for against storage rather than against the field, because the rule is that nothing was ever remembered
   // here - which is also what the field holds at this point, and stays true if the key is ever replaced.
@@ -155,5 +199,7 @@ export function usePathField({
     select,
     clear,
     setValue,
+    recents,
+    commit,
   };
 }
