@@ -1,4 +1,4 @@
-import { MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
+import { Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -8,12 +8,10 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES } from "@/core/translations";
+import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
+import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
-
-/** Every language at once, which is the ordinary build. */
-const LANGUAGE_CHOICES: ReadonlyArray<string> = [ALL_TRANSLATION_LANGUAGES, ...TRANSLATION_LANGUAGES];
 
 export function TranslationsBuilderApplication(): ReactElement {
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
@@ -27,7 +25,7 @@ export function TranslationsBuilderApplication(): ReactElement {
     application: EApplicationId.TRANSLATIONS_BUILDER,
     id: "language",
     fallback: ALL_TRANSLATION_LANGUAGES,
-    allowed: LANGUAGE_CHOICES,
+    allowed: TRANSLATION_LANGUAGES_WITH_ALL,
   });
 
   const sources: IPathField = usePathField({
@@ -60,13 +58,6 @@ export function TranslationsBuilderApplication(): ReactElement {
 
   const onCancel = useCallback(() => builderService.operation.cancel(), [builderService]);
 
-  const onLanguageChanged = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      setLanguage(event.target.value);
-    },
-    [setLanguage]
-  );
-
   // Anything the build depends on invalidates whatever the previous run reported.
   useEffect(() => {
     builderService.operation.reset();
@@ -95,26 +86,14 @@ export function TranslationsBuilderApplication(): ReactElement {
         field={sources}
       />
 
-      <FormRow
-        label={"Language"}
+      <TranslationLanguageField
+        id={"translations-builder-language"}
         description={"One language, or every language the build compiles"}
-        controlId={"translations-builder-language"}
-        isInline
-      >
-        <Select
-          id={"translations-builder-language"}
-          size={"small"}
-          value={language}
-          disabled={isRunning}
-          onChange={onLanguageChanged}
-        >
-          {LANGUAGE_CHOICES.map((it) => (
-            <MenuItem key={it} value={it}>
-              {it}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormRow>
+        value={language}
+        isAllAllowed
+        isDisabled={isRunning}
+        onChange={setLanguage}
+      />
 
       <PathFormRow
         isDisabled={isRunning}
@@ -130,13 +109,15 @@ export function TranslationsBuilderApplication(): ReactElement {
         isRequired={false}
         isInline
       >
-        <Switch
-          id={"translations-builder-sort"}
-          size={"small"}
-          checked={isSorted}
-          disabled={isRunning}
-          onChange={(event) => setIsSorted(event.target.checked)}
-        />
+        {(props) => (
+          <Switch
+            slotProps={{ input: props }}
+            size={"small"}
+            checked={isSorted}
+            disabled={isRunning}
+            onChange={(event) => setIsSorted(event.target.checked)}
+          />
+        )}
       </FormRow>
     </PickerForm>
   );

@@ -1,4 +1,3 @@
-import { MenuItem, Select, SelectChangeEvent } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
@@ -8,12 +7,10 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES } from "@/core/translations";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
+import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
-
-/** Every language at once, which is the run this screen is usually opened to make. */
-const LANGUAGE_CHOICES: ReadonlyArray<string> = [ALL_TRANSLATION_LANGUAGES, ...TRANSLATION_LANGUAGES];
 
 export function TranslationsVerifierApplication(): ReactElement {
   const verifierService: TranslationsVerifierService = useInjection(TranslationsVerifierService);
@@ -25,7 +22,7 @@ export function TranslationsVerifierApplication(): ReactElement {
     application: EApplicationId.TRANSLATIONS_VERIFIER,
     id: "language",
     fallback: ALL_TRANSLATION_LANGUAGES,
-    allowed: LANGUAGE_CHOICES,
+    allowed: TRANSLATION_LANGUAGES_WITH_ALL,
   });
 
   const sources: IPathField = usePathField({
@@ -47,13 +44,6 @@ export function TranslationsVerifierApplication(): ReactElement {
   }, [language, sourcesPath, verifierService]);
 
   const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
-
-  const onLanguageChanged = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      setLanguage(event.target.value);
-    },
-    [setLanguage]
-  );
 
   // A different tree or language invalidates whatever the previous run reported.
   useEffect(() => {
@@ -81,26 +71,14 @@ export function TranslationsVerifierApplication(): ReactElement {
         field={sources}
       />
 
-      <FormRow
-        label={"Language"}
-        description={"One language, or every language the build compiles"}
-        controlId={"translations-verifier-language"}
-        isInline
-      >
-        <Select
-          id={"translations-verifier-language"}
-          size={"small"}
-          value={language}
-          disabled={isRunning}
-          onChange={onLanguageChanged}
-        >
-          {LANGUAGE_CHOICES.map((it) => (
-            <MenuItem key={it} value={it}>
-              {it}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormRow>
+      <TranslationLanguageField
+        id={"translations-verifier-language"}
+        description={"One language, or every language to check"}
+        value={language}
+        isAllAllowed
+        isDisabled={isRunning}
+        onChange={setLanguage}
+      />
     </PickerForm>
   );
 }

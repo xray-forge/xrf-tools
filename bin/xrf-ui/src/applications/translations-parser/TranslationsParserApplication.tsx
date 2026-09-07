@@ -1,4 +1,4 @@
-import { Button, MenuItem, Select, SelectChangeEvent, Switch } from "@mui/material";
+import { Button, Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -8,7 +8,8 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations";
+import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
+import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
@@ -67,13 +68,6 @@ export function TranslationsParserApplication(): ReactElement {
 
   const onImportClicked = useCallback(() => void onRun(false), [onRun]);
 
-  const onLanguageChanged = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      setLanguage(event.target.value);
-    },
-    [setLanguage]
-  );
-
   // Changing anything the run depends on invalidates whatever the previous one reported.
   useEffect(() => {
     parserService.operation.reset();
@@ -113,26 +107,13 @@ export function TranslationsParserApplication(): ReactElement {
         field={source}
       />
 
-      <FormRow
-        label={"Language"}
+      <TranslationLanguageField
+        id={"translations-parser-language"}
         description={"Raw XML carries no language, so it is declared rather than guessed"}
-        controlId={"translations-parser-language"}
-        isInline
-      >
-        <Select
-          id={"translations-parser-language"}
-          size={"small"}
-          value={language}
-          disabled={isRunning}
-          onChange={onLanguageChanged}
-        >
-          {TRANSLATION_LANGUAGES.map((it) => (
-            <MenuItem key={it} value={it}>
-              {it}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormRow>
+        value={language}
+        isDisabled={isRunning}
+        onChange={setLanguage}
+      />
 
       <PathFormRow
         isDisabled={isRunning}
@@ -148,13 +129,15 @@ export function TranslationsParserApplication(): ReactElement {
         isRequired={false}
         isInline
       >
-        <Switch
-          id={"translations-parser-overwrite"}
-          size={"small"}
-          checked={isOverwrite}
-          disabled={isRunning}
-          onChange={(event) => setIsOverwrite(event.target.checked)}
-        />
+        {(props) => (
+          <Switch
+            slotProps={{ input: props }}
+            size={"small"}
+            checked={isOverwrite}
+            disabled={isRunning}
+            onChange={(event) => setIsOverwrite(event.target.checked)}
+          />
+        )}
       </FormRow>
     </PickerForm>
   );

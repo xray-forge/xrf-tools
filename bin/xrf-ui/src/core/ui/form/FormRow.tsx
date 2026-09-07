@@ -7,6 +7,7 @@ import { Nullable, Optional } from "@/lib/types/general";
 export interface IFormRowControlProps {
   "aria-describedby": Optional<string>;
   "aria-invalid": boolean;
+  "aria-labelledby": string;
   id: string;
 }
 
@@ -47,6 +48,7 @@ export function FormRow({
 }: IFormRowProps): ReactElement {
   const generatedId: string = useId();
   const fieldId: string = controlId ?? generatedId;
+  const labelId: string = `${fieldId}-label`;
   const message: Nullable<string> = error || fact || null;
   const descriptionId: Optional<string> = description ? `${fieldId}-description` : undefined;
   const messageId: Optional<string> = message ? `${fieldId}-message` : undefined;
@@ -55,6 +57,7 @@ export function FormRow({
   const heading: ReactElement = (
     <Box sx={{ minWidth: 0 }}>
       <Typography
+        id={labelId}
         component={"label"}
         htmlFor={typeof children === "function" ? fieldId : controlId}
         variant={"subtitle2"}
@@ -89,7 +92,12 @@ export function FormRow({
 
       <Box sx={{ minWidth: 0, flexShrink: isInline ? 0 : undefined }}>
         {typeof children === "function"
-          ? children({ id: fieldId, "aria-describedby": describedBy, "aria-invalid": Boolean(error) })
+          ? children({
+              id: fieldId,
+              "aria-describedby": describedBy,
+              "aria-invalid": Boolean(error),
+              "aria-labelledby": labelId,
+            })
           : children}
       </Box>
 
