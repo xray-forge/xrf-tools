@@ -30,6 +30,9 @@ describe("GamedataVerifierApplication", () => {
     const submit = await view.findByRole("button", { name: "Verify" });
 
     await waitFor(() => expect(submit).toBeEnabled());
+
+    expect(view.getByRole("checkbox", { name: "Strict" })).not.toBeChecked();
+
     fireEvent.click(submit);
 
     const jobs = container.get(JobsService);
@@ -42,6 +45,7 @@ describe("GamedataVerifierApplication", () => {
     });
     expect(view.getByRole("progressbar")).toBeInTheDocument();
     expect(submit).toBeDisabled();
+    expect(view.getByRole("checkbox", { name: "Strict" })).toBeDisabled();
 
     fireEvent.click(view.getByRole("button", { name: "Cancel" }));
 
@@ -54,5 +58,9 @@ describe("GamedataVerifierApplication", () => {
     expect(jobs.jobs).toHaveLength(0);
     expect(view.queryByRole("button", { name: "Stopping" })).not.toBeInTheDocument();
     expect(submit).toBeEnabled();
+
+    fireEvent.click(view.getByRole("button", { name: "Show parameters" }));
+
+    expect(view.getByRole("checkbox", { name: "Strict" })).toBeEnabled();
   });
 });

@@ -1,6 +1,5 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifyResult } from "@/applications/gamedata-verifier/components/GamedataVerifyResult";
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
@@ -8,7 +7,7 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -46,10 +45,6 @@ export function GamedataVerifierApplication(): ReactElement {
 
   const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
 
-  const onStrictChanged = useCallback((_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-    setIsStrict(checked);
-  }, []);
-
   useEffect(() => {
     verifierService.operation.reset();
   }, [root, isStrict, verifierService]);
@@ -75,9 +70,12 @@ export function GamedataVerifierApplication(): ReactElement {
         field={gamedata}
       />
 
-      <FormControlLabel
-        control={<Checkbox disabled={isRunning} checked={isStrict} onChange={onStrictChanged} />}
+      <CheckboxFormRow
         label={"Strict"}
+        description={"Fully decode sounds and fail on missing bump companions or ineffective bump declarations"}
+        isChecked={isStrict}
+        isDisabled={isRunning}
+        onChange={setIsStrict}
       />
     </PickerForm>
   );

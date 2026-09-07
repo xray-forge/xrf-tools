@@ -2,6 +2,7 @@
  * The form vocabulary an application composes with.
  */
 
+export * from "./CheckboxFormRow";
 export * from "./ChoiceFormRow";
 export * from "./FormRow";
 export * from "./PathFormRow";

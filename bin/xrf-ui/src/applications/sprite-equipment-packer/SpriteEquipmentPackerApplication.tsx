@@ -1,7 +1,6 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { EquipmentPackResult } from "@/applications/sprite-equipment-packer/components/EquipmentPackResult";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -9,7 +8,7 @@ import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -54,8 +53,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the
   // other's rules draws a sheet from wrong icon descriptors rather than failing.
   const [isDltx, setDltx] = useState<boolean>(false);
-
-  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
 
   const onPackEquipmentClicked = useCallback(async () => {
     if (!source.value || !output.value || !systemLtx.value) {
@@ -103,9 +100,12 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
         field={systemLtx}
       />
 
-      <FormControlLabel
-        control={<Checkbox disabled={isRunning} checked={isDltx} onChange={onDltxChange} />}
+      <CheckboxFormRow
         label={"DLTX"}
+        description={"Use DLTX patch rules when reading the system configuration"}
+        isChecked={isDltx}
+        isDisabled={isRunning}
+        onChange={setDltx}
       />
     </PickerForm>
   );

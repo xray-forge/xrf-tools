@@ -1,6 +1,5 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsVerifyResult } from "@/applications/configs-verifier/components/ConfigsVerifyResult";
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
@@ -8,7 +7,7 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -33,8 +32,6 @@ export function ConfigsVerifierApplication(): ReactElement {
   const directory: Nullable<string> = configs.value;
 
   const [isDltx, setDltx] = useState<boolean>(false);
-
-  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
 
   const onVerify = useCallback(async () => {
     if (!directory) {
@@ -73,9 +70,12 @@ export function ConfigsVerifierApplication(): ReactElement {
         field={configs}
       />
 
-      <FormControlLabel
-        control={<Checkbox disabled={isRunning} checked={isDltx} onChange={onDltxChange} />}
+      <CheckboxFormRow
         label={"DLTX"}
+        description={"Read configs using DLTX patch rules"}
+        isChecked={isDltx}
+        isDisabled={isRunning}
+        onChange={setDltx}
       />
     </PickerForm>
   );

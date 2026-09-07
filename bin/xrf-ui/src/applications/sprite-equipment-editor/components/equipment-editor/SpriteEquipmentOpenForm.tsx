@@ -1,11 +1,10 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 export function SpriteEquipmentOpenForm(): ReactElement {
@@ -35,8 +34,6 @@ export function SpriteEquipmentOpenForm(): ReactElement {
   // other's rules answers wrong icon descriptors rather than failing. Remembered for the session, because reopening
   // takes no arguments and has to answer the same values.
   const [isDltx, setDltx] = useState<boolean>(false);
-
-  const onDltxChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setDltx(event.target.checked), []);
 
   const onOpenEquipmentClicked = useCallback(() => {
     if (sprite.value && systemLtx.value) {
@@ -70,9 +67,12 @@ export function SpriteEquipmentOpenForm(): ReactElement {
         field={systemLtx}
       />
 
-      <FormControlLabel
-        control={<Checkbox disabled={isLoading} checked={isDltx} onChange={onDltxChange} />}
+      <CheckboxFormRow
         label={"DLTX"}
+        description={"Use DLTX patch rules when reading the system configuration"}
+        isChecked={isDltx}
+        isDisabled={isLoading}
+        onChange={setDltx}
       />
     </PickerForm>
   );

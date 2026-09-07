@@ -1,6 +1,5 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsFormatResult } from "@/applications/configs-formatter/components/ConfigsFormatResult";
 import { FormatterService } from "@/applications/configs-formatter/services/formatter";
@@ -8,7 +7,7 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -46,10 +45,6 @@ export function ConfigsFormatterApplication(): ReactElement {
 
   const onCancel = useCallback(() => formatterService.operation.cancel(), [formatterService]);
 
-  const onCheckModeChange = useCallback((_: ChangeEvent<HTMLInputElement>, checked: boolean) => {
-    setIsCheck(checked);
-  }, []);
-
   useEffect(() => {
     formatterService.operation.reset();
   }, [directory, isCheck, formatterService]);
@@ -81,9 +76,12 @@ export function ConfigsFormatterApplication(): ReactElement {
         field={configs}
       />
 
-      <FormControlLabel
-        control={<Checkbox disabled={isRunning} checked={isCheck} onChange={onCheckModeChange} />}
+      <CheckboxFormRow
         label={"Check only"}
+        description={"Report formatting differences without rewriting files"}
+        isChecked={isCheck}
+        isDisabled={isRunning}
+        onChange={setIsCheck}
       />
     </PickerForm>
   );
