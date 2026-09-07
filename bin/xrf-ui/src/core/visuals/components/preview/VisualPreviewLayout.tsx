@@ -23,7 +23,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** The model on screen, or null while nothing is open. */
   model?: Nullable<IVisualModelViews>;
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */
-  subtitle?: string;
+  subtitle?: ReactNode;
   /** Published as a left panel when given. Opening a single visual has nothing to browse. */
   tree?: ReactNode;
   /** Data panels the owning application contributes to the right stripe. */
@@ -52,7 +52,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** Reads the failed open's source again. Absent while an application cannot repeat its last attempt. */
   onRetry?: () => void;
   /** Reopens the picker. Absent while an application has no way to choose a different visual. */
-  onOpen?: () => void;
+  onBack?: () => void;
   /** Promotes a single-model session to a browsed one. Absent while already browsing. */
   onBrowse?: () => void;
 }
@@ -81,7 +81,7 @@ export function VisualPreviewLayout({
   isLoading = false,
   error,
   onRetry,
-  onOpen,
+  onBack,
   onBrowse,
 }: IVisualPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<IVisualPreviewViewOptions>(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS);
@@ -136,7 +136,6 @@ export function VisualPreviewLayout({
     <EditorLayout
       toolbar={
         <VisualPreviewToolbar
-          isOpenEnabled={Boolean(onOpen)}
           hasDetailLevels={hasDetailLevels}
           hasSkeleton={hasSkeleton}
           hasBump={hasBump}
@@ -147,7 +146,7 @@ export function VisualPreviewLayout({
           onChangeOptions={setOptions}
           onChangeDetail={setDetail}
           onResetCamera={onResetCamera}
-          onOpen={onOpen}
+          onBack={onBack}
           onBrowse={onBrowse}
         />
       }

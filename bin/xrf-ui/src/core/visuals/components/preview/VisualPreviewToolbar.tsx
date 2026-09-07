@@ -1,6 +1,5 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocusStrong";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
@@ -9,7 +8,7 @@ import { default as PolylineIcon } from "@mui/icons-material/Polyline";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { Divider } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
@@ -20,9 +19,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { VisualMeshDetail } from "./VisualMeshDetail";
 
 interface IVisualPreviewToolbarProps extends BaseComponentProps {
-  subtitle?: string;
+  subtitle?: ReactNode;
   options: IVisualPreviewViewOptions;
-  isOpenEnabled: boolean;
   /** How far down each submesh's collapse chain the viewport is drawing: 0 is full detail, 1 is coarsest. */
   detail: number;
   /** Whether the open model carries a bind pose to draw. */
@@ -36,7 +34,7 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
   onChangeDetail: (detail: number) => void;
   onResetCamera: () => void;
-  onOpen?: () => void;
+  onBack?: () => void;
   onBrowse?: () => void;
 }
 
@@ -49,7 +47,6 @@ export function VisualPreviewToolbar({
   className,
   subtitle,
   options,
-  isOpenEnabled,
   detail,
   hasDetailLevels,
   hasSkeleton,
@@ -58,7 +55,7 @@ export function VisualPreviewToolbar({
   onChangeOptions,
   onChangeDetail,
   onResetCamera,
-  onOpen,
+  onBack,
   onBrowse,
 }: IVisualPreviewToolbarProps): ReactElement {
   /**
@@ -80,16 +77,9 @@ export function VisualPreviewToolbar({
       id={id}
       className={className}
       subtitle={subtitle}
+      onBack={onBack}
       actions={
         <>
-          <EditorIconAction
-            label={"Open visual"}
-            description={isOpenEnabled ? "Open visual" : "Open visual (not available here)"}
-            icon={<FolderOpenIcon />}
-            isDisabled={!isOpenEnabled}
-            onClick={() => onOpen?.()}
-          />
-
           {onBrowse ? (
             <EditorIconAction
               label={"Browse folder"}

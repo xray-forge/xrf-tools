@@ -14,7 +14,6 @@ function renderToolbar(
   return renderWithProviders(
     <VisualPreviewToolbar
       options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-      isOpenEnabled={true}
       detail={detail}
       hasDetailLevels={hasDetailLevels}
       hasSkeleton={true}
@@ -35,7 +34,6 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels
         hasSkeleton={false}
         hasBump={true}
@@ -55,7 +53,6 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
@@ -80,7 +77,6 @@ describe("VisualPreviewToolbar bump toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={false}
@@ -100,7 +96,6 @@ describe("VisualPreviewToolbar bump toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
@@ -126,7 +121,6 @@ describe("VisualPreviewToolbar alpha toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
@@ -147,7 +141,6 @@ describe("VisualPreviewToolbar alpha toggle", () => {
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
         detail={0}
-        isOpenEnabled={true}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}

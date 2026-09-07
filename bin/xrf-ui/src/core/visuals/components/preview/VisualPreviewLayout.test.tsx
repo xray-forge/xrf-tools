@@ -1,6 +1,7 @@
-import { describe, expect, it } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { describe, expect, it, jest } from "@jest/globals";
+import { fireEvent, RenderResult } from "@testing-library/react";
 
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -22,6 +23,33 @@ function renderLayout(footer?: string): RenderResult {
 }
 
 describe("VisualPreviewLayout footer", () => {
+  it("returns to the picker through the application breadcrumb", () => {
+    const onBack = jest.fn();
+    const view = renderWithProviders(
+      <VisualPreviewLayout model={mockVisualModelViews()} onBack={onBack} renderViewport={() => <div />} />,
+      { route: "/visuals-explorer" }
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "Back to Visuals explorer" }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(view.queryByRole("button", { name: "Open visual" })).not.toBeInTheDocument();
+  });
+
+  it("renders the full source location through the shared title-bar component", () => {
+    const location = { path: "C:\\game\\database\\meshes.db", entry: "actors\\stalker.ogf" };
+    const view = renderWithProviders(
+      <VisualPreviewLayout
+        model={mockVisualModelViews()}
+        subtitle={<EditorToolbarLocation location={location} />}
+        renderViewport={() => <div />}
+      />
+    );
+
+    expect(view.getByTestId("editor-toolbar-location")).toHaveTextContent(location.path);
+    expect(view.getByTestId("editor-toolbar-location")).toHaveTextContent(location.entry);
+  });
+
   it("draws nothing under the viewport unless the caller asks for it", () => {
     const { getByTestId, queryByRole } = renderLayout();
 

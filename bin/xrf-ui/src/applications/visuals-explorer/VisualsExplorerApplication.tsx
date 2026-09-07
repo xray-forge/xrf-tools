@@ -1,11 +1,13 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { VISUALS_EXPLORER_PANELS } from "@/applications/visuals-explorer/components/panels/visuals-explorer-panels";
 import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsExplorerOpenForm } from "@/applications/visuals-explorer/components/VisualsExplorerOpenForm";
+import { toVisualLocation } from "@/applications/visuals-explorer/lib/visual-location";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
@@ -32,7 +34,16 @@ export function VisualsExplorerApplication({
   const visual: Nullable<IOpenVisual> = visualsService.visual.value;
   const isBrowsing: boolean = browseService.isBrowsing;
 
-  const onOpen = useCallback(() => setPickerOpen(true), []);
+  const source = visual?.selected.source ?? null;
+  const location = useMemo(() => {
+    if (!source && browseService.root) {
+      return { path: browseService.root };
+    }
+
+    return toVisualLocation(source, browseService.visuals.value ?? []);
+  }, [source, browseService.root, browseService.visuals.value]);
+
+  const onBack = useCallback(() => setPickerOpen(true), []);
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
@@ -59,7 +70,7 @@ export function VisualsExplorerApplication({
       id={id}
       className={className}
       model={visual?.views ?? null}
-      subtitle={visualsService.sourceLabel ?? undefined}
+      subtitle={location ? <EditorToolbarLocation location={location} /> : (visualsService.sourceLabel ?? undefined)}
       panels={VISUALS_EXPLORER_PANELS}
       textures={visualsService.textures}
       bumps={visualsService.bumps}
@@ -69,7 +80,7 @@ export function VisualsExplorerApplication({
       isLoading={visualsService.visual.isLoading}
       error={visualsService.visual.error?.message}
       onRetry={visualsService.retryOpen}
-      onOpen={onOpen}
+      onBack={onBack}
       onBrowse={isBrowsing ? undefined : onBrowse}
     />
   );

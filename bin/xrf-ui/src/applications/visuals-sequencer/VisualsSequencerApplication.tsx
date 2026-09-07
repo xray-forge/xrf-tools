@@ -27,7 +27,7 @@ export function VisualsSequencerApplication({
 
   const visual: Nullable<IOpenVisual> = service.visual.value;
 
-  const onOpen = useCallback(() => setPickerOpen(true), []);
+  const onBack = useCallback(() => setPickerOpen(true), []);
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
@@ -58,7 +58,7 @@ export function VisualsSequencerApplication({
       footer={<SequencerTransport />}
       isLoading={service.visual.isLoading}
       error={service.visual.error?.message}
-      onOpen={onOpen}
+      onBack={onBack}
     />
   );
 }
