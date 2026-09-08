@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::path::PathBuf;
@@ -10,7 +9,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
-use crate::pack::source::ArchivePackEntry;
+use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 use crate::pack::volume::{
   ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable, ArchiveDescriptorTable, ArchiveVolumeLayout, DescriptorName,
 };
@@ -35,6 +34,8 @@ const COMPRESSION_MARGIN: usize = 16;
 pub(crate) struct ArchiveVolumeWriter<'a> {
   config: &'a ArchivePackConfig,
   narrator: &'a ArchivePackNarrator<'a>,
+  /// Where this run's entries are read from, which is one answer for the whole set rather than one per entry.
+  payloads: &'a ArchivePackPayloads<'a>,
   layout: ArchiveVolumeLayout,
   file: Option<BufWriter<File>>,
   path: PathBuf,
@@ -54,12 +55,14 @@ impl<'a> ArchiveVolumeWriter<'a> {
   pub(crate) fn open(
     config: &'a ArchivePackConfig,
     narrator: &'a ArchivePackNarrator<'a>,
+    payloads: &'a ArchivePackPayloads<'a>,
     layout: ArchiveVolumeLayout,
     descriptors: ArchiveDescriptorTable,
   ) -> XrfResult<Self> {
     let mut writer: Self = Self {
       config,
       narrator,
+      payloads,
       layout,
       file: None,
       path: PathBuf::new(),
@@ -84,7 +87,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// the engine does not expect compressed. Copying them would double the largest entry's cost in memory and memcpy
   /// the whole archive on the way past.
   pub(crate) fn write_entry(&mut self, entry: &'a ArchivePackEntry) -> XrfResult<()> {
-    let contents: Vec<u8> = fs::read(&entry.path)?;
+    let contents: Vec<u8> = self.payloads.read(entry)?;
     let size_real: u32 = u32::try_from(contents.len()).map_err(|_| {
       XrfError::new_invalid_error(format!(
         "File '{}' is {} bytes, larger than an archive entry can describe",
@@ -100,7 +103,9 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
     // An alias costs a row and no payload, but only in the volume holding the payload it points at: moving the entry
     // on turns it back into a copy, so this volume is offered it first.
-    if let Some(ArchiveAliasCandidate { source, alias }) = self.aliases.find(&contents, size_real, crc)? {
+    if let Some(ArchiveAliasCandidate { source, alias }) =
+      self.aliases.find(self.payloads, &contents, size_real, crc)?
+    {
       if self.fits(0, name.get_row_size()) {
         self.place(
           entry,

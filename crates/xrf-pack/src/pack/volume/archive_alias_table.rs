@@ -1,15 +1,14 @@
 use std::collections::HashMap;
-use std::fs;
 
 use xrf_error::XrfResult;
 
-use crate::pack::source::ArchivePackEntry;
+use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 
 /// Payloads already written to the current volume, so an identical file costs a descriptor row and nothing else.
 ///
 /// Borrows the entries it records rather than copying anything out of them: the source table holds every entry for
-/// the whole write, so a candidate needs neither its own path to prove a match nor its own name to say where an alias
-/// points.
+/// the whole write, so a candidate needs neither its own origin to prove a match nor its own name to say where an
+/// alias points.
 #[derive(Default)]
 pub(crate) struct ArchiveAliasTable<'e> {
   /// Keyed by size and checksum, which several distinct payloads may share, so each key keeps every candidate.
@@ -40,13 +39,19 @@ impl<'e> ArchiveAliasTable<'e> {
   ///
   /// Answered by value rather than by reference: a candidate is two words that already borrow the source table, so
   /// handing back a borrow of this table would only stop the caller recording the entry it just proved a match for.
-  pub(crate) fn find(&self, contents: &[u8], size_real: u32, crc: u32) -> XrfResult<Option<ArchiveAliasCandidate<'e>>> {
+  pub(crate) fn find(
+    &self,
+    payloads: &ArchivePackPayloads,
+    contents: &[u8],
+    size_real: u32,
+    crc: u32,
+  ) -> XrfResult<Option<ArchiveAliasCandidate<'e>>> {
     let Some(candidates) = self.candidates.get(&(size_real, crc)) else {
       return Ok(None);
     };
 
     for candidate in candidates {
-      if fs::read(&candidate.source.path)? == contents {
+      if payloads.read(candidate.source)? == contents {
         return Ok(Some(*candidate));
       }
     }
@@ -77,7 +82,7 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::{ArchiveAlias, ArchiveAliasTable};
-  use crate::pack::source::ArchivePackEntry;
+  use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 
   const FIRST: &[u8] = b"the first payload";
   const SECOND: &[u8] = b"a different one!!";
@@ -88,10 +93,7 @@ mod tests {
     fs::create_dir_all(path.parent().expect("scope directory")).expect("scope directory");
     fs::write(&path, contents).expect("candidate file");
 
-    ArchivePackEntry {
-      name: name.to_string(),
-      path,
-    }
+    ArchivePackEntry::of_host(name, path)
   }
 
   fn alias(offset: u32) -> ArchiveAlias {
@@ -103,14 +105,17 @@ mod tests {
 
   /// The alias a lookup found, with the match itself proven by the name it points back to.
   fn find(table: &ArchiveAliasTable, contents: &[u8], size_real: u32, crc: u32, source: &str) -> Option<ArchiveAlias> {
-    table.find(contents, size_real, crc).expect("lookup").map(|candidate| {
-      assert_eq!(
-        candidate.source.name, source,
-        "the match names the entry whose payload it reuses"
-      );
+    table
+      .find(&ArchivePackPayloads::Host, contents, size_real, crc)
+      .expect("lookup")
+      .map(|candidate| {
+        assert_eq!(
+          candidate.source.name, source,
+          "the match names the entry whose payload it reuses"
+        );
 
-      candidate.alias
-    })
+        candidate.alias
+      })
   }
 
   #[test]

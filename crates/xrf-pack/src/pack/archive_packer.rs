@@ -7,7 +7,7 @@ use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::pack::config::ArchivePackConfig;
-use crate::pack::source::{ArchivePackSource, ArchivePackSourceCollector};
+use crate::pack::source::{ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector};
 use crate::pack::volume::{ArchiveDescriptorTable, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter};
 use crate::pack::{
   ArchivePackNarrator, ArchivePackOptions, ArchivePackResult, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
@@ -58,14 +58,39 @@ impl ArchivePacker {
   pub fn pack_opt(config: &ArchivePackConfig, options: ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     config.validate_for_packing()?;
 
+    let published: ArchivePublishedSet = Self::guard_destination(config, options.is_forced)?;
+
+    Self::settle_publication(config, &published, Self::pack_into(config, &options))
+  }
+
+  /// Refuse a destination already holding volumes of this set, unless the run was allowed to replace them.
+  ///
+  /// Answers with what it found, because the same set decides what a failed run may take back: only a destination
+  /// that held nothing of this set to begin with can be restored by deleting.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error naming every volume that would be replaced, and any error listing the destination.
+  pub(crate) fn guard_destination(config: &ArchivePackConfig, is_forced: bool) -> XrfResult<ArchivePublishedSet> {
     let published: ArchivePublishedSet = ArchivePublishedSet::read(config)?;
 
-    if !published.is_empty() && !options.is_forced {
+    if !published.is_empty() && !is_forced {
       return Err(Self::describe_refusal(config, &published));
     }
 
-    let mut outcome: XrfResult<ArchivePackResult> = Self::pack_into(config, &options);
+    Ok(published)
+  }
 
+  /// Leave the destination as this run found it, where the run did not finish and had nothing to replace.
+  ///
+  /// The one place that decides what an unfinished publication leaves behind, so a pack and a patch cannot answer it
+  /// differently. A forced run is deliberately exempt: its volumes cannot be told from the ones it overwrote, and
+  /// deleting them would compound the loss rather than undo it.
+  pub(crate) fn settle_publication(
+    config: &ArchivePackConfig,
+    published: &ArchivePublishedSet,
+    mut outcome: XrfResult<ArchivePackResult>,
+  ) -> XrfResult<ArchivePackResult> {
     // Reached only where the destination held no volume of this set to begin with, which is what makes the volumes
     // in it now unambiguously this run's own.
     if published.is_empty() && !Self::is_completed(&outcome) {
@@ -123,28 +148,72 @@ impl ArchivePacker {
       ));
     }
 
+    // A walked source reads its payloads off the host, at the path each entry was reached by.
+    let mut result: ArchivePackResult = Self::write_set(
+      config,
+      &source.names,
+      &ArchivePackPayloads::Host,
+      job,
+      &narrator,
+      PACK_PHASE_WRITE,
+    )?;
+
+    if result.outcome == JobOutcome::Cancelled {
+      return Ok(Self::describe_cancelled(result, &source, started_at, collected_at));
+    }
+
+    let written_at: Duration = started_at.elapsed();
+
+    result.files_skipped = source.omitted.get_count();
+
+    result.measure(started_at, collected_at, written_at);
+
+    Ok(result)
+  }
+
+  /// Write one already-decided name table into the destination's volume set.
+  ///
+  /// The half a pack and a patch share. What differs between them is entirely upstream — one walks a tree and the
+  /// other compares two mounted worlds — and everything from the volume layout to naming a lone volume is the same
+  /// work over the same table, so it lives once. The caller still owns its own counts and measurements, because only
+  /// it knows what its collection phase cost.
+  ///
+  /// A run cancelled mid-write answers with what it had opened, marked [`JobOutcome::Cancelled`], rather than with a
+  /// separate signal: the result already carries an outcome, and a caller that forgot to check it would otherwise
+  /// report a partial set as a finished one.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a volume cap the archive cannot be written within, and for any read or write failure.
+  pub(crate) fn write_set(
+    config: &ArchivePackConfig,
+    names: &ArchivePackNameTable,
+    payloads: &ArchivePackPayloads,
+    job: &JobHandle,
+    narrator: &ArchivePackNarrator,
+    write_phase: &'static str,
+  ) -> XrfResult<ArchivePackResult> {
     // Both are measured before anything is created, because an unsatisfiable cap is a property of the archive rather
     // than of the file that would first overflow, and refusing it must leave no destination behind.
-    let descriptors: ArchiveDescriptorTable = ArchiveDescriptorTable::of_directories(source.names.get_directories())?;
+    let descriptors: ArchiveDescriptorTable = ArchiveDescriptorTable::of_directories(names.get_directories())?;
     let layout: ArchiveVolumeLayout = ArchiveVolumeLayout::new(config, &descriptors)?;
 
     fs::create_dir_all(&config.destination)?;
 
-    let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, &narrator, layout, descriptors)?;
+    let mut writer: ArchiveVolumeWriter = ArchiveVolumeWriter::open(config, narrator, payloads, layout, descriptors)?;
 
     {
-      let writing: JobScope = job.enter(PACK_PHASE_WRITE, Some(source.names.get_files().len() as u64));
+      let writing: JobScope = job.enter(write_phase, Some(names.get_files().len() as u64));
 
-      for entry in source.names.get_files() {
+      for entry in names.get_files() {
         // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
         // that are not there, which is worse than a volume that simply ends early.
         if job.is_cancelled() {
-          return Ok(Self::describe_cancelled(
-            writer.abandon(),
-            &source,
-            started_at,
-            collected_at,
-          ));
+          let mut abandoned: ArchivePackResult = writer.abandon();
+
+          abandoned.outcome = JobOutcome::Cancelled;
+
+          return Ok(abandoned);
         }
 
         // Sequential, so naming the current entry is meaningful here in a way it is not for a parallel unpack.
@@ -155,8 +224,6 @@ impl ArchivePacker {
       }
     }
 
-    let written_at: Duration = started_at.elapsed();
-
     // Bound rather than scoped in a block, because this phase covers everything left: closing the last volume, naming
     // the set, and measuring. It ends when the function does.
     //
@@ -166,11 +233,12 @@ impl ArchivePacker {
 
     job.set_detail(None);
 
-    // The writer reports what it saw writing; what the source and the clock know is added here.
+    // The writer reports what it saw writing; what the clock knows is added by the caller. The entry count is set
+    // here rather than there because the name table is what defines it, and a caller that forgot would report zero
+    // beside real per-outcome counts.
     let mut result: ArchivePackResult = writer.finish()?;
 
-    result.files_total = source.names.get_files().len();
-    result.files_skipped = source.omitted.get_count();
+    result.files_total = names.get_files().len();
 
     // Only now is the volume count known, so a set that stayed single drops its index.
     if let [only] = result.volumes.as_slice() {
@@ -181,8 +249,6 @@ impl ArchivePacker {
       result.volumes = vec![renamed.clone()];
       result.volumes_opened = vec![renamed];
     }
-
-    result.measure(started_at, collected_at, written_at);
 
     Ok(result)
   }

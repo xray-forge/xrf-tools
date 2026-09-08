@@ -118,6 +118,58 @@ pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a 
   name[prefix.len()..].strip_prefix(['\\', '/'])
 }
 
+/// Whether `path` names `root` itself or something inside it.
+///
+/// Resolving only what exists is not enough here, and the failure is silent. A destination is commonly named before it
+/// is created, so `canonicalize` refuses it, while a root that does exist comes back on Windows in the `\?\`
+/// extended-length form — so the two never share a prefix, which is precisely the case a containment test has to
+/// catch. Both sides are therefore resolved as far as the filesystem allows and the part that does not exist yet is
+/// put back on.
+///
+/// Matched on a component boundary, so a sibling named `gamedata-patches` is not inside `gamedata`.
+pub(crate) fn is_inside_directory(path: &Path, root: &Path) -> bool {
+  let path: String = to_comparable(path);
+  let root: String = to_comparable(root);
+
+  path == root
+    || path
+      .strip_prefix(&root)
+      .is_some_and(|rest| rest.starts_with(['\\', '/']))
+}
+
+/// A path in the spelling two names for one place share.
+///
+/// The nearest existing ancestor is resolved, the missing tail is appended, and the result is lower-cased with one
+/// separator. Case folding is what a Windows host needs and what a POSIX host does not; folding everywhere keeps one
+/// answer, and the cost is a refusal to publish into a root spelled in a different case, which is the safe direction.
+fn to_comparable(path: &Path) -> String {
+  let mut missing: Vec<&OsStr> = Vec::new();
+  let mut cursor: &Path = path;
+
+  loop {
+    if let Ok(resolved) = cursor.canonicalize() {
+      let mut rebuilt: PathBuf = resolved;
+
+      rebuilt.extend(missing.iter().rev());
+
+      return spell(&rebuilt);
+    }
+
+    match (cursor.file_name(), cursor.parent()) {
+      (Some(name), Some(parent)) => {
+        missing.push(name);
+        cursor = parent;
+      }
+      _ => return spell(path),
+    }
+  }
+}
+
+/// One separator and one case, so only the places differ.
+fn spell(path: &Path) -> String {
+  path.to_string_lossy().replace('/', "\\").to_lowercase()
+}
+
 #[cfg(test)]
 mod tests {
   use std::ffi::OsString;

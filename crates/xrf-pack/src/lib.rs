@@ -5,6 +5,7 @@
 #[cfg(test)]
 mod asset_source_tests;
 pub(crate) mod pack;
+pub(crate) mod patch;
 pub(crate) mod path;
 pub(crate) mod unpack;
 
@@ -14,6 +15,12 @@ pub use crate::pack::config::{
 };
 pub use crate::pack::{
   ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
+};
+pub use crate::patch::compare::{ArchivePatchChange, ArchivePatchClass, ArchivePatchSide};
+pub use crate::patch::config::ArchivePatchConfig;
+pub use crate::patch::{
+  ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher, PATCH_PHASE_COMPARE,
+  PATCH_PHASE_PACK,
 };
 pub use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_WRITE};
 pub use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};

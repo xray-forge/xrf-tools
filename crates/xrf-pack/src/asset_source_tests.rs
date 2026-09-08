@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
-  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayCollisionSite, XrayLookupScope, XrayMountPlan,
-  XrayPathCollision, XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XrayVfs,
+  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayCollisionSite, XrayDeclaredRoot, XrayLookupScope,
+  XrayMountPlan, XrayPathCollision, XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;
@@ -281,5 +281,100 @@ fn assert_site(site: &XrayCollisionSite, expected_volume: &str, expected_name: &
       assert_eq!(name, expected_name, "the authored spelling survives the fold");
     }
     XrayCollisionSite::Loose(path) => panic!("archived entry expected, got loose {}", path.display()),
+  }
+}
+
+#[test]
+fn a_recorded_checksum_is_answered_without_reading_the_payload() {
+  // What lets a comparison between two volume sets decide from name tables alone: the packer wrote this checksum and
+  // the engine verifies it on every decompression, so nothing has to be decompressed to learn it.
+  let source: XrayArchiveSource = mount("recorded_crc", &[("configs\\system.ltx", CONFIG)]);
+  let recorded: u32 = source
+    .get_recorded_crc("configs\\system.ltx")
+    .expect("an archived entry records its checksum");
+
+  assert_eq!(recorded, crc32fast::hash(CONFIG), "it is the checksum of the payload");
+  assert!(
+    source.get_recorded_crc("configs\\absent.ltx").is_none(),
+    "an entry the set does not hold records nothing"
+  );
+}
+
+#[test]
+fn a_loose_source_records_no_checksum_of_its_own() {
+  // The default half of the seam. A directory would have to read the file to produce one, so it declines and leaves
+  // the caller to decide whether the payload is worth reading.
+  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_crc/gamedata");
+
+  let _ = fs::remove_dir_all(&root);
+  fs::create_dir_all(root.join("configs")).expect("source directory");
+  fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
+
+  let vfs: XrayVfs = XrayVfs::from_plan(&XrayMountPlan::root(&root).expect("plan")).expect("mounts");
+
+  assert_eq!(vfs.read_size("configs\\system.ltx"), Some(CONFIG.len() as u64));
+  assert!(
+    vfs.read_recorded_crc("configs\\system.ltx").is_none(),
+    "a loose file records nothing, however readable it is"
+  );
+}
+
+#[test]
+fn a_checksum_is_read_through_the_mount_that_won() {
+  // A loose override in front of a volume means the archive's recorded checksum must not answer for it: the winning
+  // mount is a directory, which records none.
+  let scope: &str = "crc_follows_the_winner";
+  let archived: XrayArchiveSource = mount(scope, &[("configs\\system.ltx", CONFIG)]);
+  let loose: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/loose"));
+
+  let _ = fs::remove_dir_all(&loose);
+  fs::create_dir_all(loose.join("configs")).expect("override directory");
+  fs::write(loose.join("configs").join("system.ltx"), PATCHED).expect("override file");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &loose).expect("loose mount wins");
+  vfs.mount("", Box::new(archived)).expect("archive mount behind it");
+
+  assert_eq!(vfs.read_bytes("configs\\system.ltx").expect("reads"), PATCHED);
+  assert!(
+    vfs.read_recorded_crc("configs\\system.ltx").is_none(),
+    "the archive's checksum describes a payload no lookup reaches"
+  );
+}
+
+#[test]
+fn a_volume_declares_the_root_its_entries_mount_under() {
+  // Nothing applies this, so a consumer whose answer depends on where entries land has to ask. Every shipped release
+  // declares the gamedata root, and a patch is only sound over volumes that do.
+  let source: XrayArchiveSource = mount("declared_roots", &[("configs\\system.ltx", CONFIG)]);
+  let declared: Vec<XrayDeclaredRoot> = source.list_declared_roots();
+
+  assert_eq!(declared.len(), 1, "one per volume of the set");
+  assert_eq!(
+    declared[0].root,
+    PathBuf::from("gamedata/"),
+    "the packer's default header, with its alias stripped"
+  );
+  assert_eq!(
+    declared[0].source.file_name().and_then(|name| name.to_str()),
+    Some("packed.db"),
+    "each declaration names the volume that made it"
+  );
+}
+
+#[test]
+fn a_loose_source_declares_no_root() {
+  // A directory mounts where it was mounted and claims nothing, which is why the default is empty rather than a guess.
+  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_roots/gamedata");
+
+  let _ = fs::remove_dir_all(&root);
+  fs::create_dir_all(root.join("configs")).expect("source directory");
+  fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
+
+  let vfs: XrayVfs = XrayVfs::from_plan(&XrayMountPlan::root(&root).expect("plan")).expect("mounts");
+
+  for mount in vfs.get_mounts() {
+    assert!(mount.get_source().list_declared_roots().is_empty());
   }
 }

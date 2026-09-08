@@ -110,7 +110,7 @@ impl ArchivePackSourceCollector {
 
     path.metadata()?;
 
-    self.files.push(ArchivePackEntry { name, path });
+    self.files.push(ArchivePackEntry::of_host(name, path));
 
     Ok(())
   }
@@ -179,10 +179,7 @@ impl ArchivePackSourceCollector {
           continue;
         }
 
-        self.files.push(ArchivePackEntry {
-          name,
-          path: path.into(),
-        });
+        self.files.push(ArchivePackEntry::of_host(name, path));
       }
     }
 

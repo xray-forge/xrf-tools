@@ -1,14 +1,13 @@
 //! The engine-name table one packing run registers: what makes each collected name a row the engine can read.
 
 use std::fs;
-use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::pack::config::ArchivePackConfig;
-use crate::pack::source::ArchivePackEntry;
 use crate::pack::source::ArchivePackNameCollision;
+use crate::pack::source::{ArchivePackEntry, ArchivePackOrigin};
 
 /// Every file and directory one packing run writes, under the name `CLocatorAPI::Register` folds it to, once each, in
 /// the order the engine's own table iterates.
@@ -134,7 +133,7 @@ impl ArchivePackNameRegistration {
     let is_registered: bool = self
       .claimants
       .iter()
-      .any(|(_, claimant)| claimant.name == file.name || is_same_file(&claimant.path, &file.path));
+      .any(|(_, claimant)| claimant.name == file.name || is_same_file(&claimant.origin, &file.origin));
 
     if !is_registered {
       self.claimants.push((engine_name, file));
@@ -169,14 +168,24 @@ fn to_engine_name(name: &str) -> XrfResult<String> {
   })
 }
 
-/// Whether two host paths reach one file.
+/// Whether two origins reach one file.
 ///
-/// Asked only of two files claiming one engine name, so its cost is paid per collision rather than per row. A path
-/// that cannot be resolved is not proven to be the same file, and the claim stands; the write phase would have failed
-/// on that path anyway.
-fn is_same_file(left: &Path, right: &Path) -> bool {
-  match (fs::canonicalize(left), fs::canonicalize(right)) {
-    (Ok(left), Ok(right)) => left == right,
+/// Asked only of two entries claiming one engine name, so its cost is paid per collision rather than per row. Two host
+/// paths are the same file when they resolve to one; a path that cannot be resolved is not proven to be, and the claim
+/// stands, since the write phase would have failed on it anyway.
+///
+/// Two mounted origins are always the same file. A mounted world has already folded its own names and answers one
+/// entry per engine identity, so two rows claiming one name are that entry reached twice rather than a pair a person
+/// could rename apart.
+fn is_same_file(left: &ArchivePackOrigin, right: &ArchivePackOrigin) -> bool {
+  match (left, right) {
+    (ArchivePackOrigin::Host(left), ArchivePackOrigin::Host(right)) => {
+      match (fs::canonicalize(left), fs::canonicalize(right)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+      }
+    }
+    (ArchivePackOrigin::Mounted, ArchivePackOrigin::Mounted) => true,
     _ => false,
   }
 }
@@ -200,10 +209,7 @@ mod tests {
   fn entries(names: &[&str]) -> Vec<ArchivePackEntry> {
     names
       .iter()
-      .map(|name| ArchivePackEntry {
-        name: String::from(*name),
-        path: Path::new("gamedata").join(name.replace('\\', "/")),
-      })
+      .map(|name| ArchivePackEntry::of_host(*name, Path::new("gamedata").join(name.replace('\\', "/"))))
       .collect()
   }
 
@@ -286,10 +292,7 @@ mod tests {
 
     let files: Vec<ArchivePackEntry> = ["configs\\system.ltx", "Configs\\System.ltx"]
       .into_iter()
-      .map(|name| ArchivePackEntry {
-        name: String::from(name),
-        path: path.clone(),
-      })
+      .map(|name| ArchivePackEntry::of_host(name, path.clone()))
       .collect();
 
     let table: ArchivePackNameTable =
