@@ -16,6 +16,7 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
         archive::info::InfoCommand::new_box(),
         archive::list::ListCommand::new_box(),
         archive::pack::PackCommand::new_box(),
+        archive::pack_patch::PackPatchCommand::new_box(),
         archive::unpack::UnpackCommand::new_box(),
         archive::verify::VerifyCommand::new_box(),
       ],
