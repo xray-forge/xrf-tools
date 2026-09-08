@@ -4,6 +4,7 @@ use std::path::Path;
 use serde::Serialize;
 use xrf_error::XrfResult;
 
+use crate::source::XrayDeclaredRoot;
 use crate::{XrayAssetContainer, XrayPathCollision};
 
 /// The storage kind backing a mount.
@@ -86,6 +87,27 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// its header size precisely to avoid parsing a truncated file. An archive knows this from its name table, so neither
   /// container has to decompress anything.
   fn get_size(&self, path: &str) -> Option<u64>;
+
+  /// CRC32 of an entry's unpacked payload, when the source already knows it without reading anything.
+  ///
+  /// A comparison between two mounted worlds asks this before it hashes: an archive records the checksum the engine
+  /// itself verifies on every decompression, so the answer is a name-table lookup, while a directory would have to
+  /// read the file to produce one. Defaulting to `None` is what keeps that honest — a source says only what it
+  /// already holds, and the caller decides whether the payload is worth reading to learn the rest.
+  fn get_recorded_crc(&self, path: &str) -> Option<u32> {
+    let _ = path;
+
+    None
+  }
+
+  /// Where this source's own metadata says its entries mount, for each container that declares it.
+  ///
+  /// Empty by default, and empty for a directory: a loose tree mounts where it was mounted and claims nothing. An
+  /// archive volume claims `[header] entry_point`, one per volume of a set. See [`XrayDeclaredRoot`] for why this is
+  /// published rather than applied.
+  fn list_declared_roots(&self) -> Vec<XrayDeclaredRoot> {
+    Vec::new()
+  }
 
   /// Files this source holds but cannot reach, because another file already claims their engine identity.
   ///

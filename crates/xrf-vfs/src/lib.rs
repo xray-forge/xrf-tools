@@ -32,7 +32,7 @@ pub use mount::{
   XrayRootProbe, XrayRoots, XraySkippedMount,
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
-pub use source::{XrayArchiveSource, XrayAssetSource, XraySourceKind};
+pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{
   XrayDirectoryListing, XrayLookupScope, XrayProbe, XrayProbeStep, XrayResolution, XrayScopedVfs, XrayVfs,

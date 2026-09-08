@@ -11,7 +11,9 @@ use xrf_utils::format_path;
 
 use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
 use crate::source::xray_asset_source::label_from_path;
-use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XraySourceKind};
+use crate::{
+  XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XraySourceKind,
+};
 
 /// Mounts an archive volume set as a read-only asset source.
 ///
@@ -231,6 +233,28 @@ impl XrayAssetSource for XrayArchiveSource {
       .get(path)
       .and_then(|name| self.project.files.get(name))
       .map(|descriptor| u64::from(descriptor.size_real))
+  }
+
+  /// One per volume of the set, from each `[header] entry_point` the reader already stripped its alias from.
+  fn list_declared_roots(&self) -> Vec<XrayDeclaredRoot> {
+    self
+      .project
+      .archives
+      .iter()
+      .map(|volume| XrayDeclaredRoot {
+        source: volume.path.clone(),
+        root: volume.output_root_path.clone(),
+      })
+      .collect()
+  }
+
+  /// Answers from the volume's name table, which is where the packer recorded it and where the engine reads it back.
+  fn get_recorded_crc(&self, path: &str) -> Option<u32> {
+    self
+      .entries
+      .get(path)
+      .and_then(|name| self.project.files.get(name))
+      .map(|descriptor| descriptor.crc)
   }
 
   fn write(&self, path: &str, _bytes: &[u8]) -> XrfResult<()> {

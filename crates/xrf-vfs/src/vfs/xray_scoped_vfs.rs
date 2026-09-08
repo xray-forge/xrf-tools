@@ -99,6 +99,11 @@ impl XrayScopedVfs<'_> {
     self.vfs.read_size_in(self.scope, logical_path)
   }
 
+  /// Like [`XrayVfs::read_recorded_crc`], within this view's scope.
+  pub fn read_recorded_crc(&self, logical_path: &str) -> Option<u32> {
+    self.vfs.read_recorded_crc_in(self.scope, logical_path)
+  }
+
   /// Like [`XrayVfs::list_entries`], within this view's scope.
   pub fn list_entries(&self) -> Vec<XrayAsset> {
     self.vfs.list_entries_in(self.scope)

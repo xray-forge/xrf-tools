@@ -314,6 +314,26 @@ impl XrayVfs {
     mount.get_source().get_size(source_path)
   }
 
+  /// CRC32 of the winning entry's payload, when its source already knows it without reading anything.
+  ///
+  /// The cheap half of comparing two mounted worlds: an archive answers from its name table, a directory answers
+  /// `None` because producing one means reading the file. A caller that needs a checksum either way reads the bytes
+  /// and hashes them itself, and does so only where this could not answer — which is what keeps an archive-to-archive
+  /// comparison free of any payload read at all.
+  ///
+  /// `None` covers an absent asset, an unreadable logical path, and a source that simply does not record one; a
+  /// caller that must tell those apart has [`Self::find`] for the first two.
+  pub fn read_recorded_crc(&self, logical_path: &str) -> Option<u32> {
+    self.read_recorded_crc_in(&XrayLookupScope::default(), logical_path)
+  }
+
+  pub(crate) fn read_recorded_crc_in(&self, scope: &XrayLookupScope, logical_path: &str) -> Option<u32> {
+    let logical_path: Cow<str> = normalize(logical_path).ok()?;
+    let (mount, source_path) = self.get_winner_in_scope(scope, &logical_path)?;
+
+    mount.get_source().get_recorded_crc(source_path)
+  }
+
   /// Returns winning entries, one per logical path, ordered by that path.
   ///
   /// Sorted here rather than left to callers: an archive source keys its name table by hash, so enumeration order is
