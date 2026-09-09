@@ -1,18 +1,9 @@
-import { Alert, Stack, Switch, TextField } from "@mui/material";
-import { ChangeEvent, ReactElement } from "react";
+import { Alert, Stack } from "@mui/material";
+import { ReactElement } from "react";
 
-import {
-  ArchiveHeaderEntries,
-  DEFAULT_ENTRY_POINT,
-  HEADER_AUTO_LOAD,
-  HEADER_ENTRY_POINT,
-  readHeaderFlag,
-  readHeaderValue,
-  writeHeaderFlag,
-  writeHeaderValue,
-} from "@/core/archive";
+import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
+import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
-import { FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 interface IPackerHeaderSectionProps {
@@ -26,7 +17,6 @@ interface IPackerHeaderSectionProps {
  */
 export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHeaderSectionProps): ReactElement {
   const entryPoint: Nullable<string> = readHeaderValue(config.header, HEADER_ENTRY_POINT);
-  const isAutoLoad: boolean = readHeaderFlag(config.header, HEADER_AUTO_LOAD);
 
   return (
     <Stack spacing={2}>
@@ -37,44 +27,10 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
         </Alert>
       )}
 
-      <FormRow
-        label={"Entry point"}
-        description={"Where the engine mounts the contents. A packed gamedata tree wants the default"}
-        controlId={"packer-entry-point"}
-      >
-        <TextField
-          id={"packer-entry-point"}
-          size={"small"}
-          fullWidth
-          disabled={isDisabled}
-          value={entryPoint ?? ""}
-          placeholder={DEFAULT_ENTRY_POINT}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            onChange({ header: writeHeaderValue(config.header, HEADER_ENTRY_POINT, event.target.value) })
-          }
-        />
-      </FormRow>
-
-      <FormRow
-        label={"Mount at startup"}
-        description={"Whether the engine loads these volumes on its own"}
-        controlId={"packer-auto-load"}
-        isInline={true}
-      >
-        <Switch
-          id={"packer-auto-load"}
-          size={"small"}
-          checked={isAutoLoad}
-          disabled={isDisabled}
-          slotProps={{ input: { "aria-label": "Mount at startup" } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            onChange({ header: writeHeaderFlag(config.header, HEADER_AUTO_LOAD, event.target.checked) })
-          }
-        />
-      </FormRow>
-
-      <ArchiveHeaderEntries
+      <ArchiveHeaderFields
+        id={"packer"}
         header={config.header}
+        entryPointDescription={"Where the engine mounts the contents. A packed gamedata tree wants the default"}
         isDisabled={isDisabled}
         onChange={(header) => onChange({ header })}
       />

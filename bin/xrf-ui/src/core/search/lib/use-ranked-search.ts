@@ -69,9 +69,7 @@ export function useRankedSearch<T>({
 
   const index: Array<ISearchIndexEntry<T>> = useMemo(
     () => buildSearchIndex(items, toSearchText, toSecondaryText),
-    // `toSearchText` is a stable accessor at every call site; re-indexing on identity would defeat it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items]
+    [items, toSearchText, toSecondaryText]
   );
 
   const outcome: IRankedSearchOutcome<T> = useMemo(

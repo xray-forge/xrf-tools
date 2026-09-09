@@ -27,6 +27,10 @@ const ARCHIVE_TREE_ICONS: IVirtualizedTreeIcons = {
   leaf: <DescriptionIcon />,
 };
 
+function toSearchText(descriptor: ArchiveFileDescriptor): string {
+  return descriptor.name;
+}
+
 export function ArchivesMenu({
   "data-testid": dataTestId = "archives-menu",
   id,
@@ -62,7 +66,7 @@ export function ArchivesMenu({
 
   const search: IUseRankedSearch<ArchiveFileDescriptor> = useRankedSearch({
     items: files,
-    toSearchText: (it) => it.name,
+    toSearchText,
     onSelect: onOpenDescriptor,
   });
 

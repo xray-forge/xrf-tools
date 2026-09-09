@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ReactElement } from "react";
+import { ReactElement, useState } from "react";
 
 import { IUseRankedSearch, useRankedSearch } from "@/core/search/lib/use-ranked-search";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -48,6 +48,41 @@ function renderHarness(onSelect: (file: IFile) => void, limit?: number): RenderR
 }
 
 describe("useRankedSearch", () => {
+  it.each(["primary", "secondary"])("reindexes when the %s text extractor changes", async (field) => {
+    function Harness(): ReactElement {
+      const [hasExtraText, setHasExtraText] = useState(false);
+      const search: IUseRankedSearch<IFile> = useRankedSearch({
+        items: FILES,
+        toSearchText: hasExtraText && field === "primary" ? (file) => `extra ${file.name}` : toSearchText,
+        toSecondaryText: hasExtraText && field === "secondary" ? () => "extra" : undefined,
+      });
+
+      return (
+        <>
+          <input aria-label={"search"} value={search.query} onChange={(event) => search.setQuery(event.target.value)} />
+          <button onClick={() => setHasExtraText((current) => !current)}>Toggle extra text</button>
+          <div data-testid={"total"}>{search.total}</div>
+        </>
+      );
+    }
+
+    const { getByRole, getByTestId } = renderWithProviders(<Harness />);
+    const input: HTMLElement = getByRole("textbox", { name: "search" });
+
+    await userEvent.type(input, "extra");
+
+    expect(getByTestId("total")).toHaveTextContent("0");
+
+    await userEvent.click(getByRole("button", { name: "Toggle extra text" }));
+
+    expect(input).toHaveValue("extra");
+    expect(getByTestId("total")).toHaveTextContent("3");
+
+    await userEvent.click(getByRole("button", { name: "Toggle extra text" }));
+
+    expect(getByTestId("total")).toHaveTextContent("0");
+  });
+
   it("returns nothing until something is typed", () => {
     const { queryAllByRole } = renderHarness(jest.fn());
 

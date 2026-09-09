@@ -23,6 +23,14 @@ import { getApplicationBackgroundSx } from "@/core/theme/application-background"
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
 
+function toSearchText([application]: TCatalogEntry): string {
+  return application.label;
+}
+
+function toSecondaryText([application, group]: TCatalogEntry): string {
+  return `${application.description} ${group.label}`;
+}
+
 /** One application together with the group it was found under, which search results no longer imply. */
 type TCatalogEntry = [IApplicationDescriptor, IApplicationGroup];
 
@@ -131,10 +139,10 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
 
   const search: IUseRankedSearch<TCatalogEntry> = useRankedSearch({
     items: searchable,
-    toSearchText: ([application]: TCatalogEntry) => application.label,
+    toSearchText,
     // The description and the group name match too, so "icons" still finds the six sprite tools whose labels
     // only say "sprite".
-    toSecondaryText: ([application, group]: TCatalogEntry) => `${application.description} ${group.label}`,
+    toSecondaryText,
     onSelect: onSelectResult,
   });
 
