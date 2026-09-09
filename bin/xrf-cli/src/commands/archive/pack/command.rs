@@ -37,7 +37,7 @@ impl GenericCommand for PackCommand {
     Command::new(self.operation())
       .about("Command to pack provided directory into *.db archive volumes")
       .arg(
-        Arg::new("path")
+        Arg::new("source")
           .help("Directory to pack, normally a gamedata root")
           .required(true)
           .value_name("SOURCE")
@@ -180,7 +180,7 @@ impl GenericCommand for PackCommand {
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: PathBuf = xrf_utils::to_absolute_path(
       matches
-        .get_one::<PathBuf>("path")
+        .get_one::<PathBuf>("source")
         .expect("Expected valid source path to be provided"),
     )?;
 

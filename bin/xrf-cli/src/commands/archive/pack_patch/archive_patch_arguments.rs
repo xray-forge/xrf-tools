@@ -38,7 +38,7 @@ impl ArchivePatchArguments {
     );
 
     if matches.contains_id("target") && matches.get_one::<PathBuf>("target").is_some() {
-      config.target = Some(Self::to_root(matches, "target")?);
+      config.target = Some(Self::to_root(matches, "source")?);
     }
 
     // One selection source or the other, never both: clap refuses `--config` beside a selection option, so whichever

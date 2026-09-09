@@ -33,7 +33,6 @@ value = 1
 fn pack(source: &Path, destination: &Path, megabytes: u64, is_oversized_allowed: bool) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from("pack"),
-    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),

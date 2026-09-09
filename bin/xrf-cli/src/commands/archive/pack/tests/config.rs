@@ -32,7 +32,6 @@ fn create_roots(name: &str) -> CommandResult<(PathBuf, PathBuf)> {
 fn pack_arguments(source: &Path, destination: &Path, name: &str) -> Vec<String> {
   vec![
     String::from("pack"),
-    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),

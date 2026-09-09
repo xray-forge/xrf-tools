@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
-use xrf_pack::{ArchivePatchResult, ArchivePatcher};
+use xrf_pack::{ArchivePatchResult, ArchivePatcher, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN};
 
 use crate::commands::archive::pack_patch::archive_patch_arguments::ArchivePatchArguments;
 use crate::commands::archive::pack_patch::archive_patch_summary::{describe_inputs, describe_result};
@@ -25,11 +25,11 @@ impl GenericCommand for PackPatchCommand {
     Command::new(self.operation())
       .about("Command to pack what a gamedata tree changes about an installation into overriding *.db archive volumes")
       .arg(
-        Arg::new("input")
+        Arg::new("source")
           .help("What to patch: an installation, a directory of volumes, or a gamedata tree")
-          .short('i')
-          .long("input")
           .required(true)
+          .value_name("SOURCE")
+          .num_args(1)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -117,23 +117,30 @@ impl GenericCommand for PackPatchCommand {
           .action(ArgAction::SetTrue),
       )
       .arg(
-        Arg::new("xdb")
-          .help("Write volumes with the *.xdb extension")
-          .long("xdb")
+        Arg::new("max-size")
+          .help(format!(
+            "Maximum volume size in megabytes, from {} to {}",
+            VOLUME_SIZE_MIN / xrf_utils::BYTES_PER_MEGABYTE,
+            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+          ))
+          .long("max-size")
+          .required(false)
+          .value_parser(value_parser!(u64).range(1..)),
+      )
+      .arg(
+        Arg::new("oversized-volumes")
+          .help(format!(
+            "Let --max-size exceed {} MB, which only an engine fork that raised XRP_MAX_SIZE can mount",
+            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+          ))
+          .long("oversized-volumes")
           .required(false)
           .action(ArgAction::SetTrue),
       )
       .arg(
-        Arg::new("max-size")
-          .help("Maximum volume size in megabytes, from 1 to 1900")
-          .long("max-size")
-          .required(false)
-          .value_parser(value_parser!(u64)),
-      )
-      .arg(
-        Arg::new("oversized-volumes")
-          .help("Allow volumes past the size an unmodified engine mounts")
-          .long("oversized-volumes")
+        Arg::new("xdb")
+          .help("Write volumes with the xdb extension")
+          .long("xdb")
           .required(false)
           .action(ArgAction::SetTrue),
       )
