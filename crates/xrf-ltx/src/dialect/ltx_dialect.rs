@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use xrf_error::XrfResult;
 
-use crate::dialect::LtxResolution;
+use crate::dialect::{LtxResolution, LtxResolveRequest};
 use crate::source::LtxDocumentSource;
 
 /// Which rules turn a config tree into resolved sections.
@@ -30,9 +30,13 @@ pub trait LtxDialect: Debug + Send + Sync {
 
   /// Resolves one root into sections, under this dialect's rules.
   ///
+  /// `request` says what the caller wants recorded beside the resolved config. A dialect that cannot answer part of it
+  /// leaves that part empty rather than approximating it; see [`LtxResolveRequest`].
+  ///
   /// # Errors
   ///
   /// Returns an error for anything this dialect refuses, which for both current implementations means what the engine
   /// would refuse to start on.
-  fn resolve(&self, root: &str, source: &dyn LtxDocumentSource) -> XrfResult<LtxResolution>;
+  fn resolve(&self, root: &str, source: &dyn LtxDocumentSource, request: LtxResolveRequest)
+  -> XrfResult<LtxResolution>;
 }

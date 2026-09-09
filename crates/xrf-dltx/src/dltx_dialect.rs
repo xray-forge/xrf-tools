@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_ltx::{
-  Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxResolution, LtxResolutionDiagnostic, LtxStandardDialect,
-  Section,
+  Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic,
+  LtxResolveRequest, LtxStandardDialect, Section,
 };
 
 use crate::discovery::dltx_discovery::DltxDiscovery;
@@ -52,7 +52,12 @@ impl LtxDialect for DltxDialect {
     Ok(attachments)
   }
 
-  fn resolve(&self, root: &str, source: &dyn LtxDocumentSource) -> XrfResult<LtxResolution> {
+  fn resolve(
+    &self,
+    root: &str,
+    source: &dyn LtxDocumentSource,
+    request: LtxResolveRequest,
+  ) -> XrfResult<LtxResolution> {
     // The load result outlives the resolve by one call now, because it is what knows which file declared each
     // section. It is still dropped here rather than retained.
     let loaded: DltxLoadResult = DltxLoader::new(source).load(root)?;
@@ -61,7 +66,14 @@ impl LtxDialect for DltxDialect {
     Ok(LtxResolution {
       diagnostics: Self::to_diagnostics(&resolved),
       ltx: Self::to_ltx(&resolved, &loaded, root),
-      provenance: Self::to_provenance(&resolved),
+      // The resolver tracks the winning statement either way - it has to, to pick one - but folding that into a map
+      // over every field of the tree is the caller's cost to ask for. An Anomaly sweep resolves thousands of roots
+      // and reads none of it.
+      provenance: if request.is_with_provenance() {
+        Self::to_provenance(&resolved)
+      } else {
+        LtxProvenance::default()
+      },
     })
   }
 }
@@ -110,18 +122,31 @@ impl DltxDialect {
     ltx
   }
 
-  fn to_provenance(resolved: &DltxResolveResult) -> BTreeMap<(String, String), LtxFieldOrigin> {
-    let mut provenance: BTreeMap<(String, String), LtxFieldOrigin> = BTreeMap::new();
+  /// Which statement won each resolved field.
+  ///
+  /// Every field gets one, not only a patched one: the point of the record is that a value can be accounted for, and
+  /// "the base file wrote it and nothing contested it" is as much an answer as naming a `mod_*.ltx`. Winning files are
+  /// shared by name, because one file commonly wins hundreds of fields.
+  fn to_provenance(resolved: &DltxResolveResult) -> LtxProvenance {
+    let mut provenance: LtxProvenance = LtxProvenance::default();
+    let mut files: BTreeMap<&str, Arc<str>> = BTreeMap::new();
 
     for (section, fields) in &resolved.sections {
+      let name: Arc<str> = Arc::from(section.as_str());
+
       for key in fields.keys() {
         if let Some(origin) = resolved.provenance.get(section, key) {
           provenance.insert(
-            (section.clone(), key.clone()),
-            LtxFieldOrigin {
+            Arc::clone(&name),
+            Arc::from(key.as_str()),
+            LtxFieldOrigin::Loaded {
               depth: origin.depth,
-              file: origin.file.clone(),
-              operation: String::from(origin.operation.as_prefix()),
+              file: Arc::clone(
+                files
+                  .entry(origin.file.as_str())
+                  .or_insert_with(|| Arc::from(origin.file.as_str())),
+              ),
+              operation: Box::from(origin.operation.as_prefix()),
             },
           );
         }

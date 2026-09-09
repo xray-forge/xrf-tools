@@ -5,12 +5,12 @@ use std::sync::{Arc, Mutex};
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
-use crate::dialect::{LtxDialect, LtxStandardDialect};
+use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::document::LtxDocument;
 use crate::ltx::{Ltx, LtxSectionSchemes};
 use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
 use crate::scheme::LtxSchemeParser;
-use crate::source::{LtxIncludeSource, LtxVfsSource};
+use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxVfsSource};
 use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
 /// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
@@ -335,12 +335,61 @@ impl LtxProject {
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
     let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
 
-    Ok(self.dialect.resolve(logical_path.as_str(), &source)?.ltx)
+    Ok(
+      self
+        .dialect
+        .resolve(logical_path.as_str(), &source, LtxResolveRequest::plain())?
+        .ltx,
+    )
+  }
+
+  /// Resolves one root and keeps everything the dialect can say about it, for a caller that has to explain a value.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if the config is outside the scope or cannot be read or resolved.
+  pub fn resolve_explained(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
+    let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+
+    self.counters.record_resolution();
+
+    self
+      .dialect
+      .resolve(logical_path.as_str(), &source, LtxResolveRequest::with_provenance())
+  }
+
+  /// Drops one root's cached resolution, so the next read produces it again.
+  ///
+  /// Answers whether anything was held. The parsed documents behind it stay cached: this forgets a conclusion, not
+  /// the reading it was drawn from, and a caller that changed a file on disk has to say so to the VFS as well.
+  ///
+  /// Nothing in a read-only pass needs this. It exists for a surface that edits a config and must not be served the
+  /// resolution from before the edit.
+  pub fn forget_root(&self, logical_path: &XrayLogicalPath) -> bool {
+    self
+      .resolved
+      .lock()
+      .expect("resolved config cache to not be poisoned")
+      .remove(logical_path)
+      .is_some()
   }
 
   /// Which rules this project resolves its configs under.
   pub fn get_dialect(&self) -> &Arc<dyn LtxDialect> {
     &self.dialect
+  }
+
+  /// The port this project reads documents through, for a caller that has to read some itself.
+  ///
+  /// An inspecting surface needs documents a resolution cannot answer for - a section's declared parents, which
+  /// resolving flattens away, and the line a statement sits on. It must read them the way this project does or it will
+  /// disagree with it: an installation keeps nearly every config in an archive volume, so a caller reaching for the
+  /// filesystem would find almost nothing, and reads made outside this door go uncounted.
+  ///
+  /// Reads are served from the same parsed-document cache the resolution used, so a caller re-reading a config it has
+  /// already resolved through pays a lookup rather than a parse.
+  pub fn document_source(&self) -> impl LtxDocumentSource + '_ {
+    LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters)
   }
 
   /// Resolves a config in the supplied scope using this project's dialect, without caching the result.
@@ -353,7 +402,12 @@ impl LtxProject {
 
     self.counters.record_resolution();
 
-    Ok(self.dialect.resolve(logical_path, &source)?.ltx)
+    Ok(
+      self
+        .dialect
+        .resolve(logical_path, &source, LtxResolveRequest::plain())?
+        .ltx,
+    )
   }
 
   /// How much reading and parsing this project has done.

@@ -24,12 +24,16 @@ pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
 
-pub use crate::dialect::{LtxDialect, LtxFieldOrigin, LtxResolution, LtxResolutionDiagnostic, LtxStandardDialect};
+pub use crate::dialect::{
+  LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,
+  LtxStandardDialect,
+};
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 pub use crate::ltx::{Ltx, Section};
 pub use crate::project::{
-  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxFilesFormatter, LtxFormatOptions, LtxProject,
-  LtxProjectFormatResult, LtxProjectOptions, LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxVerifyOptions,
+  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions,
+  LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxProjectVerifyResult, LtxReadCountersSnapshot,
+  LtxVerifyOptions,
 };
 pub use crate::source::LtxDocumentSource;
-pub use crate::syntax::{LTX_EXTENSION, LTX_SYMBOL_SCHEME};
+pub use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_SCHEME};

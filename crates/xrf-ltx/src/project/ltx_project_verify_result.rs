@@ -4,6 +4,8 @@ use serde::Serialize;
 use xrf_error::XrfError;
 use xrf_job::JobOutcome;
 
+use crate::project::LtxEntryVerification;
+
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,5 +52,20 @@ impl LtxProjectVerifyResult {
       total_sections: 0,
       valid_sections: 0,
     }
+  }
+
+  /// Folds one entry point's findings and counts into this run.
+  ///
+  /// The run owns everything about itself - which files it read, how long it took, whether it finished - and an entry
+  /// point owns only what was found in it, so this adds rather than merges.
+  pub(crate) fn absorb(&mut self, found: LtxEntryVerification) {
+    self.checked_fields += found.checked_fields;
+    self.checked_sections += found.checked_sections;
+    self.invalid_sections += found.invalid_sections;
+    self.skipped_sections += found.skipped_sections;
+    self.total_sections += found.total_sections;
+    self.valid_sections += found.valid_sections;
+
+    self.errors.extend(found.errors);
   }
 }

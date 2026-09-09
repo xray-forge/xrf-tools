@@ -52,6 +52,14 @@ impl Section {
     }
   }
 
+  /// The fields with the handles they are stored under, for a caller that has to share them rather than read them.
+  ///
+  /// Separate from [`Self::iter`], which answers `&str` because that is what every reader wants; this exists so a
+  /// record built beside a section can key on the same allocation instead of copying every key name.
+  pub(crate) fn iter_shared(&self) -> impl Iterator<Item = (&Arc<str>, &Arc<str>)> {
+    self.data.iter()
+  }
+
   /// Give back the growth room this section's fields no longer need.
   pub(crate) fn shrink_to_fit(&mut self) {
     self.data.shrink_to_fit();

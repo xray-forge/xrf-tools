@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::dialect::LtxProvenance;
 use crate::document::LtxCheck;
 use crate::ltx::{
   LtxIncludeConvertor, LtxIncluded, LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter,
@@ -33,6 +34,15 @@ impl Ltx {
   /// Convert current instance of ltx file into full parsed one.
   pub fn into_inherited(self) -> XrfResult<Self> {
     LtxInheritConvertor::convert(self)
+  }
+
+  /// The same, answering also with which section writes each resolved field.
+  ///
+  /// # Errors
+  ///
+  /// Whatever [`Self::into_inherited`] answers with.
+  pub(crate) fn into_inherited_recording(self) -> XrfResult<(Self, LtxProvenance)> {
+    LtxInheritConvertor::convert_recording(self)
   }
 
   /// Get parent directory of LTX file.

@@ -1,5 +1,6 @@
 //! A whole tree of configs: what it holds, and the verify and format passes that walk it.
 
+pub(crate) mod ltx_entry_verification;
 pub(crate) mod ltx_files_formatter;
 pub(crate) mod ltx_format_options;
 pub(crate) mod ltx_project;
@@ -15,6 +16,7 @@ pub(crate) mod ltx_verify_options;
 #[cfg(test)]
 mod tests;
 
+pub use crate::project::ltx_entry_verification::LtxEntryVerification;
 pub use crate::project::ltx_files_formatter::LtxFilesFormatter;
 pub use crate::project::ltx_format_options::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions};
 pub use crate::project::ltx_project::LtxProject;

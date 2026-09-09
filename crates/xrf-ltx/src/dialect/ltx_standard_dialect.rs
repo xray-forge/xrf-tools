@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
 
-use crate::dialect::{LtxDialect, LtxResolution, LtxTextInterner};
+use crate::dialect::{LtxDialect, LtxProvenance, LtxResolution, LtxResolveRequest, LtxTextInterner};
 use crate::document::LtxDocument;
 use crate::ltx::Ltx;
 use crate::source::LtxDocumentSource;
@@ -22,7 +22,12 @@ impl LtxDialect for LtxStandardDialect {
     Ok(Vec::new())
   }
 
-  fn resolve(&self, root: &str, source: &dyn LtxDocumentSource) -> XrfResult<LtxResolution> {
+  fn resolve(
+    &self,
+    root: &str,
+    source: &dyn LtxDocumentSource,
+    request: LtxResolveRequest,
+  ) -> XrfResult<LtxResolution> {
     // One interner for the root and every file it includes, so a key name written in fifty of them is stored once.
     // Scoped to the merge: it holds a strong handle to every string it has seen, including text a later file overrides,
     // and nothing after this point creates any.
@@ -30,7 +35,20 @@ impl LtxDialect for LtxStandardDialect {
 
     ltx.set_source_paths(root);
 
-    Ok(LtxResolution::new_plain(ltx.into_inherited()?))
+    if !request.is_with_provenance() {
+      return Ok(LtxResolution::new_plain(ltx.into_inherited()?));
+    }
+
+    // Inheritance is the only thing that moves a field between sections here: a named section may be declared in
+    // exactly one file, because `merge_sections_from` refuses a second one, so every field a section writes itself
+    // comes from that section's own declaring file.
+    let (ltx, provenance): (Ltx, LtxProvenance) = ltx.into_inherited_recording()?;
+
+    Ok(LtxResolution {
+      diagnostics: Vec::new(),
+      ltx,
+      provenance,
+    })
   }
 }
 

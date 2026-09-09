@@ -1,4 +1,5 @@
 mod contract;
+mod field_provenance;
 mod include_directories;
 mod section_origins;
 mod sharing;

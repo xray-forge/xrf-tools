@@ -7185,6 +7185,7 @@ dependencies = [
  "xrf-gamedata",
  "xrf-job",
  "xrf-ltx",
+ "xrf-ltx-inspect",
  "xrf-output",
  "xrf-pack",
  "xrf-report",
@@ -7349,6 +7350,17 @@ dependencies = [
  "xrf-output",
  "xrf-test-utils",
  "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-ltx-inspect"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "xrf-error",
+ "xrf-ltx",
  "xrf-vfs",
 ]
 

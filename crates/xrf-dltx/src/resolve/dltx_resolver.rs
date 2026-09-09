@@ -139,10 +139,16 @@ impl<'a> DltxResolver<'a> {
       }
     }
 
-    self.apply_list_operations(section, &mut result);
+    // The list pass rewrites the item it stores back, so it reports the authored statements separately: a merged list
+    // holds a plain value, and reading the operation off it would say every append was an assignment.
+    let appended: BTreeMap<String, DltxFieldOrigin> = self.apply_list_operations(section, &mut result);
 
     for (key, item) in &result {
-      self.provenance.record(section, key, DltxFieldOrigin::of(item));
+      self.provenance.record(
+        section,
+        key,
+        appended.get(key).cloned().unwrap_or_else(|| DltxFieldOrigin::of(item)),
+      );
     }
 
     self.visiting.pop();
@@ -284,9 +290,11 @@ impl<'a> DltxResolver<'a> {
   ///
   /// Last of everything, and cumulative: each operation edits the result of the one before it, in load order
   /// (`Xr_ini.cpp`).
-  fn apply_list_operations(&mut self, section: &str, result: &mut ResolvedSection) {
+  fn apply_list_operations(&mut self, section: &str, result: &mut ResolvedSection) -> BTreeMap<String, DltxFieldOrigin> {
+    let mut authored: BTreeMap<String, DltxFieldOrigin> = BTreeMap::new();
+
     let Some(operations) = self.loaded.list_operations.get(section) else {
-      return;
+      return authored;
     };
 
     let mut ordered: Vec<&DltxItem> = operations.iter().collect();
@@ -327,6 +335,7 @@ impl<'a> DltxResolver<'a> {
       if elements.is_empty() {
         // A list edited down to nothing drops its key rather than becoming empty (`Xr_ini.cpp:1272-1275`).
         result.remove(&operation.key);
+        authored.remove(&operation.key);
 
         continue;
       }
@@ -337,7 +346,12 @@ impl<'a> DltxResolver<'a> {
       item.value = Some(elements.join(","));
 
       result.insert(operation.key.clone(), item);
+      // The statement as written, not the merged item stored beside it: `>ammo_class = ammo_c` is what a person has to
+      // find and edit, and the last operation to touch a key is the one that shaped the value it ends with.
+      authored.insert(operation.key.clone(), DltxFieldOrigin::of(operation));
     }
+
+    authored
   }
 
   /// Splits a comma list the way the engine does: commas only, trimmed, empties dropped.

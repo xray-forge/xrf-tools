@@ -8,7 +8,7 @@ use xrf_utils::{
 };
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
-use crate::dialect::{LtxDialect, LtxStandardDialect};
+use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
 use crate::ltx::{Ltx, LtxIncludeConvertor, LtxIncluded};
 use crate::source::{LtxFilesystemSource, LtxVfsSource};
@@ -29,7 +29,7 @@ impl Ltx {
   /// # Errors
   ///
   /// Returns an error when the contents will not parse.
-  pub(crate) fn read_document_from_str_preserving_source(buf: &str) -> XrfResult<LtxDocument> {
+  pub fn read_document_from_str_preserving_source(buf: &str) -> XrfResult<LtxDocument> {
     LtxParser::new_preserving_source(buf.chars()).parse_document()
   }
 
@@ -107,7 +107,11 @@ impl Ltx {
   pub fn read_from_file_with_dialect<P: AsRef<Path>>(path: P, dialect: &dyn LtxDialect) -> XrfResult<Self> {
     Ok(
       dialect
-        .resolve(&path.as_ref().to_string_lossy(), &LtxFilesystemSource)?
+        .resolve(
+          &path.as_ref().to_string_lossy(),
+          &LtxFilesystemSource,
+          LtxResolveRequest::plain(),
+        )?
         .ltx,
     )
   }

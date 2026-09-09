@@ -1,28 +1,59 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use fxhash::FxBuildHasher;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 
+use crate::dialect::{LtxFieldOrigin, LtxProvenance};
 use crate::document::LtxCheck;
 use crate::ltx::{Ltx, LtxSections, Section};
 use crate::syntax::VIRTUAL_LTX_PATH;
 
+/// Which section writes each field of one resolved section, keyed by the field's own shared handle.
+type SectionAttribution = HashMap<Arc<str>, Arc<str>, FxBuildHasher>;
+
 /// Converter object to process and inject all inherit section statements.
 #[derive(Default)]
-pub struct LtxInheritConvertor {}
+pub struct LtxInheritConvertor {
+  /// Which section writes each field, per resolved section, or nothing when no caller asked.
+  ///
+  /// Built alongside the fields rather than reconstructed afterwards, because after inheritance a copied field is
+  /// indistinguishable from a written one - that is the whole point of the copy.
+  attributions: Option<HashMap<String, SectionAttribution, FxBuildHasher>>,
+}
 
 impl LtxInheritConvertor {
   fn new() -> Self {
-    Self {}
+    Default::default()
+  }
+
+  /// The same, recording which section writes each resolved field.
+  fn new_recording() -> Self {
+    Self {
+      attributions: Some(Default::default()),
+    }
   }
 
   /// Cast LTX file to fully parsed with include sections.
   pub fn convert(ltx: Ltx) -> XrfResult<Ltx> {
-    Self::new().convert_ltx(ltx)
+    Ok(Self::new().convert_ltx(ltx)?.0)
+  }
+
+  /// The same, answering also with where each resolved field is written.
+  ///
+  /// Costs one map entry per resolved field, which is why it is a separate door rather than a return value everyone
+  /// pays for. See [`crate::LtxResolveRequest`].
+  pub(crate) fn convert_recording(ltx: Ltx) -> XrfResult<(Ltx, LtxProvenance)> {
+    let (ltx, provenance) = Self::new_recording().convert_ltx(ltx)?;
+
+    Ok((ltx, provenance.unwrap_or_default()))
   }
 }
 
 impl LtxInheritConvertor {
   /// Convert ltx file with inclusion of inherited sections.
-  fn convert_ltx(&self, mut ltx: Ltx) -> XrfResult<Ltx> {
+  fn convert_ltx(mut self, mut ltx: Ltx) -> XrfResult<(Ltx, Option<LtxProvenance>)> {
     if !ltx.includes.is_empty() {
       return Err(XrfError::new_convert_error(
         "Failed to equipment ltx file, not processed include statements detected on inheritance conversion",
@@ -34,12 +65,17 @@ impl LtxInheritConvertor {
     if ltx.is_check_skipped(LtxCheck::Inheritance) {
       ltx.shrink_to_fit();
 
-      return Ok(ltx);
+      // Nothing was copied, so every field is written where it sits - which is an answer, not an absence.
+      let provenance: Option<LtxProvenance> = self.attributions.is_some().then(|| Self::all_declared(&ltx));
+
+      return Ok((ltx, provenance));
     }
 
     // Nothing to parse - no child sections.
     if ltx.sections.is_empty() {
-      return Ok(ltx);
+      let provenance: Option<LtxProvenance> = self.attributions.is_some().then(LtxProvenance::default);
+
+      return Ok((ltx, provenance));
     }
 
     let mut new_sections: LtxSections = Default::default();
@@ -49,18 +85,80 @@ impl LtxInheritConvertor {
     ltx.sections = new_sections;
     ltx.shrink_to_fit();
 
-    Ok(ltx)
+    // Folded after the sections are in place, because an inherited field's file is the declaring file of the section
+    // that writes it, and only the resolved map knows that for every ancestor.
+    let provenance: Option<LtxProvenance> = self.attributions.take().map(|attributions| {
+      let mut provenance: LtxProvenance = Self::fold_attributions(&ltx, attributions);
+
+      provenance.shrink_to_fit();
+
+      provenance
+    });
+
+    Ok((ltx, provenance))
   }
 
-  fn inherit_sections(&self, ltx: &Ltx, destination: &mut LtxSections) -> XrfResult {
+  /// Every field written where it sits, which is what a tree with no inheritance applied comes to.
+  fn all_declared(ltx: &Ltx) -> LtxProvenance {
+    let mut provenance: LtxProvenance = LtxProvenance::default();
+
+    for (section_name, section) in &ltx.sections {
+      let name: Arc<str> = Arc::from(section_name.as_str());
+      let mut fields: HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher> = Default::default();
+
+      for (key, _) in section.iter_shared() {
+        fields.insert(
+          Arc::clone(key),
+          LtxFieldOrigin::Declared {
+            file: section.origin.clone(),
+          },
+        );
+      }
+
+      provenance.insert_section(name, fields);
+    }
+
+    provenance
+  }
+
+  /// Turns "which section writes this field" into "and which file that section was declared in".
+  fn fold_attributions(ltx: &Ltx, attributions: HashMap<String, SectionAttribution, FxBuildHasher>) -> LtxProvenance {
+    let mut provenance: LtxProvenance = LtxProvenance::default();
+
+    for (section_name, attributed) in attributions {
+      let name: Arc<str> = Arc::from(section_name.as_str());
+      let mut fields: HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher> = Default::default();
+
+      for (key, writer) in attributed {
+        let origin: LtxFieldOrigin = if *writer == *name {
+          LtxFieldOrigin::Declared {
+            file: ltx.sections.get(section_name.as_str()).and_then(|it| it.origin.clone()),
+          }
+        } else {
+          LtxFieldOrigin::Inherited {
+            file: ltx.sections.get(&*writer).and_then(|it| it.origin.clone()),
+            section: writer,
+          }
+        };
+
+        fields.insert(key, origin);
+      }
+
+      provenance.insert_section(name, fields);
+    }
+
+    provenance
+  }
+
+  fn inherit_sections(&mut self, ltx: &Ltx, destination: &mut LtxSections) -> XrfResult {
     for (section_name, _) in &ltx.sections {
-      Self::inherit_section(ltx, destination, section_name)?;
+      self.inherit_section(ltx, destination, section_name)?;
     }
 
     Ok(())
   }
 
-  fn inherit_section(ltx: &Ltx, destination: &mut LtxSections, section_name: &str) -> XrfResult {
+  fn inherit_section(&mut self, ltx: &Ltx, destination: &mut LtxSections, section_name: &str) -> XrfResult {
     let section: &Section = match ltx.sections.get(section_name) {
       None => {
         return Err(XrfError::new_convert_error(format!(
@@ -77,6 +175,8 @@ impl LtxInheritConvertor {
     }
 
     if section.inherited.is_empty() {
+      self.attribute_own(section_name, section, None);
+
       destination.insert(section_name.into(), section.clone());
     } else {
       for inherited in &section.inherited {
@@ -86,7 +186,7 @@ impl LtxInheritConvertor {
           )));
         }
 
-        Self::inherit_section(ltx, destination, inherited)?;
+        self.inherit_section(ltx, destination, inherited)?;
       }
 
       let mut new_props: Section = Default::default();
@@ -102,10 +202,43 @@ impl LtxInheritConvertor {
       // The child's own declaring file, not a parent's: inheritance copies fields in, it does not move the header.
       new_props.origin = section.origin.clone();
 
+      // Parents folded left then the section's own fields on top, which is the order the two `extend_shared` passes
+      // above apply, so the recorded winner is the one the value came from.
+      self.attribute_own(section_name, section, Some(&section.inherited));
+
       destination.insert(section_name.into(), new_props);
     }
 
     Ok(())
+  }
+
+  /// Records which section writes each field this one ends up with.
+  ///
+  /// A parent contributes what its own resolution attributed, not its name, so a field two levels up reports where it
+  /// is written rather than the step it arrived through.
+  fn attribute_own(&mut self, section_name: &str, section: &Section, parents: Option<&[String]>) {
+    let Some(attributions) = self.attributions.as_mut() else {
+      return;
+    };
+
+    let name: Arc<str> = Arc::from(section_name);
+    let mut attributed: SectionAttribution = Default::default();
+
+    if let Some(parents) = parents {
+      for parent in parents {
+        if let Some(inherited) = attributions.get(parent.as_str()) {
+          for (key, writer) in inherited {
+            attributed.insert(Arc::clone(key), Arc::clone(writer));
+          }
+        }
+      }
+    }
+
+    for (key, _) in section.iter_shared() {
+      attributed.insert(Arc::clone(key), Arc::clone(&name));
+    }
+
+    attributions.insert(String::from(section_name), attributed);
   }
 }
 

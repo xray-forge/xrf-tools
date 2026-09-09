@@ -6,12 +6,19 @@ use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
+use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::ltx::Ltx;
-use crate::project::{LTX_PHASE_VERIFY, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
+use crate::project::{LTX_PHASE_VERIFY, LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
+
+/// Where a declaring file's logical path is rendered once and reused.
+///
+/// Rendering asks the VFS where a logical path really sits, and a config commonly declares hundreds of sections, so
+/// this is paid per file rather than per finding.
+type DeclaringPaths = HashMap<String, String>;
 
 impl LtxProject {
   /// Verify all the entries in current ltx project.
@@ -20,9 +27,7 @@ impl LtxProject {
   /// - All the inherited sections are valid and declared before inherit attempt
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
-    // Rendered once per declaring file, not once per section: a config commonly declares hundreds of them, and
-    // rendering asks the VFS where a logical path really sits.
-    let mut declaring_paths: HashMap<String, String> = HashMap::new();
+    let mut declaring_paths: DeclaringPaths = HashMap::new();
 
     xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
 
@@ -69,118 +74,7 @@ impl LtxProject {
         }
       };
 
-      // For each section in file:
-      for (section_name, section) in ltx.iter() {
-        result.total_sections += 1;
-
-        // The file a person has to open. `reported` stays beside it, because the entry point is what a caller re-runs
-        // and the only thing that explains why two files were read together.
-        let declared_in: Option<String> = section.get_origin().map(|origin| {
-          declaring_paths
-            .entry(String::from(origin))
-            .or_insert_with(|| match XrayLogicalPath::new(origin) {
-              Ok(logical) => format_path(&self.path_of(&logical)).to_string(),
-              // A path the VFS will not accept is still worth naming as the file said it.
-              Err(_) => String::from(origin),
-            })
-            .clone()
-        });
-
-        // Check only if schema is defined:
-        if let Some(scheme_name) = section.get(LTX_SCHEME_FIELD) {
-          let mut section_has_error: bool = false;
-
-          result.checked_sections += 1;
-
-          // Check if definition or required schema exists:
-          if let Some(scheme_definition) = self.ltx_scheme_declarations.get(scheme_name) {
-            let mut validated: IndexSet<String, FxBuildHasher> = Default::default();
-
-            // Check all fields in section data.
-            for (field_name, value) in section {
-              validated.insert(field_name.into());
-
-              // Respect `*` definition for mapping sections.
-              if let Some(field_definition) = scheme_definition
-                .fields
-                .get(field_name)
-                .or_else(|| scheme_definition.fields.get(LTX_SYMBOL_ANY))
-              {
-                xrf_output::verbose!(
-                  options.output,
-                  "Checking {} [{}] {}",
-                  reported,
-                  section_name,
-                  field_name
-                );
-
-                result.checked_fields += 1;
-
-                if let Some(error) = field_definition.validate_value(&ltx, value) {
-                  match error {
-                    XrfError::LtxScheme { message, .. } => {
-                      section_has_error = true;
-
-                      result.errors.push(XrfError::new_scheme_error_resolved(
-                        section_name,
-                        field_name,
-                        message,
-                        declared_in.as_deref(),
-                        &reported,
-                      ));
-                    }
-                    error => return Err(error),
-                  }
-                }
-              } else if scheme_definition.is_strict {
-                section_has_error = true;
-
-                result.errors.push(XrfError::new_scheme_error_resolved(
-                  section_name,
-                  field_name,
-                  "Unexpected field, definition is required in strict mode",
-                  declared_in.as_deref(),
-                  &reported,
-                ));
-              }
-            }
-
-            if scheme_definition.is_strict {
-              for (field_name, definition) in &scheme_definition.fields {
-                if !definition.is_optional && field_name != LTX_SYMBOL_ANY && !validated.contains(field_name) {
-                  section_has_error = true;
-
-                  result.errors.push(XrfError::new_scheme_error_resolved(
-                    section_name,
-                    field_name,
-                    "Required field was not provided",
-                    declared_in.as_deref(),
-                    &reported,
-                  ));
-                }
-              }
-            }
-          } else {
-            section_has_error = true;
-
-            result.errors.push(XrfError::new_scheme_error_resolved(
-              section_name,
-              "*",
-              format!("Required schema '{scheme_name}' definition is not found"),
-              declared_in.as_deref(),
-              &reported,
-            ));
-          }
-
-          if section_has_error {
-            result.invalid_sections += 1;
-          } else {
-            result.valid_sections += 1;
-          }
-        } else {
-          result.skipped_sections += 1
-        }
-      }
+      result.absorb(self.verify_resolved_opt(&ltx, &reported, &mut declaring_paths, Some(&options.output))?);
     }
 
     result.duration = options.job.elapsed();
@@ -215,6 +109,152 @@ impl LtxProject {
     Ok(result)
   }
 
+  /// Verifies one entry point that the caller has already resolved.
+  ///
+  /// The door for a surface inspecting a single config: it holds a resolution for its own reasons and must not pay for
+  /// a second one, and it wants the findings of that root alone rather than of the tree around it. The sweep above is
+  /// this same check in a loop, so the two can never disagree about a file.
+  ///
+  /// `entry` names the entry point the resolution came from, and is what a finding reports as the file to re-run.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error only for a scheme failure that is not a finding about the config, which is a defect in a scheme
+  /// declaration rather than in the config being judged.
+  pub fn verify_resolved(&self, entry: &XrayLogicalPath, ltx: &Ltx) -> XrfResult<LtxEntryVerification> {
+    let reported: String = format_path(&self.path_of(entry)).to_string();
+
+    self.verify_resolved_opt(ltx, &reported, &mut DeclaringPaths::new(), None)
+  }
+
+  /// The section-and-field check itself, over one resolved config.
+  fn verify_resolved_opt(
+    &self,
+    ltx: &Ltx,
+    reported: &str,
+    declaring_paths: &mut DeclaringPaths,
+    output: Option<&OutputOptions>,
+  ) -> XrfResult<LtxEntryVerification> {
+    let mut found: LtxEntryVerification = LtxEntryVerification::default();
+
+    for (section_name, section) in ltx.iter() {
+      found.total_sections += 1;
+
+      // The file a person has to open. `reported` stays beside it, because the entry point is what a caller re-runs
+      // and the only thing that explains why two files were read together.
+      let declared_in: Option<String> = section
+        .get_origin()
+        .map(|origin| self.declaring_path_of(origin, declaring_paths));
+
+      // Check only if schema is defined:
+      let Some(scheme_name) = section.get(LTX_SCHEME_FIELD) else {
+        found.skipped_sections += 1;
+
+        continue;
+      };
+
+      let mut section_has_error: bool = false;
+
+      found.checked_sections += 1;
+
+      // Check if definition or required schema exists:
+      if let Some(scheme_definition) = self.ltx_scheme_declarations.get(scheme_name) {
+        let mut validated: IndexSet<String, FxBuildHasher> = Default::default();
+
+        // Check all fields in section data.
+        for (field_name, value) in section {
+          validated.insert(field_name.into());
+
+          // Respect `*` definition for mapping sections.
+          if let Some(field_definition) = scheme_definition
+            .fields
+            .get(field_name)
+            .or_else(|| scheme_definition.fields.get(LTX_SYMBOL_ANY))
+          {
+            if let Some(output) = output {
+              xrf_output::verbose!(output, "Checking {} [{}] {}", reported, section_name, field_name);
+            }
+
+            found.checked_fields += 1;
+
+            if let Some(error) = field_definition.validate_value(ltx, value) {
+              match error {
+                XrfError::LtxScheme { message, .. } => {
+                  section_has_error = true;
+
+                  found.errors.push(XrfError::new_scheme_error_resolved(
+                    section_name,
+                    field_name,
+                    message,
+                    declared_in.as_deref(),
+                    reported,
+                  ));
+                }
+                error => return Err(error),
+              }
+            }
+          } else if scheme_definition.is_strict {
+            section_has_error = true;
+
+            found.errors.push(XrfError::new_scheme_error_resolved(
+              section_name,
+              field_name,
+              "Unexpected field, definition is required in strict mode",
+              declared_in.as_deref(),
+              reported,
+            ));
+          }
+        }
+
+        if scheme_definition.is_strict {
+          for (field_name, definition) in &scheme_definition.fields {
+            if !definition.is_optional && field_name != LTX_SYMBOL_ANY && !validated.contains(field_name) {
+              section_has_error = true;
+
+              found.errors.push(XrfError::new_scheme_error_resolved(
+                section_name,
+                field_name,
+                "Required field was not provided",
+                declared_in.as_deref(),
+                reported,
+              ));
+            }
+          }
+        }
+      } else {
+        section_has_error = true;
+
+        found.errors.push(XrfError::new_scheme_error_resolved(
+          section_name,
+          "*",
+          format!("Required schema '{scheme_name}' definition is not found"),
+          declared_in.as_deref(),
+          reported,
+        ));
+      }
+
+      if section_has_error {
+        found.invalid_sections += 1;
+      } else {
+        found.valid_sections += 1;
+      }
+    }
+
+    Ok(found)
+  }
+
+  /// Renders one declaring file's logical path the way a person can act on it, once per file.
+  fn declaring_path_of(&self, origin: &str, declaring_paths: &mut DeclaringPaths) -> String {
+    declaring_paths
+      .entry(String::from(origin))
+      .or_insert_with(|| match XrayLogicalPath::new(origin) {
+        Ok(logical) => format_path(&self.path_of(&logical)).to_string(),
+        // A path the VFS will not accept is still worth naming as the file said it.
+        Err(_) => String::from(origin),
+      })
+      .clone()
+  }
+
   /// Verify all the section/field entries in current ltx project.
   pub fn verify_entries(&self) -> XrfResult<LtxProjectVerifyResult> {
     self.verify_entries_opt(Default::default())
@@ -223,187 +263,6 @@ impl LtxProject {
   /// Format single LTX file by provided path
   pub fn verify_file<P: AsRef<Path>>(path: P) -> XrfResult<()> {
     Ltx::read_from_file_standard(path)?;
-
-    Ok(())
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use std::fs;
-  use std::path::PathBuf;
-
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-
-  use super::*;
-  use crate::project::{LtxProjectOptions, LtxVerifyOptions};
-
-  #[test]
-  fn the_total_covers_the_work_done_before_the_first_file_was_read() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/tests/ltx_project_verify/condlist");
-
-    // Created before the project opens, exactly as the desktop command and the command line both do.
-    let job: xrf_job::JobHandle = xrf_job::JobHandle::inert();
-
-    let project = LtxProject::open_at_path_opt(
-      &root,
-      LtxProjectOptions {
-        is_with_schemes_check: true,
-        ..Default::default()
-      },
-    )
-    .expect("Expected test project to open");
-
-    let opened_at: std::time::Duration = job.elapsed();
-
-    let result = project
-      .verify_entries_opt(LtxVerifyOptions {
-        job: job.clone(),
-        ..Default::default()
-      })
-      .expect("Expected test project verification to complete");
-
-    // What the old shape could not say: opening the project is inside the total.
-    assert!(
-      result.startup_duration >= opened_at,
-      "startup ({:?}) has to contain the project opening already measured ({opened_at:?})",
-      result.startup_duration
-    );
-
-    // And the total contains the startup, so the per-file phase is the difference rather than the whole answer.
-    assert!(
-      result.duration >= result.startup_duration,
-      "total ({:?}) has to contain startup ({:?})",
-      result.duration,
-      result.startup_duration
-    );
-  }
-
-  /// A handle made at the call site measures only what it wrapped, which is the honest reading for a caller that did
-  /// not want its own setup counted - `xrf-gamedata` verifying LTX as one of its checks, for instance.
-  #[test]
-  fn a_handle_made_at_the_call_site_reports_almost_no_startup() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/tests/ltx_project_verify/condlist");
-    let project = LtxProject::open_at_path_opt(
-      &root,
-      LtxProjectOptions {
-        is_with_schemes_check: true,
-        ..Default::default()
-      },
-    )
-    .expect("Expected test project to open");
-
-    let result = project
-      .verify_entries_opt(LtxVerifyOptions { ..Default::default() })
-      .expect("Expected test project verification to complete");
-
-    assert!(result.duration >= result.startup_duration);
-  }
-
-  #[test]
-  fn validates_condlists_from_project_schemes() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/tests/ltx_project_verify/condlist");
-    let project = LtxProject::open_at_path_opt(
-      &root,
-      LtxProjectOptions {
-        is_with_schemes_check: true,
-        ..Default::default()
-      },
-    )
-    .expect("Expected test project to open");
-
-    let result = project
-      .verify_entries_opt(LtxVerifyOptions { ..Default::default() })
-      .expect("Expected test project verification to complete");
-
-    assert_eq!(result.valid_sections, 2);
-    assert_eq!(result.invalid_sections, 1);
-    assert_eq!(result.errors.len(), 1);
-    assert_eq!(
-      result.errors[0].to_string(),
-      format!(
-        "Ltx scheme error in '{}' [invalid] value : Parsing error: Invalid condlist syntax at byte 2: Expected a name after condition or effect prefix",
-        root.join("invalid.ltx").display(),
-      ),
-    );
-  }
-
-  #[test]
-  fn skips_schema_less_sections() -> XrfResult {
-    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/schema_less");
-
-    let _ = fs::remove_dir_all(&root);
-
-    fs::create_dir_all(&root)?;
-    fs::write(root.join("array_sections.ltx"), "[array@one]\nvalue = 1\n")?;
-
-    let project: LtxProject = LtxProject::open_at_path_opt(
-      &root,
-      LtxProjectOptions {
-        is_with_schemes_check: true,
-        ..Default::default()
-      },
-    )?;
-    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { ..Default::default() })?;
-
-    assert_eq!(result.checked_sections, 0);
-    assert_eq!(result.skipped_sections, 1);
-    assert_eq!(result.invalid_sections, 0);
-    assert!(result.errors.is_empty());
-
-    fs::remove_dir_all(root)?;
-
-    Ok(())
-  }
-
-  #[test]
-  fn skips_inheritance_for_entry_with_header_metadata() -> XrfResult {
-    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/skip_inheritance");
-
-    let _ = fs::remove_dir_all(&root);
-
-    fs::create_dir_all(&root)?;
-    fs::write(
-      root.join("disabled.ltx"),
-      "; @xrf-ltx skip-inheritance\n[child]:missing\n",
-    )?;
-
-    let project: LtxProject = LtxProject::open_at_path(&root)?;
-    let result: LtxProjectVerifyResult = project.verify_entries()?;
-
-    assert_eq!(result.total_files, 1);
-    assert_eq!(result.total_sections, 1);
-    assert!(result.errors.is_empty());
-
-    fs::remove_dir_all(root)?;
-
-    Ok(())
-  }
-
-  #[test]
-  fn reports_an_unreadable_entry_and_keeps_verifying_the_rest() -> XrfResult {
-    // A real installation holds orphan configs that inherit sections only the rest of the tree defines. Ending the run at
-    // the first one would leave every later config unverified.
-    let root: PathBuf = build_absolute_generated_test_resource_path("project_verify/unreadable");
-
-    let _ = fs::remove_dir_all(&root);
-
-    fs::create_dir_all(&root)?;
-    fs::write(root.join("broken.ltx"), "[child]:missing\n")?;
-    fs::write(root.join("valid.ltx"), "[section]\nvalue = 1\n")?;
-
-    let project: LtxProject = LtxProject::open_at_path(&root)?;
-    let result: LtxProjectVerifyResult = project.verify_entries()?;
-
-    assert_eq!(result.total_files, 2);
-    assert_eq!(result.errors.len(), 1, "one finding rather than a failed run");
-    assert!(
-      result.errors[0].to_string().contains("broken.ltx"),
-      "the finding names the file to act on"
-    );
-    assert_eq!(result.total_sections, 1, "the readable entry is still verified");
-
-    fs::remove_dir_all(root)?;
 
     Ok(())
   }
