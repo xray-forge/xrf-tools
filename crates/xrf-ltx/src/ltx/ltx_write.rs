@@ -94,7 +94,9 @@ impl Ltx {
       }
 
       for (key, value) in props.iter() {
-        write!(writer, "{}{}{}{}", key, DEFAULT_KV_SEPARATOR, value, LTX_LINE_SEPARATOR)?;
+        let separator: &str = if value.is_empty() { " =" } else { DEFAULT_KV_SEPARATOR };
+
+        write!(writer, "{}{}{}{}", key, separator, value, LTX_LINE_SEPARATOR)?;
       }
     }
 
@@ -167,6 +169,34 @@ a3 = n3
         str::from_utf8(&buf).unwrap()
       );
     }
+  }
+
+  #[test]
+  fn write_empty_values_without_trailing_spaces() {
+    let mut ltx: Ltx = Ltx::new();
+
+    ltx.with_section(ROOT_SECTION).set("EmptyRoot", "");
+    ltx
+      .with_section("Section")
+      .set("Empty", "")
+      .set("Value", "text")
+      .set("Whitespace", " \t ");
+
+    let mut output: Vec<u8> = Vec::new();
+    ltx.write_to(&mut output).unwrap();
+
+    let rendered: String = String::from_utf8(output).unwrap();
+
+    assert_eq!(
+      rendered,
+      "EmptyRoot =\r\n\r\n[Section]\r\nEmpty =\r\nValue = text\r\nWhitespace =  \t \r\n"
+    );
+
+    let round_tripped: Ltx = Ltx::read_from_str(&rendered).unwrap();
+
+    assert_eq!(round_tripped.root_section().unwrap().get("EmptyRoot"), Some(""));
+    assert_eq!(round_tripped.section("Section").unwrap().get("Empty"), Some(""));
+    assert_eq!(round_tripped.section("Section").unwrap().get("Value"), Some("text"));
   }
 
   #[test]
