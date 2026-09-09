@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -12,9 +11,8 @@ use xrf_output::OutputOptions;
 use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::sprite_equipment::lease::{PACK_SPRITE_JOB_KIND, to_pack_sprite_lease_key};
 use crate::plugins::sprite_equipment::request::PackSpriteRequest;
 
 /// Draw every declared inventory icon into one equipment sprite sheet.
@@ -31,6 +29,8 @@ pub async fn sprite_equipment_pack_sprite(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<PackEquipmentResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::SpriteEquipmentPack).with_request(&request);
+
   let PackSpriteRequest {
     source_path: source,
     output_path: output,
@@ -48,10 +48,9 @@ pub async fn sprite_equipment_pack_sprite(
   // Registered before the hop, and before the LTX is read: `system.ltx` pulls in the whole include tree, which on an
   // installation is thousands of files and most of the wait.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, PACK_SPRITE_JOB_KIND)
-      .with_exclusion_group(PACK_SPRITE_JOB_KIND)
-      .with_lease_keys(vec![to_pack_sprite_lease_key(&output)])
-      .with_request(&json!({ "source": source, "output": output, "systemLtx": system_ltx }))
+    start
+      .with_exclusion_group(JobKind::SpriteEquipmentPack.as_str())
+      .with_resources(vec![JobResource::file(&output)])
       .with_progress(progress),
   )?;
 

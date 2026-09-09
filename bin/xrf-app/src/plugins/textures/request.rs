@@ -3,17 +3,17 @@
 //! One module for the whole domain, as every plugin over the three-argument limit has: a reader asking what the
 //! textures editor accepts over IPC reads one file rather than four command bodies.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use xrf_dds::{DdsMipFilter, DdsMipmaps};
 use xrf_vfs::XrayRoots;
 
+use crate::core::jobs::JobResource;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 use crate::plugins::textures::file_stamp::TextureFileStamp;
-use crate::plugins::textures::lease::to_texture_lease_key;
 use crate::plugins::textures::source::TextureSource;
 
 /// One file a write addresses, and what was there when the editor read it.
@@ -125,26 +125,26 @@ pub struct TexturesCompareRequest {
 }
 
 impl TexturesSaveRequest {
-  /// Every file this save would write, as lease keys.
+  /// Every file this save would write, as write claims.
   ///
   /// Taken before the work starts, so a build or a generation aimed at the same texture is refused at registration
   /// rather than discovered halfway through a rename.
-  pub fn to_lease_keys(&self) -> Vec<String> {
+  pub fn to_resources(&self) -> Vec<JobResource> {
     [
       self.descriptor.as_ref().map(|save| &save.target.path),
       self.texture.as_ref().map(|save| &save.target.path),
     ]
     .into_iter()
     .flatten()
-    .map(|path| to_texture_lease_key(Path::new(path)))
+    .map(JobResource::file)
     .collect()
   }
 }
 
 impl TexturesBuildRequest {
-  /// The file this build would write, as a lease key.
-  pub fn to_lease_keys(&self) -> Vec<String> {
-    vec![to_texture_lease_key(Path::new(&self.destination))]
+  /// The file this build would write, as a write claim.
+  pub fn to_resources(&self) -> Vec<JobResource> {
+    vec![JobResource::file(&self.destination)]
   }
 
   pub fn to_destination(&self) -> PathBuf {

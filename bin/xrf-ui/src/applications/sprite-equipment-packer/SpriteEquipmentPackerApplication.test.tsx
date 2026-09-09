@@ -3,7 +3,8 @@ import { act, fireEvent } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { IPackEquipmentResult, SpriteEquipmentPackerService } from "@/core/sprite-equipment";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

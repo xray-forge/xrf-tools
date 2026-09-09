@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
-import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind, JobDescription } from "@/core/bindings/types/xrf-app";
+import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -402,5 +402,37 @@ describe("JobsService adoption", () => {
 
     await expect(service.onProvision(1)).resolves.toBeUndefined();
     expect(service.jobs).toHaveLength(0);
+  });
+
+  it("keeps watching through a failed poll and settles only after recovery", async () => {
+    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
+
+    const { service, raised, settled } = watched();
+
+    await service.onProvision(1);
+
+    setMockInvokeResponses({
+      [LIST_COMMAND]: () => {
+        throw new Error("temporarily unavailable");
+      },
+    });
+
+    await jest.advanceTimersByTimeAsync(POLL_INTERVAL * 2);
+
+    expect(service.getJob("b8f0")?.isAdopted).toBe(true);
+    expect(raised).toHaveLength(0);
+    expect(settled).toHaveLength(0);
+
+    setMockInvokeResponses({
+      [LIST_COMMAND]: [described({ conclusion: "completed", result: { volumes: ["textures.db0"] } })],
+    });
+
+    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
+
+    expect(service.jobs).toHaveLength(0);
+    expect(settled).toHaveLength(1);
+    expect(settled[0].result).toEqual({ volumes: ["textures.db0"] });
+    expect(raised).toHaveLength(1);
+    expect(jest.getTimerCount()).toBe(0);
   });
 });

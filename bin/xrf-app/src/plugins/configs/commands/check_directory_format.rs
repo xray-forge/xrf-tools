@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -8,9 +7,8 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::configs::lease::{CHECK_FORMAT_JOB_KIND, FORMAT_JOB_KIND};
 use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
@@ -27,14 +25,15 @@ pub async fn configs_check_directory_format(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LtxProjectFormatResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ConfigsCheckFormat).with_request(&request);
+
   let ConfigsFormatRequest { roots, prefix } = request;
 
   log::info!("Checking ltx format in {}", roots.describe());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, CHECK_FORMAT_JOB_KIND)
-      .with_exclusion_group(FORMAT_JOB_KIND)
-      .with_request(&json!({ "roots": roots, "prefix": prefix }))
+    start
+      .with_exclusion_group(JobKind::ConfigsFormat.as_str())
       .with_progress(progress),
   )?;
 

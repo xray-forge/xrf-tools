@@ -6,6 +6,7 @@ use std::path::Path;
 use specta::{Format, Types};
 use specta_typescript::{Exporter, primitives};
 
+use crate::core::jobs::JobKind;
 use crate::ipc::bindings::constants::GENERATED_HEADER;
 use crate::ipc::bindings::exporter::{TypeScriptFormat, exporter};
 use crate::ipc::bindings::output::write_generated;
@@ -46,9 +47,28 @@ pub(super) fn export_type_modules(output: &Path, collected: &Types) -> TypeOwner
 
   assert_no_import_cycles(&graph);
 
+  // Runtime names come from the same identities as the serialized JobKind union.
+  if let Some(app) = rendered.get_mut("xrf-app") {
+    app.push_str(&render_job_kinds());
+  }
+
   for (module, contents) in rendered {
     write_generated(&output.join(format!("{module}.ts")), &contents);
   }
 
   ownership
+}
+
+// todo: Probably render_enum since it can be useful later for us.
+fn render_job_kinds() -> String {
+  let mut declaration: String = String::from("\n/** Backend job identities. */\nexport enum EJobKind {\n");
+
+  for kind in JobKind::ALL {
+    let wire: &str = kind.as_str();
+    let member: String = wire.replace(['.', '-'], "_").to_uppercase();
+    declaration.push_str(&format!("  {member} = \"{wire}\",\n"));
+  }
+
+  declaration.push_str("}\n");
+  declaration
 }

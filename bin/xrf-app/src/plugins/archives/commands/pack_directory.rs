@@ -8,9 +8,9 @@ use xrf_pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 use xrf_utils::format_path;
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::{PACK_JOB_KIND, PUBLISH_ACTION_GROUP, to_published_set_lease_key};
+use crate::plugins::archives::lease::PUBLISH_ACTION_GROUP;
 use crate::plugins::archives::request::ArchivesPackRequest;
 
 /// Packs a directory using the supplied configuration.
@@ -26,6 +26,8 @@ pub async fn archives_pack_directory(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePackResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesPack).with_request(&request);
+
   let ArchivesPackRequest { config, is_forced } = request;
 
   log::info!(
@@ -36,10 +38,9 @@ pub async fn archives_pack_directory(
   );
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, PACK_JOB_KIND)
+    start
       .with_exclusion_group(PUBLISH_ACTION_GROUP)
-      .with_lease_keys(vec![to_published_set_lease_key(&config.destination, &config.name)])
-      .with_request(&config)
+      .with_resources(vec![JobResource::tree(&config.destination)])
       .with_progress(progress),
   )?;
 

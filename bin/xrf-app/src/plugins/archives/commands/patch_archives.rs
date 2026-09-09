@@ -8,9 +8,9 @@ use xrf_pack::{ArchivePatchOptions, ArchivePatchResult, ArchivePatcher};
 use xrf_utils::format_path;
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::{PATCH_JOB_KIND, PUBLISH_ACTION_GROUP, to_published_set_lease_key};
+use crate::plugins::archives::lease::PUBLISH_ACTION_GROUP;
 use crate::plugins::archives::request::ArchivesPatchRequest;
 
 /// Publishes added and modified entries as patch volumes.
@@ -26,6 +26,8 @@ pub async fn archives_patch_archives(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePatchResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesPatch).with_request(&request);
+
   let ArchivesPatchRequest {
     config,
     is_forced,
@@ -43,10 +45,9 @@ pub async fn archives_patch_archives(
   );
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, PATCH_JOB_KIND)
+    start
       .with_exclusion_group(PUBLISH_ACTION_GROUP)
-      .with_lease_keys(vec![to_published_set_lease_key(&config.destination, &config.name)])
-      .with_request(&config)
+      .with_resources(vec![JobResource::tree(&config.destination)])
       .with_progress(progress),
   )?;
 

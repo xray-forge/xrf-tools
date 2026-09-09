@@ -4,6 +4,8 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::JobProgress;
 
+use crate::core::jobs::{JobKind, JobResource};
+
 /// What a command hands the registry to start a job.
 ///
 /// A described start rather than a list of arguments: every field here is something only the calling command knows,
@@ -14,9 +16,9 @@ pub struct JobStart {
   /// Identity, minted by the frontend before the command is sent so a cancel can arrive before the job does.
   pub id: Uuid,
   /// What kind of work this is, and how a tool finds its own run again after its view was rebuilt.
-  pub kind: String,
+  pub kind: JobKind,
   /// What this job holds exclusively while it runs, so a second request for the same destination is refused.
-  pub lease_keys: Vec<String>,
+  pub resources: Vec<JobResource>,
   /// Action group held independently of destination leases, including read-only jobs and paired modes.
   pub(super) exclusion_group: Option<String>,
   /// What the job was asked to do, serialized by the command that knows the type and never read by the registry.
@@ -30,20 +32,20 @@ pub struct JobStart {
 
 impl JobStart {
   /// A job of `kind` under `id`, holding nothing, describing nothing, watched by nobody.
-  pub fn new(id: Uuid, kind: impl Into<String>) -> Self {
+  pub fn new(id: Uuid, kind: JobKind) -> Self {
     Self {
       id,
-      kind: kind.into(),
-      lease_keys: Vec::new(),
+      kind,
+      resources: Vec::new(),
       exclusion_group: None,
       request: None,
       progress: None,
     }
   }
 
-  /// Hold `lease_keys` for as long as the job runs.
-  pub fn with_lease_keys(mut self, lease_keys: Vec<String>) -> Self {
-    self.lease_keys = lease_keys;
+  /// Hold `resources` for as long as the job runs.
+  pub fn with_resources(mut self, resources: Vec<JobResource>) -> Self {
+    self.resources = resources;
 
     self
   }

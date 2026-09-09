@@ -7,9 +7,8 @@ use xrf_job::{JobHandle, JobProgress};
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::textures::lease::SAVE_JOB_KIND;
 use crate::plugins::textures::request::TexturesSaveRequest;
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
 use crate::plugins::textures::state::TextureState;
@@ -25,6 +24,8 @@ pub async fn textures_save(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureSaveOutcome> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TexturesSave).with_request(&request);
+
   log::info!(
     "Saving texture node: descriptor {}, texture {}",
     request.descriptor.is_some(),
@@ -38,12 +39,8 @@ pub async fn textures_save(
     None => None,
   };
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, SAVE_JOB_KIND)
-      .with_lease_keys(request.to_lease_keys())
-      .with_request(&request)
-      .with_progress(progress),
-  )?;
+  let (job, registration): (JobHandle, JobRegistration) =
+    registry.register(start.with_resources(request.to_resources()).with_progress(progress))?;
 
   run_job(
     &execution,

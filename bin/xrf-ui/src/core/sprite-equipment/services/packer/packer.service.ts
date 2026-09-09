@@ -1,7 +1,8 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
-import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";

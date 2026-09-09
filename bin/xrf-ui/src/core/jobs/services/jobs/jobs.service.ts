@@ -3,11 +3,11 @@ import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId }
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { jobsCommands } from "@/core/bindings/commands/jobs";
-import { JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
+import { EJobKind, JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { transformError } from "@/core/error/lib";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
-import { EJobKind, findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
+import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
 import {
   IJobDescriptor,
   IJobNotice,
@@ -20,7 +20,7 @@ import {
 import { emitNotification } from "@/core/notifications/lib";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * Every backend job this window started, while it is running.
@@ -159,7 +159,12 @@ export class JobsService {
    */
   @LatestFlow("jobs")
   private *adoptRunningJobs(): TFlow {
-    const listed: Array<JobDescription> = yield* call(this.listJobs());
+    const listed: Nullable<Array<JobDescription>> = yield* call(this.listJobs());
+
+    if (!listed) {
+      return;
+    }
+
     const running: Array<JobDescription> = listed.filter((job: JobDescription) => job.conclusion === null);
 
     if (!running.length) {
@@ -216,11 +221,16 @@ export class JobsService {
    */
   @LatestFlow()
   private *pollAdoptedJobs(): TFlow {
-    const listed: Array<JobDescription> = yield* call(this.listJobs());
+    const listed: Nullable<Array<JobDescription>> = yield* call(this.listJobs());
+
+    if (!listed) {
+      return;
+    }
+
     const byId: Map<string, JobDescription> = new Map(listed.map((job: JobDescription) => [job.id, job]));
 
     for (const job of this.jobs.filter((it: IJobState) => it.isAdopted)) {
-      const described: JobDescription | undefined = byId.get(job.id);
+      const described: Maybe<JobDescription> = byId.get(job.id);
 
       // Absent from the listing at all means it finished and then fell out of the retained ring, which takes twenty
       // finished jobs. It ended; how is no longer recorded.
@@ -249,22 +259,22 @@ export class JobsService {
   }
 
   /**
-   * Reads what the backend is running, answering nothing where it cannot be read.
+   * Reads the backend listing, distinguishing an unavailable observation from an empty one.
    *
-   * A start-up is a bad moment to fail loudly, and a poll that threw would take its own timer down with it. The lease
-   * still prevents a job this window could not see from being started twice.
+   * An unavailable observation leaves watched jobs intact. Only a successful listing can establish that a job
+   * has finished or left the retained history.
    *
-   * @returns Every job the backend describes, or an empty listing.
+   * @returns Every job the backend describes, or null when the listing could not be read.
    */
-  private async listJobs(): Promise<Array<JobDescription>> {
+  private async listJobs(): Promise<Nullable<Array<JobDescription>>> {
     try {
       const listed: Array<JobDescription> = await jobsCommands.list();
 
-      return Array.isArray(listed) ? listed : [];
+      return Array.isArray(listed) ? listed : null;
     } catch (error: unknown) {
       this.log.error("Could not read running jobs:", error);
 
-      return [];
+      return null;
     }
   }
 

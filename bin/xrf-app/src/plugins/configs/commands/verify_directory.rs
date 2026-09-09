@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -9,9 +8,8 @@ use xrf_job::{JobHandle, JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JOB_PHASE_PREPARE, JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JOB_PHASE_PREPARE, JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsVerifyRequest;
 
@@ -25,14 +23,15 @@ pub async fn configs_verify_directory(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LtxProjectVerifyResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ConfigsVerify).with_request(&request);
+
   let ConfigsVerifyRequest { roots, prefix, is_dltx } = request;
 
   log::info!("Verifying ltx configs in {}", roots.describe());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, VERIFY_JOB_KIND)
-      .with_exclusion_group(VERIFY_JOB_KIND)
-      .with_request(&json!({ "roots": roots, "prefix": prefix, "isDltx": is_dltx }))
+    start
+      .with_exclusion_group(JobKind::ConfigsVerify.as_str())
       .with_progress(progress),
   )?;
 

@@ -12,12 +12,12 @@ use xrf_vfs::XrayAssetType;
 use crate::core::assets::{AssetMountState, read_referenced_asset};
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::encoding::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingQuality, TextureEncodingSession,
 };
-use crate::plugins::textures::lease::{COMPARE_ENCODINGS_JOB_KIND, TEXTURE_ENCODE_GROUP, TEXTURE_PHASE_WEIGH};
+use crate::plugins::textures::lease::{TEXTURE_ENCODE_GROUP, TEXTURE_PHASE_WEIGH};
 use crate::plugins::textures::request::TexturesCompareRequest;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::state::TextureState;
@@ -46,17 +46,15 @@ pub async fn textures_compare_encodings(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureEncodingComparison> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TexturesCompareEncodings).with_request(&request);
+
   log::info!("Comparing encodings of texture: {}", request.source.label());
 
   let mipmaps: DdsMipmaps = request.to_mipmaps()?;
   let bytes: Vec<u8> = read_texture_bytes(&assets, &request)?;
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, COMPARE_ENCODINGS_JOB_KIND)
-      .with_exclusion_group(TEXTURE_ENCODE_GROUP)
-      .with_request(&request)
-      .with_progress(progress),
-  )?;
+  let (job, registration): (JobHandle, JobRegistration) =
+    registry.register(start.with_exclusion_group(TEXTURE_ENCODE_GROUP).with_progress(progress))?;
 
   // A handle on the same slot rather than a borrow of the managed state, because the session is stored on the
   // blocking thread once the encodes exist and the command frame's borrow does not reach that far.

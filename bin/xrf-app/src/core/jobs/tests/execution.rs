@@ -11,7 +11,7 @@ use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::job_conclusion::JobConclusion;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 
 #[derive(Debug, Serialize)]
 struct ResultSummary {
@@ -26,9 +26,11 @@ fn execution() -> ExecutionState {
 fn register(registry: &Arc<JobRegistry>) -> (JobHandle, JobRegistration) {
   registry
     .register(
-      JobStart::new(Uuid::new_v4(), "test")
+      JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack)
         .with_exclusion_group("test")
-        .with_lease_keys(vec!["output".to_owned()]),
+        .with_resources(vec![JobResource::file(
+          std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output"),
+        )]),
     )
     .expect("job registers")
 }
@@ -127,12 +129,16 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
   assert!(listed[0].is_cancel_requested);
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), "test").with_exclusion_group("test"))
+      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("test"))
       .is_err()
   );
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), "other").with_lease_keys(vec!["output".to_owned()]))
+      .register(
+        JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack).with_resources(vec![JobResource::file(
+          std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output")
+        )])
+      )
       .is_err()
   );
 
@@ -193,7 +199,7 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
   assert_eq!(registry.list()[0].conclusion, None);
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), "test").with_exclusion_group("test"))
+      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("test"))
       .is_err()
   );
 

@@ -9,7 +9,7 @@ use xrf_job::{JobHandle, JobOutcome, JobProgress};
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::request::SpawnConversionRequest;
 
@@ -26,10 +26,10 @@ pub enum SpawnConversion {
 }
 
 impl SpawnConversion {
-  fn job_kind(self) -> &'static str {
+  fn job_kind(self) -> JobKind {
     match self {
-      Self::Pack => "spawn.pack",
-      Self::Unpack => "spawn.unpack",
+      Self::Pack => JobKind::SpawnPack,
+      Self::Unpack => JobKind::SpawnUnpack,
     }
   }
 }
@@ -74,10 +74,15 @@ fn register_conversion(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<(JobHandle, JobRegistration)> {
+  let start: JobStart = JobStart::new(job_id, operation.job_kind()).with_request(&request);
+
   registry.register(
-    JobStart::new(job_id, operation.job_kind())
+    start
       .with_exclusion_group(CONVERSION_LEASE)
-      .with_request(request)
+      .with_resources(vec![match operation {
+        SpawnConversion::Pack => JobResource::file(&request.destination),
+        SpawnConversion::Unpack => JobResource::tree(&request.destination),
+      }])
       .with_progress(progress),
   )
 }

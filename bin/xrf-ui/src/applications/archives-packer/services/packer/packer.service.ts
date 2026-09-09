@@ -4,17 +4,10 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { archivesCommands } from "@/core/bindings/commands/archives";
+import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import {
-  EJobKind,
-  IJobNotice,
-  IJobOutcome,
-  IJobRun,
-  IJobSettledPayload,
-  IJobState,
-  JOB_SETTLED_EVENT,
-} from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";

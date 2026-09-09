@@ -5,8 +5,8 @@ import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/d
 import { toBumpReference, toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { texturesCommands } from "@/core/bindings/commands/textures";
-import { TextureDescription, TextureMakeBumpOutcome } from "@/core/bindings/types/xrf-app";
-import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind, TextureDescription, TextureMakeBumpOutcome } from "@/core/bindings/types/xrf-app";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";

@@ -11,9 +11,9 @@ use xrf_utils::to_portable_path_string;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::textures::lease::{BUILD_JOB_KIND, TEXTURE_ENCODE_GROUP};
+use crate::plugins::textures::lease::TEXTURE_ENCODE_GROUP;
 use crate::plugins::textures::request::TexturesBuildRequest;
 
 /// One recipe field the descriptor asks for that this build does not carry out.
@@ -67,6 +67,8 @@ pub async fn textures_build_from_source(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureBuildOutcome> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TexturesBuild).with_request(&request);
+
   log::info!("Building texture {} from {}", request.destination, request.source);
 
   let options: BuildTextureOptions = BuildTextureOptions {
@@ -77,10 +79,9 @@ pub async fn textures_build_from_source(
   };
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, BUILD_JOB_KIND)
+    start
       .with_exclusion_group(TEXTURE_ENCODE_GROUP)
-      .with_lease_keys(request.to_lease_keys())
-      .with_request(&request)
+      .with_resources(request.to_resources())
       .with_progress(progress),
   )?;
 

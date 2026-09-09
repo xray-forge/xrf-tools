@@ -1,7 +1,5 @@
-use std::path::Path;
 use std::sync::Arc;
 
-use serde::Serialize;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -10,21 +8,9 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::{UNPACK_JOB_KIND, to_destination_tree_lease_key};
 use crate::plugins::archives::request::ArchivesUnpackRequest;
-
-/// What an unpack was asked to do, for a window that has to describe a run it did not start.
-///
-/// Declared here rather than reusing the command's own parameters because the pair is what a reader needs and the
-/// parameters are `&str` handles to it. Serialized into the job listing and read by nothing on this side.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ArchiveUnpackRequest<'paths> {
-  source: &'paths Path,
-  destination: &'paths Path,
-}
 
 /// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
 ///
@@ -40,6 +26,8 @@ pub async fn archives_unpack_directory(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchiveUnpackResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesUnpack).with_request(&request);
+
   let ArchivesUnpackRequest {
     from: source,
     destination,
@@ -51,13 +39,9 @@ pub async fn archives_unpack_directory(
   // Before the hop, never inside it: registering in the blocking closure leaves a window where a second request sees
   // no holder and both write the same tree.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, UNPACK_JOB_KIND)
-      .with_exclusion_group(UNPACK_JOB_KIND)
-      .with_lease_keys(vec![to_destination_tree_lease_key(&destination)])
-      .with_request(&ArchiveUnpackRequest {
-        source: &source,
-        destination: &destination,
-      })
+    start
+      .with_exclusion_group(JobKind::ArchivesUnpack.as_str())
+      .with_resources(vec![JobResource::tree(&destination)])
       .with_progress(progress),
   )?;
 

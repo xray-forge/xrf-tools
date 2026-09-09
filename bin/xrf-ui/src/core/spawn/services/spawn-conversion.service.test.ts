@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
-import { SpawnConversionResult } from "@/core/bindings/types/xrf-app";
-import { EJobKind, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EJobKind, SpawnConversionResult } from "@/core/bindings/types/xrf-app";
+import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";

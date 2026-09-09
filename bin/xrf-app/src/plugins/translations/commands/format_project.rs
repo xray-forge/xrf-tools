@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -12,9 +11,8 @@ use xrf_utils::LineEndings;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::lease::{FORMAT_JOB_KIND, to_output_lease_key};
 use crate::plugins::translations::request::TranslationsFormatRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
@@ -38,6 +36,8 @@ pub async fn translations_format_project(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationFormatResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsFormat).with_request(&request);
+
   let TranslationsFormatRequest {
     directory,
     line_endings,
@@ -50,10 +50,9 @@ pub async fn translations_format_project(
   project.require_no_open_session_over(&directory)?;
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, FORMAT_JOB_KIND)
-      .with_exclusion_group(FORMAT_JOB_KIND)
-      .with_lease_keys(vec![to_output_lease_key(&directory)])
-      .with_request(&json!({ "directory": directory, "lineEndings": line_endings }))
+    start
+      .with_exclusion_group(JobKind::TranslationsFormat.as_str())
+      .with_resources(vec![JobResource::tree(&directory)])
       .with_progress(progress),
   )?;
 

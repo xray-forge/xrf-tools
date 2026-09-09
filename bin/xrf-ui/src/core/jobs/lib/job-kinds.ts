@@ -1,32 +1,6 @@
+import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * Backend job identifiers used for registration, adoption, and notification attribution.
- */
-export enum EJobKind {
-  ARCHIVES_EXTRACT = "archives.extract",
-  ARCHIVES_COMPARE = "archives.compare",
-  ARCHIVES_PACK = "archives.pack",
-  ARCHIVES_PATCH = "archives.patch",
-  ARCHIVES_UNPACK = "archives.unpack",
-  CONFIGS_CHECK_FORMAT = "configs.check-format",
-  CONFIGS_FORMAT = "configs.format",
-  CONFIGS_VERIFY = "configs.verify",
-  SPAWN_PACK = "spawn.pack",
-  SPAWN_UNPACK = "spawn.unpack",
-  SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
-  GAMEDATA_VERIFY = "gamedata.verify",
-  TEXTURES_BUILD = "textures.build",
-  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
-  TEXTURES_MAKE_BUMP = "textures.make-bump",
-  TEXTURES_SAVE = "textures.save",
-  TRANSLATIONS_BUILD = "translations.build",
-  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
-  TRANSLATIONS_FORMAT = "translations.format",
-  TRANSLATIONS_PARSE = "translations.parse",
-  TRANSLATIONS_VERIFY = "translations.verify",
-}
 
 /**
  * Display metadata for a backend job kind.

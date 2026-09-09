@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -8,10 +7,9 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::TranslationFormatResult;
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::format_project::run;
-use crate::plugins::translations::lease::{CHECK_FORMAT_JOB_KIND, FORMAT_JOB_KIND};
 use crate::plugins::translations::request::TranslationsFormatRequest;
 
 /// Report which JSON translation sources under a directory are not normalized.
@@ -27,6 +25,8 @@ pub async fn translations_check_project_format(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationFormatResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsCheckFormat).with_request(&request);
+
   let TranslationsFormatRequest {
     directory,
     line_endings,
@@ -35,9 +35,8 @@ pub async fn translations_check_project_format(
   log::info!("Checking translation source format in {}", directory.display());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, CHECK_FORMAT_JOB_KIND)
-      .with_exclusion_group(FORMAT_JOB_KIND)
-      .with_request(&json!({ "directory": directory, "lineEndings": line_endings }))
+    start
+      .with_exclusion_group(JobKind::TranslationsFormat.as_str())
       .with_progress(progress),
   )?;
 

@@ -1,9 +1,9 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
 use xrf_translation::{TranslationFile, TranslationProjectDescriptor};
 
-use crate::core::jobs::to_comparable_path;
+use crate::core::jobs::resolve_lease_path;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::translation_save_outcome::TranslationSaveOutcome;
 use crate::plugins::translations::state::translation_save_plan::TranslationSavePlan;
@@ -116,12 +116,12 @@ impl TranslationProjectState {
       return Ok(());
     };
 
-    let target: String = to_comparable_path(directory);
+    let target: PathBuf = resolve_lease_path(directory)?;
 
     for root in &project.roots.roots {
-      let open: String = to_comparable_path(&root.path);
+      let open: PathBuf = resolve_lease_path(&root.path)?;
 
-      if is_within(&target, &open) || is_within(&open, &target) {
+      if target.starts_with(&open) || open.starts_with(&target) {
         return Err(format!(
           "Close the open translations project at '{}' before formatting '{}': the editor holds unsaved views of those files.",
           root.path.display(),
@@ -139,15 +139,4 @@ impl TranslationProjectState {
       .lock()
       .map_err(|error| format!("Failed to {action} - translations state is unavailable: {error}"))
   }
-}
-
-/// Whether `inner` names the same place as `outer` or something beneath it.
-///
-/// Compared on the comparable spelling both sides already use for leases, and on separator boundaries so `c:\gamedata`
-/// does not read as containing `c:\gamedata-backup`.
-fn is_within(inner: &str, outer: &str) -> bool {
-  inner == outer
-    || inner
-      .strip_prefix(outer)
-      .is_some_and(|rest| rest.starts_with('\\') || rest.starts_with('/'))
 }

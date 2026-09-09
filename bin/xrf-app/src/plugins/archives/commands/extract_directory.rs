@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -9,9 +8,8 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::{EXTRACT_JOB_KIND, to_destination_tree_lease_key};
 use crate::plugins::archives::request::ArchivesExtractRequest;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -32,6 +30,8 @@ pub async fn archives_extract_directory(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchiveExtractDirectoryResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesExtract).with_request(&request);
+
   let ArchivesExtractRequest { prefix, destination } = request;
 
   log::info!(
@@ -44,10 +44,9 @@ pub async fn archives_extract_directory(
   let prefix: String = prefix.to_owned();
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, EXTRACT_JOB_KIND)
-      .with_exclusion_group(EXTRACT_JOB_KIND)
-      .with_lease_keys(vec![to_destination_tree_lease_key(&destination)])
-      .with_request(&json!({ "prefix": prefix, "destination": destination }))
+    start
+      .with_exclusion_group(JobKind::ArchivesExtract.as_str())
+      .with_resources(vec![JobResource::tree(&destination)])
       .with_progress(progress),
   )?;
 

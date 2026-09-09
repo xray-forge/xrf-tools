@@ -3,10 +3,10 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
 import { archivesCommands } from "@/core/bindings/commands/archives";
-import { ArchivesPatchRequest } from "@/core/bindings/types/xrf-app";
+import { ArchivesPatchRequest, EJobKind } from "@/core/bindings/types/xrf-app";
 import { ArchivePatchConfig, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
-import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { formatDuration } from "@/lib/format/duration";

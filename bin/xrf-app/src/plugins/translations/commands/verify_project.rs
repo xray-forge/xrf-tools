@@ -2,7 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -13,9 +12,8 @@ use xrf_translation::{
 };
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::lease::VERIFY_JOB_KIND;
 use crate::plugins::translations::request::TranslationsVerifyRequest;
 
 /// What a completeness check reports back to the desktop surface.
@@ -48,6 +46,8 @@ pub async fn translations_verify_project(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationVerifySummary> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsVerify).with_request(&request);
+
   let TranslationsVerifyRequest {
     roots,
     prefix,
@@ -61,9 +61,8 @@ pub async fn translations_verify_project(
   log::info!("Verifying translations: {} root(s), '{language}'", roots.roots.len());
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, VERIFY_JOB_KIND)
-      .with_exclusion_group(VERIFY_JOB_KIND)
-      .with_request(&json!({ "language": language.to_string() }))
+    start
+      .with_exclusion_group(JobKind::TranslationsVerify.as_str())
       .with_progress(progress),
   )?;
 

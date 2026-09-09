@@ -11,9 +11,9 @@ use xrf_utils::to_portable_path_string;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::textures::lease::{MAKE_BUMP_JOB_KIND, TEXTURE_ENCODE_GROUP, to_texture_lease_key};
+use crate::plugins::textures::lease::TEXTURE_ENCODE_GROUP;
 use crate::plugins::textures::request::TexturesMakeBumpRequest;
 
 /// What a generated pair came to.
@@ -49,14 +49,15 @@ pub async fn textures_make_bump(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureMakeBumpOutcome> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TexturesMakeBump).with_request(&request);
+
   log::info!("Generating bump pair for: {}", request.destination);
 
   let mut options: GenerateBumpOptions = to_options(&request)?;
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, MAKE_BUMP_JOB_KIND)
+    start
       .with_exclusion_group(TEXTURE_ENCODE_GROUP)
-      .with_lease_keys(to_pair_lease_keys(&options))
-      .with_request(&request)
+      .with_resources(to_pair_resources(&options))
       .with_progress(progress),
   )?;
 
@@ -84,10 +85,10 @@ pub async fn textures_make_bump(
 ///
 /// Taken from the options rather than from the request, because the two paths are the generator's own naming rule and
 /// a second spelling of it here would be a second place for `_bump#` to be got wrong.
-fn to_pair_lease_keys(options: &GenerateBumpOptions) -> Vec<String> {
+fn to_pair_resources(options: &GenerateBumpOptions) -> Vec<JobResource> {
   GenerateBumpProcessor::pair_paths(&options.destination)
     .iter()
-    .map(|path| to_texture_lease_key(path))
+    .map(JobResource::file)
     .collect()
 }
 

@@ -15,9 +15,8 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::lease::{BUILD_JOB_KIND, to_output_lease_key};
 
 /// What a build was asked to do.
 ///
@@ -75,6 +74,8 @@ pub async fn translations_build_project(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationBuildSummary> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsBuild).with_request(&request);
+
   // `all` is accepted: compiling every language at once is the ordinary build.
   let language: TranslationLanguage = TranslationLanguage::from_str(&request.language)?;
 
@@ -87,10 +88,9 @@ pub async fn translations_build_project(
   // The request travels whole rather than as a hand-picked subset, so a window that adopts this job after a reload can
   // say what it was actually asked to do rather than a summary somebody chose in advance.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, BUILD_JOB_KIND)
-      .with_exclusion_group(BUILD_JOB_KIND)
-      .with_lease_keys(vec![to_output_lease_key(&request.output_dir)])
-      .with_request(&request)
+    start
+      .with_exclusion_group(JobKind::TranslationsBuild.as_str())
+      .with_resources(vec![JobResource::tree(&request.output_dir)])
       .with_progress(progress),
   )?;
 

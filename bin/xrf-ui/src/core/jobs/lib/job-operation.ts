@@ -1,7 +1,7 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 
+import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { EJobKind } from "@/core/jobs/lib/job-kinds";
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "@/core/jobs/lib/jobs-types";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { formatDuration } from "@/lib/format/duration";

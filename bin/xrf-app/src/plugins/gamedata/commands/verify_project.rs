@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
@@ -17,9 +16,8 @@ use xrf_utils::format_path;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::gamedata::lease::VERIFY_JOB_KIND;
 
 /// One check's verdict, as the desktop surface shows it.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -82,6 +80,8 @@ pub async fn gamedata_verify_project(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<GamedataVerifySummary> {
+  let start: JobStart = JobStart::new(job_id, JobKind::GamedataVerify).with_request(&request);
+
   log::info!("Verifying gamedata project: {}", format_path(&request.root));
 
   let checks: Vec<GamedataVerificationType> = match &request.checks {
@@ -93,9 +93,8 @@ pub async fn gamedata_verify_project(
   };
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, VERIFY_JOB_KIND)
-      .with_exclusion_group(VERIFY_JOB_KIND)
-      .with_request(&json!({ "root": request.root, "checks": request.checks }))
+    start
+      .with_exclusion_group(JobKind::GamedataVerify.as_str())
       .with_progress(progress),
   )?;
 

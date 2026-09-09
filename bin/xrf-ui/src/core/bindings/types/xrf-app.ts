@@ -201,7 +201,7 @@ export type JobConclusion = "completed" | "cancelled" | "failed";
 export type JobDescription = {
   id: string;
   /** What kind of work this is, as the command that started it named itself. */
-  kind: string;
+  kind: JobKind;
   /** What this job holds exclusively, so a refused start can be explained by pointing at the job that refused it. */
   leaseKeys: Array<string>;
   /**
@@ -240,6 +240,30 @@ export type JobDescription = {
   /** How long the job ran, measured by the registry rather than by the operation. */
   duration: number;
 };
+
+/** The application operations that can be registered, cancelled and rediscovered. */
+export type JobKind =
+  | "archives.extract"
+  | "archives.compare"
+  | "archives.pack"
+  | "archives.patch"
+  | "archives.unpack"
+  | "configs.check-format"
+  | "configs.format"
+  | "configs.verify"
+  | "spawn.pack"
+  | "spawn.unpack"
+  | "sprite-equipment.pack"
+  | "gamedata.verify"
+  | "textures.build"
+  | "textures.compare-encodings"
+  | "textures.make-bump"
+  | "textures.save"
+  | "translations.build"
+  | "translations.check-format"
+  | "translations.format"
+  | "translations.parse"
+  | "translations.verify";
 
 /** What an equipment sprite pack was asked to do. */
 export type PackSpriteRequest = {
@@ -936,3 +960,28 @@ export type VisualSource =
   | { kind: "file"; path: string }
   /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
+
+/** Backend job identities. */
+export enum EJobKind {
+  ARCHIVES_EXTRACT = "archives.extract",
+  ARCHIVES_COMPARE = "archives.compare",
+  ARCHIVES_PACK = "archives.pack",
+  ARCHIVES_PATCH = "archives.patch",
+  ARCHIVES_UNPACK = "archives.unpack",
+  CONFIGS_CHECK_FORMAT = "configs.check-format",
+  CONFIGS_FORMAT = "configs.format",
+  CONFIGS_VERIFY = "configs.verify",
+  SPAWN_PACK = "spawn.pack",
+  SPAWN_UNPACK = "spawn.unpack",
+  SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
+  GAMEDATA_VERIFY = "gamedata.verify",
+  TEXTURES_BUILD = "textures.build",
+  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
+  TEXTURES_MAKE_BUMP = "textures.make-bump",
+  TEXTURES_SAVE = "textures.save",
+  TRANSLATIONS_BUILD = "translations.build",
+  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
+  TRANSLATIONS_FORMAT = "translations.format",
+  TRANSLATIONS_PARSE = "translations.parse",
+  TRANSLATIONS_VERIFY = "translations.verify",
+}

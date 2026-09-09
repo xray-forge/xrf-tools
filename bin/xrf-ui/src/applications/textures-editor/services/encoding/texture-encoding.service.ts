@@ -5,13 +5,14 @@ import { describeTextureCompareOutcome } from "@/applications/textures-editor/li
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import {
+  EJobKind,
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
 } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";

@@ -16,6 +16,7 @@ use crate::core::jobs::job_description::JobDescription;
 use crate::core::jobs::job_leases::JobLeases;
 use crate::core::jobs::job_progress_sink::JobProgressSink;
 use crate::core::jobs::job_start::JobStart;
+use crate::core::jobs::{JobKind, JobResource};
 use crate::core::types::TauriResult;
 
 /// Finished jobs the listing keeps.
@@ -34,7 +35,7 @@ const RETAINED_TOMBSTONES: usize = 32;
 
 /// A job while it is running.
 struct LiveJob {
-  kind: String,
+  kind: JobKind,
   lease_keys: Vec<String>,
   started_at: Instant,
   /// Kept so the registry can both stop the job and read its progress.
@@ -63,7 +64,7 @@ impl LiveJob {
 
     JobDescription {
       id,
-      kind: self.kind.clone(),
+      kind: self.kind,
       lease_keys: self.lease_keys.clone(),
       request: self.request.clone(),
       is_cancel_requested: self.is_cancel_requested,
@@ -149,14 +150,16 @@ impl JobRegistry {
     let JobStart {
       id,
       kind,
-      mut lease_keys,
+      resources,
       exclusion_group,
       request,
       progress,
     } = start;
 
-    if let Some(group) = exclusion_group {
-      lease_keys.push(group);
+    let resources: Vec<JobResource> = resources.iter().map(JobResource::resolve).collect::<TauriResult<_>>()?;
+    let mut lease_keys: Vec<String> = resources.iter().map(JobResource::describe).collect();
+    if let Some(group) = &exclusion_group {
+      lease_keys.push(group.clone());
     }
 
     let sink: Arc<JobProgressSink> = Arc::new(match progress {
@@ -167,8 +170,12 @@ impl JobRegistry {
     let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
     let mut state: MutexGuard<RegistryState> = self.lock();
 
-    if let Some(taken) = state.leases.get_taken(&lease_keys) {
-      let holder: Option<&LiveJob> = state.leases.get_holder(taken).and_then(|owner| state.live.get(&owner));
+    if state.live.contains_key(&id) {
+      return Err(format!("Job '{id}' has already been registered"));
+    }
+
+    if let Some((owner, taken)) = state.leases.find_conflict(exclusion_group.as_deref(), &resources) {
+      let holder: Option<&LiveJob> = state.live.get(&owner);
 
       return Err(format!(
         "Cannot start {kind}: {} is already working on '{taken}'.",
@@ -183,7 +190,7 @@ impl JobRegistry {
       handle.cancel();
     }
 
-    state.leases.take(id, &lease_keys);
+    state.leases.take(id, exclusion_group, resources);
 
     let is_cancel_requested: bool = handle.is_cancelled();
 
@@ -334,7 +341,7 @@ impl JobRegistry {
       return;
     };
 
-    state.leases.release(id, &job.lease_keys);
+    state.leases.release(id);
     state.finished.push_back(job.describe(id, Some(ending)));
 
     while state.finished.len() > RETAINED_JOBS {

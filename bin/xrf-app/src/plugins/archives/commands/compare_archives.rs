@@ -8,9 +8,8 @@ use xrf_pack::{ArchivePatchOptions, ArchivePatchResult, ArchivePatcher};
 use xrf_utils::format_path;
 
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::COMPARE_JOB_KIND;
 use crate::plugins::archives::request::ArchivesPatchRequest;
 
 /// Compares two roots without writing files.
@@ -25,6 +24,8 @@ pub async fn archives_compare_archives(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePatchResult> {
+  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesCompare).with_request(&request);
+
   let ArchivesPatchRequest {
     config,
     is_verifying_payload,
@@ -41,9 +42,8 @@ pub async fn archives_compare_archives(
   );
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, COMPARE_JOB_KIND)
-      .with_exclusion_group(COMPARE_JOB_KIND)
-      .with_request(&config)
+    start
+      .with_exclusion_group(JobKind::ArchivesCompare.as_str())
       .with_progress(progress),
   )?;
 

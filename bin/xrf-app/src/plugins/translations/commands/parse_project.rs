@@ -14,9 +14,8 @@ use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
-use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::lease::{PARSE_JOB_KIND, to_output_lease_key};
 
 /// What an import was asked to do.
 ///
@@ -78,6 +77,8 @@ pub async fn translations_parse_project(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationParseSummary> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsParse).with_request(&request);
+
   let language: TranslationLanguage =
     TranslationLanguage::from_str_single(&request.language).map_err(error_to_string)?;
 
@@ -91,10 +92,9 @@ pub async fn translations_parse_project(
   // The request travels whole rather than as a hand-picked subset, so a window that adopts this job after a reload can
   // say what it was actually asked to do rather than a summary somebody chose in advance.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    JobStart::new(job_id, PARSE_JOB_KIND)
-      .with_exclusion_group(PARSE_JOB_KIND)
-      .with_lease_keys(vec![to_output_lease_key(&request.output_dir)])
-      .with_request(&request)
+    start
+      .with_exclusion_group(JobKind::TranslationsParse.as_str())
+      .with_resources(vec![JobResource::tree(&request.output_dir)])
       .with_progress(progress),
   )?;
 

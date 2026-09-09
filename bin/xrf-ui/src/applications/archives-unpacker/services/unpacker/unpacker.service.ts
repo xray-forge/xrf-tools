@@ -2,8 +2,9 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/describe-unpack-outcome";
 import { archivesCommands } from "@/core/bindings/commands/archives";
+import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { ArchiveUnpackResult } from "@/core/bindings/types/xrf-pack";
-import { EJobKind, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";

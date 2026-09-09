@@ -4,6 +4,7 @@ use serde::Serialize;
 use uuid::Uuid;
 use xrf_job::JobProgress;
 
+use crate::core::jobs::JobKind;
 use crate::core::jobs::job_conclusion::JobConclusion;
 
 /// One job as the listing describes it, running or recently finished.
@@ -16,7 +17,7 @@ use crate::core::jobs::job_conclusion::JobConclusion;
 pub struct JobDescription {
   pub id: Uuid,
   /// What kind of work this is, as the command that started it named itself.
-  pub kind: String,
+  pub kind: JobKind,
   /// What this job holds exclusively, so a refused start can be explained by pointing at the job that refused it.
   pub lease_keys: Vec<String>,
   /// What the job was asked to do, as the command that started it described itself.
