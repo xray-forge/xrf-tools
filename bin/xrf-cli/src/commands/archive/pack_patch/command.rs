@@ -9,6 +9,9 @@ use crate::commands::archive::pack_patch::archive_patch_summary::{describe_input
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
+/// Options a configuration file also carries, so naming both would leave the winner unstated.
+const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", "header"];
+
 #[derive(Default)]
 pub struct PackPatchCommand;
 
@@ -58,6 +61,14 @@ impl GenericCommand for PackPatchCommand {
           .long("dry-run")
           .required(false)
           .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("config")
+          .help("Path to a patching configuration describing the comparison scope and header, as *.ltx or *.json")
+          .long("config")
+          .required(false)
+          .conflicts_with_all(SELECTION_ARGUMENTS)
+          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("include")

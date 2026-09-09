@@ -38,10 +38,10 @@ impl GenericCommand for PackCommand {
       .about("Command to pack provided directory into *.db archive volumes")
       .arg(
         Arg::new("path")
-          .help("Path to the directory to pack, normally a gamedata root")
-          .short('p')
-          .long("path")
+          .help("Directory to pack, normally a gamedata root")
           .required(true)
+          .value_name("SOURCE")
+          .num_args(1)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
@@ -70,7 +70,7 @@ impl GenericCommand for PackCommand {
       )
       .arg(
         Arg::new("include-file")
-          .help("File to pack, named relative to --path, repeatable")
+          .help("File to pack, named relative to the source, repeatable")
           .long("include-file")
           .required(false)
           .action(ArgAction::Append)
@@ -78,7 +78,7 @@ impl GenericCommand for PackCommand {
       )
       .arg(
         Arg::new("include-directory")
-          .help("Directory to pack with everything below it, relative to --path, repeatable")
+          .help("Directory to pack with everything below it, relative to the source, repeatable")
           .long("include-directory")
           .required(false)
           .action(ArgAction::Append)

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 use xrf_output::OutputOptions;
 use xrf_pack::{
   ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchiveVolumeExtension,
@@ -38,6 +39,14 @@ impl ArchivePatchArguments {
 
     if matches.contains_id("target") && matches.get_one::<PathBuf>("target").is_some() {
       config.target = Some(Self::to_root(matches, "target")?);
+    }
+
+    // One selection source or the other, never both: clap refuses `--config` beside a selection option, so whichever
+    // is present supplies the whole scope. The run options below still layer over either.
+    if let Some(path) = matches.get_one::<PathBuf>("config") {
+      xrf_output::info!(output, "Patch config: {}", format_path(path));
+
+      config = config.with_config_file(path)?;
     }
 
     if let Some(prefixes) = matches.get_many::<String>("include") {
