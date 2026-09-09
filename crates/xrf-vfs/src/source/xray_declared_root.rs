@@ -11,6 +11,9 @@ use std::path::PathBuf;
 pub struct XrayDeclaredRoot {
   /// The volume file whose metadata declared it.
   pub source: PathBuf,
-  /// The logical root, with its `$alias$` stripped, as `gamedata/` for an ordinary archive.
+  /// The logical root, with its `$alias$` stripped, as `gamedata\` for an ordinary archive.
+  ///
+  /// Carried as the header authored it, which is an engine path: backslash separated on every host. A `Path` built
+  /// from one is a single component on Linux, so read it as text rather than comparing or splitting it as a path.
   pub root: PathBuf,
 }

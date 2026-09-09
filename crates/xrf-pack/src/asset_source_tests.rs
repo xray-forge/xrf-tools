@@ -352,8 +352,8 @@ fn a_volume_declares_the_root_its_entries_mount_under() {
 
   assert_eq!(declared.len(), 1, "one per volume of the set");
   assert_eq!(
-    declared[0].root,
-    PathBuf::from("gamedata/"),
+    declared[0].root.to_string_lossy(),
+    "gamedata\\",
     "the packer's default header, with its alias stripped"
   );
   assert_eq!(
