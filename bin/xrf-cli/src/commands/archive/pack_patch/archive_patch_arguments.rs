@@ -57,11 +57,12 @@ impl ArchivePatchArguments {
     }
 
     if let Some(entries) = matches.get_many::<String>("header") {
-      config.header = Some(ArchivePackHeaderEntry::join(
+      // Merged over the defaults, so naming `creator` does not silently drop the `entry_point` the engine needs.
+      config.header = Some(ArchivePackHeaderEntry::join(&ArchivePackHeaderEntry::over_default(
         &entries
           .map(|entry| Self::to_header_entry(entry))
           .collect::<XrfResult<Vec<_>>>()?,
-      ));
+      )));
     }
 
     if matches.get_flag("store") {

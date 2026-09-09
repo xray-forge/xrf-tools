@@ -117,9 +117,14 @@ fn keeps_an_explicit_option_winning_over_an_imported_one() -> CommandResult {
   // configuration file carries neither, so naming them on the command line is the only thing that decides them.
   fs::write(
     &config,
+    // A file's `[header]` is the whole section, so it names both keys the engine reads unconditionally. Naming only
+    // one would be refused before precedence ever came up.
     r#"{
       "includeDirectories": [{ "path": "configs", "isRecursive": true }],
-      "header": [{ "key": "entry_point", "value": "$fs_root$\\levels\\" }]
+      "header": [
+        { "key": "auto_load", "value": "true" },
+        { "key": "entry_point", "value": "$fs_root$\\levels\\" }
+      ]
     }"#,
   )?;
 

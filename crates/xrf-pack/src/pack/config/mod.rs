@@ -10,6 +10,7 @@ mod archive_pack_config_json;
 mod archive_pack_config_ltx;
 mod archive_pack_config_rules;
 mod archive_pack_header_entry;
+mod archive_pack_header_rules;
 
 #[cfg(test)]
 mod tests;

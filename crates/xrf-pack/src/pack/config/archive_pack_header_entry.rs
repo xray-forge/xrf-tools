@@ -30,6 +30,30 @@ impl ArchivePackHeaderEntry {
     header
   }
 
+  /// The default header with `overrides` applied by key, keeping the order the defaults were written in.
+  ///
+  /// What a repeatable `--header` flag means, as against a configuration file's `[header]` section. Naming one key on
+  /// a command line is adding it, not authoring the whole section, and the two keys the engine reads unconditionally
+  /// are precisely the ones nobody thinks to retype — Anomaly's own template marks `entry_point` "do not change !".
+  /// A caller who does mean to replace everything sets the header text directly.
+  ///
+  /// Matching is case-insensitive, because the engine lower-cases the section before reading it.
+  pub fn over_default(overrides: &[Self]) -> Vec<Self> {
+    let mut entries: Vec<Self> = Self::split(&crate::pack::config::default_header());
+
+    for override_entry in overrides {
+      match entries
+        .iter_mut()
+        .find(|entry| entry.key.eq_ignore_ascii_case(&override_entry.key))
+      {
+        Some(existing) => existing.value.clone_from(&override_entry.value),
+        None => entries.push(override_entry.clone()),
+      }
+    }
+
+    entries
+  }
+
   /// Split the stored header text back into the pairs it was built from.
   ///
   /// The header is kept as text because the archive stores it verbatim; this reads it only well enough to round trip

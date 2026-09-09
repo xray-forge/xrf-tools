@@ -118,7 +118,7 @@ impl GenericCommand for PackCommand {
       )
       .arg(
         Arg::new("header")
-          .help("Header entry written into the archive as <key>=<value>, repeatable, replacing the default header")
+          .help("Header entry written into the archive as <key>=<value>, repeatable, merged over the default header")
           .long("header")
           .required(false)
           .action(ArgAction::Append)
@@ -376,7 +376,9 @@ impl PackCommand {
         .map(|entry| Self::parse_header_entry(entry))
         .collect::<XrfResult<_>>()?;
 
-      config = config.with_header_entries(&entries);
+      // Merged over the defaults rather than replacing them: naming one key on a command line is adding it, and the
+      // two the engine reads unconditionally are the ones nobody retypes.
+      config = config.with_header_entries(&ArchivePackHeaderEntry::over_default(&entries));
     }
 
     Ok(config)

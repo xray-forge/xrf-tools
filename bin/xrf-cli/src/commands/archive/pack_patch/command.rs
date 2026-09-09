@@ -92,7 +92,7 @@ impl GenericCommand for PackPatchCommand {
       )
       .arg(
         Arg::new("header")
-          .help("Header entry written into the archive as <key>=<value>, repeatable, replacing the default header")
+          .help("Header entry written into the archive as <key>=<value>, repeatable, merged over the default header")
           .long("header")
           .required(false)
           .action(ArgAction::Append)
