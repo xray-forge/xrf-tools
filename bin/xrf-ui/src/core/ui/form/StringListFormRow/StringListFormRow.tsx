@@ -50,6 +50,7 @@ export function StringListFormRow({
               value={value}
               placeholder={placeholder}
               disabled={isDisabled}
+              slotProps={{ htmlInput: { "aria-label": `${addLabel} ${index + 1}` } }}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 onChange(withValueAt(values, index, event.target.value))
               }

@@ -3,10 +3,10 @@ import { default as SearchIcon } from "@mui/icons-material/Search";
 import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { KeyboardEvent, ReactElement, useRef } from "react";
 
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IEditorFilterInputProps extends BaseComponentProps {
+export interface IEditorFilterInputProps extends StyledComponentProps {
   query: string;
   placeholder: string;
   ariaLabel: string;
@@ -28,6 +28,7 @@ export function EditorFilterInput({
   onClear,
   onKeyDown,
   onQueryChange,
+  sx,
 }: IEditorFilterInputProps): ReactElement {
   const inputRef = useRef<Nullable<HTMLInputElement>>(null);
 
@@ -46,6 +47,7 @@ export function EditorFilterInput({
       data-testid={dataTestId}
       id={id}
       className={className}
+      sx={sx}
       inputRef={inputRef}
       fullWidth
       size={"small"}

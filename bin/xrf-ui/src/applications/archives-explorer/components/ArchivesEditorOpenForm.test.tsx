@@ -48,6 +48,14 @@ describe("ArchivesEditorOpenForm", () => {
     });
   });
 
+  it("associates the open mode with its visible label and description", async () => {
+    const { findByRole } = renderForm();
+
+    expect(await findByRole("group", { name: "Open" })).toHaveAccessibleDescription(
+      "Browse a whole directory, or one archive on its own"
+    );
+  });
+
   it("asks for a file, filtered to volumes, in archive mode", async () => {
     jest.mocked(open).mockResolvedValue(ARCHIVE_VOLUME);
 

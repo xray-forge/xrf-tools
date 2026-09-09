@@ -1,7 +1,7 @@
-import { Box, IconButton, Popover, Tooltip } from "@mui/material";
+import { Popover } from "@mui/material";
 import { MouseEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
 
-import { CONTROL } from "@/core/theme/tokens";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -48,32 +48,20 @@ export function EditorPopoverAction({
 
   return (
     <>
-      <Tooltip describeChild title={description}>
-        <Box component={"span"} sx={{ display: "inline-flex" }}>
-          <IconButton
-            data-testid={dataTestId}
-            id={id}
-            className={className}
-            aria-label={label}
-            aria-description={description}
-            aria-haspopup={"dialog"}
-            aria-expanded={isOpen}
-            aria-controls={isOpen ? dialogId : undefined}
-            color={isHighlighted ? "primary" : "inherit"}
-            disabled={isDisabled}
-            size={"small"}
-            sx={{
-              width: CONTROL.editorActionSize,
-              height: CONTROL.editorActionSize,
-              padding: 0,
-              "& .MuiSvgIcon-root": { fontSize: CONTROL.editorActionIconSize },
-            }}
-            onClick={onOpen}
-          >
-            {icon}
-          </IconButton>
-        </Box>
-      </Tooltip>
+      <EditorIconAction
+        data-testid={dataTestId}
+        aria-haspopup={"dialog"}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? dialogId : undefined}
+        id={id}
+        className={className}
+        label={label}
+        description={description}
+        icon={icon}
+        isHighlighted={isHighlighted}
+        isDisabled={isDisabled}
+        onClick={onOpen}
+      />
 
       <Popover
         anchorEl={anchor}

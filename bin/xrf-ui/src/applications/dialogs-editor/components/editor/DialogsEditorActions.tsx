@@ -1,9 +1,10 @@
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
-import { IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
+import { Menu, MenuItem } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { MouseEvent, ReactElement, useCallback, useState } from "react";
+import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -11,6 +12,9 @@ import { Nullable } from "@/lib/types/general";
  */
 export function DialogsEditorActions(): Nullable<ReactElement> {
   const dialogsService: DialogsService = useInjection(DialogsService);
+
+  const actionId: string = useId();
+  const menuId: string = useId();
 
   const [anchor, setAnchor] = useState<Nullable<HTMLElement>>(null);
 
@@ -35,13 +39,23 @@ export function DialogsEditorActions(): Nullable<ReactElement> {
 
   return (
     <>
-      <Tooltip title={`Language: ${selected ?? "none"}`}>
-        <IconButton aria-label={"Change language"} onClick={onOpen}>
-          <TranslateIcon />
-        </IconButton>
-      </Tooltip>
+      <EditorIconAction
+        id={actionId}
+        label={"Change language"}
+        description={`Language: ${selected ?? "none"}`}
+        icon={<TranslateIcon />}
+        aria-haspopup={"menu"}
+        aria-expanded={Boolean(anchor)}
+        aria-controls={anchor ? menuId : undefined}
+        onClick={onOpen}
+      />
 
-      <Menu open={Boolean(anchor)} anchorEl={anchor} onClose={onClose}>
+      <Menu
+        open={Boolean(anchor)}
+        anchorEl={anchor}
+        slotProps={{ list: { id: menuId, "aria-labelledby": actionId } }}
+        onClose={onClose}
+      >
         {languages.map((it: string) => (
           <MenuItem key={it} selected={it === selected} onClick={() => onSelect(it)}>
             {it}

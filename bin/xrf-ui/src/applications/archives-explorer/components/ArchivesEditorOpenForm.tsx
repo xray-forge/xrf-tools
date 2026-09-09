@@ -1,4 +1,3 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
@@ -6,13 +5,24 @@ import { ReactElement, useCallback } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import {
+  ChoiceFormRow,
+  IChoiceFormRowOption,
+  IPathField,
+  PathFormRow,
+  usePathField,
+  useRememberedValue,
+} from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
 type TOpenMode = "directory" | "archive";
 
 const OPEN_MODES: ReadonlyArray<TOpenMode> = ["directory", "archive"];
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TOpenMode>> = [
+  { value: "directory", label: "Directory", "aria-label": "Open directory" },
+  { value: "archive", label: "Archive", "aria-label": "Open archive" },
+];
 
 /** Volume extensions offered by the dialog. */
 const ARCHIVE_FILTERS: Array<DialogFilter> = [
@@ -87,23 +97,14 @@ export function ArchivesEditorOpenForm(): ReactElement {
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
-      <FormRow label={"Open"} description={"Browse a whole directory, or one archive on its own"}>
-        <ToggleButtonGroup
-          aria-label={"Open mode"}
-          exclusive={true}
-          size={"small"}
-          value={mode}
-          disabled={isLoading}
-          onChange={(_, next: TOpenMode) => next && setMode(next)}
-        >
-          <ToggleButton value={"directory"} aria-label={"Open directory"}>
-            Directory
-          </ToggleButton>
-          <ToggleButton value={"archive"} aria-label={"Open archive"}>
-            Archive
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </FormRow>
+      <ChoiceFormRow
+        label={"Open"}
+        description={"Browse a whole directory, or one archive on its own"}
+        options={OPEN_MODE_OPTIONS}
+        value={mode}
+        isDisabled={isLoading}
+        onChange={setMode}
+      />
 
       {mode === "directory" ? (
         <PathFormRow

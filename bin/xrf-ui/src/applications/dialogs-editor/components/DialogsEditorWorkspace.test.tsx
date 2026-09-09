@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsEditorApplication";
@@ -98,7 +98,7 @@ describe("opened dialogs editor", () => {
       },
     });
 
-    const { findByText, queryByText } = renderEditor();
+    const { findByText, findByRole, queryByText } = renderEditor();
 
     // The tree groups dialogs under the file declaring them, so the file opens first. It starts
     // collapsed, matching the archives explorer: the file rows are the overview.
@@ -106,7 +106,54 @@ describe("opened dialogs editor", () => {
     await userEvent.dblClick(await findByText("trader"));
 
     expect(await findByText("Could not read this dialog")).toBeInTheDocument();
+    expect(await findByRole("alert")).toHaveTextContent("Could not read this dialog");
     expect(queryByText("Reading dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows delayed progress during a read and replaces it with the graph", async () => {
+    let resolve: (value: DialogDescriptor) => void;
+    const response = new Promise<DialogDescriptor>((onResolve) => {
+      resolve = onResolve;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:dialogs|get_project"]: PROJECT,
+      ["plugin:dialogs|get_dialog"]: () => response,
+    });
+
+    const { findByText, getByRole, queryByRole, findByTestId } = renderEditor();
+
+    await userEvent.dblClick(await findByText("dialogs.xml"));
+    await userEvent.dblClick(await findByText("trader"));
+
+    expect(getByRole("progressbar", { hidden: true })).toBeInTheDocument();
+    expect(await findByText("Reading dialog…")).toHaveAttribute("role", "status");
+
+    await act(async () => resolve(DIALOG));
+
+    expect(await findByTestId("dialog-graph")).toBeInTheDocument();
+    expect(queryByRole("progressbar", { hidden: true })).not.toBeInTheDocument();
+  });
+
+  it("names the language menu and restores focus after dismissal", async () => {
+    const { findByRole, queryByRole } = renderEditor();
+    const action = await findByRole("button", { name: "Change language" });
+
+    expect(action).toHaveAccessibleDescription("Language: eng");
+
+    act(() => action.focus());
+    await userEvent.keyboard("{Enter}");
+
+    const menu = await findByRole("menu", { name: "Change language" });
+
+    expect(action).toHaveAttribute("aria-expanded", "true");
+    expect(action).toHaveAttribute("aria-controls", menu.id);
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(queryByRole("menu")).not.toBeInTheDocument());
+
+    expect(action).toHaveFocus();
+    expect(action).toHaveAttribute("aria-expanded", "false");
   });
 
   it("offers a language action in the toolbar and states the current one in the status bar", async () => {

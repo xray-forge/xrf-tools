@@ -2,10 +2,9 @@ import { Alert, Stack } from "@mui/material";
 import { ReactElement } from "react";
 
 import { PackerDirectoryList } from "@/applications/archives-packer/components/controls/PackerDirectoryList";
-import { PackerStringList } from "@/applications/archives-packer/components/controls/PackerStringList";
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
-import { FormRow } from "@/core/ui/form";
+import { FormRow, StringListFormRow } from "@/core/ui/form";
 
 interface IPackerSelectionSectionProps {
   config: ArchivePackConfig;
@@ -39,16 +38,16 @@ export function PackerSelectionSection({ config, isDisabled, onChange }: IPacker
         />
       </FormRow>
 
-      <FormRow label={"Included files"} description={"Individual files to pack, named relative to the source"}>
-        <PackerStringList
-          values={config.includeFiles}
-          isDisabled={isDisabled}
-          addLabel={"Add file"}
-          emptyLabel={"No files listed."}
-          placeholder={"shaders.xr"}
-          onChange={(includeFiles) => onChange({ includeFiles })}
-        />
-      </FormRow>
+      <StringListFormRow
+        label={"Included files"}
+        description={"Individual files to pack, named relative to the source"}
+        values={config.includeFiles}
+        isDisabled={isDisabled}
+        addLabel={"Add file"}
+        emptyLabel={"No files listed."}
+        placeholder={"shaders.xr"}
+        onChange={(includeFiles) => onChange({ includeFiles })}
+      />
 
       <FormRow
         label={"Excluded directories"}
@@ -66,16 +65,16 @@ export function PackerSelectionSection({ config, isDisabled, onChange }: IPacker
         />
       </FormRow>
 
-      <FormRow label={"Excluded extensions"} description={"Patterns matched against a file extension, such as *.txt"}>
-        <PackerStringList
-          values={config.excludeExtensions}
-          isDisabled={isDisabled}
-          addLabel={"Add pattern"}
-          emptyLabel={"No patterns."}
-          placeholder={"*.txt"}
-          onChange={(excludeExtensions) => onChange({ excludeExtensions })}
-        />
-      </FormRow>
+      <StringListFormRow
+        label={"Excluded extensions"}
+        description={"Patterns matched against a file extension, such as *.txt"}
+        values={config.excludeExtensions}
+        isDisabled={isDisabled}
+        addLabel={"Add pattern"}
+        emptyLabel={"No patterns."}
+        placeholder={"*.txt"}
+        onChange={(excludeExtensions) => onChange({ excludeExtensions })}
+      />
     </Stack>
   );
 }

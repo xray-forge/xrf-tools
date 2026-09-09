@@ -1,11 +1,7 @@
-import { Box, IconButton, Tooltip } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { CONTROL } from "@/core/theme/tokens";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** How far a toggle that is off is faded, which is the whole of the on/off vocabulary in this toolbar. */
-const OFF_OPACITY: number = 0.45;
 
 export interface IEditorViewToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */
@@ -38,33 +34,18 @@ export function EditorViewToggle({
   isDisabled = false,
   onToggle,
 }: IEditorViewToggleProps): ReactElement {
-  const hint: string = isDisabled && unavailableTitle ? unavailableTitle : description;
-
   return (
-    <Tooltip title={hint} describeChild>
-      <Box component={"span"} sx={{ display: "inline-flex" }}>
-        <IconButton
-          data-testid={dataTestId}
-          id={id}
-          className={className}
-          aria-label={label}
-          aria-description={hint}
-          aria-pressed={isOn}
-          color={"inherit"}
-          disabled={isDisabled}
-          size={"small"}
-          sx={{
-            opacity: isOn ? 1 : OFF_OPACITY,
-            width: CONTROL.editorActionSize,
-            height: CONTROL.editorActionSize,
-            padding: 0,
-            "& .MuiSvgIcon-root": { fontSize: CONTROL.editorActionIconSize },
-          }}
-          onClick={onToggle}
-        >
-          {icon}
-        </IconButton>
-      </Box>
-    </Tooltip>
+    <EditorIconAction
+      data-testid={dataTestId}
+      aria-pressed={isOn}
+      id={id}
+      className={className}
+      label={label}
+      description={isDisabled && unavailableTitle ? unavailableTitle : description}
+      icon={icon}
+      isDisabled={isDisabled}
+      sx={{ opacity: isOn ? 1 : 0.45 }}
+      onClick={onToggle}
+    />
   );
 }

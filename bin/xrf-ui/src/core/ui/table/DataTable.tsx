@@ -1,7 +1,8 @@
-import { Box, TextField, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRowId, GridRowParams } from "@mui/x-data-grid";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
+import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -15,6 +16,7 @@ interface IDataTableProps<T> extends BaseComponentProps {
   /** Noun the row count is phrased with, singularised by the caller. */
   countNoun?: string;
   searchPlaceholder?: string;
+  searchLabel?: string;
   /** Column visibility the caller wants off by default; the columns panel still offers them. */
   hiddenColumns?: Array<string>;
   selectedRowId?: Nullable<GridRowId>;
@@ -32,6 +34,7 @@ export function DataTable<T>({
   emptyLabel,
   countNoun = "row",
   searchPlaceholder = "Filter",
+  searchLabel = "Filter rows",
   hiddenColumns,
   selectedRowId,
   onRowSelect,
@@ -87,12 +90,12 @@ export function DataTable<T>({
       sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%", flexGrow: 1, minHeight: 0 }}
     >
       {getSearchText ? (
-        <TextField
-          size={"small"}
+        <EditorFilterInput
+          ariaLabel={searchLabel}
           placeholder={searchPlaceholder}
-          value={search}
+          query={search}
           sx={{ maxWidth: 320 }}
-          onChange={(event) => setSearch(event.target.value)}
+          onQueryChange={setSearch}
         />
       ) : null}
 

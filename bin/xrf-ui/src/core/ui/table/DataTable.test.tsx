@@ -64,6 +64,21 @@ describe("DataTable", () => {
     expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
   });
 
+  it("restores all rows and input focus when the named filter is cleared", async () => {
+    const { getByRole, getByText } = renderTable();
+    const filter = getByRole("textbox", { name: "Filter rows" });
+
+    await userEvent.type(filter, "dog");
+
+    expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
+
+    await userEvent.click(getByRole("button", { name: "Clear filter" }));
+
+    expect(filter).toHaveValue("");
+    expect(filter).toHaveFocus();
+    expect(getByText("3 object(s)")).toBeInTheDocument();
+  });
+
   it("reports an empty filter result rather than looking broken", async () => {
     const { getByPlaceholderText, getByText } = renderTable();
 
