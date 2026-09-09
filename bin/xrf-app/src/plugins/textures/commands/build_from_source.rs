@@ -71,13 +71,6 @@ pub async fn textures_build_from_source(
 
   log::info!("Building texture {} from {}", request.destination, request.source);
 
-  let options: BuildTextureOptions = BuildTextureOptions {
-    destination: request.to_destination(),
-    source: read_image_as_rgba(&request.source).map_err(error_to_string)?,
-    descriptor: request.descriptor.to_descriptor(Some(ThmFile::new_texture())),
-    quality: request.quality.to_quality(),
-  };
-
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     start
       .with_exclusion_group(TEXTURE_ENCODE_GROUP)
@@ -89,7 +82,16 @@ pub async fn textures_build_from_source(
     &execution,
     "Texture build",
     registration,
-    move || build(&job, &options),
+    move || {
+      let options: BuildTextureOptions = BuildTextureOptions {
+        destination: request.to_destination(),
+        source: read_image_as_rgba(&request.source).map_err(error_to_string)?,
+        descriptor: request.descriptor.to_descriptor(Some(ThmFile::new_texture())),
+        quality: request.quality.to_quality(),
+      };
+
+      build(&job, &options)
+    },
     |outcome| outcome.outcome,
   )
   .await

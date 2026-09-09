@@ -2,6 +2,7 @@ import {
   TextureBadges,
   TextureCatalog,
   TextureDescription,
+  TextureEncodingComparison,
   TextureEntry,
   TextureMaterialSummary,
   TextureRole,
@@ -161,6 +162,34 @@ export function mockTextureVocabulary(overrides: Partial<TextureVocabulary> = {}
       { label: "ttImage", value: 0 },
       { label: "ttTerrain", value: 4 },
     ],
+    ...overrides,
+  };
+}
+
+/** A completed comparison addressed by the same source and roots as a described texture. */
+export function mockTextureEncodingComparison(
+  overrides: Partial<TextureEncodingComparison> = {}
+): TextureEncodingComparison {
+  const description: TextureDescription = mockTextureDescription();
+
+  return {
+    sessionId: "f57e0fd0-9098-4bb1-8e7f-d29733d9f68e",
+    source: description.source,
+    roots: description.roots,
+    reference: description.reference,
+    outcome: "completed",
+    current: { fileBytes: 2048, gpuBytes: 1024, height: 16, label: "DXT5", mipmapLevels: 1, width: 16 },
+    candidates: (["bc1", "bc3"] as const).map((format) => ({
+      format,
+      label: format === "bc1" ? "BC1 (DXT1)" : "BC3 (DXT5)",
+      channelRmse: [0, 0, 0, 0],
+      compatibility: [],
+      encodeDuration: 30,
+      fileBytes: 1024,
+      gpuBytes: 512,
+      psnr: 42,
+      supportSummary: "all renderers, GL unverified",
+    })),
     ...overrides,
   };
 }

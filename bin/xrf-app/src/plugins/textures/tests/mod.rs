@@ -5,3 +5,4 @@ mod editing;
 mod encoding;
 
 mod fixtures;
+mod state;

@@ -10,15 +10,17 @@ import {
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
+  TextureSessionId,
 } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -34,7 +36,12 @@ export class TextureEncodingService {
    * The candidate chosen to replace the base texture, or null when the file on disk still stands.
    */
   @Observable()
-  public chosen: Nullable<TextureEncodingFormat> = null;
+  private choice: Nullable<{ sessionId: TextureSessionId; format: TextureEncodingFormat }> = null;
+
+  @Computed()
+  public get chosen(): Nullable<TextureEncodingFormat> {
+    return this.choice?.sessionId === this.comparison?.sessionId ? (this.choice?.format ?? null) : null;
+  }
 
   /**
    * The chosen candidate as a picture, for showing it beside the texture it would replace.
@@ -43,19 +50,16 @@ export class TextureEncodingService {
   public preview: Loadable<Nullable<ArrayBuffer>> = Loadable.idle(null);
 
   /**
-   * The reference the comparison belongs to, so one made for another texture is not shown against this one.
-   */
-  @Observable()
-  private comparedReference: Nullable<string> = null;
-
-  /**
    * @returns The comparison to show, or null when none belongs to the texture on screen.
    */
   @Computed()
   public get comparison(): Nullable<TextureEncodingComparison> {
-    const reference: Nullable<string> = this.selectionService.reference;
+    const selected: Nullable<TextureDescription> = this.selectionService.selected.value;
+    const comparison: Nullable<TextureEncodingComparison> = this.compare.result;
 
-    return reference !== null && reference === this.comparedReference ? this.compare.result : null;
+    return selected && comparison && getTextureIdentity(selected) === getTextureIdentity(comparison)
+      ? comparison
+      : null;
   }
 
   /**
@@ -88,9 +92,9 @@ export class TextureEncodingService {
    */
   @BoundAction()
   public clear(): void {
-    this.chosen = null;
+    this.choice = null;
     this.preview = this.preview.asIdle();
-    this.comparedReference = null;
+    cancelFlow(this, "preview");
     this.compare.reset();
   }
 
@@ -104,10 +108,20 @@ export class TextureEncodingService {
    */
   @LatestFlow("preview")
   public *choose(format: TextureEncodingFormat): TFlow {
+    const comparison: Nullable<TextureEncodingComparison> = this.comparison;
+
+    if (
+      !comparison ||
+      this.compare.isRunning ||
+      !comparison.candidates.some((candidate) => candidate.format === format)
+    ) {
+      return;
+    }
+
     // Before the first yield, so a caller that reads the choice straight after asking for it sees the answer.
     const chosen: Nullable<TextureEncodingFormat> = this.chosen === format ? null : format;
 
-    this.chosen = chosen;
+    this.choice = chosen === null ? null : { sessionId: comparison.sessionId, format: chosen };
 
     if (chosen === null) {
       this.preview = this.preview.asIdle();
@@ -118,15 +132,19 @@ export class TextureEncodingService {
     this.preview = this.preview.asLoading(null);
 
     try {
-      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readCandidate(chosen));
+      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readCandidate(comparison.sessionId, chosen));
 
-      this.preview = this.preview.asReady(bytes);
+      if (this.comparison?.sessionId === comparison.sessionId) {
+        this.preview = this.preview.asReady(bytes);
+      }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to decode the chosen candidate:", transformed);
 
-      this.preview = this.preview.asFailed(transformed, null);
+      if (this.comparison?.sessionId === comparison.sessionId) {
+        this.preview = this.preview.asFailed(transformed, null);
+      }
     }
   }
 
@@ -146,8 +164,9 @@ export class TextureEncodingService {
       return;
     }
 
-    this.chosen = null;
-    this.comparedReference = description.reference;
+    this.choice = null;
+    cancelFlow(this, "preview");
+    this.preview = this.preview.asIdle();
 
     this.log.info("Comparing texture encodings:", description.reference);
 

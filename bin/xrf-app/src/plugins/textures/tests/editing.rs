@@ -11,6 +11,7 @@ use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
 
+use crate::plugins::textures::TextureSessionId;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
 use crate::plugins::textures::encoding::TextureEncodingFormat;
@@ -284,6 +285,7 @@ fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
         form: TextureDescriptorForm::read(&read_descriptor(&descriptor_path)),
       }),
       texture: Some(TextureEncodingSave {
+        session_id: TextureSessionId::new(),
         target: target(&texture_path),
         format: TextureEncodingFormat::Bc3,
       }),
@@ -348,6 +350,7 @@ fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
           form,
         }),
         texture: Some(TextureEncodingSave {
+          session_id: TextureSessionId::new(),
           target: target(&texture_path),
           format: TextureEncodingFormat::Bc1,
         }),
@@ -380,6 +383,7 @@ fn a_bc7_texture_leaves_the_descriptors_format_alone() {
     &TexturesSaveRequest {
       descriptor: None,
       texture: Some(TextureEncodingSave {
+        session_id: TextureSessionId::new(),
         target: target(&texture_path),
         format: TextureEncodingFormat::Bc7,
       }),
@@ -403,6 +407,7 @@ fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
     &TexturesSaveRequest {
       descriptor: None,
       texture: Some(TextureEncodingSave {
+        session_id: TextureSessionId::new(),
         target: target(&texture_path),
         format: TextureEncodingFormat::Bc3,
       }),
@@ -477,6 +482,7 @@ fn a_save_asked_to_stop_before_it_writes_writes_nothing() {
         form: TextureDescriptorForm::read(&ThmFile::new_texture()),
       }),
       texture: Some(TextureEncodingSave {
+        session_id: TextureSessionId::new(),
         target: target(&texture_path),
         format: TextureEncodingFormat::Bc3,
       }),

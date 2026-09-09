@@ -114,7 +114,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
       @raw {
-        read_candidate(format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
+        read_candidate(sessionId: "TextureSessionId", format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::commands::read_texture::textures_read_texture,
       }
       visuals => "visuals" {

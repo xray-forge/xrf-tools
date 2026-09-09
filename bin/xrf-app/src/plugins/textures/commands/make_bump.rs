@@ -5,6 +5,7 @@ use serde::Serialize;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_dds::DdsMipFilter;
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, read_image_as_rgba};
 use xrf_utils::to_portable_path_string;
@@ -53,47 +54,6 @@ pub async fn textures_make_bump(
 
   log::info!("Generating bump pair for: {}", request.destination);
 
-  let mut options: GenerateBumpOptions = to_options(&request)?;
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    start
-      .with_exclusion_group(TEXTURE_ENCODE_GROUP)
-      .with_resources(to_pair_resources(&options))
-      .with_progress(progress),
-  )?;
-
-  options.job = job;
-
-  run_job(
-    &execution,
-    "Bump pair generation",
-    registration,
-    move || {
-      GenerateBumpProcessor::generate(&options).map(|result| TextureMakeBumpOutcome {
-        outcome: result.outcome,
-        bump: to_portable_path_string(&result.bump),
-        companion: to_portable_path_string(&result.companion),
-        gloss_power: result.gloss_power,
-        is_gloss_too_dark: result.is_gloss_too_dark(),
-      })
-    },
-    |outcome| outcome.outcome,
-  )
-  .await
-}
-
-/// Both halves the run would write, as lease keys.
-///
-/// Taken from the options rather than from the request, because the two paths are the generator's own naming rule and
-/// a second spelling of it here would be a second place for `_bump#` to be got wrong.
-fn to_pair_resources(options: &GenerateBumpOptions) -> Vec<JobResource> {
-  GenerateBumpProcessor::pair_paths(&options.destination)
-    .iter()
-    .map(JobResource::file)
-    .collect()
-}
-
-/// Read every image the request names and settle the gloss it asks for.
-fn to_options(request: &TexturesMakeBumpRequest) -> TauriResult<GenerateBumpOptions> {
   if !(0.0..=1.0).contains(&request.gloss_constant) {
     return Err(format!(
       "Gloss level {} is outside the 0 to 1 range a gloss is measured in",
@@ -101,10 +61,52 @@ fn to_options(request: &TexturesMakeBumpRequest) -> TauriResult<GenerateBumpOpti
     ));
   }
 
+  let mip_filter: DdsMipFilter = request.to_mip_filter()?;
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    start
+      .with_exclusion_group(TEXTURE_ENCODE_GROUP)
+      .with_resources(to_pair_resources(&request))
+      .with_progress(progress),
+  )?;
+
+  run_job(
+    &execution,
+    "Bump pair generation",
+    registration,
+    move || {
+      let options: GenerateBumpOptions = to_options(&request, job, mip_filter)?;
+
+      GenerateBumpProcessor::generate(&options)
+        .map_err(error_to_string)
+        .map(|result| TextureMakeBumpOutcome {
+          outcome: result.outcome,
+          bump: to_portable_path_string(&result.bump),
+          companion: to_portable_path_string(&result.companion),
+          gloss_power: result.gloss_power,
+          is_gloss_too_dark: result.is_gloss_too_dark(),
+        })
+    },
+    |outcome| outcome.outcome,
+  )
+  .await
+}
+
+/// Both output paths follow the generator's naming rule without decoding input images.
+fn to_pair_resources(request: &TexturesMakeBumpRequest) -> Vec<JobResource> {
+  GenerateBumpProcessor::pair_paths(std::path::Path::new(&request.destination))
+    .iter()
+    .map(JobResource::file)
+    .collect()
+}
+
+/// Read every image the request names and settle the gloss it asks for.
+fn to_options(
+  request: &TexturesMakeBumpRequest,
+  job: JobHandle,
+  mip_filter: DdsMipFilter,
+) -> TauriResult<GenerateBumpOptions> {
   Ok(GenerateBumpOptions {
-    // Replaced by the registered handle once the job starts; inert until then so nothing reports into a job that
-    // does not exist yet.
-    job: JobHandle::inert(),
+    job,
     destination: PathBuf::from(&request.destination),
     height: read_image_as_rgba(&request.height).map_err(error_to_string)?,
     gloss: match &request.gloss {
@@ -116,7 +118,7 @@ fn to_options(request: &TexturesMakeBumpRequest) -> TauriResult<GenerateBumpOpti
       None => None,
     },
     virtual_height: request.virtual_height,
-    mip_filter: request.to_mip_filter()?,
+    mip_filter,
     quality: request.quality.to_quality(),
   })
 }

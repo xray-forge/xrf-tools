@@ -9,6 +9,7 @@ import {
   EJobKind,
   TextureDescription,
   TextureDescriptorForm,
+  TextureEncodingComparison,
   TextureEncodingFormat,
   TextureSaveOutcome,
   TextureVocabulary,
@@ -16,6 +17,7 @@ import {
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
@@ -40,13 +42,10 @@ export class TextureEditorService {
   public draft: Nullable<TextureDescriptorForm> = null;
 
   /**
-   * The reference the draft belongs to, so a selection change is told from a re-describe of the same texture.
-   *
-   * A re-describe after a save must not throw the draft away; choosing another row must. Only the reference separates
-   * them, because both arrive as a new description object.
+   * The source and roots the draft belongs to; labels can repeat across trees.
    */
   @Observable()
-  private draftReference: Nullable<string> = null;
+  private draftIdentity: Nullable<string> = null;
 
   /** The form as the backend last reported it, which is what dirtiness is measured against. */
   @Observable()
@@ -138,13 +137,14 @@ export class TextureEditorService {
    */
   @BoundAction()
   public bind(description: Nullable<TextureDescription>): void {
-    const reference: Nullable<string> = description?.reference ?? null;
+    const identity: Nullable<string> = description ? getTextureIdentity(description) : null;
     const form: Nullable<TextureDescriptorForm> = toEditableForm(description);
 
     this.baseline = form;
 
-    if (reference !== this.draftReference) {
-      this.draftReference = reference;
+    if (identity !== this.draftIdentity) {
+      this.encodingService.clear();
+      this.draftIdentity = identity;
       this.draft = form;
     }
   }
@@ -188,7 +188,12 @@ export class TextureEditorService {
 
     const chosen: Nullable<TextureEncodingFormat> = this.encodingService.chosen;
 
-    const reference: Nullable<string> = this.draftReference;
+    const comparison: Nullable<TextureEncodingComparison> = this.encodingService.comparison;
+    const reference: Nullable<string> = this.selectionService.reference;
+
+    if (chosen !== null && comparison === null) {
+      return;
+    }
 
     this.log.info("Saving texture descriptor:", reference);
 
@@ -200,7 +205,10 @@ export class TextureEditorService {
             // The descriptor goes every time, because writing a texture can change the format it names and the two
             // must not disagree on disk even for the moment between two writes.
             descriptor: { form: draft, target: targets.descriptor },
-            texture: chosen === null ? null : { format: chosen, target: targets.texture },
+            texture:
+              chosen === null || comparison === null
+                ? null
+                : { sessionId: comparison.sessionId, format: chosen, target: targets.texture },
           },
           id,
           progress

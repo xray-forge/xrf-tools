@@ -2,6 +2,9 @@
 
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Quality};
 use xrf_job::JobOutcome;
+use xrf_vfs::XrayRoots;
+
+use crate::plugins::textures::TextureSessionId;
 
 use crate::plugins::textures::encoding::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingFormat, TextureEncodingSession,
@@ -14,6 +17,8 @@ use crate::plugins::textures::tests::fixtures::{BASE, source_image};
 fn a_held_session_answers_for_the_candidates_it_weighed_and_no_others() {
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
   let session: TextureEncodingSession = TextureEncodingSession {
+    session_id: TextureSessionId::new(),
+    roots: XrayRoots::default(),
     source: TextureSource::Asset {
       reference: String::from(BASE),
     },
@@ -75,30 +80,39 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
   let state: TextureState = TextureState::new();
 
-  let missing = state.with_held_encoding(TextureEncodingFormat::Bc3, |_| Ok(()));
+  let session_id: TextureSessionId = state.begin_session().expect("session");
+  let missing = state.get_comparison(session_id);
 
   assert!(
     missing.is_err_and(|error| error.contains("No encoded texture is held")),
     "expect nothing to read before anything has been weighed"
   );
 
-  *state.encodings.lock().expect("encodings") = Some(TextureEncodingSession {
-    source: TextureSource::Asset {
-      reference: String::from(BASE),
-    },
-    label: String::from(BASE),
-    attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
-  });
+  state
+    .hold_comparison(TextureEncodingSession {
+      session_id,
+      roots: XrayRoots::default(),
+      source: TextureSource::Asset {
+        reference: String::from(BASE),
+      },
+      label: String::from(BASE),
+      attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
+    })
+    .expect("hold comparison");
 
   let png: Vec<u8> = state
-    .with_held_encoding(TextureEncodingFormat::Bc3, |file| {
-      Ok(file.to_png().map_err(|error| error.to_string())?.bytes)
-    })
-    .expect("the weighed candidate decodes");
+    .get_comparison(session_id)
+    .expect("comparison")
+    .require(TextureEncodingFormat::Bc3)
+    .expect("candidate")
+    .to_png()
+    .expect("the weighed candidate decodes")
+    .bytes;
 
   assert!(!png.is_empty(), "expect the held encode to decode to a picture");
 
-  let unweighed = state.with_held_encoding(TextureEncodingFormat::Bc7, |_| Ok(()));
+  let held = state.get_comparison(session_id).expect("comparison");
+  let unweighed = held.require(TextureEncodingFormat::Bc7);
 
   assert!(
     unweighed.is_err_and(|error| error.contains("does not carry that format")),

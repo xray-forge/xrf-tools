@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use tauri::State;
 use tauri::ipc::Channel;
@@ -14,9 +14,8 @@ use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::textures::encoding::{
-  TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingQuality, TextureEncodingSession,
-};
+use crate::plugins::textures::TextureSessionId;
+use crate::plugins::textures::encoding::{TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingSession};
 use crate::plugins::textures::lease::{TEXTURE_ENCODE_GROUP, TEXTURE_PHASE_WEIGH};
 use crate::plugins::textures::request::TexturesCompareRequest;
 use crate::plugins::textures::source::TextureSource;
@@ -51,30 +50,25 @@ pub async fn textures_compare_encodings(
   log::info!("Comparing encodings of texture: {}", request.source.label());
 
   let mipmaps: DdsMipmaps = request.to_mipmaps()?;
-  let bytes: Vec<u8> = read_texture_bytes(&assets, &request)?;
 
   let (job, registration): (JobHandle, JobRegistration) =
     registry.register(start.with_exclusion_group(TEXTURE_ENCODE_GROUP).with_progress(progress))?;
 
-  // A handle on the same slot rather than a borrow of the managed state, because the session is stored on the
-  // blocking thread once the encodes exist and the command frame's borrow does not reach that far.
-  let held: Arc<Mutex<Option<TextureEncodingSession>>> = Arc::clone(&state.encodings);
-  let source: TextureSource = request.source.clone();
-  let label: String = request.source.to_label();
+  let session_id: TextureSessionId = state.begin_session()?;
+  let state: TextureState = TextureState::clone(&state);
+  let assets: AssetMountState = AssetMountState::clone(&assets);
 
   run_job(
     &execution,
     "Texture encoding comparison",
     registration,
     move || -> TauriResult<TextureEncodingComparison> {
-      let measured: MeasuredComparison = measure(&job, &bytes, source, label, mipmaps, request.quality)?;
+      let bytes: Vec<u8> = read_texture_bytes(&assets, &request)?;
+      let measured: MeasuredComparison = measure(&job, &bytes, &request, session_id, mipmaps)?;
       let comparison: TextureEncodingComparison = measured.session.to_comparison(measured.current, measured.outcome);
 
-      // Held even for a stopped run, because what it holds is what this run really encoded and a save naming one of
-      // those writes bytes that exist. A candidate it never reached is simply absent from it.
-      *held
-        .lock()
-        .map_err(|error| format!("Failed to hold the texture encodings: {error}"))? = Some(measured.session);
+      // Completed candidates from a cancelled run remain usable while this session is current.
+      state.hold_comparison(measured.session)?;
 
       log::info!(
         "Compared {} encodings of '{}'",
@@ -119,10 +113,9 @@ fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest
 fn measure(
   job: &JobHandle,
   bytes: &[u8],
-  source: TextureSource,
-  label: String,
+  request: &TexturesCompareRequest,
+  session_id: TextureSessionId,
   mipmaps: DdsMipmaps,
-  quality: TextureEncodingQuality,
 ) -> TauriResult<MeasuredComparison> {
   let file: DdsFile = DdsFile::read_from_bytes(bytes).map_err(error_to_string)?;
   let metadata: DdsMetadata = file.metadata();
@@ -140,7 +133,7 @@ fn measure(
     }
 
     job.set_detail(Some(candidate.label().to_owned()));
-    attempts.push(DdsEncodeAttempt::measure(&chain, candidate, quality.to_quality()).map_err(error_to_string)?);
+    attempts.push(DdsEncodeAttempt::measure(&chain, candidate, request.quality.to_quality()).map_err(error_to_string)?);
     weighing.advance();
   }
 
@@ -148,8 +141,10 @@ fn measure(
 
   Ok(MeasuredComparison {
     session: TextureEncodingSession {
-      source,
-      label,
+      session_id,
+      source: request.source.clone(),
+      roots: request.roots.clone(),
+      label: request.source.to_label(),
       attempts,
     },
     current: TextureEncodingCurrent {

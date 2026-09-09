@@ -3,6 +3,10 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsFormatSupport, DdsRenderer, Quality};
 use xrf_job::JobOutcome;
+use xrf_vfs::XrayRoots;
+
+use crate::core::types::TauriResult;
+use crate::plugins::textures::TextureSessionId;
 
 use crate::plugins::textures::source::TextureSource;
 
@@ -87,6 +91,9 @@ pub struct TextureEncodingCurrent {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureEncodingComparison {
+  pub session_id: TextureSessionId,
+  pub source: TextureSource,
+  pub roots: XrayRoots,
   /// Whether every candidate was weighed or the run stopped because it was asked to.
   ///
   /// A cancelled comparison still reports what it managed, and the session still holds those encodes: a candidate it
@@ -101,6 +108,8 @@ pub struct TextureEncodingComparison {
 
 /// The encodes one comparison produced, kept until somebody saves one or asks for another texture.
 pub struct TextureEncodingSession {
+  pub session_id: TextureSessionId,
+  pub roots: XrayRoots,
   /// The texture these were encoded from, so a save cannot write one texture's bytes over another's file.
   ///
   /// The source rather than its label: two files in different trees can share an engine reference, and a label a
@@ -123,9 +132,22 @@ impl TextureEncodingSession {
       .map(|attempt| &attempt.file)
   }
 
+  /// Refuse formats this comparison did not finish encoding.
+  pub fn require(&self, format: TextureEncodingFormat) -> TauriResult<&DdsFile> {
+    self.get(format).ok_or_else(|| {
+      format!(
+        "The held comparison of '{}' does not carry that format; compare the formats again",
+        self.label
+      )
+    })
+  }
+
   /// What the comparison says, which is everything about the attempts except their bytes.
   pub fn to_comparison(&self, current: TextureEncodingCurrent, outcome: JobOutcome) -> TextureEncodingComparison {
     TextureEncodingComparison {
+      session_id: self.session_id,
+      source: self.source.clone(),
+      roots: self.roots.clone(),
       outcome,
       reference: self.label.clone(),
       current,

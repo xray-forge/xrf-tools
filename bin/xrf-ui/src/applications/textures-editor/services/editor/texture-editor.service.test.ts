@@ -7,8 +7,13 @@ import { TextureEncodingService } from "@/applications/textures-editor/services/
 import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import {
+  MOCK_TEXTURE,
+  mockTextureDescription,
+  mockTextureEncodingComparison,
+  mockTextureVocabulary,
+} from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { TextureEditorService } from "./texture-editor.service";
@@ -181,24 +186,7 @@ describe("TextureEditorService", () => {
     const encodingService: TextureEncodingService = container.get(TextureEncodingService);
 
     setMockInvokeResponses({
-      ["plugin:textures|compare_encodings"]: {
-        candidates: [
-          {
-            channelRmse: [0, 0, 0, 0],
-            compatibility: [],
-            encodeDuration: 30,
-            fileBytes: 1024,
-            format: "bc3",
-            gpuBytes: 512,
-            label: "BC3 (DXT5)",
-            psnr: 42,
-            supportSummary: "all renderers, GL unverified",
-          },
-        ],
-        current: { fileBytes: 2048, gpuBytes: 1024, height: 16, label: "DXT5", mipmapLevels: 1, width: 16 },
-        outcome: "completed",
-        reference: MOCK_TEXTURE,
-      },
+      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
       ["plugin:textures|describe"]: mockTextureDescription(),
       ["plugin:textures|read_texture"]: new ArrayBuffer(0),
     });
@@ -260,5 +248,53 @@ describe("TextureEditorService", () => {
     // The second read is the proof: without it the panels would still be holding the description the save invalidated.
     expect(describeCount).toBe(2);
     expect(selectionService.selected.value?.form?.bumpName).toBe("read-2");
+  });
+
+  it("does not keep a draft for the same reference under different roots", () => {
+    const service: TextureEditorService = mockEditorService();
+
+    service.bind(describedTexture(MOCK_TEXTURE));
+    service.edit({ bumpName: "old-draft" });
+    service.bind(describedTexture(MOCK_TEXTURE, { roots: { asset: null, roots: [{ path: "D:/other" }] } }));
+
+    expect(service.isDirty).toBe(false);
+    expect(service.draft?.bumpName).toBe("ston\\ston_beton05_bump");
+  });
+
+  it("saves the candidate from the comparison the user selected", async () => {
+    const container: Container = mockContainer([
+      JobsService,
+      TextureSelectionService,
+      TextureEncodingService,
+      TextureEditorService,
+    ]);
+    const selection: TextureSelectionService = container.get(TextureSelectionService);
+    const encoding: TextureEncodingService = container.get(TextureEncodingService);
+    const editor: TextureEditorService = container.get(TextureEditorService);
+
+    setMockInvokeResponses({
+      ["plugin:textures|describe"]: describedTexture(MOCK_TEXTURE),
+      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
+      ["plugin:textures|read_candidate"]: new ArrayBuffer(8),
+      ["plugin:textures|save"]: { outcome: "completed", written: [], descriptorFormat: null },
+    });
+
+    await selection.openFile("C:/gamedata/textures/ston/ston_beton05.dds");
+
+    editor.bind(selection.selected.value);
+
+    await encoding.run(null);
+    await encoding.choose("bc3");
+    await editor.commit();
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "plugin:textures|save",
+      expect.objectContaining({
+        request: expect.objectContaining({
+          texture: expect.objectContaining({ sessionId: mockTextureEncodingComparison().sessionId, format: "bc3" }),
+        }),
+      })
+    );
   });
 });

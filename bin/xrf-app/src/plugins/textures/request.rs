@@ -11,6 +11,7 @@ use xrf_vfs::XrayRoots;
 
 use crate::core::jobs::JobResource;
 use crate::core::types::TauriResult;
+use crate::plugins::textures::TextureSessionId;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 use crate::plugins::textures::file_stamp::TextureFileStamp;
@@ -41,6 +42,7 @@ pub struct TextureDescriptorSave {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureEncodingSave {
+  pub session_id: TextureSessionId,
   pub target: TextureSaveTarget,
   pub format: TextureEncodingFormat,
 }

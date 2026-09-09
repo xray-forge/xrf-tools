@@ -2,6 +2,7 @@ use tauri::State;
 use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::source::TextureSource;
@@ -17,19 +18,19 @@ pub async fn textures_describe(
   source: TextureSource,
   roots: XrayRoots,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureDescription> {
   log::info!("Describing texture: {}", source.label());
 
-  let roots: XrayRoots = roots.centred_on(source.physical_path());
-  let description: TextureDescription = assets.with_probe(&roots, |probe| {
-    TextureDescription::describe(probe, source, roots.clone())
-  })??;
+  let assets: AssetMountState = AssetMountState::clone(&assets);
 
-  log::info!(
-    "Described texture '{}': {:?}",
-    description.reference,
-    description.material.as_ref().map(|material| material.outcome)
-  );
+  execution
+    .run_blocking("Describing texture", move || {
+      let roots: XrayRoots = roots.centred_on(source.physical_path());
 
-  Ok(description)
+      assets.with_probe(&roots, |probe| {
+        TextureDescription::describe(probe, source, roots.clone())
+      })?
+    })
+    .await?
 }

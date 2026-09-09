@@ -1,10 +1,10 @@
-use std::sync::MutexGuard;
-
 use tauri::State;
 use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
+use crate::plugins::textures::TextureSessionId;
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode};
 use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
 
@@ -20,23 +20,22 @@ pub async fn textures_open(
   mode: TextureCatalogMode,
   state: State<'_, TextureState>,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<TextureCatalog> {
   log::info!("Opening textures in: {} as {mode:?}", roots.describe());
 
-  let catalog: TextureCatalog = assets.with_probe(&roots, |probe| TextureCatalog::list(probe, roots.clone(), mode))?;
+  let session_id: TextureSessionId = state.begin_session()?;
+  let state: TextureState = TextureState::clone(&state);
+  let assets: AssetMountState = AssetMountState::clone(&assets);
 
-  log::info!(
-    "Listed {} textures, {} outside the textures directory",
-    catalog.entries.len(),
-    catalog.outside_textures_count
-  );
+  execution
+    .run_blocking("Opening textures", move || {
+      let catalog: TextureCatalog =
+        assets.with_probe(&roots, |probe| TextureCatalog::list(probe, roots.clone(), mode))?;
 
-  let mut opened: MutexGuard<Option<TextureBrowseSession>> = state
-    .opened
-    .lock()
-    .map_err(|error| format!("Failed to open textures - browse state is unavailable: {error}"))?;
+      state.open_browse(session_id, TextureBrowseSession { roots, mode })?;
 
-  *opened = Some(TextureBrowseSession { roots, mode });
-
-  Ok(catalog)
+      Ok(catalog)
+    })
+    .await?
 }

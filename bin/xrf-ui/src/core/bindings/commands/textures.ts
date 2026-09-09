@@ -36,7 +36,7 @@ export const texturesCommands = {
    */
   buildFromSource: (request: TexturesBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureBuildOutcome>("plugin:textures|build_from_source", { request, jobId, progress }),
-  /** Stop browsing textures. */
+  /** Close browse state and invalidate held or unfinished comparisons. */
   close: () => __TAURI_INVOKE<null>("plugin:textures|close"),
   /**
    * Weigh every candidate format against one texture, and keep the encodes.

@@ -1,42 +1,29 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
-import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { isComputedProp } from "@wirestate/mobx";
 
-import { TextureEncodingComparison } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { MOCK_TEXTURE, mockTextureDescription, mockTextureEncodingComparison } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
+import { noop } from "@/lib/callbacks/noop";
 
 import { TextureEncodingService } from "./texture-encoding.service";
 
-function mockCandidate(format: "bc1" | "bc3", label: string) {
-  return {
-    channelRmse: [0, 0, 0, 0] as [number, number, number, number],
-    compatibility: [],
-    encodeDuration: 30,
-    fileBytes: 1024,
-    format,
-    gpuBytes: 512,
-    label,
-    psnr: 42,
-    supportSummary: "all renderers, GL unverified",
-  };
-}
+function pendingPreview() {
+  let resolve: (bytes: ArrayBuffer) => void = noop;
+  const promise: Promise<ArrayBuffer> = new Promise((settle) => {
+    resolve = settle;
+  });
 
-function mockComparison(reference: string = MOCK_TEXTURE): TextureEncodingComparison {
-  return {
-    candidates: [mockCandidate("bc1", "BC1 (DXT1)"), mockCandidate("bc3", "BC3 (DXT5)")],
-    current: { fileBytes: 2048, gpuBytes: 1024, height: 16, label: "DXT5", mipmapLevels: 1, width: 16 },
-    outcome: "completed",
-    reference,
-  };
+  return { promise, resolve };
 }
 
 async function mockService(): Promise<{ service: TextureEncodingService; selection: TextureSelectionService }> {
   setMockInvokeResponses({
-    ["plugin:textures|compare_encodings"]: mockComparison(),
+    ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
     ["plugin:textures|describe"]: mockTextureDescription(),
     ["plugin:textures|read_candidate"]: new ArrayBuffer(8),
     ["plugin:textures|read_texture"]: new ArrayBuffer(0),
@@ -59,7 +46,7 @@ describe("TextureEncodingService", () => {
     const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEncodingService]);
     const service: TextureEncodingService = container.get(TextureEncodingService);
 
-    expect(isObservableProp(service, "chosen")).toBe(true);
+    expect(isComputedProp(service, "chosen")).toBe(true);
     expect(isComputedProp(service, "comparison")).toBe(true);
     expect(isComputedProp(service, "isDirty")).toBe(true);
   });
@@ -188,5 +175,78 @@ describe("TextureEncodingService", () => {
     expect(service.chosen).toBe("bc3");
     expect(service.preview.value).toBeNull();
     expect(service.preview.error?.message).toContain("does not carry that format");
+  });
+  it("addresses candidate previews by the returned comparison session", async () => {
+    const { service } = await mockService();
+
+    await service.run(null);
+    await service.choose("bc3");
+
+    expect(mockInvoke).toHaveBeenLastCalledWith("plugin:textures|read_candidate", {
+      sessionId: mockTextureEncodingComparison().sessionId,
+      format: "bc3",
+    });
+  });
+
+  it.each(["roots", "source"] as const)("does not reuse a same-label comparison with different %s", async (field) => {
+    const { service, selection } = await mockService();
+
+    await service.run(null);
+    await service.choose("bc3");
+
+    const description: TextureDescription = mockTextureDescription(MOCK_TEXTURE, {
+      ...(field === "roots"
+        ? { roots: { asset: null, roots: [{ path: "D:/other" }] } }
+        : { source: { kind: "file", path: "D:/other/ston_beton05.dds" } }),
+    });
+
+    setMockInvokeResponses({
+      ["plugin:textures|describe"]: description,
+      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+    await selection.open(description.source, description.roots);
+
+    expect(service.comparison).toBeNull();
+    expect(service.chosen).toBeNull();
+    expect(service.isDirty).toBe(false);
+  });
+
+  it("does not publish a pending preview after clearing its comparison", async () => {
+    const { service } = await mockService();
+    const pending = pendingPreview();
+
+    await service.run(null);
+    setMockInvokeResponses({ ["plugin:textures|read_candidate"]: () => pending.promise });
+
+    const choosing = service.choose("bc3");
+
+    service.clear();
+    pending.resolve(new ArrayBuffer(8));
+    await choosing;
+
+    expect(service.preview.value).toBeNull();
+    expect(service.chosen).toBeNull();
+  });
+
+  it("does not publish an old preview into a new comparison", async () => {
+    const { service } = await mockService();
+    const pending = pendingPreview();
+
+    await service.run(null);
+    setMockInvokeResponses({
+      ["plugin:textures|read_candidate"]: () => pending.promise,
+      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison({
+        sessionId: "5ffb9fb7-b48b-4b55-b713-d7941d623cbe",
+      }),
+    });
+
+    const choosing = service.choose("bc3");
+
+    await service.run(null);
+    pending.resolve(new ArrayBuffer(8));
+    await choosing;
+
+    expect(service.preview.value).toBeNull();
+    expect(service.chosen).toBeNull();
   });
 });

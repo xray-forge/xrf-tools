@@ -344,13 +344,7 @@ export type TextureBadges = {
   isUnreadable: boolean;
 };
 
-/**
- * A browsing session the backend is holding: what is mounted, and how it was listed.
- *
- * The mode travels with the roots because a reload has to come back to the listing it left. The same directory is a
- * game tree or a folder of loose files depending on nothing but this, and restoring the wrong one shows an empty
- * tree over a session that was there a moment ago.
- */
+/** The roots and listing mode restored after a frontend reload. */
 export type TextureBrowseSession = {
   roots: XrayRoots;
   mode: TextureCatalogMode;
@@ -514,6 +508,9 @@ export type TextureEditTargets = {
 
 /** Every candidate weighed against one texture, with the texture itself for a baseline. */
 export type TextureEncodingComparison = {
+  sessionId: TextureSessionId;
+  source: TextureSource;
+  roots: XrayRoots;
   /**
    * Whether every candidate was weighed or the run stopped because it was asked to.
    *
@@ -576,6 +573,7 @@ export type TextureEncodingReport = {
 
 /** The texture half of a save, which is one of the candidates a comparison already encoded. */
 export type TextureEncodingSave = {
+  sessionId: TextureSessionId;
   target: TextureSaveTarget;
   format: TextureEncodingFormat;
 };
@@ -702,6 +700,9 @@ export type TextureSaveTarget = {
   /** The stamp the editor read there, or `None` for a file it is creating. */
   expected: TextureFileStamp | null;
 };
+
+/** Identifies one revision of the texture session, including the comparison it may hold. */
+export type TextureSessionId = string;
 
 /** Where a texture is named from. */
 export type TextureSource =
