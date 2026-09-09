@@ -1,5 +1,4 @@
 import { default as ConstructionIcon } from "@mui/icons-material/Construction";
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -17,14 +16,12 @@ interface IPlannedApplicationProps {
  */
 export function PlannedApplication({ description }: IPlannedApplicationProps): ReactElement {
   return (
-    <EditorLayout toolbar={<EditorToolbar />}>
-      <Box sx={[getApplicationBackgroundSx, { display: "flex", width: "100%", height: "100%", minHeight: 0 }]}>
-        <EmptyState
-          icon={<ConstructionIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
-          title={"Not implemented yet"}
-          description={description}
-        />
-      </Box>
+    <EditorLayout toolbar={<EditorToolbar />} sx={getApplicationBackgroundSx}>
+      <EmptyState
+        icon={<ConstructionIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
+        title={"Not implemented yet"}
+        description={description}
+      />
     </EditorLayout>
   );
 }

@@ -3,10 +3,11 @@ import { ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { useEditorToolbarHost } from "@/core/shell/header/editor-toolbar-host";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IEditorLayoutProps extends BaseComponentProps {
+interface IEditorLayoutProps extends StyledComponentProps {
   /** Portaled into the window caption, so it must stay one row of controls. */
   toolbar?: ReactNode;
   /** Full-width notices between the caption and the content. */
@@ -26,6 +27,7 @@ export function EditorLayout({
   banner,
   footer,
   children,
+  sx,
 }: IEditorLayoutProps): ReactElement {
   const host: Nullable<HTMLElement> = useEditorToolbarHost();
 
@@ -34,7 +36,10 @@ export function EditorLayout({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" }}
+      sx={mergeSx(
+        { display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" },
+        sx
+      )}
     >
       {toolbar && host ? createPortal(toolbar, host) : toolbar}
 

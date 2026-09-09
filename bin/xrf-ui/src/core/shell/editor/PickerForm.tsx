@@ -141,21 +141,24 @@ export function PickerForm({
   useEditorBusy(Boolean(isLoading));
 
   return (
-    <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
+    <EditorLayout
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      toolbar={<EditorToolbar />}
+      sx={getApplicationBackgroundSx}
+    >
       <Box
         component={"form"}
         noValidate={true}
-        sx={[
-          getApplicationBackgroundSx,
-          {
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            height: "100%",
-            minHeight: 0,
-            overflowY: "auto",
-          },
-        ]}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          overflowY: "auto",
+        }}
         onSubmit={onFormSubmit}
         onKeyDown={onFormKeyDown}
       >

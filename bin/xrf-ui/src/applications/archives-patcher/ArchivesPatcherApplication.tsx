@@ -1,5 +1,5 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Alert, Box, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Box, Divider, Stack, Typography } from "@mui/material";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
@@ -28,6 +28,7 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -209,13 +210,7 @@ export function ArchivesPatcherApplication(): ReactElement {
   });
 
   if (!config) {
-    return (
-      <EditorLayout toolbar={<EditorToolbar />}>
-        <Box sx={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}>
-          <CircularProgress size={28} />
-        </Box>
-      </EditorLayout>
-    );
+    return <ApplicationLoader />;
   }
 
   return (
