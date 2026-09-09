@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xray-forge/xrf-tools.git"
+  },
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=24"

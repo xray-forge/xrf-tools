@@ -6,11 +6,11 @@ describe("module name token", () => {
   it("resolves to this file's own name", () => {
     // Asserted from inside a real module rather than by calling the substitution directly, because what matters is that
     // the token is gone by the time the code runs. A missed replacement throws on load and never reaches this line.
-    expect(__MODULE_NAME__).toBe("module-name.test");
+    expect(__MODULE_NAME__).toBe("vite.test");
   });
 
   it("is what a logger built here tags its output with", () => {
-    expect(new Logger(__MODULE_NAME__).prefix).toBe("module-name.test");
+    expect(new Logger(__MODULE_NAME__).prefix).toBe("vite.test");
   });
 
   it("survives as a plain string, not an identifier the bundler can rename", () => {

@@ -8,10 +8,11 @@
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["vite.config.ts", "cli/build/**/*.ts"]
+  "include": ["vite.config.ts", "cli/build/**/*.ts", "package.json"]
 }

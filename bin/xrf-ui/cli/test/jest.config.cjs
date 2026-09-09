@@ -15,6 +15,9 @@ module.exports = {
   clearMocks: true,
   coverageDirectory: "<rootDir>/target/coverage-report",
   coveragePathIgnorePatterns: ["/node_modules/", "<rootDir>/src/fixtures/"],
+  globals: {
+    __REPOSITORY_URL__: require(path.join(ROOT_DIR, "package.json")).repository.url,
+  },
   moduleNameMapper: {
     "\\.(css|less|svg|png|jpg|woff2?)$": path.resolve(__dirname, "./asset-stub.cjs"),
     "^@/(.*)$": "<rootDir>/src/$1",

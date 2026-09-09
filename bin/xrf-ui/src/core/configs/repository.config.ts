@@ -1,8 +1,14 @@
 /**
  * Source repository this application is built from.
- * todo: Use package json on compile time as better idea.
  */
-export const REPOSITORY_URL: string = "https://github.com/xray-forge/xrf-tools";
+export const REPOSITORY_URL: string = __REPOSITORY_URL__.replace(/^git\+/, "").replace(/(?:\.git)?\/?$/, "");
+
+/**
+ * Address of the exact commit used to build the application.
+ */
+export function getCommitUrl(commit: string): string {
+  return `${REPOSITORY_URL}/commit/${commit}`;
+}
 
 /**
  * Address of one workflow run, which build details link to so a binary can be traced to what produced it.
