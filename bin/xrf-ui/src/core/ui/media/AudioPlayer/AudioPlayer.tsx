@@ -1,9 +1,10 @@
-import { Box } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 import { Nullable } from "@/lib/types/general";
 
+import { describeAudioError, describePlaybackError } from "./AudioPlayer.errors";
 import { AudioPlayerControls } from "./AudioPlayerControls";
 import { AudioWaveform } from "./AudioWaveform";
 
@@ -20,6 +21,8 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
   const [isLooping, setLooping] = useState<boolean>(false);
   const [position, setPosition] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
+  const [error, setError] = useState<Nullable<string>>(null);
+  const playRequestRef = useRef<number>(0);
 
   const onTogglePlay = useCallback(() => {
     const audio: Nullable<HTMLAudioElement> = audioRef.current;
@@ -28,8 +31,22 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
       return;
     }
 
+    const request: number = ++playRequestRef.current;
+    const source: string = audio.src;
+
     if (audio.paused) {
-      void audio.play().catch(() => undefined);
+      setError(null);
+
+      if (audio.error) {
+        audio.load();
+      }
+
+      void audio.play().catch((error: unknown) => {
+        if (request === playRequestRef.current && audioRef.current === audio && audio.src === source) {
+          setPlaying(false);
+          setError(describePlaybackError(error));
+        }
+      });
     } else {
       audio.pause();
     }
@@ -49,8 +66,19 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
   );
 
   const onToggleLoop = useCallback(() => setLooping((it: boolean) => !it), []);
-  const onPlaying = useCallback(() => setPlaying(true), []);
+
+  const onPlaying = useCallback(() => {
+    setPlaying(true);
+    setError(null);
+  }, []);
   const onStopped = useCallback(() => setPlaying(false), []);
+
+  const onError = useCallback((event: SyntheticEvent<HTMLAudioElement>) => {
+    // The media error is more specific than the rejection of a pending play request.
+    playRequestRef.current += 1;
+    setPlaying(false);
+    setError(describeAudioError(event.currentTarget.error));
+  }, []);
 
   const onTimeUpdate = useCallback((event: SyntheticEvent<HTMLAudioElement>) => {
     const next: number = event.currentTarget.currentTime;
@@ -76,6 +104,12 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
     setPlaying(false);
     setPosition(0);
     setDuration(0);
+    setError(null);
+
+    return () => {
+      // A replaced source or an unmounted player no longer owns a pending play rejection.
+      playRequestRef.current += 1;
+    };
   }, [src]);
 
   return (
@@ -91,7 +125,10 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
         onEnded={onStopped}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
+        onError={onError}
       />
+
+      {error ? <Alert severity={"error"}>{error}</Alert> : null}
 
       <AudioWaveform
         src={src}

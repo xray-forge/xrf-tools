@@ -42,6 +42,82 @@ function getAudio(container: HTMLElement): HTMLAudioElement {
 }
 
 describe("AudioPlayer", () => {
+  it("explains a rejected playback request and clears the error on a successful retry", async () => {
+    jest
+      .spyOn(window.HTMLMediaElement.prototype, "play")
+      .mockRejectedValueOnce(new DOMException("Unsupported source", "NotSupportedError"));
+
+    const { getByLabelText, findByRole, queryByRole } = renderWithProviders(<AudioPlayer src={SRC} />);
+
+    await userEvent.click(getByLabelText("Play"));
+
+    expect(await findByRole("alert")).toHaveTextContent("This audio format is not supported or the file is damaged.");
+    expect(getByLabelText("Play")).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Play"));
+
+    expect(queryByRole("alert")).not.toBeInTheDocument();
+    expect(getByLabelText("Pause")).toBeInTheDocument();
+  });
+
+  it.each([
+    [2, "Could not read this audio"],
+    [3, "Could not decode this audio"],
+    [4, "This audio format is not supported or the file is unavailable"],
+  ])("explains media error %s and reloads the source when retried", async (code, message) => {
+    const { container, getByLabelText, getByRole, queryByRole } = renderWithProviders(<AudioPlayer src={SRC} />);
+    const audio: HTMLAudioElement = getAudio(container);
+    const load = jest.spyOn(audio, "load").mockImplementation(() => undefined);
+
+    Object.defineProperty(audio, "error", { configurable: true, value: { code, message: "Browser detail" } });
+
+    fireEvent.error(audio);
+
+    expect(getByRole("alert")).toHaveTextContent(String(message));
+    expect(getByLabelText("Play")).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Play"));
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it.each([false, true])(
+    "ignores old playback failures after changing sounds (media error: %s)",
+    async (hasMediaError) => {
+      let rejectPlay: (error: Error) => void;
+
+      jest.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            rejectPlay = reject;
+          })
+      );
+
+      const { container, getByLabelText, getByRole, queryByRole, rerender } = renderWithProviders(
+        <AudioPlayer src={SRC} />
+      );
+
+      await userEvent.click(getByLabelText("Play"));
+      if (hasMediaError) {
+        fireEvent.error(getAudio(container));
+
+        expect(getByRole("alert")).toBeInTheDocument();
+      }
+
+      rerender(
+        <>
+          <AudioPlayer src={"blob:mock/other"} />
+        </>
+      );
+
+      await act(async () => rejectPlay(new Error("Old source failed")));
+
+      expect(queryByRole("alert")).not.toBeInTheDocument();
+      expect(getByLabelText("Play")).toBeInTheDocument();
+    }
+  );
+
   it("still renders a usable transport where nothing can be decoded or drawn", () => {
     // The point of drawing our own player is that it degrades: no waveform, but the sound still plays.
     const { getByLabelText } = renderWithProviders(<AudioPlayer src={SRC} bytes={null} />);
