@@ -8,12 +8,14 @@ import {
   ConfigsOpenRequest,
   ConfigsProjectDescriptor,
   ConfigsReadDocumentRequest,
+  ConfigsReadSectionsRequest,
+  ConfigsResolvedRequest,
   ConfigsSessionId,
   ConfigsVerifyRequest,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
-import { LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxInventory, LtxResolvedIndex, LtxResolvedSection } from "@/core/bindings/types/xrf-ltx-inspect";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
@@ -58,12 +60,7 @@ export const configsCommands = {
       roots: XrayRoots;
       /** Scope inside those trees, or nothing for all of them. */
       prefix: string | null;
-      /**
-       * Whether configs resolve under the Monolith/Anomaly patch dialect.
-       *
-       * A property of the open and not a toggle: every resolution, page and finding held for this session was produced
-       * under it, so changing it means opening again.
-       */
+      /** Whether configs resolve under the Monolith/Anomaly patch dialect. */
       isDltx: boolean;
       /** Host path the project reports itself at, for a crumb that names something a person recognises. */
       root: string;
@@ -77,12 +74,34 @@ export const configsCommands = {
        */
       declaredSchemes: Array<string>;
     } | null>("plugin:configs|get_project"),
+  /**
+   * Lists every section one entry point resolves to, named and counted.
+   *
+   * The index, not the bodies: a vanilla `system.ltx` resolves to 23,500 sections holding 293,000 fields, and sending
+   * those together would be a message of tens of megabytes for a screen showing forty lines. What travels is enough to
+   * lay the document out - how many fields each section has, so the view knows its own height - and bodies are asked
+   * for a page at a time as they scroll into view.
+   */
+  listResolvedSections: (request: ConfigsResolvedRequest) =>
+    __TAURI_INVOKE<LtxResolvedIndex>("plugin:configs|list_resolved_sections", { request }),
   /** Opens a configs project for browsing, and lists what it holds. */
   openProject: (request: ConfigsOpenRequest) =>
     __TAURI_INVOKE<ConfigsProjectDescriptor>("plugin:configs|open_project", { request }),
   /** Reads one config as the authored view renders it: its lines, and what only the parser knows about them. */
   readDocument: (request: ConfigsReadDocumentRequest) =>
     __TAURI_INVOKE<ConfigsDocument>("plugin:configs|read_document", { request }),
+  /**
+   * Reads the bodies of the named sections of one entry point.
+   *
+   * Addressed by name rather than by offset, so a page is always whole sections and a filter applied on one side never
+   * has to be mirrored on the other. A name the root does not hold is skipped rather than refused: a page request races
+   * an index the caller may have fetched before a reopen.
+   *
+   * Inline rather than blocking: the root is already resolved by the time anything can ask for a page, so this reads
+   * fields out of a map and the headers of at most a few declaring configs.
+   */
+  readResolvedSections: (request: ConfigsReadSectionsRequest) =>
+    __TAURI_INVOKE<Array<LtxResolvedSection>>("plugin:configs|read_resolved_sections", { request }),
   /** Verifies LTX configs through the VFS, including archived files. */
   verifyDirectory: (request: ConfigsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { request, jobId, progress }),

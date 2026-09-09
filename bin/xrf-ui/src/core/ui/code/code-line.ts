@@ -23,3 +23,18 @@ export interface ICodeLine {
   spans: ReadonlyArray<ISyntaxSpan>;
   mark?: ECodeLineMark;
 }
+
+/**
+ * The stretch of a listing that is currently on screen, by the numbers its lines display.
+ *
+ * Beside {@link ICodeLine} rather than on the component, for the same reason: what a viewport is showing is what
+ * decides which section bodies a service has to fetch, and a service naming that range should not have to import a
+ * React component to do it.
+ *
+ * Both ends are inclusive, and both are line numbers rather than positions - a listing addressed by index at its edges
+ * and by number everywhere else would be two addressing schemes for one document.
+ */
+export interface ICodeLineRange {
+  firstLine: number;
+  lastLine: number;
+}

@@ -86,6 +86,85 @@ export type LtxInventoryRole =
   /** A file that patches another config rather than standing on its own, as the dialect identified it. */
   | { kind: "attachment" };
 
+/**
+ * Something the dialect wanted said about a root, short of refusing it.
+ *
+ * The serializable mirror of [`LtxResolutionDiagnostic`], which the core intentionally does not carry a wire shape for.
+ * No severity, because there is only one: everything the engine refuses to start on comes back as an error from the
+ * resolve, so a diagnostic exists precisely where the game would say nothing.
+ */
+export type LtxResolvedDiagnostic = {
+  section: string;
+  /** Engine identity of the config the dialect blamed, where it named one. */
+  file: string | null;
+  message: string;
+  /** What the engine does with the same input, where that differs from reporting it. */
+  engineBehaviour: string | null;
+};
+
+/** One resolved field: what it says, and why it says that. */
+export type LtxResolvedField = {
+  key: string;
+  value: string;
+  origin: LtxResolvedFieldOrigin;
+};
+
+/** How one resolved field came to hold the value it holds. */
+export type LtxResolvedFieldOrigin =
+  /** Written in the body of the section that holds it. */
+  | { kind: "declared"; file: string | null }
+  /**
+   * Copied in by inheritance from the section that writes it, which is the ultimate writer and not the parent named
+   * in the header.
+   */
+  | { kind: "inherited"; section: string; file: string | null }
+  /** Won a load-order contest under a dialect that ranks statements rather than reading them in order. */
+  | { kind: "loaded"; file: string; depth: number; operation: string }
+  /** The resolution carries no record for this field, because none was asked for. */
+  | { kind: "unrecorded" };
+
+/** Every section one root resolved to, named and counted but not carried. */
+export type LtxResolvedIndex = {
+  /** Engine identity of the entry point this resolution was produced from. */
+  entry: string;
+  /** How the dialect that produced it names itself. */
+  dialect: string;
+  /**
+   * Sections in the order the dialect answers them, which is authored order under standard LTX and name order under
+   * DLTX. Not re-sorted: that order is the engine's own output, not a presentation choice.
+   */
+  sections: Array<LtxResolvedIndexEntry>;
+  diagnostics: Array<LtxResolvedDiagnostic>;
+};
+
+/** One resolved section as the index lists it. */
+export type LtxResolvedIndexEntry = {
+  name: string;
+  /**
+   * Parents the header declared, read back from the declaring config.
+   *
+   * Not from the resolution: flattening inheritance is what resolving does, so a resolved section no longer records
+   * what it inherited from.
+   */
+  parents: Array<string>;
+  fieldCount: number;
+  /** Engine identity of the config whose header declared the section, where the dialect stamped one. */
+  origin: string | null;
+};
+
+/** One resolved section with its fields and where each of them came from. */
+export type LtxResolvedSection = {
+  /** Engine identity of the entry point this section was resolved from, so a consumer can key a cache by it. */
+  entry: string;
+  name: string;
+  /** Parents the header declared, read back from the declaring config. */
+  parents: Array<string>;
+  /** Engine identity of the config whose header declared the section, where the dialect stamped one. */
+  origin: string | null;
+  /** Fields in resolved order, which is written order with inherited ones folded in ahead of them. */
+  fields: Array<LtxResolvedField>;
+};
+
 /** One `#include`, and the configs it actually reached. */
 export type LtxStructureInclude = {
   /** One-based line the statement was written on. */

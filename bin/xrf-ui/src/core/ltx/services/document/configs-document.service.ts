@@ -10,6 +10,14 @@ import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
+/** The two ways one config can be read. */
+export const enum EConfigsDocumentMode {
+  /** The file as written, which is what an editor will later change. */
+  AUTHORED = "authored",
+  /** What its entry point resolves to, which is what the engine loads. */
+  RESOLVED = "resolved",
+}
+
 /**
  * Which config is on screen, and what the backend says about it.
  *
@@ -25,9 +33,32 @@ export class ConfigsDocumentService {
   @Observable()
   public selected: Nullable<string> = null;
 
+  /**
+   * Which of the two views the selected config is shown in.
+   */
+  @Observable()
+  public mode: EConfigsDocumentMode = EConfigsDocumentMode.AUTHORED;
+
+  /**
+   * Section a panel asked to be brought into view, if one has.
+   */
+  @Observable()
+  public revealedSection: Nullable<string> = null;
+
   /** The selected config's lines and structure. */
   @Observable()
   public document: Loadable<Nullable<ConfigsDocument>> = Loadable.idle(null);
+
+  /**
+   * @returns The entry point the selected config is judged against, or null when nothing reaches it.
+   *
+   * The first of them, which is the one the backend resolved the structure against. A config reached by two entry
+   * points is read through the first in project order, and the structure names the others.
+   */
+  @Computed()
+  public get entry(): Nullable<string> {
+    return this.document.value?.structure.entryPoints[0] ?? null;
+  }
 
   /**
    * @returns Whether the selected config could not be parsed, which is shown rather than refused.
@@ -92,6 +123,37 @@ export class ConfigsDocumentService {
     runInAction(() => {
       this.selected = null;
       this.document = this.document.asIdle(null);
+    });
+  }
+
+  /**
+   * Ask the open view to bring one section into sight.
+   *
+   * @param name - Section to reveal, as the view names it.
+   */
+  public revealSection(name: string): void {
+    runInAction(() => {
+      this.revealedSection = name;
+    });
+  }
+
+  /**
+   * Forget a reveal the view has acted on, so the same section can be asked for again.
+   */
+  public clearRevealed(): void {
+    runInAction(() => {
+      this.revealedSection = null;
+    });
+  }
+
+  /**
+   * Show the selected config in one view or the other.
+   *
+   * @param mode - View to switch to.
+   */
+  public setMode(mode: EConfigsDocumentMode): void {
+    runInAction(() => {
+      this.mode = mode;
     });
   }
 }

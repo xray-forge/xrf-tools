@@ -133,20 +133,11 @@ export type ConfigsOpenRequest = {
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
   prefix: string | null;
-  /**
-   * Whether to resolve with the Monolith/Anomaly DLTX patch dialect.
-   *
-   * Chosen once per open rather than toggled: everything held for the session was resolved under it.
-   */
+  /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
 };
 
-/**
- * What one open of the configs explorer answers with.
- *
- * The inventory travels with the open rather than through a second call, because a tree the frontend cannot list is
- * a screen with nothing on it: there is no useful state between "opened" and "knows what it holds".
- */
+/** What one open of the configs explorer answers with. */
 export type ConfigsProjectDescriptor = {
   /** Identity every later read is addressed by. */
   sessionId: ConfigsSessionId;
@@ -154,12 +145,7 @@ export type ConfigsProjectDescriptor = {
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
   prefix: string | null;
-  /**
-   * Whether configs resolve under the Monolith/Anomaly patch dialect.
-   *
-   * A property of the open and not a toggle: every resolution, page and finding held for this session was produced
-   * under it, so changing it means opening again.
-   */
+  /** Whether configs resolve under the Monolith/Anomaly patch dialect. */
   isDltx: boolean;
   /** Host path the project reports itself at, for a crumb that names something a person recognises. */
   root: string;
@@ -182,13 +168,25 @@ export type ConfigsReadDocumentRequest = {
   path: string;
 };
 
-/**
- * Identifies one open of the configs explorer, and everything resolved under it.
- *
- * Reissued by every open and every close, so a read addressed to a project since replaced answers that it is stale
- * rather than answering about a different tree. The frontend holds resolutions and page slices keyed by this, which is
- * what lets a reopen invalidate them all at once.
- */
+/** Which sections of a resolved root a page wants. */
+export type ConfigsReadSectionsRequest = {
+  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  sessionId: ConfigsSessionId;
+  /** Engine identity of the entry point the sections belong to. */
+  entry: string;
+  /** Sections to read, as the index named them. */
+  names: Array<string>;
+};
+
+/** Which resolved root a reader wants, of which open. */
+export type ConfigsResolvedRequest = {
+  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  sessionId: ConfigsSessionId;
+  /** Engine identity of the entry point to resolve. */
+  entry: string;
+};
+
+/** Identifies one open of the configs explorer, and everything resolved under it. */
 export type ConfigsSessionId = string;
 
 /** What a config verification was asked to do. */

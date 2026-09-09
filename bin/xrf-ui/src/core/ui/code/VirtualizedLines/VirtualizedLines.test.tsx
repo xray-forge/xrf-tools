@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ESyntaxToken } from "@/core/syntax/lib";
 import { CODE } from "@/core/theme/tokens";
-import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineRange } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines/VirtualizedLines";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
@@ -37,6 +37,22 @@ function setVirtualizationEnabled(isEnabled: boolean): void {
   const platformModule: { platform: { env: { jsdom: boolean } } } = require("@base-ui/utils/platform");
 
   platformModule.platform.env.jsdom = !isEnabled;
+}
+
+/**
+ * Gives the listing a viewport and a scroll position it can actually keep.
+ *
+ * jsdom lays nothing out: it answers `clientHeight` with zero and drops every write to `scrollTop`, so a component
+ * that scrolls by arithmetic has nowhere to write its answer until these are its own properties.
+ *
+ * @param list - The listing's scroller.
+ * @returns The same element, now scrollable.
+ */
+function asScrollable(list: HTMLElement): HTMLElement {
+  Object.defineProperty(list, "clientHeight", { configurable: true, value: VIEWPORT_HEIGHT });
+  Object.defineProperty(list, "scrollTop", { configurable: true, value: 0, writable: true });
+
+  return list;
 }
 
 describe("VirtualizedLines", () => {
@@ -134,6 +150,104 @@ describe("VirtualizedLines", () => {
     expect(onSelectLine).toHaveBeenLastCalledWith(expect.objectContaining({ number: 41 }));
   });
 
+  it("puts a line it was addressed to at the top of the viewport", () => {
+    // A section jumped to is read downwards from its header, so scrolling just far enough to make it visible is the
+    // wrong answer: it would sit against the bottom edge, showing its name and none of its body.
+    const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
+    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+
+    render_.rerender(
+      <>
+        <VirtualizedLines ariaLabel={"Source"} lines={lines} scrollToLine={200} />
+      </>
+    );
+
+    expect(list.scrollTop).toBe(199 * CODE.lineHeight);
+  });
+
+  it("moves the listing as little as it can for a step of the selection", () => {
+    // The other half of the same decision: an arrow key that parked its line at the top would throw away the context
+    // the reader is looking at, so a step still scrolls by the least it can.
+    const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
+    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+
+    render_.rerender(
+      <>
+        <VirtualizedLines ariaLabel={"Source"} lines={lines} selectedLine={300} />
+      </>
+    );
+
+    expect(list.scrollTop).toBe(300 * CODE.lineHeight - VIEWPORT_HEIGHT);
+  });
+
+  it("reports the stretch on screen by the numbers its lines show, not by their positions", () => {
+    // What a listing whose content is fetched as it scrolls asks for, and it asks in the same currency everything
+    // else here is addressed in.
+    const onVisibleRangeChange = jest.fn();
+
+    renderWithProviders(
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        lines={[line(40, "a"), line(41, "b"), line(99, "c")]}
+        onVisibleRangeChange={onVisibleRangeChange}
+      />
+    );
+
+    expect(onVisibleRangeChange).toHaveBeenCalledTimes(1);
+    expect(onVisibleRangeChange).toHaveBeenCalledWith({ firstLine: 40, lastLine: 99 });
+  });
+
+  it("stays quiet while the stretch on screen does not change", () => {
+    // A fetch driven by this callback would otherwise be asked for the same page on every scroll frame.
+    const onVisibleRangeChange = jest.fn();
+    const lines: Array<ICodeLine> = [line(1, "a"), line(2, "b")];
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} lines={lines} onVisibleRangeChange={onVisibleRangeChange} />
+    );
+
+    // Re-wrapped exactly as `renderWithProviders` wraps the first render: a rerender that changes the shape of the
+    // tree above the subject remounts it, which would reset what it remembers reporting and prove nothing.
+    render_.rerender(
+      <>
+        <VirtualizedLines
+          ariaLabel={"Source"}
+          lines={lines}
+          selectedLine={2}
+          // A fresh function every render, which is what a caller writing the handler inline hands over.
+          onVisibleRangeChange={(range: ICodeLineRange) => onVisibleRangeChange(range)}
+        />
+      </>
+    );
+
+    expect(onVisibleRangeChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports again once the document under it is numbered differently", () => {
+    const onVisibleRangeChange = jest.fn();
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        lines={[line(1, "a"), line(2, "b")]}
+        onVisibleRangeChange={onVisibleRangeChange}
+      />
+    );
+
+    render_.rerender(
+      <>
+        <VirtualizedLines
+          ariaLabel={"Source"}
+          lines={[line(400, "a"), line(401, "b")]}
+          onVisibleRangeChange={onVisibleRangeChange}
+        />
+      </>
+    );
+
+    expect(onVisibleRangeChange).toHaveBeenCalledTimes(2);
+    expect(onVisibleRangeChange).toHaveBeenLastCalledWith({ firstLine: 400, lastLine: 401 });
+  });
+
   it("measures its scroll height from the line count instead of laying the lines out", () => {
     // The signature of a windowed listing: the scroller learns how tall the document is by arithmetic,
     // so the rows it never rendered still take up the room they would have.
@@ -176,5 +290,20 @@ describe("VirtualizedLines with windowing on", () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.length).toBeLessThan((3 * VIEWPORT_HEIGHT) / CODE.lineHeight);
     expect(render_.getAllByTestId("virtualized-lines-gutter")[0]).toHaveTextContent("1");
+  });
+
+  it("reports the window it rendered rather than the document behind it", () => {
+    // The report is what a viewport-driven fetch is sized by, so it has to be the window and not the whole answer.
+    const onVisibleRangeChange = jest.fn();
+    const lines: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
+
+    renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} lines={lines} onVisibleRangeChange={onVisibleRangeChange} />
+    );
+
+    const range: { firstLine: number; lastLine: number } = onVisibleRangeChange.mock.calls[0][0] as ICodeLineRange;
+
+    expect(range.firstLine).toBe(1);
+    expect(range.lastLine).toBeLessThan(lines.length);
   });
 });

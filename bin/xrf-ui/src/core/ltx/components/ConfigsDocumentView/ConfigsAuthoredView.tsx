@@ -1,0 +1,68 @@
+import { Alert, Box } from "@mui/material";
+import { useInjection } from "@wirestate/react";
+import { ReactElement, useEffect, useMemo } from "react";
+
+import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
+import { toDocumentLines } from "@/core/ltx/lib/semantic";
+import { ConfigsDocumentService } from "@/core/ltx/services/document";
+import { ICodeLine } from "@/core/ui/code/code-line";
+import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable } from "@/lib/types/general";
+
+interface IConfigsAuthoredViewProps extends BaseComponentProps {
+  document: ConfigsDocument;
+}
+
+/**
+ * The open config as written, coloured by what it says and by what resolving it found.
+ */
+export function ConfigsAuthoredView({
+  "data-testid": dataTestId = "configs-authored-view",
+  document,
+}: IConfigsAuthoredViewProps): ReactElement {
+  const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
+
+  const revealed: Nullable<string> = documentService.revealedSection;
+
+  const lines: Array<ICodeLine> = useMemo(
+    () => toDocumentLines(document.text.lines, document.structure),
+    [document]
+  );
+
+  // Sections carry their own line here, because this view shows the file rather than a resolution of it.
+  const revealedLine: Nullable<number> = useMemo(
+    () => document.structure.sections.find((section) => section.name === revealed)?.line ?? null,
+    [document, revealed]
+  );
+
+  // Cleared once the listing below has acted on it, which child effects run before this one does. Without the clear a
+  // second click on the same section would change no prop and scroll nowhere.
+  useEffect(() => {
+    if (revealed) {
+      documentService.clearRevealed();
+    }
+  }, [documentService, revealed]);
+
+  return (
+    <Box
+      data-testid={dataTestId}
+      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
+    >
+      {documentService.parseError ? (
+        <Alert severity={"error"} variant={"outlined"} square>
+          {`This config does not parse: ${documentService.parseError}. Its text is shown as written; nothing below ` +
+            "reflects what the engine would load."}
+        </Alert>
+      ) : null}
+
+      <VirtualizedLines
+        data-testid={"configs-authored-lines"}
+        ariaLabel={`Contents of ${document.text.path}`}
+        lines={lines}
+        scrollToLine={revealedLine}
+        sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
+      />
+    </Box>
+  );
+}

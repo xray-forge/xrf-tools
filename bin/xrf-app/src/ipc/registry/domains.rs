@@ -47,8 +47,10 @@ macro_rules! for_each_tauri_command_domain {
         close_project => crate::plugins::configs::commands::close_project::configs_close_project,
         format_directory => crate::plugins::configs::commands::format_directory::configs_format_directory,
         get_project => crate::plugins::configs::commands::get_project::configs_get_project,
+        list_resolved_sections => crate::plugins::configs::commands::list_resolved_sections::configs_list_resolved_sections,
         open_project => crate::plugins::configs::commands::open_project::configs_open_project,
         read_document => crate::plugins::configs::commands::read_document::configs_read_document,
+        read_resolved_sections => crate::plugins::configs::commands::read_resolved_sections::configs_read_resolved_sections,
         verify_directory => crate::plugins::configs::commands::verify_directory::configs_verify_directory,
       }
       dialogs => "dialogs" {

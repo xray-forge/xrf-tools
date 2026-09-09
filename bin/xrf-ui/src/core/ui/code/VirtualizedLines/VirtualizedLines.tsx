@@ -1,15 +1,27 @@
 import { Box, useTheme } from "@mui/material";
-import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
+import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
 import { getSyntaxColors } from "@/core/syntax/components/syntax.styles";
 import { ESyntaxToken } from "@/core/syntax/lib";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
-import { ICodeLine } from "@/core/ui/code/code-line";
+import { ICodeLine, ICodeLineRange } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+/**
+ * Where a reveal leaves the line it was handed.
+ *
+ * A step of the selection moves the listing as little as it can, because the line beside the one just left has to
+ * stay where the eye already is. An address into the document is the opposite: a section is read downwards from its
+ * header, and one revealed against the bottom edge shows its name with none of its body.
+ */
+const enum ECodeLineReveal {
+  NEAREST,
+  START,
+}
 
 interface IVirtualizedLinesProps extends StyledComponentProps {
   lines: ReadonlyArray<ICodeLine>;
@@ -19,11 +31,18 @@ interface IVirtualizedLinesProps extends StyledComponentProps {
    */
   selectedLine?: Nullable<number>;
   /**
-   * Line to bring into view without selecting it.
+   * Line to bring into view without selecting it, placed at the top of the listing.
    */
   scrollToLine?: Nullable<number>;
   /** A line was chosen, by click or by arrow key. */
   onSelectLine?: (line: ICodeLine) => void;
+  /**
+   * The stretch of lines on screen changed, reported by the numbers they display.
+   *
+   * Fired for the window as it is rendered, buffer included, and only when that window moves - a listing whose
+   * content is fetched as it scrolls would otherwise ask for the same page on every scroll frame.
+   */
+  onVisibleRangeChange?: (range: ICodeLineRange) => void;
 }
 
 /**
@@ -42,11 +61,13 @@ export function VirtualizedLines({
   selectedLine = null,
   scrollToLine = null,
   onSelectLine,
+  onVisibleRangeChange,
 }: IVirtualizedLinesProps): ReactElement {
   const theme = useTheme();
   const listId: string = useId();
 
   const scrollerRef = useRef<HTMLElement | null>(null);
+  const reportedRangeRef = useRef<Nullable<ICodeLineRange>>(null);
   const layoutRef = useRef<Nullable<LayoutList>>(null);
 
   if (!layoutRef.current) {
@@ -124,6 +145,11 @@ export function VirtualizedLines({
     },
   });
 
+  /**
+   * The rows the virtualizer decided to render, as it decided them.
+   */
+  const renderContext: RenderContext = virtualizer.store.use(Virtualization.selectors.renderContext);
+
   const containerProps = virtualizer.store.use(LayoutList.selectors.containerProps);
   const contentProps = virtualizer.store.use(LayoutList.selectors.contentProps);
   const positionerProps = virtualizer.store.use(LayoutList.selectors.positionerProps);
@@ -150,7 +176,7 @@ export function VirtualizedLines({
   );
 
   /** Scrolls a line into view by arithmetic, since every line is exactly one `CODE.lineHeight` tall. */
-  const revealLine = useCallback((index: number): void => {
+  const revealLine = useCallback((index: number, reveal: ECodeLineReveal): void => {
     const scroller: Nullable<HTMLElement> = scrollerRef.current;
 
     if (!scroller || index < 0) {
@@ -158,6 +184,15 @@ export function VirtualizedLines({
     }
 
     const top: number = index * CODE.lineHeight;
+
+    // Asked for unconditionally rather than only when the line is off screen: a section revealed is a section about
+    // to be read, and the scroller clamps this itself for the last screenful of the document.
+    if (reveal === ECodeLineReveal.START) {
+      scroller.scrollTop = top;
+
+      return;
+    }
+
     const bottom: number = top + CODE.lineHeight;
 
     if (top < scroller.scrollTop) {
@@ -174,7 +209,7 @@ export function VirtualizedLines({
 
       if (line) {
         select(line);
-        revealLine(next);
+        revealLine(next, ECodeLineReveal.NEAREST);
       }
     },
     [lines, revealLine, select]
@@ -210,13 +245,41 @@ export function VirtualizedLines({
     [lines.length, moveTo, selectedIndex]
   );
 
-  useEffect(() => revealLine(selectedIndex), [revealLine, selectedIndex]);
+  useEffect(() => revealLine(selectedIndex, ECodeLineReveal.NEAREST), [revealLine, selectedIndex]);
 
   useEffect(() => {
     if (scrollToLine !== null) {
-      revealLine(indexOfNumber.get(scrollToLine) ?? -1);
+      revealLine(indexOfNumber.get(scrollToLine) ?? -1, ECodeLineReveal.START);
     }
   }, [indexOfNumber, revealLine, scrollToLine]);
+
+  useEffect(() => {
+    if (!onVisibleRangeChange) {
+      return;
+    }
+
+    // The interval is clamped the way the rows themselves are: the virtualizer's last position is exclusive and may
+    // sit past the end of a document that just got shorter.
+    const first: number = Math.max(renderContext.firstRowIndex, 0);
+    const last: number = Math.min(renderContext.lastRowIndex, lines.length) - 1;
+
+    if (last < first) {
+      return;
+    }
+
+    const range: ICodeLineRange = { firstLine: lines[first].number, lastLine: lines[last].number };
+    const reported: Nullable<ICodeLineRange> = reportedRangeRef.current;
+
+    // Compared by the numbers reported and not by the positions behind them, because the numbers are the whole answer:
+    // a document swapped for one numbered identically is showing the same lines, and a scroll that lands on the same
+    // window has nothing new to say.
+    if (reported && reported.firstLine === range.firstLine && reported.lastLine === range.lastLine) {
+      return;
+    }
+
+    reportedRangeRef.current = range;
+    onVisibleRangeChange(range);
+  }, [lines, onVisibleRangeChange, renderContext]);
 
   return (
     <Box

@@ -1,17 +1,13 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use xrf_ltx::{LtxProject, LtxResolution};
+use xrf_ltx::{LtxDocumentSource, LtxProject};
+use xrf_ltx_inspect::LtxRootReader;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
+use crate::plugins::configs::resolved_root::ConfigsResolvedRoot;
 use crate::plugins::configs::session_id::ConfigsSessionId;
-
-/// One entry point's resolution, and which entry point it is of.
-struct HeldResolution {
-  entry: XrayLogicalPath,
-  resolution: Arc<LtxResolution>,
-}
 
 /// One opened configs project, and whatever has been resolved out of it.
 pub struct ConfigsProject {
@@ -19,8 +15,8 @@ pub struct ConfigsProject {
   /// Shared rather than owned: the inventory inside it is thousands of entries on an installation, and a restore
   /// answers with the same one the open did rather than a copy of it.
   pub descriptor: Arc<ConfigsProjectDescriptor>,
-  /// The one resolution held, and the entry point it came from.
-  resolved: Mutex<Option<HeldResolution>>,
+  /// The one resolved root held, and the entry point it came from.
+  resolved: Mutex<Option<Arc<ConfigsResolvedRoot>>>,
 }
 
 impl ConfigsProject {
@@ -32,7 +28,13 @@ impl ConfigsProject {
     }
   }
 
-  /// The resolution of one entry point, produced on the first ask and held until another entry point is asked for.
+  /// The resolved root for one entry point, produced on the first ask and held until another is asked for.
+  ///
+  /// One rather than a map, because a resolution with provenance is several times the size of the config and a game
+  /// tree resolves nearly everything through `system.ltx` - so one entry covers almost every file a person opens, and
+  /// caching every entry of an installation would hold hundreds of megabytes for the rare second one. Switching to
+  /// another entry point replaces it and pays one resolution, which the parsed-document cache has already read the
+  /// files for.
   ///
   /// Resolved with provenance, because every surface reading it has to explain a value: the structure view needs the
   /// parents a resolved section no longer carries, and the resolved view needs the origin of every field.
@@ -40,31 +42,63 @@ impl ConfigsProject {
   /// # Errors
   ///
   /// Returns an error when the entry point cannot be read or resolved.
-  pub fn resolve(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<LtxResolution>> {
+  pub fn resolve(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<ConfigsResolvedRoot>> {
     if let Some(held) = self.held_resolution()?.as_ref()
       && held.entry == *entry
     {
-      return Ok(Arc::clone(&held.resolution));
+      return Ok(Arc::clone(held));
     }
 
     // Resolved outside the lock: it reads and lowers a whole include tree, and holding the cache lock across that
     // would block a second surface asking about a config that is already held.
-    let resolution: Arc<LtxResolution> = Arc::new(
+    let resolved: Arc<ConfigsResolvedRoot> = Arc::new(ConfigsResolvedRoot::new(
+      entry.clone(),
       self
         .project
         .resolve_explained(entry)
         .map_err(|error| format!("Cannot resolve '{}': {error}", entry.as_str()))?,
-    );
+    ));
 
-    *self.held_resolution()? = Some(HeldResolution {
-      entry: entry.clone(),
-      resolution: Arc::clone(&resolution),
-    });
+    *self.held_resolution()? = Some(Arc::clone(&resolved));
 
-    Ok(resolution)
+    Ok(resolved)
   }
 
-  fn held_resolution(&self) -> TauriResult<MutexGuard<'_, Option<HeldResolution>>> {
+  /// Lends a reader over one resolved root for the length of one call.
+  ///
+  /// Lent rather than returned, the way `AssetMountState::with_probe` lends a probe: the reader borrows the resolution
+  /// and a document source built beside it, neither of which outlives this frame. It also keeps the dialect name and
+  /// the declared schemes in one place, so three commands cannot disagree about how a root is read.
+  ///
+  /// # Errors
+  ///
+  /// Whatever resolving the entry point, or the consumer, answers with.
+  pub fn with_reader<T>(
+    &self,
+    entry: &XrayLogicalPath,
+    consumer: impl FnOnce(&LtxRootReader, &ConfigsResolvedRoot) -> TauriResult<T>,
+  ) -> TauriResult<T> {
+    let resolved: Arc<ConfigsResolvedRoot> = self.resolve(entry)?;
+    let source = self.project.document_source();
+    let declared: Vec<&str> = self
+      .descriptor
+      .declared_schemes
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>();
+
+    let reader: LtxRootReader = LtxRootReader::new(
+      resolved.entry.as_str(),
+      self.project.get_dialect().get_name(),
+      &resolved.resolution,
+      &source as &dyn LtxDocumentSource,
+    )
+    .with_declared_schemes(&declared);
+
+    consumer(&reader, &resolved)
+  }
+
+  fn held_resolution(&self) -> TauriResult<MutexGuard<'_, Option<Arc<ConfigsResolvedRoot>>>> {
     self
       .resolved
       .lock()

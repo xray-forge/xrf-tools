@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_ltx::{LtxDocumentSource, LtxResolution};
-use xrf_ltx_inspect::{LtxFileStructure, LtxFileText, LtxRootReader, LtxTextReader};
+use xrf_ltx_inspect::{LtxFileStructure, LtxFileText, LtxTextReader};
 use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::XrayLogicalPath;
 
@@ -67,24 +66,12 @@ fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocu
   };
 
   let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(|error| error.to_string())?;
-  let resolution: Arc<LtxResolution> = opened.resolve(&entry)?;
-  let source = opened.project.document_source();
-  let declared: Vec<&str> = opened
-    .descriptor
-    .declared_schemes
-    .iter()
-    .map(String::as_str)
-    .collect::<Vec<&str>>();
 
-  let structure: LtxFileStructure = LtxRootReader::new(
-    entry.as_str(),
-    opened.project.get_dialect().get_name(),
-    &resolution,
-    &source as &dyn LtxDocumentSource,
-  )
-  .with_declared_schemes(&declared)
-  .read_structure(logical.as_str(), &entry_points)
-  .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))?;
+  let structure: LtxFileStructure = opened.with_reader(&entry, |reader, _| {
+    reader
+      .read_structure(logical.as_str(), &entry_points)
+      .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))
+  })?;
 
   Ok(ConfigsDocument { structure, text })
 }

@@ -2547,10 +2547,10 @@
           "markdownDescription": "Denies the read_asset command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-verify-directory`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-list-resolved-sections`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-read-resolved-sections`\n- `allow-verify-directory`",
           "type": "string",
           "const": "configs:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-verify-directory`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-list-resolved-sections`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-read-resolved-sections`\n- `allow-verify-directory`"
         },
         {
           "description": "Enables the check_directory_format command without any pre-configured scope.",
@@ -2577,6 +2577,12 @@
           "markdownDescription": "Enables the get_project command without any pre-configured scope."
         },
         {
+          "description": "Enables the list_resolved_sections command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-list-resolved-sections",
+          "markdownDescription": "Enables the list_resolved_sections command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open_project command without any pre-configured scope.",
           "type": "string",
           "const": "configs:allow-open-project",
@@ -2587,6 +2593,12 @@
           "type": "string",
           "const": "configs:allow-read-document",
           "markdownDescription": "Enables the read_document command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_resolved_sections command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-read-resolved-sections",
+          "markdownDescription": "Enables the read_resolved_sections command without any pre-configured scope."
         },
         {
           "description": "Enables the verify_directory command without any pre-configured scope.",
@@ -2619,6 +2631,12 @@
           "markdownDescription": "Denies the get_project command without any pre-configured scope."
         },
         {
+          "description": "Denies the list_resolved_sections command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-list-resolved-sections",
+          "markdownDescription": "Denies the list_resolved_sections command without any pre-configured scope."
+        },
+        {
           "description": "Denies the open_project command without any pre-configured scope.",
           "type": "string",
           "const": "configs:deny-open-project",
@@ -2629,6 +2647,12 @@
           "type": "string",
           "const": "configs:deny-read-document",
           "markdownDescription": "Denies the read_document command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_resolved_sections command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-read-resolved-sections",
+          "markdownDescription": "Denies the read_resolved_sections command without any pre-configured scope."
         },
         {
           "description": "Denies the verify_directory command without any pre-configured scope.",
