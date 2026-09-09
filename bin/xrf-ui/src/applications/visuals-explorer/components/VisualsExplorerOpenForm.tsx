@@ -19,14 +19,16 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
-type TOpenMode = "folder" | "model";
+const enum EVisualOpenMode {
+  FOLDER = "folder",
+  MODEL = "model",
+}
 
-const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TOpenMode>> = [
-  { value: "folder", label: "Folder", "aria-label": "Open folder" },
-  { value: "model", label: "Model", "aria-label": "Open model" },
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EVisualOpenMode>> = [
+  { value: EVisualOpenMode.FOLDER, label: "Folder", "aria-label": "Open folder" },
+  { value: EVisualOpenMode.MODEL, label: "Model", "aria-label": "Open model" },
 ];
-
-const OPEN_MODES: ReadonlyArray<TOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
+const OPEN_MODES: ReadonlyArray<EVisualOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
 
 interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
   /**
@@ -54,10 +56,10 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
 
   // Browsing is the primary workflow, so it is the fallback - but what someone last opened is a better guess than
   // that, and a person who only ever looks at single models should not re-pick the mode every session.
-  const [mode, setMode] = useRememberedValue<TOpenMode>({
+  const [mode, setMode] = useRememberedValue<EVisualOpenMode>({
     allowed: OPEN_MODES,
     application: EApplicationId.VISUALS_EXPLORER,
-    fallback: "folder",
+    fallback: EVisualOpenMode.FOLDER,
     id: "mode",
   });
 
@@ -79,7 +81,7 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
 
   const assetRoot: IPathField = useAssetRootField(EApplicationId.VISUALS_EXPLORER, isLoading);
 
-  const field: IPathField = mode === "folder" ? root : visual;
+  const field: IPathField = mode === EVisualOpenMode.FOLDER ? root : visual;
 
   const onOpen = useCallback(async () => {
     if (!field.value) {
@@ -91,7 +93,7 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
     // Either mode starts a session rather than adding to one, so whatever the other mode had open is closed first: a
     // model from a previous root has nothing to do with the roots being opened now, and leaving it on screen beside a
     // tree that does not contain it is the kind of disagreement the viewport is supposed to prevent.
-    if (mode === "folder") {
+    if (mode === EVisualOpenMode.FOLDER) {
       await visualsService.close();
       await browseService.openRoot(field.value, assetRoot.value);
     } else {
@@ -107,12 +109,12 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
       isLoading={isLoading}
       title={"Open game visuals"}
       description={
-        mode === "folder"
+        mode === EVisualOpenMode.FOLDER
           ? "Lists every visual under the root, archives included. Nothing is written."
           : "Reads the model and shows its bind pose. Nothing is written."
       }
       error={visualsService.visual.error?.message ?? browseService.visuals.error?.message}
-      submitLabel={mode === "folder" ? "Browse" : "Open"}
+      submitLabel={mode === EVisualOpenMode.FOLDER ? "Browse" : "Open"}
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}
     >
@@ -126,7 +128,7 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
         onChange={setMode}
       />
 
-      {mode === "folder" ? (
+      {mode === EVisualOpenMode.FOLDER ? (
         <PathFormRow
           label={"Meshes root"}
           description={"Gamedata directory to browse"}

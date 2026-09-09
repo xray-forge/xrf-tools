@@ -12,6 +12,7 @@ import { ArchivePreviewError } from "@/applications/archives-explorer/components
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchivePreviewSupport, getArchivePreviewSupport, TArchiveContent, TArchiveSelection } from "@/core/archive";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { inline } from "@/lib/callbacks/inline";
@@ -53,11 +54,12 @@ export function ArchivesFileContent({
   }, []);
 
   // A directory selection is a different kind of thing, not a file that happens to be missing.
-  if (selection.kind === "directory") {
+  if (selection.kind === EPathEntryKind.DIRECTORY) {
     return <ArchiveDirectoryContent path={selection.path} />;
   }
 
-  const descriptor: Nullable<ArchiveFileDescriptor> = selection.kind === "file" ? selection.descriptor : null;
+  const descriptor: Nullable<ArchiveFileDescriptor> =
+    selection.kind === EPathEntryKind.FILE ? selection.descriptor : null;
 
   if (!descriptor || !project) {
     return (

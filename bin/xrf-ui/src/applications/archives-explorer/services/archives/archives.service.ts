@@ -25,6 +25,7 @@ import { releaseEditorProject } from "@/core/ipc/release";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Loadable } from "@/lib/loadable";
@@ -87,7 +88,7 @@ export class ArchivesService {
    */
   @Computed()
   public get selectedFile(): Nullable<ArchiveFileDescriptor> {
-    return this.selection.kind === "file" ? this.selection.descriptor : null;
+    return this.selection.kind === EPathEntryKind.FILE ? this.selection.descriptor : null;
   }
 
   /**
@@ -97,7 +98,7 @@ export class ArchivesService {
    */
   @Computed()
   public get selectedDirectory(): Nullable<string> {
-    return this.selection.kind === "directory" ? this.selection.path : null;
+    return this.selection.kind === EPathEntryKind.DIRECTORY ? this.selection.path : null;
   }
 
   /**
@@ -310,7 +311,7 @@ export class ArchivesService {
   public *selectArchiveFile(descriptor: ArchiveFileDescriptor): TFlow {
     this.log.info("Select archive file:", descriptor);
 
-    this.selection = { kind: "file", descriptor };
+    this.selection = { kind: EPathEntryKind.FILE, descriptor };
     this.content = this.content.asIdle();
 
     yield* this.loadSelectedContent(descriptor);
@@ -325,7 +326,7 @@ export class ArchivesService {
   public selectArchiveDirectory(path: string): void {
     cancelFlow(this, "content");
 
-    this.selection = { kind: "directory", path };
+    this.selection = { kind: EPathEntryKind.DIRECTORY, path };
     this.content = this.content.asIdle();
     this.operation = this.operation.asIdle();
   }

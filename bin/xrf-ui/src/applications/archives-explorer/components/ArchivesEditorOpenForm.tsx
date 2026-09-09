@@ -16,13 +16,16 @@ import {
 import { Logger, useLogger } from "@/lib/logging";
 
 /** Which of the two things the picker is opening. */
-type TOpenMode = "directory" | "archive";
+const enum EArchiveOpenMode {
+  DIRECTORY = "directory",
+  ARCHIVE = "archive",
+}
 
-const OPEN_MODES: ReadonlyArray<TOpenMode> = ["directory", "archive"];
-const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TOpenMode>> = [
-  { value: "directory", label: "Directory", "aria-label": "Open directory" },
-  { value: "archive", label: "Archive", "aria-label": "Open archive" },
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EArchiveOpenMode>> = [
+  { value: EArchiveOpenMode.DIRECTORY, label: "Directory", "aria-label": "Open directory" },
+  { value: EArchiveOpenMode.ARCHIVE, label: "Archive", "aria-label": "Open archive" },
 ];
+const OPEN_MODES: ReadonlyArray<EArchiveOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
 
 /** Volume extensions offered by the dialog. */
 const ARCHIVE_FILTERS: Array<DialogFilter> = [
@@ -48,10 +51,10 @@ export function ArchivesEditorOpenForm(): ReactElement {
 
   // Browsing a directory is the primary workflow, so it is the fallback - and after that, whichever of the two was
   // last used, because someone who opens single volumes they downloaded does so every time.
-  const [mode, setMode] = useRememberedValue<TOpenMode>({
+  const [mode, setMode] = useRememberedValue<EArchiveOpenMode>({
     allowed: OPEN_MODES,
     application: EApplicationId.ARCHIVES_EXPLORER,
-    fallback: "directory",
+    fallback: EArchiveOpenMode.DIRECTORY,
     id: "mode",
   });
 
@@ -73,7 +76,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
     isDisabled: isLoading,
   });
 
-  const field: IPathField = mode === "directory" ? directory : archive;
+  const field: IPathField = mode === EArchiveOpenMode.DIRECTORY ? directory : archive;
 
   const onOpen = useCallback(() => {
     if (field.value) {
@@ -88,7 +91,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
       isLoading={isLoading}
       title={"Open game archives"}
       description={
-        mode === "directory"
+        mode === EArchiveOpenMode.DIRECTORY
           ? "Indexes every archive in the directory for browsing."
           : "Indexes one archive volume for browsing."
       }
@@ -106,7 +109,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
         onChange={setMode}
       />
 
-      {mode === "directory" ? (
+      {mode === EArchiveOpenMode.DIRECTORY ? (
         <PathFormRow
           isDisabled={isLoading}
           label={"Archives directory"}

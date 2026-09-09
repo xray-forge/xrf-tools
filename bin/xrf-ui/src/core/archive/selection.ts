@@ -1,14 +1,15 @@
 import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 
 /**
  * What the explorer currently points at.
  */
 export type TArchiveSelection =
   | { kind: "none" }
-  | { kind: "file"; descriptor: ArchiveFileDescriptor }
-  | { kind: "directory"; path: string };
+  | { kind: EPathEntryKind.FILE; descriptor: ArchiveFileDescriptor }
+  | { kind: EPathEntryKind.DIRECTORY; path: string };
 
 /**
  * Bytes of one archived asset, as the raw commands deliver them.

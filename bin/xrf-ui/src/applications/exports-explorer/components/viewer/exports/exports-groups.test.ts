@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor } from "@/core/exports";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { getFileItemPath, IPathTreeItem, toDirectoryItemId, TREE_ROOT_ID } from "@/core/ui/tree/path-tree";
 
 import { exportGroupsToTree, groupExports, ROOT_EXPORT_GROUP_ID } from "./exports-groups";
@@ -52,11 +53,12 @@ describe("exportGroupsToTree", () => {
     // The count travels in the label, as it did before the tree changed shape.
     expect(items[0].label).toBe("xr_effects (2)");
 
-    const children: Array<IPathTreeItem<ExportDescriptor>> = items[0].kind === "directory" ? items[0].children : [];
+    const children: Array<IPathTreeItem<ExportDescriptor>> =
+      items[0].kind === EPathEntryKind.DIRECTORY ? items[0].children : [];
 
     expect(children.map((it) => it.kind)).toEqual(["file", "file"]);
     expect(children.map((it) => getFileItemPath(it.id))).toEqual(["xr_effects.run", "xr_effects.stop"]);
-    expect(children[0].kind === "file" ? children[0].payload.name : null).toBe("xr_effects.run");
+    expect(children[0].kind === EPathEntryKind.FILE ? children[0].payload.name : null).toBe("xr_effects.run");
   });
 
   it("puts root declarations under the synthetic root id, which is what its label already said", () => {

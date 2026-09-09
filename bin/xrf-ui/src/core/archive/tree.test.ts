@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { listArchiveFiles } from "@/core/archive/files";
 import { IArchiveTreeItem, isUnderArchiveDirectory, parseTree } from "@/core/archive/tree";
 import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 
 const CONFIGS_DIALOGS: string = ["configs", "gameplay", "dialogs.xml"].join("\\");
@@ -23,7 +24,7 @@ describe("archive tree", () => {
 
     expect(configs.kind).toBe("directory");
 
-    if (configs.kind === "directory") {
+    if (configs.kind === EPathEntryKind.DIRECTORY) {
       expect(configs.children[0]).toMatchObject({
         id: "file:configs\\z.ltx",
         kind: "file",

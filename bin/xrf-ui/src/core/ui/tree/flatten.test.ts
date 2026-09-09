@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { IPathTreeItem, parsePathTree, toDirectoryItemId } from "@/core/ui/tree/path-tree";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
@@ -69,7 +70,7 @@ describe("flattenTree", () => {
 
   it("marks an empty directory as having nothing to reveal", () => {
     const items: Array<IPathTreeItem<string>> = [
-      { id: toDirectoryItemId("empty"), label: "empty", path: "empty", kind: "directory", children: [] },
+      { id: toDirectoryItemId("empty"), label: "empty", path: "empty", kind: EPathEntryKind.DIRECTORY, children: [] },
     ];
     const rows: Array<IFlatTreeRow<string>> = flattenTree(items, new Set([toDirectoryItemId("empty")]));
 

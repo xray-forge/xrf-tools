@@ -1,3 +1,4 @@
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -121,7 +122,7 @@ export interface IPathDirectoryTreeItem<T> extends ITreeNode<T> {
   id: string;
   label: string;
   path: string;
-  kind: "directory";
+  kind: EPathEntryKind.DIRECTORY;
   children: Array<IPathTreeItem<T>>;
 }
 
@@ -130,7 +131,7 @@ export interface IPathFileTreeItem<T> extends ITreeNode<T> {
   id: string;
   label: string;
   path: string;
-  kind: "file";
+  kind: EPathEntryKind.FILE;
   payload: T;
 }
 
@@ -154,7 +155,7 @@ export function parsePathTree<T>(
     id: TREE_ROOT_ID,
     label: "root",
     path: "",
-    kind: "directory",
+    kind: EPathEntryKind.DIRECTORY,
     children: [],
   };
 
@@ -190,18 +191,18 @@ function appendPath<T>(
   const path: string = parent.path ? `${parent.path}${separator}${name}` : name;
 
   if (!remainingPath.length) {
-    parent.children.push({ id: toFileItemId(path), label: name, path, kind: "file", payload });
+    parent.children.push({ id: toFileItemId(path), label: name, path, kind: EPathEntryKind.FILE, payload });
 
     return;
   }
 
   const existing: Optional<IPathTreeItem<T>> = parent.children.find(
-    (child: IPathTreeItem<T>) => child.kind === "directory" && child.label === name
+    (child: IPathTreeItem<T>) => child.kind === EPathEntryKind.DIRECTORY && child.label === name
   );
   const directory: IPathDirectoryTreeItem<T> =
-    existing?.kind === "directory"
+    existing?.kind === EPathEntryKind.DIRECTORY
       ? existing
-      : { id: `${TREE_ITEM_ID.directory}${path}`, label: name, path, kind: "directory", children: [] };
+      : { id: `${TREE_ITEM_ID.directory}${path}`, label: name, path, kind: EPathEntryKind.DIRECTORY, children: [] };
 
   if (!existing) {
     parent.children.push(directory);
@@ -217,14 +218,14 @@ function appendPath<T>(
  */
 function sortTree<T>(items: Array<IPathTreeItem<T>>): void {
   for (const item of items) {
-    if (item.kind === "directory") {
+    if (item.kind === EPathEntryKind.DIRECTORY) {
       sortTree(item.children);
     }
   }
 
   items.sort((first: IPathTreeItem<T>, second: IPathTreeItem<T>) => {
     if (first.kind !== second.kind) {
-      return first.kind === "directory" ? -1 : 1;
+      return first.kind === EPathEntryKind.DIRECTORY ? -1 : 1;
     }
 
     return first.label.localeCompare(second.label);

@@ -1,5 +1,6 @@
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor } from "@/core/exports";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 
 export const ROOT_EXPORT_GROUP_ID: string = "group:root";
@@ -68,12 +69,12 @@ export function exportGroupsToTree(groups: ReadonlyArray<IExportGroup>): Array<I
       id: toDirectoryItemId(namespace),
       label: `${group.label} (${group.declarations.length})`,
       path: namespace,
-      kind: "directory",
+      kind: EPathEntryKind.DIRECTORY,
       children: group.declarations.map((declaration: ExportDescriptor) => ({
         id: toFileItemId(declaration.name),
         label: declaration.name,
         path: declaration.name,
-        kind: "file",
+        kind: EPathEntryKind.FILE,
         payload: declaration,
       })),
     };
