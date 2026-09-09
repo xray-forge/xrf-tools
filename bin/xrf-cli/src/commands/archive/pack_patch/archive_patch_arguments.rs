@@ -26,7 +26,7 @@ impl ArchivePatchArguments {
   /// `--oversized-volumes`.
   pub(crate) fn of(matches: &ArgMatches, output: OutputOptions) -> XrfResult<Self> {
     let mut config: ArchivePatchConfig = ArchivePatchConfig::new(
-      Self::to_root(matches, "input")?,
+      Self::to_root(matches, "source")?,
       xrf_utils::to_absolute_path(
         matches
           .get_one::<PathBuf>("dest")
@@ -37,8 +37,8 @@ impl ArchivePatchArguments {
         .expect("Expected valid archive name to be provided"),
     );
 
-    if matches.contains_id("target") && matches.get_one::<PathBuf>("target").is_some() {
-      config.target = Some(Self::to_root(matches, "source")?);
+    if let Some(target) = matches.get_one::<PathBuf>("target") {
+      config.target = Some(xrf_utils::to_absolute_path(target)?);
     }
 
     // One selection source or the other, never both: clap refuses `--config` beside a selection option, so whichever
