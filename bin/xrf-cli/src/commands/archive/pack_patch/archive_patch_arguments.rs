@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
 use xrf_output::OutputOptions;
 use xrf_pack::{
   ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchiveVolumeExtension,
   VOLUME_SIZE_MAX,
 };
+use xrf_utils::format_path;
 
 /// Parsed arguments for `archive pack-patch`.
 pub(crate) struct ArchivePatchArguments {

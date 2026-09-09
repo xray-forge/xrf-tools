@@ -8,9 +8,14 @@ use xrf_job::{JobHandle, JobScope};
 use xrf_vfs::XrayAsset;
 
 use crate::patch::PATCH_PHASE_COMPARE;
-use crate::patch::compare::{ArchivePatchChange, ArchivePatchOrigins, ArchivePatchSide};
+use crate::patch::compare::{
+  ArchivePatchChange, ArchivePatchDecision, ArchivePatchOrigins, ArchivePatchPending, ArchivePatchSide,
+};
 use crate::patch::config::ArchivePatchScope;
 use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole, ArchivePatchWorld};
+
+/// How many payloads a comparison reads at once.
+const DECISION_CONCURRENCY: usize = 8;
 
 /// Classified differences and counts for two mounted roots.
 #[derive(Debug, Default)]
@@ -120,13 +125,11 @@ impl ArchivePatchComparison {
 
     // Its own pool rather than the global one, so the bound is this phase's and no other work inherits it. A pool
     // that cannot be built is not worth failing a comparison over: the same decisions are made sequentially.
-    let decided: Vec<XrfResult<ArchivePatchDecision>> = match ThreadPoolBuilder::new()
-      .num_threads(DECISION_CONCURRENCY)
-      .build()
-    {
-      Ok(pool) => pool.install(decide_all),
-      Err(_) => decide_all(),
-    };
+    let decided: Vec<XrfResult<ArchivePatchDecision>> =
+      match ThreadPoolBuilder::new().num_threads(DECISION_CONCURRENCY).build() {
+        Ok(pool) => pool.install(decide_all),
+        Err(_) => decide_all(),
+      };
 
     for (entry, decision) in pending.into_iter().zip(decided) {
       let decision: ArchivePatchDecision = decision?;
@@ -255,40 +258,6 @@ impl ArchivePatchComparison {
       is_alike,
       is_payload_read,
     })
-  }
-}
-
-/// How many payloads a comparison reads at once.
-///
-/// Deciding a pair holds one payload per side in memory, so peak memory tracks this rather than the entry count. On a
-/// 32-thread machine the unbounded pool read a 21 GB installation in 5.1 s against 14.0 s sequential, and took peak
-/// RSS from 248 MB to 1086 MB — most of the wall-clock win comes from having several reads in flight at all, and the
-/// rest of the cores only buy memory. Bounded here so a workstation and a build agent behave the same way.
-const DECISION_CONCURRENCY: usize = 8;
-
-/// An equal-sized pair the merge could not settle, waiting for a checksum.
-struct ArchivePatchPending {
-  name: String,
-  base: ArchivePatchSide,
-  target: ArchivePatchSide,
-}
-
-/// What deciding one pending pair concluded, and what it cost.
-struct ArchivePatchDecision {
-  is_alike: bool,
-  is_payload_read: bool,
-}
-
-impl ArchivePatchDecision {
-  /// What a cancelled run reports for a pair it never looked at: unchanged, and nothing read.
-  ///
-  /// A cancellation already discards the publication, so the value only has to be one the fold can carry without
-  /// inventing a difference nobody measured.
-  const fn cancelled() -> Self {
-    Self {
-      is_alike: true,
-      is_payload_read: false,
-    }
   }
 }
 
