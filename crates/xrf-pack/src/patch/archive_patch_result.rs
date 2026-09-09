@@ -5,7 +5,6 @@ use xrf_job::JobOutcome;
 
 use crate::patch::archive_patch_publication::ArchivePatchPublication;
 use crate::patch::compare::{ArchivePatchChange, ArchivePatchOrigin};
-use crate::patch::config::ArchivePatchShape;
 
 /// Archive comparison details and publication outcome. Empty change lists are serialized; unchanged entries are
 /// counted.
@@ -19,12 +18,6 @@ pub struct ArchivePatchResult {
   pub added: Vec<ArchivePatchChange>,
   /// Entries both hold with differing payloads, which the patch carries from the target.
   pub modified: Vec<ArchivePatchChange>,
-  /// Entries only the base holds. Reported but never deleted: the `.db` format cannot encode deletions.
-  ///
-  /// Empty in overlay shape, where an entry the target does not carry is a file nobody touched rather than a finding.
-  pub removed: Vec<ArchivePatchChange>,
-  /// What the two sides were read as, which is what makes `removed` meaningful or empty.
-  pub shape: ArchivePatchShape,
   /// Entries both sides read identically, counted rather than listed.
   pub unchanged: usize,
   /// Every volume set and loose root the run read from, which each side of each change names by index.

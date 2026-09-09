@@ -157,9 +157,7 @@ export type ArchivePatchClass =
   /** Only the target has it, so the patch carries it. */
   | "added"
   /** Both have it and their payloads differ, so the patch carries the target's. */
-  | "modified"
-  /** Only the base has it. The patch cannot carry this, and says so. */
-  | "removed";
+  | "modified";
 
 /** Comparison roots, entry filters, and patch volume settings. */
 export type ArchivePatchConfig = {
@@ -178,8 +176,6 @@ export type ArchivePatchConfig = {
   destination: string;
   /** Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on. */
   name: string;
-  /** What the two sides are to each other, deciding whether a base-only entry is a removal or an untouched file. */
-  shape: ArchivePatchShape;
   /** Logical prefixes the comparison is restricted to, or the whole of both worlds when empty. */
   include: Array<string>;
   /** Logical prefixes dropped from the comparison, applied after [`Self::include`]. */
@@ -229,14 +225,6 @@ export type ArchivePatchResult = {
   added: Array<ArchivePatchChange>;
   /** Entries both hold with differing payloads, which the patch carries from the target. */
   modified: Array<ArchivePatchChange>;
-  /**
-   * Entries only the base holds. Reported but never deleted: the `.db` format cannot encode deletions.
-   *
-   * Empty in overlay shape, where an entry the target does not carry is a file nobody touched rather than a finding.
-   */
-  removed: Array<ArchivePatchChange>;
-  /** What the two sides were read as, which is what makes `removed` meaningful or empty. */
-  shape: ArchivePatchShape;
   /** Entries both sides read identically, counted rather than listed. */
   unchanged: number;
   /**
@@ -261,33 +249,6 @@ export type ArchivePatchResult = {
   /** The share of `duration` spent writing the difference into volumes, zero where none was written. */
   packDuration: number;
 };
-
-/**
- * What the two sides of a comparison are to each other, which is the only thing that says what a base-only entry
- * means.
- *
- * The distinction is not cosmetic. An entry the base holds and the target does not is either a file the release
- * dropped — worth naming, because a `.db` cannot encode a deletion — or a file nobody touched, which is every other
- * file in the game. Against a real installation that is the difference between a handful of rows and 47,833 of them,
- * and no amount of counting tells the two apart: only the caller knows which question was asked.
- */
-export type ArchivePatchShape =
-  /**
-   * The target adds to and overrides the base, and says nothing about the rest of it.
-   *
-   * What a mod is: a gamedata tree, or the loose half of an installation, laid over a release. Base-only entries are
-   * untouched files rather than deletions, so they are not classified at all — the run answers "what does this
-   * overlay actually change", which is also what makes the published patch smaller than the folder it came from.
-   */
-  | "overlay"
-  /**
-   * Both sides are complete releases, so what the base holds and the target lacks was dropped.
-   *
-   * The shape a version-to-version patch is built in: `v1.0` against `v1.1`. Base-only entries are reported, and
-   * under `is_strict` they fail the run, because the format cannot carry them and shipping the patch would silently
-   * leave them behind.
-   */
-  | "release";
 
 /** Which side of a comparison an entry was read from, and how big it was there. */
 export type ArchivePatchSide = {

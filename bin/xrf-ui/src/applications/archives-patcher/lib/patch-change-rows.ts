@@ -25,7 +25,7 @@ export interface IPatchChangeRow {
 }
 
 /**
- * Lists added, modified, then removed entries.
+ * Lists added, then modified entries.
  *
  * Origins arrive as a table listed once per report and an index on each side, so rows sharing an origin end up
  * holding the same string instance rather than each parsing its own copy of the path.
@@ -36,7 +36,7 @@ export interface IPatchChangeRow {
 export function toPatchChangeRows(result: ArchivePatchResult): Array<IPatchChangeRow> {
   const origins: Array<string> = result.origins.map(describeOrigin);
 
-  return [...result.added, ...result.modified, ...result.removed].map((change: ArchivePatchChange) => {
+  return [...result.added, ...result.modified].map((change: ArchivePatchChange) => {
     const side: Nullable<ArchivePatchSide> = change.target ?? change.base;
 
     return {

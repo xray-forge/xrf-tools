@@ -37,13 +37,6 @@ impl GenericCommand for PackPatchCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("release")
-          .help("Read both sides as complete releases, so entries the target dropped are reported")
-          .long("release")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
         Arg::new("dest")
           .help("Path to folder for writing the volumes")
           .short('d')
@@ -102,13 +95,6 @@ impl GenericCommand for PackPatchCommand {
         Arg::new("verify-payload")
           .help("Confirm every checksum match by comparing the payloads themselves")
           .long("verify-payload")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("strict")
-          .help("Fail when the input holds entries the target dropped, which a patch cannot express; needs --release")
-          .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),
       )

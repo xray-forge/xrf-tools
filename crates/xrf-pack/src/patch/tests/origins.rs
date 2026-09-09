@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::patch::ArchivePatchResult;
 use crate::patch::compare::{ArchivePatchChange, ArchivePatchOrigin, ArchivePatchSide};
 use crate::patch::tests::fixtures::{
-  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, compare, compare_release, create_tree, create_volumes, destination,
+  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, compare, create_tree, create_volumes, destination,
 };
 
 /// The origin a side names, resolved against the report's table.
@@ -61,7 +61,7 @@ fn every_side_resolves_to_the_root_it_was_actually_read_from() {
   let scope: &str = "patch_origins_resolve_per_side";
   let base: PathBuf = create_tree(scope, "base", BASE_FILES);
   let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let result: ArchivePatchResult = compare_release(&base, &target, &destination(scope));
+  let result: ArchivePatchResult = compare(&base, &target, &destination(scope));
 
   let modified: &ArchivePatchChange = result.modified.first().expect("the edited config is modified");
 
@@ -72,14 +72,6 @@ fn every_side_resolves_to_the_root_it_was_actually_read_from() {
   assert_eq!(
     path_of(&origin_of(&result, modified.target.as_ref().expect("a target side"))),
     target
-  );
-
-  let removed: &ArchivePatchChange = result.removed.first().expect("the base holds more than the target");
-
-  assert_eq!(
-    path_of(&origin_of(&result, removed.base.as_ref().expect("a base side"))),
-    base,
-    "a removal is read from the base, which is the only side that holds it"
   );
 }
 

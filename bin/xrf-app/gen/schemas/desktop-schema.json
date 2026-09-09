@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-export-patch-config`\n- `allow-import-pack-config`\n- `allow-import-patch-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-patch-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-export-patch-config`\n- `allow-import-pack-config`\n- `allow-import-patch-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-patch-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -2259,6 +2259,12 @@
           "markdownDescription": "Enables the export_pack_config command without any pre-configured scope."
         },
         {
+          "description": "Enables the export_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-export-patch-config",
+          "markdownDescription": "Enables the export_patch_config command without any pre-configured scope."
+        },
+        {
           "description": "Enables the extract_directory command without any pre-configured scope.",
           "type": "string",
           "const": "archives:allow-extract-directory",
@@ -2289,6 +2295,12 @@
           "markdownDescription": "Enables the import_pack_config command without any pre-configured scope."
         },
         {
+          "description": "Enables the import_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-import-patch-config",
+          "markdownDescription": "Enables the import_patch_config command without any pre-configured scope."
+        },
+        {
           "description": "Enables the list_collisions command without any pre-configured scope.",
           "type": "string",
           "const": "archives:allow-list-collisions",
@@ -2299,6 +2311,12 @@
           "type": "string",
           "const": "archives:allow-list-pack-volumes",
           "markdownDescription": "Enables the list_pack_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the list_patch_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-list-patch-volumes",
+          "markdownDescription": "Enables the list_patch_volumes command without any pre-configured scope."
         },
         {
           "description": "Enables the list_shared_payloads command without any pre-configured scope.",
@@ -2385,6 +2403,12 @@
           "markdownDescription": "Denies the export_pack_config command without any pre-configured scope."
         },
         {
+          "description": "Denies the export_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-export-patch-config",
+          "markdownDescription": "Denies the export_patch_config command without any pre-configured scope."
+        },
+        {
           "description": "Denies the extract_directory command without any pre-configured scope.",
           "type": "string",
           "const": "archives:deny-extract-directory",
@@ -2415,6 +2439,12 @@
           "markdownDescription": "Denies the import_pack_config command without any pre-configured scope."
         },
         {
+          "description": "Denies the import_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-import-patch-config",
+          "markdownDescription": "Denies the import_patch_config command without any pre-configured scope."
+        },
+        {
           "description": "Denies the list_collisions command without any pre-configured scope.",
           "type": "string",
           "const": "archives:deny-list-collisions",
@@ -2425,6 +2455,12 @@
           "type": "string",
           "const": "archives:deny-list-pack-volumes",
           "markdownDescription": "Denies the list_pack_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_patch_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-list-patch-volumes",
+          "markdownDescription": "Denies the list_patch_volumes command without any pre-configured scope."
         },
         {
           "description": "Denies the list_shared_payloads command without any pre-configured scope.",

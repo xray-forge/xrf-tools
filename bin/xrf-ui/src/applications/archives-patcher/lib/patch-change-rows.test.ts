@@ -18,44 +18,29 @@ function loose(size: number): ArchivePatchChange["target"] {
 }
 
 function result(patch: Partial<ArchivePatchResult> = {}): ArchivePatchResult {
-  return { added: [], modified: [], removed: [], unchanged: 99, origins: ORIGINS, ...patch } as ArchivePatchResult;
+  return { added: [], modified: [], unchanged: 99, origins: ORIGINS, ...patch } as ArchivePatchResult;
 }
 
 describe("toPatchChangeRows", () => {
-  it("carries every class and leaves the unchanged count out of the table", () => {
+  it("carries both classes and leaves the unchanged count out of the table", () => {
     const rows: Array<IPatchChangeRow> = toPatchChangeRows(
       result({
         added: [{ name: "a.ltx", class: "added", base: null, target: loose(10) }],
         modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
-        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
       })
     );
 
-    expect(rows.map((row) => row.class)).toEqual(["added", "modified", "removed"]);
-    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.class)).toEqual(["added", "modified"]);
+    expect(rows).toHaveLength(2);
   });
 
-  it("keeps the class raw so the label and the colour cannot disagree", () => {
-    // A removal is not a deletion the patch performs - the format has no tombstone and the file stays readable from
-    // the base. Naming it is the renderer's job; this only has to hand it the class it decided.
+  it("sizes a row by the target, which is the payload the patch writes", () => {
+    // The two sides of a modification differ, and the one worth showing is what lands in the volume.
     const rows: Array<IPatchChangeRow> = toPatchChangeRows(
-      result({ removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }] })
-    );
-
-    expect(rows[0]?.class).toBe("removed");
-  });
-
-  it("sizes a carried entry by the target and a removal by what stays behind", () => {
-    // The two sides of a modification differ, and the one worth showing is what the patch will write.
-    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
-      result({
-        modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
-        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
-      })
+      result({ modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }] })
     );
 
     expect(rows[0]?.size).toBe(30);
-    expect(rows[1]?.size).toBe(40);
   });
 
   it("reports the size as a number rather than a formatted string, so the column sorts", () => {
@@ -72,16 +57,16 @@ describe("toPatchChangeRows", () => {
     expect(rows.map((row) => row.size).sort((left, right) => left - right)).toEqual([9_000, 1_000_000]);
   });
 
-  it("resolves each side against the report's origin table", () => {
+  it("resolves each row against the report's origin table", () => {
     const rows: Array<IPatchChangeRow> = toPatchChangeRows(
       result({
+        added: [{ name: "a.ltx", class: "added", base: null, target: loose(10) }],
         modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
-        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
       })
     );
 
     expect(rows[0]?.origin).toBe("C:\\t");
-    expect(rows[1]?.origin).toBe("C:\\db");
+    expect(rows[1]?.origin).toBe("C:\\t");
   });
 
   it("hands rows sharing an origin the same string rather than a copy each", () => {

@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box } from "@mui/material";
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
@@ -16,19 +16,12 @@ import { Nullable } from "@/lib/types/general";
 const CHANGE_LABELS: Record<ArchivePatchClass, string> = {
   added: "Added",
   modified: "Modified",
-  removed: "Not deletable",
 };
 
-/**
- * Colour per class, so the table is read by scanning rather than by reading every label.
- *
- * A removal takes the error colour because it is the one class the run cannot act on: the entry stays readable from
- * the base whatever the patch does, and that is the row a person has to notice.
- */
+/** Colour per class, so the table is read by scanning rather than by reading every label. */
 const CHANGE_COLORS: Record<ArchivePatchClass, string> = {
   added: "success.main",
   modified: "warning.main",
-  removed: "error.main",
 };
 
 /** Read from is off by default: two loose trees repeat one of two roots on every row. */
@@ -38,17 +31,9 @@ interface IArchivesPatchResultProps {
   result: ArchivePatchResult;
   /** Where the run was told to publish, for revealing what it wrote. */
   outputPath: Nullable<string>;
-  isDisabled?: boolean;
-  /** Offered on a comparison, so a preview can be committed without retyping the form. */
-  onWrite: () => void;
 }
 
-export function ArchivesPatchResult({
-  result,
-  outputPath,
-  isDisabled,
-  onWrite,
-}: IArchivesPatchResultProps): ReactElement {
+export function ArchivesPatchResult({ result, outputPath }: IArchivesPatchResultProps): ReactElement {
   const rows: Array<IPatchChangeRow> = useMemo(() => toPatchChangeRows(result), [result]);
 
   const columns: Array<GridColDef<IPatchChangeRow>> = useMemo(
@@ -56,7 +41,7 @@ export function ArchivesPatchResult({
       {
         field: "class",
         headerName: "Change",
-        width: 130,
+        width: 110,
         renderCell: (params: GridRenderCellParams<IPatchChangeRow>) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%", color: CHANGE_COLORS[params.row.class] }}>
             {CHANGE_LABELS[params.row.class]}
@@ -78,15 +63,12 @@ export function ArchivesPatchResult({
     []
   );
 
-  const isCompared: boolean = result.publication.kind === "compared";
   const isPublished: boolean = result.publication.kind === "published";
 
   const stats: Array<ICommandResultStat> = useMemo(
     () => [
       { label: "added", value: result.added.length },
       { label: "modified", value: result.modified.length },
-      // Only a release comparison can have these. An overlay never reports them, so the stat would always read zero.
-      ...(result.shape === "release" ? [{ label: "not deletable", value: result.removed.length }] : []),
       { label: "unchanged", value: result.unchanged },
       // Known before anything is written, which is what makes it worth showing on a preview.
       { label: isPublished ? "carried" : "to carry", value: formatBytes(result.sizeCarried) },
@@ -100,16 +82,12 @@ export function ArchivesPatchResult({
   return (
     <CommandResult
       headline={describePatchHeadline(result)}
-      tone={result.removed.length ? "warning" : "success"}
+      tone={"success"}
       stats={stats}
       actions={
-        isCompared ? (
-          <Button size={"small"} variant={"contained"} disabled={isDisabled} onClick={onWrite}>
-            Write patch
-          </Button>
-        ) : (
+        isPublished ? (
           <RevealPathButton application={EApplicationId.ARCHIVES_PATCHER} path={outputPath} label={"Show patch"} />
-        )
+        ) : null
       }
     >
       <CommandResultFindings<IPatchChangeRow>
@@ -118,7 +96,7 @@ export function ArchivesPatchResult({
         getRowId={(row) => `${row.class}:${row.name}`}
         getSearchText={(row) => row.name}
         hiddenColumns={HIDDEN_COLUMNS}
-        emptyLabel={"The two worlds hold the same files."}
+        emptyLabel={"Nothing differs between the two sides."}
         searchPlaceholder={"Filter by entry"}
       />
     </CommandResult>

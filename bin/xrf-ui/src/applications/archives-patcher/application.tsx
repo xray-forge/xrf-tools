@@ -11,7 +11,7 @@ import { createApplicationDescriptor } from "@/core/routing/application-descript
 
 export const ARCHIVES_PATCHER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Pack what changed between two releases as an overriding patch",
+    description: "Pack what your gamedata changes about a game as an overriding patch",
     group: EApplicationGroupId.ARCHIVES,
     help: ARCHIVES_PATCHER_HELP,
     icon: <DifferenceIcon />,

@@ -2,16 +2,12 @@ import { default as AddIcon } from "@mui/icons-material/Add";
 import { Stack, TextField, Typography } from "@mui/material";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import {
-  readHeaderEntries,
-  RESERVED_HEADER_KEYS,
-  writeHeaderValue,
-} from "@/applications/archives-packer/lib/pack-config";
+import { readHeaderEntries, RESERVED_HEADER_KEYS, writeHeaderValue } from "@/core/archive";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditableListItem, FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
-interface IPackerHeaderEntriesProps {
+interface IArchiveHeaderEntriesProps {
   header: Nullable<string>;
   isDisabled?: boolean;
   onChange: (header: Nullable<string>) => void;
@@ -20,7 +16,7 @@ interface IPackerHeaderEntriesProps {
 /**
  * Custom header values and the draft used to append a key without replacing an existing one.
  */
-export function PackerHeaderEntries({ header, isDisabled, onChange }: IPackerHeaderEntriesProps): ReactElement {
+export function ArchiveHeaderEntries({ header, isDisabled, onChange }: IArchiveHeaderEntriesProps): ReactElement {
   const [newKey, setNewKey] = useState<string>("");
   const [newValue, setNewValue] = useState<string>("");
 

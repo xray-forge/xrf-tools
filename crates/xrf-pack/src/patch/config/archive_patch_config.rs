@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, default_header};
-use crate::patch::config::{ArchivePatchScope, ArchivePatchShape};
+use crate::patch::config::ArchivePatchScope;
 
 /// Comparison roots, entry filters, and patch volume settings.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,8 +24,6 @@ pub struct ArchivePatchConfig {
   pub destination: PathBuf,
   /// Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on.
   pub name: String,
-  /// What the two sides are to each other, deciding whether a base-only entry is a removal or an untouched file.
-  pub shape: ArchivePatchShape,
   /// Logical prefixes the comparison is restricted to, or the whole of both worlds when empty.
   pub include: Vec<String>,
   /// Logical prefixes dropped from the comparison, applied after [`Self::include`].
@@ -48,7 +46,6 @@ impl ArchivePatchConfig {
       target: None,
       destination: destination.as_ref().into(),
       name: name.into(),
-      shape: ArchivePatchShape::default(),
       include: Vec::new(),
       ignore: Vec::new(),
       exclude_extensions: Vec::new(),
@@ -63,13 +60,6 @@ impl ArchivePatchConfig {
   /// The same run delivering a tree of its own rather than the input's loose half.
   pub fn with_target<T: AsRef<Path>>(mut self, target: T) -> Self {
     self.target = Some(target.as_ref().into());
-
-    self
-  }
-
-  /// The same run reading both sides as complete releases.
-  pub const fn with_shape(mut self, shape: ArchivePatchShape) -> Self {
-    self.shape = shape;
 
     self
   }
@@ -109,8 +99,7 @@ impl ArchivePatchConfig {
   ///
   /// # Errors
   ///
-  /// Rejects a missing input, a named but empty target, release shape asked of a split input, invalid logical
-  /// prefixes, and invalid packing settings.
+  /// Rejects a missing input, a named but empty target, invalid logical prefixes, and invalid packing settings.
   pub(crate) fn validate_for_patching(&self) -> XrfResult<()> {
     if self.input.as_os_str().is_empty() {
       return Err(XrfError::new_invalid_error(
@@ -121,15 +110,6 @@ impl ArchivePatchConfig {
     if self.target.as_ref().is_some_and(|target| target.as_os_str().is_empty()) {
       return Err(XrfError::new_invalid_error(
         "A target was named but is empty. Leave it out to compare the input against its own loose tree.",
-      ));
-    }
-
-    // Release shape asks what the target dropped, and one installation split in half has no answer: the volumes hold
-    // the game the loose tree did not touch, which is not a deletion.
-    if self.is_splitting_input() && self.shape.is_reporting_removals() {
-      return Err(XrfError::new_invalid_error(
-        "Release shape compares two complete releases, and one input split into its volumes and its loose tree is \
-         not two releases. Name a target to compare releases, or drop the release shape.",
       ));
     }
 

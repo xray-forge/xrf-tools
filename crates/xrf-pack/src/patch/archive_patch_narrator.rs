@@ -55,7 +55,7 @@ impl<'a> ArchivePatchNarrator<'a> {
     );
   }
 
-  /// Prints added, modified, and removed entries in engine-name order within each class, then totals.
+  /// Prints added and modified entries in engine-name order within each class, then totals.
   ///
   /// Each class is capped at `CONSOLE_ENTRY_CAP`; the report retains all entries.
   pub(crate) fn describe_comparison(&self, comparison: &ArchivePatchComparison) {
@@ -65,13 +65,11 @@ impl<'a> ArchivePatchNarrator<'a> {
 
     Self::describe_class(self.output, "added", &comparison.added);
     Self::describe_class(self.output, "modified", &comparison.modified);
-    Self::describe_class(self.output, "absent from target", &comparison.removed);
 
     xrf_output::verbose!(
       self.output,
-      "Compared: {} carried, {} absent from target, {} unchanged, {} payload(s) read to decide",
+      "Compared: {} carried, {} unchanged, {} payload(s) read to decide",
       comparison.get_carried_count(),
-      comparison.removed.len(),
       comparison.unchanged,
       comparison.payloads_read
     );

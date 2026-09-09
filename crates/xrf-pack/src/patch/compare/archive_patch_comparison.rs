@@ -6,7 +6,7 @@ use xrf_vfs::XrayAsset;
 
 use crate::patch::PATCH_PHASE_COMPARE;
 use crate::patch::compare::{ArchivePatchChange, ArchivePatchOrigins, ArchivePatchSide};
-use crate::patch::config::{ArchivePatchScope, ArchivePatchShape};
+use crate::patch::config::ArchivePatchScope;
 use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole, ArchivePatchWorld};
 
 /// Classified differences and counts for two mounted roots.
@@ -14,7 +14,6 @@ use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole, ArchivePatchWo
 pub(crate) struct ArchivePatchComparison {
   pub(crate) added: Vec<ArchivePatchChange>,
   pub(crate) modified: Vec<ArchivePatchChange>,
-  pub(crate) removed: Vec<ArchivePatchChange>,
   pub(crate) unchanged: usize,
   /// Entry pairs requiring a computed checksum.
   pub(crate) payloads_read: usize,
@@ -35,7 +34,6 @@ impl ArchivePatchComparison {
     base: &ArchivePatchWorld,
     target: &ArchivePatchWorld,
     scope: &ArchivePatchScope,
-    shape: ArchivePatchShape,
     job: &JobHandle,
     is_verifying_payload: bool,
   ) -> XrfResult<Self> {
@@ -57,17 +55,8 @@ impl ArchivePatchComparison {
 
       match order {
         Ordering::Less => {
-          // An overlay says nothing about what it does not carry, so the rest of the release is not a finding. The
-          // side is not even built: at an installation this branch is every file in the game.
-          if shape.is_reporting_removals() {
-            let entry: &XrayAsset = &base_entries[left];
-            let side: ArchivePatchSide = base.to_side(entry, &mut comparison.origins);
-
-            comparison
-              .removed
-              .push(ArchivePatchChange::removed(name_of(entry), side));
-          }
-
+          // A patch adds to and overrides the base and says nothing about the rest of it, so an entry only the base
+          // holds is a file nobody touched rather than a finding. At an installation that is the whole game.
           left += 1;
         }
         Ordering::Greater => {

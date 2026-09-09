@@ -36,8 +36,6 @@ export type ArchivesPatchRequest = {
   config: ArchivePatchConfig;
   /** Whether an existing output may be overwritten. Ignored by a comparison, which writes nothing. */
   isForced: boolean;
-  /** Whether entries the base holds and the target does not should fail the run. */
-  isStrict: boolean;
   /** Whether a checksum match should be proven by comparing the payloads themselves. */
   isVerifyingPayload: boolean;
 };

@@ -29,7 +29,6 @@ pub async fn archives_patch_archives(
   let ArchivesPatchRequest {
     config,
     is_forced,
-    is_strict,
     is_verifying_payload,
   } = request;
 
@@ -63,7 +62,6 @@ pub async fn archives_patch_archives(
         ArchivePatchOptions::default()
           .with_job(job)
           .with_force(is_forced)
-          .with_strict(is_strict)
           .with_verified_payloads(is_verifying_payload),
       )
     },

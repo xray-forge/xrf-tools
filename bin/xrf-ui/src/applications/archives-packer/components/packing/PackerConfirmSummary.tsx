@@ -2,16 +2,13 @@ import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/mater
 import { ReactElement } from "react";
 
 import { PackerDirectoryChips } from "@/applications/archives-packer/components/packing/PackerDirectoryChips";
-import { PackerPathText } from "@/applications/archives-packer/components/packing/PackerPathText";
-import { PackerSummaryRow } from "@/applications/archives-packer/components/packing/PackerSummaryRow";
 import {
   ARCHIVE_PACK_MODE,
   ARCHIVE_VOLUME_EXTENSION,
   ARCHIVE_VOLUME_SUFFIX,
-  HEADER_ENTRY_POINT,
   isWholeDirectory,
-  readHeaderValue,
 } from "@/applications/archives-packer/lib/pack-config";
+import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
@@ -42,22 +39,22 @@ export function PackerConfirmSummary({
 
   return (
     <Stack spacing={1.5}>
-      <PackerSummaryRow label={"Source"}>
-        <PackerPathText value={config.source} />
-      </PackerSummaryRow>
+      <ArchiveSummaryRow label={"Source"}>
+        <ArchivePathText value={config.source} />
+      </ArchiveSummaryRow>
 
-      <PackerSummaryRow label={"Output"}>
-        <PackerPathText value={config.destination} />
-      </PackerSummaryRow>
+      <ArchiveSummaryRow label={"Output"}>
+        <ArchivePathText value={config.destination} />
+      </ArchiveSummaryRow>
 
-      <PackerSummaryRow label={"Volumes"}>
+      <ArchiveSummaryRow label={"Volumes"}>
         <Typography variant={"body2"}>
           <span className={"monospace"}>{volumeName}</span>, splitting every{" "}
           {bytesToWholeMegabytes(config.maxVolumeSize)} MB
         </Typography>
-      </PackerSummaryRow>
+      </ArchiveSummaryRow>
 
-      <PackerSummaryRow label={"Contents"}>
+      <ArchiveSummaryRow label={"Contents"}>
         {isWholeDirectory(config) ? (
           <Typography variant={"body2"}>Everything under the source directory</Typography>
         ) : (
@@ -70,10 +67,10 @@ export function PackerConfirmSummary({
             ) : null}
           </Stack>
         )}
-      </PackerSummaryRow>
+      </ArchiveSummaryRow>
 
       {config.excludeDirectories.length || config.excludeExtensions.length ? (
-        <PackerSummaryRow label={"Excluding"}>
+        <ArchiveSummaryRow label={"Excluding"}>
           <Stack spacing={0.5}>
             {config.excludeDirectories.length ? (
               <PackerDirectoryChips directories={config.excludeDirectories} recursiveSuffix={" and below"} />
@@ -82,19 +79,19 @@ export function PackerConfirmSummary({
               <Typography variant={"body2"}>{config.excludeExtensions.join(", ")}</Typography>
             ) : null}
           </Stack>
-        </PackerSummaryRow>
+        </ArchiveSummaryRow>
       ) : null}
 
-      <PackerSummaryRow label={"Compression"}>
+      <ArchiveSummaryRow label={"Compression"}>
         <Typography variant={"body2"}>
           {config.mode === ARCHIVE_PACK_MODE.Store
             ? "Stored, nothing compressed"
             : "Compressed where the engine expects it"}
           {config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers"}
         </Typography>
-      </PackerSummaryRow>
+      </ArchiveSummaryRow>
 
-      <PackerSummaryRow label={"Mounts at"}>
+      <ArchiveSummaryRow label={"Mounts at"}>
         {entryPoint ? (
           <Typography variant={"body2"} className={"monospace"}>
             {entryPoint}
@@ -104,7 +101,7 @@ export function PackerConfirmSummary({
             Not set
           </Typography>
         )}
-      </PackerSummaryRow>
+      </ArchiveSummaryRow>
 
       {publishedVolumes.length ? (
         <Alert severity={"warning"}>

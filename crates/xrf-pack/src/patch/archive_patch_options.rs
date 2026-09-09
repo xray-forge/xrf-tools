@@ -25,12 +25,6 @@ pub struct ArchivePatchOptions {
   pub output: OutputOptions,
   /// Whether the run may publish over volumes of its set that the destination already holds.
   pub is_forced: bool,
-  /// Turn what the format cannot express into a failure.
-  ///
-  /// A `.db` patch cannot delete: `CLocatorAPI::Register` overwrites a descriptor and never removes one. Entries the
-  /// base holds and the target does not are always reported; this decides whether a release gate may pass with them
-  /// outstanding.
-  pub is_strict: bool,
   /// Confirm a pair the checksums agreed on by comparing its payloads.
   ///
   /// Equal size and equal CRC32 is what the engine itself trusts on every decompression, so this is off by default.
@@ -53,11 +47,6 @@ impl ArchivePatchOptions {
   /// The same options, allowed to replace a set the destination already holds.
   pub fn with_force(self, is_forced: bool) -> Self {
     Self { is_forced, ..self }
-  }
-
-  /// The same options, failing a run whose base holds entries the target does not.
-  pub fn with_strict(self, is_strict: bool) -> Self {
-    Self { is_strict, ..self }
   }
 
   /// The same options, proving every checksum match by its payload.

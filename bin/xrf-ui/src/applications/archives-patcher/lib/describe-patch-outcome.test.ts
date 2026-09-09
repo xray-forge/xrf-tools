@@ -21,7 +21,6 @@ function result(patch: Partial<ArchivePatchResult> = {}): ArchivePatchResult {
     outcome: "completed",
     added: [],
     modified: [],
-    removed: [],
     unchanged: 0,
     payloadsRead: 0,
     publication: { kind: "compared" },
@@ -64,15 +63,6 @@ describe("describePatchOutcome", () => {
     expect(agreed.title).toBe("Nothing to patch");
     expect(previewed.title).toBe("Compared archives");
     expect(previewed.details).toContain("1 entry(s) would be carried");
-  });
-
-  it("says removals cannot be carried, since that is the one thing the format refuses", () => {
-    const notification: IJobNotice = describePatchOutcome(
-      CONFIG,
-      outcome({ result: result({ removed: [change("configs\\fonts.ltx")] }) })
-    );
-
-    expect(notification.details).toContain("cannot be deleted by a patch");
   });
 
   it("reports a failure with the reason rather than the destination", () => {

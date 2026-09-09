@@ -2,41 +2,48 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const ARCHIVES_PATCHER_HELP: IApplicationHelp = {
   summary:
-    "Compares a released base against a new build and packs what changed into archive volumes that override the " +
-    "base when the engine mounts them. It exists because `CLocatorAPI::Register` overwrites a descriptor whenever a " +
-    "name it already holds is registered again, and `fsgame.ltx` declares `$arch_dir_patches$` immediately before " +
-    "`$game_data$` - so an archive dropped into `db\\patches\\` wins over the content archives without touching them.",
+    "Packs what your loose gamedata changes about a game into archive volumes that override it when the engine " +
+    "mounts them. It exists because `CLocatorAPI::Register` overwrites a descriptor whenever a name it already " +
+    "holds is registered again, and `fsgame.ltx` declares `$arch_dir_patches$` immediately before `$game_data$` - " +
+    "so an archive dropped into `db\\patches\\` wins over the content archives without touching them.",
   workflow: [
-    "Pick the base: the release a player already has. It may be an installation, a directory of volumes, or a " +
-      "loose gamedata tree - pointing at an installation is enough, because `fsgame.ltx` is read for every root it " +
-      "declares.",
-    "Pick the target: the build the patch should deliver.",
-    "Pick an output directory outside both roots, and name the volumes.",
-    "`Compare` reports what differs and writes nothing. `Write patch` on the result publishes exactly what was " +
-      "previewed, without retyping the form.",
+    "Pick the game under `Comparison`. Its archives are compared against its own loose `gamedata\\`, which is the " +
+      "tree you have been editing in place.",
+    "Or tick `Deliver another tree` to build the patch from a separate gamedata folder instead.",
+    "Pick an output directory outside the game under `Output`, and name the volumes.",
+    "Narrow the comparison under `Selection`, set what the volumes declare under `Header`, and choose how they are " +
+      "written under `Options`.",
+    "`Compare` and `Patch` in the toolbar are two actions rather than one verb over a mode. Both ask for " +
+      "confirmation first, showing what is about to be compared and, for a patch, what the output already holds.",
+    "`Import` and `Export` carry the comparison scope and the header between machines. What is compared, where it " +
+      "is published and under what name stay with the run.",
   ],
   nuances: [
-    "One root per side is enough. An installation expands into every root it declares - `db\\`, its " +
-      "subdirectories, `db\\patches\\`, and loose `gamedata\\` - already ordered the way the engine registers " +
-      "them, so the layering is read from the game rather than assembled by hand.",
+    "The game alone is the whole configuration. `fsgame.ltx` is read for every root it declares, and that one plan " +
+      "is split by source kind: the volumes holding the release on one side, the loose tree overriding it on the " +
+      "other. No pair of paths can pose that question - naming the installation twice finds every loose file equal " +
+      "to itself, and naming `db\\` reaches only the volumes sitting directly in it.",
+    "Files you copied out of an archive but never edited are dropped, so the patch holds what you actually changed " +
+      "rather than everything in the folder.",
     "Entries are compared by size first and only then by checksum. An archive records the checksum its packer " +
       "wrote, so comparing two volume sets reads no payload at all; a loose side is read only where the sizes " +
       "already match. The report says how many payloads it had to read.",
-    "The patch carries the target's bytes for everything added or modified, and nothing else. Two carried entries " +
-      "holding identical payloads cost one payload and two descriptor rows.",
-    "Narrowing with `Only compare` or `Ignore` applies to both sides at once, so a scope can never turn a file that " +
-      "exists on both sides into an addition or a removal.",
+    "Narrowing with `Only compare` or `Ignore` applies to both sides at once, so a scope can never turn a file " +
+      "that exists on both sides into an addition.",
+    "Header entries are merged over the defaults, so naming `creator` keeps the `auto_load` and `entry_point` the " +
+      "engine reads without checking whether they are there.",
   ],
   limitations: [
+    "A `.db` patch cannot override a file that exists loose in the player's `gamedata\\`. That directory is " +
+      "declared last and outranks every archive, so a mod shipping as a loose folder has to keep shipping one.",
     "A patch cannot delete. The archive format has no tombstone and the engine only ever overwrites a descriptor, " +
-      "so entries the base holds and the target does not are reported and left readable from the base. Removing a " +
-      "file means shipping a tree rather than a patch.",
-    "Every volume on both sides must mount at the gamedata root. A volume declaring another `entry_point` is " +
-      "refused rather than compared against the wrong file.",
-    "The output directory must sit outside both roots: a patch written into a tree it compares becomes an " +
-      "input to the next run over the same pair.",
-    "A side that mounts nothing is refused, because every entry of the other side would otherwise read as a " +
-      "difference and the patch would carry the whole game.",
+      "so entries the game holds and the patch does not carry are simply left alone and never reported.",
+    "Every volume on the compared side must mount at the gamedata root. A volume declaring another `entry_point` " +
+      "is refused rather than compared against the wrong file.",
+    "The output must sit outside the game: a patch written into a tree it compares becomes an input to the next " +
+      "run over the same pair.",
+    "An installation whose loose tree holds nothing is refused - there is nothing to publish yet - and so is a " +
+      "gamedata folder named as the game, which has no archives for its files to override.",
   ],
   relatedTools: [EApplicationId.ARCHIVES_PACKER, EApplicationId.ARCHIVES_EXPLORER, EApplicationId.ARCHIVES_UNPACKER],
 };

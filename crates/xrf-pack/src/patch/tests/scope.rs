@@ -109,8 +109,9 @@ fn an_ignored_prefix_is_dropped_from_both_sides() {
   let result: ArchivePatchResult = ArchivePatcher::compare(&configured).expect("an ignoring run answers");
 
   assert_eq!(names_of(&result.modified), ["configs\\system.ltx"]);
-  assert!(
-    result.removed.is_empty(),
+  assert_eq!(
+    result.added.len(),
+    0,
     "the weapon config only the base holds is ignored on both sides"
   );
 }

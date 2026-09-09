@@ -78,6 +78,14 @@ export const archivesCommands = {
   exportPackConfig: (path: string, config: ArchivePackConfig) =>
     __TAURI_INVOKE<null>("plugin:archives|export_pack_config", { path, config }),
   /**
+   * Write the comparison scope and header of a configuration out as a patching configuration file.
+   *
+   * Only what such a file can carry is written, so a round trip through import returns what was exported. What is
+   * compared, where it is published and under what name belong to the run rather than to the file.
+   */
+  exportPatchConfig: (path: string, config: ArchivePatchConfig) =>
+    __TAURI_INVOKE<null>("plugin:archives|export_patch_config", { path, config }),
+  /**
    * Read a packing configuration file over the configuration the caller holds.
    *
    * The codec is chosen from the path's extension, so one command reads an `ltx` and a `json` alike.
@@ -88,6 +96,9 @@ export const archivesCommands = {
    */
   importPackConfig: (path: string, config: ArchivePackConfig) =>
     __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|import_pack_config", { path, config }),
+  /** Read a patching configuration file over the configuration the caller holds. */
+  importPatchConfig: (path: string, config: ArchivePatchConfig) =>
+    __TAURI_INVOKE<ArchivePatchConfig>("plugin:archives|import_patch_config", { path, config }),
   /** Write a single archived file to a path the user chose. */
   extractFile: (name: string, destination: string) =>
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { name, destination }),
@@ -143,6 +154,17 @@ export const archivesCommands = {
    */
   listPackVolumes: (config: ArchivePackConfig) =>
     __TAURI_INVOKE<Array<string>>("plugin:archives|list_pack_volumes", { config }),
+  /**
+   * Volumes of this configuration's set the output already holds.
+   *
+   * The patcher's twin of `list_pack_volumes`, and asked for the same reason: the editor puts publishing behind a
+   * confirmation, and a run that would replace volumes the user still has is exactly what that confirmation is for.
+   * Publishing refuses the same output on its own, so this is what the user is shown, not what protects them.
+   *
+   * Cheap enough to answer on the async worker — one directory listing, no file is opened.
+   */
+  listPatchVolumes: (config: ArchivePatchConfig) =>
+    __TAURI_INVOKE<Array<string>>("plugin:archives|list_patch_volumes", { config }),
   /**
    * Payloads that several entries of the open volume set locate at once.
    *

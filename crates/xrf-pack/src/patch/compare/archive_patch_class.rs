@@ -9,6 +9,4 @@ pub enum ArchivePatchClass {
   Added,
   /// Both have it and their payloads differ, so the patch carries the target's.
   Modified,
-  /// Only the base has it. The patch cannot carry this, and says so.
-  Removed,
 }

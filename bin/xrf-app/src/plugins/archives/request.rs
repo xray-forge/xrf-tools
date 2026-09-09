@@ -34,8 +34,6 @@ pub struct ArchivesPatchRequest {
   pub config: ArchivePatchConfig,
   /// Whether an existing output may be overwritten. Ignored by a comparison, which writes nothing.
   pub is_forced: bool,
-  /// Whether entries the base holds and the target does not should fail the run.
-  pub is_strict: bool,
   /// Whether a checksum match should be proven by comparing the payloads themselves.
   pub is_verifying_payload: bool,
 }

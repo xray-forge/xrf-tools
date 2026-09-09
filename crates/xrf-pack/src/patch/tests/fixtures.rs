@@ -9,7 +9,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::{ArchivePackResult, ArchivePacker};
 use crate::patch::compare::ArchivePatchChange;
-use crate::patch::config::{ArchivePatchConfig, ArchivePatchShape};
+use crate::patch::config::ArchivePatchConfig;
 use crate::patch::{ArchivePatchResult, ArchivePatcher};
 
 /// A configuration fragment large enough that compressing it pays off.
@@ -84,19 +84,9 @@ pub(crate) fn config(base: &Path, target: &Path, into: &Path) -> ArchivePatchCon
   ArchivePatchConfig::new(base, into, "patch").with_target(target)
 }
 
-/// The same pair read as two complete releases, which is what makes a base-only entry a finding.
-pub(crate) fn release_config(base: &Path, target: &Path, into: &Path) -> ArchivePatchConfig {
-  config(base, target, into).with_shape(ArchivePatchShape::Release)
-}
-
 /// One installation supplying both sides: its volumes against its own loose tree.
 pub(crate) fn split_config(install: &Path, into: &Path) -> ArchivePatchConfig {
   ArchivePatchConfig::new(install, into, "patch")
-}
-
-/// Compares two releases without publishing, so removals are reported.
-pub(crate) fn compare_release(base: &Path, target: &Path, into: &Path) -> ArchivePatchResult {
-  ArchivePatcher::compare(&release_config(base, target, into)).expect("the comparison runs")
 }
 
 /// Compares one installation against its own loose tree without publishing.

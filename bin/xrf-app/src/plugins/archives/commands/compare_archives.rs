@@ -27,7 +27,6 @@ pub async fn archives_compare_archives(
 ) -> TauriResult<ArchivePatchResult> {
   let ArchivesPatchRequest {
     config,
-    is_strict,
     is_verifying_payload,
     ..
   } = request;
@@ -59,7 +58,6 @@ pub async fn archives_compare_archives(
         &config,
         ArchivePatchOptions::default()
           .with_job(job)
-          .with_strict(is_strict)
           .with_verified_payloads(is_verifying_payload),
       )
     },

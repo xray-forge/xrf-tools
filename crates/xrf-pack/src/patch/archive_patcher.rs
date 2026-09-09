@@ -11,7 +11,7 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackPay
 use crate::pack::volume::ArchivePublishedSet;
 use crate::pack::{ArchivePackNarrator, ArchivePackResult, ArchivePacker};
 use crate::patch::archive_patch_publication::ArchivePatchPublication;
-use crate::patch::compare::{ArchivePatchChange, ArchivePatchComparison};
+use crate::patch::compare::ArchivePatchComparison;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchScope};
 use crate::patch::world::{ArchivePatchRole, ArchivePatchWorld};
 use crate::patch::{
@@ -43,7 +43,7 @@ impl ArchivePatcher {
   /// # Errors
   ///
   /// Rejects invalid configuration, empty selections, non-gamedata archive entry points, and destinations
-  /// inside either root. Propagates read and write errors. Strict mode rejects removals after publication.
+  /// inside either root. Propagates read and write errors.
   pub fn patch_opt(config: &ArchivePatchConfig, options: ArchivePatchOptions) -> XrfResult<ArchivePatchResult> {
     Self::run(config, &options, true)
   }
@@ -79,7 +79,7 @@ impl ArchivePatcher {
     narrator.describe_settings(config, &base, &target);
 
     let comparison: ArchivePatchComparison =
-      ArchivePatchComparison::of(&base, &target, &scope, config.shape, job, options.is_verifying_payload)?;
+      ArchivePatchComparison::of(&base, &target, &scope, job, options.is_verifying_payload)?;
 
     Self::require_both_sides_hold_entries(config, &comparison, [&base, &target], &scope)?;
     narrator.describe_comparison(&comparison);
@@ -101,8 +101,6 @@ impl ArchivePatcher {
       outcome: Self::to_outcome(job, &publication),
       added: comparison.added,
       modified: comparison.modified,
-      removed: comparison.removed,
-      shape: config.shape,
       unchanged: comparison.unchanged,
       origins: comparison.origins.into_entries(),
       payloads_read: comparison.payloads_read,
@@ -117,9 +115,19 @@ impl ArchivePatcher {
       duration: started_at.elapsed(),
     };
 
-    Self::require_no_removals(&result.removed, options.is_strict)?;
-
     Ok(result)
+  }
+
+  /// Volumes of this configuration's set the destination already holds.
+  ///
+  /// The patcher's view of what publishing would replace, answered by the packer since the set is the packer's to
+  /// name. A listing, not a guarantee: publishing refuses an occupied destination on its own.
+  ///
+  /// # Errors
+  ///
+  /// Propagates the read error of a destination that cannot be listed.
+  pub fn list_published_volumes(config: &ArchivePatchConfig) -> XrfResult<Vec<std::path::PathBuf>> {
+    ArchivePacker::list_published_volumes(&config.to_publication())
   }
 
   /// Mounts what the run compares: either one input split by source kind, or the input against a named target.
@@ -271,19 +279,5 @@ impl ArchivePatcher {
     }
 
     Ok(())
-  }
-
-  /// Rejects removals in strict mode after comparison reporting and any publication.
-  fn require_no_removals(removed: &[ArchivePatchChange], is_strict: bool) -> XrfResult<()> {
-    if !is_strict || removed.is_empty() {
-      return Ok(());
-    }
-
-    Err(XrfError::new_invalid_error(format!(
-      "{} entry(s) the base holds are absent from the target, and a '.db' patch cannot express a deletion: \
-       'CLocatorAPI::Register' overwrites a descriptor and never removes one. They are listed in the report; ship a \
-       tree rather than a patch to remove them, or drop the strict check to publish anyway.",
-      removed.len()
-    )))
   }
 }

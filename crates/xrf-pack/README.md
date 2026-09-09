@@ -36,8 +36,9 @@ root. `extract_file` writes to the exact path supplied by the caller, which may 
 ## Build a patch
 
 `ArchivePatcher` compares what a patch is built against with what it delivers. `compare` reports changes without
-writing; `patch` also writes added and modified entries into new volumes. Entries the delivered tree lacks cannot be
-encoded either way: the archive format has no deletion marker.
+writing; `patch` also writes added and modified entries into new volumes. Entries only the compared side holds are
+not reported at all: a patch adds to and overrides, and `CLocatorAPI::Register` has no way to remove a descriptor, so
+naming them would be naming every file the author left alone.
 
 An installation on its own is the whole configuration. `XrayMountPlan::from_fsgame` expands `fsgame.ltx` into every
 root the game declares, and splitting that one plan by source kind gives the two sides: the volumes holding the
@@ -45,9 +46,7 @@ release, and the loose `gamedata\` overriding it. That answers "what have I chan
 of paths can pose, because the loose tree wins inside the installation's own merged world and naming `db\` by hand
 mounts only the volumes sitting directly in it.
 
-Name a `target` to deliver a tree of its own instead. Two complete releases are a different question, and
-`ArchivePatchShape::Release` asks it: only then is an entry the target lacks a removal rather than a file nobody
-touched.
+Name a `target` to deliver a tree of its own instead.
 
 Write patches outside the input, then deploy them where `fsgame.ltx` loads them after the base archives: stock and
 Anomaly configurations both declare `$arch_dir_patches$` immediately before `$game_data$`.
@@ -61,12 +60,7 @@ let config: ArchivePatchConfig = ArchivePatchConfig::new("C:\\Games\\Anomaly", "
 
 let preview: ArchivePatchResult = ArchivePatcher::compare(&config)?;
 
-println!(
-  "{} added, {} modified, {} cannot be deleted by a patch",
-  preview.added.len(),
-  preview.modified.len(),
-  preview.removed.len()
-);
+println!("{} added, {} modified", preview.added.len(), preview.modified.len());
 
 let published: ArchivePatchResult = ArchivePatcher::patch(&config)?;
 

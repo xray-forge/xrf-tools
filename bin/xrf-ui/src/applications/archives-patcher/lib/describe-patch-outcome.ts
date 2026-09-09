@@ -56,14 +56,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
 
     default:
       return {
-        details: [
-          `${carried.toLocaleString()} entry(s) would be carried.`,
-          result.removed.length
-            ? `${result.removed.length.toLocaleString()} entry(s) cannot be deleted by a patch.`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        details: `${carried.toLocaleString()} entry(s) would be carried.`,
         severity: ENotificationSeverity.INFO,
         title: "Compared archives",
       };

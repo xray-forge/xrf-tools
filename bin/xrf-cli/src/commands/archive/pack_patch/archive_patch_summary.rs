@@ -16,18 +16,9 @@ pub(crate) fn describe_inputs(output: &OutputOptions, config: &ArchivePatchConfi
   }
 }
 
-/// Prints the publication outcome, counts, sizes, timings, and a warning for entries the patch cannot delete.
+/// Prints the publication outcome, counts, sizes and timings.
 pub(crate) fn describe_result(output: &OutputOptions, result: &ArchivePatchResult) {
   describe_headline(output, result);
-
-  if !result.removed.is_empty() {
-    xrf_output::warning!(
-      output,
-      "{} entry(s) the base holds are absent from the target. A '.db' patch cannot express a deletion, so these stay \
-       readable from the base; they are listed in the report.",
-      result.removed.len()
-    );
-  }
 
   xrf_output::info!(
     output,

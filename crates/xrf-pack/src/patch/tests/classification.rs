@@ -5,12 +5,13 @@ use std::path::PathBuf;
 use crate::patch::ArchivePatchResult;
 use crate::patch::compare::ArchivePatchClass;
 use crate::patch::tests::fixtures::{
-  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, CONFIG_LONGER, compare, compare_release, create_tree, create_volumes,
-  destination, names_of,
+  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, CONFIG_LONGER, compare, create_tree, create_volumes, destination, names_of,
 };
 
 #[test]
-fn classifies_added_modified_and_removed_between_two_loose_trees() {
+fn classifies_added_and_modified_between_two_loose_trees() {
+  // What the base holds and the patch does not carry is every file the author left alone, so it is not a finding -
+  // and at an installation it is the whole game, which is the point.
   let scope: &str = "patch_classifies_between_two_loose_trees";
   let base: PathBuf = create_tree(scope, "base", BASE_FILES);
   let target: PathBuf = create_tree(
@@ -22,36 +23,13 @@ fn classifies_added_modified_and_removed_between_two_loose_trees() {
       ("configs\\weapons\\abakan.ltx", CONFIG),
     ],
   );
-  let result: ArchivePatchResult = compare_release(&base, &target, &destination(scope));
-
-  assert_eq!(names_of(&result.added), ["configs\\weapons\\abakan.ltx"]);
-  assert_eq!(names_of(&result.modified), ["configs\\system.ltx"]);
-  assert_eq!(names_of(&result.removed), ["textures\\wall.dds"]);
-  assert_eq!(result.unchanged, 1, "the untouched weapon config is not carried");
-}
-
-#[test]
-fn an_overlay_carries_the_same_entries_and_reports_no_removals() {
-  // The same pair read the other way. What the base holds and the overlay does not is every file the modder left
-  // alone, so it is not a finding - and at an installation it is the whole game, which is the point.
-  let scope: &str = "patch_overlay_reports_no_removals";
-  let base: PathBuf = create_tree(scope, "base", BASE_FILES);
-  let target: PathBuf = create_tree(
-    scope,
-    "target",
-    &[
-      ("configs\\system.ltx", CONFIG_EDITED),
-      ("configs\\weapons\\abakan.ltx", CONFIG),
-    ],
-  );
   let result: ArchivePatchResult = compare(&base, &target, &destination(scope));
 
   assert_eq!(names_of(&result.added), ["configs\\weapons\\abakan.ltx"]);
   assert_eq!(names_of(&result.modified), ["configs\\system.ltx"]);
-  assert!(
-    result.removed.is_empty(),
-    "an overlay says nothing about the files it does not carry"
-  );
+  assert_eq!(result.unchanged, 1, "the untouched weapon config is not carried");
+  // `textures\wall.dds` is in the base alone. It is not reported at all: the patch does not carry it, and saying so
+  // for every file an author left alone would be the whole game at an installation.
 }
 
 #[test]
@@ -128,7 +106,6 @@ fn two_identical_worlds_carry_nothing_and_succeed() {
 
   assert!(result.is_empty());
   assert_eq!(result.unchanged, BASE_FILES.len());
-  assert!(result.removed.is_empty());
 }
 
 #[test]
@@ -151,11 +128,5 @@ fn every_change_agrees_with_the_class_it_reports() {
   for change in &result.modified {
     assert_eq!(change.class, ArchivePatchClass::Modified);
     assert!(change.base.is_some() && change.target.is_some());
-  }
-
-  for change in &result.removed {
-    assert_eq!(change.class, ArchivePatchClass::Removed);
-    assert!(change.target.is_none(), "a removed entry has no target side");
-    assert!(change.base.is_some());
   }
 }

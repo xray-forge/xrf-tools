@@ -1,66 +1,66 @@
-import { TextField } from "@mui/material";
+import { default as TuneIcon } from "@mui/icons-material/Tune";
+import { Alert, Box, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
-import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ArchivesPatchResult } from "@/applications/archives-patcher/components/ArchivesPatchResult";
-import { PatcherService } from "@/applications/archives-patcher/services/patcher";
-import { archivesCommands } from "@/core/bindings/commands/archives";
+import {
+  PATCHER_SECTIONS_PANEL_LABEL,
+  PatcherSectionsMenu,
+} from "@/applications/archives-patcher/components/PatcherSectionsMenu";
+import { PatcherToolbarActions } from "@/applications/archives-patcher/components/PatcherToolbarActions";
+import { PatcherConfirmSummary } from "@/applications/archives-patcher/components/patching/PatcherConfirmSummary";
+import { PatcherComparisonSection } from "@/applications/archives-patcher/components/sections/PatcherComparisonSection";
+import { PatcherHeaderSection } from "@/applications/archives-patcher/components/sections/PatcherHeaderSection";
+import { PatcherOptionsSection } from "@/applications/archives-patcher/components/sections/PatcherOptionsSection";
+import { PatcherOutputSection } from "@/applications/archives-patcher/components/sections/PatcherOutputSection";
+import { PatcherSelectionSection } from "@/applications/archives-patcher/components/sections/PatcherSelectionSection";
+import { PATCH_CONFIG_EXTENSIONS, withPatchConfigExtension } from "@/applications/archives-patcher/lib/patch-config";
+import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
 import { ArchivesPatchRequest } from "@/core/bindings/types/xrf-app";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
-import {
-  CheckboxFormRow,
-  FormRow,
-  IPathField,
-  PathFormRow,
-  StringListFormRow,
-  usePathField,
-  useRememberedValue,
-} from "@/core/ui/form";
+import { EditorLayout } from "@/core/shell/editor/EditorLayout";
+import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
+import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { IPathField, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
-/** Whether the form's submit compares or publishes, remembered as the text the store keeps. */
-type TPatcherMode = "preview" | "publish";
+/** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
+const IMPORT_CONFIG_FILTERS = [{ name: "Patching configuration", extensions: [...PATCH_CONFIG_EXTENSIONS] }];
 
-const PATCHER_MODES: ReadonlyArray<TPatcherMode> = ["preview", "publish"];
+/** Filters the save dialog offers, one entry per format. */
+const EXPORT_CONFIG_FILTERS = PATCH_CONFIG_EXTENSIONS.map((it) => ({ name: it, extensions: [it] }));
 
 export function ArchivesPatcherApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const patcherService: PatcherService = useInjection(PatcherService);
 
+  const config: Nullable<ArchivePatchConfig> = patcherService.config;
   const job: Nullable<IJobState> = patcherService.operation.job;
+
   const isRunning: boolean = patcherService.operation.isRunning;
+  const isBusy: boolean = isRunning || patcherService.isBusy;
 
-  // Off by default: the installation supplies both sides, which is the case a path pair cannot express at all.
-  const [isDeliveringOwnTree, setIsDeliveringOwnTree] = useState<boolean>(false);
-
-  const [defaults, setDefaults] = useState<Nullable<ArchivePatchConfig>>(null);
-  const [name, setName] = useState<string>("patch");
-  const [include, setInclude] = useState<Array<string>>([]);
-  const [ignore, setIgnore] = useState<Array<string>>([]);
-
-  // Remembered as text because that is what the store holds; the form only ever asks whether it is "preview".
-  const [mode, setMode] = useRememberedValue<TPatcherMode>({
-    application: EApplicationId.ARCHIVES_PATCHER,
-    id: "mode",
-    fallback: "preview",
-    allowed: PATCHER_MODES,
-  });
-
-  const isPreviewOnly: boolean = mode === "preview";
+  const [isVerifyingPayload, setIsVerifyingPayload] = useState<boolean>(false);
+  /** Which run the confirmation is for, or null while it is closed. */
+  const [confirming, setConfirming] = useState<Nullable<"compare" | "patch">>(null);
+  const [isForced, setIsForced] = useState<boolean>(false);
 
   const input: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_PATCHER,
     id: "input",
     title: "Select the game installation",
     isDirectory: true,
-    isDisabled: isRunning,
+    isDisabled: isBusy,
   });
 
   const target: IPathField = usePathField({
@@ -68,7 +68,7 @@ export function ArchivesPatcherApplication(): ReactElement {
     id: "target",
     title: "Select the tree the patch delivers",
     isDirectory: true,
-    isDisabled: isRunning,
+    isDisabled: isBusy,
   });
 
   const destination: IPathField = usePathField({
@@ -77,42 +77,82 @@ export function ArchivesPatcherApplication(): ReactElement {
     title: "Select output directory",
     isDirectory: true,
     isSave: true,
-    isDisabled: isRunning,
+    isDisabled: isBusy,
     seed: () => resolveOutputPath(EApplicationId.ARCHIVES_PATCHER),
   });
 
-  const toRequest = useCallback((): Nullable<ArchivesPatchRequest> => {
-    // Everything the format owns - the volume ceiling, the mode, the extension, the mountable header - comes from the
-    // backend's own defaults, so this form never becomes a second definition of them.
-    if (input.value === null || destination.value === null || defaults === null) {
+  /** Whether the patch is built from a folder of its own, which is what a non-null target means. */
+  const isDeliveringOwnTree: boolean = Boolean(config && config.target !== null);
+
+  const request: Nullable<ArchivesPatchRequest> = useMemo(() => {
+    if (!config || input.value === null || destination.value === null) {
+      return null;
+    }
+
+    if (isDeliveringOwnTree && !target.value) {
       return null;
     }
 
     return {
       config: {
-        ...defaults,
+        ...config,
         input: input.value,
-        // Absent is the useful default: the installation's own loose gamedata is what the modder has been editing.
         target: isDeliveringOwnTree ? target.value : null,
         destination: destination.value,
-        name,
-        include,
-        ignore,
       },
-      isForced: false,
-      isStrict: false,
-      isVerifyingPayload: false,
+      isForced,
+      isVerifyingPayload,
     };
-  }, [defaults, destination.value, ignore, include, input.value, isDeliveringOwnTree, name, target.value]);
+  }, [config, destination.value, input.value, isDeliveringOwnTree, isForced, isVerifyingPayload, target.value]);
 
-  const onSubmit = useCallback(async () => {
-    const request: Nullable<ArchivesPatchRequest> = toRequest();
+  const onImport = useCallback(async () => {
+    const selected: Nullable<string> = await open({
+      title: "Import patching configuration",
+      multiple: false,
+      filters: IMPORT_CONFIG_FILTERS,
+    });
 
-    if (!request) {
+    if (typeof selected === "string") {
+      await patcherService.importConfig(selected);
+    }
+  }, [patcherService]);
+
+  const onExport = useCallback(async () => {
+    const selected: Nullable<string> = await save({
+      title: "Export patching configuration",
+      filters: EXPORT_CONFIG_FILTERS,
+    });
+
+    if (selected) {
+      await patcherService.exportConfig(withPatchConfigExtension(selected));
+    }
+  }, [patcherService]);
+
+  /** Opens the confirmation, asking what the output already holds so the summary can say so. */
+  const onConfirm = useCallback(
+    (kind: "compare" | "patch") => {
+      if (!request) {
+        return;
+      }
+
+      setIsForced(false);
+      setConfirming(kind);
+
+      if (kind === "patch") {
+        void patcherService.checkDestination(request.config);
+      }
+    },
+    [patcherService, request]
+  );
+
+  const onRun = useCallback(async () => {
+    if (!request || !confirming) {
       return;
     }
 
-    log.info("Comparing archives, preview only:", isPreviewOnly);
+    log.info("Running patcher:", confirming);
+
+    setConfirming(null);
 
     input.commit();
     destination.commit();
@@ -121,133 +161,163 @@ export function ArchivesPatcherApplication(): ReactElement {
       target.commit();
     }
 
-    await (isPreviewOnly ? patcherService.compare(request) : patcherService.patch(request));
-  }, [destination, input, isDeliveringOwnTree, isPreviewOnly, log, patcherService, target, toRequest]);
-
-  // What the result panel offers after a preview: the same form, committed, without retyping any of it.
-  const onWrite = useCallback(async () => {
-    const request: Nullable<ArchivesPatchRequest> = toRequest();
-
-    if (request) {
-      await patcherService.patch(request);
-    }
-  }, [patcherService, toRequest]);
+    await (confirming === "compare" ? patcherService.compare(request) : patcherService.patch(request));
+  }, [confirming, destination, input, isDeliveringOwnTree, log, patcherService, request, target]);
 
   const onCancel = useCallback(() => patcherService.operation.cancel(), [patcherService]);
 
-  // Read once: these are facts about the format, so nothing that happens in the form can change them.
-  useEffect(() => {
-    void archivesCommands.defaultPatchConfig().then((config: ArchivePatchConfig) => {
-      setDefaults(config);
-      setName(config.name);
-    });
-  }, []);
+  const onVolumeSizeChange = useCallback(
+    (value: string) => {
+      patcherService.setVolumeSize(value);
+    },
+    [patcherService]
+  );
 
-  // Changing any input invalidates whatever the previous run reported.
+  // Changing what is compared invalidates whatever the previous run reported.
   useEffect(() => {
     patcherService.operation.reset();
-  }, [destination.value, ignore, include, input.value, isDeliveringOwnTree, name, patcherService, target.value]);
+  }, [destination.value, input.value, patcherService, target.value]);
+
+  // Drawn by the shell beside every other application's navigation rather than as a column of this application's
+  // own. The menu reads the open section from the service, so this registers once.
+  useEditorPanels(
+    () => [
+      {
+        icon: <TuneIcon />,
+        id: "patcher-sections",
+        isOpenByDefault: true,
+        label: PATCHER_SECTIONS_PANEL_LABEL,
+        render: () => <PatcherSectionsMenu />,
+        side: "left",
+      },
+    ],
+    []
+  );
+
+  useEditorStatus([
+    patcherService.configName ?? "no configuration",
+    ...(patcherService.isDirty ? ["unsaved changes"] : []),
+    ...(patcherService.operation.result
+      ? [`${patcherService.operation.result.added.length + patcherService.operation.result.modified.length} carried`]
+      : []),
+  ]);
+
+  useEditorLifecycle({
+    isBusy,
+    dirtyCount: patcherService.isDirty ? 1 : 0,
+    save: null,
+  });
+
+  if (!config) {
+    return (
+      <EditorLayout toolbar={<EditorToolbar />}>
+        <Box sx={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}>
+          <CircularProgress size={28} />
+        </Box>
+      </EditorLayout>
+    );
+  }
 
   return (
-    <PickerForm
-      isLoading={isRunning}
-      isSubmitDisabled={
-        defaults === null ||
-        !input.isValid ||
-        !destination.isValid ||
-        !name.trim() ||
-        (isDeliveringOwnTree && !target.isValid)
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          subtitle={patcherService.configName ?? "New configuration"}
+          actions={
+            <PatcherToolbarActions
+              isBusy={isBusy}
+              isRunDisabled={isBusy || !request || !config.name.trim() || Boolean(patcherService.volumeSizeError)}
+              onImport={() => void onImport()}
+              onExport={() => void onExport()}
+              onCompare={() => onConfirm("compare")}
+              onPatch={() => onConfirm("patch")}
+            />
+          }
+        />
       }
-      title={"Build an archive patch"}
-      description={
-        "Packs what your loose gamedata changes about an installation into archive volumes that override it when the " +
-        "engine mounts them."
-      }
-      error={patcherService.operation.error ?? undefined}
-      submitLabel={isPreviewOnly ? "Compare" : "Build patch"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
-      result={
-        patcherService.operation.result ? (
-          <ArchivesPatchResult
-            result={patcherService.operation.result}
-            outputPath={destination.value}
-            isDisabled={isRunning}
-            onWrite={onWrite}
-          />
-        ) : null
-      }
-      onSubmit={onSubmit}
     >
-      <PathFormRow
-        isDisabled={isRunning}
-        label={"Game"}
-        description={"The installation to patch; its loose gamedata is compared against its own archives"}
-        field={input}
-      />
+      <Box sx={{ flexGrow: 1, minWidth: 0, overflowY: "auto", p: 3 }}>
+        <Stack spacing={2} sx={{ maxWidth: 860 }}>
+          {patcherService.error ? <Alert severity={"error"}>{patcherService.error}</Alert> : null}
 
-      <CheckboxFormRow
-        label={"Deliver another tree"}
-        description={"Build the patch from a separate gamedata folder instead of the installation's loose files"}
-        isChecked={isDeliveringOwnTree}
-        isDisabled={isRunning}
-        onChange={setIsDeliveringOwnTree}
-      />
+          {patcherService.operation.error ? <Alert severity={"error"}>{patcherService.operation.error}</Alert> : null}
 
-      {isDeliveringOwnTree ? (
-        <PathFormRow
-          isDisabled={isRunning}
-          label={"Deliver"}
-          description={"The gamedata tree the patch should carry"}
-          field={target}
+          {job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+
+          {patcherService.section === EPatcherSection.COMPARISON ? (
+            <PatcherComparisonSection
+              config={config}
+              input={input}
+              target={target}
+              isDisabled={isBusy}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.OUTPUT ? (
+            <PatcherOutputSection
+              config={config}
+              destination={destination}
+              isDisabled={isBusy}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.SELECTION ? (
+            <PatcherSelectionSection config={config} isDisabled={isBusy} onChange={patcherService.patchConfig} />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.HEADER ? (
+            <PatcherHeaderSection config={config} isDisabled={isBusy} onChange={patcherService.patchConfig} />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.OPTIONS ? (
+            <PatcherOptionsSection
+              config={config}
+              maxVolumeSizeMegabytes={patcherService.maxVolumeSizeMegabytes}
+              volumeSize={patcherService.volumeSize}
+              volumeSizeError={patcherService.volumeSizeError}
+              isVerifyingPayload={isVerifyingPayload}
+              isForced={isForced}
+              isDisabled={isBusy}
+              onVolumeSizeChange={onVolumeSizeChange}
+              onVerifyingPayloadChange={setIsVerifyingPayload}
+              onForcedChange={setIsForced}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.operation.result ? (
+            <>
+              <Divider />
+              <Typography variant={"subtitle2"}>Last run</Typography>
+              <ArchivesPatchResult result={patcherService.operation.result} outputPath={destination.value} />
+            </>
+          ) : null}
+        </Stack>
+      </Box>
+
+      {request ? (
+        <ConfirmDialog
+          isOpen={confirming !== null}
+          isDestructive={confirming === "patch"}
+          isConfirmDisabled={confirming === "patch" && patcherService.publishedVolumes.length > 0 && !isForced}
+          maxWidth={"sm"}
+          title={confirming === "compare" ? "Compare archives?" : "Write patch?"}
+          description={
+            <PatcherConfirmSummary
+              config={request.config}
+              isPreviewOnly={confirming === "compare"}
+              publishedVolumes={patcherService.publishedVolumes}
+              isForced={isForced}
+              onForceChange={setIsForced}
+            />
+          }
+          confirmLabel={confirming === "compare" ? "Compare" : "Patch"}
+          onConfirm={() => void onRun()}
+          onClose={() => setConfirming(null)}
         />
       ) : null}
-
-      <PathFormRow
-        isDisabled={isRunning}
-        label={"Output"}
-        description={"Directory the patch volumes are written into, outside the game"}
-        field={destination}
-      />
-
-      <FormRow label={"Volume name"} description={"Volumes are written as <name>.db0, <name>.db1 and so on"}>
-        <TextField
-          size={"small"}
-          fullWidth
-          value={name}
-          disabled={isRunning}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value)}
-        />
-      </FormRow>
-
-      <CheckboxFormRow
-        label={"Preview only"}
-        description={"Report what differs without writing any volume"}
-        isChecked={isPreviewOnly}
-        isDisabled={isRunning}
-        onChange={(isChecked: boolean) => setMode(isChecked ? "preview" : "publish")}
-      />
-
-      <StringListFormRow
-        label={"Only compare"}
-        description={"Logical prefixes the comparison is restricted to, such as configs"}
-        values={include}
-        addLabel={"Add prefix"}
-        emptyLabel={"The whole of both worlds is compared."}
-        placeholder={"configs"}
-        isDisabled={isRunning}
-        onChange={setInclude}
-      />
-
-      <StringListFormRow
-        label={"Ignore"}
-        description={"Logical prefixes dropped from the comparison"}
-        values={ignore}
-        addLabel={"Add prefix"}
-        emptyLabel={"Nothing is ignored."}
-        placeholder={"configs\\text"}
-        isDisabled={isRunning}
-        onChange={setIgnore}
-      />
-    </PickerForm>
+    </EditorLayout>
   );
 }

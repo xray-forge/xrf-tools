@@ -5,8 +5,8 @@ use clap::parser::ValueSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_pack::{
-  ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchivePatchShape,
-  ArchiveVolumeExtension, VOLUME_SIZE_MAX,
+  ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchiveVolumeExtension,
+  VOLUME_SIZE_MAX,
 };
 
 /// Parsed arguments for `archive pack-patch`.
@@ -38,10 +38,6 @@ impl ArchivePatchArguments {
 
     if matches.contains_id("target") && matches.get_one::<PathBuf>("target").is_some() {
       config.target = Some(Self::to_root(matches, "target")?);
-    }
-
-    if matches.get_flag("release") {
-      config.shape = ArchivePatchShape::Release;
     }
 
     if let Some(prefixes) = matches.get_many::<String>("include") {
@@ -82,7 +78,6 @@ impl ArchivePatchArguments {
       options: ArchivePatchOptions::default()
         .with_output(output)
         .with_force(matches.get_flag("force"))
-        .with_strict(matches.get_flag("strict"))
         .with_verified_payloads(matches.get_flag("verify-payload")),
       is_dry_run: matches.get_flag("dry-run"),
     })

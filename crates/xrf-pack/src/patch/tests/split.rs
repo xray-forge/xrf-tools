@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use crate::patch::config::ArchivePatchShape;
 use crate::patch::tests::fixtures::{
   BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, compare_split, create_installation, create_tree, destination, names_of,
   patch_split, published_bytes, published_names, split_config,
@@ -35,9 +34,9 @@ fn an_installation_compares_its_volumes_against_its_own_loose_tree() {
     ["configs\\weapons\\abakan.ltx"],
     "the loose file no volume holds"
   );
-  assert!(
-    result.removed.is_empty(),
-    "the rest of the release is untouched, not deleted"
+  assert_eq!(
+    result.unchanged, 0,
+    "the rest of the release is untouched rather than compared, so it is not counted either"
   );
 }
 
@@ -80,22 +79,6 @@ fn an_installation_with_nothing_loose_says_so_rather_than_blaming_the_path() {
   assert!(
     message.contains("gamedata"),
     "'{message}' says where the changed files go"
-  );
-}
-
-#[test]
-fn release_shape_is_refused_for_a_split_input() {
-  // Two halves of one installation are not two releases, so "what did the target drop" has no answer here.
-  let scope: &str = "patch_split_refuses_release_shape";
-  let install: PathBuf = create_installation(scope, "game", BASE_FILES, &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let configured = split_config(&install, &destination(scope)).with_shape(ArchivePatchShape::Release);
-  let message: String = ArchivePatcher::compare(&configured)
-    .expect_err("release shape needs two releases")
-    .to_string();
-
-  assert!(
-    message.contains("not two releases"),
-    "'{message}' says why the shape does not apply"
   );
 }
 

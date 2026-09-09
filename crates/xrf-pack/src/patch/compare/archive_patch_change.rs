@@ -34,14 +34,4 @@ impl ArchivePatchChange {
       target: Some(target),
     }
   }
-
-  /// An entry only the base holds.
-  pub(crate) fn removed(name: &str, base: ArchivePatchSide) -> Self {
-    Self {
-      name: name.to_owned(),
-      class: ArchivePatchClass::Removed,
-      base: Some(base),
-      target: None,
-    }
-  }
 }

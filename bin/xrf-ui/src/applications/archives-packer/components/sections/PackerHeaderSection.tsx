@@ -1,8 +1,8 @@
 import { Alert, Stack, Switch, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import { PackerHeaderEntries } from "@/applications/archives-packer/components/controls/PackerHeaderEntries";
 import {
+  ArchiveHeaderEntries,
   DEFAULT_ENTRY_POINT,
   HEADER_AUTO_LOAD,
   HEADER_ENTRY_POINT,
@@ -10,7 +10,7 @@ import {
   readHeaderValue,
   writeHeaderFlag,
   writeHeaderValue,
-} from "@/applications/archives-packer/lib/pack-config";
+} from "@/core/archive";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
@@ -73,7 +73,11 @@ export function PackerHeaderSection({ config, isDisabled, onChange }: IPackerHea
         />
       </FormRow>
 
-      <PackerHeaderEntries header={config.header} isDisabled={isDisabled} onChange={(header) => onChange({ header })} />
+      <ArchiveHeaderEntries
+        header={config.header}
+        isDisabled={isDisabled}
+        onChange={(header) => onChange({ header })}
+      />
     </Stack>
   );
 }

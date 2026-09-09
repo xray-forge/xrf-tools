@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use crate::patch::config::ArchivePatchConfig;
-use crate::patch::tests::fixtures::{BASE_FILES, CONFIG_EDITED, config, create_tree, destination, release_config};
+use crate::patch::tests::fixtures::{BASE_FILES, CONFIG_EDITED, config, create_tree, destination};
 use crate::patch::{ArchivePatchOptions, ArchivePatcher};
 
 /// The message a refused run produced.
@@ -29,31 +29,6 @@ fn a_scope_matching_nothing_is_refused() {
     message.contains("matched no entry"),
     "'{message}' says the scope matched nothing"
   );
-}
-
-#[test]
-fn strict_fails_a_run_whose_base_holds_what_the_target_does_not() {
-  let scope: &str = "patch_strict_fails_on_removals";
-  let base: PathBuf = create_tree(scope, "base", BASE_FILES);
-  let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let configured: ArchivePatchConfig = release_config(&base, &target, &destination(scope));
-  let message: String = refusal(&configured, ArchivePatchOptions::default().with_strict(true));
-
-  assert!(
-    message.contains("cannot express a deletion"),
-    "'{message}' says why the patch cannot carry the removal"
-  );
-}
-
-#[test]
-fn removals_alone_do_not_fail_a_run() {
-  let scope: &str = "patch_removals_alone_do_not_fail";
-  let base: PathBuf = create_tree(scope, "base", BASE_FILES);
-  let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let result =
-    ArchivePatcher::compare(&release_config(&base, &target, &destination(scope))).expect("removals are reported");
-
-  assert_eq!(result.removed.len(), 2, "they are named rather than refused");
 }
 
 #[test]
