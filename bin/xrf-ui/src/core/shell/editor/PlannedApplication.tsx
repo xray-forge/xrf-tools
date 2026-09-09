@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 interface IPlannedApplicationProps {
@@ -17,7 +18,7 @@ interface IPlannedApplicationProps {
 export function PlannedApplication({ description }: IPlannedApplicationProps): ReactElement {
   return (
     <EditorLayout toolbar={<EditorToolbar />}>
-      <Box sx={{ display: "flex", width: "100%", height: "100%", minHeight: 0 }}>
+      <Box sx={[getApplicationBackgroundSx, { display: "flex", width: "100%", height: "100%", minHeight: 0 }]}>
         <EmptyState
           icon={<ConstructionIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
           title={"Not implemented yet"}

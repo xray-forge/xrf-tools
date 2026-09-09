@@ -151,8 +151,33 @@ export function createApplicationTheme(): Theme {
         defaultProps: { variant: "outlined" },
         styleOverrides: {
           root: ({ theme }) => ({
-            borderRadius: RADIUS.lg,
-            borderColor: (theme.vars ?? theme).palette.divider,
+            borderRadius: RADIUS.md * 2,
+            borderColor: `color-mix(in srgb, ${(theme.vars ?? theme).palette.text.primary} 12%, transparent)`,
+            backgroundColor: (theme.vars ?? theme).palette.background.paper,
+            "--xrf-card-opacity": "75%",
+            "--xrf-card-disabled-opacity": "35%",
+            "--xrf-card-hover-opacity": "25%",
+            "--xrf-card-edge": "70%",
+            "--xrf-card-shadow": "8%",
+            "@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))": {
+              backgroundColor: `color-mix(in srgb, ${(theme.vars ?? theme).palette.background.paper} var(--xrf-card-opacity), transparent)`,
+              backdropFilter: "blur(18px) saturate(140%)",
+              WebkitBackdropFilter: "blur(18px) saturate(140%)",
+              boxShadow: [
+                `inset 1px 1px 0 color-mix(in srgb, ${theme.palette.common.white} var(--xrf-card-edge), transparent)`,
+                `inset -1px -1px 0 color-mix(in srgb, ${theme.palette.common.white} 5%, transparent)`,
+                `0 3px 12px color-mix(in srgb, ${theme.palette.common.black} var(--xrf-card-shadow), transparent)`,
+              ].join(", "),
+            },
+            ...theme.applyStyles("dark", {
+              "--xrf-card-edge": "18%",
+              "--xrf-card-shadow": "24%",
+            }),
+            transition: "background-color 140ms ease, border-color 140ms ease",
+            "&:has(> .MuiCardActionArea-root):hover": {
+              "--xrf-card-opacity": "var(--xrf-card-hover-opacity)",
+              borderColor: (theme.vars ?? theme).palette.primary.main,
+            },
           }),
         },
       },

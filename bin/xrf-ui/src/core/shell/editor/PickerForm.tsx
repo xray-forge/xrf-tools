@@ -18,6 +18,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
+import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -144,14 +145,17 @@ export function PickerForm({
       <Box
         component={"form"}
         noValidate={true}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          height: "100%",
-          minHeight: 0,
-          overflowY: "auto",
-        }}
+        sx={[
+          getApplicationBackgroundSx,
+          {
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            height: "100%",
+            minHeight: 0,
+            overflowY: "auto",
+          },
+        ]}
         onSubmit={onFormSubmit}
         onKeyDown={onFormKeyDown}
       >

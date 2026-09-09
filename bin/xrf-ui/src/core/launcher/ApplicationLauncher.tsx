@@ -19,6 +19,7 @@ import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
 
@@ -229,7 +230,12 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
 
   return (
     <EditorLayout toolbar={<EditorToolbar />}>
-      <Box sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }}>
+      <Box
+        sx={[
+          getApplicationBackgroundSx,
+          { display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 },
+        ]}
+      >
         <Box sx={{ flexShrink: 0, paddingX: 3, paddingTop: 3 }}>
           <Box>
             <ApplicationLauncherHeader

@@ -17,6 +17,14 @@ export const RADIUS = {
   lg: 8,
 } as const;
 
+/** Fixed color fields shared by launcher, picker, and planned screens. */
+export const APPLICATION_BACKGROUND = {
+  radiusX: 800,
+  radiusY: 600,
+  primary: { x: 24, y: 640, opacity: { light: "8%", dark: "2%" } },
+  secondary: { x: 24, y: 16, opacity: { light: "7%", dark: "2%" } },
+} as const;
+
 export const LAYOUT = {
   railWidth: 44,
   /**

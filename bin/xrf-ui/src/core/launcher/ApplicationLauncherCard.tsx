@@ -94,17 +94,10 @@ export function ApplicationLauncherCard({
     <Card
       sx={{
         height: "100%",
-        backgroundColor: "background.paper",
-        transition: "background-color 140ms ease, border-color 140ms ease",
         ...(isEnabled
-          ? {
-              "&:hover": {
-                backgroundColor: "action.hover",
-                borderColor: "primary.main",
-              },
-            }
+          ? {}
           : {
-              backgroundColor: "transparent",
+              "--xrf-card-opacity": "var(--xrf-card-disabled-opacity)",
               borderStyle: "dashed",
             }),
       }}
