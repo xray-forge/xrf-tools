@@ -2547,10 +2547,10 @@
           "markdownDescription": "Denies the read_asset command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-format-directory`\n- `allow-verify-directory`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-verify-directory`",
           "type": "string",
           "const": "configs:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-format-directory`\n- `allow-verify-directory`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-check-directory-format`\n- `allow-close-project`\n- `allow-format-directory`\n- `allow-get-project`\n- `allow-open-project`\n- `allow-read-document`\n- `allow-verify-directory`"
         },
         {
           "description": "Enables the check_directory_format command without any pre-configured scope.",
@@ -2559,10 +2559,34 @@
           "markdownDescription": "Enables the check_directory_format command without any pre-configured scope."
         },
         {
+          "description": "Enables the close_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-close-project",
+          "markdownDescription": "Enables the close_project command without any pre-configured scope."
+        },
+        {
           "description": "Enables the format_directory command without any pre-configured scope.",
           "type": "string",
           "const": "configs:allow-format-directory",
           "markdownDescription": "Enables the format_directory command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-get-project",
+          "markdownDescription": "Enables the get_project command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-open-project",
+          "markdownDescription": "Enables the open_project command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_document command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:allow-read-document",
+          "markdownDescription": "Enables the read_document command without any pre-configured scope."
         },
         {
           "description": "Enables the verify_directory command without any pre-configured scope.",
@@ -2577,10 +2601,34 @@
           "markdownDescription": "Denies the check_directory_format command without any pre-configured scope."
         },
         {
+          "description": "Denies the close_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-close-project",
+          "markdownDescription": "Denies the close_project command without any pre-configured scope."
+        },
+        {
           "description": "Denies the format_directory command without any pre-configured scope.",
           "type": "string",
           "const": "configs:deny-format-directory",
           "markdownDescription": "Denies the format_directory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-get-project",
+          "markdownDescription": "Denies the get_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_project command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-open-project",
+          "markdownDescription": "Denies the open_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_document command without any pre-configured scope.",
+          "type": "string",
+          "const": "configs:deny-read-document",
+          "markdownDescription": "Denies the read_document command without any pre-configured scope."
         },
         {
           "description": "Denies the verify_directory command without any pre-configured scope.",

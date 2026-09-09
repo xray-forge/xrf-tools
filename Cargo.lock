@@ -7106,6 +7106,7 @@ dependencies = [
  "xrf-gamedata",
  "xrf-job",
  "xrf-ltx",
+ "xrf-ltx-inspect",
  "xrf-material",
  "xrf-output",
  "xrf-pack",

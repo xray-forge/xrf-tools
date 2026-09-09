@@ -3,7 +3,8 @@
 use xrf_error::XrfResult;
 use xrf_ltx::LtxResolution;
 
-use crate::structure::{LtxFileStructure, LtxStructureReader};
+use crate::ltx_root_reader::LtxRootReader;
+use crate::structure::LtxFileStructure;
 use crate::tests::ltx_map_source::LtxMapSource;
 
 #[test]
@@ -17,7 +18,8 @@ fn a_parent_the_root_holds_resolves_and_one_it_does_not_holds_nothing() -> XrfRe
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("items\\w_orphan.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("items\\w_orphan.ltx", &[])?;
 
   let orphan: &_ = &structure.sections[0];
 
@@ -38,9 +40,9 @@ fn a_section_with_no_scheme_reports_no_binding() -> XrfResult {
   )]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source)
+  let structure: LtxFileStructure = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
     .with_declared_schemes(&["weapon"])
-    .read("system.ltx", &[])?;
+    .read_structure("system.ltx", &[])?;
 
   let bound: &_ = structure.sections[0].scheme.as_ref().expect("a declared binding");
 
@@ -56,7 +58,8 @@ fn a_binding_no_scheme_file_declares_is_reported_undeclared() -> XrfResult {
   let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "[wpn_bound]\n$scheme = weapon\n")]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("system.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
 
   let bound: &_ = structure.sections[0].scheme.as_ref().expect("a binding");
 
@@ -74,9 +77,9 @@ fn an_inherited_binding_is_reported_on_the_child() -> XrfResult {
   )]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source)
+  let structure: LtxFileStructure = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
     .with_declared_schemes(&["weapon"])
-    .read("system.ltx", &[])?;
+    .read_structure("system.ltx", &[])?;
 
   assert_eq!(
     structure.sections[1].scheme.as_ref().map(|scheme| scheme.name.as_str()),
@@ -95,7 +98,8 @@ fn an_include_that_reaches_no_file_resolves_to_nothing() -> XrfResult {
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("system.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
 
   assert_eq!(structure.includes[0].statement, "present.ltx");
   assert_eq!(structure.includes[0].resolved, vec![String::from("present.ltx")]);
@@ -115,7 +119,8 @@ fn a_config_that_will_not_parse_still_answers_a_structure() -> XrfResult {
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("broken.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("broken.ltx", &[])?;
 
   let parse_error: &_ = structure.parse_error.as_ref().expect("the parse to have failed");
 
@@ -133,12 +138,58 @@ fn a_header_carries_its_line_and_the_entry_points_it_was_asked_about() -> XrfRes
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
   let entry_points: Vec<String> = vec![String::from("system.ltx")];
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("system.ltx", &entry_points)?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &entry_points)?;
 
   assert_eq!(structure.path, "system.ltx");
   assert_eq!(structure.entry_points, entry_points);
   assert_eq!(structure.sections[0].line, 3);
   assert_eq!(structure.sections[0].operation, "", "a plain declaration has no prefix");
+
+  Ok(())
+}
+
+#[test]
+fn a_wildcard_include_reports_what_it_matched_without_reading_any_of_it() -> XrfResult {
+  let source: LtxMapSource = LtxMapSource::new(&[
+    ("system.ltx", "#include \"items\\w_*.ltx\"\n"),
+    ("items\\w_one.ltx", "[one]\ncost = 1\n"),
+    ("items\\w_two.ltx", "[two]\ncost = 2\n"),
+  ]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+
+  let resolved_at: usize = source.reads();
+  let structure: LtxFileStructure = reader.read_structure("system.ltx", &[])?;
+
+  assert_eq!(structure.includes[0].resolved.len(), 2, "both matches to be reported");
+
+  // Expanding a mask is a directory listing, so it already answered which configs exist. Probing each one would read
+  // every config a `w_*.ltx` matches to learn what the listing said - hundreds of them on a real weapons tree.
+  assert_eq!(
+    source.reads() - resolved_at,
+    1,
+    "only the file being described to be read"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn a_named_include_naming_nothing_reports_nothing() -> XrfResult {
+  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "#include \"absent.ltx\"\n")]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
+
+  // The other half of the rule above: a statement without a mask expands to itself whether or not anything holds it,
+  // so this one has to be probed to know that it reached nothing.
+  assert!(
+    structure.includes[0].resolved.is_empty(),
+    "an include naming an absent config to have reached nothing"
+  );
 
   Ok(())
 }

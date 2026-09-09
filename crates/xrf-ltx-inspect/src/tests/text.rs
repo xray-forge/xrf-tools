@@ -1,10 +1,10 @@
 //! What the authored view renders, and what it admits it lost.
 
-use crate::text::{LtxFileText, read_text};
+use crate::text::{LtxFileText, LtxTextReader};
 
 #[test]
 fn every_statement_lands_on_the_line_it_was_written_on() {
-  let text: LtxFileText = read_text("system.ltx", "; header\n\n[wpn_base]\ncost = 100\n");
+  let text: LtxFileText = LtxTextReader::read("system.ltx", "; header\n\n[wpn_base]\ncost = 100\n");
 
   assert_eq!(text.path, "system.ltx");
   assert_eq!(
@@ -21,7 +21,7 @@ fn every_statement_lands_on_the_line_it_was_written_on() {
 
 #[test]
 fn a_line_holding_only_whitespace_comes_back_empty() {
-  let text: LtxFileText = read_text("system.ltx", "[wpn_base]\n   \ncost = 100\n");
+  let text: LtxFileText = LtxTextReader::read("system.ltx", "[wpn_base]\n   \ncost = 100\n");
 
   assert_eq!(text.lines[1], "", "the one thing the document cannot carry");
   assert!(text.is_normalized, "and the record says so");
@@ -29,7 +29,7 @@ fn a_line_holding_only_whitespace_comes_back_empty() {
 
 #[test]
 fn a_config_that_will_not_parse_answers_its_raw_lines() {
-  let text: LtxFileText = read_text("broken.ltx", "[wpn_base]\ncost = 100\n[unclosed\n");
+  let text: LtxFileText = LtxTextReader::read("broken.ltx", "[wpn_base]\ncost = 100\n[unclosed\n");
 
   assert_eq!(
     text.lines,

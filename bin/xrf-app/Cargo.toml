@@ -42,6 +42,7 @@ xrf-export = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-ltx = { workspace = true }
+xrf-ltx-inspect = { workspace = true }
 xrf-material = { workspace = true }
 xrf-output = { workspace = true }
 xrf-sound = { workspace = true }
@@ -76,6 +77,7 @@ typescript-bindings = [
     "xrf-error/typescript-bindings",
     "xrf-export/typescript-bindings",
     "xrf-ltx/typescript-bindings",
+    "xrf-ltx-inspect/typescript-bindings",
     "xrf-material/typescript-bindings",
     "xrf-texture/typescript-bindings",
     "xrf-translation/typescript-bindings",

@@ -5,7 +5,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution};
 use xrf_ltx_inspect::{
-  LtxResolvedDiagnostic, LtxResolvedField, LtxResolvedFieldOrigin, LtxResolvedReader, LtxResolvedSection,
+  LtxResolvedDiagnostic, LtxResolvedField, LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
 };
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -80,8 +80,8 @@ impl GenericCommand for InspectCommand {
     let source = project.document_source();
 
     let dialect: &str = project.get_dialect().get_name();
-    let reader: LtxResolvedReader =
-      LtxResolvedReader::new(entry.as_str(), dialect, &resolution, &source as &dyn LtxDocumentSource);
+    let reader: LtxRootReader =
+      LtxRootReader::new(entry.as_str(), dialect, &resolution, &source as &dyn LtxDocumentSource);
 
     let Some(resolved) = reader.read_sections(&[section.as_str()])?.pop() else {
       return Err(

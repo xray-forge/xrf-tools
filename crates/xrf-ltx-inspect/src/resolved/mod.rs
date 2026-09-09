@@ -7,5 +7,5 @@ pub(crate) mod ltx_resolved_section;
 
 pub use crate::resolved::ltx_resolved_diagnostic::LtxResolvedDiagnostic;
 pub use crate::resolved::ltx_resolved_index::{LtxResolvedIndex, LtxResolvedIndexEntry};
-pub use crate::resolved::ltx_resolved_reader::LtxResolvedReader;
+pub(crate) use crate::resolved::ltx_resolved_reader::LtxResolvedReader;
 pub use crate::resolved::ltx_resolved_section::{LtxResolvedField, LtxResolvedFieldOrigin, LtxResolvedSection};

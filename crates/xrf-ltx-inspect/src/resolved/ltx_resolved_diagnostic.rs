@@ -7,7 +7,7 @@ use xrf_ltx::LtxResolutionDiagnostic;
 /// No severity, because there is only one: everything the engine refuses to start on comes back as an error from the
 /// resolve, so a diagnostic exists precisely where the game would say nothing.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxResolvedDiagnostic {
   pub section: String,

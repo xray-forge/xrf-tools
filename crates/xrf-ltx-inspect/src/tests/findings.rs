@@ -3,8 +3,9 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::LtxResolution;
 
-use crate::findings::{LtxAnchoredFinding, LtxFindingAnchor, LtxFindingKind};
-use crate::structure::{LtxFileStructure, LtxStructureReader};
+use crate::findings::{LtxAnchoredFinding, LtxFindingKind};
+use crate::ltx_root_reader::LtxRootReader;
+use crate::structure::LtxFileStructure;
 use crate::tests::ltx_map_source::LtxMapSource;
 
 /// One config declaring a parent and a child, laid out so every line number in these tests is readable here.
@@ -32,7 +33,7 @@ fn a_finding_about_a_field_the_section_writes_anchors_to_that_line() -> XrfResul
   let resolution: LtxResolution = source.resolve("system.ltx")?;
 
   let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "cost")])?;
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "cost")])?;
 
   assert_eq!(findings[0].kind, LtxFindingKind::Scheme);
   assert_eq!(findings[0].file.as_deref(), Some("system.ltx"));
@@ -49,7 +50,7 @@ fn a_finding_with_no_field_anchors_to_the_header() -> XrfResult {
   let resolution: LtxResolution = source.resolve("system.ltx")?;
 
   let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "*")])?;
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "*")])?;
 
   assert_eq!(findings[0].line, Some(2));
   assert_eq!(findings[0].field, None, "`*` is the absence of a field, not a field");
@@ -62,8 +63,8 @@ fn a_finding_about_an_inherited_field_anchors_to_the_header_that_pulled_it_in() 
   let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", WEAPONS)]);
   let resolution: LtxResolution = source.resolve("system.ltx")?;
 
-  let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_findings(&[scheme_error("wpn_child", "cost")])?;
+  let findings: Vec<LtxAnchoredFinding> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
+    .read_findings(&[scheme_error("wpn_child", "cost")])?;
 
   assert_eq!(
     findings[0].line,
@@ -80,7 +81,7 @@ fn a_finding_about_a_field_the_child_writes_anchors_inside_the_child() -> XrfRes
   let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", WEAPONS)]);
   let resolution: LtxResolution = source.resolve("system.ltx")?;
 
-  let findings: Vec<LtxAnchoredFinding> = LtxFindingAnchor::new("system.ltx", &resolution, &source)
+  let findings: Vec<LtxAnchoredFinding> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
     .read_findings(&[scheme_error("wpn_child", "description")])?;
 
   assert_eq!(findings[0].line, Some(7));
@@ -97,7 +98,7 @@ fn a_finding_anchors_in_the_config_that_declares_the_section_not_the_entry_point
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
   let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "cost")])?;
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_findings(&[scheme_error("wpn_base", "cost")])?;
 
   assert_eq!(findings[0].file.as_deref(), Some("items\\w_base.ltx"));
   assert_eq!(findings[0].line, Some(2));
@@ -117,10 +118,11 @@ fn a_parse_error_carries_its_own_line() -> XrfResult {
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("broken.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("broken.ltx", &[])?;
 
   let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_file_findings(&structure);
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_file_findings(&structure);
 
   assert_eq!(findings[0].kind, LtxFindingKind::Parse);
   assert_eq!(findings[0].file.as_deref(), Some("broken.ltx"));
@@ -135,10 +137,11 @@ fn an_include_that_reached_nothing_is_a_finding_on_its_statement() -> XrfResult 
   let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "[wpn_base]\ncost = 100\n#include \"absent.ltx\"\n")]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let structure: LtxFileStructure = LtxStructureReader::new(&resolution, &source).read("system.ltx", &[])?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
 
   let findings: Vec<LtxAnchoredFinding> =
-    LtxFindingAnchor::new("system.ltx", &resolution, &source).read_file_findings(&structure);
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_file_findings(&structure);
 
   assert_eq!(findings.len(), 1);
   assert_eq!(findings[0].kind, LtxFindingKind::Include);

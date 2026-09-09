@@ -79,7 +79,7 @@ impl Section {
   ///
   /// `AsRef<str>` rather than `Into<Arc<str>>`, which no `&String` satisfies, and rather than `Into<String>`, which
   /// would build a growable string only to share it. One allocation either way, sized to the value exactly.
-  /// [`Self::insert_shared`] is the door for text this crate already holds.
+  /// `Self::insert_shared` is the door for text this crate already holds.
   pub fn insert<K, V>(&mut self, key: K, value: V)
   where
     K: AsRef<str>,

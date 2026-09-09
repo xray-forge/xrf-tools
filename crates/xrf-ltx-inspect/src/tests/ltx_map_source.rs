@@ -1,8 +1,12 @@
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxDialect, LtxDocument, LtxDocumentSource, LtxResolution, LtxResolveRequest, LtxStandardDialect};
+use xrf_ltx::{
+  LTX_SYMBOL_INCLUDE_WILDCARD, Ltx, LtxDialect, LtxDocument, LtxDocumentSource, LtxResolution, LtxResolveRequest,
+  LtxStandardDialect,
+};
 
 /// A [`LtxDocumentSource`] over configs held in memory.
 ///
@@ -12,6 +16,12 @@ use xrf_ltx::{Ltx, LtxDialect, LtxDocument, LtxDocumentSource, LtxResolution, Lt
 #[derive(Debug, Default)]
 pub struct LtxMapSource {
   contents: BTreeMap<String, String>,
+  /// How many documents have been read out of this source.
+  ///
+  /// A seam rather than an accessory: whether a reader reads a declaring config once or once per question is a
+  /// property nothing else can observe, and it is the difference between a page turn costing a lookup and costing a
+  /// tree of parses.
+  reads: Cell<usize>,
 }
 
 impl LtxMapSource {
@@ -24,12 +34,18 @@ impl LtxMapSource {
         .iter()
         .map(|(path, contents)| (path.to_lowercase(), String::from(*contents)))
         .collect(),
+      reads: Cell::new(0),
     }
   }
 
   /// Resolves one root under standard LTX, recording where every field came from.
   pub fn resolve(&self, root: &str) -> XrfResult<LtxResolution> {
     LtxStandardDialect.resolve(root, self, LtxResolveRequest::with_provenance())
+  }
+
+  /// How many documents this source has been asked for so far.
+  pub fn reads(&self) -> usize {
+    self.reads.get()
   }
 
   /// Everything before the last separator, or the empty string for a top-level name.
@@ -50,7 +66,7 @@ impl LtxMapSource {
 
   /// Whether `name` matches a mask that may carry one `*`.
   fn matches(name: &str, mask: &str) -> bool {
-    match mask.split_once('*') {
+    match mask.split_once(LTX_SYMBOL_INCLUDE_WILDCARD) {
       Some((prefix, suffix)) => {
         name.len() >= prefix.len() + suffix.len() && name.starts_with(prefix) && name.ends_with(suffix)
       }
@@ -61,6 +77,8 @@ impl LtxMapSource {
 
 impl LtxDocumentSource for LtxMapSource {
   fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {
+    self.reads.set(self.reads.get() + 1);
+
     match self.contents.get(&logical_path.to_lowercase()) {
       Some(contents) => Ok(Some(Arc::new(Ltx::read_document_from_str(contents)?))),
       None => Ok(None),
@@ -75,7 +93,7 @@ impl LtxDocumentSource for LtxMapSource {
     }
     .to_lowercase();
 
-    if !statement.contains('*') {
+    if !statement.contains(LTX_SYMBOL_INCLUDE_WILDCARD) {
       return Ok(vec![joined]);
     }
 

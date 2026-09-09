@@ -4,7 +4,7 @@ use crate::resolved::LtxResolvedDiagnostic;
 
 /// Every section one root resolved to, named and counted but not carried.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxResolvedIndex {
   /// Engine identity of the entry point this resolution was produced from.
@@ -19,7 +19,7 @@ pub struct LtxResolvedIndex {
 
 /// One resolved section as the index lists it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxResolvedIndexEntry {
   pub name: String,

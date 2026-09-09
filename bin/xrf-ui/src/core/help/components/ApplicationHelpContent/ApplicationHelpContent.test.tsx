@@ -44,12 +44,12 @@ describe("ApplicationHelpContent", () => {
   it("drops planned related tools with the section rather than linking to a signpost", () => {
     const help: IApplicationHelp = {
       summary: "Summary.",
-      relatedTools: [EApplicationId.CONFIGS_EXPLORER],
+      relatedTools: [EApplicationId.CHARACTERS_EXPLORER],
     };
 
     const { queryByText } = renderWithProviders(<ApplicationHelpContent help={help} />);
 
     expect(queryByText("Related tools")).not.toBeInTheDocument();
-    expect(queryByText("Configs explorer")).not.toBeInTheDocument();
+    expect(queryByText("Characters explorer")).not.toBeInTheDocument();
   });
 });

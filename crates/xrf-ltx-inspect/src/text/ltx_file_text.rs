@@ -5,7 +5,7 @@ use serde::Serialize;
 /// Lines rather than one string because every finding, every header and every include is addressed by line, and a
 /// viewer that had to re-split the text would be a second place where "which line is this" is decided.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxFileText {
   /// Engine identity of the config these lines came from.

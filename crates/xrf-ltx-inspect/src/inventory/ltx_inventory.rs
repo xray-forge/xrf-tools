@@ -5,7 +5,7 @@ use serde::Serialize;
 /// The tree a person navigates and the list `ltx list` prints are the same record: one place decides what an entry
 /// point is, so a command and a viewer can never disagree about which files stand on their own.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxInventory {
   /// Configs sorted by engine identity, which is the order the project itself assembles them in.
@@ -57,7 +57,7 @@ impl LtxInventory {
 
 /// One config, and what the project makes of it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxInventoryFile {
   /// Lower-case, backslash-separated engine identity.
@@ -71,7 +71,7 @@ pub struct LtxInventoryFile {
 
 /// What one config is to the project holding it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum LtxInventoryRole {
   /// Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for.

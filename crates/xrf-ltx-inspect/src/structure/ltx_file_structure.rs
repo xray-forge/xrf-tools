@@ -6,7 +6,7 @@ use serde::Serialize;
 /// holds hundreds of thousands of them. What travels is what needs the parser's truth - where a section begins, whether
 /// its parents resolve, which scheme it ends up bound to, and where an include actually landed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxFileStructure {
   /// Engine identity of the config this describes.
@@ -25,9 +25,29 @@ pub struct LtxFileStructure {
   pub parse_error: Option<LtxStructureParseError>,
 }
 
+impl LtxFileStructure {
+  /// A config no entry point reaches, and therefore no resolution judges.
+  ///
+  /// Under a patch dialect that is an attachment: its sections do reach a resolution, folded into the config it
+  /// patches, but nothing records which config that is - `LtxDialect::plan_attachments` answers a flat list of names
+  /// and drops the pairing. So the honest answer is that this file was not judged, rather than judging it against a
+  /// resolution it does not belong to and reporting every parent of every section as unresolved.
+  ///
+  /// A viewer still shows the text; only the layer that needs the parser's truth is absent.
+  pub fn new_unreached(path: &str) -> Self {
+    Self {
+      entry_points: Vec::new(),
+      includes: Vec::new(),
+      parse_error: None,
+      path: String::from(path),
+      sections: Vec::new(),
+    }
+  }
+}
+
 /// One section header, and what resolving the file it belongs to made of it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxStructureSection {
   /// One-based line the header was written on.
@@ -43,7 +63,7 @@ pub struct LtxStructureSection {
 
 /// One name after the `:` of a header, and whether the resolution holds it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxStructureParent {
   pub name: String,
@@ -53,7 +73,7 @@ pub struct LtxStructureParent {
 
 /// The `$scheme` a resolved section ends up carrying, and whether the project declares it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxStructureScheme {
   pub name: String,
@@ -63,7 +83,7 @@ pub struct LtxStructureScheme {
 
 /// One `#include`, and the configs it actually reached.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxStructureInclude {
   /// One-based line the statement was written on.
@@ -76,7 +96,7 @@ pub struct LtxStructureInclude {
 
 /// Why one config would not parse.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxStructureParseError {
   /// One-based line the parser stopped on.

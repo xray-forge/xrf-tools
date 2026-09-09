@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LTX_SCHEME_FIELD, Ltx, LtxDocument, LtxDocumentSource, LtxItemKind, LtxResolution, Section};
+use xrf_ltx::{
+  LTX_SCHEME_FIELD, LTX_SYMBOL_INCLUDE_WILDCARD, Ltx, LtxDocument, LtxDocumentSource, LtxItemKind, LtxResolution,
+  Section,
+};
 
 use crate::structure::{
   LtxFileStructure, LtxStructureInclude, LtxStructureParent, LtxStructureParseError, LtxStructureScheme,
@@ -10,46 +13,21 @@ use crate::structure::{
 
 /// Reads one config as written, judged against the resolution its entry point produced.
 ///
-/// Takes the resolution rather than resolving anything: whether a parent resolves and which scheme a section ends up
-/// bound to are both questions about the whole root, and a file read on its own can answer neither. One reader serves
-/// every file of one root, which is also what keeps the answers consistent across them.
-pub struct LtxStructureReader<'a> {
-  resolution: &'a LtxResolution,
-  source: &'a dyn LtxDocumentSource,
-  declared_schemes: &'a [&'a str],
-}
+/// Reached through [`crate::LtxRootReader`], which owns the root this is judged against; see its `read_structure`.
+pub(crate) struct LtxStructureReader {}
 
-impl<'a> LtxStructureReader<'a> {
-  /// A reader over one resolved root and the world its configs came from.
-  pub fn new(resolution: &'a LtxResolution, source: &'a dyn LtxDocumentSource) -> Self {
-    Self {
-      declared_schemes: &[],
-      resolution,
-      source,
-    }
-  }
-
-  /// The scheme names the project declares, so a binding can be reported as bound or dangling.
+impl LtxStructureReader {
+  /// One config as written, judged against the resolution its entry point produced.
   ///
-  /// Left empty by default rather than defaulted to "declared": a reader given nothing says every binding is
-  /// undeclared, which is what a project with no scheme files actually means.
-  pub fn with_declared_schemes(mut self, declared_schemes: &'a [&'a str]) -> Self {
-    self.declared_schemes = declared_schemes;
-
-    self
-  }
-
-  /// One config's structure, or the parse error that stopped it from having one.
-  ///
-  /// A file that will not parse is answered, not refused: the viewer still opens it, shows its text and marks the line.
-  /// Anything else that goes wrong - a config out of scope, an unreadable include - is a failure of the read rather
-  /// than a finding about the file, and comes back as an error.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the config is not in scope, or when resolving one of its includes fails.
-  pub fn read(&self, path: &str, entry_points: &[String]) -> XrfResult<LtxFileStructure> {
-    let document: Arc<LtxDocument> = match self.source.read_document(path) {
+  /// Reached through [`crate::LtxRootReader`], which owns the root this is judged against; see its `read_structure`.
+  pub(crate) fn read_structure(
+    resolution: &LtxResolution,
+    source: &dyn LtxDocumentSource,
+    declared_schemes: &[&str],
+    path: &str,
+    entry_points: &[String],
+  ) -> XrfResult<LtxFileStructure> {
+    let document: Arc<LtxDocument> = match source.read_document(path) {
       Ok(Some(document)) => document,
       Ok(None) => {
         return Err(XrfError::new_convert_error(format!(
@@ -74,15 +52,19 @@ impl<'a> LtxStructureReader<'a> {
 
     Ok(LtxFileStructure {
       entry_points: entry_points.to_vec(),
-      includes: self.read_includes(path, &document)?,
+      includes: Self::read_includes(source, path, &document)?,
       parse_error: None,
       path: String::from(path),
-      sections: self.read_sections(&document),
+      sections: Self::read_sections(resolution, declared_schemes, &document),
     })
   }
 
   /// Every header of one document, with the parents and binding the resolution gives it.
-  fn read_sections(&self, document: &LtxDocument) -> Vec<LtxStructureSection> {
+  fn read_sections(
+    resolution: &LtxResolution,
+    declared_schemes: &[&str],
+    document: &LtxDocument,
+  ) -> Vec<LtxStructureSection> {
     let mut sections: Vec<LtxStructureSection> = Vec::new();
 
     for item in document.get_items() {
@@ -104,10 +86,10 @@ impl<'a> LtxStructureReader<'a> {
           .iter()
           .map(|parent| LtxStructureParent {
             name: String::from(&**parent),
-            resolves: self.resolution.ltx.section(parent).is_some(),
+            resolves: resolution.ltx.section(parent).is_some(),
           })
           .collect(),
-        scheme: self.read_scheme(name),
+        scheme: Self::read_scheme(resolution, declared_schemes, name),
       });
     }
 
@@ -115,21 +97,24 @@ impl<'a> LtxStructureReader<'a> {
   }
 
   /// The scheme one section is bound to, read off the resolution so an inherited binding counts.
-  fn read_scheme(&self, section: &str) -> Option<LtxStructureScheme> {
-    let resolved: &Section = self.resolution.ltx.section(section)?;
+  fn read_scheme(resolution: &LtxResolution, declared_schemes: &[&str], section: &str) -> Option<LtxStructureScheme> {
+    let resolved: &Section = resolution.ltx.section(section)?;
     let name: &str = resolved.get(LTX_SCHEME_FIELD)?;
 
     Some(LtxStructureScheme {
-      is_declared: self.declared_schemes.contains(&name),
+      is_declared: declared_schemes.contains(&name),
       name: String::from(name),
     })
   }
 
   /// Every `#include` of one document, with the configs it reached.
   ///
-  /// A statement expands to itself whether or not the file exists, so the expansion is filtered by what the world
-  /// actually holds - which is what makes an empty list mean "this include reached nothing".
-  fn read_includes(&self, path: &str, document: &LtxDocument) -> XrfResult<Vec<LtxStructureInclude>> {
+  /// An empty list means the statement reached nothing, which is a defect a reader can act on.
+  fn read_includes(
+    source: &dyn LtxDocumentSource,
+    path: &str,
+    document: &LtxDocument,
+  ) -> XrfResult<Vec<LtxStructureInclude>> {
     let directory: &str = Ltx::directory_of(path);
     let mut includes: Vec<LtxStructureInclude> = Vec::new();
 
@@ -138,26 +123,42 @@ impl<'a> LtxStructureReader<'a> {
         continue;
       };
 
-      let mut resolved: Vec<String> = Vec::new();
-
-      for candidate in self.source.resolve_include(directory, statement)? {
-        match self.source.read_document(&candidate) {
-          Ok(Some(_)) => resolved.push(candidate),
-          Ok(None) => {}
-          // The file is there. That it will not parse is a finding about that file, not about this statement, and
-          // reporting the include as unresolved would send a reader to the wrong line.
-          Err(XrfError::LtxParse { .. }) => resolved.push(candidate),
-          Err(error) => return Err(error),
-        }
-      }
-
       includes.push(LtxStructureInclude {
         line: item.span.line,
-        resolved,
+        resolved: Self::resolve_reached(source, directory, statement)?,
         statement: String::from(&**statement),
       });
     }
 
     Ok(includes)
+  }
+
+  /// The configs one `#include` statement actually reached.
+  ///
+  /// A wildcard expands to what the world holds, so its expansion is the answer. A named statement expands to itself
+  /// whether or not the file exists (`LtxDocumentSource::resolve_include`), so that one - and only that one - is probed.
+  /// Probing a wildcard too would read every config a `w_*.ltx` matches to learn what listing the directory
+  /// already said - hundreds of them on a real weapons tree.
+  fn resolve_reached(source: &dyn LtxDocumentSource, directory: &str, statement: &str) -> XrfResult<Vec<String>> {
+    let candidates: Vec<String> = source.resolve_include(directory, statement)?;
+
+    if statement.contains(LTX_SYMBOL_INCLUDE_WILDCARD) {
+      return Ok(candidates);
+    }
+
+    let mut reached: Vec<String> = Vec::new();
+
+    for candidate in candidates {
+      match source.read_document(&candidate) {
+        Ok(Some(_)) => reached.push(candidate),
+        Ok(None) => {}
+        // The file is there. That it will not parse is a finding about that file, not about this statement, and
+        // reporting the include as unresolved would send a reader to the wrong line.
+        Err(XrfError::LtxParse { .. }) => reached.push(candidate),
+        Err(error) => return Err(error),
+      }
+    }
+
+    Ok(reached)
   }
 }

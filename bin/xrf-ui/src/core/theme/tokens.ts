@@ -100,6 +100,27 @@ export const TREE = {
 } as const;
 
 /**
+ * Source listings, shared by every surface that renders lines with a gutter.
+ *
+ * `lineHeight` is a pixel count rather than a ratio because a virtualized listing positions rows by
+ * arithmetic: where line 200,000 sits has to be known without laying the 199,999 above it out.
+ */
+export const CODE = {
+  /** One line, sized so a screenful of {@link MONOSPACE} is dense without the rows touching. */
+  lineHeight: 20,
+  /** Padding on each side of the gutter's contents. */
+  gutterPaddingX: 8,
+  /** Gap between a gutter mark and the number beside it. */
+  gutterGap: 4,
+  /** Narrowest gutter, so a short file does not draw a different column from the file beside it. */
+  minimumGutterDigits: 3,
+  /** A gutter mark, one step below the number so it reads as an annotation rather than a digit. */
+  markIconSize: 13,
+  /** Space between the gutter and the first character of a line. */
+  contentPaddingX: 10,
+} as const;
+
+/**
  * Side panels, same on both sides.
  */
 export const PANEL = {

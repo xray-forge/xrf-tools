@@ -2,6 +2,7 @@
 
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
+import { LtxFileStructure, LtxFileText, LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
@@ -107,6 +108,17 @@ export type AudioSourceParameters = {
   maxAiDistance: number | null;
 };
 
+/**
+ * One config as the authored view renders it.
+ *
+ * Text and structure travel together but stay separate records: the text is what a person edits and the structure is
+ * what only the parser knows, and a future edit replaces one without invalidating the shape of the other.
+ */
+export type ConfigsDocument = {
+  text: LtxFileText;
+  structure: LtxFileStructure;
+};
+
 /** What a config formatting run, or a check of one, was asked to do. */
 export type ConfigsFormatRequest = {
   /** Trees to search, and how each is read. */
@@ -114,6 +126,70 @@ export type ConfigsFormatRequest = {
   /** Scope inside those trees, or nothing for all of them. */
   prefix: string | null;
 };
+
+/** What opening a configs project for browsing was asked to do. */
+export type ConfigsOpenRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** Scope inside those trees, or nothing for all of them. */
+  prefix: string | null;
+  /**
+   * Whether to resolve with the Monolith/Anomaly DLTX patch dialect.
+   *
+   * Chosen once per open rather than toggled: everything held for the session was resolved under it.
+   */
+  isDltx: boolean;
+};
+
+/**
+ * What one open of the configs explorer answers with.
+ *
+ * The inventory travels with the open rather than through a second call, because a tree the frontend cannot list is
+ * a screen with nothing on it: there is no useful state between "opened" and "knows what it holds".
+ */
+export type ConfigsProjectDescriptor = {
+  /** Identity every later read is addressed by. */
+  sessionId: ConfigsSessionId;
+  /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
+  roots: XrayRoots;
+  /** Scope inside those trees, or nothing for all of them. */
+  prefix: string | null;
+  /**
+   * Whether configs resolve under the Monolith/Anomaly patch dialect.
+   *
+   * A property of the open and not a toggle: every resolution, page and finding held for this session was produced
+   * under it, so changing it means opening again.
+   */
+  isDltx: boolean;
+  /** Host path the project reports itself at, for a crumb that names something a person recognises. */
+  root: string;
+  /** Every config the project holds, and what each one is to it. */
+  inventory: LtxInventory;
+  /**
+   * Section schemes the project's `*.scheme.ltx` files declare, by name.
+   *
+   * Sent once with the open rather than per document: a tree declares tens of them and every structure read joins
+   * against the same set.
+   */
+  declaredSchemes: Array<string>;
+};
+
+/** Which config of which open a reader wants. */
+export type ConfigsReadDocumentRequest = {
+  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  sessionId: ConfigsSessionId;
+  /** Engine identity of the config to read. */
+  path: string;
+};
+
+/**
+ * Identifies one open of the configs explorer, and everything resolved under it.
+ *
+ * Reissued by every open and every close, so a read addressed to a project since replaced answers that it is stale
+ * rather than answering about a different tree. The frontend holds resolutions and page slices keyed by this, which is
+ * what lets a reopen invalidate them all at once.
+ */
+export type ConfigsSessionId = string;
 
 /** What a config verification was asked to do. */
 export type ConfigsVerifyRequest = {

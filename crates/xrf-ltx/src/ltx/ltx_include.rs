@@ -8,7 +8,7 @@ use xrf_utils::format_path_or;
 
 use crate::ltx::Ltx;
 use crate::source::{LtxFilesystemSource, LtxIncludeSource};
-use crate::syntax::VIRTUAL_LTX_PATH;
+use crate::syntax::{LTX_SYMBOL_INCLUDE_WILDCARD, VIRTUAL_LTX_PATH};
 
 /// Converter object to process and inject all child #include statements.
 #[derive(Default)]
@@ -45,7 +45,7 @@ impl LtxIncludeConvertor {
   pub fn resolve_include_paths<P: AsRef<Path>>(directory: P, statement: &str) -> XrfResult<Vec<PathBuf>> {
     let included_path: PathBuf = directory.as_ref().join(Self::statement_to_path(statement));
 
-    if !statement.contains('*') {
+    if !statement.contains(LTX_SYMBOL_INCLUDE_WILDCARD) {
       return Ok(vec![included_path]);
     }
 
@@ -219,7 +219,10 @@ impl LtxIncludeConvertor {
     let mut remaining: &[u8] = file_name;
     let mut is_first_part: bool = true;
 
-    for part in mask.split(|byte| *byte == b'*').filter(|part| !part.is_empty()) {
+    for part in mask
+      .split(|byte| *byte == LTX_SYMBOL_INCLUDE_WILDCARD as u8)
+      .filter(|part| !part.is_empty())
+    {
       let Some(position) = Self::find_subslice(remaining, part) else {
         return false;
       };

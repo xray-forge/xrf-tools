@@ -1,5 +1,7 @@
-use tauri::Runtime;
 use tauri::plugin::TauriPlugin;
+use tauri::{Manager, Runtime};
+
+use crate::plugins::configs::state::ConfigsState;
 
 pub struct ConfigsPlugin {}
 
@@ -12,6 +14,11 @@ impl ConfigsPlugin {
         Self::NAME,
         crate::ipc::registry::configs::handler(),
       ))
+      .setup(|application, _| {
+        application.manage(ConfigsState::new());
+
+        Ok(())
+      })
       .build()
   }
 

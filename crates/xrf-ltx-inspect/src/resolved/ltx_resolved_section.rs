@@ -3,7 +3,7 @@ use xrf_ltx::LtxFieldOrigin;
 
 /// One resolved section with its fields and where each of them came from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxResolvedSection {
   /// Engine identity of the entry point this section was resolved from, so a consumer can key a cache by it.
@@ -19,7 +19,7 @@ pub struct LtxResolvedSection {
 
 /// One resolved field: what it says, and why it says that.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxResolvedField {
   pub key: String,
@@ -29,7 +29,7 @@ pub struct LtxResolvedField {
 
 /// How one resolved field came to hold the value it holds.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum LtxResolvedFieldOrigin {
   /// Written in the body of the section that holds it.

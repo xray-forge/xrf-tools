@@ -1,25 +1,33 @@
-import { ReactElement } from "react";
+import { useInjection } from "@wirestate/react";
+import { ReactElement, useCallback, useState } from "react";
 
-import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { ConfigsExplorerOpenForm } from "@/applications/configs-explorer/components/ConfigsExplorerOpenForm";
+import { ConfigsExplorerWorkspace } from "@/applications/configs-explorer/components/ConfigsExplorerWorkspace";
+import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export function ConfigsExplorerApplication(): ReactElement {
-  const configs: IPathField = usePathField({
-    application: EApplicationId.CONFIGS_EXPLORER,
-    id: "directory",
-    title: "Select configs directory",
-    isDirectory: true,
-  });
+export interface IConfigsExplorerApplicationProps extends BaseComponentProps {}
 
-  return (
-    <PickerForm
-      title={"Browse LTX configs"}
-      description={"Reads the directory into a browsable tree. Nothing is written."}
-      submitLabel={"Open"}
-      isSubmitDisabled
-    >
-      <PathFormRow label={"Configs directory"} description={"Directory of LTX files to browse"} field={configs} />
-    </PickerForm>
-  );
+/**
+ * Browse a tree of LTX configs, and read what each one says.
+ */
+export function ConfigsExplorerApplication({
+  "data-testid": dataTestId = "configs-explorer-application",
+}: IConfigsExplorerApplicationProps): ReactElement {
+  const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
+
+  const [isPickerOpen, setPickerOpen] = useState<boolean>(false);
+
+  const onFinished = useCallback(() => setPickerOpen(false), []);
+
+  if (!projectService.isReady) {
+    return <ApplicationLoader />;
+  }
+
+  if (isPickerOpen || !projectService.isOpen) {
+    return <ConfigsExplorerOpenForm data-testid={dataTestId} onFinished={onFinished} />;
+  }
+
+  return <ConfigsExplorerWorkspace data-testid={dataTestId} />;
 }

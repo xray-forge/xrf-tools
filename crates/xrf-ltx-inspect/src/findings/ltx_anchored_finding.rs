@@ -2,7 +2,7 @@ use serde::Serialize;
 
 /// One finding, already placed at the file and line a person has to open.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxAnchoredFinding {
   pub kind: LtxFindingKind,

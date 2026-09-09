@@ -19,6 +19,13 @@ pub const LTX_SYMBOL_INHERIT: char = ':';
 
 pub const LTX_SYMBOL_INCLUDE: char = '#';
 
+/// What makes an `#include` a mask over a directory rather than a name.
+///
+/// A statement carrying it expands to every config that matches, so its expansion is already the set that exists; one
+/// without it expands to itself whether or not anything holds it. A reader that wants to know what an include reached
+/// has to tell the two apart.
+pub const LTX_SYMBOL_INCLUDE_WILDCARD: char = '*';
+
 pub const LTX_SYMBOL_SCHEME: char = '$';
 
 pub const LTX_SYMBOL_ANY: &str = "*";
