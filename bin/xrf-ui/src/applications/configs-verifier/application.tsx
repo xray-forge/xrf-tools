@@ -1,5 +1,6 @@
 import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
 
+import { CONFIGS_VERIFIER_HELP } from "@/applications/configs-verifier/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -12,6 +13,7 @@ export const CONFIGS_VERIFIER_APPLICATION: IApplicationDescriptor = createApplic
   {
     description: "Validate LTX configuration files",
     group: EApplicationGroupId.CONFIGS,
+    help: CONFIGS_VERIFIER_HELP,
     icon: <FactCheckIcon />,
     id: EApplicationId.CONFIGS_VERIFIER,
     label: "Configs verifier",
