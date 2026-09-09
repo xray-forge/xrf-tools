@@ -8,7 +8,10 @@ use crate::tests::dltx_map_source::DltxMapSource;
 
 /// A base config one mod file patches, which is the smallest tree that has a contest in it.
 const TREE: &[(&str, &str)] = &[
-  ("system.ltx", "[wpn_ak74]\ncost = 4000\nammo = 30\nammo_class = ammo_a, ammo_b\n"),
+  (
+    "system.ltx",
+    "[wpn_ak74]\ncost = 4000\nammo = 30\nammo_class = ammo_a, ammo_b\n",
+  ),
   ("mod_system_a.ltx", "![wpn_ak74]\ncost = 9000\n>ammo_class = ammo_c\n"),
 ];
 

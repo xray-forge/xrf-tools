@@ -65,6 +65,8 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       about: "LTX configuration tools",
       commands: vec![
         ltx::format::FormatCommand::new_box(),
+        ltx::inspect::InspectCommand::new_box(),
+        ltx::list::ListCommand::new_box(),
         ltx::verify::VerifyCommand::new_box(),
       ],
     },

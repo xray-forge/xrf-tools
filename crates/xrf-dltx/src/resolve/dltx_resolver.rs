@@ -290,7 +290,11 @@ impl<'a> DltxResolver<'a> {
   ///
   /// Last of everything, and cumulative: each operation edits the result of the one before it, in load order
   /// (`Xr_ini.cpp`).
-  fn apply_list_operations(&mut self, section: &str, result: &mut ResolvedSection) -> BTreeMap<String, DltxFieldOrigin> {
+  fn apply_list_operations(
+    &mut self,
+    section: &str,
+    result: &mut ResolvedSection,
+  ) -> BTreeMap<String, DltxFieldOrigin> {
     let mut authored: BTreeMap<String, DltxFieldOrigin> = BTreeMap::new();
 
     let Some(operations) = self.loaded.list_operations.get(section) else {
