@@ -1,16 +1,16 @@
-import { GridColDef, GridRowId } from "@mui/x-data-grid";
+import { GridColDef, GridRowId, GridValidRowModel } from "@mui/x-data-grid";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { SpawnFileService } from "@/core/spawn/services";
 import { DataTable } from "@/core/ui/table";
-import { AnyObject, Nullable } from "@/lib/types/general";
+import { Nullable } from "@/lib/types/general";
 
-interface ISpawnTableProps<T> {
+interface ISpawnTableProps<T extends GridValidRowModel> {
   /** What one row is, for the details panel heading. */
   source: string;
   rows: Array<T>;
-  columns: Array<GridColDef>;
+  columns: Array<GridColDef<T>>;
   getRowId: (row: T) => GridRowId;
   getSearchText?: (row: T) => string;
   emptyLabel: string;
@@ -21,7 +21,7 @@ interface ISpawnTableProps<T> {
 /**
  * A spawn chunk table, wired to the details panel.
  */
-export function SpawnTable<T>({
+export function SpawnTable<T extends GridValidRowModel>({
   source,
   rows,
   columns,
@@ -36,10 +36,8 @@ export function SpawnTable<T>({
   const selectedRowId: Nullable<GridRowId> = spawnFileService.selectedRow?.id ?? null;
 
   const onRowSelect = useCallback(
-    (row: T) => spawnFileService.selectRow(source, getRowId(row), row as AnyObject),
-    // `getRowId` is declared inline by every caller, so depending on it would rebuild this per render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [source, spawnFileService]
+    (row: T) => spawnFileService.selectRow(source, getRowId(row), row),
+    [source, spawnFileService, getRowId]
   );
 
   return (

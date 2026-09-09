@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { GridRowId } from "@mui/x-data-grid";
 import { userEvent } from "@testing-library/user-event";
+import { ReactElement, useState } from "react";
 
 import { DataTable } from "@/core/ui/table/DataTable";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -62,6 +63,38 @@ describe("DataTable", () => {
     await userEvent.type(getByPlaceholderText("Filter"), "STALKER_VETERAN");
 
     expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
+  });
+
+  it("refilters when the caller changes searchable fields with the same rows and query", async () => {
+    function SearchableTable(): ReactElement {
+      const [isSearchingSections, setIsSearchingSections] = useState(false);
+
+      return (
+        <>
+          <button type={"button"} onClick={() => setIsSearchingSections(true)}>
+            Search sections
+          </button>
+          <DataTable<IRow>
+            columns={[{ field: "name", headerName: "Name" }]}
+            emptyLabel={"Nothing here."}
+            getRowId={(row: IRow): GridRowId => row.name}
+            getSearchText={(row: IRow): string => (isSearchingSections ? row.section : row.name)}
+            rows={ROWS}
+          />
+        </>
+      );
+    }
+
+    const { getByRole, getByText } = renderWithProviders(<SearchableTable />);
+
+    await userEvent.type(getByRole("textbox", { name: "Filter rows" }), "veteran");
+
+    expect(getByText("0 of 3 row(s)")).toBeInTheDocument();
+
+    await userEvent.click(getByRole("button", { name: "Search sections" }));
+
+    expect(getByRole("textbox", { name: "Filter rows" })).toHaveValue("veteran");
+    expect(getByText("1 of 3 row(s)")).toBeInTheDocument();
   });
 
   it("restores all rows and input focus when the named filter is cleared", async () => {

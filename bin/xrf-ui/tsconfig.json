@@ -26,6 +26,5 @@
     }
   },
   "include": ["src", "cli"],
-  "exclude": ["cli/build"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["cli/build"]
 }

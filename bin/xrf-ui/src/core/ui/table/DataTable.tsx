@@ -1,14 +1,14 @@
 import { Box, Typography } from "@mui/material";
-import { DataGrid, GridColDef, GridRowId, GridRowParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@mui/x-data-grid";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IDataTableProps<T> extends BaseComponentProps {
+interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;
-  columns: Array<GridColDef>;
+  columns: Array<GridColDef<T>>;
   getRowId: (row: T) => GridRowId;
   /** Everything about a row a filter should match, flattened into one string. Omit for no filter. */
   getSearchText?: (row: T) => string;
@@ -23,7 +23,7 @@ interface IDataTableProps<T> extends BaseComponentProps {
   onRowSelect?: (row: T) => void;
 }
 
-export function DataTable<T>({
+export function DataTable<T extends GridValidRowModel>({
   "data-testid": dataTestId,
   id,
   className,
@@ -49,10 +49,7 @@ export function DataTable<T>({
     }
 
     return rows.filter((row: T) => getSearchText(row).toLowerCase().includes(query));
-    // `getSearchText` is declared inline by most callers, so depending on it would refilter every
-    // render. Rows and the query are what actually change the result.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, search]);
+  }, [rows, search, getSearchText]);
 
   const initialState = useMemo(
     () => ({
@@ -66,7 +63,7 @@ export function DataTable<T>({
     []
   );
 
-  const onRowClick = useCallback((params: GridRowParams) => onRowSelect?.(params.row as T), [onRowSelect]);
+  const onRowClick = useCallback((params: GridRowParams<T>) => onRowSelect?.(params.row), [onRowSelect]);
 
   if (!rows.length) {
     return (

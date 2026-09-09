@@ -2,13 +2,9 @@ import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/mater
 import { ReactElement } from "react";
 
 import { PackerDirectoryChips } from "@/applications/archives-packer/components/packing/PackerDirectoryChips";
-import {
-  ARCHIVE_PACK_MODE,
-  ARCHIVE_VOLUME_EXTENSION,
-  ARCHIVE_VOLUME_SUFFIX,
-  isWholeDirectory,
-} from "@/applications/archives-packer/lib/pack-config";
+import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";

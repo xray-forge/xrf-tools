@@ -1,8 +1,8 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";

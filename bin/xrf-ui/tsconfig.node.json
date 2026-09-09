@@ -1,10 +1,9 @@
 {
   "compilerOptions": {
-    "composite": true,
+    "incremental": true,
     "tsBuildInfoFile": "./target/tsconfig.node.tsbuildinfo",
-    // Emit is never consumed - vite loads its own config and jest requires the typescript directly - but a composite
-    // project must be able to emit, and beside the sources a stale `.js` would shadow the `.ts` it was built from.
-    "outDir": "./target/tsconfig-node",
+    // Checked separately from the app: Vite consumes shared theme sources directly, without declaration output.
+    "noEmit": true,
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

@@ -17,20 +17,7 @@
     -->
     <style>
       html {
-        --preload-surface: #171717;
-        --preload-paper: #242424;
-        --preload-divider: #434343;
-
         background-color: var(--preload-surface);
-        color-scheme: dark;
-      }
-
-      html[data-color-scheme="light"] {
-        --preload-surface: #eef1f5;
-        --preload-paper: #f8fafc;
-        --preload-divider: #d0d7e0;
-
-        color-scheme: light;
       }
 
       body {
@@ -55,7 +42,7 @@
       }
 
       .preload-title-bar {
-        height: 36px;
+        height: var(--preload-title-bar-height);
         border-bottom-width: 1px;
       }
 
@@ -66,7 +53,7 @@
       }
 
       .preload-rail {
-        width: 44px;
+        width: var(--preload-rail-width);
         border-right-width: 1px;
       }
 
@@ -77,10 +64,11 @@
 
       .preload-canvas {
         flex-grow: 1;
+        background-image: var(--preload-background);
       }
 
       .preload-status-bar {
-        height: 24px;
+        height: var(--preload-status-bar-height);
         border-top-width: 1px;
       }
     </style>

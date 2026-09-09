@@ -8,6 +8,17 @@ import { default as inlineSource } from "vite-plugin-inline-source";
 
 import { replaceModuleName } from "./cli/build/module-name";
 import { repository } from "./package.json";
+import { getPreloadThemeCss } from "./src/core/theme/preload";
+
+function preloadThemePlugin(): Plugin {
+  return {
+    name: "xrf-preload-theme",
+    transformIndexHtml: {
+      order: "pre",
+      handler: () => [{ tag: "style", children: getPreloadThemeCss(), injectTo: "head" }],
+    },
+  };
+}
 
 /**
  * Substitutes `__MODULE_NAME__` with the source file's name, before anything else compiles it.
@@ -71,7 +82,14 @@ export default defineConfig({
   define: {
     __REPOSITORY_URL__: JSON.stringify(repository.url),
   },
-  plugins: [moduleNamePlugin(), wirestate(), inlineSource({ optimizeJs: true }), react(), reactObserverPlugin()],
+  plugins: [
+    moduleNamePlugin(),
+    preloadThemePlugin(),
+    wirestate(),
+    inlineSource({ optimizeJs: true }),
+    react(),
+    reactObserverPlugin(),
+  ],
   build: {
     outDir: "target",
     rolldownOptions: {

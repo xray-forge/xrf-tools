@@ -1,10 +1,11 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 import { default as FileOpenIcon } from "@mui/icons-material/FileOpen";
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { Button, Stack, Tooltip } from "@mui/material";
+import { Stack } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
 
 interface IPackerToolbarActionsProps {
   isBusy: boolean;
@@ -46,29 +47,14 @@ export function PackerToolbarActions({
         onClick={onExport}
       />
 
-      <Tooltip describeChild title={isPackDisabled ? "Choose a source and an output first" : "Write the volumes"}>
-        <span>
-          <Button
-            size={"small"}
-            variant={"contained"}
-            disabled={isPackDisabled}
-            startIcon={<ArchiveIcon />}
-            // Sized to the caption row rather than to a page button, which is what made it crowd the
-            // separator beside it.
-            sx={{
-              height: 24,
-              minWidth: 0,
-              px: 1,
-              fontSize: "0.75rem",
-              lineHeight: 1,
-              "& .MuiButton-startIcon": { mr: 0.5 },
-            }}
-            onClick={onPack}
-          >
-            Pack
-          </Button>
-        </span>
-      </Tooltip>
+      <EditorTextAction
+        label={"Pack"}
+        description={isPackDisabled ? "Choose a source and an output first" : "Write the volumes"}
+        icon={<ArchiveIcon />}
+        isDisabled={isPackDisabled}
+        variant={"contained"}
+        onClick={onPack}
+      />
     </Stack>
   );
 }

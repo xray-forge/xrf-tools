@@ -1,11 +1,7 @@
-import { MenuItem, Stack, Switch, TextField } from "@mui/material";
+import { Stack, Switch } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import {
-  ARCHIVE_PACK_MODE,
-  ARCHIVE_VOLUME_EXTENSION,
-  ARCHIVE_VOLUME_SUFFIX,
-} from "@/applications/archives-packer/lib/pack-config";
+import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
@@ -43,67 +39,16 @@ export function PatcherOptionsSection({
 }: IPatcherOptionsSectionProps): ReactElement {
   return (
     <Stack spacing={2}>
-      <FormRow
-        label={"Compression"}
-        description={"Compressed packs what the engine expects compressed and stores the rest"}
-        controlId={"patcher-mode"}
-      >
-        <TextField
-          id={"patcher-mode"}
-          size={"small"}
-          fullWidth
-          select
-          disabled={isDisabled}
-          value={config.mode}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            onChange({ mode: event.target.value as ArchivePatchConfig["mode"] })
-          }
-        >
-          <MenuItem value={ARCHIVE_PACK_MODE.Compress}>Compressed</MenuItem>
-          <MenuItem value={ARCHIVE_PACK_MODE.Store}>Stored only</MenuItem>
-        </TextField>
-      </FormRow>
-
-      <FormRow
-        label={"Volume size"}
-        description={`Megabytes before a new volume starts, up to ${maxVolumeSizeMegabytes}`}
-        controlId={"patcher-volume-size"}
-        error={volumeSizeError}
-      >
-        <TextField
-          id={"patcher-volume-size"}
-          size={"small"}
-          fullWidth
-          type={"number"}
-          disabled={isDisabled}
-          value={volumeSize}
-          error={Boolean(volumeSizeError)}
-          placeholder={String(maxVolumeSizeMegabytes)}
-          slotProps={{ htmlInput: { min: 1, max: maxVolumeSizeMegabytes } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onVolumeSizeChange(event.target.value)}
-        />
-      </FormRow>
-
-      <FormRow
-        label={"Extension"}
-        description={"An xdb archive is never mistaken for an encrypted Shadow of Chernobyl one"}
-        controlId={"patcher-extension"}
-      >
-        <TextField
-          id={"patcher-extension"}
-          size={"small"}
-          fullWidth
-          select
-          disabled={isDisabled}
-          value={config.volumeExtension}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            onChange({ volumeExtension: event.target.value as ArchivePatchConfig["volumeExtension"] })
-          }
-        >
-          <MenuItem value={ARCHIVE_VOLUME_EXTENSION.Db}>{ARCHIVE_VOLUME_SUFFIX.Db}</MenuItem>
-          <MenuItem value={ARCHIVE_VOLUME_EXTENSION.Xdb}>{ARCHIVE_VOLUME_SUFFIX.Xdb}</MenuItem>
-        </TextField>
-      </FormRow>
+      <ArchiveVolumeOptionsFields
+        id={"patcher"}
+        config={config}
+        maxVolumeSizeMegabytes={maxVolumeSizeMegabytes}
+        volumeSize={volumeSize}
+        volumeSizeError={volumeSizeError}
+        isDisabled={isDisabled}
+        onVolumeSizeChange={onVolumeSizeChange}
+        onChange={onChange}
+      />
 
       <FormRow
         label={"Verify payloads"}

@@ -1,10 +1,6 @@
 import { DEFAULT_ENTRY_POINT } from "@/core/archive";
-import {
-  ArchivePackConfig,
-  ArchivePackDirectory,
-  ArchivePackMode,
-  ArchiveVolumeExtension,
-} from "@/core/bindings/types/xrf-pack";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION } from "@/core/archive/volume-options";
+import { ArchivePackConfig, ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 /**
@@ -16,25 +12,6 @@ export const PACK_CONFIG_EXTENSIONS: ReadonlyArray<string> = ["ltx", "json"];
  * The extension a configuration takes when the save dialog returned a bare name.
  */
 export const DEFAULT_PACK_CONFIG_EXTENSION: string = "ltx";
-
-/**
- * Typed constants for the generated archive volume extensions.
- */
-export const ARCHIVE_VOLUME_EXTENSION: { [K in ArchiveVolumeExtension]: K } = {
-  Db: "Db",
-  Xdb: "Xdb",
-};
-
-/** The extension a volume actually carries, mirroring `ArchiveVolumeExtension::as_str`. */
-export const ARCHIVE_VOLUME_SUFFIX: { [K in ArchiveVolumeExtension]: string } = {
-  Db: "db",
-  Xdb: "xdb",
-};
-
-export const ARCHIVE_PACK_MODE: { [K in ArchivePackMode]: K } = {
-  Compress: "Compress",
-  Store: "Store",
-};
 
 /**
  * What the editor opens on before the packer answers with its own defaults.

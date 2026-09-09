@@ -63,6 +63,7 @@ export const CONTROL = {
   /** Compact editor actions, both in the caption and beside content. */
   editorActionSize: 24,
   editorActionIconSize: 16,
+  editorActionFontSize: "0.75rem",
   /** Every `size="small"` input, which is all of them: the theme makes `small` the default. */
   smallHeight: 38,
   /** MUI's own `sizeSmall` padding above and below the input; the line box is whatever height is left. */

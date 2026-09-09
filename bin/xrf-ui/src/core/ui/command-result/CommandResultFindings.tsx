@@ -1,11 +1,11 @@
-import { GridColDef, GridRowId } from "@mui/x-data-grid";
+import { GridColDef, GridRowId, GridValidRowModel } from "@mui/x-data-grid";
 import { ReactElement } from "react";
 
 import { DataTable } from "@/core/ui/table";
 
-interface ICommandResultFindingsProps<T> {
+interface ICommandResultFindingsProps<T extends GridValidRowModel> {
   rows: Array<T>;
-  columns: Array<GridColDef>;
+  columns: Array<GridColDef<T>>;
   getRowId: (row: T) => GridRowId;
   /** Everything about a row that a search should match, flattened into one string. */
   getSearchText: (row: T) => string;
@@ -21,7 +21,7 @@ interface ICommandResultFindingsProps<T> {
  * Kept as its own name because "findings" is what the result surfaces call these, and it pins the noun
  * the count is phrased with. Everything else is the shared table.
  */
-export function CommandResultFindings<T>({
+export function CommandResultFindings<T extends GridValidRowModel>({
   rows,
   columns,
   getRowId,

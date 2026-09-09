@@ -36,10 +36,7 @@ export function EditorLayout({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={mergeSx(
-        { display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" },
-        sx
-      )}
+      sx={mergeSx({ display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" }, sx)}
     >
       {toolbar && host ? createPortal(toolbar, host) : toolbar}
 
