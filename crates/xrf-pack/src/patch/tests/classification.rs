@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use crate::patch::ArchivePatchResult;
 use crate::patch::compare::ArchivePatchClass;
 use crate::patch::tests::fixtures::{
-  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, CONFIG_LONGER, compare, create_tree, create_volumes, destination, names_of,
+  BASE_FILES, BINARY, CONFIG, CONFIG_EDITED, CONFIG_LONGER, compare, compare_release, create_tree, create_volumes,
+  destination, names_of,
 };
 
 #[test]
@@ -21,12 +22,36 @@ fn classifies_added_modified_and_removed_between_two_loose_trees() {
       ("configs\\weapons\\abakan.ltx", CONFIG),
     ],
   );
-  let result: ArchivePatchResult = compare(&base, &target, &destination(scope));
+  let result: ArchivePatchResult = compare_release(&base, &target, &destination(scope));
 
   assert_eq!(names_of(&result.added), ["configs\\weapons\\abakan.ltx"]);
   assert_eq!(names_of(&result.modified), ["configs\\system.ltx"]);
   assert_eq!(names_of(&result.removed), ["textures\\wall.dds"]);
   assert_eq!(result.unchanged, 1, "the untouched weapon config is not carried");
+}
+
+#[test]
+fn an_overlay_carries_the_same_entries_and_reports_no_removals() {
+  // The same pair read the other way. What the base holds and the overlay does not is every file the modder left
+  // alone, so it is not a finding - and at an installation it is the whole game, which is the point.
+  let scope: &str = "patch_overlay_reports_no_removals";
+  let base: PathBuf = create_tree(scope, "base", BASE_FILES);
+  let target: PathBuf = create_tree(
+    scope,
+    "target",
+    &[
+      ("configs\\system.ltx", CONFIG_EDITED),
+      ("configs\\weapons\\abakan.ltx", CONFIG),
+    ],
+  );
+  let result: ArchivePatchResult = compare(&base, &target, &destination(scope));
+
+  assert_eq!(names_of(&result.added), ["configs\\weapons\\abakan.ltx"]);
+  assert_eq!(names_of(&result.modified), ["configs\\system.ltx"]);
+  assert!(
+    result.removed.is_empty(),
+    "an overlay says nothing about the files it does not carry"
+  );
 }
 
 #[test]

@@ -1,8 +1,10 @@
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_utils::format_path;
+use xrf_vfs::{XrayMountPlan, XraySourceKind};
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads};
@@ -68,8 +70,7 @@ impl ArchivePatcher {
     let narrator: ArchivePatchNarrator = ArchivePatchNarrator::new(&options.output);
     let scope: ArchivePatchScope = config.to_scope()?;
 
-    let base: ArchivePatchWorld = ArchivePatchWorld::mount(&config.base, ArchivePatchRole::Base)?;
-    let target: ArchivePatchWorld = ArchivePatchWorld::mount(&config.target, ArchivePatchRole::Target)?;
+    let (base, target) = Self::mount_sides(config)?;
 
     if is_publishing {
       Self::require_destination_outside(config, [&base, &target])?;
@@ -78,9 +79,9 @@ impl ArchivePatcher {
     narrator.describe_settings(config, &base, &target);
 
     let comparison: ArchivePatchComparison =
-      ArchivePatchComparison::of(&base, &target, &scope, job, options.is_verifying_payload)?;
+      ArchivePatchComparison::of(&base, &target, &scope, config.shape, job, options.is_verifying_payload)?;
 
-    Self::require_both_sides_hold_entries(&comparison, [&base, &target], &scope)?;
+    Self::require_both_sides_hold_entries(config, &comparison, [&base, &target], &scope)?;
     narrator.describe_comparison(&comparison);
 
     let compare_duration: Duration = started_at.elapsed();
@@ -101,6 +102,7 @@ impl ArchivePatcher {
       added: comparison.added,
       modified: comparison.modified,
       removed: comparison.removed,
+      shape: config.shape,
       unchanged: comparison.unchanged,
       origins: comparison.origins.into_entries(),
       payloads_read: comparison.payloads_read,
@@ -118,6 +120,48 @@ impl ArchivePatcher {
     Self::require_no_removals(&result.removed, options.is_strict)?;
 
     Ok(result)
+  }
+
+  /// Mounts what the run compares: either one input split by source kind, or the input against a named target.
+  ///
+  /// The split is planned once and filtered twice, so both halves come from a single reading of `fsgame.ltx` and
+  /// cannot disagree about what the installation declares.
+  ///
+  /// # Errors
+  ///
+  /// Propagates planning and mount errors, including a half that mounted nothing.
+  fn mount_sides(config: &ArchivePatchConfig) -> XrfResult<(ArchivePatchWorld, ArchivePatchWorld)> {
+    let input: &Path = &config.input;
+
+    match config.target.as_deref() {
+      Some(target) => Ok((
+        ArchivePatchWorld::mount(input, ArchivePatchRole::Base)?,
+        ArchivePatchWorld::mount(target, ArchivePatchRole::Target)?,
+      )),
+      None => {
+        let plan: XrayMountPlan = ArchivePatchWorld::plan(input, ArchivePatchRole::Base)?;
+        let archived: XrayMountPlan = plan.of_kind(XraySourceKind::Archive);
+
+        // The likeliest mistake, which the generic empty-mount message would report as a missing root: a gamedata
+        // folder named where the game was meant. Its files have nothing to override, so there is no patch to build.
+        if archived.is_empty() {
+          return Err(XrfError::new_invalid_error(format!(
+            "'{}' holds no archive volumes, so its loose files have nothing to override. Point at the game \
+             installation instead, or name this tree as the target of one.",
+            format_path(input)
+          )));
+        }
+
+        Ok((
+          ArchivePatchWorld::of_plan(&archived, input, ArchivePatchRole::Base)?,
+          ArchivePatchWorld::of_plan(
+            &plan.of_kind(XraySourceKind::Directory),
+            input,
+            ArchivePatchRole::Target,
+          )?,
+        ))
+      }
+    }
   }
 
   /// Publishes selected entries using the packer's destination guard and rollback policy.
@@ -162,17 +206,26 @@ impl ArchivePatcher {
   }
 
   /// Refuse a destination inside either side's roots.
+  ///
+  /// A split input is named as the game rather than by role, because both of its halves carry the same root and
+  /// "inside the base root" would be describing a directory the caller never named.
   fn require_destination_outside(config: &ArchivePatchConfig, worlds: [&ArchivePatchWorld; 2]) -> XrfResult<()> {
     for world in worlds {
-      if world.contains(&config.destination) {
-        return Err(XrfError::new_invalid_error(format!(
-          "Destination '{}' is inside the {} root '{}'. A patch written into a tree it compares becomes part of that \
-           tree, so the next run over the same pair would read this run's own output as a difference.",
-          format_path(&config.destination),
-          world.get_role(),
-          format_path(world.get_root())
-        )));
+      if !world.contains(&config.destination) {
+        continue;
       }
+
+      let inside: String = if config.is_splitting_input() {
+        format!("the game '{}'", format_path(world.get_root()))
+      } else {
+        format!("the {} root '{}'", world.get_role(), format_path(world.get_root()))
+      };
+
+      return Err(XrfError::new_invalid_error(format!(
+        "Destination '{}' is inside {inside}. A patch written into a tree it compares becomes part of that tree, so \
+         the next run would read this run's own output as a difference. Write it elsewhere and copy it in.",
+        format_path(&config.destination),
+      )));
     }
 
     Ok(())
@@ -180,6 +233,7 @@ impl ArchivePatcher {
 
   /// Rejects a side with no entries in scope, which would classify the entire other side as changed.
   fn require_both_sides_hold_entries(
+    config: &ArchivePatchConfig,
     comparison: &ArchivePatchComparison,
     worlds: [&ArchivePatchWorld; 2],
     scope: &ArchivePatchScope,
@@ -187,6 +241,16 @@ impl ArchivePatcher {
     for world in worlds {
       if comparison.get_listed_count(world.get_role()) > 0 {
         continue;
+      }
+
+      // A split input's empty half is not a mistyped path: it is an installation whose loose tree holds nothing,
+      // which is a modder who has not changed anything yet. The generic message would send them looking for a typo.
+      if config.is_splitting_input() && world.get_role() == ArchivePatchRole::Target {
+        return Err(XrfError::new_invalid_error(format!(
+          "The loose tree of '{}' holds no file to compare, so there is nothing to publish. Put the files you \
+           changed into its 'gamedata' directory, or name a target to build the patch from somewhere else.",
+          world.describe_root()
+        )));
       }
 
       return Err(XrfError::new_invalid_error(if scope.is_narrowed() {

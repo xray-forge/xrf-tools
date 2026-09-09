@@ -35,26 +35,29 @@ root. `extract_file` writes to the exact path supplied by the caller, which may 
 
 ## Build a patch
 
-`ArchivePatcher` compares a base release with a target build. `compare` reports changes without writing;
-`patch` also writes added and modified entries into new volumes. Removed entries are reported but cannot be encoded:
-the archive format has no deletion marker.
+`ArchivePatcher` compares what a patch is built against with what it delivers. `compare` reports changes without
+writing; `patch` also writes added and modified entries into new volumes. Entries the delivered tree lacks cannot be
+encoded either way: the archive format has no deletion marker.
 
-Each side is one root: an installation, a directory of volumes, or a loose gamedata tree. An installation is enough on
-its own, because `XrayMountPlan::from_fsgame` expands `fsgame.ltx` into every root the game declares, ordered the way
-the engine registers them. Write patches outside both input roots, then deploy them where `fsgame.ltx` loads them after
-the base archives: stock and Anomaly configurations both declare `$arch_dir_patches$` immediately before
-`$game_data$`.
+An installation on its own is the whole configuration. `XrayMountPlan::from_fsgame` expands `fsgame.ltx` into every
+root the game declares, and splitting that one plan by source kind gives the two sides: the volumes holding the
+release, and the loose `gamedata\` overriding it. That answers "what have I changed in my game" — a question no pair
+of paths can pose, because the loose tree wins inside the installation's own merged world and naming `db\` by hand
+mounts only the volumes sitting directly in it.
+
+Name a `target` to deliver a tree of its own instead. Two complete releases are a different question, and
+`ArchivePatchShape::Release` asks it: only then is an entry the target lacks a removal rather than a file nobody
+touched.
+
+Write patches outside the input, then deploy them where `fsgame.ltx` loads them after the base archives: stock and
+Anomaly configurations both declare `$arch_dir_patches$` immediately before `$game_data$`.
 
 ```rust,no_run
 use xrf_pack::{ArchivePatchConfig, ArchivePatchResult, ArchivePatcher};
 
 # fn main() -> xrf_error::XrfResult {
-let config: ArchivePatchConfig = ArchivePatchConfig::new(
-  "C:\\Games\\Anomaly",
-  "C:\\work\\gamedata",
-  "C:\\work\\patches",
-  "patch_02",
-);
+// The installation's volumes against its own loose gamedata.
+let config: ArchivePatchConfig = ArchivePatchConfig::new("C:\\Games\\Anomaly", "C:\\work\\patches", "patch_02");
 
 let preview: ArchivePatchResult = ArchivePatcher::compare(&config)?;
 

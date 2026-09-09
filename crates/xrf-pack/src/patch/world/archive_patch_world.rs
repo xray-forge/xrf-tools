@@ -25,12 +25,28 @@ impl ArchivePatchWorld {
   ///
   /// Rejects unplannable or empty mounts and archive entry points outside gamedata. Propagates mount errors.
   pub(crate) fn mount(root: &Path, role: ArchivePatchRole) -> XrfResult<Self> {
-    let plan: XrayMountPlan = XrayMountMode::Auto.plan(root).map_err(|error| {
-      XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
-    })?;
+    Self::of_plan(&Self::plan(root, role)?, root, role)
+  }
 
+  /// The mount plan for a root, so a caller that needs both halves of one input can split it before opening anything.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error naming the role when the path cannot be planned.
+  pub(crate) fn plan(root: &Path, role: ArchivePatchRole) -> XrfResult<XrayMountPlan> {
+    XrayMountMode::Auto.plan(root).map_err(|error| {
+      XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
+    })
+  }
+
+  /// Mounts an already-planned set of sources, named after `root` in anything it has to say.
+  ///
+  /// # Errors
+  ///
+  /// Rejects an empty mount set and archive entry points outside gamedata. Propagates mount errors.
+  pub(crate) fn of_plan(plan: &XrayMountPlan, root: &Path, role: ArchivePatchRole) -> XrfResult<Self> {
     let world: Self = Self {
-      vfs: XrayVfs::from_plan(&plan)?,
+      vfs: XrayVfs::from_plan(plan)?,
       root: root.to_path_buf(),
       role,
     };

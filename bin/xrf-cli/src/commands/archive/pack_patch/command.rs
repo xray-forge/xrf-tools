@@ -20,20 +20,28 @@ impl GenericCommand for PackPatchCommand {
   /// Create command to pack the difference between two worlds as an overriding volume set.
   fn init(&self) -> Command {
     Command::new(self.operation())
-      .about("Command to pack what changed between two X-Ray worlds into overriding *.db archive volumes")
+      .about("Command to pack what a gamedata tree changes about an installation into overriding *.db archive volumes")
       .arg(
-        Arg::new("base")
-          .help("Root of the release being patched: an installation, a directory of volumes, or a gamedata tree")
-          .long("base")
+        Arg::new("input")
+          .help("What to patch: an installation, a directory of volumes, or a gamedata tree")
+          .short('i')
+          .long("input")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("target")
-          .help("Root of the new build the patch should deliver")
+          .help("Tree the patch delivers; omit to use the loose gamedata of the input itself")
           .long("target")
-          .required(true)
+          .required(false)
           .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("release")
+          .help("Read both sides as complete releases, so entries the target dropped are reported")
+          .long("release")
+          .required(false)
+          .action(ArgAction::SetTrue),
       )
       .arg(
         Arg::new("dest")
@@ -99,7 +107,7 @@ impl GenericCommand for PackPatchCommand {
       )
       .arg(
         Arg::new("strict")
-          .help("Fail when the base holds entries the target does not, which a patch cannot express")
+          .help("Fail when the input holds entries the target dropped, which a patch cannot express; needs --release")
           .long("strict")
           .required(false)
           .action(ArgAction::SetTrue),

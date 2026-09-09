@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use crate::patch::config::ArchivePatchConfig;
-use crate::patch::tests::fixtures::{BASE_FILES, CONFIG_EDITED, config, create_tree, destination};
+use crate::patch::tests::fixtures::{BASE_FILES, CONFIG_EDITED, config, create_tree, destination, release_config};
 use crate::patch::{ArchivePatchOptions, ArchivePatcher};
 
 /// The message a refused run produced.
@@ -36,7 +36,7 @@ fn strict_fails_a_run_whose_base_holds_what_the_target_does_not() {
   let scope: &str = "patch_strict_fails_on_removals";
   let base: PathBuf = create_tree(scope, "base", BASE_FILES);
   let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let configured: ArchivePatchConfig = config(&base, &target, &destination(scope));
+  let configured: ArchivePatchConfig = release_config(&base, &target, &destination(scope));
   let message: String = refusal(&configured, ArchivePatchOptions::default().with_strict(true));
 
   assert!(
@@ -50,7 +50,8 @@ fn removals_alone_do_not_fail_a_run() {
   let scope: &str = "patch_removals_alone_do_not_fail";
   let base: PathBuf = create_tree(scope, "base", BASE_FILES);
   let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let result = ArchivePatcher::compare(&config(&base, &target, &destination(scope))).expect("removals are reported");
+  let result =
+    ArchivePatcher::compare(&release_config(&base, &target, &destination(scope))).expect("removals are reported");
 
   assert_eq!(result.removed.len(), 2, "they are named rather than refused");
 }
@@ -84,10 +85,13 @@ fn a_comparison_may_target_a_directory_a_publication_could_not() {
 fn an_empty_root_set_is_refused_before_anything_is_mounted() {
   let scope: &str = "patch_empty_root_set_is_refused";
   let target: PathBuf = create_tree(scope, "target", BASE_FILES);
-  let configured: ArchivePatchConfig = ArchivePatchConfig::new("", target, destination(scope), "patch");
+  let configured: ArchivePatchConfig = ArchivePatchConfig::new("", destination(scope), "patch").with_target(target);
   let message: String = refusal(&configured, ArchivePatchOptions::default());
 
-  assert!(message.contains("no base root"), "'{message}' names the missing side");
+  assert!(
+    message.contains("no input was given"),
+    "'{message}' names what is missing"
+  );
 }
 
 #[test]

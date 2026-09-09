@@ -35,8 +35,11 @@ pub async fn archives_patch_archives(
 
   log::info!(
     "Patching archive: {} -> {} as '{}'",
-    format_path(&config.base),
-    format_path(&config.target),
+    format_path(&config.input),
+    config.target.as_deref().map_or_else(
+      || String::from("its own loose gamedata"),
+      |target| format_path(target).to_string()
+    ),
     config.name
   );
 

@@ -332,6 +332,18 @@ impl XrayMountPlan {
     &self.mounts
   }
 
+  /// The mounts of one source kind, in the order this plan holds them.
+  ///
+  /// What an installation declares is two layers wearing one name: volume sets holding the release, and loose trees
+  /// overriding it. Splitting a single plan is the only honest way to compare them — planning the halves separately
+  /// would read `fsgame.ltx` twice and could disagree with itself, and pointing at `db\` by hand mounts only the
+  /// volumes sitting directly in it, because that is what the engine does with a non-recursive declaration.
+  pub fn of_kind(&self, kind: XraySourceKind) -> Self {
+    Self {
+      mounts: self.mounts.iter().filter(|mount| mount.kind == kind).cloned().collect(),
+    }
+  }
+
   /// Returns whether the plan contains no mounts.
   pub fn is_empty(&self) -> bool {
     self.mounts.is_empty()

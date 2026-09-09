@@ -5,8 +5,8 @@ use clap::parser::ValueSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_pack::{
-  ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchiveVolumeExtension,
-  VOLUME_SIZE_MAX,
+  ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchivePatchOptions, ArchivePatchShape,
+  ArchiveVolumeExtension, VOLUME_SIZE_MAX,
 };
 
 /// Parsed arguments for `archive pack-patch`.
@@ -25,8 +25,7 @@ impl ArchivePatchArguments {
   /// `--oversized-volumes`.
   pub(crate) fn of(matches: &ArgMatches, output: OutputOptions) -> XrfResult<Self> {
     let mut config: ArchivePatchConfig = ArchivePatchConfig::new(
-      Self::to_root(matches, "base")?,
-      Self::to_root(matches, "target")?,
+      Self::to_root(matches, "input")?,
       xrf_utils::to_absolute_path(
         matches
           .get_one::<PathBuf>("dest")
@@ -36,6 +35,14 @@ impl ArchivePatchArguments {
         .get_one::<String>("name")
         .expect("Expected valid archive name to be provided"),
     );
+
+    if matches.contains_id("target") && matches.get_one::<PathBuf>("target").is_some() {
+      config.target = Some(Self::to_root(matches, "target")?);
+    }
+
+    if matches.get_flag("release") {
+      config.shape = ArchivePatchShape::Release;
+    }
 
     if let Some(prefixes) = matches.get_many::<String>("include") {
       config.include = prefixes.cloned().collect();
@@ -85,7 +92,7 @@ impl ArchivePatchArguments {
     xrf_utils::to_absolute_path(
       matches
         .get_one::<PathBuf>(argument)
-        .expect("Expected a required root to be provided"),
+        .expect("Expected a provided root to be read"),
     )
   }
 

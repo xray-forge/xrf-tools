@@ -50,7 +50,7 @@ export class PatcherService {
 
     const config: ArchivePatchConfig = request.config;
 
-    this.log.info("Comparing:", config.base.length, "base root(s) against", config.target.length, "target root(s)");
+    this.log.info("Comparing:", config.input, "against", config.target ?? "its own loose gamedata");
 
     yield* this.operation.run({
       kind,

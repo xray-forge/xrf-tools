@@ -6,8 +6,8 @@ import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 const CONFIG: ArchivePatchConfig = {
-  base: "C:\\Games\\Anomaly",
-  target: "C:\\work\\gamedata",
+  input: "C:\\Games\\Anomaly",
+  target: null,
   destination: "C:\\work\\patches",
   name: "patch_02",
 } as ArchivePatchConfig;

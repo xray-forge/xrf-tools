@@ -28,7 +28,7 @@ export function ArchiveCollisionsPanel({ archivesService }: IArchiveCollisionsPa
             ? "Could not read what this volume set cannot reach."
             : collisions.length
               ? `${collisions.length} entry(ies) fold onto a path another entry already claims.`
-              : "Every entry in this volume set resolves to a path of its own."}
+              : "Every entry in this volume set resolves to a path of its own. No collissions."}
         </Typography>
       </Box>
 

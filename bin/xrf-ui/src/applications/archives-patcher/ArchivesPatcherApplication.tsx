@@ -37,6 +37,9 @@ export function ArchivesPatcherApplication(): ReactElement {
   const job: Nullable<IJobState> = patcherService.operation.job;
   const isRunning: boolean = patcherService.operation.isRunning;
 
+  // Off by default: the installation supplies both sides, which is the case a path pair cannot express at all.
+  const [isDeliveringOwnTree, setIsDeliveringOwnTree] = useState<boolean>(false);
+
   const [defaults, setDefaults] = useState<Nullable<ArchivePatchConfig>>(null);
   const [name, setName] = useState<string>("patch");
   const [include, setInclude] = useState<Array<string>>([]);
@@ -52,10 +55,10 @@ export function ArchivesPatcherApplication(): ReactElement {
 
   const isPreviewOnly: boolean = mode === "preview";
 
-  const base: IPathField = usePathField({
+  const input: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_PATCHER,
-    id: "base",
-    title: "Select the released base",
+    id: "input",
+    title: "Select the game installation",
     isDirectory: true,
     isDisabled: isRunning,
   });
@@ -63,7 +66,7 @@ export function ArchivesPatcherApplication(): ReactElement {
   const target: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_PATCHER,
     id: "target",
-    title: "Select the new build",
+    title: "Select the tree the patch delivers",
     isDirectory: true,
     isDisabled: isRunning,
   });
@@ -81,15 +84,16 @@ export function ArchivesPatcherApplication(): ReactElement {
   const toRequest = useCallback((): Nullable<ArchivesPatchRequest> => {
     // Everything the format owns - the volume ceiling, the mode, the extension, the mountable header - comes from the
     // backend's own defaults, so this form never becomes a second definition of them.
-    if (base.value === null || target.value === null || destination.value === null || defaults === null) {
+    if (input.value === null || destination.value === null || defaults === null) {
       return null;
     }
 
     return {
       config: {
         ...defaults,
-        base: base.value,
-        target: target.value,
+        input: input.value,
+        // Absent is the useful default: the installation's own loose gamedata is what the modder has been editing.
+        target: isDeliveringOwnTree ? target.value : null,
         destination: destination.value,
         name,
         include,
@@ -99,7 +103,7 @@ export function ArchivesPatcherApplication(): ReactElement {
       isStrict: false,
       isVerifyingPayload: false,
     };
-  }, [base.value, defaults, destination.value, ignore, include, name, target.value]);
+  }, [defaults, destination.value, ignore, include, input.value, isDeliveringOwnTree, name, target.value]);
 
   const onSubmit = useCallback(async () => {
     const request: Nullable<ArchivesPatchRequest> = toRequest();
@@ -110,12 +114,15 @@ export function ArchivesPatcherApplication(): ReactElement {
 
     log.info("Comparing archives, preview only:", isPreviewOnly);
 
-    base.commit();
-    target.commit();
+    input.commit();
     destination.commit();
 
+    if (isDeliveringOwnTree) {
+      target.commit();
+    }
+
     await (isPreviewOnly ? patcherService.compare(request) : patcherService.patch(request));
-  }, [base, destination, isPreviewOnly, log, patcherService, target, toRequest]);
+  }, [destination, input, isDeliveringOwnTree, isPreviewOnly, log, patcherService, target, toRequest]);
 
   // What the result panel offers after a preview: the same form, committed, without retyping any of it.
   const onWrite = useCallback(async () => {
@@ -139,16 +146,22 @@ export function ArchivesPatcherApplication(): ReactElement {
   // Changing any input invalidates whatever the previous run reported.
   useEffect(() => {
     patcherService.operation.reset();
-  }, [base.value, target.value, destination.value, include, ignore, name, patcherService]);
+  }, [destination.value, ignore, include, input.value, isDeliveringOwnTree, name, patcherService, target.value]);
 
   return (
     <PickerForm
       isLoading={isRunning}
-      isSubmitDisabled={defaults === null || !base.isValid || !target.isValid || !destination.isValid || !name.trim()}
+      isSubmitDisabled={
+        defaults === null ||
+        !input.isValid ||
+        !destination.isValid ||
+        !name.trim() ||
+        (isDeliveringOwnTree && !target.isValid)
+      }
       title={"Build an archive patch"}
       description={
-        "Compares a released base against a new build and packs what changed into archive volumes that override the " +
-        "base when the engine mounts them."
+        "Packs what your loose gamedata changes about an installation into archive volumes that override it when the " +
+        "engine mounts them."
       }
       error={patcherService.operation.error ?? undefined}
       submitLabel={isPreviewOnly ? "Compare" : "Build patch"}
@@ -167,22 +180,32 @@ export function ArchivesPatcherApplication(): ReactElement {
     >
       <PathFormRow
         isDisabled={isRunning}
-        label={"Base"}
-        description={"The release being patched: an installation, a directory of volumes, or a gamedata tree"}
-        field={base}
+        label={"Game"}
+        description={"The installation to patch; its loose gamedata is compared against its own archives"}
+        field={input}
       />
 
-      <PathFormRow
+      <CheckboxFormRow
+        label={"Deliver another tree"}
+        description={"Build the patch from a separate gamedata folder instead of the installation's loose files"}
+        isChecked={isDeliveringOwnTree}
         isDisabled={isRunning}
-        label={"Target"}
-        description={"The new build the patch should deliver"}
-        field={target}
+        onChange={setIsDeliveringOwnTree}
       />
+
+      {isDeliveringOwnTree ? (
+        <PathFormRow
+          isDisabled={isRunning}
+          label={"Deliver"}
+          description={"The gamedata tree the patch should carry"}
+          field={target}
+        />
+      ) : null}
 
       <PathFormRow
         isDisabled={isRunning}
         label={"Output"}
-        description={"Directory the patch volumes are written into, outside both roots"}
+        description={"Directory the patch volumes are written into, outside the game"}
         field={destination}
       />
 

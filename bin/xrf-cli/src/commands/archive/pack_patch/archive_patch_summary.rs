@@ -4,8 +4,12 @@ use xrf_utils::format_path;
 
 /// Prints the comparison roots and, for publishing runs, the destination.
 pub(crate) fn describe_inputs(output: &OutputOptions, config: &ArchivePatchConfig, is_dry_run: bool) {
-  xrf_output::info!(output, "Patch base: {}", format_path(&config.base));
-  xrf_output::info!(output, "Patch target: {}", format_path(&config.target));
+  xrf_output::info!(output, "Patch input: {}", format_path(&config.input));
+
+  match config.target.as_deref() {
+    Some(target) => xrf_output::info!(output, "Patch target: {}", format_path(target)),
+    None => xrf_output::info!(output, "Patch target: loose gamedata of the input"),
+  }
 
   if !is_dry_run {
     xrf_output::info!(output, "Patch destination: {}", format_path(&config.destination));

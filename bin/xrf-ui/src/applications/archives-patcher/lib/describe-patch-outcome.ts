@@ -16,7 +16,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
 
   if (error) {
     return {
-      details: [config.target, error.message].join("\n"),
+      details: [config.target ?? config.input, error.message].join("\n"),
       severity: ENotificationSeverity.ERROR,
       title: "Could not build patch",
     };

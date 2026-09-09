@@ -85,7 +85,8 @@ export function ArchivesPatchResult({
     () => [
       { label: "added", value: result.added.length },
       { label: "modified", value: result.modified.length },
-      { label: "not deletable", value: result.removed.length },
+      // Only a release comparison can have these. An overlay never reports them, so the stat would always read zero.
+      ...(result.shape === "release" ? [{ label: "not deletable", value: result.removed.length }] : []),
       { label: "unchanged", value: result.unchanged },
       // Known before anything is written, which is what makes it worth showing on a preview.
       { label: isPublished ? "carried" : "to carry", value: formatBytes(result.sizeCarried) },

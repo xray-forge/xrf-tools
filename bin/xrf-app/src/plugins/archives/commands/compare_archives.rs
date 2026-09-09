@@ -34,8 +34,11 @@ pub async fn archives_compare_archives(
 
   log::info!(
     "Comparing archives: {} -> {}",
-    format_path(&config.base),
-    format_path(&config.target)
+    format_path(&config.input),
+    config.target.as_deref().map_or_else(
+      || String::from("its own loose gamedata"),
+      |target| format_path(target).to_string()
+    )
   );
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
