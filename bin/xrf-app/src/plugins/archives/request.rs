@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use xrf_pack::ArchivePackConfig;
+use xrf_pack::{ArchivePackConfig, ArchivePatchConfig};
 
-/// What an archive unpack was asked to do.
+/// Archive unpacking request.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -14,7 +14,7 @@ pub struct ArchivesUnpackRequest {
   pub destination: PathBuf,
 }
 
-/// What an archive pack was asked to do.
+/// Archive packing request.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +25,22 @@ pub struct ArchivesPackRequest {
   pub is_forced: bool,
 }
 
-/// What an extraction out of an open archive project was asked to do.
+/// Shared request for archive comparison and patch publication.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct ArchivesPatchRequest {
+  /// What to compare and where to publish the difference.
+  pub config: ArchivePatchConfig,
+  /// Whether an existing output may be overwritten. Ignored by a comparison, which writes nothing.
+  pub is_forced: bool,
+  /// Whether entries the base holds and the target does not should fail the run.
+  pub is_strict: bool,
+  /// Whether a checksum match should be proven by comparing the payloads themselves.
+  pub is_verifying_payload: bool,
+}
+
+/// Directory extraction request for an open archive project.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

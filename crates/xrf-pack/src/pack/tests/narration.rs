@@ -177,9 +177,6 @@ fn a_rule_that_left_something_out_says_which_rule_it_was() {
 
 /// The settled transcript order, which the CLI snapshots in `xrf-tools-e2e` pin line for line: the settings, then the
 /// whole selection as one block, then the volumes and what went into them.
-///
-/// Grouped rather than interleaved on purpose. It is also why the walk's omissions are collected and ordered instead
-/// of said where they are found — see `issues/closed/0104`.
 #[test]
 fn the_selection_is_one_block_between_the_settings_and_the_first_volume() {
   let (_, lines) = pack_saying(

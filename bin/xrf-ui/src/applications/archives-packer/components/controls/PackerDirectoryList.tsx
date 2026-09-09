@@ -1,11 +1,10 @@
 import { FormControlLabel, Switch, TextField, Typography } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import { withDirectoryAt, withoutAt } from "@/applications/archives-packer/lib/pack-config";
+import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
-
-import { PackerEditableList } from "./PackerEditableList";
-import { PackerEditableRow } from "./PackerEditableRow";
+import { EditableList, EditableListItem } from "@/core/ui/form";
+import { withoutAt } from "@/lib/types/array";
 
 interface IPackerDirectoryListProps {
   directories: Array<ArchivePackDirectory>;
@@ -29,14 +28,14 @@ export function PackerDirectoryList({
   onChange,
 }: IPackerDirectoryListProps): ReactElement {
   return (
-    <PackerEditableList
+    <EditableList
       addLabel={addLabel}
       emptyLabel={emptyLabel}
       isDisabled={isDisabled}
       onAdd={() => onChange([...directories, { path: "", isRecursive: true }])}
     >
       {directories.map((directory, index) => (
-        <PackerEditableRow
+        <EditableListItem
           key={index}
           removeLabel={`Remove ${directory.path || "the root"}`}
           isDisabled={isDisabled}
@@ -70,8 +69,8 @@ export function PackerDirectoryList({
             }
             label={<Typography variant={"body2"}>{recursiveLabel}</Typography>}
           />
-        </PackerEditableRow>
+        </EditableListItem>
       ))}
-    </PackerEditableList>
+    </EditableList>
   );
 }

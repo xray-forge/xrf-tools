@@ -9,12 +9,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::compress;
 use xrf_utils::{encode_string_to_w1251_bytes, to_format_size};
 
-/// A descriptor row's name, encoded once so the row's cost is known before the row is placed.
-///
-/// Windows-1251 is one byte per character, so the cost could be counted off the name instead. Encoding answers both
-/// questions at once: a name the engine's encoding cannot represent is refused here rather than measured, placed in a
-/// volume, and only then rejected — and the size that decided the placement is the size of the bytes actually
-/// written, rather than a second calculation that has to be kept agreeing with them.
+/// A validated Windows-1251 name and its descriptor row size.
 pub(crate) struct DescriptorName {
   encoded: Vec<u8>,
   /// The row's leading field: the bytes that follow it, which is not the whole row.
@@ -42,12 +37,9 @@ impl DescriptorName {
   }
 }
 
-/// The descriptor table of one volume: the rows `CLocatorAPI` indexes an archive by.
+/// Archive descriptor rows encoded as chunk 1.
 ///
-/// Owns the row layout, the encoding the engine reads names as, and how the table becomes chunk 1. It also owns the
-/// number a volume must reserve for it — [`Self::get_size`] measures the plain table, and [`Self::write_to`] never
-/// writes more than that plus a chunk header, which is what lets placement budget a chunk whose coded length it
-/// cannot yet know.
+/// [`Self::get_size`] bounds the payload size; writing adds one chunk header.
 pub(crate) struct ArchiveDescriptorTable {
   rows: Vec<u8>,
   /// Length of the directory rows every volume of the set repeats, which [`Self::reset`] rewinds to.
@@ -119,13 +111,9 @@ impl ArchiveDescriptorTable {
     Ok(CHUNK_HEADER_SIZE + payload.len() as u64)
   }
 
-  /// Chunk 1 as it will be written: its id, carrying the compressed mark or not, and its payload.
+  /// Returns chunk 1 with LZHUF compression only when it shrinks the table.
   ///
-  /// Coded the way the engine writes it, unless coding would grow the table. Placement budgeted the plain table, so a
-  /// payload longer than that would put the volume past its cap; both readers branch on the mark
-  /// (`xray-16/src/xrCore/LocatorAPI.cpp`, `crates/xrf-archive/src/reader.rs`), so the plain form still mounts. It is
-  /// the same "compression must pay" rule the payload path applies, and it is what makes [`Self::get_size`] an upper
-  /// bound rather than an estimate. An empty table stays plain because LZHUF has no coding for an empty source.
+  /// The payload never exceeds [`Self::get_size`]. Empty tables stay plain because LZHUF rejects empty input.
   fn to_chunk(&self) -> XrfResult<(u32, Cow<'_, [u8]>)> {
     if self.rows.is_empty() {
       return Ok((CHUNK_ID_FILE_DESCRIPTORS, Cow::Borrowed(&self.rows)));
@@ -185,9 +173,6 @@ mod tests {
 
     table.push_entry(&name, 1, 1, 1, 0);
 
-    // The number placement reserves and the number the table grows by must be one number. They were two before
-    // `issues/closed/0039`: the row's leading field declares what follows it, so a row is two bytes wider than the
-    // size it states, and a volume closed that much past its cap for every entry it held.
     assert_eq!(table.get_size(), name.get_row_size());
     assert_eq!(name.get_row_size(), "configs\\system.ltx".len() as u64 + 18);
   }

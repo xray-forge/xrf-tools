@@ -5,34 +5,32 @@ use xrf_job::{JobHandle, JobScope};
 use xrf_vfs::XrayAsset;
 
 use crate::patch::PATCH_PHASE_COMPARE;
-use crate::patch::compare::{ArchivePatchChange, ArchivePatchSide};
+use crate::patch::compare::{ArchivePatchChange, ArchivePatchOrigins, ArchivePatchSide};
 use crate::patch::config::ArchivePatchScope;
 use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole, ArchivePatchWorld};
 
-/// What two mounted worlds differ by, and how much of them did not.
+/// Classified differences and counts for two mounted roots.
 #[derive(Debug, Default)]
 pub(crate) struct ArchivePatchComparison {
   pub(crate) added: Vec<ArchivePatchChange>,
   pub(crate) modified: Vec<ArchivePatchChange>,
   pub(crate) removed: Vec<ArchivePatchChange>,
   pub(crate) unchanged: usize,
-  /// Entries whose payload had to be read to classify them, which is what the cheap path avoided.
+  /// Entry pairs requiring a computed checksum.
   pub(crate) payloads_read: usize,
-  /// What each side offered before anything was compared, so a side holding nothing can be named as such.
+  /// Every volume set and loose root the two sides read from, which each side names by index.
+  pub(crate) origins: ArchivePatchOrigins,
+  /// Base entries in scope before comparison.
   base_listed: usize,
   target_listed: usize,
 }
 
 impl ArchivePatchComparison {
-  /// Compare two worlds, in one pass over both.
-  ///
-  /// Both sides arrive sorted by engine identity, which [`ArchivePatchWorld::list_scoped`] gets from the VFS for
-  /// free, so this is a merge rather than a lookup per entry: neither side's name table is duplicated into a map,
-  /// which at two mounted installations is the difference that decides the run's peak.
+  /// Compares sorted engine identities in one pass without building lookup maps.
   ///
   /// # Errors
   ///
-  /// Returns the read error of any payload a decision needed.
+  /// Propagates payload read errors.
   pub(crate) fn of(
     base: &ArchivePatchWorld,
     target: &ArchivePatchWorld,
@@ -59,19 +57,19 @@ impl ArchivePatchComparison {
       match order {
         Ordering::Less => {
           let entry: &XrayAsset = &base_entries[left];
+          let side: ArchivePatchSide = base.to_side(entry, &mut comparison.origins);
 
           comparison
             .removed
-            .push(ArchivePatchChange::removed(name_of(entry), base.to_side(entry)));
+            .push(ArchivePatchChange::removed(name_of(entry), side));
 
           left += 1;
         }
         Ordering::Greater => {
           let entry: &XrayAsset = &target_entries[right];
+          let side: ArchivePatchSide = target.to_side(entry, &mut comparison.origins);
 
-          comparison
-            .added
-            .push(ArchivePatchChange::added(name_of(entry), target.to_side(entry)));
+          comparison.added.push(ArchivePatchChange::added(name_of(entry), side));
 
           right += 1;
           comparing.advance();
@@ -95,11 +93,7 @@ impl ArchivePatchComparison {
     Ok(comparison)
   }
 
-  /// Everything the patch will carry, in the order the engine's own table iterates.
-  ///
-  /// Added and modified merge back into one sorted run rather than being concatenated: both came out of one ordered
-  /// pass, and the packer's registration keys by engine name, so handing it a sorted run means the volume it writes
-  /// does not depend on which class an entry landed in.
+  /// Returns added and modified engine names in sorted order.
   pub(crate) fn to_carried_names(&self) -> Vec<&str> {
     let mut names: Vec<&str> = self
       .added
@@ -117,10 +111,18 @@ impl ArchivePatchComparison {
     self.added.len() + self.modified.len()
   }
 
-  /// What one side offered before anything was compared.
-  ///
-  /// Keyed by role rather than published as two fields, so a caller checking both walks the roles instead of pairing
-  /// two arrays and trusting itself to keep them in the same order.
+  /// Total unpacked size of added and modified target entries.
+  pub(crate) fn get_carried_size(&self) -> u64 {
+    self
+      .added
+      .iter()
+      .chain(self.modified.iter())
+      .filter_map(|change| change.target.as_ref())
+      .map(|side| side.size)
+      .sum()
+  }
+
+  /// Returns the number of entries in scope on the requested side.
   pub(crate) const fn get_listed_count(&self, role: ArchivePatchRole) -> usize {
     match role {
       ArchivePatchRole::Base => self.base_listed,
@@ -138,12 +140,7 @@ impl ArchivePatchComparison {
     }
   }
 
-  /// Decide one entry both sides hold, spending as little as the pair allows.
-  ///
-  /// The ladder is the point. Size settles every pair that differs in length and costs nothing; only a pair of equal
-  /// size needs a checksum, which an archive answers from its name table and a loose file answers by being read; and
-  /// only a caller who distrusts CRC32 pays for the payload comparison on top. So an archive-to-archive run reads no
-  /// payload at all, and a loose side reads only the files whose counterpart is the same size.
+  /// Classifies a shared entry by size, then checksum, with optional byte-for-byte verification.
   fn classify_pair(
     &mut self,
     base: &ArchivePatchWorld,
@@ -153,8 +150,8 @@ impl ArchivePatchComparison {
     is_verifying_payload: bool,
   ) -> XrfResult<()> {
     let name: &str = name_of(target_entry);
-    let base_side: ArchivePatchSide = base.to_side(base_entry);
-    let target_side: ArchivePatchSide = target.to_side(target_entry);
+    let base_side: ArchivePatchSide = base.to_side(base_entry, &mut self.origins);
+    let target_side: ArchivePatchSide = target.to_side(target_entry, &mut self.origins);
 
     if base_side.size == target_side.size && self.reads_alike(base, target, name, is_verifying_payload)? {
       self.unchanged += 1;

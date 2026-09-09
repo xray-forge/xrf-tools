@@ -1,57 +1,43 @@
-//! What an archive job holds exclusively while it runs.
-//!
-//! The registry never interprets a lease key, so deciding what two runs may not do at once is this domain's business.
-//! Each job kind owns an action group. The destination keys below also exclude conflicting writes across groups.
+//! Archive job identities, exclusion groups, and destination leases.
 
 use std::path::Path;
 
-use xrf_pack::ArchivePackConfig;
-
 use crate::core::jobs::to_comparable_path;
 
-/// What a pack registers itself as, and the prefix of every lease it takes.
-///
-/// One constant for both, because a kind that was spelled once for the registry and again inside a key would let the
-/// two drift while every test still passed: the registry does not read a key, and nothing else compares them. The
-/// frontend spells the same strings in `EJobKind`, which is the wire contract this side owns.
+/// Archive packing job kind; mirrored by the frontend `EJobKind`.
 pub const PACK_JOB_KIND: &str = "archives.pack";
 
-/// What an unpack registers itself as.
+/// Archive patch publication job kind.
+pub const PATCH_JOB_KIND: &str = "archives.patch";
+
+/// Read-only archive comparison job kind.
+pub const COMPARE_JOB_KIND: &str = "archives.compare";
+
+/// Limits archive packing and patch publication to one run at a time across windows.
+pub const PUBLISH_ACTION_GROUP: &str = "archives.publish";
+
+/// Archive unpacking job kind.
 pub const UNPACK_JOB_KIND: &str = "archives.unpack";
 
-/// What extracting one archived directory registers itself as.
-///
-/// Its own kind, because it is its own work to watch and attribute — but not its own lease: it writes into the same
-/// tree an unpack does, and the two collide there.
+/// Archive directory extraction job kind.
 pub const EXTRACT_JOB_KIND: &str = "archives.extract";
 
-/// Prefix of every lease over a destination tree.
-///
-/// Named for what it protects rather than for who takes it. An unpack and a directory extraction write the same layout
-/// into the same root, so a key spelled after either one would have to be taken by the other and read as a lie.
+/// Shared destination lease prefix for unpacking and directory extraction.
 const DESTINATION_TREE_LEASE: &str = "archives.tree";
 
-/// The destination a pack would publish to, as a lease key.
+/// Identifies a published set by destination and case-insensitive volume name.
 ///
-/// Both directory and volume basename identify one published set. The constant action group separately limits
-/// packing to one run across windows, regardless of which set it targets.
-///
-/// The path is canonicalized where it exists and lexically absolute where it does not, because a destination is
-/// commonly typed before it is created and `canonicalize` refuses a path that is not there yet. Two spellings of an
-/// existing directory therefore collide as they should; two spellings of one directory that does not exist yet may
-/// not, which is the narrow gap this leaves open.
-pub fn to_pack_lease_key(config: &ArchivePackConfig) -> String {
+/// Shared by packing and patching. Existing paths are canonicalized; missing paths use lexical absolute paths,
+/// which may leave aliases undetected.
+pub fn to_published_set_lease_key(destination: &Path, name: &str) -> String {
   format!(
-    "{PACK_JOB_KIND}:{}|{}",
-    to_comparable_path(&config.destination),
-    config.name.to_lowercase()
+    "{PUBLISH_ACTION_GROUP}:{}|{}",
+    to_comparable_path(destination),
+    name.to_lowercase()
   )
 }
 
-/// The tree a run would write into, as a lease key.
-///
-/// The root alone: both writers lay the archive's own layout beneath it, so two runs sharing a destination overlap
-/// whatever each was asked to extract — even where their prefixes differ, since either may still reach the same file.
+/// Identifies an unpack or extraction destination, regardless of the selected archive prefix.
 pub fn to_destination_tree_lease_key(destination: &Path) -> String {
   format!("{DESTINATION_TREE_LEASE}:{}", to_comparable_path(destination))
 }
@@ -60,47 +46,36 @@ pub fn to_destination_tree_lease_key(destination: &Path) -> String {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use xrf_pack::ArchivePackConfig;
+  use super::{to_destination_tree_lease_key, to_published_set_lease_key};
 
-  use super::{to_destination_tree_lease_key, to_pack_lease_key};
-
-  fn config(destination: &str, name: &str) -> ArchivePackConfig {
-    ArchivePackConfig::new(PathBuf::from("C:\\src"), PathBuf::from(destination), name)
+  fn published(destination: &str, name: &str) -> String {
+    to_published_set_lease_key(&PathBuf::from(destination), name)
   }
 
   #[test]
   fn two_named_sets_in_one_directory_do_not_collide() {
     // Destination identity stays distinct even though the action group excludes concurrent packs.
-    assert_ne!(
-      to_pack_lease_key(&config("C:\\out", "gamedata")),
-      to_pack_lease_key(&config("C:\\out", "textures"))
-    );
+    assert_ne!(published("C:\\out", "gamedata"), published("C:\\out", "textures"));
   }
 
   #[test]
   fn one_named_set_in_one_directory_collides_with_itself() {
-    assert_eq!(
-      to_pack_lease_key(&config("C:\\out", "gamedata")),
-      to_pack_lease_key(&config("C:\\out", "gamedata"))
-    );
+    assert_eq!(published("C:\\out", "gamedata"), published("C:\\out", "gamedata"));
   }
 
   #[test]
   fn the_same_destination_spelled_differently_still_collides() {
     // The case the lease exists for: a user picking the same folder twice through a file dialog can easily produce two
     // spellings, and both runs would truncate the same volumes.
-    assert_eq!(
-      to_pack_lease_key(&config("C:\\Out", "gamedata")),
-      to_pack_lease_key(&config("c:\\out", "GameData"))
-    );
+    assert_eq!(published("C:\\Out", "gamedata"), published("c:\\out", "GameData"));
   }
 
   #[test]
-  fn packing_and_unpacking_one_path_are_different_leases() {
+  fn publishing_a_set_and_writing_a_tree_are_different_leases() {
     // They are not the same operation and do not write the same things: a pack writes volumes into the path, an unpack
     // writes a tree into it. Sharing a key would refuse a pair that has no conflict.
     assert_ne!(
-      to_pack_lease_key(&config("C:\\out", "gamedata")),
+      published("C:\\out", "gamedata"),
       to_destination_tree_lease_key(Path::new("C:\\out"))
     );
   }

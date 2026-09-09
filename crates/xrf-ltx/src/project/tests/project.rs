@@ -181,8 +181,6 @@ value = 1
 ",
   )?;
 
-  // Assembly cannot read one of them, and answers anyway. One unreadable config used to end the whole open, which hid
-  // every other file's findings behind it; see `issues/0116`.
   let project: LtxProject = LtxProject::open_at_path(&root)?;
 
   assert_eq!(project.ltx_files.len(), 2);

@@ -9,14 +9,7 @@ use xrf_pack::{
   VOLUME_SIZE_MAX,
 };
 
-/// One invocation of `archive pack-patch`, read out of its arguments.
-///
-/// Held apart from the command so the adapter reads as three sentences — parse, run, say — rather than as sixty lines
-/// of option plumbing with the run buried at the bottom. `ltx format` splits its own selection out for the same
-/// reason.
-///
-/// `is_dry_run` stays here rather than in [`ArchivePatchOptions`], because it selects which door of the crate runs:
-/// the crate makes "does this write" a method name, and this is the surface that turns a flag into that choice.
+/// Parsed arguments for `archive pack-patch`.
 pub(crate) struct ArchivePatchArguments {
   pub(crate) config: ArchivePatchConfig,
   pub(crate) options: ArchivePatchOptions,
@@ -24,16 +17,16 @@ pub(crate) struct ArchivePatchArguments {
 }
 
 impl ArchivePatchArguments {
-  /// Read the invocation, refusing what the surface can judge before the crate is asked to.
+  /// Parses patch arguments and resolves absolute paths.
   ///
   /// # Errors
   ///
-  /// Returns an invalid error for a header entry naming no key, and for a volume size past what the engine mounts
-  /// without the flag that lifts the bound.
+  /// Returns an error if path resolution fails, a header entry lacks `=`, or the volume cap requires
+  /// `--oversized-volumes`.
   pub(crate) fn of(matches: &ArgMatches, output: OutputOptions) -> XrfResult<Self> {
     let mut config: ArchivePatchConfig = ArchivePatchConfig::new(
-      Self::collect_roots(matches, "base")?,
-      Self::collect_roots(matches, "target")?,
+      Self::to_root(matches, "base")?,
+      Self::to_root(matches, "target")?,
       xrf_utils::to_absolute_path(
         matches
           .get_one::<PathBuf>("dest")
@@ -87,17 +80,13 @@ impl ArchivePatchArguments {
     })
   }
 
-  /// The roots of one side, each made absolute, in the order they were named.
-  ///
-  /// Order is the whole contract of a repeatable root option, so this must never sort or deduplicate: a person
-  /// spelling one root twice means it twice, and the mount plan is what decides that the second is redundant.
-  fn collect_roots(matches: &ArgMatches, argument: &str) -> XrfResult<Vec<PathBuf>> {
-    matches
-      .get_many::<PathBuf>(argument)
-      .into_iter()
-      .flatten()
-      .map(xrf_utils::to_absolute_path)
-      .collect()
+  /// The root of one side, made absolute.
+  fn to_root(matches: &ArgMatches, argument: &str) -> XrfResult<PathBuf> {
+    xrf_utils::to_absolute_path(
+      matches
+        .get_one::<PathBuf>(argument)
+        .expect("Expected a required root to be provided"),
+    )
   }
 
   /// One `--header key=value` entry, split at the first `=`.
@@ -114,10 +103,7 @@ impl ArchivePatchArguments {
     })
   }
 
-  /// The requested cap in bytes, or `None` where the caller did not ask for one.
-  ///
-  /// Asked here as well as inside the configuration so the refusal can name the flag that lifts it. The configuration
-  /// refuses the same size regardless; this is the surface's own wording, not its own rule.
+  /// Returns the explicit volume cap in bytes, or `None` to use the default.
   fn to_volume_size(matches: &ArgMatches, is_oversized_allowed: bool) -> XrfResult<Option<u64>> {
     if matches.value_source("max-size") != Some(ValueSource::CommandLine) {
       return Ok(None);

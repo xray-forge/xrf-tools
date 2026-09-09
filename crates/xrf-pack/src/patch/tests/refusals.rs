@@ -84,7 +84,7 @@ fn a_comparison_may_target_a_directory_a_publication_could_not() {
 fn an_empty_root_set_is_refused_before_anything_is_mounted() {
   let scope: &str = "patch_empty_root_set_is_refused";
   let target: PathBuf = create_tree(scope, "target", BASE_FILES);
-  let configured: ArchivePatchConfig = ArchivePatchConfig::new(Vec::new(), vec![target], destination(scope), "patch");
+  let configured: ArchivePatchConfig = ArchivePatchConfig::new("", target, destination(scope), "patch");
   let message: String = refusal(&configured, ArchivePatchOptions::default());
 
   assert!(message.contains("no base root"), "'{message}' names the missing side");

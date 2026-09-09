@@ -1,10 +1,8 @@
 import { TextField } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import { withoutAt, withValueAt } from "@/applications/archives-packer/lib/pack-config";
-
-import { PackerEditableList } from "./PackerEditableList";
-import { PackerEditableRow } from "./PackerEditableRow";
+import { EditableList, EditableListItem } from "@/core/ui/form";
+import { withoutAt, withValueAt } from "@/lib/types/array";
 
 interface IPackerStringListProps {
   values: Array<string>;
@@ -27,14 +25,14 @@ export function PackerStringList({
   onChange,
 }: IPackerStringListProps): ReactElement {
   return (
-    <PackerEditableList
+    <EditableList
       addLabel={addLabel}
       emptyLabel={emptyLabel}
       isDisabled={isDisabled}
       onAdd={() => onChange([...values, ""])}
     >
       {values.map((value, index) => (
-        <PackerEditableRow
+        <EditableListItem
           key={index}
           removeLabel={`Remove ${value || `entry ${index + 1}`}`}
           isDisabled={isDisabled}
@@ -51,8 +49,8 @@ export function PackerStringList({
               onChange(withValueAt(values, index, event.target.value))
             }
           />
-        </PackerEditableRow>
+        </EditableListItem>
       ))}
-    </PackerEditableList>
+    </EditableList>
   );
 }

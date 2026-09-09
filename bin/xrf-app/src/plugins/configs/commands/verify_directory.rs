@@ -15,10 +15,7 @@ use crate::plugins::configs::lease::VERIFY_JOB_KIND;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsVerifyRequest;
 
-/// Verify the LTX configs roots exposes.
-///
-/// Read-only, so it goes through the roots and covers archived configs too. `xrf-ltx` draws the same
-/// line: its read-only check reads through the VFS where its rewrite refuses archived winners.
+/// Verifies LTX configs through the VFS, including archived files.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_directory"))]
 #[tauri::command(rename = "verify_directory")]
 pub async fn configs_verify_directory(
@@ -47,10 +44,6 @@ pub async fn configs_verify_directory(
     registration,
     move || {
       let project: LtxProject = {
-        // Opening mounts every root, indexes the trees and assembles the project, and none of it reports a unit —
-        // so without a phase around it a window shows an indeterminate bar and an elapsed time of zero for the whole
-        // of it, then jumps to the total. The phase says what is happening; the registry's heartbeat is what makes
-        // the time advance while it does (`issues/0109`).
         let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
 
         open_ltx_project(

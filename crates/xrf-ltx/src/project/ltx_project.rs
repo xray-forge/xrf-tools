@@ -13,11 +13,7 @@ use crate::scheme::LtxSchemeParser;
 use crate::source::{LtxIncludeSource, LtxVfsSource};
 use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
-/// An LTX project assembled from one VFS scope.
-///
-/// Its files are [`XrayLogicalPath`] engine identities rather than filesystem paths, so callers do not depend on whether a config
-/// is loose or archived, and cannot read one with host I/O by mistake. Use [`Self::read_full`] to read a file and
-/// [`Self::path_of`] to show one.
+/// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
 #[derive(Debug)]
 pub struct LtxProject {
   /// Location shown in project output, on the host filesystem.
@@ -96,10 +92,7 @@ impl LtxProject {
     }
   }
 
-  /// Collects the project's files, works out which are entry points, and parses its schemes.
-  ///
-  /// An entry point is a file nothing else includes, which is why every file's include list is read before any of their
-  /// contents.
+  /// Collects files, identifies entry points from includes, and parses scheme declarations.
   fn assemble(root: PathBuf, vfs: XrayVfs, scope: XrayLookupScope, options: LtxProjectOptions) -> XrfResult<Self> {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let source: LtxVfsSource = LtxVfsSource::new_counted(&vfs, &scope, &counters);
@@ -115,10 +108,6 @@ impl LtxProject {
         .map(|parent| PathBuf::from(parent.as_str()))
         .unwrap_or_default();
 
-      // A config that cannot be read or parsed is left to be reported per entry rather than ending assembly. One
-      // unreadable file used to hide every other file's findings, because assembly runs before the verifier exists to
-      // record anything: see `issues/0116`. Nothing is lost - the file stays listed, nothing else claims to include
-      // it, so it becomes an entry point and the verifier reads it again and reports the real error.
       match source.read_included(path.as_str()) {
         Ok(includes) => {
           for include in &includes {
@@ -229,11 +218,7 @@ impl LtxProject {
     })
   }
 
-  /// Every LTX logical path in scope, sorted so assembly is deterministic.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a mounted entry is not a valid X-Ray logical path.
+  /// Returns LTX logical paths in scope, sorted for deterministic assembly.
   fn collect_logical_paths(vfs: &XrayVfs, scope: &XrayLookupScope) -> XrfResult<Vec<XrayLogicalPath>> {
     let mut paths: Vec<XrayLogicalPath> = Vec::new();
 
@@ -249,14 +234,11 @@ impl LtxProject {
     Ok(paths)
   }
 
-  /// Converts a path the include source resolved back into an engine identity.
-  ///
-  /// [`LtxIncludeSource`] carries logical paths in `PathBuf` for both of its backends, for the reason its own documentation
-  /// gives; this is the single place a project crosses back out of that representation.
+  /// Converts a resolved include path into an engine identity.
   ///
   /// # Errors
   ///
-  /// Returns an error when the resolved path is not a valid X-Ray logical path.
+  /// Returns an error for an invalid X-Ray logical path.
   fn included_path(path: &Path) -> XrfResult<XrayLogicalPath> {
     XrayLogicalPath::new(&path.to_string_lossy())
   }
@@ -279,10 +261,7 @@ impl LtxProject {
     &self.scope
   }
 
-  /// Returns the user-facing path for one logical config.
-  ///
-  /// Loose configs use their filesystem path. Archived or missing configs use the logical path, which is the only honest
-  /// answer for a config with no file on disk.
+  /// Returns the filesystem path for a loose config, or the logical path for an archived or missing config.
   pub fn path_of(&self, logical_path: &XrayLogicalPath) -> PathBuf {
     self
       .physical_path_of(logical_path)
@@ -302,14 +281,11 @@ impl LtxProject {
       .and_then(|location| location.to_physical_path())
   }
 
-  /// Reads one project file with included files merged and inherited sections resolved.
-  ///
-  /// The project owns this rather than each caller reaching for `Ltx::read_from_file_standard`, because only the project knows
-  /// whether its files are loose or archived.
+  /// Resolves and caches a project config using this project's dialect, including includes and inheritance.
   ///
   /// # Errors
   ///
-  /// Returns an error when the file is not in scope or cannot be read or parsed.
+  /// Returns an error if the config is outside the scope or cannot be read or resolved.
   pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<Ltx>> {
     self.resolved_cell(logical_path).get_or_try_init(|| {
       let resolved: Arc<Ltx> = Arc::new(self.resolve(logical_path)?);
@@ -367,15 +343,11 @@ impl LtxProject {
     &self.dialect
   }
 
-  /// Resolves one config outside this project's scope, under this project's dialect.
-  ///
-  /// For config trees that are not under the project's own prefix: a level's `level.ltx` sits beside the level, not in
-  /// `configs`, and resolving it with different rules than everything else would make one sweep disagree with itself.
-  /// Nothing is retained, because the caller's scope is not this project's.
+  /// Resolves a config in the supplied scope using this project's dialect, without caching the result.
   ///
   /// # Errors
   ///
-  /// Returns an error when the config cannot be read or resolved.
+  /// Returns an error if the config cannot be read or resolved.
   pub fn read_full_in_scope(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
     let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, scope, &self.counters);
 
@@ -389,15 +361,11 @@ impl LtxProject {
     self.counters.get_snapshot()
   }
 
-  /// The engine identity of a config named relative to this project.
-  ///
-  /// A project mounted at a configs directory answers `environment\suns.ltx`; one scoped to `configs` inside a wider VFS
-  /// answers `configs\environment\suns.ltx`. Callers name configs the way the config tree does and let the scope place
-  /// them, which is what lets the same check read a loose gamedata tree and an installation's `db\configs`.
+  /// Prepends the project scope to a relative config path.
   ///
   /// # Errors
   ///
-  /// Returns an error when the resulting path is not a valid logical path.
+  /// Returns an error if the resulting logical path is invalid.
   pub fn config_path(&self, relative_path: &str) -> XrfResult<XrayLogicalPath> {
     match self.scope.get_prefix() {
       Some(prefix) => XrayLogicalPath::new(prefix)?.join(relative_path),
@@ -414,14 +382,11 @@ impl LtxProject {
     self.config_path(SYSTEM_LTX_FILENAME)
   }
 
-  /// The user-facing path of `system.ltx`, for findings that name it.
-  ///
-  /// Separate from [`Self::system_ltx_path`] because a finding needs the path a person can act on, while a read needs the
-  /// logical one.
+  /// Returns the display path for `system.ltx`.
   ///
   /// # Errors
   ///
-  /// Returns an error only if the constant name stops being a valid logical path.
+  /// Returns an error if the scoped logical path is invalid.
   pub fn system_ltx_report_path(&self) -> XrfResult<PathBuf> {
     Ok(self.path_of(&self.system_ltx_path()?))
   }

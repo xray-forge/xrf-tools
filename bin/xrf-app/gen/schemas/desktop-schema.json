@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-default-pack-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
@@ -2223,10 +2223,22 @@
           "markdownDescription": "Enables the close_project command without any pre-configured scope."
         },
         {
+          "description": "Enables the compare_archives command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-compare-archives",
+          "markdownDescription": "Enables the compare_archives command without any pre-configured scope."
+        },
+        {
           "description": "Enables the default_pack_config command without any pre-configured scope.",
           "type": "string",
           "const": "archives:allow-default-pack-config",
           "markdownDescription": "Enables the default_pack_config command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the default_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-default-patch-config",
+          "markdownDescription": "Enables the default_patch_config command without any pre-configured scope."
         },
         {
           "description": "Enables the describe_audio command without any pre-configured scope.",
@@ -2307,6 +2319,12 @@
           "markdownDescription": "Enables the pack_directory command without any pre-configured scope."
         },
         {
+          "description": "Enables the patch_archives command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-patch-archives",
+          "markdownDescription": "Enables the patch_archives command without any pre-configured scope."
+        },
+        {
           "description": "Enables the read_file command without any pre-configured scope.",
           "type": "string",
           "const": "archives:allow-read-file",
@@ -2331,10 +2349,22 @@
           "markdownDescription": "Denies the close_project command without any pre-configured scope."
         },
         {
+          "description": "Denies the compare_archives command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-compare-archives",
+          "markdownDescription": "Denies the compare_archives command without any pre-configured scope."
+        },
+        {
           "description": "Denies the default_pack_config command without any pre-configured scope.",
           "type": "string",
           "const": "archives:deny-default-pack-config",
           "markdownDescription": "Denies the default_pack_config command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the default_patch_config command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-default-patch-config",
+          "markdownDescription": "Denies the default_patch_config command without any pre-configured scope."
         },
         {
           "description": "Denies the describe_audio command without any pre-configured scope.",
@@ -2413,6 +2443,12 @@
           "type": "string",
           "const": "archives:deny-pack-directory",
           "markdownDescription": "Denies the pack_directory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the patch_archives command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-patch-archives",
+          "markdownDescription": "Denies the patch_archives command without any pre-configured scope."
         },
         {
           "description": "Denies the read_file command without any pre-configured scope.",

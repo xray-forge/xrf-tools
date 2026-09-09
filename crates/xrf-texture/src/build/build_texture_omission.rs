@@ -1,19 +1,9 @@
 use xrf_db::ThmTextureFlag;
 
-/// One thing a descriptor asks for that this build does not do.
-///
-/// Reported rather than approximated. A recipe field the converter honoured and we do not is a difference between the
-/// texture the author authored and the texture they get, and the only honest thing a tool can do about it is say which
-/// field, next to that field.
-///
-/// Every one of these is `issues/0143`, Stage B of the build parity: fade, border and dithering live inside
-/// `nvDXTlibMTDLL.lib` and have to be reimplemented from their documented meaning rather than ported.
+/// A requested descriptor feature the texture builder does not implement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BuildTextureOmission {
-  /// The per-mip fade the SDK's own chain applies for `Advanced`, which is the one filter value that is not a kernel.
-  ///
-  /// The chain itself is reproduced: `Build32MipLevel` box-averages each level, which is what a box kernel does. Only
-  /// the fade it applies on the way down is missing.
+  /// Missing fade in the `Advanced` mip filter. Box downsampling is implemented.
   AdvancedMipFade,
   FadeToColor,
   FadeToAlpha,
@@ -25,7 +15,7 @@ pub enum BuildTextureOmission {
 }
 
 impl BuildTextureOmission {
-  /// The descriptor field this omission sits beside, under the name the SDK gives it.
+  /// SDK field name associated with this omission.
   pub const fn field(self) -> &'static str {
     match self {
       Self::AdvancedMipFade => "mip_filter",
@@ -39,7 +29,7 @@ impl BuildTextureOmission {
     }
   }
 
-  /// Why the build does not do it, in words a person deciding whether to rebuild can act on.
+  /// User-facing explanation of the unsupported feature.
   pub const fn reason(self) -> &'static str {
     match self {
       Self::AdvancedMipFade => "the mip chain is reproduced, but the fade the SDK applies to each level is not",

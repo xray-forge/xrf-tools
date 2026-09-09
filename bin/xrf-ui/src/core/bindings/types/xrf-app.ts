@@ -3,7 +3,7 @@
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig, ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
@@ -14,7 +14,7 @@ import {
 import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
-/** What an extraction out of an open archive project was asked to do. */
+/** Directory extraction request for an open archive project. */
 export type ArchivesExtractRequest = {
   /** Directory inside the archive to extract. */
   prefix: string;
@@ -22,7 +22,7 @@ export type ArchivesExtractRequest = {
   destination: string;
 };
 
-/** What an archive pack was asked to do. */
+/** Archive packing request. */
 export type ArchivesPackRequest = {
   /** What to pack and how. */
   config: ArchivePackConfig;
@@ -30,7 +30,19 @@ export type ArchivesPackRequest = {
   isForced: boolean;
 };
 
-/** What an archive unpack was asked to do. */
+/** Shared request for archive comparison and patch publication. */
+export type ArchivesPatchRequest = {
+  /** What to compare and where to publish the difference. */
+  config: ArchivePatchConfig;
+  /** Whether an existing output may be overwritten. Ignored by a comparison, which writes nothing. */
+  isForced: boolean;
+  /** Whether entries the base holds and the target does not should fail the run. */
+  isStrict: boolean;
+  /** Whether a checksum match should be proven by comparing the payloads themselves. */
+  isVerifyingPayload: boolean;
+};
+
+/** Archive unpacking request. */
 export type ArchivesUnpackRequest = {
   /** Archive or directory of archives to read. */
   from: string;

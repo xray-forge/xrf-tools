@@ -1,5 +1,7 @@
 pub mod close_project;
+pub mod compare_archives;
 pub mod default_pack_config;
+pub mod default_patch_config;
 pub mod describe_audio;
 pub mod describe_image;
 pub mod export_pack_config;
@@ -13,6 +15,7 @@ pub mod list_pack_volumes;
 pub mod list_shared_payloads;
 pub mod open_project;
 pub mod pack_directory;
+pub mod patch_archives;
 pub mod read_file;
 pub mod read_image;
 pub mod unpack_directory;

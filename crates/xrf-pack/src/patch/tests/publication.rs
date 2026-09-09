@@ -99,3 +99,35 @@ fn a_patch_reads_back_through_the_engines_own_identity() {
   assert_eq!(published_names(&into), ["configs\\system.ltx"]);
   assert_eq!(published_bytes(&into, "configs\\system.ltx"), CONFIG_EDITED);
 }
+
+#[test]
+fn the_carried_size_is_what_the_packer_then_reports_reading() {
+  // The figure a comparison can offer before anything is written, and the guarantee that makes it worth offering: it
+  // is not an estimate of the packer's own `size_source`, it is the same number.
+  let scope: &str = "patch_carried_size_matches_the_pack";
+  let base: PathBuf = create_tree(scope, "base", BASE_FILES);
+  let target: PathBuf = create_tree(
+    scope,
+    "target",
+    &[("configs\\system.ltx", CONFIG_EDITED), ("textures\\floor.dds", BINARY)],
+  );
+  let into: PathBuf = destination(scope);
+
+  let previewed: ArchivePatchResult = compare(&base, &target, &into);
+  let published: ArchivePatchResult = patch(&base, &target, &into);
+
+  assert_eq!(
+    previewed.size_carried, published.size_carried,
+    "the preview said the same"
+  );
+  assert_eq!(
+    published.size_carried,
+    published
+      .publication
+      .get_published()
+      .expect("a volume set was written")
+      .size_source,
+    "and the packer read exactly that many bytes"
+  );
+  assert_eq!(published.size_carried, (CONFIG_EDITED.len() + BINARY.len()) as u64);
+}

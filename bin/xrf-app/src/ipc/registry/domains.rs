@@ -15,7 +15,9 @@ macro_rules! for_each_tauri_command_domain {
       }
       archives => "archives" {
         close_project => crate::plugins::archives::commands::close_project::archives_close_project,
+        compare_archives => crate::plugins::archives::commands::compare_archives::archives_compare_archives,
         default_pack_config => crate::plugins::archives::commands::default_pack_config::archives_default_pack_config,
+        default_patch_config => crate::plugins::archives::commands::default_patch_config::archives_default_patch_config,
         describe_audio => crate::plugins::archives::commands::describe_audio::archives_describe_audio,
         describe_image => crate::plugins::archives::commands::describe_image::archives_describe_image,
         export_pack_config => crate::plugins::archives::commands::export_pack_config::archives_export_pack_config,
@@ -29,6 +31,7 @@ macro_rules! for_each_tauri_command_domain {
         list_shared_payloads => crate::plugins::archives::commands::list_shared_payloads::archives_list_shared_payloads,
         open_project => crate::plugins::archives::commands::open_project::archives_open_project,
         pack_directory => crate::plugins::archives::commands::pack_directory::archives_pack_directory,
+        patch_archives => crate::plugins::archives::commands::patch_archives::archives_patch_archives,
         read_file => crate::plugins::archives::commands::read_file::archives_read_file,
         unpack_directory => crate::plugins::archives::commands::unpack_directory::archives_unpack_directory,
       }

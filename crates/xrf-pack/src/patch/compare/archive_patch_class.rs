@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 /// What a comparison decided about one engine identity.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ArchivePatchClass {

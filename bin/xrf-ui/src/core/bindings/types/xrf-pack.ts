@@ -143,6 +143,126 @@ export type ArchivePackResult = {
   speed: number;
 };
 
+/** One entry a comparison classified, named by the identity both sides fold it to. */
+export type ArchivePatchChange = {
+  /** Engine identity: lower-case, backslash-separated, as `CLocatorAPI::Register` folds both spellings to. */
+  name: string;
+  class: ArchivePatchClass;
+  base: ArchivePatchSide | null;
+  target: ArchivePatchSide | null;
+};
+
+/** What a comparison decided about one engine identity. */
+export type ArchivePatchClass =
+  /** Only the target has it, so the patch carries it. */
+  | "added"
+  /** Both have it and their payloads differ, so the patch carries the target's. */
+  | "modified"
+  /** Only the base has it. The patch cannot carry this, and says so. */
+  | "removed";
+
+/** Comparison roots, entry filters, and patch volume settings. */
+export type ArchivePatchConfig = {
+  /** Root of the release to patch. Installations use `fsgame.ltx` mount order; later declarations win. */
+  base: string;
+  /** Root the new build is mounted from. */
+  target: string;
+  destination: string;
+  /** Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on. */
+  name: string;
+  /** Logical prefixes the comparison is restricted to, or the whole of both worlds when empty. */
+  include: Array<string>;
+  /** Logical prefixes dropped from the comparison, applied after [`Self::include`]. */
+  ignore: Array<string>;
+  /** Extension patterns that keep a file out of the comparison, such as `*.txt`, matched with the dot. */
+  excludeExtensions: Array<string>;
+  /** Verbatim `[header]` text written as chunk 666, defaulting to the mountable gamedata header. */
+  header: string | null;
+  mode: ArchivePackMode;
+  maxVolumeSize: number;
+  isWithOversizedVolumes: boolean;
+  volumeExtension: ArchiveVolumeExtension;
+};
+
+/**
+ * One place a comparison read entries from, listed once per report and referred to by index.
+ *
+ * Mirrors [`XrayAssetContainer`] without its `relative_path`. That field is the reason a container cannot simply be
+ * shared — it differs per entry — and it is also the reason sharing is worth arranging: nothing downstream reads it,
+ * because the logical name is the identity every consumer of a comparison already works in.
+ *
+ * The saving is not marginal. A comparison of two real gamedata trees reported 34,513 changed entries across 46,352
+ * sides, and named one of **two** distinct roots on every one of them: 6.3 MB of a 16.9 MB report, 37% of the file,
+ * to say something a two-line table says once.
+ */
+export type ArchivePatchOrigin =
+  /** A loose tree, named by the root it mounted at. */
+  | { kind: "directory"; root: string }
+  /** The archive volume set at `path`. */
+  | { kind: "archive"; path: string };
+
+/** Patch publication outcome, serialized with a `kind` tag. */
+export type ArchivePatchPublication =
+  /** No write was attempted: a comparison or a run cancelled before publication. */
+  | { kind: "compared" }
+  /** No added or modified entries required publication. Removed entries may still exist. */
+  | { kind: "unnecessary" }
+  /** Publication was attempted; the result records completion, cancellation, and retained volumes. */
+  | ({
+      kind: "published";
+    } & ArchivePackResult);
+
+/**
+ * Archive comparison details and publication outcome. Empty change lists are serialized; unchanged entries are
+ * counted.
+ */
+export type ArchivePatchResult = {
+  /** Whether the run reached the end of its work or was stopped. */
+  outcome: JobOutcome;
+  /** Entries only the target holds, which the patch carries. */
+  added: Array<ArchivePatchChange>;
+  /** Entries both hold with differing payloads, which the patch carries from the target. */
+  modified: Array<ArchivePatchChange>;
+  /** Entries only the base holds. Reported but never deleted: the `.db` format cannot encode deletions. */
+  removed: Array<ArchivePatchChange>;
+  /** Entries both sides read identically, counted rather than listed. */
+  unchanged: number;
+  /**
+   * Every volume set and loose root the run read from, which each side of each change names by index.
+   *
+   * Shared rather than repeated per entry: a comparison meets a handful of origins and classifies tens of thousands
+   * of entries, so naming one on every side is most of a large report's weight.
+   */
+  origins: Array<ArchivePatchOrigin>;
+  /** Entry pairs requiring a computed checksum. Excludes optional byte-for-byte verification reads. */
+  payloadsRead: number;
+  /**
+   * Total unpacked size of added and modified target entries, including previews. Matches `size_source` for a
+   * complete publication; archive size is determined when writing.
+   */
+  sizeCarried: number;
+  /** What was done with the difference. */
+  publication: ArchivePatchPublication;
+  duration: number;
+  /** The share of `duration` spent mounting both sides and deciding what differs. */
+  compareDuration: number;
+  /** The share of `duration` spent writing the difference into volumes, zero where none was written. */
+  packDuration: number;
+};
+
+/** Which side of a comparison an entry was read from, and how big it was there. */
+export type ArchivePatchSide = {
+  /**
+   * Position in the report's `origins` of the volume set or loose root this was read from.
+   *
+   * An index rather than the path itself: a comparison names a handful of origins over tens of thousands of entries,
+   * so spelling one out per side is the bulk of a large report and says nothing a shared table cannot.
+   */
+  origin: number;
+  /** Unpacked payload size, from the name table for an archived entry and from metadata for a loose one. */
+  size: number;
+};
+
 /**
  * What unpacking a whole archive project produced.
  *

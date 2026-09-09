@@ -1,7 +1,4 @@
-//! Two-sided worlds the patch tests compare, built under the per-process scratch tree and scoped per test.
-//!
-//! Both shapes a run meets are built the same way: a loose tree is the tree itself, and an archived side is that tree
-//! packed by this crate's own packer, which is how `issues/0127` reproduced an archive concern without committing one.
+//! Loose and archived comparison fixtures in per-test scratch directories.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -48,10 +45,7 @@ pub(crate) fn create_tree(scope: &str, name: &str, files: &[(&str, &[u8])]) -> P
   root
 }
 
-/// Build a loose tree and pack it, returning the directory holding the volumes.
-///
-/// The archived side of every test, produced by the packer rather than committed, so the fixtures cannot drift from
-/// what this crate actually writes.
+/// Packs a scratch tree and returns the archive directory.
 pub(crate) fn create_volumes(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
   let source: PathBuf = create_tree(scope, &format!("{name}-source"), files);
   let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{name}"));
@@ -75,19 +69,19 @@ pub(crate) fn destination(scope: &str) -> PathBuf {
   path
 }
 
-/// Compare two root sets and publish, with default options.
+/// Compares two roots and publishes with default options.
 pub(crate) fn patch(base: &Path, target: &Path, into: &Path) -> ArchivePatchResult {
   ArchivePatcher::patch(&config(base, target, into)).expect("the comparison runs")
 }
 
-/// Compare two root sets without publishing, with default options.
+/// Compares two roots without publishing, using default options.
 pub(crate) fn compare(base: &Path, target: &Path, into: &Path) -> ArchivePatchResult {
   ArchivePatcher::compare(&config(base, target, into)).expect("the comparison runs")
 }
 
 /// The configuration a test's two roots and destination make.
 pub(crate) fn config(base: &Path, target: &Path, into: &Path) -> ArchivePatchConfig {
-  ArchivePatchConfig::new(vec![base.to_path_buf()], vec![target.to_path_buf()], into, "patch")
+  ArchivePatchConfig::new(base, target, into, "patch")
 }
 
 /// Engine names of the entries a published patch actually holds, in table order.

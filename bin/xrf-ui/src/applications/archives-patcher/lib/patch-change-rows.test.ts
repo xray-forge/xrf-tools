@@ -1,0 +1,112 @@
+import { describe, expect, it } from "@jest/globals";
+
+import { IPatchChangeRow, toPatchChangeRows } from "@/applications/archives-patcher/lib/patch-change-rows";
+import { ArchivePatchChange, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
+
+/** The table every side indexes into: a volume set at 0, a loose tree at 1. */
+const ORIGINS: ArchivePatchResult["origins"] = [
+  { kind: "archive", path: "C:\\db" },
+  { kind: "directory", root: "C:\\t" },
+];
+
+function archived(size: number): ArchivePatchChange["base"] {
+  return { origin: 0, size };
+}
+
+function loose(size: number): ArchivePatchChange["target"] {
+  return { origin: 1, size };
+}
+
+function result(patch: Partial<ArchivePatchResult> = {}): ArchivePatchResult {
+  return { added: [], modified: [], removed: [], unchanged: 99, origins: ORIGINS, ...patch } as ArchivePatchResult;
+}
+
+describe("toPatchChangeRows", () => {
+  it("carries every class and leaves the unchanged count out of the table", () => {
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        added: [{ name: "a.ltx", class: "added", base: null, target: loose(10) }],
+        modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
+        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
+      })
+    );
+
+    expect(rows.map((row) => row.class)).toEqual(["added", "modified", "removed"]);
+    expect(rows).toHaveLength(3);
+  });
+
+  it("keeps the class raw so the label and the colour cannot disagree", () => {
+    // A removal is not a deletion the patch performs - the format has no tombstone and the file stays readable from
+    // the base. Naming it is the renderer's job; this only has to hand it the class it decided.
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({ removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }] })
+    );
+
+    expect(rows[0]?.class).toBe("removed");
+  });
+
+  it("sizes a carried entry by the target and a removal by what stays behind", () => {
+    // The two sides of a modification differ, and the one worth showing is what the patch will write.
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
+        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
+      })
+    );
+
+    expect(rows[0]?.size).toBe(30);
+    expect(rows[1]?.size).toBe(40);
+  });
+
+  it("reports the size as a number rather than a formatted string, so the column sorts", () => {
+    // "9 KB" sorts above "1 MB" as text, which is exactly the ordering a size column exists to avoid.
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        added: [
+          { name: "small.ltx", class: "added", base: null, target: loose(9_000) },
+          { name: "large.dds", class: "added", base: null, target: loose(1_000_000) },
+        ],
+      })
+    );
+
+    expect(rows.map((row) => row.size).sort((left, right) => left - right)).toEqual([9_000, 1_000_000]);
+  });
+
+  it("resolves each side against the report's origin table", () => {
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        modified: [{ name: "b.ltx", class: "modified", base: archived(20), target: loose(30) }],
+        removed: [{ name: "c.ltx", class: "removed", base: archived(40), target: null }],
+      })
+    );
+
+    expect(rows[0]?.origin).toBe("C:\\t");
+    expect(rows[1]?.origin).toBe("C:\\db");
+  });
+
+  it("hands rows sharing an origin the same string rather than a copy each", () => {
+    // The reason the table exists: the origin is resolved once per report, not once per row.
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        added: [
+          { name: "a.ltx", class: "added", base: null, target: loose(10) },
+          { name: "b.ltx", class: "added", base: null, target: loose(20) },
+        ],
+      })
+    );
+
+    expect(rows[0]?.origin).toBe(rows[1]?.origin);
+  });
+
+  it("leaves the origin empty when an index names nothing, rather than rendering undefined", () => {
+    // A row is worth showing even if the table cannot explain where it came from.
+    const rows: Array<IPatchChangeRow> = toPatchChangeRows(
+      result({
+        origins: [],
+        added: [{ name: "a.ltx", class: "added", base: null, target: loose(10) }],
+      })
+    );
+
+    expect(rows[0]?.origin).toBe("");
+  });
+});

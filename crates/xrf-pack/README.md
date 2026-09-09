@@ -39,17 +39,19 @@ root. `extract_file` writes to the exact path supplied by the caller, which may 
 `patch` also writes added and modified entries into new volumes. Removed entries are reported but cannot be encoded:
 the archive format has no deletion marker.
 
-List roots in engine mount order: later roots override earlier ones. Write patches outside both sets of input roots,
-then deploy them where `fsgame.ltx` loads them after the base archives. Stock and Anomaly configurations declare
-`$arch_dir_patches$` immediately before `$game_data$`.
+Each side is one root: an installation, a directory of volumes, or a loose gamedata tree. An installation is enough on
+its own, because `XrayMountPlan::from_fsgame` expands `fsgame.ltx` into every root the game declares, ordered the way
+the engine registers them. Write patches outside both input roots, then deploy them where `fsgame.ltx` loads them after
+the base archives: stock and Anomaly configurations both declare `$arch_dir_patches$` immediately before
+`$game_data$`.
 
 ```rust,no_run
 use xrf_pack::{ArchivePatchConfig, ArchivePatchResult, ArchivePatcher};
 
 # fn main() -> xrf_error::XrfResult {
 let config: ArchivePatchConfig = ArchivePatchConfig::new(
-  vec!["C:\\Games\\Anomaly\\db".into()],
-  vec!["C:\\work\\gamedata".into()],
+  "C:\\Games\\Anomaly",
+  "C:\\work\\gamedata",
   "C:\\work\\patches",
   "patch_02",
 );

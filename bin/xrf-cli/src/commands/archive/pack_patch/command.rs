@@ -23,20 +23,16 @@ impl GenericCommand for PackPatchCommand {
       .about("Command to pack what changed between two X-Ray worlds into overriding *.db archive volumes")
       .arg(
         Arg::new("base")
-          .help(
-            "Root of the release being patched, repeatable in engine order where a later root overrides an earlier one",
-          )
+          .help("Root of the release being patched: an installation, a directory of volumes, or a gamedata tree")
           .long("base")
           .required(true)
-          .action(ArgAction::Append)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("target")
-          .help("Root of the new build, repeatable in the same order sense as --base")
+          .help("Root of the new build the patch should deliver")
           .long("target")
           .required(true)
-          .action(ArgAction::Append)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(

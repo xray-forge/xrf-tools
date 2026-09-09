@@ -2,27 +2,17 @@ use xrf_output::OutputOptions;
 use xrf_pack::{ArchivePatchConfig, ArchivePatchPublication, ArchivePatchResult};
 use xrf_utils::format_path;
 
-/// Say what the run was pointed at, before it costs anything to find out it was the wrong pair.
+/// Prints the comparison roots and, for publishing runs, the destination.
 pub(crate) fn describe_inputs(output: &OutputOptions, config: &ArchivePatchConfig, is_dry_run: bool) {
-  for base in &config.base {
-    xrf_output::info!(output, "Patch base: {}", format_path(base));
-  }
-
-  for target in &config.target {
-    xrf_output::info!(output, "Patch target: {}", format_path(target));
-  }
+  xrf_output::info!(output, "Patch base: {}", format_path(&config.base));
+  xrf_output::info!(output, "Patch target: {}", format_path(&config.target));
 
   if !is_dry_run {
     xrf_output::info!(output, "Patch destination: {}", format_path(&config.destination));
   }
 }
 
-/// Say what the comparison found, and what became of it.
-///
-/// The headline comes off `publication`, so the three outcomes a run can have are three branches rather than a
-/// sentence assembled from an empty volume list and a flag. Removals get a line of their own instead of a place in the
-/// counts: they are the one class the format cannot carry, and a reader skimming a successful run would otherwise
-/// never learn they exist.
+/// Prints the publication outcome, counts, sizes, timings, and a warning for entries the patch cannot delete.
 pub(crate) fn describe_result(output: &OutputOptions, result: &ArchivePatchResult) {
   describe_headline(output, result);
 
@@ -51,11 +41,21 @@ pub(crate) fn describe_result(output: &OutputOptions, result: &ArchivePatchResul
     result.payloads_read,
   );
 
-  if let Some(published) = result.publication.get_published() {
-    let (size_source, size_written): (String, String) =
-      xrf_utils::format_bytes_pair(published.size_source, published.size_written);
+  // Always said, including on a comparison: the carried bytes are known before anything is written, and "how big is
+  // this patch going to be" is the question a preview exists to answer. What the volumes weigh is only added once
+  // they exist, because compression and payload sharing decide it.
+  match result.publication.get_published() {
+    Some(published) => {
+      let (size_carried, size_written): (String, String) =
+        xrf_utils::format_bytes_pair(result.size_carried, published.size_written);
 
-    xrf_output::info!(output, "Size: {size_source} carried, {size_written} written");
+      xrf_output::info!(output, "Size: {size_carried} carried, {size_written} written");
+    }
+    None => xrf_output::info!(
+      output,
+      "Size: {} to carry",
+      xrf_utils::format_bytes(result.size_carried)
+    ),
   }
 }
 

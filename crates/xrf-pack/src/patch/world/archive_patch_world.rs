@@ -4,46 +4,42 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayMountMode, XrayMountPlan, XrayVfs};
 
-use crate::patch::compare::ArchivePatchSide;
+use crate::patch::compare::{ArchivePatchOrigins, ArchivePatchSide};
 use crate::patch::config::ArchivePatchScope;
 use crate::patch::world::archive_patch_entry_point::require_gamedata_entry_point;
 use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole};
 
-/// One side of a comparison: the roots it was given, mounted as the engine would see them.
-///
-/// Everything the comparison may ask about a side goes through here, so nothing downstream has to know whether an
-/// entry came out of a volume or off the disk. That is what lets one comparison serve all four shapes of run.
+/// One comparison root mounted through the VFS, with archive and loose-file reads.
 pub(crate) struct ArchivePatchWorld {
   vfs: XrayVfs,
-  roots: Vec<PathBuf>,
+  root: PathBuf,
   role: ArchivePatchRole,
 }
 
 impl ArchivePatchWorld {
-  /// Mount `roots` in engine order, where a later root overrides an earlier one.
+  /// Mounts an installation, archive directory, or loose tree with [`XrayMountMode::Auto`].
   ///
-  /// Engine order rather than priority order, because that is the order the thing being modelled is written in:
-  /// `fsgame.ltx` declares `$arch_dir_patches$` after the content archives and `$game_data$` after all of them, and
-  /// `CLocatorAPI::Register` overwrites on every hit, so the last declaration is what the game reads. The mount plan
-  /// wants the opposite — [`XrayVfs`] takes the first mount that holds a path — so the list is reversed here, once,
-  /// where the reason for it can be written down.
+  /// Installations use `fsgame.ltx` mount order; later declarations win.
   ///
   /// # Errors
   ///
-  /// Returns an invalid error when a root cannot be planned, when nothing mounted, or when a mounted volume declares
-  /// an entry point other than the gamedata root.
-  pub(crate) fn mount(roots: &[PathBuf], role: ArchivePatchRole) -> XrfResult<Self> {
+  /// Rejects unplannable or empty mounts and archive entry points outside gamedata. Propagates mount errors.
+  pub(crate) fn mount(root: &Path, role: ArchivePatchRole) -> XrfResult<Self> {
+    let plan: XrayMountPlan = XrayMountMode::Auto.plan(root).map_err(|error| {
+      XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
+    })?;
+
     let world: Self = Self {
-      vfs: XrayVfs::from_plan(&Self::plan(roots, role)?)?,
-      roots: roots.to_vec(),
+      vfs: XrayVfs::from_plan(&plan)?,
+      root: root.to_path_buf(),
       role,
     };
 
     if world.vfs.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
-        "Nothing mounted from the {role} root(s): {}. A comparison needs two worlds, and an empty one would report \
+        "Nothing mounted from the {role} root '{}'. A comparison needs two worlds, and an empty one would report \
          every file of the other as a difference.",
-        world.describe_roots()
+        world.describe_root()
       )));
     }
 
@@ -52,10 +48,7 @@ impl ArchivePatchWorld {
     Ok(world)
   }
 
-  /// The entries in scope, by engine identity, in the order the VFS already sorts them.
-  ///
-  /// Sorted output is what lets the comparison walk both sides once rather than build a map of either, which at two
-  /// mounted installations is the difference that decides the run's peak.
+  /// Returns entries in scope, sorted by engine identity.
   pub(crate) fn list_scoped(&self, scope: &ArchivePatchScope) -> Vec<XrayAsset> {
     let mut entries: Vec<XrayAsset> = self.vfs.list_entries();
 
@@ -65,9 +58,12 @@ impl ArchivePatchWorld {
   }
 
   /// What this side reports about one entry it holds.
-  pub(crate) fn to_side(&self, asset: &XrayAsset) -> ArchivePatchSide {
+  ///
+  /// Takes the interner rather than owning one, so both worlds number their origins against the same table and an
+  /// index means the same thing whichever side produced it.
+  pub(crate) fn to_side(&self, asset: &XrayAsset, origins: &mut ArchivePatchOrigins) -> ArchivePatchSide {
     ArchivePatchSide {
-      container: asset.get_container().clone(),
+      origin: origins.intern(asset.get_container()),
       size: self
         .vfs
         .read_size(asset.get_logical_path().as_str())
@@ -75,11 +71,11 @@ impl ArchivePatchWorld {
     }
   }
 
-  /// This side's checksum for one entry, taken from the source where it is free and computed where it is not.
+  /// Returns the recorded archive CRC or hashes the loose payload.
   ///
   /// # Errors
   ///
-  /// Returns the read error of a payload that had to be hashed.
+  /// Propagates payload read errors.
   pub(crate) fn read_checksum(&self, name: &str) -> XrfResult<ArchivePatchChecksum> {
     match self.vfs.read_recorded_crc(name) {
       Some(crc) => Ok(ArchivePatchChecksum::Recorded(crc)),
@@ -101,44 +97,20 @@ impl ArchivePatchWorld {
     &self.vfs
   }
 
-  /// The root holding `path`, when this side mounted one that does.
-  pub(crate) fn find_root_containing(&self, path: &Path) -> Option<&Path> {
-    self
-      .roots
-      .iter()
-      .find(|root| crate::path::is_inside_directory(path, root))
-      .map(PathBuf::as_path)
+  /// Whether this side's root holds `path`.
+  pub(crate) fn contains(&self, path: &Path) -> bool {
+    crate::path::is_inside_directory(path, &self.root)
+  }
+
+  pub(crate) fn get_root(&self) -> &Path {
+    &self.root
   }
 
   pub(crate) const fn get_role(&self) -> ArchivePatchRole {
     self.role
   }
 
-  pub(crate) fn describe_roots(&self) -> String {
-    self
-      .roots
-      .iter()
-      .map(|root| format!("'{}'", format_path(root)))
-      .collect::<Vec<_>>()
-      .join(", ")
-  }
-
-  /// The mount plan `roots` make, highest priority first.
-  ///
-  /// Walked in reverse so the last root named becomes the first mount planned, and each earlier one is layered
-  /// *behind* what is already there — which is the same sentence as "a later root overrides an earlier one", written
-  /// in the plan's own vocabulary.
-  fn plan(roots: &[PathBuf], role: ArchivePatchRole) -> XrfResult<XrayMountPlan> {
-    let mut plan: XrayMountPlan = XrayMountPlan::new();
-
-    for root in roots.iter().rev() {
-      let next: XrayMountPlan = XrayMountMode::Auto.plan(root).map_err(|error| {
-        XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
-      })?;
-
-      plan = plan.behind(next);
-    }
-
-    Ok(plan)
+  pub(crate) fn describe_root(&self) -> String {
+    format_path(&self.root).to_string()
   }
 }

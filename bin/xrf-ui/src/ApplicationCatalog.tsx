@@ -12,6 +12,7 @@ import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";
 import { ARCHIVES_PACKER_APPLICATION } from "@/applications/archives-packer";
+import { ARCHIVES_PATCHER_APPLICATION } from "@/applications/archives-patcher";
 import { ARCHIVES_UNPACKER_APPLICATION } from "@/applications/archives-unpacker";
 import { CHARACTERS_EXPLORER_APPLICATION } from "@/applications/characters-explorer";
 import { CONFIGS_EXPLORER_APPLICATION } from "@/applications/configs-explorer";
@@ -55,6 +56,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
   applications: [
     ARCHIVES_EXPLORER_APPLICATION,
     ARCHIVES_PACKER_APPLICATION,
+    ARCHIVES_PATCHER_APPLICATION,
     ARCHIVES_UNPACKER_APPLICATION,
     CONFIGS_EXPLORER_APPLICATION,
     CONFIGS_VERIFIER_APPLICATION,

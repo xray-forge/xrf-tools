@@ -11,6 +11,8 @@ interface ICommandResultFindingsProps<T> {
   getSearchText: (row: T) => string;
   emptyLabel: string;
   searchPlaceholder?: string;
+  /** Columns worth keeping but not worth the width by default; the columns panel still offers them. */
+  hiddenColumns?: Array<string>;
 }
 
 /**
@@ -26,6 +28,7 @@ export function CommandResultFindings<T>({
   getSearchText,
   emptyLabel,
   searchPlaceholder = "Filter findings",
+  hiddenColumns,
 }: ICommandResultFindingsProps<T>): ReactElement {
   return (
     <DataTable<T>
@@ -34,6 +37,7 @@ export function CommandResultFindings<T>({
       emptyLabel={emptyLabel}
       getRowId={getRowId}
       getSearchText={getSearchText}
+      hiddenColumns={hiddenColumns}
       rows={rows}
       searchPlaceholder={searchPlaceholder}
     />

@@ -5,7 +5,7 @@ import { ReactElement, ReactNode } from "react";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPackerEditableRowProps extends BaseComponentProps {
+interface IEditableListItemProps extends BaseComponentProps {
   removeLabel: string;
   isDisabled?: boolean;
   onRemove: () => void;
@@ -13,9 +13,9 @@ interface IPackerEditableRowProps extends BaseComponentProps {
 }
 
 /**
- * Editable fields followed by the action that removes their rule or header entry.
+ * Editable fields with a remove action.
  */
-export function PackerEditableRow({
+export function EditableListItem({
   "data-testid": dataTestId,
   id,
   className,
@@ -23,7 +23,7 @@ export function PackerEditableRow({
   isDisabled,
   onRemove,
   children,
-}: IPackerEditableRowProps): ReactElement {
+}: IEditableListItemProps): ReactElement {
   return (
     <Stack
       data-testid={dataTestId}

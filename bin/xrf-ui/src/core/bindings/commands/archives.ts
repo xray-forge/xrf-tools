@@ -5,6 +5,7 @@ import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 import {
   ArchivesExtractRequest,
   ArchivesPackRequest,
+  ArchivesPatchRequest,
   ArchivesUnpackRequest,
   AssetTextureDescriptor,
   AudioDescriptor,
@@ -23,6 +24,8 @@ import {
   ArchiveExtractResult,
   ArchivePackConfig,
   ArchivePackResult,
+  ArchivePatchConfig,
+  ArchivePatchResult,
   ArchiveUnpackResult,
 } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -31,12 +34,21 @@ import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 export const archivesCommands = {
   closeProject: () => __TAURI_INVOKE<null>("plugin:archives|close_project"),
   /**
+   * Compares two roots without writing files.
+   *
+   * Ignores `is_forced` and takes no destination lease.
+   */
+  compareArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchivePatchResult>("plugin:archives|compare_archives", { request, jobId, progress }),
+  /**
    * Hand back a packing configuration with nothing chosen yet.
    *
    * The editor starts from this rather than from its own literals, so defaults that belong to the format
    * - the volume ceiling, the skip list, the mode - have one definition, in the packer.
    */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|default_pack_config"),
+  /** Returns the format defaults with empty paths and the volume name `patch`. */
+  defaultPatchConfig: () => __TAURI_INVOKE<ArchivePatchConfig>("plugin:archives|default_patch_config"),
   /**
    * Report whatever the engine would read out of a sound, without handing over the sound.
    *
@@ -142,21 +154,21 @@ export const archivesCommands = {
   listSharedPayloads: () => __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads"),
   openProject: (path: string) => __TAURI_INVOKE<ArchiveProject>("plugin:archives|open_project", { path }),
   /**
-   * Pack a directory into archive volumes from a configuration held by the caller.
+   * Packs a directory using the supplied configuration.
    *
-   * Takes the whole configuration rather than a file path, so the editor packs exactly what is on screen
-   * without having to save it first.
-   *
-   * Holds its destination exclusively for the whole run, so a second request for the same output set is refused rather
-   * than allowed to truncate the volumes this one is writing.
-   *
-   * `is_forced` is the user answering for a destination that already holds this set; without it such a run is refused
-   * before anything is written. It also decides what a stopped run leaves: an unforced one takes back the volumes it
-   * made and the destination is untouched, while a forced one cannot tell its own output from what it replaced and
-   * answers with a result naming every volume path it opened.
+   * Holds an exclusive destination lease. Replacing an existing set requires `is_forced`. Unforced runs roll
+   * back on failure or cancellation; forced runs cannot restore overwritten volumes.
    */
   packDirectory: (request: ArchivesPackRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { request, jobId, progress }),
+  /**
+   * Publishes added and modified entries as patch volumes.
+   *
+   * Holds an exclusive destination lease and shares the publishing group with archive packing. Replacing an
+   * existing set requires `is_forced`.
+   */
+  patchArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<ArchivePatchResult>("plugin:archives|patch_archives", { request, jobId, progress }),
   readFile: (path: string) => __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { path }),
   /**
    * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.

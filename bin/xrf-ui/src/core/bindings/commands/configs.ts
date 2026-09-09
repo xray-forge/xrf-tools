@@ -29,12 +29,7 @@ export const configsCommands = {
    */
   formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { request, jobId, progress }),
-  /**
-   * Verify the LTX configs roots exposes.
-   *
-   * Read-only, so it goes through the roots and covers archived configs too. `xrf-ltx` draws the same
-   * line: its read-only check reads through the VFS where its rewrite refuses archived winners.
-   */
+  /** Verifies LTX configs through the VFS, including archived files. */
   verifyDirectory: (request: ConfigsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { request, jobId, progress }),
 };

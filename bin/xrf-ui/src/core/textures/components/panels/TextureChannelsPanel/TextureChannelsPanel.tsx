@@ -15,6 +15,7 @@ import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { ABSENT_VALUE } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
 import {
@@ -138,21 +139,19 @@ export function TextureChannelsPanel({
             caption={texels ? "Under the pointer, as stored and as reconstructed" : undefined}
             isFirst
           >
-            {readout ? (
+            {texels ? (
               <>
-                <EditorPanelProperty label={"At"} value={readout.position} />
-                <EditorPanelProperty label={"Bump"} value={readout.bump} />
-                <EditorPanelProperty label={"Bump#"} value={readout.companion} />
-                <EditorPanelProperty label={"Normal"} value={readout.normal} />
-                <EditorPanelProperty label={"Gloss"} value={readout.gloss} />
-                <EditorPanelProperty label={"Height"} value={readout.height} />
+                <EditorPanelProperty label={"At"} value={readout?.position ?? ABSENT_VALUE} />
+                <EditorPanelProperty label={"Bump"} value={readout?.bump ?? ABSENT_VALUE} />
+                <EditorPanelProperty label={"Bump#"} value={readout?.companion ?? ABSENT_VALUE} />
+                <EditorPanelProperty label={"Normal"} value={readout?.normal ?? ABSENT_VALUE} />
+                <EditorPanelProperty label={"Gloss"} value={readout?.gloss ?? ABSENT_VALUE} />
+                <EditorPanelProperty label={"Height"} value={readout?.height ?? ABSENT_VALUE} />
               </>
             ) : (
               <EditorPanelProperty
                 label={"Readout"}
-                value={
-                  texels ? "Point at a tile" : "Unavailable: this pair is stored as blocks rather than as plain texels"
-                }
+                value={"Unavailable: this pair is stored as blocks rather than as plain texels"}
               />
             )}
           </EditorPanelSection>

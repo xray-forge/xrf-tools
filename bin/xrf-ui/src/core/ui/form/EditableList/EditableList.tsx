@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPackerEditableListProps extends BaseComponentProps {
+interface IEditableListProps extends BaseComponentProps {
   addLabel: string;
   emptyLabel: string;
   isDisabled?: boolean;
@@ -13,9 +13,9 @@ interface IPackerEditableListProps extends BaseComponentProps {
 }
 
 /**
- * Rule-list spacing, empty state, and the action that appends a new row.
+ * Editable rows with an empty state and an add action.
  */
-export function PackerEditableList({
+export function EditableList({
   "data-testid": dataTestId,
   id,
   className,
@@ -24,7 +24,7 @@ export function PackerEditableList({
   isDisabled,
   onAdd,
   children,
-}: IPackerEditableListProps): ReactElement {
+}: IEditableListProps): ReactElement {
   return (
     <Stack data-testid={dataTestId} id={id} className={className} spacing={1}>
       {children.length ? (

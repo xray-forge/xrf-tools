@@ -2,14 +2,13 @@ import { EApplicationId } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * Kinds of backend work a tool can start, spelled as the backend registers them.
- *
- * One spelling for each, because the same string addresses a run in the jobs registry, finds it again after a reload,
- * and decides which tool an outcome is attributed to. A constant per tool would let those drift apart silently.
+ * Backend job identifiers used for registration, adoption, and notification attribution.
  */
 export enum EJobKind {
   ARCHIVES_EXTRACT = "archives.extract",
+  ARCHIVES_COMPARE = "archives.compare",
   ARCHIVES_PACK = "archives.pack",
+  ARCHIVES_PATCH = "archives.patch",
   ARCHIVES_UNPACK = "archives.unpack",
   CONFIGS_CHECK_FORMAT = "configs.check-format",
   CONFIGS_FORMAT = "configs.format",
@@ -30,25 +29,34 @@ export enum EJobKind {
 }
 
 /**
- * What a kind of work is, independently of any run of it.
+ * Display metadata for a backend job kind.
  */
 export interface IJobKindDescriptor {
   kind: EJobKind;
-  /** Tool the work belongs to, which is what its notifications are attributed to. */
+  /**
+   * Application credited in job notifications.
+   */
   source: EApplicationId;
-  /** What to call the work in front of a person, where the kind itself is not presentable. */
+  /**
+   * Display label for the job kind.
+   */
   label: string;
 }
 
 /**
- * Every kind of work this application knows how to attribute.
- *
- * Here rather than beside each tool, for the same reason `APPLICATION_CATALOG` is not assembled from the applications:
- * a job outlives the page that started it, so the window that finds it again is usually one where the owning tool was
- * never loaded. Identity that only existed inside a running tool would be unavailable in exactly the case that needs
- * it, which is how an adopted pack came to be announced as `archives.pack` rather than as the packer's work.
+ * Job metadata available independently of application lifetimes.
  */
 export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
+  [EJobKind.ARCHIVES_COMPARE]: {
+    kind: EJobKind.ARCHIVES_COMPARE,
+    source: EApplicationId.ARCHIVES_PATCHER,
+    label: "Archive comparison",
+  },
+  [EJobKind.ARCHIVES_PATCH]: {
+    kind: EJobKind.ARCHIVES_PATCH,
+    source: EApplicationId.ARCHIVES_PATCHER,
+    label: "Archive patching",
+  },
   [EJobKind.SPAWN_PACK]: {
     kind: EJobKind.SPAWN_PACK,
     source: EApplicationId.SPAWN_PACKER,
@@ -147,13 +155,10 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
 };
 
 /**
- * Looks up what a kind of work is.
+ * Looks up display metadata for a backend job kind.
  *
- * Takes a string rather than the enum, because a listing comes from the backend: a build running against a newer
- * backend can be shown a kind it has never heard of, and answering null is how it says so.
- *
- * @param kind - Kind as the backend spelled it.
- * @returns What that kind of work is, or null where this build does not know it.
+ * @param kind - Backend job identifier.
+ * @returns Metadata, or `null` for an unknown kind.
  */
 export function findJobKind(kind: string): Nullable<IJobKindDescriptor> {
   return JOB_KINDS[kind as EJobKind] ?? null;

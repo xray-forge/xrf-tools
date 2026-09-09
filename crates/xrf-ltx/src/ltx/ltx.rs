@@ -53,10 +53,7 @@ impl Ltx {
     self.with_section(ROOT_SECTION)
   }
 
-  /// The root section, when the file declared any field outside a section.
-  ///
-  /// Answers `None` rather than creating it, so reading a document cannot change it. Use [`Self::root_section_mut`] to
-  /// write one.
+  /// Returns the root section without creating it.
   pub fn root_section(&self) -> Option<&Section> {
     self.section(ROOT_SECTION)
   }
@@ -76,11 +73,7 @@ impl Ltx {
     self.sections.contains_key(name)
   }
 
-  /// Say which config declared every section that does not name one yet.
-  ///
-  /// Called by a dialect as it merges one file's sections in, so a section keeps the file that declared it rather than
-  /// the entry point that happened to reach it. Sections already carrying an origin arrived through an include and
-  /// keep theirs.
+  /// Sets the source path on sections without an origin, preserving included sections' origins.
   pub(crate) fn set_section_origins(&mut self, origin: &Arc<str>) {
     for (_, section) in self.sections.iter_mut() {
       if section.origin.is_none() {
@@ -89,10 +82,7 @@ impl Ltx {
     }
   }
 
-  /// Place a whole section, replacing any section of that name.
-  ///
-  /// What a lowering pass uses: it reads a section's fields before it knows the section is finished, so it builds one
-  /// and places it once rather than entering the map for every line.
+  /// Inserts a section, replacing any section with the same name.
   pub(crate) fn insert_section(&mut self, name: String, section: Section) {
     self.sections.insert(name, section);
   }
@@ -157,11 +147,7 @@ impl Ltx {
     self.get_from(section, key).unwrap_or(default)
   }
 
-  /// Give back the growth room resolving needed, which a resolved config never uses again.
-  ///
-  /// Called where a dialect finishes: a config is built field by field, so every section's map is sized for the next
-  /// insertion that will not come. Across an Anomaly tree that slack is the difference between the peak a sweep
-  /// reaches and one a third smaller, and a sweep's peak is simply everything it retains at once.
+  /// Releases spare capacity in the section map and each section's fields.
   pub fn shrink_to_fit(&mut self) {
     self.sections.shrink_to_fit();
 
@@ -180,19 +166,13 @@ impl Ltx {
     self.section_mut(section).and_then(|section| section.remove(key))
   }
 
-  /// Records where this document was read from, as a logical path.
-  ///
-  /// Public because a dialect lives in another crate and has to stamp what it resolved.
+  /// Records the document's source path and directory.
   pub fn set_source_paths(&mut self, logical_path: &str) {
     self.directory = Some(PathBuf::from(Self::directory_of(logical_path)));
     self.path = Some(PathBuf::from(logical_path));
   }
 
-  /// Everything before the last separator of a path, or the empty string for a top-level config.
-  ///
-  /// Splits on both separators, because one call answers for two flavours of path. A dialect is handed a root by
-  /// whichever source holds it: an X-Ray logical path from the VFS, always backslash-separated, or an operating
-  /// system path from [`Self::read_from_file_with_dialect`], which is `/`-separated on Linux and either on Windows.
+  /// Returns the prefix before the last slash or backslash, or an empty string if neither occurs.
   pub fn directory_of(path: &str) -> &str {
     match path.rfind(['\\', '/']) {
       Some(index) => &path[..index],
@@ -744,8 +724,6 @@ a3 = n3
 
   #[test]
   fn duplicate_sections() -> XrfResult {
-    // https://github.com/zonyitoo/rust-ini/issues/49
-
     let input = r"
 [peer]
 foo = a

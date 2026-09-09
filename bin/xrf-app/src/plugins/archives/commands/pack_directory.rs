@@ -10,21 +10,13 @@ use xrf_utils::format_path;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::lease::{PACK_JOB_KIND, to_pack_lease_key};
+use crate::plugins::archives::lease::{PACK_JOB_KIND, PUBLISH_ACTION_GROUP, to_published_set_lease_key};
 use crate::plugins::archives::request::ArchivesPackRequest;
 
-/// Pack a directory into archive volumes from a configuration held by the caller.
+/// Packs a directory using the supplied configuration.
 ///
-/// Takes the whole configuration rather than a file path, so the editor packs exactly what is on screen
-/// without having to save it first.
-///
-/// Holds its destination exclusively for the whole run, so a second request for the same output set is refused rather
-/// than allowed to truncate the volumes this one is writing.
-///
-/// `is_forced` is the user answering for a destination that already holds this set; without it such a run is refused
-/// before anything is written. It also decides what a stopped run leaves: an unforced one takes back the volumes it
-/// made and the destination is untouched, while a forced one cannot tell its own output from what it replaced and
-/// answers with a result naming every volume path it opened.
+/// Holds an exclusive destination lease. Replacing an existing set requires `is_forced`. Unforced runs roll
+/// back on failure or cancellation; forced runs cannot restore overwritten volumes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_directory"))]
 #[tauri::command(rename = "pack_directory")]
 pub async fn archives_pack_directory(
@@ -45,8 +37,8 @@ pub async fn archives_pack_directory(
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, PACK_JOB_KIND)
-      .with_exclusion_group(PACK_JOB_KIND)
-      .with_lease_keys(vec![to_pack_lease_key(&config)])
+      .with_exclusion_group(PUBLISH_ACTION_GROUP)
+      .with_lease_keys(vec![to_published_set_lease_key(&config.destination, &config.name)])
       .with_request(&config)
       .with_progress(progress),
   )?;

@@ -7,7 +7,9 @@ import {
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
 
-/** Just the extensions, for the open dialog and for recognizing one on a path. */
+/**
+ * Supported pack configuration extensions.
+ */
 export const PACK_CONFIG_EXTENSIONS: ReadonlyArray<string> = ["ltx", "json"];
 
 /**
@@ -16,10 +18,7 @@ export const PACK_CONFIG_EXTENSIONS: ReadonlyArray<string> = ["ltx", "json"];
 export const DEFAULT_PACK_CONFIG_EXTENSION: string = "ltx";
 
 /**
- * The variants of the packer's own enums, named rather than spelled out wherever one is compared.
- *
- * Typed as a complete mapping of the generated union, so a variant renamed or dropped in `xrf-archive`
- * fails to compile here instead of silently becoming a comparison that never matches.
+ * Typed constants for the generated archive volume extensions.
  */
 export const ARCHIVE_VOLUME_EXTENSION: { [K in ArchiveVolumeExtension]: K } = {
   Db: "Db",
@@ -68,10 +67,11 @@ export const FALLBACK_PACK_CONFIG: ArchivePackConfig = {
 };
 
 /**
- * Read one key out of the header text.
+ * Reads the first matching header value.
  *
- * The header is carried verbatim because the archive stores it that way, so the editor parses it only
- * far enough to show and change a single line.
+ * @param header - Header text, or `null`.
+ * @param key - Case-sensitive key.
+ * @returns The trimmed value, or `null` when absent.
  */
 export function readHeaderValue(header: Nullable<string>, key: string): Nullable<string> {
   if (!header) {
@@ -90,10 +90,13 @@ export function readHeaderValue(header: Nullable<string>, key: string): Nullable
 }
 
 /**
- * Replace or append one key in the header text, keeping every other line as it was.
+ * Replaces a header key, or removes it for a blank value. Rebuilds the section with CRLF line
+ * endings.
  *
- * An empty value removes the key, and removing the last key removes the header, because an archive with
- * an empty header section is not the same as one with none.
+ * @param header - Current header text.
+ * @param key - Key to replace.
+ * @param value - Value to trim and write.
+ * @returns Updated header, or `null` if no lines remain.
  */
 export function writeHeaderValue(header: Nullable<string>, key: string, value: string): Nullable<string> {
   const lines: Array<string> = (header ?? "")
@@ -113,10 +116,11 @@ export function writeHeaderValue(header: Nullable<string>, key: string, value: s
 }
 
 /**
- * Read one header key as a flag.
+ * Reads a header flag.
  *
- * Accepts what the engine's own LTX reader accepts rather than only the literal it writes, so a header
- * that came from a hand-written configuration reads the same way the game will read it.
+ * @param header - Header text, or `null`.
+ * @param key - Case-sensitive key.
+ * @returns Whether the value is `true`, `on`, `yes`, or `1`, ignoring case.
  */
 export function readHeaderFlag(header: Nullable<string>, key: string): boolean {
   const value: Nullable<string> = readHeaderValue(header, key);
@@ -124,12 +128,24 @@ export function readHeaderFlag(header: Nullable<string>, key: string): boolean {
   return value !== null && ["true", "on", "yes", "1"].includes(value.toLowerCase());
 }
 
-/** Written out in full rather than dropped when false, because a missing key and a false one read alike. */
+/**
+ * Writes a header flag as explicit `true` or `false`.
+ *
+ * @param header - Current header text.
+ * @param key - Key to replace.
+ * @param isEnabled - Flag value.
+ * @returns Updated header text.
+ */
 export function writeHeaderFlag(header: Nullable<string>, key: string, isEnabled: boolean): Nullable<string> {
   return writeHeaderValue(header, key, isEnabled ? "true" : "false");
 }
 
-/** Every header line except the section marker, for listing what a header carries. */
+/**
+ * Reads header key-value pairs in line order.
+ *
+ * @param header - Header text, or `null`.
+ * @returns Trimmed pairs from lines containing `=`.
+ */
 export function readHeaderEntries(header: Nullable<string>): Array<[string, string]> {
   if (!header) {
     return [];
@@ -150,19 +166,11 @@ export function withDirectoryAt(
   return directories.map((directory, at) => (at === index ? { ...directory, ...patch } : directory));
 }
 
-export function withoutAt<T>(items: Array<T>, index: number): Array<T> {
-  return items.filter((_, at) => at !== index);
-}
-
-export function withValueAt(items: Array<string>, index: number, value: string): Array<string> {
-  return items.map((item, at) => (at === index ? value : item));
-}
-
 /**
- * Give an export destination an extension the backend can write.
+ * Appends the default extension when the path lacks a supported suffix.
  *
- * Only a missing or unrecognized suffix is filled in; a path that already names a supported format is left exactly
- * as the user typed it, so choosing `json` in the dialog is never quietly turned back into `ltx`.
+ * @param path - Export path.
+ * @returns The original path if supported, otherwise the path with `.ltx` appended.
  */
 export function withPackConfigExtension(path: string): string {
   const extension: string = path.split(/[\\/]/).pop()?.split(".").slice(1).pop()?.toLowerCase() ?? "";
@@ -171,10 +179,10 @@ export function withPackConfigExtension(path: string): string {
 }
 
 /**
- * Whether the configuration selects anything specific.
+ * Checks whether selection covers the source root; exclusion rules still apply.
  *
- * Selecting nothing is not an empty archive: the packer reads it as the whole source directory, which is
- * worth saying out loud in the editor rather than leaving the sections looking unfinished.
+ * @param config - Pack configuration.
+ * @returns Whether both include lists are empty.
  */
 export function isWholeDirectory(config: ArchivePackConfig): boolean {
   return !config.includeDirectories.length && !config.includeFiles.length;

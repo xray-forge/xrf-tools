@@ -134,22 +134,3 @@ fn every_change_agrees_with_the_class_it_reports() {
     assert!(change.base.is_some());
   }
 }
-
-#[test]
-fn a_later_root_overrides_an_earlier_one() {
-  // Engine order: `fsgame.ltx` declares the overriding path last, so the last root named wins.
-  let scope: &str = "patch_later_root_overrides_earlier";
-  let release: PathBuf = create_volumes(scope, "release", BASE_FILES);
-  let overlay: PathBuf = create_tree(scope, "overlay", &[("configs\\system.ltx", CONFIG_EDITED)]);
-  let target: PathBuf = create_tree(scope, "target", &[("configs\\system.ltx", CONFIG_EDITED)]);
-
-  let layered =
-    crate::patch::config::ArchivePatchConfig::new(vec![release, overlay], vec![target], destination(scope), "patch");
-  let result: ArchivePatchResult =
-    crate::patch::ArchivePatcher::compare(&layered).expect("a layered comparison answers");
-
-  assert!(
-    result.modified.is_empty(),
-    "the overlay already carries the edit, so the target matches the base"
-  );
-}

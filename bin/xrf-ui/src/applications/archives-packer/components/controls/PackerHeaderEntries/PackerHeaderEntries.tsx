@@ -2,14 +2,13 @@ import { default as AddIcon } from "@mui/icons-material/Add";
 import { Stack, TextField, Typography } from "@mui/material";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { PackerEditableRow } from "@/applications/archives-packer/components/controls/PackerEditableRow";
 import {
   readHeaderEntries,
   RESERVED_HEADER_KEYS,
   writeHeaderValue,
 } from "@/applications/archives-packer/lib/pack-config";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { FormRow } from "@/core/ui/form";
+import { EditableListItem, FormRow } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
 
 interface IPackerHeaderEntriesProps {
@@ -48,7 +47,7 @@ export function PackerHeaderEntries({ header, isDisabled, onChange }: IPackerHea
       <Stack spacing={1}>
         {customEntries.length ? (
           customEntries.map(([key, value]) => (
-            <PackerEditableRow
+            <EditableListItem
               key={key}
               removeLabel={`Remove ${key}`}
               isDisabled={isDisabled}
@@ -68,7 +67,7 @@ export function PackerHeaderEntries({ header, isDisabled, onChange }: IPackerHea
                   onChange(writeHeaderValue(header, key, event.target.value))
                 }
               />
-            </PackerEditableRow>
+            </EditableListItem>
           ))
         ) : (
           <Typography variant={"body2"} color={"text.secondary"}>

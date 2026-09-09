@@ -6,6 +6,7 @@ import { ContainerDefinition } from "@/lib/container/container-definition";
 export enum EApplicationId {
   ARCHIVES_EXPLORER = "archives-explorer",
   ARCHIVES_PACKER = "archives-packer",
+  ARCHIVES_PATCHER = "archives-patcher",
   ARCHIVES_UNPACKER = "archives-unpacker",
   CHARACTERS_EXPLORER = "characters-explorer",
   CONFIGS_EXPLORER = "configs-explorer",
