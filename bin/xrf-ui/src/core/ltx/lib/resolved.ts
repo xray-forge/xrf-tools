@@ -12,13 +12,14 @@ import { Nullable } from "@/lib/types/general";
 const ROOT_SECTION: string = "";
 
 /**
- * Where one section sits in the assembled document, gap included.
+ * One section and where it sits in the assembled document, gap included.
  *
- * Kept per section rather than recomputed from the index, because the index is what the layout was derived from and
- * deriving it twice is how the two answers drift apart.
+ * The section travels with its placement rather than beside it in a second array: everything downstream needs both -
+ * the name to fetch a body by, the field count to tell a field line from the gap, the parents to draw the header - and
+ * two arrays held in step is an invariant every reader would have to keep.
  */
 interface IResolvedPlacement {
-  name: string;
+  entry: LtxResolvedIndexEntry;
   /** Line the header sits on. */
   firstLine: number;
   /** Last line the section owns, which is the gap after its fields. */
@@ -87,7 +88,7 @@ export function toResolvedLayout(sections: ReadonlyArray<LtxResolvedIndexEntry>)
     // A header, a line per field the index counted, and the blank line that separates one section from the next.
     number += entry.fieldCount + 2;
 
-    placements.push({ firstLine, lastLine: number - 1, name: entry.name });
+    placements.push({ entry, firstLine, lastLine: number - 1 });
 
     // A section name is unique inside one resolution, but a malformed answer is not worth losing a document over, so
     // the first placement wins and a jump lands on the section a reader scrolls to first.
@@ -105,7 +106,7 @@ export function toResolvedLayout(sections: ReadonlyArray<LtxResolvedIndexEntry>)
     lineCount,
     toSource: (bodies?: Nullable<ReadonlyMap<string, LtxResolvedSection>>): ICodeLineSource => ({
       count: lineCount,
-      getLine: (index: number): ICodeLine => toLine(sections, placements, bodies, index),
+      getLine: (index: number): ICodeLine => toLine(placements, bodies, index),
       // Every source this layout hands out is a view of one document, and the placements are what say so.
       layout: placements,
       // The numbering is the document's own and runs from one, so an address is arithmetic rather than a lookup.
@@ -122,28 +123,25 @@ export function toResolvedLayout(sections: ReadonlyArray<LtxResolvedIndexEntry>)
  * section: the header, one of the fields the index counted, or the blank line that separates it from the next. A field
  * whose body has not arrived draws blank in the place it will occupy, so nothing moves when the page lands.
  *
- * @param sections - The sections as laid out, in the same order as `placements`.
- * @param placements - Where each of those sections sits.
+ * @param placements - Every section of the document and where it sits.
  * @param bodies - Bodies that have arrived, by section name.
  * @param index - Position in the document, from zero.
  * @returns The line at that position.
  */
 function toLine(
-  sections: ReadonlyArray<LtxResolvedIndexEntry>,
   placements: ReadonlyArray<IResolvedPlacement>,
   bodies: Nullable<ReadonlyMap<string, LtxResolvedSection>> | undefined,
   index: number
 ): ICodeLine {
   const number: number = index + 1;
-  const at: number = findPlacement(placements, number);
-  const placement: Nullable<IResolvedPlacement> = placements[at] ?? null;
-  const entry: Nullable<LtxResolvedIndexEntry> = sections[at] ?? null;
+  const placement: Nullable<IResolvedPlacement> = placements[findPlacement(placements, number)] ?? null;
 
   // A position outside the document, which a listing asks for while a shorter one replaces a taller.
-  if (!placement || !entry || number < placement.firstLine) {
+  if (!placement || number < placement.firstLine) {
     return { number, spans: [] };
   }
 
+  const entry: LtxResolvedIndexEntry = placement.entry;
   const offset: number = number - placement.firstLine;
 
   if (offset === 0) {
@@ -283,7 +281,7 @@ function selectPlacements(
   const names: Array<string> = [];
 
   for (let at: number = low; at < placements.length && placements[at].firstLine <= lastLine; at += 1) {
-    names.push(placements[at].name);
+    names.push(placements[at].entry.name);
   }
 
   return names;

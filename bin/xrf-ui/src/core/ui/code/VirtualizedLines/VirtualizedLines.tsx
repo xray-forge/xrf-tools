@@ -28,7 +28,7 @@ const enum ECodeLineReveal {
  *
  * The virtualizer wants an entry per row, and it hands the entry's `id` back to `renderRow` - which is all this
  * listing needs, since the line itself comes from the source. One shared model for every row rather than a line each:
- * a resolved `system.ltx` has 551,000 rows, and the entries exist to be counted and identified, not read.
+ * the entries exist to be counted and identified, not read, and there are as many of them as the document has lines.
  */
 const ROW_MODEL: Readonly<Record<string, never>> = Object.freeze({});
 
@@ -89,12 +89,13 @@ export function VirtualizedLines({
 
   const scrollerRef = useRef<HTMLElement | null>(null);
   const reportedWindowRef = useRef<Nullable<IReportedWindow>>(null);
-  const layoutRef = useRef<Nullable<LayoutList>>(null);
+  const listLayoutRef = useRef<Nullable<LayoutList>>(null);
 
-  if (!layoutRef.current) {
-    // The constructor takes these, but `LayoutList.use` reads the refs it is handed in `layoutParams`
-    // instead, so nothing ever writes to them. The scroller node is captured below rather than here.
-    layoutRef.current = new LayoutList({ container: { current: null }, scroller: { current: null } });
+  if (!listLayoutRef.current) {
+    // The virtualizer's own layout strategy, named apart from `source.layout` - which is the document being drawn.
+    // The constructor takes these refs, but `LayoutList.use` reads the ones it is handed in `layoutParams` instead, so
+    // nothing ever writes to them. The scroller node is captured below rather than here.
+    listLayoutRef.current = new LayoutList({ container: { current: null }, scroller: { current: null } });
   }
 
   const colors: Record<ESyntaxToken, string> = useMemo(() => getSyntaxColors(theme), [theme]);
@@ -102,9 +103,9 @@ export function VirtualizedLines({
 
   // Rows are identified by position rather than by the number they show: a resolved document is
   // assembled out of sections, and nothing stops two of its lines from carrying the same number.
-  // Kept for as long as the document is that tall, because a page of content landing changes what the
-  // lines say and not how many there are - and rebuilding half a million entries per page is the cost
-  // this listing exists to avoid.
+  // Kept for as long as the document is that tall, because content arriving changes what the lines
+  // say and not how many there are - and rebuilding an entry per line is the cost this listing exists
+  // to avoid.
   const virtualizerRows = useMemo(
     () => Array.from({ length: count }, (_, index: number) => ({ id: index, model: ROW_MODEL })),
     [count]
@@ -133,7 +134,7 @@ export function VirtualizedLines({
   const select = useCallback((line: ICodeLine) => onSelectLine?.(line), [onSelectLine]);
 
   const virtualizer = useVirtualizer({
-    layout: layoutRef.current,
+    layout: listLayoutRef.current,
     dimensions: { rowHeight: CODE.lineHeight },
     virtualization: {},
     rows: virtualizerRows,

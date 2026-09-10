@@ -1,8 +1,9 @@
 import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useMemo } from "react";
+import { ReactElement, useMemo } from "react";
 
 import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
+import { useRevealedSection } from "@/core/ltx/components/ConfigsDocumentView/use-revealed-section";
 import { toDocumentLines } from "@/core/ltx/lib/semantic";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
@@ -23,7 +24,7 @@ export function ConfigsAuthoredView({
 }: IConfigsAuthoredViewProps): ReactElement {
   const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
 
-  const revealed: Nullable<string> = documentService.revealedSection;
+  const revealed: Nullable<string> = useRevealedSection();
 
   // Held whole rather than built a line at a time: a config as authored is thousands of lines, and each is coloured
   // from text the backend has already sent.
@@ -37,14 +38,6 @@ export function ConfigsAuthoredView({
     () => document.structure.sections.find((section) => section.name === revealed)?.line ?? null,
     [document, revealed]
   );
-
-  // Cleared once the listing below has acted on it, which child effects run before this one does. Without the clear a
-  // second click on the same section would change no prop and scroll nowhere.
-  useEffect(() => {
-    if (revealed) {
-      documentService.clearRevealed();
-    }
-  }, [documentService, revealed]);
 
   return (
     <Box
