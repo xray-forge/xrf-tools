@@ -40,6 +40,23 @@ function setVirtualizationEnabled(isEnabled: boolean): void {
 }
 
 /**
+ * A source built by hand, for cases about what the listing does when the document behind it changes.
+ *
+ * @param text - Text every one of its lines shows.
+ * @param layout - Identity of the document the lines belong to; two sources sharing it are one document.
+ * @returns A source over 300 lines of that text.
+ */
+function sourceOf(text: string, layout: object): ICodeLineSource {
+  return {
+    count: 300,
+    getLine: (index: number): ICodeLine => line(index + 1, text),
+    indexOfLine: (number: number): number => number - 1,
+    layout,
+    widestNumber: 300,
+  };
+}
+
+/**
  * Gives the listing a viewport and a scroll position it can actually keep.
  *
  * jsdom lays nothing out: it answers `clientHeight` with zero and drops every write to `scrollTop`, so a component
@@ -182,6 +199,35 @@ describe("VirtualizedLines", () => {
     );
 
     expect(list.scrollTop).toBe(199 * CODE.lineHeight);
+  });
+
+  it("opens a different document at its beginning, and leaves a filled-in one where it was", () => {
+    // Two sources sharing a layout are one document with more of its content in hand - a page of resolved section
+    // bodies landing - and throwing the reader back to the top for that would be unusable. Two documents are two
+    // documents, and the second one does not inherit where the reader had scrolled the first.
+    const layout: object = {};
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} source={sourceOf("a", layout)} />
+    );
+    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+
+    list.scrollTop = 500;
+
+    render_.rerender(
+      <>
+        <VirtualizedLines ariaLabel={"Source"} source={sourceOf("a with its bodies", layout)} />
+      </>
+    );
+
+    expect(list.scrollTop).toBe(500);
+
+    render_.rerender(
+      <>
+        <VirtualizedLines ariaLabel={"Source"} source={sourceOf("b", {})} />
+      </>
+    );
+
+    expect(list.scrollTop).toBe(0);
   });
 
   it("moves the listing as little as it can for a step of the selection", () => {

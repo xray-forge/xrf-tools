@@ -258,6 +258,13 @@ export function VirtualizedLines({
     [count, moveTo, selectedIndex]
   );
 
+  // A different document starts at its beginning
+  useEffect(() => {
+    if (scrollerRef.current) {
+      scrollerRef.current.scrollTop = 0;
+    }
+  }, [source.layout]);
+
   useEffect(() => revealLine(selectedIndex, ECodeLineReveal.NEAREST), [revealLine, selectedIndex]);
 
   useEffect(() => {
