@@ -11,9 +11,12 @@ use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 
 /// How many sections one request may ask for.
 ///
-/// A page is what scrolled into view, not a slice of the document a caller chose the size of. Forty covers a tall
-/// window of the shortest sections a config tree has; a request past this is a caller that stopped paging, and
-/// refusing it is better than quietly answering with a message it did not expect.
+/// A page is what scrolled into view, not a slice of the document a caller chose the size of. A section is at least
+/// two lines - its header and the gap after it - so this covers a window twice as tall as any screen the application
+/// runs on; a request past it is a caller that stopped paging, and refusing it is better than quietly answering with a
+/// message it did not expect.
+///
+/// todo: Vertically tuned wide screen?
 const MAXIMUM_SECTIONS_PER_READ: usize = 64;
 
 /// Reads the bodies of the named sections of one entry point.

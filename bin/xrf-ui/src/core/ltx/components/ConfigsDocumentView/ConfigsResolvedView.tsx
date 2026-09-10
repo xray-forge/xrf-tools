@@ -9,6 +9,7 @@ import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
+import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -68,22 +69,35 @@ export function ConfigsResolvedView({
     return <DelayedProgress data-testid={dataTestId} />;
   }
 
+  const showAll: ReactElement = (
+    <Button size={"small"} onClick={() => resolvedService.narrowTo(null)}>
+      Show all
+    </Button>
+  );
+
+   if (!visibleSections.length) {
+    return (
+      <EmptyState
+        data-testid={dataTestId}
+        title={narrowedTo ? "This config declares no sections" : "This entry point resolves to nothing"}
+        description={
+          narrowedTo
+            ? `${narrowedTo} contributes no sections of its own to ${resolvedService.entry ?? "its entry point"}. ` +
+              "A config that only includes others reads this way, and so does one whose sections a patch deleted."
+            : `${resolvedService.entry ?? "This entry point"} holds no sections once resolved.`
+        }
+        action={narrowedTo ? showAll : undefined}
+      />
+    );
+  }
+
   return (
     <Box
       data-testid={dataTestId}
       sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
     >
       {narrowedTo ? (
-        <Alert
-          severity={"info"}
-          variant={"outlined"}
-          square
-          action={
-            <Button size={"small"} onClick={() => resolvedService.narrowTo(null)}>
-              Show all
-            </Button>
-          }
-        >
+        <Alert severity={"info"} variant={"outlined"} square action={showAll}>
           {`Showing the ${visibleSections.length} section(s) this config declares, resolved through ` +
             `${resolvedService.entry ?? "its entry point"}.`}
         </Alert>

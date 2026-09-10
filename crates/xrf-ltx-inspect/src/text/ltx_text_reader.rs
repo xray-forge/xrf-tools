@@ -27,10 +27,41 @@ impl LtxTextReader {
       },
       Err(_) => LtxFileText {
         is_normalized: false,
-        lines: contents.lines().map(String::from).collect(),
+        lines: Self::split_lines(contents),
         path: String::from(path),
       },
     }
+  }
+
+  /// How many lines a file shows, which is the count an editor shows: one more than the newlines it holds.
+  ///
+  /// [`str::lines`] answers one fewer for the usual file. It reads a final newline as the terminator of the last line
+  /// rather than as the start of the empty one after it, so a viewer agreeing with it draws a file a line shorter than
+  /// the one on disk - and an editor writing those lines back would drop the newline the file ended with.
+  ///
+  /// An empty file has no lines at all rather than one empty one, so a viewer can say the file is empty instead of
+  /// drawing a blank row and leaving the reader to guess.
+  fn count_lines(contents: &str) -> usize {
+    if contents.is_empty() {
+      0
+    } else {
+      contents.bytes().filter(|byte| *byte == b'\n').count() + 1
+    }
+  }
+
+  /// The lines of a file nothing could parse, split off the text itself.
+  ///
+  /// Split rather than [`str::lines`] for the reason above, which leaves this to strip the carriage returns of a CRLF
+  /// file itself.
+  fn split_lines(contents: &str) -> Vec<String> {
+    if contents.is_empty() {
+      return Vec::new();
+    }
+
+    contents
+      .split('\n')
+      .map(|line| String::from(line.strip_suffix('\r').unwrap_or(line)))
+      .collect()
   }
 
   /// Places every statement at the line it was written on, leaving the gaps between them empty.
@@ -38,7 +69,7 @@ impl LtxTextReader {
   /// The document holds no blank-line statement - a gap between consecutive spans is the blank run - so the lines are
   /// rebuilt by position rather than by iteration order.
   fn to_lines(document: &LtxDocument, contents: &str) -> Vec<String> {
-    let mut lines: Vec<String> = Vec::with_capacity(contents.lines().count());
+    let mut lines: Vec<String> = Vec::with_capacity(Self::count_lines(contents));
 
     for (item, source) in document.get_items().iter().zip(document.get_source_lines()) {
       let line: usize = item.span.get_line();
@@ -56,7 +87,7 @@ impl LtxTextReader {
 
     // A file ending in blank lines has no statement to place there, and a viewer that dropped them would show a shorter
     // file than the one on disk.
-    lines.resize(lines.len().max(contents.lines().count()), String::new());
+    lines.resize(lines.len().max(Self::count_lines(contents)), String::new());
 
     lines
   }

@@ -8,6 +8,7 @@ import { toDocumentLines } from "@/core/ltx/lib/semantic";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
+import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -38,6 +39,16 @@ export function ConfigsAuthoredView({
     () => document.structure.sections.find((section) => section.name === revealed)?.line ?? null,
     [document, revealed]
   );
+
+  if (!source.count) {
+    return (
+      <EmptyState
+        data-testid={dataTestId}
+        title={"This config is empty"}
+        description={`${document.text.path} holds no text, so it declares nothing and adds nothing to whatever includes it.`}
+      />
+    );
+  }
 
   return (
     <Box
