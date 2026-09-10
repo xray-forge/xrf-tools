@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_ltx_inspect::{LtxFileStructure, LtxFileText, LtxInventory};
+use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory};
 use xrf_vfs::XrayRoots;
 
 use crate::plugins::configs::session_id::ConfigsSessionId;
@@ -38,4 +38,6 @@ pub struct ConfigsProjectDescriptor {
 pub struct ConfigsDocument {
   pub text: LtxFileText,
   pub structure: LtxFileStructure,
+  /// What is wrong with this file itself: it will not parse, or an `#include` reached nothing.
+  pub findings: Vec<LtxAnchoredFinding>,
 }

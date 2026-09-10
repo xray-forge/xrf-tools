@@ -2,7 +2,7 @@
 
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
-import { LtxFileStructure, LtxFileText, LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
@@ -117,6 +117,13 @@ export type AudioSourceParameters = {
 export type ConfigsDocument = {
   text: LtxFileText;
   structure: LtxFileStructure;
+  /**
+   * What is wrong with this file itself: it will not parse, or an `#include` reached nothing.
+   *
+   * Its own findings rather than the root's. These are answered from the structure beside them and cost nothing
+   * extra, while everything the root's other configs raise waits until a reader asks for the Problems panel.
+   */
+  findings: Array<LtxAnchoredFinding>;
 };
 
 /** What a config formatting run, or a check of one, was asked to do. */
@@ -184,6 +191,16 @@ export type ConfigsResolvedRequest = {
   sessionId: ConfigsSessionId;
   /** Engine identity of the entry point to resolve. */
   entry: string;
+};
+
+/** Which section of a resolved root a reader wants explained. */
+export type ConfigsSectionRequest = {
+  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  sessionId: ConfigsSessionId;
+  /** Engine identity of the entry point the section belongs to. */
+  entry: string;
+  /** The section to explain, as the index named it. */
+  section: string;
 };
 
 /** Identifies one open of the configs explorer, and everything resolved under it. */

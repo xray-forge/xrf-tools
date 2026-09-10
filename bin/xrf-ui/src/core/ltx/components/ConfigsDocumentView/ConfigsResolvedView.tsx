@@ -3,10 +3,12 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LtxResolvedIndexEntry } from "@/core/bindings/types/xrf-ltx-inspect";
-import { useRevealedSection } from "@/core/ltx/components/ConfigsDocumentView/use-revealed-section";
+import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
+import { TConfigsReveal } from "@/core/ltx/lib/reveal";
+import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
-import { ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
+import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -25,10 +27,11 @@ import { Nullable } from "@/lib/types/general";
 export function ConfigsResolvedView({
   "data-testid": dataTestId = "configs-resolved-view",
 }: BaseComponentProps): ReactElement {
+  const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
   const resolvedService: ConfigsResolvedService = useInjection(ConfigsResolvedService);
 
   const narrowedTo: Nullable<string> = resolvedService.narrowedTo;
-  const revealed: Nullable<string> = useRevealedSection();
+  const revealed: Nullable<TConfigsReveal> = useRevealed();
 
   // Read here so a landed page re-renders this view: the map behind the source is mutated in place, because copying
   // one that grows to 11,870 entries per page would cost more than every fetch put together.
@@ -54,6 +57,13 @@ export function ConfigsResolvedView({
     [layout, resolvedService]
   );
 
+  // Which section a click landed in, which is the one the Scheme panel explains. A line of a resolved document belongs
+  // to exactly one section, gap included, so the range of one line is the answer.
+  const onSelectLine = useCallback(
+    (line: ICodeLine) => documentService.selectSection(layout.getSectionsInRange(line.number, line.number)[0] ?? null),
+    [documentService, layout]
+  );
+
   if (resolvedService.index.isFailed) {
     return (
       <ErrorState
@@ -75,7 +85,7 @@ export function ConfigsResolvedView({
     </Button>
   );
 
-   if (!visibleSections.length) {
+  if (!visibleSections.length) {
     return (
       <EmptyState
         data-testid={dataTestId}
@@ -107,8 +117,11 @@ export function ConfigsResolvedView({
         data-testid={"configs-resolved-lines"}
         ariaLabel={`Resolved sections of ${resolvedService.entry ?? "this config"}`}
         source={source}
-        scrollToLine={revealed ? layout.getSectionLine(revealed) : null}
+        // A line of a config means nothing here: this document is assembled out of sections and holds no line of any
+        // file, which is why a jump from Problems opens the authored view instead.
+        scrollToLine={revealed?.kind === "section" ? layout.getSectionLine(revealed.section) : null}
         sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
+        onSelectLine={onSelectLine}
         onVisibleRangeChange={onVisibleRangeChange}
       />
     </Box>

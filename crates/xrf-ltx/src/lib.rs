@@ -29,12 +29,13 @@ pub use crate::dialect::{
   LtxStandardDialect,
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
-pub use crate::ltx::{Ltx, Section};
+pub use crate::ltx::{Ltx, LtxSectionFieldSchemes, LtxSectionSchemes, Section};
 pub use crate::project::{
   LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions,
   LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxProjectVerifyResult, LtxReadCountersSnapshot,
   LtxVerifyOptions,
 };
+pub use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionScheme};
 pub use crate::source::LtxDocumentSource;
 pub use crate::syntax::{
   LTX_EXTENSION, LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME,

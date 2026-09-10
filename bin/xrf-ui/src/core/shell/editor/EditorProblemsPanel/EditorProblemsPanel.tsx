@@ -1,4 +1,4 @@
-import { Box, Chip, List, ListItem, Typography } from "@mui/material";
+import { Box, Chip, List, ListItem, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -6,13 +6,25 @@ import { MONOSPACE } from "@/core/theme/tokens";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
+
+/** Where a problem can be opened, for a surface that can take a reader there. */
+export interface IEditorProblemLocation {
+  /** Engine identity of the file to open. */
+  path: string;
+  /** One-based line inside it, where the finding reached one. */
+  line: Nullable<number>;
+}
 
 /** A problem reported while reading an editor project. */
 export interface IEditorProblem {
   rule: string;
   subject: Nullable<string>;
   message: string;
+  /**
+   * Where opening this problem would take a reader, when anything can.
+   */
+  location?: IEditorProblemLocation;
 }
 
 interface IEditorProblemsPanelProps extends BaseComponentProps {
@@ -21,6 +33,8 @@ interface IEditorProblemsPanelProps extends BaseComponentProps {
   rulePrefix?: string;
   /** Explains what was checked when no problems were found. */
   emptyDescription: string;
+  /** A finding naming a place was chosen. Rows without a location never call it. */
+  onSelect?: (location: IEditorProblemLocation) => void;
 }
 
 /**
@@ -33,6 +47,7 @@ export function EditorProblemsPanel({
   findings,
   rulePrefix = "",
   emptyDescription,
+  onSelect,
 }: IEditorProblemsPanelProps): ReactElement {
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Problems"}>
@@ -46,8 +61,9 @@ export function EditorProblemsPanel({
               ? splitLogicalPath(finding.subject.replaceAll("/", LOGICAL_PATH_SEPARATOR)).name || finding.subject
               : null;
 
-            return (
-              <ListItem key={`${finding.rule}-${finding.subject}-${index}`} sx={{ display: "block" }} divider>
+            const location: Optional<IEditorProblemLocation> = onSelect ? finding.location : undefined;
+            const content: ReactElement = (
+              <>
                 <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.75, minWidth: 0 }}>
                   <Chip
                     size={"small"}
@@ -75,6 +91,24 @@ export function EditorProblemsPanel({
                 >
                   {finding.message}
                 </Typography>
+              </>
+            );
+
+            return (
+              <ListItem
+                key={`${finding.rule}-${finding.subject}-${index}`}
+                data-testid={"editor-problems-row"}
+                sx={{ display: "block" }}
+                divider
+                disablePadding={Boolean(location)}
+              >
+                {location ? (
+                  <ListItemButton sx={{ display: "block" }} onClick={() => onSelect?.(location)}>
+                    {content}
+                  </ListItemButton>
+                ) : (
+                  content
+                )}
               </ListItem>
             );
           })}

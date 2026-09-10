@@ -1,7 +1,7 @@
 //! What one config as written comes to, once the resolution it belongs to has had its say.
 
 use xrf_error::XrfResult;
-use xrf_ltx::LtxResolution;
+use xrf_ltx::{Ltx, LtxResolution, LtxSchemeParser, LtxSectionSchemes};
 
 use crate::ltx_root_reader::LtxRootReader;
 use crate::structure::LtxFileStructure;
@@ -36,17 +36,23 @@ fn a_parent_the_root_holds_resolves_and_one_it_does_not_holds_nothing() -> XrfRe
 fn a_section_with_no_scheme_reports_no_binding() -> XrfResult {
   let source: LtxMapSource = LtxMapSource::new(&[(
     "system.ltx",
-    "[wpn_bound]\n$scheme = weapon\n\n[wpn_plain]\ncost = 100\n",
+    "[wpn_bound]\n$scheme = $weapon\n\n[wpn_plain]\ncost = 100\n",
   )]);
+
+  let declarations: LtxSectionSchemes = LtxSchemeParser::parse_from_ltx(&Ltx::read_from_str(
+    "[$weapon]
+cost = u32
+",
+  )?)?;
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
   let structure: LtxFileStructure = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
-    .with_declared_schemes(&["weapon"])
+    .with_declared_schemes(&declarations)
     .read_structure("system.ltx", &[])?;
 
   let bound: &_ = structure.sections[0].scheme.as_ref().expect("a declared binding");
 
-  assert_eq!(bound.name, "weapon");
+  assert_eq!(bound.name, "$weapon");
   assert!(bound.is_declared);
   assert!(structure.sections[1].scheme.is_none(), "nothing binds wpn_plain");
 
@@ -55,7 +61,7 @@ fn a_section_with_no_scheme_reports_no_binding() -> XrfResult {
 
 #[test]
 fn a_binding_no_scheme_file_declares_is_reported_undeclared() -> XrfResult {
-  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "[wpn_bound]\n$scheme = weapon\n")]);
+  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "[wpn_bound]\n$scheme = $weapon\n")]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
   let structure: LtxFileStructure =
@@ -63,7 +69,7 @@ fn a_binding_no_scheme_file_declares_is_reported_undeclared() -> XrfResult {
 
   let bound: &_ = structure.sections[0].scheme.as_ref().expect("a binding");
 
-  assert_eq!(bound.name, "weapon");
+  assert_eq!(bound.name, "$weapon");
   assert!(!bound.is_declared);
 
   Ok(())
@@ -73,17 +79,23 @@ fn a_binding_no_scheme_file_declares_is_reported_undeclared() -> XrfResult {
 fn an_inherited_binding_is_reported_on_the_child() -> XrfResult {
   let source: LtxMapSource = LtxMapSource::new(&[(
     "system.ltx",
-    "[wpn_base]\n$scheme = weapon\n\n[wpn_child]:wpn_base\ncost = 100\n",
+    "[wpn_base]\n$scheme = $weapon\n\n[wpn_child]:wpn_base\ncost = 100\n",
   )]);
+
+  let declarations: LtxSectionSchemes = LtxSchemeParser::parse_from_ltx(&Ltx::read_from_str(
+    "[$weapon]
+cost = u32
+",
+  )?)?;
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
   let structure: LtxFileStructure = LtxRootReader::new("system.ltx", "ltx", &resolution, &source)
-    .with_declared_schemes(&["weapon"])
+    .with_declared_schemes(&declarations)
     .read_structure("system.ltx", &[])?;
 
   assert_eq!(
     structure.sections[1].scheme.as_ref().map(|scheme| scheme.name.as_str()),
-    Some("weapon"),
+    Some("$weapon"),
     "the binding was copied in by inheritance, which is how the verifier reads it too"
   );
 

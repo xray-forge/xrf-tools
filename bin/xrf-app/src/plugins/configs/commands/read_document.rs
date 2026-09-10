@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_ltx_inspect::{LtxFileStructure, LtxFileText, LtxTextReader};
+use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxTextReader};
 use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::XrayLogicalPath;
 
@@ -60,6 +60,7 @@ fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocu
     // A config the project holds but no entry point reaches: an attachment under a dialect that has them. Its text is
     // still worth showing, and there is no resolution it participates in to judge it against.
     return Ok(ConfigsDocument {
+      findings: Vec::new(),
       structure: LtxFileStructure::new_unreached(logical.as_str()),
       text,
     });
@@ -67,11 +68,19 @@ fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocu
 
   let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(|error| error.to_string())?;
 
-  let structure: LtxFileStructure = opened.with_reader(&entry, |reader, _| {
-    reader
-      .read_structure(logical.as_str(), &entry_points)
-      .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))
-  })?;
+  let (structure, findings): (LtxFileStructure, Vec<LtxAnchoredFinding>) =
+    opened.with_reader(&entry, |reader, _| {
+      let structure: LtxFileStructure = reader
+        .read_structure(logical.as_str(), &entry_points)
+        .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))?;
+      let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
 
-  Ok(ConfigsDocument { structure, text })
+      Ok((structure, findings))
+    })?;
+
+  Ok(ConfigsDocument {
+    findings,
+    structure,
+    text,
+  })
 }

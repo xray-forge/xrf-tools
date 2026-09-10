@@ -6,8 +6,10 @@ import { createConfigsExplorerPanels } from "@/applications/configs-explorer/com
 import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
 import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
@@ -27,6 +29,8 @@ export function ConfigsExplorerWorkspace({
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
   const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
   const resolvedService: ConfigsResolvedService = useInjection(ConfigsResolvedService);
+  const findingsService: ConfigsFindingsService = useInjection(ConfigsFindingsService);
+  const schemeService: ConfigsSchemeService = useInjection(ConfigsSchemeService);
 
   const project: Nullable<ConfigsProjectDescriptor> = projectService.project.value;
   const panels: Array<IEditorPanel> = useMemo(() => createConfigsExplorerPanels(), []);
@@ -38,9 +42,11 @@ export function ConfigsExplorerWorkspace({
   const onBack = useCallback(() => {
     documentService.clear();
     resolvedService.clear();
+    findingsService.clear();
+    schemeService.clear();
 
     void projectService.close();
-  }, [documentService, projectService, resolvedService]);
+  }, [documentService, findingsService, projectService, resolvedService, schemeService]);
 
   const onToggleMode = useCallback(
     () => documentService.setMode(isResolved ? EConfigsDocumentMode.AUTHORED : EConfigsDocumentMode.RESOLVED),

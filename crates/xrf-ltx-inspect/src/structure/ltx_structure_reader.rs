@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{
   LTX_SCHEME_FIELD, LTX_SYMBOL_INCLUDE_WILDCARD, Ltx, LtxDocument, LtxDocumentSource, LtxItemKind, LtxResolution,
-  Section,
+  LtxSectionSchemes, Section,
 };
 
 use crate::structure::{
@@ -23,7 +23,7 @@ impl LtxStructureReader {
   pub(crate) fn read_structure(
     resolution: &LtxResolution,
     source: &dyn LtxDocumentSource,
-    declared_schemes: &[&str],
+    declarations: Option<&LtxSectionSchemes>,
     path: &str,
     entry_points: &[String],
   ) -> XrfResult<LtxFileStructure> {
@@ -55,14 +55,14 @@ impl LtxStructureReader {
       includes: Self::read_includes(source, path, &document)?,
       parse_error: None,
       path: String::from(path),
-      sections: Self::read_sections(resolution, declared_schemes, &document),
+      sections: Self::read_sections(resolution, declarations, &document),
     })
   }
 
   /// Every header of one document, with the parents and binding the resolution gives it.
   fn read_sections(
     resolution: &LtxResolution,
-    declared_schemes: &[&str],
+    declarations: Option<&LtxSectionSchemes>,
     document: &LtxDocument,
   ) -> Vec<LtxStructureSection> {
     let mut sections: Vec<LtxStructureSection> = Vec::new();
@@ -89,7 +89,7 @@ impl LtxStructureReader {
             resolves: resolution.ltx.section(parent).is_some(),
           })
           .collect(),
-        scheme: Self::read_scheme(resolution, declared_schemes, name),
+        scheme: Self::read_scheme(resolution, declarations, name),
       });
     }
 
@@ -97,12 +97,16 @@ impl LtxStructureReader {
   }
 
   /// The scheme one section is bound to, read off the resolution so an inherited binding counts.
-  fn read_scheme(resolution: &LtxResolution, declared_schemes: &[&str], section: &str) -> Option<LtxStructureScheme> {
+  fn read_scheme(
+    resolution: &LtxResolution,
+    declarations: Option<&LtxSectionSchemes>,
+    section: &str,
+  ) -> Option<LtxStructureScheme> {
     let resolved: &Section = resolution.ltx.section(section)?;
     let name: &str = resolved.get(LTX_SCHEME_FIELD)?;
 
     Some(LtxStructureScheme {
-      is_declared: declared_schemes.contains(&name),
+      is_declared: declarations.is_some_and(|declarations| declarations.contains_key(name)),
       name: String::from(name),
     })
   }

@@ -10,12 +10,19 @@ import {
   ConfigsReadDocumentRequest,
   ConfigsReadSectionsRequest,
   ConfigsResolvedRequest,
+  ConfigsSectionRequest,
   ConfigsSessionId,
   ConfigsVerifyRequest,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
-import { LtxInventory, LtxResolvedIndex, LtxResolvedSection } from "@/core/bindings/types/xrf-ltx-inspect";
+import {
+  LtxAnchoredFinding,
+  LtxInventory,
+  LtxResolvedIndex,
+  LtxResolvedSection,
+  LtxSchemeFieldReport,
+} from "@/core/bindings/types/xrf-ltx-inspect";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
@@ -75,6 +82,19 @@ export const configsCommands = {
       declaredSchemes: Array<string>;
     } | null>("plugin:configs|get_project"),
   /**
+   * Everything wrong with one resolved root, anchored to the file and line a person has to open.
+   *
+   * Per entry point rather than per project: verifying a whole tree is what `configs-verifier` is for, while an explorer
+   * is about the file on screen and the root it belongs to - which is also the unit an edit will invalidate. Both halves
+   * travel together because a reader does not care which pass noticed: what the scheme check found, and what the dialect
+   * said while resolving.
+   *
+   * Held with the resolution, so opening the panel a second time is a lookup rather than a second walk of every section
+   * the root holds.
+   */
+  listFindings: (request: ConfigsResolvedRequest) =>
+    __TAURI_INVOKE<Array<LtxAnchoredFinding>>("plugin:configs|list_findings", { request }),
+  /**
    * Lists every section one entry point resolves to, named and counted.
    *
    * The index, not the bodies: a vanilla `system.ltx` resolves to 23,500 sections holding 293,000 fields, and sending
@@ -97,11 +117,49 @@ export const configsCommands = {
    * has to be mirrored on the other. A name the root does not hold is skipped rather than refused: a page request races
    * an index the caller may have fetched before a reopen.
    *
-   * Inline rather than blocking: the root is already resolved by the time anything can ask for a page, so this reads
-   * fields out of a map and the headers of at most a few declaring configs.
+   * Off the async worker even though a page is usually a map lookup: the root is normally resolved by the time anything
+   * can ask for one, but "normally" is not a guarantee. A page asked for after the session was replaced would resolve a
+   * whole include tree, and doing that on the IPC handler thread would stall every other command behind it.
    */
   readResolvedSections: (request: ConfigsReadSectionsRequest) =>
     __TAURI_INVOKE<Array<LtxResolvedSection>>("plugin:configs|read_resolved_sections", { request }),
+  /**
+   * What one section is judged by, and how it measures against that.
+   *
+   * Answered from the resolution, so a section inheriting its binding is explained by the rule the verifier judges it
+   * by rather than by what its own header says. A section bound to no scheme answers its plain fields, which is the
+   * same list of rows and the other half of the question.
+   *
+   * `None` means the root does not hold the section, which a panel reaches by asking about a selection the index no
+   * longer holds.
+   */
+  readSectionScheme: (request: ConfigsSectionRequest) =>
+    __TAURI_INVOKE<{
+      /** Engine identity of the entry point whose resolution this was read from. */
+      entry: string;
+      section: string;
+      /** The `$scheme` the resolved section carries, absent when it carries none. */
+      scheme: string | null;
+      /** Whether a scheme file declares that name. False is itself a finding, and the verifier reports it as one. */
+      isDeclared: boolean;
+      /**
+       * Whether the declaration refuses fields it does not name and demands the ones it does not mark optional.
+       *
+       * The distinction a reader has to see: under a loose scheme a missing field is silence, and under a strict one it
+       * is a finding.
+       */
+      isStrict: boolean;
+      /** The section the binding is written in, absent when this section writes it itself. */
+      inheritedFrom: string | null;
+      /**
+       * Every field the scheme declares and every field the section holds, merged.
+       *
+       * Declared fields first, in the order the scheme declares them, then whatever the section holds beyond them in its
+       * own order. A row with no declaration is a field the scheme never named; a row with no value is one the section
+       * never supplied.
+       */
+      fields: Array<LtxSchemeFieldReport>;
+    } | null>("plugin:configs|read_section_scheme", { request }),
   /** Verifies LTX configs through the VFS, including archived files. */
   verifyDirectory: (request: ConfigsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { request, jobId, progress }),

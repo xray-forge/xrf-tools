@@ -1,5 +1,26 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** One finding, already placed at the file and line a person has to open. */
+export type LtxAnchoredFinding = {
+  kind: LtxFindingKind;
+  /** Engine identity of the entry point whose resolution the finding was produced under. */
+  entry: string;
+  /**
+   * Engine identity of the config to open, where one is known.
+   *
+   * `None` means nothing recorded which config declares the section, which a patch dialect answers for a section
+   * created by an override of something nothing declares.
+   */
+  file: string | null;
+  /** One-based line in `file`, where the anchor reached one. */
+  line: number | null;
+  section: string | null;
+  field: string | null;
+  message: string;
+  /** What the engine does with the same input, where the dialect said so. */
+  engineBehaviour: string | null;
+};
+
 /**
  * One config as written, carrying only what reading the text cannot answer.
  *
@@ -48,6 +69,17 @@ export type LtxFileText = {
    */
   isNormalized: boolean;
 };
+
+/** What kind of thing went wrong, which is also what decides how it was anchored. */
+export type LtxFindingKind =
+  /** The file would not parse. Carries its own line, from the parser. */
+  | "parse"
+  /** A section broke the scheme it is bound to, or is bound to one nothing declares. */
+  | "scheme"
+  /** The dialect had something to say about the root that is not a failure. */
+  | "dialect"
+  /** An `#include` reached no file. */
+  | "include";
 
 /**
  * Every config a project holds, and what each one is to the project.
@@ -163,6 +195,64 @@ export type LtxResolvedSection = {
   origin: string | null;
   /** Fields in resolved order, which is written order with inherited ones folded in ahead of them. */
   fields: Array<LtxResolvedField>;
+};
+
+/** What a scheme declares about one field. */
+export type LtxSchemeFieldDeclaration = {
+  /** The type as the scheme spells it - `u32`, `enum:pistol,rifle`, `condlist`. */
+  dataType: string;
+  isArray: boolean;
+  isOptional: boolean;
+  /**
+   * Whether this is the scheme's catch-all `*` rather than a declaration naming the field.
+   *
+   * Worth saying out loud: a section of arbitrary keys is typed by one line of its scheme, and a reader looking for
+   * the field by name in the scheme file would not find it.
+   */
+  isAny: boolean;
+};
+
+/** One row of a scheme report: what the scheme asks for, and what the section answers. */
+export type LtxSchemeFieldReport = {
+  name: string;
+  /** What the scheme declares about it, absent for a field the section holds and no declaration covers. */
+  declared: LtxSchemeFieldDeclaration | null;
+  /** What the section resolves to, absent for a declared field the section does not hold. */
+  resolved: LtxResolvedField | null;
+};
+
+/**
+ * What judges one resolved section, and how the section measures against it.
+ *
+ * The scheme is read off the resolution rather than off the file, so a section that inherits its binding is judged by
+ * the same rule the verifier judges it by - which is the whole reason a binding is worth showing: nothing in the text
+ * of `[wpn_child]:wpn_base` says it is a weapon.
+ */
+export type LtxSectionSchemeReport = {
+  /** Engine identity of the entry point whose resolution this was read from. */
+  entry: string;
+  section: string;
+  /** The `$scheme` the resolved section carries, absent when it carries none. */
+  scheme: string | null;
+  /** Whether a scheme file declares that name. False is itself a finding, and the verifier reports it as one. */
+  isDeclared: boolean;
+  /**
+   * Whether the declaration refuses fields it does not name and demands the ones it does not mark optional.
+   *
+   * The distinction a reader has to see: under a loose scheme a missing field is silence, and under a strict one it
+   * is a finding.
+   */
+  isStrict: boolean;
+  /** The section the binding is written in, absent when this section writes it itself. */
+  inheritedFrom: string | null;
+  /**
+   * Every field the scheme declares and every field the section holds, merged.
+   *
+   * Declared fields first, in the order the scheme declares them, then whatever the section holds beyond them in its
+   * own order. A row with no declaration is a field the scheme never named; a row with no value is one the section
+   * never supplied.
+   */
+  fields: Array<LtxSchemeFieldReport>;
 };
 
 /** One `#include`, and the configs it actually reached. */

@@ -96,7 +96,9 @@ describe("toDocumentLines", () => {
     expect(spansOf(lines, 1)).toEqual([`${ESyntaxToken.SECTION}:[  wpn_base  ]`]);
   });
 
-  it("should mark an include that reached nothing and leave one that did unmarked", () => {
+  it("should colour an include by what it reached without marking it", () => {
+    // The colour is this layer's answer and the mark is not: a finding is what marks a line, so a gutter never has two
+    // sources disagreeing about the same one.
     const lines: Array<ICodeLine> = toDocumentLines(
       ['#include "items\\w_*.ltx"', '#include "missing.ltx"'],
       structureOf({
@@ -108,17 +110,19 @@ describe("toDocumentLines", () => {
     );
 
     expect(lines[0].mark).toBeUndefined();
-    expect(lines[1].mark).toBe(ECodeLineMark.WARNING);
+    expect(lines[1].mark).toBeUndefined();
     expect(spansOf(lines, 1)).toEqual([`${ESyntaxToken.DIRECTIVE}:#include "items\\w_*.ltx"`]);
     expect(spansOf(lines, 2)).toEqual([`${ESyntaxToken.PLAIN}:#include "missing.ltx"`]);
   });
 
-  it("should mark the line a parse failure stopped on", () => {
+  it("should draw the marks it was given on the lines they name", () => {
     const lines: Array<ICodeLine> = toDocumentLines(
       ["[a]", "!!!broken"],
-      structureOf({ parseError: { line: 2, column: 1, message: "unexpected token" } })
+      structureOf({ parseError: { line: 2, column: 1, message: "unexpected token" } }),
+      new Map([[2, ECodeLineMark.ERROR]])
     );
 
+    expect(lines[0].mark).toBeUndefined();
     expect(lines[1].mark).toBe(ECodeLineMark.ERROR);
   });
 

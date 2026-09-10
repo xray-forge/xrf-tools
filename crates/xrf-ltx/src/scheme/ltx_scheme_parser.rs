@@ -25,31 +25,55 @@ impl LtxSchemeParser {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
-      let ltx: Ltx = Ltx::read_from_vfs_standard(vfs, scope, file.as_str())?;
+      Self::absorb(&mut schemes, &Ltx::read_from_vfs_standard(vfs, scope, file.as_str())?)?;
+    }
 
-      for (name, section) in &ltx {
-        if !name.starts_with(LTX_SYMBOL_SCHEME) {
+    Ok(schemes)
+  }
+
+  /// Parses the section schemes one already-read scheme document declares.
+  ///
+  /// The door for a caller holding the document rather than a path to it: a test over configs in memory, or anything
+  /// reading a scheme file it already parsed for another reason.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a section that is not a scheme declaration, or a declaration that is invalid.
+  pub fn parse_from_ltx(ltx: &Ltx) -> XrfResult<LtxSectionSchemes> {
+    let mut schemes: LtxSectionSchemes = Default::default();
+
+    Self::absorb(&mut schemes, ltx)?;
+
+    Ok(schemes)
+  }
+
+  /// Folds one scheme document's declarations into what has been collected so far.
+  ///
+  /// Collected across files rather than per file, because a duplicate declaration is a defect whichever file repeats
+  /// it and only the collection can see one.
+  fn absorb(schemes: &mut LtxSectionSchemes, ltx: &Ltx) -> XrfResult {
+    for (name, section) in ltx {
+      if !name.starts_with(LTX_SYMBOL_SCHEME) {
+        return Err(XrfError::new_convert_error(format!(
+          "Failed to parse ltx schemes - scheme section declaration should be prefixed with $, \
+           got [{name}]"
+        )));
+      }
+
+      match schemes.entry(name.into()) {
+        Entry::Occupied(_) => {
           return Err(XrfError::new_convert_error(format!(
-            "Failed to parse ltx schemes - scheme section declaration should be prefixed with $, \
-             got [{name}]"
+            "Failed to parse ltx schemes - duplicate declaration of [{name}] section when reading '{}'",
+            format_path_or(ltx.path.as_deref(), VIRTUAL_LTX_PATH)
           )));
         }
-
-        match schemes.entry(name.into()) {
-          Entry::Occupied(_) => {
-            return Err(XrfError::new_convert_error(format!(
-              "Failed to parse ltx schemes - duplicate declaration of [{name}] section when reading '{}'",
-              format_path_or(ltx.path.as_deref(), VIRTUAL_LTX_PATH)
-            )));
-          }
-          Entry::Vacant(entry) => {
-            entry.insert(Self::parse_section_scheme(name, section)?);
-          }
+        Entry::Vacant(entry) => {
+          entry.insert(Self::parse_section_scheme(name, section)?);
         }
       }
     }
 
-    Ok(schemes)
+    Ok(())
   }
 
   /// Parse scheme from section.

@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxResolution};
+use xrf_ltx::{LtxDocumentSource, LtxResolution, LtxSectionSchemes};
 
 use crate::findings::{LtxAnchoredFinding, LtxFindingAnchor};
 use crate::resolved::{LtxResolvedIndex, LtxResolvedReader, LtxResolvedSection};
+use crate::scheme::{LtxSchemeReader, LtxSectionSchemeReport};
 use crate::structure::{LtxDeclaredParents, LtxFileStructure, LtxStructureReader};
 
 /// Everything one resolved root can be asked, and the world its configs came from.
@@ -25,7 +26,8 @@ pub struct LtxRootReader<'a> {
   dialect: &'a str,
   resolution: &'a LtxResolution,
   source: &'a dyn LtxDocumentSource,
-  declared_schemes: &'a [&'a str],
+  /// Section schemes the project declares, or nothing when the caller did not say.
+  declarations: Option<&'a LtxSectionSchemes>,
   /// Headers read back from declaring configs, shared by every question this reader answers.
   ///
   /// Interior mutability so reading stays `&self`: a caller holding one reader asks several questions in no fixed
@@ -46,7 +48,7 @@ impl<'a> LtxRootReader<'a> {
   ) -> Self {
     Self {
       declared_parents: RefCell::new(LtxDeclaredParents::default()),
-      declared_schemes: &[],
+      declarations: None,
       dialect,
       entry,
       resolution,
@@ -54,12 +56,13 @@ impl<'a> LtxRootReader<'a> {
     }
   }
 
-  /// The scheme names the project declares, so a binding can be reported as bound or dangling.
+  /// The section schemes the project declares, which is what a binding is judged against.
   ///
-  /// Left empty by default rather than defaulted to "declared": a reader given nothing says every binding is
-  /// undeclared, which is what a project with no scheme files actually means.
-  pub fn with_declared_schemes(mut self, declared_schemes: &'a [&'a str]) -> Self {
-    self.declared_schemes = declared_schemes;
+  /// Absent by default rather than defaulted to "declared": a reader given nothing says every binding is undeclared,
+  /// which is what a project with no scheme files actually means. The declarations rather than their names, because
+  /// naming a scheme only answers whether a binding dangles - what it asks of a section answers the rest.
+  pub fn with_declared_schemes(mut self, declarations: &'a LtxSectionSchemes) -> Self {
+    self.declarations = Some(declarations);
 
     self
   }
@@ -77,7 +80,7 @@ impl<'a> LtxRootReader<'a> {
   ///
   /// Returns an error when the config is not in scope, or when resolving one of its includes fails.
   pub fn read_structure(&self, path: &str, entry_points: &[String]) -> XrfResult<LtxFileStructure> {
-    LtxStructureReader::read_structure(self.resolution, self.source, self.declared_schemes, path, entry_points)
+    LtxStructureReader::read_structure(self.resolution, self.source, self.declarations, path, entry_points)
   }
 
   /// Every section of the root, named and counted.
@@ -112,6 +115,17 @@ impl<'a> LtxRootReader<'a> {
       &mut self.declared_parents.borrow_mut(),
       names,
     )
+  }
+
+  /// What one section is judged by, and how it measures against that.
+  ///
+  /// Answered from the resolution, so a section that inherits its binding is judged by the rule the verifier judges it
+  /// by rather than by what its own header says. A section bound to no scheme answers its plain fields, which is a
+  /// reader's other question about a section and the same list of rows.
+  ///
+  /// `None` means this root does not hold the section.
+  pub fn read_section_scheme(&self, section: &str) -> Option<LtxSectionSchemeReport> {
+    LtxSchemeReader::read_section_scheme(self.entry, self.resolution, self.declarations, section)
   }
 
   /// Everything wrong with the root: what verifying it found, and what the dialect said while resolving it.

@@ -4,6 +4,7 @@ import { Computed, Observable, runInAction } from "@wirestate/mobx";
 import { configsCommands } from "@/core/bindings/commands/configs";
 import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
+import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
@@ -40,10 +41,19 @@ export class ConfigsDocumentService {
   public mode: EConfigsDocumentMode = EConfigsDocumentMode.AUTHORED;
 
   /**
-   * Section a panel asked to be brought into view, if one has.
+   * What a panel asked to be brought into view, if anything has.
    */
   @Observable()
-  public revealedSection: Nullable<string> = null;
+  public revealed: Nullable<TConfigsReveal> = null;
+
+  /**
+   * The section the reader is looking at, which the Scheme panel explains.
+   *
+   * Set by a click in either view or in the Sections panel. It outlives a reveal on purpose: a reveal is spent by the
+   * view that scrolls to it, while a selection stays until another section is picked.
+   */
+  @Observable()
+  public selectedSection: Nullable<string> = null;
 
   /** The selected config's lines and structure. */
   @Observable()
@@ -108,11 +118,13 @@ export class ConfigsDocumentService {
 
   /**
    * Read the selected config again, for a retry after a failure.
+   *
+   * Not a flow of its own: `select` already owns the document lane, and a flow starting another flow in the same lane
+   * cancels itself doing it.
    */
-  @LatestFlow("document")
-  public *retry(): TFlow {
+  public async retry(): Promise<void> {
     if (this.selected) {
-      yield* this.select(this.selected);
+      await this.select(this.selected);
     }
   }
 
@@ -122,27 +134,70 @@ export class ConfigsDocumentService {
   public clear(): void {
     runInAction(() => {
       this.selected = null;
+      this.selectedSection = null;
       this.document = this.document.asIdle(null);
     });
   }
 
   /**
-   * Ask the open view to bring one section into sight.
+   * Ask the open view to bring one section into sight, and make it the selection the Scheme panel explains.
    *
    * @param name - Section to reveal, as the view names it.
    */
   public revealSection(name: string): void {
     runInAction(() => {
-      this.revealedSection = name;
+      this.revealed = { kind: "section", section: name };
+      this.selectedSection = name;
     });
   }
 
   /**
-   * Forget a reveal the view has acted on, so the same section can be asked for again.
+   * Name the section the reader is looking at, without moving the view.
+   *
+   * @param name - Section the click landed in, or null where it landed in none.
+   */
+  public selectSection(name: Nullable<string>): void {
+    runInAction(() => {
+      this.selectedSection = name;
+    });
+  }
+
+  /**
+   * Open one config at one of its lines, which is where a finding is anchored.
+   *
+   * The reveal is set after the read lands rather than before it: a request made while another config is still on
+   * screen would be spent by the view drawing that one. Authored, because a line belongs to a file - a resolved
+   * document is assembled out of sections and holds no line of any config.
+   *
+   * @param path - Engine identity of the config to open.
+   * @param line - One-based line to bring into view.
+   */
+  public async openAt(path: string, line: number): Promise<void> {
+    this.setMode(EConfigsDocumentMode.AUTHORED);
+
+    if (this.selected !== path || !this.document.isReady) {
+      try {
+        await this.select(path);
+      } catch {
+        // The read was superseded, which means something else is being opened and this jump is stale. A failure of the
+        // read itself is not thrown: `select` keeps it in `document` for the view to show.
+        return;
+      }
+    }
+
+    if (this.selected === path && this.document.isReady) {
+      runInAction(() => {
+        this.revealed = { kind: "line", line };
+      });
+    }
+  }
+
+  /**
+   * Forget a reveal the view has acted on, so the same place can be asked for again.
    */
   public clearRevealed(): void {
     runInAction(() => {
-      this.revealedSection = null;
+      this.revealed = null;
     });
   }
 

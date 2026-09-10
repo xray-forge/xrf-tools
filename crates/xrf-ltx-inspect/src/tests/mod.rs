@@ -4,5 +4,6 @@ pub(crate) mod ltx_map_source;
 
 mod findings;
 mod resolved;
+mod scheme;
 mod structure;
 mod text;

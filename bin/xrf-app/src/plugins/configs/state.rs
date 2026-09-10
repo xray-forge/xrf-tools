@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use xrf_ltx::{LtxDocumentSource, LtxProject};
-use xrf_ltx_inspect::LtxRootReader;
+use xrf_ltx::{LtxDocumentSource, LtxEntryVerification, LtxProject};
+use xrf_ltx_inspect::{LtxAnchoredFinding, LtxRootReader};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::types::TauriResult;
@@ -80,12 +80,6 @@ impl ConfigsProject {
   ) -> TauriResult<T> {
     let resolved: Arc<ConfigsResolvedRoot> = self.resolve(entry)?;
     let source = self.project.document_source();
-    let declared: Vec<&str> = self
-      .descriptor
-      .declared_schemes
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>();
 
     let reader: LtxRootReader = LtxRootReader::new(
       resolved.entry.as_str(),
@@ -93,9 +87,41 @@ impl ConfigsProject {
       &resolved.resolution,
       &source as &dyn LtxDocumentSource,
     )
-    .with_declared_schemes(&declared);
+    .with_declared_schemes(&self.project.ltx_scheme_declarations);
 
     consumer(&reader, &resolved)
+  }
+
+  /// Everything wrong with one root, verified once and kept beside the resolution it is about.
+  ///
+  /// Here rather than in the command because the caching is state, and state belongs with what owns its lifetime: the
+  /// resolution decides when these findings stop being true, and it is replaced here. A plain read like
+  /// `read_section_scheme` needs no such policy and goes through `with_reader` directly.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry point cannot be resolved, verified, or read back.
+  pub fn find_problems(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<Vec<LtxAnchoredFinding>>> {
+    self.with_reader(entry, |reader, resolved| {
+      if let Some(held) = resolved.get_findings()? {
+        return Ok(held);
+      }
+
+      let verification: LtxEntryVerification = self
+        .project
+        .verify_resolved(&resolved.entry, &resolved.resolution.ltx)
+        .map_err(|error| format!("Cannot verify '{}': {error}", resolved.entry.as_str()))?;
+
+      let findings: Arc<Vec<LtxAnchoredFinding>> = Arc::new(
+        reader
+          .read_findings(&verification.errors)
+          .map_err(|error| format!("Cannot anchor the findings of '{}': {error}", resolved.entry.as_str()))?,
+      );
+
+      resolved.hold_findings(Arc::clone(&findings))?;
+
+      Ok(findings)
+    })
   }
 
   fn held_resolution(&self) -> TauriResult<MutexGuard<'_, Option<Arc<ConfigsResolvedRoot>>>> {

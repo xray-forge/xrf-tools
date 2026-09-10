@@ -13,14 +13,24 @@ import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
  *
  * @param text - The config's lines, index `n` holding line `n + 1`.
  * @param structure - What the backend made of the same file, or null when nothing judged it.
+ * @param marks - What is wrong, by the line it sits on. Findings are the one source of a gutter mark, so a listing
+ *   never has two answers about the same line.
  * @returns One entry per line, numbered from one.
  */
-export function toDocumentLines(text: ReadonlyArray<string>, structure: LtxFileStructure | null): Array<ICodeLine> {
+export function toDocumentLines(
+  text: ReadonlyArray<string>,
+  structure: LtxFileStructure | null,
+  marks: ReadonlyMap<number, ECodeLineMark> = new Map()
+): Array<ICodeLine> {
   const lexical: Array<Array<ISyntaxSpan>> = toLexicalLines(text);
   const lines: Array<ICodeLine> = lexical.map((spans: Array<ISyntaxSpan>, index: number) => ({
     number: index + 1,
     spans,
   }));
+
+  for (const [line, mark] of marks) {
+    markLine(lines, line, mark);
+  }
 
   if (!structure) {
     return lines;
@@ -32,20 +42,6 @@ export function toDocumentLines(text: ReadonlyArray<string>, structure: LtxFileS
 
   for (const include of structure.includes) {
     replaceLine(lines, include.line, toIncludeSpans(include, text[include.line - 1] ?? ""));
-  }
-
-  // The one line the parser could not get past. Marked rather than coloured, because everything after it is text the
-  // lexical layer guessed at and the structure says nothing about.
-  if (structure.parseError) {
-    markLine(lines, structure.parseError.line, ECodeLineMark.ERROR);
-  }
-
-  // An include that reached nothing is a defect a person can act on, and the only one this view can see without a
-  // verification pass behind it.
-  for (const include of structure.includes) {
-    if (!include.resolved.length) {
-      markLine(lines, include.line, ECodeLineMark.WARNING);
-    }
   }
 
   return lines;

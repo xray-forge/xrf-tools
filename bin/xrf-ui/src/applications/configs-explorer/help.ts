@@ -11,6 +11,9 @@ export const CONFIGS_EXPLORER_HELP: IApplicationHelp = {
       "or Anomaly install carries, which changes what the same files resolve to.",
     "Pick a config in the tree. Its text opens beside it, coloured, with the section headers and includes marked by " +
       "what the parser made of them rather than by what the line looks like.",
+    "Toggle `Resolved` to read what the config's entry point comes to, with the origin of every value beside it. " +
+      "Click a line in either view to select its section; `Scheme` then says what judges that section and how it " +
+      "measures up, and `Problems` lists everything wrong with the whole root.",
   ],
   nuances: [
     "The dialect belongs to the open, not to a toolbar toggle. Everything read in a session was resolved under it, " +
@@ -24,6 +27,12 @@ export const CONFIGS_EXPLORER_HELP: IApplicationHelp = {
       "an entry point of its own, and the tree says so.",
     "A section name keeps whatever sits inside its brackets. `[ wpn_base ]` is a different section from `[wpn_base]` " +
       "and nothing inherits it, which is engine behaviour rather than an oversight here.",
+    "A scheme is bound through inheritance too. A section that declares no `$scheme` of its own is still judged by " +
+      "the one its parent carries, and the Scheme panel names the section the binding is written in.",
+    "`Problems` verifies the root the open config belongs to, and only once the panel is open: a root is thousands " +
+      "of sections and most of what a person opens they only read. Verifying a whole tree is the configs verifier.",
+    "A finding opens the config it names at its line, which is often not the config on screen - a section is judged " +
+      "in the resolution it lands in, and reported where it is written.",
   ],
   limitations: [
     "View only. A config editor is separate work; nothing here writes.",
@@ -31,6 +40,8 @@ export const CONFIGS_EXPLORER_HELP: IApplicationHelp = {
       "nothing records which config that is, so marking them would mean guessing.",
     "A config that will not parse still opens, with its text shown and the parse error marked. What the parser " +
       "could not read is simply absent rather than approximated.",
+    "`Scheme` covers the section schemes a `*.scheme.ltx` file declares. Engine logic schemes - the `[logic]` " +
+      "sections a script reads - are a different language and are not on this roster.",
   ],
   relatedTools: [EApplicationId.CONFIGS_VERIFIER, EApplicationId.CONFIGS_FORMATTER],
 };
