@@ -5,7 +5,7 @@ import { ReactElement, useEffect, useMemo } from "react";
 import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
 import { toDocumentLines } from "@/core/ltx/lib/semantic";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
-import { ICodeLine } from "@/core/ui/code/code-line";
+import { ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -25,8 +25,10 @@ export function ConfigsAuthoredView({
 
   const revealed: Nullable<string> = documentService.revealedSection;
 
-  const lines: Array<ICodeLine> = useMemo(
-    () => toDocumentLines(document.text.lines, document.structure),
+  // Held whole rather than built a line at a time: a config as authored is thousands of lines, and each is coloured
+  // from text the backend has already sent.
+  const source: ICodeLineSource = useMemo(
+    () => toCodeLineSource(toDocumentLines(document.text.lines, document.structure)),
     [document]
   );
 
@@ -59,7 +61,7 @@ export function ConfigsAuthoredView({
       <VirtualizedLines
         data-testid={"configs-authored-lines"}
         ariaLabel={`Contents of ${document.text.path}`}
-        lines={lines}
+        source={source}
         scrollToLine={revealedLine}
         sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
       />

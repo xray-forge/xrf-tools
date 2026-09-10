@@ -1,12 +1,11 @@
 import {
   LtxResolvedField,
   LtxResolvedFieldOrigin,
-  LtxResolvedIndex,
   LtxResolvedIndexEntry,
   LtxResolvedSection,
 } from "@/core/bindings/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
-import { ICodeLine } from "@/core/ui/code/code-line";
+import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { Nullable } from "@/lib/types/general";
 
 /** The unnamed section a resolution carries whatever was written before the first header in. */
@@ -27,11 +26,22 @@ interface IResolvedPlacement {
 }
 
 /**
- * One resolution laid out as lines, and the two questions a viewport asks about that layout.
+ * Where a resolution's lines sit, and the questions a viewport asks about that.
+ *
+ * The layout is everything the index decides and nothing the bodies do: how many lines there are, which section owns
+ * each of them, and where a section's header sits. It is built once per resolution, and a page of bodies landing
+ * produces a new source over the same layout rather than a new layout.
  */
-export interface IResolvedDocument {
-  /** Every line of the resolved document, numbered from one. */
-  lines: ReadonlyArray<ICodeLine>;
+export interface IResolvedLayout {
+  /** How many lines the resolution comes to. */
+  lineCount: number;
+  /**
+   * A view of these lines filled in with whichever bodies have arrived.
+   *
+   * @param bodies - Section bodies by name; absent names draw as the blank lines they will occupy.
+   * @returns A source that builds a line only when the listing asks for one.
+   */
+  toSource(bodies?: Nullable<ReadonlyMap<string, LtxResolvedSection>>): ICodeLineSource;
   /**
    * Names of the sections holding any line in the given closed range, in the order the index lists them.
    *
@@ -44,49 +54,38 @@ export interface IResolvedDocument {
 }
 
 /**
- * Lay a resolution out as lines, filling in whichever section bodies have arrived.
+ * Lay a resolution out, without building a line of it.
  *
  * The height comes from the index alone: `fieldCount` says how many lines a section will take before anything is
  * fetched, so the whole document is laid out on the first answer and a page arriving later changes what a line says
- * and never where it sits. A section whose body has not arrived renders its fields as blank lines in the exact
- * positions they will occupy.
+ * and never where it sits.
+ *
+ * Nothing here materialises a line, and that is the point at this scale. Anomaly's `configs\system.ltx` resolves to
+ * 11,870 sections holding 527,000 fields - 551,000 lines. Building them costs a million objects and their collection,
+ * per page of bodies that lands, for a screen that shows forty. What is built instead is one entry per section, and
+ * `toSource` hands the listing a document it can read a line at a time.
  *
  * Numbering is the assembled document's own, running from one, because a resolved document is not a file and has no
- * authored numbering to keep. That makes a number unique here, so keying anything by it is well defined - unlike an
- * excerpt of a real file, which is why `VirtualizedLines` does not assume uniqueness.
+ * authored numbering to keep. That makes a number unique here and equal to its position plus one, so an address into
+ * the document is arithmetic - unlike an excerpt of a real file, which is why `VirtualizedLines` does not assume it.
  *
- * Filtering is the caller's: the Resolved view of an included config passes an index whose `sections` were narrowed to
- * what that config declared. This builder never re-orders `index.sections`, which is the dialect's own output order.
+ * Filtering is the caller's: the Resolved view of an included config passes the sections that config declared. This
+ * never re-orders them, since the order it is given is the dialect's own output order.
  *
- * @param index - Every section the resolution holds, with the field count each one will take.
- * @param bodies - Section bodies that have arrived so far, by section name; absent names render as placeholders.
- * @returns The lines, and the queries a viewport and a sections panel address them by.
+ * @param sections - Every section the view shows, with the field count each one will take.
+ * @returns Where those sections' lines sit, and what a viewport asks about them.
  */
-export function toResolvedDocument(
-  index: LtxResolvedIndex,
-  bodies?: Nullable<ReadonlyMap<string, LtxResolvedSection>>
-): IResolvedDocument {
-  const lines: Array<ICodeLine> = [];
+export function toResolvedLayout(sections: ReadonlyArray<LtxResolvedIndexEntry>): IResolvedLayout {
   const placements: Array<IResolvedPlacement> = [];
   const sectionLines: Map<string, number> = new Map();
 
   let number: number = 1;
 
-  for (const entry of index.sections) {
+  for (const entry of sections) {
     const firstLine: number = number;
-    const body: Nullable<LtxResolvedSection> = bodies?.get(entry.name) ?? null;
 
-    lines.push({ number: number++, spans: toHeaderSpans(entry) });
-
-    // The index decides how many field lines there are, not the body: a body is what fills them in, and letting it
-    // decide would move every line below it the moment a page arrived.
-    for (let at: number = 0; at < entry.fieldCount; at += 1) {
-      const field: Nullable<LtxResolvedField> = body?.fields[at] ?? null;
-
-      lines.push({ number: number++, spans: field ? toFieldSpans(field, entry.name === ROOT_SECTION) : [] });
-    }
-
-    lines.push({ number: number++, spans: [] });
+    // A header, a line per field the index counted, and the blank line that separates one section from the next.
+    number += entry.fieldCount + 2;
 
     placements.push({ firstLine, lastLine: number - 1, name: entry.name });
 
@@ -97,12 +96,68 @@ export function toResolvedDocument(
     }
   }
 
+  const lineCount: number = number - 1;
+
   return {
     getSectionLine: (name: string): Nullable<number> => sectionLines.get(name) ?? null,
     getSectionsInRange: (firstLine: number, lastLine: number): Array<string> =>
       selectPlacements(placements, firstLine, lastLine),
-    lines,
+    lineCount,
+    toSource: (bodies?: Nullable<ReadonlyMap<string, LtxResolvedSection>>): ICodeLineSource => ({
+      count: lineCount,
+      getLine: (index: number): ICodeLine => toLine(sections, placements, bodies, index),
+      // Every source this layout hands out is a view of one document, and the placements are what say so.
+      layout: placements,
+      // The numbering is the document's own and runs from one, so an address is arithmetic rather than a lookup.
+      indexOfLine: (line: number): number => (line >= 1 && line <= lineCount ? line - 1 : -1),
+      widestNumber: lineCount,
+    }),
   };
+}
+
+/**
+ * The line at one position, built from the section that owns it.
+ *
+ * Every line of a resolved document is one of three things, and which one it is follows from where it sits inside its
+ * section: the header, one of the fields the index counted, or the blank line that separates it from the next. A field
+ * whose body has not arrived draws blank in the place it will occupy, so nothing moves when the page lands.
+ *
+ * @param sections - The sections as laid out, in the same order as `placements`.
+ * @param placements - Where each of those sections sits.
+ * @param bodies - Bodies that have arrived, by section name.
+ * @param index - Position in the document, from zero.
+ * @returns The line at that position.
+ */
+function toLine(
+  sections: ReadonlyArray<LtxResolvedIndexEntry>,
+  placements: ReadonlyArray<IResolvedPlacement>,
+  bodies: Nullable<ReadonlyMap<string, LtxResolvedSection>> | undefined,
+  index: number
+): ICodeLine {
+  const number: number = index + 1;
+  const at: number = findPlacement(placements, number);
+  const placement: Nullable<IResolvedPlacement> = placements[at] ?? null;
+  const entry: Nullable<LtxResolvedIndexEntry> = sections[at] ?? null;
+
+  // A position outside the document, which a listing asks for while a shorter one replaces a taller.
+  if (!placement || !entry || number < placement.firstLine) {
+    return { number, spans: [] };
+  }
+
+  const offset: number = number - placement.firstLine;
+
+  if (offset === 0) {
+    return { number, spans: toHeaderSpans(entry) };
+  }
+
+  // Past the last field is the blank line the section ends with.
+  if (offset > entry.fieldCount) {
+    return { number, spans: [] };
+  }
+
+  const field: Nullable<LtxResolvedField> = bodies?.get(entry.name)?.fields[offset - 1] ?? null;
+
+  return { number, spans: field ? toFieldSpans(field, entry.name === ROOT_SECTION) : [] };
 }
 
 /**
@@ -183,11 +238,37 @@ function toFieldSpans(field: LtxResolvedField, isRootSection: boolean): Array<IS
 }
 
 /**
+ * The first placement whose last line has reached the given line, which is the one holding it.
+ *
+ * Binary searched rather than scanned, because both callers run per rendered line and per scroll of a document that
+ * reaches half a million lines across twelve thousand sections. Placements are laid out in ascending order and do not
+ * overlap, so this is a lower bound and nothing else.
+ *
+ * @param placements - Sections as laid out, in ascending order.
+ * @param line - Line number to find.
+ * @returns Position of the placement, which is `placements.length` when the line sits past the last one.
+ */
+function findPlacement(placements: ReadonlyArray<IResolvedPlacement>, line: number): number {
+  let low: number = 0;
+  let high: number = placements.length;
+
+  while (low < high) {
+    const middle: number = (low + high) >>> 1;
+
+    if (placements[middle].lastLine < line) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low;
+}
+
+/**
  * The sections overlapping a closed range of line numbers.
  *
- * Binary searched rather than scanned, because this runs on every scroll of a document that reaches 300,000 lines and
- * 23,000 sections. Placements are laid out in ascending order and do not overlap, so the first one whose last line has
- * reached `firstLine` is the first answer and the walk stops at the first header past `lastLine`.
+ * The walk starts at the placement holding `firstLine` and stops at the first header past `lastLine`.
  */
 function selectPlacements(
   placements: ReadonlyArray<IResolvedPlacement>,
@@ -198,19 +279,7 @@ function selectPlacements(
     return [];
   }
 
-  let low: number = 0;
-  let high: number = placements.length;
-
-  while (low < high) {
-    const middle: number = (low + high) >>> 1;
-
-    if (placements[middle].lastLine < firstLine) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-
+  const low: number = findPlacement(placements, firstLine);
   const names: Array<string> = [];
 
   for (let at: number = low; at < placements.length && placements[at].firstLine <= lastLine; at += 1) {

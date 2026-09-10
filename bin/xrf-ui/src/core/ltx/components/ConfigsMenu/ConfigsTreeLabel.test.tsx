@@ -56,7 +56,9 @@ describe("ConfigsTreeLabel", () => {
   });
 
   it("should render a directory row, which stands for no config at all", () => {
-    const { getByText } = renderWithProviders(<ConfigsTreeLabel item={{ id: "directory:configs", label: "configs" }} />);
+    const { getByText } = renderWithProviders(
+      <ConfigsTreeLabel item={{ id: "directory:configs", label: "configs" }} />
+    );
 
     expect(getByText("configs")).toBeInTheDocument();
   });

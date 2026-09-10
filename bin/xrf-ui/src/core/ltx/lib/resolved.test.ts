@@ -1,26 +1,20 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 
 import {
   LtxResolvedField,
   LtxResolvedFieldOrigin,
-  LtxResolvedIndex,
   LtxResolvedIndexEntry,
   LtxResolvedSection,
 } from "@/core/bindings/types/xrf-ltx-inspect";
-import { describeResolvedFieldOrigin, IResolvedDocument, toResolvedDocument } from "@/core/ltx/lib/resolved";
+import { describeResolvedFieldOrigin, IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
-import { ICodeLine } from "@/core/ui/code/code-line";
+import { ICodeLineSource } from "@/core/ui/code/code-line";
 
 const ENTRY: string = "configs\\system.ltx";
 
 /** An index entry carrying only what a case is about. */
 function entryOf(name: string, fieldCount: number, parents: Array<string> = []): LtxResolvedIndexEntry {
   return { fieldCount, name, origin: "configs\\weapons.ltx", parents };
-}
-
-/** An index over the given sections, with the rest of the record empty. */
-function indexOf(sections: Array<LtxResolvedIndexEntry>): LtxResolvedIndex {
-  return { diagnostics: [], dialect: "ltx", entry: ENTRY, sections };
 }
 
 /** A field written in the section that holds it, which is the case most of a config is. */
@@ -33,66 +27,97 @@ function bodyOf(name: string, fields: Array<LtxResolvedField>, parents: Array<st
   return { entry: ENTRY, fields, name, origin: "configs\\weapons.ltx", parents };
 }
 
+/** A layout over the given sections, read through a source holding whatever bodies a case supplies. */
+function readingOf(
+  sections: Array<LtxResolvedIndexEntry>,
+  bodies?: ReadonlyMap<string, LtxResolvedSection>
+): { layout: IResolvedLayout; source: ICodeLineSource } {
+  const layout: IResolvedLayout = toResolvedLayout(sections);
+
+  return { layout, source: layout.toSource(bodies) };
+}
+
 /** Every span of one line, in order, as `token:text` pairs a failure can be read from. */
-function spansOf(document: IResolvedDocument, line: number): Array<string> {
-  return (document.lines[line - 1]?.spans ?? []).map((span: ISyntaxSpan) => `${span.token}:${span.text}`);
+function spansOf(source: ICodeLineSource, line: number): Array<string> {
+  return source.getLine(line - 1).spans.map((span: ISyntaxSpan) => `${span.token}:${span.text}`);
 }
 
 /** The text of one line, which is what a reader sees whatever it is coloured. */
-function textOf(document: IResolvedDocument, line: number): string {
-  return (document.lines[line - 1]?.spans ?? []).map((span: ISyntaxSpan) => span.text).join("");
+function textOf(source: ICodeLineSource, line: number): string {
+  return source
+    .getLine(line - 1)
+    .spans.map((span: ISyntaxSpan) => span.text)
+    .join("");
 }
 
-describe("toResolvedDocument", () => {
+describe("toResolvedLayout", () => {
   it("should take its height from the index alone, before a single body has arrived", () => {
     // The whole reason the index carries a field count: the document is as tall as it will ever be on the first
     // answer, so scrolling it does not move under the person scrolling.
-    const document: IResolvedDocument = toResolvedDocument(indexOf([entryOf("wpn_ak74", 3), entryOf("wpn_lr300", 1)]));
+    const { layout, source } = readingOf([entryOf("wpn_ak74", 3), entryOf("wpn_lr300", 1)]);
 
-    expect(document.lines).toHaveLength(3 + 2 + 1 + 2);
-    expect(document.lines.map((line: ICodeLine) => line.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(layout.lineCount).toBe(3 + 2 + 1 + 2);
+    expect(Array.from({ length: layout.lineCount }, (_, at: number) => source.getLine(at).number)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8,
+    ]);
+  });
+
+  it("should build a line only when one is asked for", () => {
+    // What the whole shape is for: Anomaly's `system.ltx` resolves to 551,000 lines and a page of bodies lands on
+    // every scroll, so a layout that read them - or built them - would cost the document per page.
+    const bodies: Map<string, LtxResolvedSection> = new Map([["s500", bodyOf("s500", [fieldOf("cost", "1")])]]);
+    const reads = jest.spyOn(bodies, "get");
+    const { layout, source } = readingOf(
+      Array.from({ length: 1000 }, (_, at: number) => entryOf(`s${at}`, 10)),
+      bodies
+    );
+
+    expect(layout.lineCount).toBe(1000 * 12);
+    expect(reads).not.toHaveBeenCalled();
+
+    source.getLine(0);
+    source.getLine(1);
+
+    expect(reads).toHaveBeenCalledTimes(1);
   });
 
   it("should keep every line where it was once bodies arrive", () => {
-    const index: LtxResolvedIndex = indexOf([entryOf("wpn_ak74", 2), entryOf("wpn_lr300", 1)]);
-    const empty: IResolvedDocument = toResolvedDocument(index);
-    const filled: IResolvedDocument = toResolvedDocument(
-      index,
-      new Map([["wpn_lr300", bodyOf("wpn_lr300", [fieldOf("cost", "1000")])]])
-    );
+    const sections: Array<LtxResolvedIndexEntry> = [entryOf("wpn_ak74", 2), entryOf("wpn_lr300", 1)];
+    const empty = readingOf(sections);
+    const filled = readingOf(sections, new Map([["wpn_lr300", bodyOf("wpn_lr300", [fieldOf("cost", "1000")])]]));
 
-    expect(filled.lines).toHaveLength(empty.lines.length);
-    expect(filled.getSectionLine("wpn_lr300")).toBe(empty.getSectionLine("wpn_lr300"));
-    expect(textOf(filled, 5)).toBe("[wpn_lr300]");
+    expect(filled.layout.lineCount).toBe(empty.layout.lineCount);
+    expect(filled.layout.getSectionLine("wpn_lr300")).toBe(empty.layout.getSectionLine("wpn_lr300"));
+    expect(textOf(filled.source, 5)).toBe("[wpn_lr300]");
   });
 
   it("should put a fetched section's fields on the lines the index predicted", () => {
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("wpn_ak74", 2, ["wpn_base"])]),
+    const { source } = readingOf(
+      [entryOf("wpn_ak74", 2, ["wpn_base"])],
       new Map([["wpn_ak74", bodyOf("wpn_ak74", [fieldOf("cost", "1000"), fieldOf("ammo_mag_size", "30")])]])
     );
 
-    expect(textOf(document, 1)).toBe("[wpn_ak74]:wpn_base");
-    expect(textOf(document, 2)).toBe("cost = 1000  ; written here, in configs\\weapons.ltx");
-    expect(textOf(document, 3)).toBe("ammo_mag_size = 30  ; written here, in configs\\weapons.ltx");
-    expect(textOf(document, 4)).toBe("");
+    expect(textOf(source, 1)).toBe("[wpn_ak74]:wpn_base");
+    expect(textOf(source, 2)).toBe("cost = 1000  ; written here, in configs\\weapons.ltx");
+    expect(textOf(source, 3)).toBe("ammo_mag_size = 30  ; written here, in configs\\weapons.ltx");
+    expect(textOf(source, 4)).toBe("");
   });
 
   it("should render a section with no body yet as blank lines that later fill in", () => {
-    const document: IResolvedDocument = toResolvedDocument(indexOf([entryOf("wpn_ak74", 2)]));
+    const { source } = readingOf([entryOf("wpn_ak74", 2)]);
 
-    expect(spansOf(document, 1)).toEqual([`${ESyntaxToken.SECTION}:[wpn_ak74]`]);
-    expect(document.lines[1].spans).toEqual([]);
-    expect(document.lines[2].spans).toEqual([]);
+    expect(spansOf(source, 1)).toEqual([`${ESyntaxToken.SECTION}:[wpn_ak74]`]);
+    expect(source.getLine(1).spans).toEqual([]);
+    expect(source.getLine(2).spans).toEqual([]);
   });
 
   it("should colour a field with the shared token vocabulary and dim the note it adds", () => {
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("wpn_ak74", 1)]),
+    const { source } = readingOf(
+      [entryOf("wpn_ak74", 1)],
       new Map([["wpn_ak74", bodyOf("wpn_ak74", [fieldOf("cost", "1000", { kind: "unrecorded" })])]])
     );
 
-    expect(spansOf(document, 2)).toEqual([
+    expect(spansOf(source, 2)).toEqual([
       `${ESyntaxToken.KEY}:cost`,
       `${ESyntaxToken.PLAIN}: `,
       `${ESyntaxToken.OPERATOR}:=`,
@@ -102,9 +127,9 @@ describe("toResolvedDocument", () => {
   });
 
   it("should separate the parents of a header with the operators the file spells them with", () => {
-    const document: IResolvedDocument = toResolvedDocument(indexOf([entryOf("wpn_ak74", 0, ["wpn_base", "wpn_ammo"])]));
+    const { source } = readingOf([entryOf("wpn_ak74", 0, ["wpn_base", "wpn_ammo"])]);
 
-    expect(spansOf(document, 1)).toEqual([
+    expect(spansOf(source, 1)).toEqual([
       `${ESyntaxToken.SECTION}:[wpn_ak74]`,
       `${ESyntaxToken.OPERATOR}::`,
       `${ESyntaxToken.TYPE}:wpn_base`,
@@ -115,66 +140,67 @@ describe("toResolvedDocument", () => {
 
   it("should answer the sections a window of lines covers", () => {
     // Two fields each, so the sections start on lines 1, 5 and 9.
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("a", 2), entryOf("b", 2), entryOf("c", 2)])
-    );
+    const { layout } = readingOf([entryOf("a", 2), entryOf("b", 2), entryOf("c", 2)]);
 
-    expect(document.getSectionsInRange(1, 3)).toEqual(["a"]);
-    expect(document.getSectionsInRange(3, 6)).toEqual(["a", "b"]);
-    expect(document.getSectionsInRange(1, 12)).toEqual(["a", "b", "c"]);
+    expect(layout.getSectionsInRange(1, 3)).toEqual(["a"]);
+    expect(layout.getSectionsInRange(3, 6)).toEqual(["a", "b"]);
+    expect(layout.getSectionsInRange(1, 12)).toEqual(["a", "b", "c"]);
     // A window resting on the gap after `b`, which is a line `b` owns.
-    expect(document.getSectionsInRange(8, 8)).toEqual(["b"]);
-    expect(document.getSectionsInRange(13, 20)).toEqual([]);
-    expect(document.getSectionsInRange(6, 2)).toEqual([]);
+    expect(layout.getSectionsInRange(8, 8)).toEqual(["b"]);
+    expect(layout.getSectionsInRange(13, 20)).toEqual([]);
+    expect(layout.getSectionsInRange(6, 2)).toEqual([]);
   });
 
   it("should find the line a named section starts on, and refuse to invent one", () => {
-    const document: IResolvedDocument = toResolvedDocument(indexOf([entryOf("a", 3), entryOf("b", 1)]));
+    const { layout } = readingOf([entryOf("a", 3), entryOf("b", 1)]);
 
-    expect(document.getSectionLine("a")).toBe(1);
-    expect(document.getSectionLine("b")).toBe(6);
-    expect(document.getSectionLine("missing")).toBeNull();
+    expect(layout.getSectionLine("a")).toBe(1);
+    expect(layout.getSectionLine("b")).toBe(6);
+    expect(layout.getSectionLine("missing")).toBeNull();
   });
 
   it("should keep the order the dialect answered in, whatever that order is", () => {
     // Authored order under standard LTX, name order under DLTX. Both are the engine's own output.
-    const document: IResolvedDocument = toResolvedDocument(indexOf([entryOf("zzz", 0), entryOf("aaa", 0)]));
+    const { layout, source } = readingOf([entryOf("zzz", 0), entryOf("aaa", 0)]);
 
-    expect([textOf(document, 1), textOf(document, 3)]).toEqual(["[zzz]", "[aaa]"]);
-    expect(document.getSectionsInRange(1, 4)).toEqual(["zzz", "aaa"]);
+    expect([textOf(source, 1), textOf(source, 3)]).toEqual(["[zzz]", "[aaa]"]);
+    expect(layout.getSectionsInRange(1, 4)).toEqual(["zzz", "aaa"]);
   });
 
   it("should name the root section for what it is rather than calling it a section", () => {
     // The unnamed section holds what was written before the first header, and `[]` is a header nobody wrote.
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("", 1)]),
-      new Map([["", bodyOf("", [fieldOf("mp_maps", "mp_pool")])]])
-    );
+    const { source } = readingOf([entryOf("", 1)], new Map([["", bodyOf("", [fieldOf("mp_maps", "mp_pool")])]]));
 
-    expect(spansOf(document, 1)).toEqual([`${ESyntaxToken.COMMENT}:; fields written before any section header`]);
+    expect(spansOf(source, 1)).toEqual([`${ESyntaxToken.COMMENT}:; fields written before any section header`]);
     // Its per-field file is the first config merged rather than the one the field is written in, so it is not claimed.
-    expect(textOf(document, 2)).toBe("mp_maps = mp_pool  ; written here");
+    expect(textOf(source, 2)).toBe("mp_maps = mp_pool  ; written here");
   });
 
   it("should ignore a body for a section the index does not list", () => {
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("a", 1)]),
-      new Map([["b", bodyOf("b", [fieldOf("cost", "1")])]])
-    );
+    const { layout, source } = readingOf([entryOf("a", 1)], new Map([["b", bodyOf("b", [fieldOf("cost", "1")])]]));
 
-    expect(document.lines).toHaveLength(3);
-    expect(document.lines[1].spans).toEqual([]);
+    expect(layout.lineCount).toBe(3);
+    expect(source.getLine(1).spans).toEqual([]);
   });
 
   it("should stop at the field count the index gave when a body disagrees with it", () => {
     // The two come from one resolution and cannot really disagree; if they ever did, the layout is what must not move.
-    const document: IResolvedDocument = toResolvedDocument(
-      indexOf([entryOf("a", 1)]),
+    const { layout, source } = readingOf(
+      [entryOf("a", 1)],
       new Map([["a", bodyOf("a", [fieldOf("cost", "1"), fieldOf("weight", "2")])]])
     );
 
-    expect(document.lines).toHaveLength(3);
-    expect(textOf(document, 2)).toBe("cost = 1  ; written here, in configs\\weapons.ltx");
+    expect(layout.lineCount).toBe(3);
+    expect(textOf(source, 2)).toBe("cost = 1  ; written here, in configs\\weapons.ltx");
+  });
+
+  it("should answer nothing for a line the document does not hold", () => {
+    // A listing asks for the window it last rendered, which can outlive the document that was that tall.
+    const { source } = readingOf([entryOf("a", 1)]);
+
+    expect(source.getLine(99).spans).toEqual([]);
+    expect(source.indexOfLine(99)).toBe(-1);
+    expect(source.indexOfLine(2)).toBe(1);
   });
 });
 

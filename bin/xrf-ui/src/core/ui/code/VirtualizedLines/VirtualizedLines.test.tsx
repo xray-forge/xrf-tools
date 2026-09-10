@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ESyntaxToken } from "@/core/syntax/lib";
 import { CODE } from "@/core/theme/tokens";
-import { ECodeLineMark, ICodeLine, ICodeLineRange } from "@/core/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineRange, ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines/VirtualizedLines";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
@@ -58,7 +58,7 @@ function asScrollable(list: HTMLElement): HTMLElement {
 describe("VirtualizedLines", () => {
   it("exposes itself as a list of selectable lines", () => {
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={[line(1, "a"), line(2, "b")]} />
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource([line(1, "a"), line(2, "b")])} />
     );
 
     expect(render_.getByRole("listbox", { name: "Source" })).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("VirtualizedLines", () => {
     // An excerpt keeps the numbering of the file it came from, and a resolved document is assembled
     // rather than read off one, so the index is never the answer.
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={[line(40, "a"), line(41, "b"), line(99, "c")]} />
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource([line(40, "a"), line(41, "b"), line(99, "c")])} />
     );
 
     const gutters: Array<HTMLElement> = render_.getAllByTestId("virtualized-lines-gutter");
@@ -81,7 +81,11 @@ describe("VirtualizedLines", () => {
     const render_: RenderResult = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
-        lines={[line(1, "a"), line(2, "b", ECodeLineMark.ERROR), line(3, "c", ECodeLineMark.WARNING)]}
+        source={toCodeLineSource([
+          line(1, "a"),
+          line(2, "b", ECodeLineMark.ERROR),
+          line(3, "c", ECodeLineMark.WARNING),
+        ])}
       />
     );
 
@@ -94,7 +98,7 @@ describe("VirtualizedLines", () => {
     const render_: RenderResult = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
-        lines={[
+        source={toCodeLineSource([
           {
             number: 1,
             spans: [
@@ -103,7 +107,7 @@ describe("VirtualizedLines", () => {
               { token: ESyntaxToken.NUMBER, text: "1000" },
             ],
           },
-        ]}
+        ])}
       />
     );
 
@@ -117,7 +121,11 @@ describe("VirtualizedLines", () => {
   it("reports the line a click chose, by the line itself and not its position", async () => {
     const onSelectLine = jest.fn();
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={[line(40, "a"), line(41, "b")]} onSelectLine={onSelectLine} />
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource([line(40, "a"), line(41, "b")])}
+        onSelectLine={onSelectLine}
+      />
     );
 
     await userEvent.click(render_.getByText("b"));
@@ -127,7 +135,11 @@ describe("VirtualizedLines", () => {
 
   it("draws the selection on the line naming that number, wherever it sits", () => {
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={[line(40, "a"), line(41, "b")]} selectedLine={41} />
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource([line(40, "a"), line(41, "b")])}
+        selectedLine={41}
+      />
     );
 
     const rows: Array<HTMLElement> = render_.getAllByRole("option");
@@ -139,7 +151,11 @@ describe("VirtualizedLines", () => {
   it("moves the selection with the arrow keys without moving focus off the list", async () => {
     const onSelectLine = jest.fn();
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={[line(40, "a"), line(41, "b")]} onSelectLine={onSelectLine} />
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource([line(40, "a"), line(41, "b")])}
+        onSelectLine={onSelectLine}
+      />
     );
     const list: HTMLElement = render_.getByRole("listbox");
 
@@ -154,12 +170,14 @@ describe("VirtualizedLines", () => {
     // A section jumped to is read downwards from its header, so scrolling just far enough to make it visible is the
     // wrong answer: it would sit against the bottom edge, showing its name and none of its body.
     const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
+    );
     const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
 
     render_.rerender(
       <>
-        <VirtualizedLines ariaLabel={"Source"} lines={lines} scrollToLine={200} />
+        <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} scrollToLine={200} />
       </>
     );
 
@@ -170,12 +188,14 @@ describe("VirtualizedLines", () => {
     // The other half of the same decision: an arrow key that parked its line at the top would throw away the context
     // the reader is looking at, so a step still scrolls by the least it can.
     const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
+    );
     const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
 
     render_.rerender(
       <>
-        <VirtualizedLines ariaLabel={"Source"} lines={lines} selectedLine={300} />
+        <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} selectedLine={300} />
       </>
     );
 
@@ -190,7 +210,7 @@ describe("VirtualizedLines", () => {
     renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
-        lines={[line(40, "a"), line(41, "b"), line(99, "c")]}
+        source={toCodeLineSource([line(40, "a"), line(41, "b"), line(99, "c")])}
         onVisibleRangeChange={onVisibleRangeChange}
       />
     );
@@ -204,7 +224,11 @@ describe("VirtualizedLines", () => {
     const onVisibleRangeChange = jest.fn();
     const lines: Array<ICodeLine> = [line(1, "a"), line(2, "b")];
     const render_: RenderResult = renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={lines} onVisibleRangeChange={onVisibleRangeChange} />
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource(lines)}
+        onVisibleRangeChange={onVisibleRangeChange}
+      />
     );
 
     // Re-wrapped exactly as `renderWithProviders` wraps the first render: a rerender that changes the shape of the
@@ -213,7 +237,7 @@ describe("VirtualizedLines", () => {
       <>
         <VirtualizedLines
           ariaLabel={"Source"}
-          lines={lines}
+          source={toCodeLineSource(lines)}
           selectedLine={2}
           // A fresh function every render, which is what a caller writing the handler inline hands over.
           onVisibleRangeChange={(range: ICodeLineRange) => onVisibleRangeChange(range)}
@@ -229,7 +253,7 @@ describe("VirtualizedLines", () => {
     const render_: RenderResult = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
-        lines={[line(1, "a"), line(2, "b")]}
+        source={toCodeLineSource([line(1, "a"), line(2, "b")])}
         onVisibleRangeChange={onVisibleRangeChange}
       />
     );
@@ -238,7 +262,7 @@ describe("VirtualizedLines", () => {
       <>
         <VirtualizedLines
           ariaLabel={"Source"}
-          lines={[line(400, "a"), line(401, "b")]}
+          source={toCodeLineSource([line(400, "a"), line(401, "b")])}
           onVisibleRangeChange={onVisibleRangeChange}
         />
       </>
@@ -252,7 +276,9 @@ describe("VirtualizedLines", () => {
     // The signature of a windowed listing: the scroller learns how tall the document is by arithmetic,
     // so the rows it never rendered still take up the room they would have.
     const lines: Array<ICodeLine> = Array.from({ length: 4000 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
+    );
     const sizer: Nullable<HTMLElement> = render_.getByRole("listbox").querySelector("div[role='presentation']");
 
     expect(sizer).toHaveStyle({ height: `${4000 * CODE.lineHeight}px` });
@@ -281,7 +307,9 @@ describe("VirtualizedLines with windowing on", () => {
 
   it("renders a window of lines rather than the document behind it", () => {
     const lines: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(<VirtualizedLines ariaLabel={"Source"} lines={lines} />);
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
+    );
     const rows: Array<HTMLElement> = render_.getAllByRole("option");
 
     // What is asserted is the shape of the cost, not an exact count: the window is the viewport plus
@@ -298,12 +326,67 @@ describe("VirtualizedLines with windowing on", () => {
     const lines: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
 
     renderWithProviders(
-      <VirtualizedLines ariaLabel={"Source"} lines={lines} onVisibleRangeChange={onVisibleRangeChange} />
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource(lines)}
+        onVisibleRangeChange={onVisibleRangeChange}
+      />
     );
 
     const range: { firstLine: number; lastLine: number } = onVisibleRangeChange.mock.calls[0][0] as ICodeLineRange;
 
     expect(range.firstLine).toBe(1);
     expect(range.lastLine).toBeLessThan(lines.length);
+  });
+
+  it("reports again when the document changed under a window numbered the same", () => {
+    // Every resolved document is numbered from one, so selecting another config shows different content behind the
+    // same numbers. Staying quiet there leaves the new document's first screen blank until the reader scrolls, which
+    // is the one thing the report exists to prevent.
+    const onVisibleRangeChange = jest.fn();
+    const first: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
+    const second: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "b"));
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedLines
+        ariaLabel={"Source"}
+        source={toCodeLineSource(first)}
+        onVisibleRangeChange={onVisibleRangeChange}
+      />
+    );
+
+    render_.rerender(
+      <>
+        <VirtualizedLines
+          ariaLabel={"Source"}
+          source={toCodeLineSource(second)}
+          onVisibleRangeChange={onVisibleRangeChange}
+        />
+      </>
+    );
+
+    expect(onVisibleRangeChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks its source only for the lines it draws", () => {
+    // Why the listing takes a source instead of an array. Anomaly's resolved `system.ltx` is 551,000 lines, and every
+    // page of section bodies that lands changes what some of them say: a listing that materialised the document would
+    // rebuild half a million lines per page, for a screen that shows forty.
+    const asked: Set<number> = new Set();
+    const source: ICodeLineSource = {
+      count: 300000,
+      getLine: (index: number): ICodeLine => {
+        asked.add(index);
+
+        return line(index + 1, "a");
+      },
+      indexOfLine: (number: number): number => number - 1,
+      layout: {},
+      widestNumber: 300000,
+    };
+
+    renderWithProviders(<VirtualizedLines ariaLabel={"Source"} source={source} />);
+
+    expect(asked.size).toBeGreaterThan(0);
+    expect(asked.size).toBeLessThan((3 * VIEWPORT_HEIGHT) / CODE.lineHeight);
   });
 });

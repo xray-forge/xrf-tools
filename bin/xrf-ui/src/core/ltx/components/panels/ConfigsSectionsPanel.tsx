@@ -36,9 +36,7 @@ export function ConfigsSectionsPanel({
       : (documentService.document.value?.structure.sections ?? []).map((section) => section.name);
 
     const query: string = filter.trim().toLowerCase();
-    const matched: Array<string> = query
-      ? named.filter((name: string) => name.toLowerCase().includes(query))
-      : named;
+    const matched: Array<string> = query ? named.filter((name: string) => name.toLowerCase().includes(query)) : named;
 
     return matched.map((name: string) => ({ id: `section:${name}`, label: name }));
   }, [documentService.document.value, filter, isResolved, resolvedService.visibleSections]);

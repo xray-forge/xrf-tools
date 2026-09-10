@@ -6,7 +6,7 @@ import { getSyntaxColors } from "@/core/syntax/components/syntax.styles";
 import { ESyntaxToken } from "@/core/syntax/lib";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
-import { ICodeLine, ICodeLineRange } from "@/core/ui/code/code-line";
+import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -23,8 +23,29 @@ const enum ECodeLineReveal {
   START,
 }
 
+/**
+ * What every row entry the virtualizer holds points at.
+ *
+ * The virtualizer wants an entry per row, and it hands the entry's `id` back to `renderRow` - which is all this
+ * listing needs, since the line itself comes from the source. One shared model for every row rather than a line each:
+ * a resolved `system.ltx` has 551,000 rows, and the entries exist to be counted and identified, not read.
+ */
+const ROW_MODEL: Readonly<Record<string, never>> = Object.freeze({});
+
+/** The last window handed to `onVisibleRangeChange`, and the document it was a window into. */
+interface IReportedWindow {
+  layout: object;
+  range: ICodeLineRange;
+}
+
 interface IVirtualizedLinesProps extends StyledComponentProps {
-  lines: ReadonlyArray<ICodeLine>;
+  /**
+   * The document to draw.
+   *
+   * A source rather than an array so a document of hundreds of thousands of lines is never held as one - see
+   * {@link ICodeLineSource}. Hand over a new source to redraw what is on screen after its content changed.
+   */
+  source: ICodeLineSource;
   ariaLabel: string;
   /**
    * Line drawn as selected, by the number it displays.
@@ -56,7 +77,7 @@ export function VirtualizedLines({
   id,
   className,
   sx,
-  lines,
+  source,
   ariaLabel,
   selectedLine = null,
   scrollToLine = null,
@@ -67,7 +88,7 @@ export function VirtualizedLines({
   const listId: string = useId();
 
   const scrollerRef = useRef<HTMLElement | null>(null);
-  const reportedRangeRef = useRef<Nullable<ICodeLineRange>>(null);
+  const reportedWindowRef = useRef<Nullable<IReportedWindow>>(null);
   const layoutRef = useRef<Nullable<LayoutList>>(null);
 
   if (!layoutRef.current) {
@@ -77,47 +98,37 @@ export function VirtualizedLines({
   }
 
   const colors: Record<ESyntaxToken, string> = useMemo(() => getSyntaxColors(theme), [theme]);
+  const count: number = source.count;
 
   // Rows are identified by position rather than by the number they show: a resolved document is
   // assembled out of sections, and nothing stops two of its lines from carrying the same number.
+  // Kept for as long as the document is that tall, because a page of content landing changes what the
+  // lines say and not how many there are - and rebuilding half a million entries per page is the cost
+  // this listing exists to avoid.
   const virtualizerRows = useMemo(
-    () => lines.map((line: ICodeLine, index: number) => ({ id: index, model: line })),
-    [lines]
+    () => Array.from({ length: count }, (_, index: number) => ({ id: index, model: ROW_MODEL })),
+    [count]
   );
 
-  const range = useMemo(() => ({ firstRowIndex: 0, lastRowIndex: lines.length }), [lines.length]);
+  const range = useMemo(() => ({ firstRowIndex: 0, lastRowIndex: count }), [count]);
 
   const rowIdOf = useCallback((index: number) => `${listId}-line-${index}`, [listId]);
-
-  /** Where a displayed number sits, since every address into this listing is one. */
-  const indexOfNumber: ReadonlyMap<number, number> = useMemo(
-    () => new Map(lines.map((line: ICodeLine, index: number) => [line.number, index])),
-    [lines]
-  );
 
   /**
    * Width of the gutter column, from the widest number it has to hold.
    *
-   * The widest is searched for rather than taken from the last line, since a listing is not obliged to
-   * number its lines in order.
+   * Asked of the source rather than searched for, since a listing is not obliged to number its lines in
+   * order and a source large enough to matter knows its own widest without walking anything.
    */
   const gutterWidth: number = useMemo(() => {
-    let widest: number = 1;
-
-    for (const line of lines) {
-      if (line.number > widest) {
-        widest = line.number;
-      }
-    }
-
-    const digits: number = Math.max(CODE.minimumGutterDigits, String(widest).length);
+    const digits: number = Math.max(CODE.minimumGutterDigits, String(source.widestNumber).length);
 
     return Math.ceil(digits * MONOSPACE_CHARACTER_WIDTH) + CODE.markIconSize + CODE.gutterGap + CODE.gutterPaddingX * 2;
-  }, [lines]);
+  }, [source]);
 
   // A selection naming a line this document does not have simply draws nothing, and the first arrow
   // key lands on the first line.
-  const selectedIndex: number = selectedLine === null ? -1 : (indexOfNumber.get(selectedLine) ?? -1);
+  const selectedIndex: number = selectedLine === null ? -1 : source.indexOfLine(selectedLine);
 
   const select = useCallback((line: ICodeLine) => onSelectLine?.(line), [onSelectLine]);
 
@@ -127,16 +138,18 @@ export function VirtualizedLines({
     virtualization: {},
     rows: virtualizerRows,
     range,
-    rowCount: lines.length,
+    rowCount: count,
     renderRow: (params) => {
-      const line: ICodeLine = params.model as unknown as ICodeLine;
+      // The entry's own id, which is the position this listing gave it: `rowIndex` counts from the page
+      // the virtualizer was handed, and this listing hands it the whole document as one page.
+      const index: number = params.id as number;
 
       return (
         <VirtualizedLinesRow
-          key={params.rowIndex}
-          line={line}
-          rowId={rowIdOf(params.rowIndex)}
-          isSelected={params.rowIndex === selectedIndex}
+          key={index}
+          line={source.getLine(index)}
+          rowId={rowIdOf(index)}
+          isSelected={index === selectedIndex}
           gutterWidth={gutterWidth}
           colors={colors}
           onSelect={select}
@@ -204,15 +217,15 @@ export function VirtualizedLines({
 
   const moveTo = useCallback(
     (index: number): void => {
-      const next: number = Math.min(Math.max(index, 0), lines.length - 1);
-      const line: Nullable<ICodeLine> = lines[next] ?? null;
+      const next: number = Math.min(Math.max(index, 0), count - 1);
+      const line: Nullable<ICodeLine> = next < 0 ? null : source.getLine(next);
 
       if (line) {
         select(line);
         revealLine(next, ECodeLineReveal.NEAREST);
       }
     },
-    [lines, revealLine, select]
+    [count, revealLine, select, source]
   );
 
   const onKeyDown = useCallback(
@@ -236,22 +249,22 @@ export function VirtualizedLines({
         case "End":
           event.preventDefault();
 
-          return moveTo(lines.length - 1);
+          return moveTo(count - 1);
 
         default:
           return;
       }
     },
-    [lines.length, moveTo, selectedIndex]
+    [count, moveTo, selectedIndex]
   );
 
   useEffect(() => revealLine(selectedIndex, ECodeLineReveal.NEAREST), [revealLine, selectedIndex]);
 
   useEffect(() => {
     if (scrollToLine !== null) {
-      revealLine(indexOfNumber.get(scrollToLine) ?? -1, ECodeLineReveal.START);
+      revealLine(source.indexOfLine(scrollToLine), ECodeLineReveal.START);
     }
-  }, [indexOfNumber, revealLine, scrollToLine]);
+  }, [revealLine, scrollToLine, source]);
 
   useEffect(() => {
     if (!onVisibleRangeChange) {
@@ -261,25 +274,33 @@ export function VirtualizedLines({
     // The interval is clamped the way the rows themselves are: the virtualizer's last position is exclusive and may
     // sit past the end of a document that just got shorter.
     const first: number = Math.max(renderContext.firstRowIndex, 0);
-    const last: number = Math.min(renderContext.lastRowIndex, lines.length) - 1;
+    const last: number = Math.min(renderContext.lastRowIndex, count) - 1;
 
     if (last < first) {
       return;
     }
 
-    const range: ICodeLineRange = { firstLine: lines[first].number, lastLine: lines[last].number };
-    const reported: Nullable<ICodeLineRange> = reportedRangeRef.current;
+    const range: ICodeLineRange = {
+      firstLine: source.getLine(first).number,
+      lastLine: source.getLine(last).number,
+    };
+    const reported: Nullable<IReportedWindow> = reportedWindowRef.current;
 
-    // Compared by the numbers reported and not by the positions behind them, because the numbers are the whole answer:
-    // a document swapped for one numbered identically is showing the same lines, and a scroll that lands on the same
-    // window has nothing new to say.
-    if (reported && reported.firstLine === range.firstLine && reported.lastLine === range.lastLine) {
+    // A scroll that lands on the same window has nothing new to say, and a page of content arriving is not a scroll.
+    // The document has to be part of the comparison and its line numbers cannot stand in for it: a resolved document
+    // is numbered from one, so the first screen of every one of them is the same forty numbers over different content.
+    if (
+      reported &&
+      reported.layout === source.layout &&
+      reported.range.firstLine === range.firstLine &&
+      reported.range.lastLine === range.lastLine
+    ) {
       return;
     }
 
-    reportedRangeRef.current = range;
+    reportedWindowRef.current = { layout: source.layout, range };
     onVisibleRangeChange(range);
-  }, [lines, onVisibleRangeChange, renderContext]);
+  }, [count, onVisibleRangeChange, renderContext, source]);
 
   return (
     <Box

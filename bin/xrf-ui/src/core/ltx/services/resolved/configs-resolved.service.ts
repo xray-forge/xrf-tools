@@ -141,9 +141,7 @@ export class ConfigsResolvedService {
       return;
     }
 
-    const wanted: Array<string> = names.filter(
-      (name: string) => !this.sections.has(name) && !this.pending.has(name)
-    );
+    const wanted: Array<string> = names.filter((name: string) => !this.sections.has(name) && !this.pending.has(name));
 
     if (!wanted.length) {
       return;

@@ -2,11 +2,11 @@ import { Alert, Box, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { LtxResolvedIndex } from "@/core/bindings/types/xrf-ltx-inspect";
-import { IResolvedDocument, toResolvedDocument } from "@/core/ltx/lib/resolved";
+import { LtxResolvedIndexEntry } from "@/core/bindings/types/xrf-ltx-inspect";
+import { IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
-import { ICodeLineRange } from "@/core/ui/code/code-line";
+import { ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
@@ -17,8 +17,9 @@ import { Nullable } from "@/lib/types/general";
  * What the open config's entry point resolves to, with every value's origin beside it.
  *
  * The index gives the document its height before a single body arrives, and bodies are asked for as they scroll into
- * view. A vanilla `system.ltx` resolves to 23,500 sections holding 293,000 fields, so fetching it whole is not an
- * option and neither is guessing how tall it is.
+ * view. Anomaly's `system.ltx` resolves to 11,870 sections holding 527,000 fields, so fetching it whole is not an
+ * option, neither is guessing how tall it is, and neither is building its 551,000 lines - the listing is handed a
+ * source that builds the forty on screen.
  */
 export function ConfigsResolvedView({
   "data-testid": dataTestId = "configs-resolved-view",
@@ -26,32 +27,37 @@ export function ConfigsResolvedView({
   const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
   const resolvedService: ConfigsResolvedService = useInjection(ConfigsResolvedService);
 
-  const index: Nullable<LtxResolvedIndex> = resolvedService.index.value;
   const narrowedTo: Nullable<string> = resolvedService.narrowedTo;
   const revealed: Nullable<string> = documentService.revealedSection;
 
-  // Rebuilt when a page lands, which `revision` is the signal for: the map itself is mutated in place, because copying
-  // one that grows to 23,500 entries per page would cost more than every fetch put together.
+  // Read here so a landed page re-renders this view: the map behind the source is mutated in place, because copying
+  // one that grows to 11,870 entries per page would cost more than every fetch put together.
   const revision: number = resolvedService.revision;
-  const visibleSections = resolvedService.visibleSections;
+  const visibleSections: ReadonlyArray<LtxResolvedIndexEntry> = resolvedService.visibleSections;
 
-  const document: Nullable<IResolvedDocument> = useMemo(() => {
-    // Counting the pages that have landed is what rebuilds the layout as bodies arrive: they are written into a map
-    // that is mutated in place, because copying one that grows to 23,500 entries per page would cost more than every
-    // fetch put together.
+  // Where the lines sit, which the index alone decides. Not rebuilt when a page lands: a body changes what a line says
+  // and never how many there are or where one is, and this document is half a million lines long.
+  const layout: Nullable<IResolvedLayout> = useMemo(
+    () => (resolvedService.isReady ? toResolvedLayout(visibleSections) : null),
+    [resolvedService.isReady, visibleSections]
+  );
+
+  // A fresh view over the same layout for each page that lands, which is what redraws the forty lines on screen.
+  const source: Nullable<ICodeLineSource> = useMemo(() => {
+    // Counting the pages that have landed is what says the map behind the source holds more than it did: the map is
+    // mutated in place rather than replaced, so nothing else about it changes when a page arrives.
     void revision;
 
-    // Narrowing is the caller's, so the builder lays out exactly the sections it is handed and never re-orders them.
-    return index ? toResolvedDocument({ ...index, sections: visibleSections }, resolvedService.sections) : null;
-  }, [index, revision, resolvedService.sections, visibleSections]);
+    return layout?.toSource(resolvedService.sections) ?? null;
+  }, [layout, resolvedService.sections, revision]);
 
   const onVisibleRangeChange = useCallback(
     (range: ICodeLineRange) => {
-      if (document) {
-        void resolvedService.request(document.getSectionsInRange(range.firstLine, range.lastLine));
+      if (layout) {
+        void resolvedService.request(layout.getSectionsInRange(range.firstLine, range.lastLine));
       }
     },
-    [document, resolvedService]
+    [layout, resolvedService]
   );
 
   // Cleared once the listing below has acted on it, which child effects run before this one does. Without the clear a
@@ -73,7 +79,7 @@ export function ConfigsResolvedView({
     );
   }
 
-  if (!document) {
+  if (!layout || !source) {
     return <DelayedProgress data-testid={dataTestId} />;
   }
 
@@ -101,8 +107,8 @@ export function ConfigsResolvedView({
       <VirtualizedLines
         data-testid={"configs-resolved-lines"}
         ariaLabel={`Resolved sections of ${resolvedService.entry ?? "this config"}`}
-        lines={document.lines}
-        scrollToLine={revealed ? document.getSectionLine(revealed) : null}
+        source={source}
+        scrollToLine={revealed ? layout.getSectionLine(revealed) : null}
         sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
         onVisibleRangeChange={onVisibleRangeChange}
       />
