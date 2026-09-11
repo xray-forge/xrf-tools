@@ -26,6 +26,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/pinned-toolchain
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true
@@ -50,6 +53,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/pinned-toolchain
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true
@@ -145,6 +151,8 @@ jobs:
           node-version: 24.x
           cache: pnpm
           cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+
+      - uses: ./.github/actions/pinned-toolchain
 
       - uses: Swatinem/rust-cache@v2
         with:

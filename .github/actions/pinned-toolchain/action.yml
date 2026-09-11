@@ -1,0 +1,22 @@
+name: Pinned toolchain only
+description: >
+  Install the toolchain `rust-toolchain.toml` names and remove every other one, so that the cache key
+  derived from the installed set depends on this repository rather than on the runner image.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        # The rustup shims install whatever `rust-toolchain.toml` names, declared components included.
+        cargo --version > /dev/null
+
+        pinned="$(rustup show active-toolchain | awk '{ print $1 }')"
+        echo "Pinned toolchain: ${pinned}"
+
+        rustup toolchain list \
+          | awk '{ print $1 }' \
+          | { grep -vx "${pinned}" || true; } \
+          | xargs -r -n1 rustup toolchain uninstall
+
+        rustup toolchain list
