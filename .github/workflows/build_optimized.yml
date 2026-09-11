@@ -20,17 +20,17 @@ jobs:
     steps:
       # Pinned to main rather than the dispatch ref: a dispatch can name any branch, and these artifacts
       # go to the nightly release, which tracks main.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: bin/xrf-ui/package.json
           run_install: false
 
       - name: Use Node.js 24.x
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
@@ -82,7 +82,7 @@ jobs:
       # on the first cargo call regardless of use, measured at ~15s, so removing this costs more.
       - uses: dtolnay/rust-toolchain@1.98.1
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
