@@ -44,23 +44,23 @@ byteorder = "1.5.0"
 ddsfile = "0.5.2"
 derive_more = "2.1.1"
 env_logger = "0.11.11"
-fileslice = { version = "0.7.0", default-features = false }
+fileslice = { version = "0.8.0", default-features = false }
 image = { version = "0.25.10", default-features = false }
 image_dds = "0.7.2"
-indexmap = { version = "2.14.0", features = ["serde"] }
-log = "0.4.33"
+indexmap = { version = "2.14.2", features = ["serde"] }
+log = "0.4.34"
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
 rayon = "1.12.0"
 regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
-sysinfo = "0.33"
+sysinfo = "0.39.6"
 specta = { version = "=2.0.0-rc.25", features = ["derive", "serde_json", "uuid"] }
 specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
 specta-util = "0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
-uuid = "1.24.0"
+uuid = "1.26.1"
 walkdir = "2.5.0"
 xrf-archive = { path = "crates/xrf-archive" }
 xrf-build-info = { path = "crates/xrf-build-info" }
