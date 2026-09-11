@@ -1,7 +1,7 @@
 use xrf_typescript::ast::ts_type_to_string;
 use xrf_typescript::swc_common::DUMMY_SP;
 use xrf_typescript::swc_ecma_ast::{
-  ArrayLit, BlockStmtOrExpr, Decl, Expr, Lit, ModuleDecl, ModuleItem, Pat, Prop, PropName, PropOrSpread, TsArrayType,
+  ArrayLit, ArrowFunctionBody, Decl, Expr, Lit, ModuleDecl, ModuleItem, Pat, Prop, PropName, PropOrSpread, TsArrayType,
   TsEntityName, TsFnOrConstructorType, TsFnParam, TsType, TsTypeElement, TsUnionOrIntersectionType,
 };
 
@@ -150,7 +150,7 @@ fn normalize_expression(expression: &mut Expr) {
         normalize_type(&mut annotation.type_ann);
       }
 
-      if let BlockStmtOrExpr::Expr(body) = arrow.body.as_mut() {
+      if let ArrowFunctionBody::Expr(body) = arrow.body.as_mut() {
         normalize_expression(body);
       }
     }
