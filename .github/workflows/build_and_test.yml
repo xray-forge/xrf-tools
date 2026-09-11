@@ -38,10 +38,10 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run linter
-        run: cargo clippy --workspace --all-targets --features xrf-app/typescript-bindings -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked --features xrf-app/typescript-bindings,xrf-job/rayon -- -D warnings
 
       - name: Run workspace tests and verify frontend bindings
-        run: cargo test --verbose --workspace --lib --bins --features xrf-app/typescript-bindings
+        run: cargo test --verbose --workspace --lib --bins --locked --features xrf-app/typescript-bindings,xrf-job/rayon
 
       - name: Discard trybuild scratch crates
         if: always()
@@ -196,13 +196,13 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run workspace tests on default features
-        run: cargo test --verbose --workspace --lib
+        run: cargo test --verbose --workspace --lib --locked
 
       - name: Run CLI tests
-        run: cargo test --verbose -p xrf-cli --bins
+        run: cargo test --verbose -p xrf-cli --bins --locked
 
       - name: Run derive macro diagnostics
-        run: cargo test --verbose -p xrf-error-derive --test ui
+        run: cargo test --verbose -p xrf-error-derive --test ui --locked
 
       - name: Discard trybuild scratch crates
         run: rm -rf target/tests
