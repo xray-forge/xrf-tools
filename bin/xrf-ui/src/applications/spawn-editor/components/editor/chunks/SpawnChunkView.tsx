@@ -11,9 +11,9 @@ import { Nullable } from "@/lib/types/general";
 export interface ISpawnChunkViewProps<T> {
   chunk: Loadable<Nullable<T>>;
   /**
-   * Asked for on mount. The service ignores a chunk it already holds, and the outcome is state rather than a result.
+   * Loads a lazy chunk on mount or retry. Omitted for the header supplied by the session.
    */
-  onLoad: () => void;
+  onLoad?: () => void;
   render: (value: T) => ReactNode;
 }
 
@@ -21,7 +21,7 @@ export interface ISpawnChunkViewProps<T> {
  * The frame every spawn chunk renders into.
  */
 export function SpawnChunkView<T>({ chunk, onLoad, render }: ISpawnChunkViewProps<T>): ReactElement {
-  useMountEffect(() => void onLoad());
+  useMountEffect(() => void onLoad?.());
 
   if (chunk.isLoading) {
     return <DelayedProgress label={"Reading spawn chunk…"} />;

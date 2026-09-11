@@ -11,7 +11,7 @@ export function SpawnEditorArtefacts(): ReactElement {
 
   return (
     <SpawnChunkView<SpawnArtefactSpawnsChunk>
-      chunk={spawnFileService.artefactSpawn}
+      chunk={spawnFileService.chunks.artefactSpawn}
       render={(chunk: SpawnArtefactSpawnsChunk) => <SpawnEditorArtefactsNodesTable nodes={chunk.nodes} />}
       onLoad={spawnFileService.loadArtefactSpawn}
     />

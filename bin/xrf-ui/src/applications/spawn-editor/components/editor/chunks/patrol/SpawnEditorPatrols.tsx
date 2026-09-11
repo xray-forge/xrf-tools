@@ -20,7 +20,7 @@ export function SpawnEditorPatrols(): ReactElement {
 
   return (
     <SpawnChunkView<SpawnPatrolsChunk>
-      chunk={spawnFileService.patrols}
+      chunk={spawnFileService.chunks.patrols}
       render={(chunk: SpawnPatrolsChunk) => (
         <>
           <Tabs value={activeTab} sx={{ marginBottom: 1, flexShrink: 0 }} onChange={onChangeTab}>

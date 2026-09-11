@@ -11,9 +11,8 @@ export function SpawnEditorHeader(): ReactElement {
 
   return (
     <SpawnChunkView<SpawnHeaderChunk>
-      chunk={spawnFileService.header}
+      chunk={spawnFileService.chunks.header}
       render={(header: SpawnHeaderChunk) => <SpawnEditorHeaderTable header={header} />}
-      onLoad={spawnFileService.loadHeader}
     />
   );
 }

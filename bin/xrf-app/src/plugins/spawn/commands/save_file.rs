@@ -1,27 +1,32 @@
-use std::path::Path;
-use std::sync::MutexGuard;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use tauri::State;
-use xrf_db::{SpawnFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 
 use crate::core::error::error_to_string;
+use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
-use crate::plugins::spawn::state::SpawnFileState;
+use crate::plugins::spawn::SpawnSessionId;
+use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 
+/// Write the requested session using the existing spawn format writer.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
 #[tauri::command(rename = "save_file")]
-pub fn spawn_save_file(path: &str, state: State<'_, SpawnFileState>) -> TauriResult {
-  log::info!("Saving spawn file");
+pub async fn spawn_save_file(
+  path: PathBuf,
+  session_id: SpawnSessionId,
+  state: State<'_, SpawnFileState>,
+  execution: State<'_, ExecutionState>,
+) -> TauriResult {
+  let opened: Arc<SpawnSession> = state.require(session_id)?;
 
-  let lock: MutexGuard<Option<SpawnFile>> = state.file.lock().unwrap();
-
-  if lock.is_some() {
-    let file: &SpawnFile = lock.as_ref().unwrap();
-
-    file
-      .write_to_path::<XRayByteOrder, _>(&Path::new(path))
-      .map_err(error_to_string)
-  } else {
-    Err(String::from("No spawn file open for saving"))
-  }
+  execution
+    .run_blocking("Writing spawn", move || {
+      opened
+        .file
+        .write_to_path::<XRayByteOrder, _>(&path)
+        .map_err(error_to_string)
+    })
+    .await?
 }

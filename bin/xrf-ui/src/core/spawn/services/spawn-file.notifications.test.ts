@@ -3,7 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
-import { mockSpawnFile } from "@/fixtures/mocks/spawn.mocks";
+import { mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
@@ -34,6 +34,9 @@ describe("SpawnFileService notifications", () => {
   it("reports a written save", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
+    setMockInvokeResponses({ "plugin:spawn|open_file": mockSpawnSession() });
+    await service.openFile("source.spawn");
+
     await service.saveFile("C:\\out\\all.spawn");
 
     expect(raised).toHaveLength(1);
@@ -44,6 +47,9 @@ describe("SpawnFileService notifications", () => {
 
   it("reports a save the backend refused", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
+
+    setMockInvokeResponses({ "plugin:spawn|open_file": mockSpawnSession() });
+    await service.openFile("source.spawn");
 
     setMockInvokeResponses({
       ["plugin:spawn|save_file"]: () => {
@@ -63,6 +69,9 @@ describe("SpawnFileService notifications", () => {
   it("reports a written export", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
+    setMockInvokeResponses({ "plugin:spawn|open_file": mockSpawnSession() });
+    await service.openFile("source.spawn");
+
     await service.saveUnpackedDirectory("C:\\out\\unpacked");
 
     expect(raised).toHaveLength(1);
@@ -72,6 +81,9 @@ describe("SpawnFileService notifications", () => {
 
   it("reports an export the backend refused", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
+
+    setMockInvokeResponses({ "plugin:spawn|open_file": mockSpawnSession() });
+    await service.openFile("source.spawn");
 
     setMockInvokeResponses({
       ["plugin:spawn|save_unpacked_directory"]: () => {
@@ -104,11 +116,11 @@ describe("SpawnFileService notifications", () => {
     expect(raised[0].details).toContain("not a spawn file");
   });
 
-  it("becomes ready even when the presence check fails", async () => {
+  it("becomes ready even when the session restore fails", async () => {
     const { service }: IWatchedService = watchNotifications();
 
     setMockInvokeResponses({
-      ["plugin:spawn|has_file"]: () => {
+      ["plugin:spawn|get_session"]: () => {
         throw new Error("backend is gone");
       },
     });
@@ -124,7 +136,7 @@ describe("SpawnFileService notifications", () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
     setMockInvokeResponses({
-      ["plugin:spawn|open_file"]: mockSpawnFile().header,
+      ["plugin:spawn|open_file"]: mockSpawnSession(),
     });
 
     await service.openFile("C:\\game\\all.spawn");

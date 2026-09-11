@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { act, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
@@ -9,8 +9,9 @@ import { SpawnFile, SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { IEditorPanel, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { SpawnFileService } from "@/core/spawn/services";
-import { mockSpawnFile } from "@/fixtures/mocks/spawn.mocks";
+import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const SPAWN_PATH: string = "C:\\game\\gamedata\\spawns\\all.spawn";
@@ -31,9 +32,7 @@ function mockOpenSpawn(overrides: Partial<SpawnFile> = {}): void {
   const file: SpawnFile = mockSpawnFile(overrides);
 
   setMockInvokeResponses({
-    ["plugin:spawn|has_file"]: true,
-    ["plugin:spawn|get_header"]: file.header,
-    ["plugin:spawn|get_path"]: SPAWN_PATH,
+    ["plugin:spawn|get_session"]: mockSpawnSession({ path: SPAWN_PATH, header: file.header }),
     ["plugin:spawn|get_patrols"]: file.patrols,
     ["plugin:spawn|get_graphs"]: file.graphs,
     ["plugin:spawn|get_alife_spawns"]: file.alifeSpawn,
@@ -106,26 +105,47 @@ describe("SpawnEditor", () => {
     let isFailing: boolean = true;
 
     setMockInvokeResponses({
-      ["plugin:spawn|has_file"]: true,
-      ["plugin:spawn|get_path"]: SPAWN_PATH,
-      ["plugin:spawn|get_header"]: () => {
+      ["plugin:spawn|get_session"]: mockSpawnSession({ path: SPAWN_PATH, header: file.header }),
+      ["plugin:spawn|get_graphs"]: () => {
         if (isFailing) {
           throw new Error("Chunk read failed");
         }
 
-        return file.header;
+        return file.graphs;
       },
     });
 
-    const { findByRole, getByRole, findByText, queryByRole } = renderEditor();
+    const { findByRole, getByRole, findByText, queryByRole } = renderEditor("/spawn-editor/graph");
 
     expect(await findByRole("alert")).toHaveTextContent("Chunk read failed");
 
     isFailing = false;
     await userEvent.click(getByRole("button", { name: "Retry" }));
 
-    expect(await findByText("version 124")).toBeInTheDocument();
+    expect(await findByText("1 header(s)")).toBeInTheDocument();
     expect(queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reloads the active chunk when the same path opens as a new session", async () => {
+    const { service, container } = mockInjectedService(SpawnFileService);
+    const { findByText } = renderWithProviders(
+      <Routes>
+        <Route path={"/spawn-editor/*"} element={<SpawnEditor />} />
+      </Routes>,
+      { route: "/spawn-editor/graph/levels", container }
+    );
+
+    expect(await findByText("1 level(s)")).toBeInTheDocument();
+
+    setMockInvokeResponses({
+      "plugin:spawn|open_file": mockSpawnSession({ id: "replacement", path: SPAWN_PATH }),
+      "plugin:spawn|get_graphs": { ...mockSpawnFile().graphs, levels: [] },
+    });
+    await act(async () => {
+      await service.openFile(SPAWN_PATH);
+    });
+
+    expect(await findByText("This graph has no levels.")).toBeInTheDocument();
   });
 
   it("reflects the fixture rather than a fixed string", async () => {

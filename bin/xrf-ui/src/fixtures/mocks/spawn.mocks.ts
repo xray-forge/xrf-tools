@@ -1,3 +1,4 @@
+import { SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
 import { AlifeObject, Patrol, SpawnFile, Vector3d } from "@/core/bindings/types/xrf-db";
 
 /**
@@ -146,6 +147,16 @@ export function mockSpawnFile(overrides: Partial<SpawnFile> = {}): SpawnFile {
         },
       ],
     },
+    ...overrides,
+  };
+}
+
+/** Creates a committed spawn-session fixture. */
+export function mockSpawnSession(overrides: Partial<SpawnSessionDescriptor> = {}): SpawnSessionDescriptor {
+  return {
+    id: "8f1a1b2c-0000-4000-8000-000000000010",
+    path: "C:\\game\\all.spawn",
+    header: mockSpawnFile().header,
     ...overrides,
   };
 }

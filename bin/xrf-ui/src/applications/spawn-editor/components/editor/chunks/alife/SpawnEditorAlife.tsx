@@ -11,7 +11,7 @@ export function SpawnEditorAlife(): ReactElement {
 
   return (
     <SpawnChunkView<SpawnALifeSpawnsChunk>
-      chunk={spawnFileService.alifeSpawn}
+      chunk={spawnFileService.chunks.alifeSpawn}
       render={(chunk: SpawnALifeSpawnsChunk) => <SpawnEditorAlifeObjectsTable objects={chunk.objects} />}
       onLoad={spawnFileService.loadAlifeSpawn}
     />

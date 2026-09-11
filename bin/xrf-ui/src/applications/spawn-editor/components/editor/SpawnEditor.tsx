@@ -23,7 +23,7 @@ import { Nullable } from "@/lib/types/general";
 export function SpawnEditor(): ReactElement {
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
 
-  const header: Nullable<SpawnHeaderChunk> = spawnFileService.header.value;
+  const header: Nullable<SpawnHeaderChunk> = spawnFileService.chunks.header.value;
   const path: Nullable<string> = spawnFileService.path;
 
   useEditorPanels(
@@ -60,7 +60,7 @@ export function SpawnEditor(): ReactElement {
         />
       }
     >
-      <Routes>
+      <Routes key={spawnFileService.sessionId}>
         <Route path={"/header"} element={<SpawnEditorHeader />} />
         <Route path={"/alife"} element={<SpawnEditorAlife />} />
         <Route path={"/artefacts"} element={<SpawnEditorArtefacts />} />

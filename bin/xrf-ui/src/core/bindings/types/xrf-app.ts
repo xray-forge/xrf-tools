@@ -1,5 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
@@ -420,6 +421,16 @@ export type SpawnConversionResult = {
   destination: string;
   outcome: JobOutcome;
 };
+
+/** One coherent opening, restored without reading the large chunks. */
+export type SpawnSessionDescriptor = {
+  id: SpawnSessionId;
+  path: string;
+  header: SpawnHeaderChunk;
+};
+
+/** Identifies one successful spawn opening and the reads addressed to it. */
+export type SpawnSessionId = string;
 
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {

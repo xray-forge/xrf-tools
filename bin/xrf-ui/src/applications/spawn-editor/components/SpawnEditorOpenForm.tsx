@@ -12,7 +12,7 @@ export function SpawnEditorOpenForm(): ReactElement {
 
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
 
-  const isLoading: boolean = spawnFileService.header.isLoading;
+  const isLoading: boolean = spawnFileService.isOpening;
 
   const spawn: IPathField = usePathField({
     application: EApplicationId.SPAWN_EDITOR,
@@ -36,7 +36,7 @@ export function SpawnEditorOpenForm(): ReactElement {
       isSubmitDisabled={!spawn.isValid}
       title={"Open spawn file"}
       description={"Reads the file into the editor. Nothing is written until you save."}
-      error={spawnFileService.header.error ? String(spawnFileService.header.error) : undefined}
+      error={spawnFileService.chunks.header.error ? String(spawnFileService.chunks.header.error) : undefined}
       submitLabel={"Open"}
       onSubmit={onOpen}
     >

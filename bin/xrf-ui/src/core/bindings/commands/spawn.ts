@@ -2,19 +2,16 @@
 
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
-import { SpawnConversionRequest, SpawnConversionResult } from "@/core/bindings/types/xrf-app";
 import {
-  AlifeObject,
-  ArtefactSpawnPoint,
-  GraphCrossTable,
-  GraphEdge,
-  GraphHeader,
-  GraphLevel,
-  GraphLevelPoint,
-  GraphVertex,
-  Patrol,
+  SpawnConversionRequest,
+  SpawnConversionResult,
+  SpawnSessionDescriptor,
+  SpawnSessionId,
+} from "@/core/bindings/types/xrf-app";
+import {
   SpawnALifeSpawnsChunk,
   SpawnArtefactSpawnsChunk,
+  SpawnFile,
   SpawnGraphsChunk,
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
@@ -23,61 +20,44 @@ import { JobProgress } from "@/core/bindings/types/xrf-job";
 
 /** Commands */
 export const spawnCommands = {
-  saveUnpackedDirectory: (path: string) => __TAURI_INVOKE<null>("plugin:spawn|save_unpacked_directory", { path }),
+  /** Write the requested session using the existing spawn format writer. */
+  saveUnpackedDirectory: (path: string, sessionId: SpawnSessionId) =>
+    __TAURI_INVOKE<null>("plugin:spawn|save_unpacked_directory", { path, sessionId }),
+  /** Close the committed file and prevent unfinished opens from restoring it. */
   closeFile: () => __TAURI_INVOKE<null>("plugin:spawn|close_file"),
-  getFile: () =>
+  /** Read the whole file from the requested opening, refusing a replaced session. */
+  getFile: (sessionId: SpawnSessionId) => __TAURI_INVOKE<SpawnFile>("plugin:spawn|get_file", { sessionId }),
+  /** Read alife_spawn from the requested opening, refusing a replaced session. */
+  getAlifeSpawns: (sessionId: SpawnSessionId) =>
+    __TAURI_INVOKE<SpawnALifeSpawnsChunk>("plugin:spawn|get_alife_spawns", { sessionId }),
+  /** Read artefact_spawn from the requested opening, refusing a replaced session. */
+  getArtefactSpawns: (sessionId: SpawnSessionId) =>
+    __TAURI_INVOKE<SpawnArtefactSpawnsChunk>("plugin:spawn|get_artefact_spawns", { sessionId }),
+  /** Read graphs from the requested opening, refusing a replaced session. */
+  getGraphs: (sessionId: SpawnSessionId) => __TAURI_INVOKE<SpawnGraphsChunk>("plugin:spawn|get_graphs", { sessionId }),
+  /** Read header from the requested opening, refusing a replaced session. */
+  getHeader: (sessionId: SpawnSessionId) => __TAURI_INVOKE<SpawnHeaderChunk>("plugin:spawn|get_header", { sessionId }),
+  /** Read patrols from the requested opening, refusing a replaced session. */
+  getPatrols: (sessionId: SpawnSessionId) =>
+    __TAURI_INVOKE<SpawnPatrolsChunk>("plugin:spawn|get_patrols", { sessionId }),
+  /** Restore a coherent session without cloning any of the large chunks. */
+  getSession: () =>
     __TAURI_INVOKE<{
+      id: SpawnSessionId;
+      path: string;
       header: SpawnHeaderChunk;
-      alifeSpawn: SpawnALifeSpawnsChunk;
-      artefactSpawn: SpawnArtefactSpawnsChunk;
-      patrols: SpawnPatrolsChunk;
-      graphs: SpawnGraphsChunk;
-    } | null>("plugin:spawn|get_file"),
-  getAlifeSpawns: () =>
-    __TAURI_INVOKE<{
-      objects: Array<AlifeObject>;
-    } | null>("plugin:spawn|get_alife_spawns"),
-  getArtefactSpawns: () =>
-    __TAURI_INVOKE<{
-      nodes: Array<ArtefactSpawnPoint>;
-    } | null>("plugin:spawn|get_artefact_spawns"),
-  getGraphs: () =>
-    __TAURI_INVOKE<{
-      header: GraphHeader;
-      levels: Array<GraphLevel>;
-      vertices: Array<GraphVertex>;
-      edges: Array<GraphEdge>;
-      points: Array<GraphLevelPoint>;
-      crossTables: Array<GraphCrossTable>;
-    } | null>("plugin:spawn|get_graphs"),
-  getHeader: () =>
-    __TAURI_INVOKE<{
-      version: number;
-      guid: string;
-      graphGuid: string;
-      objectsCount: number;
-      levelsCount: number;
-    } | null>("plugin:spawn|get_header"),
-  getPatrols: () =>
-    __TAURI_INVOKE<{
-      patrols: Array<Patrol>;
-    } | null>("plugin:spawn|get_patrols"),
-  /** Where the open file came from, so a restored session can name what it is showing. */
-  getPath: () => __TAURI_INVOKE<string | null>("plugin:spawn|get_path"),
-  hasFile: () => __TAURI_INVOKE<boolean>("plugin:spawn|has_file"),
-  openUnpackedDirectory: (path: string) => __TAURI_INVOKE<string>("plugin:spawn|open_unpacked_directory", { path }),
-  /**
-   * Read a packed spawn file into the application session.
-   *
-   * Answers with the header rather than the whole file: the UI reads chunks one at a time through the
-   * per-chunk commands, so serialising every alife object here only to have it re-requested is waste
-   * measured in tens of megabytes on a real all.spawn.
-   */
-  openFile: (path: string) => __TAURI_INVOKE<SpawnHeaderChunk>("plugin:spawn|open_file", { path }),
+    } | null>("plugin:spawn|get_session"),
+  /** Open a unpacked spawn and return its identity, path, and header together. */
+  openUnpackedDirectory: (path: string) =>
+    __TAURI_INVOKE<SpawnSessionDescriptor>("plugin:spawn|open_unpacked_directory", { path }),
+  /** Open a packed spawn and return its identity, path, and header together. */
+  openFile: (path: string) => __TAURI_INVOKE<SpawnSessionDescriptor>("plugin:spawn|open_file", { path }),
   /** Pack a spawn file as an exclusive, tracked background job. */
   packFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|pack_file", { request, jobId, progress }),
-  saveFile: (path: string) => __TAURI_INVOKE<null>("plugin:spawn|save_file", { path }),
+  /** Write the requested session using the existing spawn format writer. */
+  saveFile: (path: string, sessionId: SpawnSessionId) =>
+    __TAURI_INVOKE<null>("plugin:spawn|save_file", { path, sessionId }),
   /** Unpack a spawn file as an exclusive, tracked background job. */
   unpackFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|unpack_file", { request, jobId, progress }),

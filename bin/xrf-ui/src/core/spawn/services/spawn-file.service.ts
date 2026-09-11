@@ -2,13 +2,8 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
-import {
-  SpawnALifeSpawnsChunk,
-  SpawnArtefactSpawnsChunk,
-  SpawnGraphsChunk,
-  SpawnHeaderChunk,
-  SpawnPatrolsChunk,
-} from "@/core/bindings/types/xrf-db";
+import { SpawnSessionDescriptor, SpawnSessionId } from "@/core/bindings/types/xrf-app";
+import { SpawnFile } from "@/core/bindings/types/xrf-db";
 import { transformError } from "@/core/error/lib";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -25,6 +20,8 @@ export interface ISpawnRowSelection {
   row: AnyObject;
 }
 
+type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: Loadable<SpawnFile[K]> };
+
 @Injectable()
 export class SpawnFileService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
@@ -32,28 +29,39 @@ export class SpawnFileService {
   @Observable()
   public isReady: boolean = false;
 
-  /** Whether the backend holds an open file, known before any chunk has been read. */
   @Observable()
-  public isOpen: boolean = false;
-
-  /** Where the open file came from. Reported by the backend, so it survives a remount. */
-  @Observable()
-  public path: Nullable<string> = null;
+  private session: Nullable<SpawnSessionDescriptor> = null;
 
   @Observable()
-  public header: Loadable<Nullable<SpawnHeaderChunk>> = Loadable.idle(null);
+  public isOpening: boolean = false;
 
   @Observable()
-  public alifeSpawn: Loadable<Nullable<SpawnALifeSpawnsChunk>> = Loadable.idle(null);
+  private chunkStates: TSpawnChunkStates = {
+    header: Loadable.idle(),
+    alifeSpawn: Loadable.idle(),
+    artefactSpawn: Loadable.idle(),
+    patrols: Loadable.idle(),
+    graphs: Loadable.idle(),
+  };
 
-  @Observable()
-  public artefactSpawn: Loadable<Nullable<SpawnArtefactSpawnsChunk>> = Loadable.idle(null);
+  public get chunks(): TSpawnChunkStates {
+    return this.chunkStates;
+  }
 
-  @Observable()
-  public patrols: Loadable<Nullable<SpawnPatrolsChunk>> = Loadable.idle(null);
+  @Computed()
+  public get sessionId(): Nullable<SpawnSessionId> {
+    return this.session?.id ?? null;
+  }
 
-  @Observable()
-  public graphs: Loadable<Nullable<SpawnGraphsChunk>> = Loadable.idle(null);
+  @Computed()
+  public get isOpen(): boolean {
+    return this.session !== null;
+  }
+
+  @Computed()
+  public get path(): Nullable<string> {
+    return this.session?.path ?? null;
+  }
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
@@ -76,11 +84,11 @@ export class SpawnFileService {
   @Computed()
   public get isBusy(): boolean {
     return (
-      this.header.isLoading ||
-      this.alifeSpawn.isLoading ||
-      this.artefactSpawn.isLoading ||
-      this.patrols.isLoading ||
-      this.graphs.isLoading ||
+      this.isOpening ||
+      this.chunks.alifeSpawn.isLoading ||
+      this.chunks.artefactSpawn.isLoading ||
+      this.chunks.patrols.isLoading ||
+      this.chunks.graphs.isLoading ||
       this.operation.isLoading
     );
   }
@@ -90,8 +98,7 @@ export class SpawnFileService {
   /**
    * Restore whatever the backend already had open.
    *
-   * Asks whether a file is open before asking what is in it, so entering the editor with nothing open
-   * costs one boolean instead of a parse.
+   * Restores identity, path and header from one backend snapshot; heavy chunks remain lazy.
    *
    * @param provisionId - Identifier for the current provisioning attempt.
    * @returns Completes after restoring the backend's open-file state.
@@ -125,22 +132,10 @@ export class SpawnFileService {
    * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
    * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
    */
-  @ExclusiveFlow("header")
+  @ExclusiveFlow("isOpening")
   private *restore(): TFlow {
-    this.resetChunks();
-    this.header = this.header.asIdle();
-
     try {
-      const isOpen: boolean = yield* call(spawnCommands.hasFile());
-
-      this.log.info(isOpen ? "Existing spawn file detected" : "No existing spawn file");
-
-      this.isOpen = isOpen;
-
-      if (isOpen) {
-        yield* this.loadPath();
-        yield* this.fetchChunk("header", spawnCommands.getHeader);
-      }
+      this.adoptSession(yield* call(spawnCommands.getSession()));
     } catch (error: unknown) {
       this.log.error("Failed to check for an existing spawn file:", error);
     } finally {
@@ -150,27 +145,32 @@ export class SpawnFileService {
     }
   }
 
-  @LatestFlow("header")
+  @LatestFlow("isOpening")
   public *openFile(path: string): TFlow {
     this.log.info("Opening spawn file:", path);
 
-    this.resetChunks();
-    this.header = this.header.asLoading(null);
+    this.isOpening = true;
+
+    if (!this.session) {
+      this.setChunk("header", Loadable.idle());
+    }
 
     try {
-      const header: SpawnHeaderChunk = yield* call(spawnCommands.openFile(path));
-
+      this.adoptSession(yield* call(spawnCommands.openFile(path)));
       this.log.info("Spawn file opened");
-
-      this.header = this.header.asReady(header);
-      this.isOpen = true;
-      this.path = path;
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", error);
 
-      this.header = this.header.asFailed(transformError(error), null);
-      this.isOpen = false;
-      this.path = null;
+      // An earlier open may have committed after its frontend flow was cancelled.
+      try {
+        this.adoptSession(yield* call(spawnCommands.getSession()));
+      } catch (restoreError: unknown) {
+        this.log.error("Failed to restore the spawn session:", restoreError);
+      }
+
+      if (!this.session) {
+        this.setChunk("header", this.chunks.header.asFailed(transformError(error), null));
+      }
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -178,21 +178,20 @@ export class SpawnFileService {
         source: EApplicationGroupId.SPAWNS,
         title: "Could not open spawn file",
       });
+    } finally {
+      this.isOpening = false;
     }
   }
 
-  @LatestFlow("header")
+  @LatestFlow("isOpening")
   public *closeFile(): TFlow {
     this.log.info("Closing existing spawn file");
 
     try {
       yield* call(spawnCommands.closeFile());
 
-      this.isOpen = false;
-      this.path = null;
-      this.header = this.header.asIdle();
+      this.adoptSession(null);
       this.operation = this.operation.asIdle();
-      this.resetChunks();
     } catch (error: unknown) {
       this.log.error("Failed to close spawn file:", error);
 
@@ -207,12 +206,18 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveFile(path: string): TFlow {
+    const session = this.session;
+
+    if (!session) {
+      return;
+    }
+
     this.log.info("Saving spawn file:", path);
 
     this.operation = this.operation.asLoading(null);
 
     try {
-      yield* call(spawnCommands.saveFile(path));
+      yield* call(spawnCommands.saveFile(path, session.id));
 
       this.operation = this.operation.asReady("save");
 
@@ -238,12 +243,18 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveUnpackedDirectory(path: string): TFlow {
+    const session = this.session;
+
+    if (!session) {
+      return;
+    }
+
     this.log.info("Exporting spawn file:", path);
 
     this.operation = this.operation.asLoading(null);
 
     try {
-      yield* call(spawnCommands.saveUnpackedDirectory(path));
+      yield* call(spawnCommands.saveUnpackedDirectory(path, session.id));
 
       this.operation = this.operation.asReady("export");
 
@@ -305,11 +316,6 @@ export class SpawnFileService {
     yield* this.fetchChunk("graphs", spawnCommands.getGraphs);
   }
 
-  @ExclusiveFlow()
-  public *loadHeader(): TFlow {
-    yield* this.fetchChunk("header", spawnCommands.getHeader);
-  }
-
   /**
    * Fetch one chunk, at most once.
    *
@@ -320,32 +326,31 @@ export class SpawnFileService {
    * caller resumes this with a return completion, and the write below the yield never happens.
    *
    * @param key - State field that stores the requested chunk.
-   * @param request - Backend command that loads the chunk.
+   * @param read - Command returning that chunk for the committed session.
    */
-  private *fetchChunk<K extends "header" | "alifeSpawn" | "artefactSpawn" | "patrols" | "graphs">(
+  private *fetchChunk<K extends keyof SpawnFile>(
     key: K,
-    request: () => Promise<unknown>
+    read: (sessionId: SpawnSessionId) => Promise<SpawnFile[K]>
   ): TFlow {
-    const current: Loadable<unknown> = this[key];
+    const session = this.session;
+    const current: Loadable<SpawnFile[K]> = this.chunks[key];
 
-    // Views may mount before provisioning discovers the open file. Opening or restoring another file resets
-    // this cache, including successful empty reads made while the backend had nothing open.
-    if (current.isLoading || current.isReady) {
+    if (!session || current.isLoading || current.isReady) {
       return;
     }
 
-    const loading: Loadable<unknown> = current.asLoading(null);
+    const loading = current.asLoading(null);
 
-    (this[key] as Loadable<unknown>) = loading;
+    this.setChunk(key, loading);
 
     try {
-      const chunk: unknown = yield* call(request());
+      const chunk: SpawnFile[K] = yield* call(read(session.id));
 
-      (this[key] as Loadable<unknown>) = loading.asReady(chunk);
+      this.setChunk(key, loading.asReady(chunk));
     } catch (error: unknown) {
       this.log.error("Failed to read spawn chunk:", key, error);
 
-      (this[key] as Loadable<unknown>) = loading.asFailed(transformError(error));
+      this.setChunk(key, loading.asFailed(transformError(error)));
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,
@@ -355,31 +360,39 @@ export class SpawnFileService {
       });
     } finally {
       // Cancelling a read leaves it retryable without replacing a newer state.
-      if (this[key] === loading) {
-        (this[key] as Loadable<unknown>) = current;
+      if (this.chunks[key] === loading) {
+        this.setChunk(key, current);
       }
     }
   }
 
-  private *loadPath(): TFlow {
-    try {
-      this.path = yield* call(spawnCommands.getPath());
-    } catch (error: unknown) {
-      // The path only names what is open, so failing to read it must not look like a failure to open.
-      this.log.error("Failed to read spawn file path:", error);
+  private setChunk<K extends keyof SpawnFile>(key: K, value: Loadable<SpawnFile[K]>): void {
+    this.chunkStates = { ...this.chunks, [key]: value };
+  }
+
+  private adoptSession(session: Nullable<SpawnSessionDescriptor>): void {
+    if (!session || this.session?.id !== session.id) {
+      this.resetChunks();
     }
+
+    this.session = session;
+    this.setChunk("header", session ? Loadable.ready(session.header) : Loadable.idle());
   }
 
   private resetChunks(): void {
     // Abandoned rather than merely cleared: a read already on the wire would otherwise land under the next file.
-    for (const lane of ["loadHeader", "loadAlifeSpawn", "loadArtefactSpawn", "loadPatrols", "loadGraphs"] as const) {
+    for (const lane of ["loadAlifeSpawn", "loadArtefactSpawn", "loadPatrols", "loadGraphs"] as const) {
       cancelFlow(this, lane);
     }
 
-    this.alifeSpawn = this.alifeSpawn.asIdle();
-    this.artefactSpawn = this.artefactSpawn.asIdle();
-    this.patrols = this.patrols.asIdle();
-    this.graphs = this.graphs.asIdle();
+    this.chunkStates = {
+      header: Loadable.idle(),
+      alifeSpawn: Loadable.idle(),
+      artefactSpawn: Loadable.idle(),
+      patrols: Loadable.idle(),
+      graphs: Loadable.idle(),
+    };
+
     // A selection outlives its table, so it has to be dropped with the data it pointed into.
     this.selectedRow = null;
   }

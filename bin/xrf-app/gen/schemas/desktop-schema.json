@@ -6765,10 +6765,10 @@
           "markdownDescription": "Denies the stdin_write command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-save-unpacked-directory`\n- `allow-close-file`\n- `allow-get-file`\n- `allow-get-alife-spawns`\n- `allow-get-artefact-spawns`\n- `allow-get-graphs`\n- `allow-get-header`\n- `allow-get-patrols`\n- `allow-get-path`\n- `allow-has-file`\n- `allow-open-unpacked-directory`\n- `allow-open-file`\n- `allow-pack-file`\n- `allow-save-file`\n- `allow-unpack-file`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-save-unpacked-directory`\n- `allow-close-file`\n- `allow-get-file`\n- `allow-get-alife-spawns`\n- `allow-get-artefact-spawns`\n- `allow-get-graphs`\n- `allow-get-header`\n- `allow-get-patrols`\n- `allow-get-session`\n- `allow-open-unpacked-directory`\n- `allow-open-file`\n- `allow-pack-file`\n- `allow-save-file`\n- `allow-unpack-file`",
           "type": "string",
           "const": "spawn:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-save-unpacked-directory`\n- `allow-close-file`\n- `allow-get-file`\n- `allow-get-alife-spawns`\n- `allow-get-artefact-spawns`\n- `allow-get-graphs`\n- `allow-get-header`\n- `allow-get-patrols`\n- `allow-get-path`\n- `allow-has-file`\n- `allow-open-unpacked-directory`\n- `allow-open-file`\n- `allow-pack-file`\n- `allow-save-file`\n- `allow-unpack-file`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-save-unpacked-directory`\n- `allow-close-file`\n- `allow-get-file`\n- `allow-get-alife-spawns`\n- `allow-get-artefact-spawns`\n- `allow-get-graphs`\n- `allow-get-header`\n- `allow-get-patrols`\n- `allow-get-session`\n- `allow-open-unpacked-directory`\n- `allow-open-file`\n- `allow-pack-file`\n- `allow-save-file`\n- `allow-unpack-file`"
         },
         {
           "description": "Enables the close_file command without any pre-configured scope.",
@@ -6807,22 +6807,16 @@
           "markdownDescription": "Enables the get_header command without any pre-configured scope."
         },
         {
-          "description": "Enables the get_path command without any pre-configured scope.",
-          "type": "string",
-          "const": "spawn:allow-get-path",
-          "markdownDescription": "Enables the get_path command without any pre-configured scope."
-        },
-        {
           "description": "Enables the get_patrols command without any pre-configured scope.",
           "type": "string",
           "const": "spawn:allow-get-patrols",
           "markdownDescription": "Enables the get_patrols command without any pre-configured scope."
         },
         {
-          "description": "Enables the has_file command without any pre-configured scope.",
+          "description": "Enables the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "spawn:allow-has-file",
-          "markdownDescription": "Enables the has_file command without any pre-configured scope."
+          "const": "spawn:allow-get-session",
+          "markdownDescription": "Enables the get_session command without any pre-configured scope."
         },
         {
           "description": "Enables the open_file command without any pre-configured scope.",
@@ -6897,22 +6891,16 @@
           "markdownDescription": "Denies the get_header command without any pre-configured scope."
         },
         {
-          "description": "Denies the get_path command without any pre-configured scope.",
-          "type": "string",
-          "const": "spawn:deny-get-path",
-          "markdownDescription": "Denies the get_path command without any pre-configured scope."
-        },
-        {
           "description": "Denies the get_patrols command without any pre-configured scope.",
           "type": "string",
           "const": "spawn:deny-get-patrols",
           "markdownDescription": "Denies the get_patrols command without any pre-configured scope."
         },
         {
-          "description": "Denies the has_file command without any pre-configured scope.",
+          "description": "Denies the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "spawn:deny-has-file",
-          "markdownDescription": "Denies the has_file command without any pre-configured scope."
+          "const": "spawn:deny-get-session",
+          "markdownDescription": "Denies the get_session command without any pre-configured scope."
         },
         {
           "description": "Denies the open_file command without any pre-configured scope.",

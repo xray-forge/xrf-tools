@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serde_json::json;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
-use xrf_db::{SpawnFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
@@ -13,6 +13,7 @@ use super::{SpawnConversion, convert, register_conversion, run_conversion};
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::plugins::spawn::request::SpawnConversionRequest;
+use crate::plugins::spawn::tests::synthetic_spawn;
 
 fn request(case: &str) -> SpawnConversionRequest {
   let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("spawn/conversion/{case}"));
@@ -95,18 +96,6 @@ fn failure_is_retained_and_releases_the_conversion_lease() {
     assert!(listed.error.is_some());
     assert_eq!(listed.request, Some(serde_json::to_value(&request).unwrap()));
   }
-}
-
-fn synthetic_spawn() -> SpawnFile {
-  serde_json::from_value(json!({
-    "header": { "version": 10, "guid": Uuid::nil(), "graphGuid": Uuid::nil(), "objectsCount": 0, "levelsCount": 0 },
-    "alifeSpawn": { "objects": [] }, "artefactSpawn": { "nodes": [] }, "patrols": { "patrols": [] },
-    "graphs": {
-      "header": { "version": 8, "verticesCount": 0, "edgesCount": 0, "pointsCount": 0, "guid": Uuid::nil(), "levelsCount": 0 },
-      "levels": [], "vertices": [], "edges": [], "points": [],
-      "crossTables": [{ "version": 8, "nodesCount": 0, "verticesCount": 0, "levelGuid": Uuid::nil(), "gameGuid": Uuid::nil() }]
-    }
-  })).expect("synthetic spawn with an empty cross-table")
 }
 
 #[test]

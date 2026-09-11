@@ -1,17 +1,24 @@
-use std::sync::MutexGuard;
+use std::sync::Arc;
 
 use tauri::State;
-use xrf_db::{SpawnFile, SpawnPatrolsChunk};
+use xrf_db::SpawnPatrolsChunk;
 
+use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
-use crate::plugins::spawn::state::SpawnFileState;
+use crate::plugins::spawn::SpawnSessionId;
+use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 
+/// Read patrols from the requested opening, refusing a replaced session.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_patrols"))]
 #[tauri::command(rename = "get_patrols")]
-pub async fn spawn_get_patrols(state: State<'_, SpawnFileState>) -> TauriResult<Option<SpawnPatrolsChunk>> {
-  log::debug!("Getting spawn file patrols");
+pub async fn spawn_get_patrols(
+  session_id: SpawnSessionId,
+  state: State<'_, SpawnFileState>,
+  execution: State<'_, ExecutionState>,
+) -> TauriResult<SpawnPatrolsChunk> {
+  let opened: Arc<SpawnSession> = state.require(session_id)?;
 
-  let lock: MutexGuard<Option<SpawnFile>> = state.file.lock().unwrap();
-
-  Ok(lock.as_ref().map(|file| file.patrols.clone()))
+  execution
+    .run_blocking("Reading spawn patrols", move || opened.file.patrols.clone())
+    .await
 }

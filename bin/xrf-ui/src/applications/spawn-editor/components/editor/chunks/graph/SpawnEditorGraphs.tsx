@@ -23,7 +23,7 @@ export function SpawnEditorGraphs(): ReactElement {
 
   return (
     <SpawnChunkView<SpawnGraphsChunk>
-      chunk={spawnFileService.graphs}
+      chunk={spawnFileService.chunks.graphs}
       render={(chunk: SpawnGraphsChunk) => (
         <>
           <Tabs value={activeTab} variant={"scrollable"} sx={{ marginBottom: 1, flexShrink: 0 }} onChange={onChangeTab}>
