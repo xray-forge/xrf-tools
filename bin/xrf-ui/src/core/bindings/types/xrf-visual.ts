@@ -248,8 +248,7 @@ export type VisualSubmesh = {
  * renders, and so the reason reaches the panel that lists it.
  */
 export type VisualSubmeshContent =
-  | { kind: "packed"; geometry: VisualGeometry }
-  | { kind: "skipped"; cause: VisualSkipCause; reason: string };
+  { kind: "packed"; geometry: VisualGeometry } | { kind: "skipped"; cause: VisualSkipCause; reason: string };
 
 /**
  * One texture a visual's submesh declares, and what the reference came to.

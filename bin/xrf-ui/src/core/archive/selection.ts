@@ -33,5 +33,4 @@ export type TArchiveContent =
 
 /** The last thing written to disk, so the surface that started it can report what happened. */
 export type TArchiveOperation =
-  | { kind: "extract-file"; destination: string }
-  | { kind: "extract-directory"; result: ArchiveExtractDirectoryResult };
+  { kind: "extract-file"; destination: string } | { kind: "extract-directory"; result: ArchiveExtractDirectoryResult };

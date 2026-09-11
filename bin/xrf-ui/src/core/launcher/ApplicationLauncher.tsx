@@ -60,12 +60,10 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
   const sections: Array<ILauncherSection> = useMemo(
     () =>
       groups
-        .map(
-          (group: IApplicationGroup): ILauncherSection => ({
-            group,
-            applications: applications.filter((application: IApplicationDescriptor) => application.group === group.id),
-          })
-        )
+        .map((group: IApplicationGroup): ILauncherSection => ({
+          group,
+          applications: applications.filter((application: IApplicationDescriptor) => application.group === group.id),
+        }))
         .filter((section: ILauncherSection) => section.applications.length > 0),
     [applications, groups]
   );

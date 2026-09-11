@@ -2,11 +2,11 @@ import * as path from "path";
 
 import { default as react } from "@vitejs/plugin-react";
 import { wirestate } from "@wirestate/dev/vite";
-import { default as observerPlugin } from "mobx-react-observer/vite-plugin";
 import { defineConfig, Plugin } from "vite";
 import { default as inlineSource } from "vite-plugin-inline-source";
 
 import { replaceModuleName } from "./cli/build/module-name";
+import { applyObserver } from "./cli/build/observer";
 import { repository } from "./package.json";
 import { getPreloadThemeCss } from "./src/core/theme/preload";
 
@@ -39,18 +39,13 @@ function moduleNamePlugin(): Plugin {
 }
 
 function reactObserverPlugin(): Plugin {
-  const plugin: Plugin = observerPlugin() as Plugin;
-  const transform = plugin.transform;
-
   return {
-    ...plugin,
     name: "mobx-react-observer-tsx",
+    enforce: "pre",
     transform(code, id) {
-      if (id.endsWith(".tsx") && typeof transform === "function") {
-        return transform.call(this, code, id);
-      }
+      const transformed: string = applyObserver(code, id);
 
-      return null;
+      return transformed === code ? null : { code: transformed, map: null };
     },
   };
 }

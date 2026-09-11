@@ -21,6 +21,8 @@ module.exports = {
   moduleNameMapper: {
     "\\.(css|less|svg|png|jpg|woff2?)$": path.resolve(__dirname, "./asset-stub.cjs"),
     "^@/(.*)$": "<rootDir>/src/$1",
+    // Exercise the same Three.js entry as Vite; r186 deprecates its CommonJS entry.
+    "^three$": "<rootDir>/node_modules/three/build/three.module.js",
   },
   rootDir: ROOT_DIR,
   roots: ["<rootDir>"],
@@ -32,7 +34,7 @@ module.exports = {
   transform: {
     "^.+\\.[jt]sx?$": path.resolve(__dirname, "./transformer.cjs"),
   },
-  // Every dependency here ships a CJS build and re-compiling them detaches runtimes from their peers
+  // Compile Three.js and its ESM addons together; leave other dependency runtimes intact.
   transformIgnorePatterns: ["^(?!.*/three/).*/node_modules/"],
   verbose: true,
   workerIdleMemoryLimit: "512MB",

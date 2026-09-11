@@ -1,3 +1,4 @@
+import { fixupConfigRules } from "@eslint/compat";
 import jsPlugin from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import importPlugin from "eslint-plugin-import";
@@ -32,11 +33,11 @@ export default [
   },
   jsPlugin.configs.recommended,
   ...tsPlugin.configs.recommended,
-  importPlugin.flatConfigs.recommended,
-  importPlugin.flatConfigs.typescript,
+  // Adapt the retained ESLint 9 plugins until their releases support ESLint 10 directly.
+  ...fixupConfigRules([importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript]),
   jestPlugin.configs["flat/style"],
   jsdocPlugin.configs["flat/recommended"],
-  reactPlugin.configs.flat.recommended,
+  ...fixupConfigRules(reactPlugin.configs.flat.recommended),
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
     languageOptions: {
@@ -46,7 +47,7 @@ export default [
       },
     },
     settings: {
-      react: { version: "18" },
+      react: { version: "detect" },
     },
     plugins: {
       "react-hooks": reactHooksPlugin,

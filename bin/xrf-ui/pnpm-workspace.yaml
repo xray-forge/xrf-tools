@@ -8,3 +8,9 @@ allowBuilds:
   unrs-resolver: false
 
 minimumReleaseAge: 0
+
+peerDependencyRules:
+  allowedVersions:
+    # These exact plugin releases use @eslint/compat in cli/lint/eslint.config.mjs.
+    "eslint-plugin-import@2.32.0>eslint": "^10.0.0"
+    "eslint-plugin-react@7.37.5>eslint": "^10.0.0"
