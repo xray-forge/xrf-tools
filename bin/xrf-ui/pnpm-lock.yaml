@@ -152,17 +152,17 @@ importers:
         specifier: ^2.3.6
         version: 2.3.6
       '@wirestate/core':
-        specifier: 1.0.0-experimental.18
-        version: 1.0.0-experimental.18
+        specifier: 1.0.0
+        version: 1.0.0
       '@wirestate/mobx':
-        specifier: 1.0.0-experimental.18
-        version: 1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(mobx@6.16.0)
+        specifier: 1.0.0
+        version: 1.0.0(@wirestate/core@1.0.0)(mobx@6.16.0)
       '@wirestate/react':
-        specifier: 1.0.0-experimental.18
-        version: 1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(react@19.3.0)
+        specifier: 1.0.0
+        version: 1.0.0(@wirestate/core@1.0.0)(react@19.3.0)
       '@wirestate/react-mobx':
-        specifier: 1.0.0-experimental.18
-        version: 1.0.0-experimental.18(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)
+        specifier: 1.0.0
+        version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)
       '@xyflow/react':
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -231,8 +231,8 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1(vite@8.3.0(@types/node@24.13.4)(esbuild@0.28.0)(sass@1.100.0)(terser@5.48.0))
       '@wirestate/dev':
-        specifier: 1.0.0-experimental.18
-        version: 1.0.0-experimental.18(@swc/helpers@0.5.23)(@wirestate/core@1.0.0-experimental.18)
+        specifier: 1.0.0
+        version: 1.0.0(@wirestate/core@1.0.0)
       babel-plugin-observing-components:
         specifier: ^0.2.0
         version: 0.2.0(supports-color@8.1.1)
@@ -1177,34 +1177,16 @@ packages:
   '@oxc-project/types@0.149.0':
     resolution: {integrity: sha512-Efcc+iF0j3Bf67YjEqIqWXbX5XddXoK/Mw4K1/JuXwRCZ8N16VR7iT23nlCc9XrveFVh/E5Rqs2StT0V8v9LdA==}
 
-  '@parcel/watcher-android-arm64@2.5.6':
-    resolution: {integrity: sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm64]
-    os: [android]
-
   '@parcel/watcher-android-arm64@2.6.0':
     resolution: {integrity: sha512-trgpLSCKRC/huFjXX/Smh+0sWe4+YtKfktIToiMl59ghz7z+qkH6kMvNnUbLyRs9N11t8l4svSCs1+5B3rOAhA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [android]
 
-  '@parcel/watcher-darwin-arm64@2.5.6':
-    resolution: {integrity: sha512-Z2ZdrnwyXvvvdtRHLmM4knydIdU9adO3D4n/0cVipF3rRiwP+3/sfzpAwA/qKFL6i1ModaabkU7IbpeMBgiVEA==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm64]
-    os: [darwin]
-
   '@parcel/watcher-darwin-arm64@2.6.0':
     resolution: {integrity: sha512-Y3QV0gl7Q1zbfueunkWIERICbEojQFCgpyG7YqOGNFLsckXyI1xu9mAIUpKY9QBYzBtSkN8dBPwd3yiAO9ovMw==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
-    os: [darwin]
-
-  '@parcel/watcher-darwin-x64@2.5.6':
-    resolution: {integrity: sha512-HgvOf3W9dhithcwOWX9uDZyn1lW9R+7tPZ4sug+NGrGIo4Rk1hAXLEbcH1TQSqxts0NYXXlOWqVpvS1SFS4fRg==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [x64]
     os: [darwin]
 
   '@parcel/watcher-darwin-x64@2.6.0':
@@ -1213,24 +1195,11 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@parcel/watcher-freebsd-x64@2.5.6':
-    resolution: {integrity: sha512-vJVi8yd/qzJxEKHkeemh7w3YAn6RJCtYlE4HPMoVnCpIXEzSrxErBW5SJBgKLbXU3WdIpkjBTeUNtyBVn8TRng==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [x64]
-    os: [freebsd]
-
   '@parcel/watcher-freebsd-x64@2.6.0':
     resolution: {integrity: sha512-5HmXvDgs8VK+74jF9y9/2FE3/OnlcKmc56tjmSrEuZjpSZOGL+fvAu+HKJBdPs9uwoP2hE6TlSUpXZ/C5jUFmQ==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [freebsd]
-
-  '@parcel/watcher-linux-arm-glibc@2.5.6':
-    resolution: {integrity: sha512-9JiYfB6h6BgV50CCfasfLf/uvOcJskMSwcdH1PHH9rvS1IrNy8zad6IUVPVUfmXr+u+Km9IxcfMLzgdOudz9EQ==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm]
-    os: [linux]
-    libc: [glibc]
 
   '@parcel/watcher-linux-arm-glibc@2.6.0':
     resolution: {integrity: sha512-Ps/hui3A+vMbjdqlqAowK2ZL8+BO8dBjxeWXj6npTBs3jx4wWmbPpaLuqwrQrSqIVMCnpWo238bJ1U37GhQOYg==}
@@ -1239,26 +1208,12 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@parcel/watcher-linux-arm-musl@2.5.6':
-    resolution: {integrity: sha512-Ve3gUCG57nuUUSyjBq/MAM0CzArtuIOxsBdQ+ftz6ho8n7s1i9E1Nmk/xmP323r2YL0SONs1EuwqBp2u1k5fxg==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm]
-    os: [linux]
-    libc: [musl]
-
   '@parcel/watcher-linux-arm-musl@2.6.0':
     resolution: {integrity: sha512-9c6AUHgHoG+IY88MRIHupztQiQnrbqHYQjkM2btA+Bf/wQnQMuiD0Wfk1EVv3TlNT3x41uU71rn6E4xh/+zvkw==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
     libc: [musl]
-
-  '@parcel/watcher-linux-arm64-glibc@2.5.6':
-    resolution: {integrity: sha512-f2g/DT3NhGPdBmMWYoxixqYr3v/UXcmLOYy16Bx0TM20Tchduwr4EaCbmxh1321TABqPGDpS8D/ggOTaljijOA==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
 
   '@parcel/watcher-linux-arm64-glibc@2.6.0':
     resolution: {integrity: sha512-yHRqS2owEXe6Hic9z6Mh1ECsCd+ODVOGvZDyciqRd21+v+o+DnXMOrw50DSpIG2sb8GPEaPPmfeCAWKPJdq46g==}
@@ -1267,26 +1222,12 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@parcel/watcher-linux-arm64-musl@2.5.6':
-    resolution: {integrity: sha512-qb6naMDGlbCwdhLj6hgoVKJl2odL34z2sqkC7Z6kzir8b5W65WYDpLB6R06KabvZdgoHI/zxke4b3zR0wAbDTA==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
   '@parcel/watcher-linux-arm64-musl@2.6.0':
     resolution: {integrity: sha512-WhB2e/V7rqdHHWZusBSPuy5Ei8S6lSz6FE5TKKQz5h3a0O+C+mhY7vxU9b/stqvMb8beLnPY82ZrFTLKs+SrKA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
-
-  '@parcel/watcher-linux-x64-glibc@2.5.6':
-    resolution: {integrity: sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
 
   '@parcel/watcher-linux-x64-glibc@2.6.0':
     resolution: {integrity: sha512-ulGE6x6Oz6iAwg75T8YQSoguBWasniIbX+QWpaYPcCnDOpdWX3k+4xbEYPZVLxOuoJI+svJJPD3sEj8G7lrQ3A==}
@@ -1295,13 +1236,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@parcel/watcher-linux-x64-musl@2.5.6':
-    resolution: {integrity: sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
   '@parcel/watcher-linux-x64-musl@2.6.0':
     resolution: {integrity: sha512-tkBYKt7YQrjIJWYDnto2YgO8MRkjlMTSNoRHzsXinBqbLdeOM3L32wPZJvIZxqaLMfSlS/4sUjH/6STVP/XDLw==}
     engines: {node: '>= 10.0.0'}
@@ -1309,28 +1243,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@parcel/watcher-win32-arm64@2.5.6':
-    resolution: {integrity: sha512-3ukyebjc6eGlw9yRt678DxVF7rjXatWiHvTXqphZLvo7aC5NdEgFufVwjFfY51ijYEWpXbqF5jtrK275z52D4Q==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [arm64]
-    os: [win32]
-
   '@parcel/watcher-win32-arm64@2.6.0':
     resolution: {integrity: sha512-gIZAP23jaHjGWasY/TY6yL7NHFClf0Ga7FN+iINvk+KN94rhm94lYZhFsbYFNcA04/onvGD9kKmiJLJB2HbNwQ==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
-    os: [win32]
-
-  '@parcel/watcher-win32-ia32@2.5.6':
-    resolution: {integrity: sha512-k35yLp1ZMwwee3Ez/pxBi5cf4AoBKYXj00CZ80jUz5h8prpiaQsiRPKQMxoLstNuqe2vR4RNPEAEcjEFzhEz/g==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [ia32]
-    os: [win32]
-
-  '@parcel/watcher-win32-x64@2.5.6':
-    resolution: {integrity: sha512-hbQlYcCq5dlAX9Qx+kFb0FHue6vbjlf0FrNzSKdYK2APUf7tGfGxQCk2ihEREmbR6ZMc0MVAD5RIX/41gpUzTw==}
-    engines: {node: '>= 10.0.0'}
-    cpu: [x64]
     os: [win32]
 
   '@parcel/watcher-win32-x64@2.6.0':
@@ -1338,10 +1254,6 @@ packages:
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [win32]
-
-  '@parcel/watcher@2.5.6':
-    resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
-    engines: {node: '>= 10.0.0'}
 
   '@parcel/watcher@2.6.0':
     resolution: {integrity: sha512-7FNeNl8NCE7aINx7WXiKQrPYZWC/hvrTsmk6zmxbI7LTXE7hVek/n8AfVgpe2y82zl3w0HvCHN0bVKMBoJcC0w==}
@@ -2193,31 +2105,31 @@ packages:
       oxc-transform-react:
         optional: true
 
-  '@wirestate/core@1.0.0-experimental.18':
-    resolution: {integrity: sha512-51fx49ULEVh2F9uQNnygKm3XuTwaDbC3vtNTkjAU2bXF7eat0bwLvRBfB0KRFCExY/RVUW5XHsboWZ6HuFBdqA==}
+  '@wirestate/core@1.0.0':
+    resolution: {integrity: sha512-1oMOe4VBeCYQmA+IPLW8Dv5SPuj1L4xapsVzoyBrVYUyEJM45y+UF2ugcyFyYSXdUgGE3+9HmiRv23HRDgATBQ==}
 
-  '@wirestate/dev@1.0.0-experimental.18':
-    resolution: {integrity: sha512-hoAP6ZfsjSFW/p+yOtJ+rws/R5BGLvhQNPbLW2DkpScRX2CZfidrjtTAELWjsCHbppAR3jJdPW4xXw9UpKwWRQ==}
+  '@wirestate/dev@1.0.0':
+    resolution: {integrity: sha512-Hi8k1MoDm6gyVSVTpYSpllXphaAc7P8POC5cO8rgfP15jEvAGLE0p0/dfGqojiVJd8TAVqFTH2qTvsD3nQRR4w==}
     peerDependencies:
-      '@wirestate/core': 1.0.0-experimental.18
+      '@wirestate/core': ^1.0.0
 
-  '@wirestate/mobx@1.0.0-experimental.18':
-    resolution: {integrity: sha512-Krf9yGmA3M0ApfBgL0Lc+SJJVOzoVwBA0kxW5TLIlikofJPKwGb9pWBO+Xhv4mEwrKXr20n1PiZCTSOPn02DEg==}
+  '@wirestate/mobx@1.0.0':
+    resolution: {integrity: sha512-VJy74MJaekF1O/R5nDv3L7XzLtawdYZjV3gXh6aaqSSuwBMz0o7pb3mDScoQ0Jb6bcYTs4Q0OtD4LMW4/BI+3Q==}
     peerDependencies:
-      '@wirestate/core': 1.0.0-experimental.18
+      '@wirestate/core': ^1.0.0
       mobx: '>=6.0.0'
 
-  '@wirestate/react-mobx@1.0.0-experimental.18':
-    resolution: {integrity: sha512-KbvHpCzgmaza5xU1EarltLngBXgvoh2CGU4vnWZ7daYTHQGhcb8cLVFQgS+udaApuGtNOSZ5RqYlMFuUewLglA==}
+  '@wirestate/react-mobx@1.0.0':
+    resolution: {integrity: sha512-xDaO0/mN2TQ0NCT7xNAdf00mqisdEV+PoYPnuucHNlZbhv+JiUsh2w6HYOeZz4fcf8P+WQTOVZrLza6C45n0kQ==}
     peerDependencies:
       mobx: '>=6.0.0'
       mobx-react-lite: '>=4.0.0'
       react: '>=16.8.0 <20.0.0'
 
-  '@wirestate/react@1.0.0-experimental.18':
-    resolution: {integrity: sha512-5KiaBjUM3s9fm0tDFc9V6It9LVvJOl73i3XDSC8P2haRKN02xQvmJL254ZqaaDyfireL/v4ZoOdfMMRRp84UZw==}
+  '@wirestate/react@1.0.0':
+    resolution: {integrity: sha512-HyB1lsZNcjrfLnGMfFgkGhIrn4YYjllK7fu6UDwJiS1uPb27zgeoixywxRZx9G7AX7I06DP0z14iz4opfpFIgQ==}
     peerDependencies:
-      '@wirestate/core': 1.0.0-experimental.18
+      '@wirestate/core': ^1.0.0
       react: '>=16.8.0 <20.0.0'
 
   '@xyflow/react@12.11.6':
@@ -5329,7 +5241,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/gen-mapping@0.4.0-beta.0':
@@ -5523,101 +5435,40 @@ snapshots:
 
   '@oxc-project/types@0.149.0': {}
 
-  '@parcel/watcher-android-arm64@2.5.6':
-    optional: true
-
   '@parcel/watcher-android-arm64@2.6.0':
-    optional: true
-
-  '@parcel/watcher-darwin-arm64@2.5.6':
     optional: true
 
   '@parcel/watcher-darwin-arm64@2.6.0':
     optional: true
 
-  '@parcel/watcher-darwin-x64@2.5.6':
-    optional: true
-
   '@parcel/watcher-darwin-x64@2.6.0':
-    optional: true
-
-  '@parcel/watcher-freebsd-x64@2.5.6':
     optional: true
 
   '@parcel/watcher-freebsd-x64@2.6.0':
     optional: true
 
-  '@parcel/watcher-linux-arm-glibc@2.5.6':
-    optional: true
-
   '@parcel/watcher-linux-arm-glibc@2.6.0':
-    optional: true
-
-  '@parcel/watcher-linux-arm-musl@2.5.6':
     optional: true
 
   '@parcel/watcher-linux-arm-musl@2.6.0':
     optional: true
 
-  '@parcel/watcher-linux-arm64-glibc@2.5.6':
-    optional: true
-
   '@parcel/watcher-linux-arm64-glibc@2.6.0':
-    optional: true
-
-  '@parcel/watcher-linux-arm64-musl@2.5.6':
     optional: true
 
   '@parcel/watcher-linux-arm64-musl@2.6.0':
     optional: true
 
-  '@parcel/watcher-linux-x64-glibc@2.5.6':
-    optional: true
-
   '@parcel/watcher-linux-x64-glibc@2.6.0':
-    optional: true
-
-  '@parcel/watcher-linux-x64-musl@2.5.6':
     optional: true
 
   '@parcel/watcher-linux-x64-musl@2.6.0':
     optional: true
 
-  '@parcel/watcher-win32-arm64@2.5.6':
-    optional: true
-
   '@parcel/watcher-win32-arm64@2.6.0':
     optional: true
 
-  '@parcel/watcher-win32-ia32@2.5.6':
-    optional: true
-
-  '@parcel/watcher-win32-x64@2.5.6':
-    optional: true
-
   '@parcel/watcher-win32-x64@2.6.0':
-    optional: true
-
-  '@parcel/watcher@2.5.6':
-    dependencies:
-      detect-libc: 2.1.2
-      is-glob: 4.0.3
-      node-addon-api: 7.1.1
-      picomatch: 4.0.4
-    optionalDependencies:
-      '@parcel/watcher-android-arm64': 2.5.6
-      '@parcel/watcher-darwin-arm64': 2.5.6
-      '@parcel/watcher-darwin-x64': 2.5.6
-      '@parcel/watcher-freebsd-x64': 2.5.6
-      '@parcel/watcher-linux-arm-glibc': 2.5.6
-      '@parcel/watcher-linux-arm-musl': 2.5.6
-      '@parcel/watcher-linux-arm64-glibc': 2.5.6
-      '@parcel/watcher-linux-arm64-musl': 2.5.6
-      '@parcel/watcher-linux-x64-glibc': 2.5.6
-      '@parcel/watcher-linux-x64-musl': 2.5.6
-      '@parcel/watcher-win32-arm64': 2.5.6
-      '@parcel/watcher-win32-ia32': 2.5.6
-      '@parcel/watcher-win32-x64': 2.5.6
     optional: true
 
   '@parcel/watcher@2.6.0':
@@ -5625,7 +5476,7 @@ snapshots:
       detect-libc: 2.1.2
       is-glob: 4.0.3
       node-addon-api: 7.1.1
-      picomatch: 4.0.4
+      picomatch: 4.0.7
     optionalDependencies:
       '@parcel/watcher-android-arm64': 2.6.0
       '@parcel/watcher-darwin-arm64': 2.6.0
@@ -6055,8 +5906,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.67.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.67.0(@typescript/typescript6@6.0.2)
-      '@typescript-eslint/types': 8.67.0
+      '@typescript-eslint/tsconfig-utils': 8.70.0(@typescript/typescript6@6.0.2)
+      '@typescript-eslint/types': 8.70.0
       debug: 4.4.3(supports-color@8.1.1)
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
@@ -6321,31 +6172,28 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.3.0(@types/node@24.13.4)(esbuild@0.28.0)(sass@1.100.0)(terser@5.48.0)
 
-  '@wirestate/core@1.0.0-experimental.18':
+  '@wirestate/core@1.0.0':
     dependencies:
       '@swc/helpers': 0.5.23
 
-  '@wirestate/dev@1.0.0-experimental.18(@swc/helpers@0.5.23)(@wirestate/core@1.0.0-experimental.18)':
+  '@wirestate/dev@1.0.0(@wirestate/core@1.0.0)':
     dependencies:
-      '@swc/core': 1.16.2(@swc/helpers@0.5.23)
-      '@wirestate/core': 1.0.0-experimental.18
-    transitivePeerDependencies:
-      - '@swc/helpers'
+      '@wirestate/core': 1.0.0
 
-  '@wirestate/mobx@1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(mobx@6.16.0)':
+  '@wirestate/mobx@1.0.0(@wirestate/core@1.0.0)(mobx@6.16.0)':
     dependencies:
-      '@wirestate/core': 1.0.0-experimental.18
+      '@wirestate/core': 1.0.0
       mobx: 6.16.0
 
-  '@wirestate/react-mobx@1.0.0-experimental.18(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)':
+  '@wirestate/react-mobx@1.0.0(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)':
     dependencies:
       mobx: 6.16.0
       mobx-react-lite: 4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
 
-  '@wirestate/react@1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(react@19.3.0)':
+  '@wirestate/react@1.0.0(@wirestate/core@1.0.0)(react@19.3.0)':
     dependencies:
-      '@wirestate/core': 1.0.0-experimental.18
+      '@wirestate/core': 1.0.0
       react: 19.3.0
 
   '@xyflow/react@12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
@@ -8558,7 +8406,7 @@ snapshots:
       immutable: 5.1.6
       source-map-js: 1.2.1
     optionalDependencies:
-      '@parcel/watcher': 2.5.6
+      '@parcel/watcher': 2.6.0
 
   sax@1.6.0: {}
 
