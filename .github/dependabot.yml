@@ -16,6 +16,14 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # `image_dds` re-exports `ddsfile` and requires ^0.5.1, so anything past 0.5 puts two
+      # incompatible copies of it in the graph and fails to compile. Patches still come through.
+      # Drop this once `image_dds` moves.
+      - dependency-name: ddsfile
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: github-actions
     directory: /
