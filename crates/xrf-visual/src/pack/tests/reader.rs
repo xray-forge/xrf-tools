@@ -7,15 +7,19 @@ use crate::data::visual_section::VisualSection;
 
 pub(crate) fn read_f32_section(buffer: &[u8], section: VisualSection) -> Vec<f32> {
   read_section(buffer, section)
-    .chunks_exact(size_of::<f32>())
-    .map(|bytes| f32::from_le_bytes(bytes.try_into().expect("four bytes make one f32")))
+    .as_chunks::<{ size_of::<f32>() }>()
+    .0
+    .iter()
+    .map(|bytes| f32::from_le_bytes(*bytes))
     .collect()
 }
 
 pub(crate) fn read_u16_section(buffer: &[u8], section: VisualSection) -> Vec<u16> {
   read_section(buffer, section)
-    .chunks_exact(size_of::<u16>())
-    .map(|bytes| u16::from_le_bytes(bytes.try_into().expect("two bytes make one u16")))
+    .as_chunks::<{ size_of::<u16>() }>()
+    .0
+    .iter()
+    .map(|bytes| u16::from_le_bytes(*bytes))
     .collect()
 }
 

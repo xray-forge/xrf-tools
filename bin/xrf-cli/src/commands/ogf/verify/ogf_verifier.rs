@@ -277,12 +277,16 @@ impl<'a> OgfVerifier<'a> {
       let start: usize = skin.weights.byte_offset as usize;
       let end: usize = start + skin.weights.byte_length as usize;
       let weights: Vec<f32> = package.buffer[start..end]
-        .chunks_exact(size_of::<f32>())
-        .map(|bytes| f32::from_le_bytes(bytes.try_into().expect("four bytes make one f32")))
+        .as_chunks::<{ size_of::<f32>() }>()
+        .0
+        .iter()
+        .map(|bytes| f32::from_le_bytes(*bytes))
         .collect();
 
       census.vertices_with_stray_skin_weights += weights
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|vertex| (vertex.iter().sum::<f32>() - 1.0).abs() > Self::SKIN_WEIGHT_TOLERANCE)
         .count();
     }

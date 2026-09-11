@@ -394,7 +394,7 @@ impl VisualPacker {
 /// same per triangle winding while moving every triangle, which silently invalidates every detail
 /// table offset into the buffer.
 pub(crate) fn reverse_triangle_winding(indices: &mut [u16]) {
-  for triangle in indices.chunks_exact_mut(3) {
+  for triangle in indices.as_chunks_mut::<3>().0 {
     triangle.swap(1, 2);
   }
 }
