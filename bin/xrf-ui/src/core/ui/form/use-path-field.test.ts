@@ -9,6 +9,8 @@ import { IPathRecord } from "@/core/ui/form/path-recents";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { Nullable } from "@/lib/types/general";
 
+const mockOpen = jest.mocked(open<{ multiple: false }>);
+
 describe("usePathField", () => {
   const STORAGE_KEY: string = "xrf.form.archives-packer.source";
 
@@ -44,7 +46,7 @@ describe("usePathField", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
-    jest.mocked(open).mockResolvedValue(null);
+    mockOpen.mockResolvedValue(null);
     jest.mocked(save).mockResolvedValue(null);
     // Restated rather than left to the module factory: `clearMocks` clears calls but keeps implementations, so a test
     // that says a path is absent would otherwise say it for every test after it.
@@ -79,7 +81,7 @@ describe("usePathField", () => {
   });
 
   it("remembers what the dialog returned", async () => {
-    jest.mocked(open).mockResolvedValue("C:\\projects\\picked");
+    mockOpen.mockResolvedValue("C:\\projects\\picked");
 
     const { result } = renderField();
 
@@ -139,7 +141,7 @@ describe("usePathField", () => {
   it("refuses a guess that resolves after the user picked a path", async () => {
     const pending: IDeferred<Nullable<string>> = deferred<Nullable<string>>();
 
-    jest.mocked(open).mockResolvedValue("C:\\projects\\picked");
+    mockOpen.mockResolvedValue("C:\\projects\\picked");
 
     const { result } = renderField(() => pending.promise);
 
@@ -176,7 +178,7 @@ describe("usePathField", () => {
   it("leaves a picked path alone when the guess fails", async () => {
     const pending: IDeferred<Nullable<string>> = deferred<Nullable<string>>();
 
-    jest.mocked(open).mockResolvedValue("C:\\projects\\picked");
+    mockOpen.mockResolvedValue("C:\\projects\\picked");
 
     const { result } = renderField(() => pending.promise);
 
@@ -328,7 +330,7 @@ describe("usePathField", () => {
     });
 
     it("records what the dialog returned", async () => {
-      jest.mocked(open).mockResolvedValue("C:\\projects\\picked");
+      mockOpen.mockResolvedValue("C:\\projects\\picked");
 
       const { result } = renderField();
 

@@ -14,6 +14,8 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
 
+const mockOpen = jest.mocked(open<{ multiple: false }>);
+
 describe("ArchivesEditorOpenForm", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -31,7 +33,7 @@ describe("ArchivesEditorOpenForm", () => {
   }
 
   it("asks for a directory in directory mode", async () => {
-    jest.mocked(open).mockResolvedValue(ARCHIVES_DIRECTORY);
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
 
     const { getByLabelText, getByText } = renderForm();
 
@@ -57,7 +59,7 @@ describe("ArchivesEditorOpenForm", () => {
   });
 
   it("asks for a file, filtered to volumes, in archive mode", async () => {
-    jest.mocked(open).mockResolvedValue(ARCHIVE_VOLUME);
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
 
     const { getByLabelText, getByText } = renderForm();
 
@@ -105,7 +107,7 @@ describe("ArchivesEditorOpenForm", () => {
   });
 
   it("opens the volume that was picked, not its directory", async () => {
-    jest.mocked(open).mockResolvedValue(ARCHIVE_VOLUME);
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
 
     const { getByLabelText, getByRole } = renderForm();
 
@@ -136,12 +138,12 @@ describe("ArchivesEditorOpenForm", () => {
   it("keeps each mode's path across a switch", async () => {
     const { getByDisplayValue, getByLabelText } = renderForm();
 
-    jest.mocked(open).mockResolvedValue(ARCHIVES_DIRECTORY);
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
     await userEvent.click(getByLabelText("Browse"));
 
     await userEvent.click(getByLabelText("Open archive"));
 
-    jest.mocked(open).mockResolvedValue(ARCHIVE_VOLUME);
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
     await userEvent.click(getByLabelText("Browse"));
 
     expect(getByDisplayValue(ARCHIVE_VOLUME)).toBeInTheDocument();

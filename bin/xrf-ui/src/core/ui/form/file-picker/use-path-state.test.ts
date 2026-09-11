@@ -6,6 +6,8 @@ import { type IPathStateOptions, type TPathState, usePathState } from "@/core/ui
 import { mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 import { Nullable } from "@/lib/types/general";
 
+const mockOpen = jest.mocked(open<{ multiple: false }>);
+
 describe("usePathState", () => {
   // Awaited because the hook asks where to open before it opens: the dialog call is no longer reached synchronously.
   async function select(options: IPathStateOptions): Promise<void> {
@@ -15,7 +17,7 @@ describe("usePathState", () => {
   }
 
   beforeEach(() => {
-    jest.mocked(open).mockResolvedValue(null);
+    mockOpen.mockResolvedValue(null);
     jest.mocked(save).mockResolvedValue(null);
   });
 
