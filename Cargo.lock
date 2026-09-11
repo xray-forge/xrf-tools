@@ -6957,7 +6957,6 @@ name = "xrf-dialog"
 version = "0.1.0"
 dependencies = [
  "indexmap 2.14.2",
- "log",
  "serde",
  "serde_json",
  "specta",
@@ -7066,7 +7065,6 @@ dependencies = [
  "indexmap 2.14.2",
  "serde",
  "specta",
- "walkdir",
  "xrf-error",
  "xrf-job",
  "xrf-output",

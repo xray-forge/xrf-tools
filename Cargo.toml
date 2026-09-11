@@ -36,6 +36,7 @@ members = [
 ]
 
 [workspace.package]
+edition = "2024"
 rust-version = "1.98.1"
 
 [workspace.dependencies]
@@ -97,8 +98,6 @@ xrf-xml = { path = "crates/xrf-xml" }
 panic = "abort"
 codegen-units = 1
 lto = true
-# "s" rather than "z": measured against 3126 config files it runs 17.7% faster for 10% more binary,
-# which is 76% of everything opt-level 3 offers at a fifth of the size it costs.
 opt-level = "s"
 strip = true
 

@@ -2,7 +2,7 @@
 name = "xrf-ltx"
 version = "0.1.0"
 publish = false
-edition = "2024"
+edition.workspace = true
 rust-version.workspace = true
 license = "MIT"
 
@@ -14,7 +14,6 @@ fxhash = "0.2.1"
 indexmap = "2.14.0"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-walkdir = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-error = { workspace = true }
 xrf-job = { workspace = true }
