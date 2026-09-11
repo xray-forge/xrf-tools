@@ -188,8 +188,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/pinned-toolchain
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true
