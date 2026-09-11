@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: dtolnay/rust-toolchain@1.120.0
       - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
         with:
