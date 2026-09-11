@@ -6,7 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-quick-xml = { version = "0.41.0", features = ["serialize", "serde"] }
+quick-xml = { version = "0.42.0", features = ["serialize", "serde"] }
 roxmltree = "0.21.1"
 serde = { workspace = true }
 xrf-error = { workspace = true }
