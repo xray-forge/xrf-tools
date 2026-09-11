@@ -40,7 +40,7 @@ jobs:
       # profile settings, so restoring them here would mean recompiling everything anyway.
       - uses: Swatinem/rust-cache@v2
         with:
-          key: optimized-${{ hashFiles('.github/workflows/build_optimized.yml') }}
+          key: optimized
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp
@@ -78,7 +78,7 @@ jobs:
     steps:
       # Kept although nothing here runs clippy: rustup installs every component rust-toolchain.toml lists
       # on the first cargo call regardless of use, measured at ~15s, so removing this costs more.
-      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: dtolnay/rust-toolchain@1.98.1
 
       - uses: actions/checkout@v6
         with:
@@ -86,7 +86,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: optimized-${{ hashFiles('.github/workflows/build_optimized.yml') }}
+          key: optimized
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp

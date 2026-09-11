@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ hashFiles('.github/workflows/build_and_test.yml') }}
+          cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check formatting
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ hashFiles('.github/workflows/build_and_test.yml') }}
+          cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp
@@ -148,7 +148,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ hashFiles('.github/workflows/build_and_test.yml') }}
+          cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install UI dependencies
@@ -180,13 +180,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Kept although nothing here runs clippy: rustup installs every component rust-toolchain.toml lists
-      # on the first cargo call regardless of use, measured at ~15s, so removing this costs more.
-      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ hashFiles('.github/workflows/build_and_test.yml') }}
+          cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run workspace tests on default features
@@ -227,7 +225,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update nightly tag
-        uses: EndBug/latest-tag@latest
+        uses: EndBug/latest-tag@8fcae8848c1e23fd8212258f69a9619bc62cad67 # v1.6.3
         id: update-nightly-tag
         with:
           ref: nightly
