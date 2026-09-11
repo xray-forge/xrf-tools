@@ -1,11 +1,13 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -79,6 +81,8 @@ export class VisualMotionService {
     return this.posed.value?.bake.floatsPerBone ?? 0;
   }
 
+  public constructor(private readonly loadService: VisualLoadService = inject(VisualLoadService)) {}
+
   /** Stops the ticker when the application goes away, so a hidden viewer is not still animating. */
   @OnDeactivation()
   public onDeactivation(): void {
@@ -95,7 +99,9 @@ export class VisualMotionService {
     this.motions = this.motions.asLoading();
 
     try {
-      const names: Array<string> = yield* call(visualsCommands.listMotions());
+      const names: Array<string> = yield* call(
+        visualsCommands.listMotions(requireDocumentSession(this.loadService.visual.value?.selected ?? null))
+      );
 
       this.motions = this.motions.asReady(names);
     } catch (error: unknown) {
@@ -131,8 +137,13 @@ export class VisualMotionService {
     this.posed = this.posed.asLoading();
 
     try {
-      const bake: VisualMotionBake = yield* call(visualsCommands.openMotion(name));
-      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(name));
+      const sessionId: string = requireDocumentSession(this.loadService.visual.value?.selected ?? null);
+
+      const bake: TDocument<VisualMotionBake> = restoreDocument(
+        yield* call(visualsCommands.openMotion(sessionId, crypto.randomUUID(), name))
+      );
+
+      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(sessionId, bake.sessionId));
 
       const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 

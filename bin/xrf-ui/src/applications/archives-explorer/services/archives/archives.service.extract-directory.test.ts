@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
-import { mockArchiveFileDescriptor } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -25,6 +26,8 @@ describe("ArchivesService directory extraction", () => {
   it("sends the directory prefix and destination root", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
+    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: {
         prefix: "configs",
@@ -40,13 +43,15 @@ describe("ArchivesService directory extraction", () => {
     // arguments be whatever the jobs service made them.
     expect(mockInvoke).toHaveBeenCalledWith(
       "plugin:archives|extract_directory",
-      expect.objectContaining({ request: { prefix: "configs", destination: "C:\\out" } })
+      expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out" } })
     );
     expect(extractedDirectory(service)?.extractedCount).toBe(12);
   });
 
   it("treats the archive root as an empty prefix", async () => {
     const { service } = mockInjectedService(ArchivesService);
+
+    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
 
     service.selectArchiveDirectory("");
 
@@ -56,12 +61,14 @@ describe("ArchivesService directory extraction", () => {
 
     expect(mockInvoke).toHaveBeenCalledWith(
       "plugin:archives|extract_directory",
-      expect.objectContaining({ request: { prefix: "", destination: "C:\\out" } })
+      expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "", destination: "C:\\out" } })
     );
   });
 
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
+
+    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: () => {
@@ -77,6 +84,8 @@ describe("ArchivesService directory extraction", () => {
 
   it("keeps file and directory selection mutually exclusive", async () => {
     const { service } = mockInjectedService(ArchivesService);
+
+    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
 
     service.selectArchiveDirectory("configs");
     expect(service.selectedDirectory).toBe("configs");

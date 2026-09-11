@@ -7,6 +7,7 @@ import { Container } from "@wirestate/core";
 import { ArchivesEditorOpenForm } from "@/applications/archives-explorer/components/ArchivesEditorOpenForm";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -21,8 +22,8 @@ describe("ArchivesEditorOpenForm", () => {
     window.localStorage.clear();
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: null,
-      ["plugin:archives|open_project"]: null,
+      ["plugin:archives|get_project"]: mockDocumentResponse(null),
+      ["plugin:archives|open_project"]: mockDocumentResponse(null),
     });
   });
 
@@ -115,7 +116,10 @@ describe("ArchivesEditorOpenForm", () => {
     await userEvent.click(getByLabelText("Browse"));
     await userEvent.click(getByRole("button", { name: "Open" }));
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_project", { path: ARCHIVE_VOLUME });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_project", {
+      sessionId: expect.any(String),
+      path: ARCHIVE_VOLUME,
+    });
   });
 
   it("opens on the directory mode until something else is chosen", async () => {

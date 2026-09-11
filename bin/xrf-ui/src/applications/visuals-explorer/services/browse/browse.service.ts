@@ -6,10 +6,11 @@ import { assetsCommands } from "@/core/bindings/commands/assets";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -22,9 +23,11 @@ import { Nullable } from "@/lib/types/general";
 export class VisualsBrowseService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => visualsCommands.closeBrowse(ids));
+
   /** What is being browsed, or null when a single model was opened directly. */
   @Observable()
-  public browsed: Nullable<XrayRoots> = null;
+  public browsed: Nullable<TDocument<XrayRoots>> = null;
 
   @Observable()
   public visuals: Loadable<Array<XrayAsset>> = Loadable.idle([]);
@@ -61,18 +64,7 @@ export class VisualsBrowseService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      const roots: Nullable<XrayRoots> = await visualsCommands.getBrowse();
-
-      if (roots) {
-        this.log.info("Restoring browsed roots:", describeRoots(roots));
-
-        // Through the lane rather than around it, so a root the user picks while this is still restoring wins.
-        await flowResult(this.restore(roots));
-      }
-    } catch (error) {
-      this.log.error("Failed to restore browsed roots:", error);
-    }
+    await flowResult(this.restore());
   }
 
   /**
@@ -82,12 +74,12 @@ export class VisualsBrowseService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the project");
 
+    releaseEditorProject(() => this.session.close(this.browsed?.sessionId));
+
     runInAction(() => {
       this.browsed = null;
       this.visuals = this.visuals.asIdle([]);
     });
-
-    releaseEditorProject(visualsCommands.closeBrowse);
   }
 
   /**
@@ -104,18 +96,21 @@ export class VisualsBrowseService {
 
     this.log.info("Browsing root:", root);
 
-    yield* call(visualsCommands.openBrowse(roots));
-    yield* this.list(roots);
+    const opened = yield* call(
+      this.session.open((sessionId) => visualsCommands.openBrowse(sessionId, roots).then(restoreDocument))
+    );
+
+    yield* this.list(opened);
   }
 
   /** Stop browsing, leaving whatever model is open on screen. */
   @LatestFlow("visuals")
   public *close(): TFlow {
-    this.browsed = null;
-    this.visuals = this.visuals.asIdle([]);
-
     try {
-      yield* call(visualsCommands.closeBrowse());
+      yield* call(this.session.close(this.browsed?.sessionId));
+
+      this.browsed = null;
+      this.visuals = this.visuals.asIdle([]);
     } catch (error) {
       this.log.error("Failed to close browsed roots:", error);
     }
@@ -124,11 +119,18 @@ export class VisualsBrowseService {
   /**
    * Puts an already browsed roots back on screen, for a session the backend still holds.
    *
-   * @param roots - Roots the backend reported as browsed.
    */
-  @LatestFlow("visuals")
-  private *restore(roots: XrayRoots): TFlow {
-    yield* this.list(roots);
+  @ExclusiveFlow("visuals")
+  private *restore(): TFlow {
+    try {
+      const snapshot = yield* call(visualsCommands.getBrowse());
+
+      if (snapshot) {
+        yield* this.list(restoreDocument(snapshot));
+      }
+    } catch (error) {
+      this.log.error("Failed to restore browsed roots:", error);
+    }
   }
 
   /**
@@ -137,10 +139,12 @@ export class VisualsBrowseService {
    * A generator so a listing the user has moved past is abandoned rather than published: the write below the yield
    * cannot run once another root has taken the lane.
    *
-   * @param roots - Roots to list, already recorded as the browsed one.
+   * @param opened - Roots and identity already committed by the backend.
    */
-  private *list(roots: XrayRoots): TFlow {
-    this.browsed = roots;
+  private *list(opened: TDocument<XrayRoots>): TFlow {
+    const roots: XrayRoots = { asset: opened.asset, roots: opened.roots };
+
+    this.browsed = opened;
     this.visuals = this.visuals.asLoading();
 
     try {

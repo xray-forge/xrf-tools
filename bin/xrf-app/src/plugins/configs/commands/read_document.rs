@@ -6,6 +6,7 @@ use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::execution::ExecutionState;
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsDocument;
 use crate::plugins::configs::request::ConfigsReadDocumentRequest;
@@ -24,7 +25,7 @@ pub async fn configs_read_document(
   // Taken before the hop and the guard dropped with it, so the work does not hold the session against every other
   // command. A snapshot outlives its state: closing the project mid-read leaves this answering what it was asked for,
   // which is sound because reading commits nothing back.
-  let opened: Arc<ConfigsProject> = state.require(session_id)?;
+  let opened: Arc<DocumentSnapshot<ConfigsProject>> = state.require(session_id)?;
 
   // Bounded by the include tree of whichever entry point the file belongs to, which on a game tree is `system.ltx` and
   // most of the configs under it.

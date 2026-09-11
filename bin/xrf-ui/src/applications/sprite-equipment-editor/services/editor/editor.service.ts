@@ -8,6 +8,7 @@ import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
@@ -19,13 +20,11 @@ import {
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { all, call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
-/** One sprite is open at a time, so its url lives under a fixed key rather than being tracked by hand. */
-const SPRITE_ASSET_KEY: string = "equipment-sprite";
-
 export interface IEquipmentPngDescriptor {
+  sessionId: string;
   ltxPath: string;
   /** Whether the open project's descriptors came out of a DLTX-resolved config tree. */
   isDltx: boolean;
@@ -40,6 +39,8 @@ export interface IEquipmentPngDescriptor {
 @Injectable()
 export class SpriteEquipmentEditorService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  private readonly session: DocumentSession = new DocumentSession((ids) => spriteEquipmentCommands.closeSprite(ids));
 
   @Observable()
   public isReady: boolean = false;
@@ -79,8 +80,11 @@ export class SpriteEquipmentEditorService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.assetService.releaseKey(SPRITE_ASSET_KEY);
-    releaseEditorProject(spriteEquipmentCommands.closeSprite);
+    cancelFlow(this, "spriteImage");
+
+    this.assetService.release(this.spriteImage.value?.image.src ?? null);
+
+    releaseEditorProject(() => this.session.close(this.spriteImage.value?.sessionId));
   }
 
   /**
@@ -92,7 +96,9 @@ export class SpriteEquipmentEditorService {
    */
   @ExclusiveFlow("spriteImage")
   private *restore(): TFlow {
-    const response: Nullable<IEquipmentSpriteMetadata> = yield* call(spriteEquipmentCommands.getSprite());
+    const response: Nullable<TDocument<IEquipmentSpriteMetadata>> = yield* call(
+      spriteEquipmentCommands.getSprite().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+    );
 
     if (!response) {
       this.log.info("No existing sprite detected file");
@@ -105,11 +111,7 @@ export class SpriteEquipmentEditorService {
     this.log.info("Existing equipment sprite detected");
     this.isReady = true;
 
-    const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
-
-    this.spriteImage = this.spriteImage.asReady(spriteImage);
-
-    yield* this.resolveRepackSource(spriteImage.path);
+    yield* this.viewSprite(response);
   }
 
   @BoundAction()
@@ -138,31 +140,30 @@ export class SpriteEquipmentEditorService {
    * @param equipmentDdsPath - The packed `*.dds` holding the inventory icons.
    * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
    * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. Remembered for the
-   *   session, because reopening takes no arguments and has to answer the same descriptors.
+   *   session, so reopening resolves the same descriptors.
    */
   @LatestFlow("spriteImage")
   public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string, isDltx: boolean): TFlow {
     this.log.info("Opening equipment project:", equipmentDdsPath, systemLtxPath);
 
     try {
-      this.assetService.releaseKey(SPRITE_ASSET_KEY);
-      this.spriteImage = this.spriteImage.asLoading(null);
+      this.spriteImage = this.spriteImage.asLoading();
 
-      const response: IEquipmentSpriteMetadata = yield* call(
-        spriteEquipmentCommands.openSprite(equipmentDdsPath, systemLtxPath, isDltx)
+      const response: TDocument<IEquipmentSpriteMetadata> = yield* call(
+        this.session.open((sessionId) =>
+          spriteEquipmentCommands
+            .openSprite({ sessionId, equipmentDdsPath, systemLtxPath, isDltx })
+            .then(restoreDocument)
+        )
       );
 
       this.log.info("Equipment project opened:", response);
 
-      const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
-
-      this.spriteImage = this.spriteImage.asReady(spriteImage);
-
-      yield* this.resolveRepackSource(spriteImage.path);
+      yield* this.viewSprite(response);
     } catch (error) {
       this.log.error("Failed to open equipment editor project:", error);
 
-      this.spriteImage = this.spriteImage.asFailed(error as Error, null);
+      this.spriteImage = this.spriteImage.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${equipmentDdsPath}\n${transformError(error).message}`,
@@ -190,15 +191,17 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: IEquipmentSpriteMetadata = yield* call(spriteEquipmentCommands.reopenSprite());
+      const response: TDocument<IEquipmentSpriteMetadata> = yield* call(
+        this.session.open((openingId) =>
+          spriteEquipmentCommands
+            .reopenSprite(requireDocumentSession(this.spriteImage.value), openingId)
+            .then(restoreDocument)
+        )
+      );
 
       this.log.info("Equipment project reopened:", response);
 
-      const spriteImage: IEquipmentPngDescriptor = yield* call(this.spriteFromResponse(response));
-
-      this.spriteImage = this.spriteImage.asReady(spriteImage);
-
-      yield* this.resolveRepackSource(spriteImage.path);
+      yield* this.viewSprite(response);
     } catch (error) {
       this.log.error("Failed to reopen equipment editor project:", error);
 
@@ -304,9 +307,10 @@ export class SpriteEquipmentEditorService {
 
     try {
       this.spriteImage = this.spriteImage.asLoading();
-      this.assetService.releaseKey(SPRITE_ASSET_KEY);
 
-      yield* call(spriteEquipmentCommands.closeSprite());
+      yield* call(this.session.close(this.spriteImage.value?.sessionId));
+
+      this.assetService.release(this.spriteImage.value?.image.src ?? null);
 
       this.log.info("Equipment project closed");
 
@@ -327,17 +331,50 @@ export class SpriteEquipmentEditorService {
     }
   }
 
-  private async spriteFromResponse(response: IEquipmentSpriteMetadata): Promise<IEquipmentPngDescriptor> {
-    const blob: Blob = await fetch(convertFileSrc(response.name, "stream")).then((response) => response.blob());
+  /** Publish the decoded sprite once; release candidates even when their flow is cancelled. */
+  private *viewSprite(response: TDocument<IEquipmentSpriteMetadata>): TFlow {
+    const pending: Promise<IEquipmentPngDescriptor> = this.spriteFromResponse(response);
 
-    return {
-      blob,
-      isDltx: response.isDltx,
-      ltxPath: response.systemLtxPath,
-      descriptors: response.equipmentDescriptors,
-      image: await urlToImage(this.assetService.swap(SPRITE_ASSET_KEY, blob)),
-      name: response.name,
-      path: response.path,
-    };
+    let published: boolean = false;
+
+    try {
+      const spriteImage: IEquipmentPngDescriptor = yield* call(pending);
+
+      this.assetService.release(this.spriteImage.value?.image.src ?? null);
+      this.spriteImage = this.spriteImage.asReady(spriteImage);
+      published = true;
+      yield* this.resolveRepackSource(spriteImage.path);
+    } finally {
+      if (!published) {
+        void pending.then(
+          (sprite) => this.assetService.release(sprite.image.src),
+          () => undefined
+        );
+      }
+    }
+  }
+
+  private async spriteFromResponse(response: TDocument<IEquipmentSpriteMetadata>): Promise<IEquipmentPngDescriptor> {
+    const blob: Blob = await fetch(convertFileSrc(response.sessionId + "/" + response.name, "stream")).then(
+      (response) => response.blob()
+    );
+
+    const url: string = this.assetService.create(blob);
+
+    try {
+      return {
+        sessionId: response.sessionId,
+        blob,
+        isDltx: response.isDltx,
+        ltxPath: response.systemLtxPath,
+        descriptors: response.equipmentDescriptors,
+        image: await urlToImage(url),
+        name: response.name,
+        path: response.path,
+      };
+    } catch (error) {
+      this.assetService.release(url);
+      throw error;
+    }
   }
 }

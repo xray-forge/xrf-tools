@@ -8,5 +8,5 @@ use crate::plugins::archives::state::ArchiveProjectState;
 pub fn archives_has_project(state: State<'_, ArchiveProjectState>) -> TauriResult<bool> {
   log::debug!("Checking archives project presence");
 
-  Ok(state.project.lock().unwrap().is_some())
+  Ok(state.get()?.is_some())
 }

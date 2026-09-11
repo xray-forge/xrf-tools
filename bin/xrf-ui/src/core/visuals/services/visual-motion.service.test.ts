@@ -2,13 +2,32 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockVisualMotionBake, mockVisualMotionTransforms } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockSelectedVisual,
+  mockVisualModelViews,
+  mockVisualMotionBake,
+  mockVisualMotionTransforms,
+} from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 const BAKE: VisualMotionBake = mockVisualMotionBake();
+
+function mockService() {
+  const result = mockInjectedService(VisualMotionService, [VisualLoadService]);
+
+  result.container.get(VisualLoadService).visual = Loadable.ready({
+    selected: { ...mockSelectedVisual(), sessionId: "fixture-session" },
+    views: mockVisualModelViews(),
+  });
+
+  return result;
+}
 
 /** How many floats a bake's whole buffer holds. */
 function mockFloatCount(bake: VisualMotionBake): number {
@@ -18,7 +37,7 @@ function mockFloatCount(bake: VisualMotionBake): number {
 function mockMotion(bake: VisualMotionBake = BAKE, transforms: ArrayBuffer = mockVisualMotionTransforms(bake)): void {
   setMockInvokeResponses({
     ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
-    ["plugin:visuals|open_motion"]: bake,
+    ["plugin:visuals|open_motion"]: mockDocumentResponse(bake),
     ["plugin:visuals|read_motion"]: transforms,
   });
 }
@@ -34,7 +53,7 @@ describe("VisualMotionService", () => {
   });
 
   it("applies its mobx annotations", () => {
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     expect(isObservableProp(service, "motions")).toBe(true);
     expect(isObservableProp(service, "posed")).toBe(true);
@@ -57,7 +76,7 @@ describe("VisualMotionService", () => {
       },
     });
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.list();
     await service.list();
@@ -76,7 +95,7 @@ describe("VisualMotionService", () => {
         }),
     });
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     // The list is in flight when the model it names goes away, which is what opening another model does.
     const listed: Promise<void> = service.list() as unknown as Promise<void>;
@@ -92,7 +111,7 @@ describe("VisualMotionService", () => {
   it("poses a motion and starts it playing", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
 
@@ -108,7 +127,7 @@ describe("VisualMotionService", () => {
     // would then index into the wrong frames rather than failing.
     mockMotion(BAKE, new Float32Array(mockFloatCount(BAKE) - BAKE.floatsPerBone).buffer as ArrayBuffer);
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
 
@@ -120,7 +139,7 @@ describe("VisualMotionService", () => {
   it("advances a frame at the sample rate, wrapping while looping", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
 
@@ -137,7 +156,7 @@ describe("VisualMotionService", () => {
   it("stops on the last frame when not looping", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.toggleLoop();
@@ -152,7 +171,7 @@ describe("VisualMotionService", () => {
     // Otherwise play does nothing at all there: the first tick has no frame to advance to and stops again.
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.toggleLoop();
@@ -170,7 +189,7 @@ describe("VisualMotionService", () => {
   it("pauses when a frame is picked, so a drag is not fought over", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.seek(2);
@@ -185,7 +204,7 @@ describe("VisualMotionService", () => {
   it("keeps a picked frame inside the motion", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
 
@@ -199,7 +218,7 @@ describe("VisualMotionService", () => {
   it("drops the motion when the model it was baked against goes away", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.clear();
@@ -225,7 +244,7 @@ describe("VisualMotionService playback state", () => {
   it("plays the first motion picked, with nothing posed before it", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
 
@@ -236,7 +255,7 @@ describe("VisualMotionService playback state", () => {
   it("keeps playing through a change of motion, from its first frame", async () => {
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     jest.advanceTimersByTime(1000 / 30);
@@ -264,14 +283,23 @@ describe("VisualMotionService playback state", () => {
       releaseSecond = () => resolve(second);
     });
 
+    let firstMotionId: unknown;
+
     setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: (parameters?: Record<string, unknown>) =>
-        (parameters as { name: string }).name === first.name ? first : pendingSecond,
+      ["plugin:visuals|open_motion"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
+        if (parameters?.name === first.name) {
+          firstMotionId = parameters.motionId;
+
+          return first;
+        }
+
+        return pendingSecond;
+      }),
       ["plugin:visuals|read_motion"]: (parameters?: Record<string, unknown>) =>
-        mockVisualMotionTransforms((parameters as { name: string }).name === first.name ? first : second),
+        mockVisualMotionTransforms(parameters?.motionId === firstMotionId ? first : second),
     });
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open(first.name);
     service.pause();
@@ -297,7 +325,7 @@ describe("VisualMotionService playback state", () => {
     // Comparing two motions frame by frame should not mean pausing each one again.
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.pause();
@@ -314,7 +342,7 @@ describe("VisualMotionService playback state", () => {
   it("advances at the rate it is set to", async () => {
     mockMotion(mockVisualMotionBake({ frameCount: 100 }));
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.open("norm_walk_fwd_1");
     service.setFps(10);
@@ -327,7 +355,7 @@ describe("VisualMotionService playback state", () => {
   });
 
   it("keeps the rate inside what playback can honour", () => {
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     service.setFps(0);
     expect(service.fps).toBe(1);
@@ -340,7 +368,7 @@ describe("VisualMotionService playback state", () => {
     // The rate is a preference about looking at motions; the list belongs to the model that was open.
     mockMotion();
 
-    const { service } = mockInjectedService(VisualMotionService);
+    const { service } = mockService();
 
     await service.list();
     service.setFps(15);

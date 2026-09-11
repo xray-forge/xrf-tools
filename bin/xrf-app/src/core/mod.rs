@@ -5,5 +5,6 @@ pub mod error;
 pub mod execution;
 pub mod jobs;
 pub mod logging;
+pub mod session;
 pub mod types;
 pub mod webview_extensions;

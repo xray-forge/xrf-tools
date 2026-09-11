@@ -26,3 +26,14 @@ pub struct TranslationsFormatRequest {
   /// Line endings to write, or nothing to keep what each file already uses.
   pub line_endings: Option<String>,
 }
+
+/// Inputs and caller-owned identity of one translations opening.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationsOpenRequest {
+  pub session_id: crate::core::session::DocumentSessionId,
+  pub roots: XrayRoots,
+  pub mode: xrf_translation::TranslationProjectMode,
+  pub prefix: Option<String>,
+}

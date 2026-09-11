@@ -4,23 +4,26 @@ import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 import { exportsCommands } from "@/core/bindings/commands/exports";
 import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class ExportsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => exportsCommands.closeProject(ids));
+
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<ExportsProject>> = Loadable.idle(null);
+  public project: Loadable<Nullable<TDocument<ExportsProject>>> = Loadable.idle(null);
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
@@ -31,7 +34,7 @@ export class ExportsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(exportsCommands.closeProject);
+    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
   }
 
   /**
@@ -44,7 +47,9 @@ export class ExportsService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     try {
-      const project: Nullable<ExportsProject> = yield* call(exportsCommands.getProject());
+      const project: Nullable<TDocument<ExportsProject>> = yield* call(
+        exportsCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+      );
 
       this.log.info(project ? "Existing exports project detected" : "No existing exports project");
 
@@ -55,7 +60,7 @@ export class ExportsService {
 
       this.log.error("Failed to restore exports project:", transformed);
 
-      this.project = this.project.asFailed(transformed, null);
+      this.project = this.project.asFailed(transformed);
       this.isReady = true;
 
       emitNotification(this.eventBus, {
@@ -77,16 +82,18 @@ export class ExportsService {
   public async readExportSource(name: string): Promise<ExportSourceContent> {
     this.log.info("Reading export source:", name);
 
-    return exportsCommands.getSource(name);
+    return exportsCommands.getSource(requireDocumentSession(this.project.value), name);
   }
 
-  @ExclusiveFlow("project")
+  @LatestFlow("project")
   public *openExportsProject(path: string): TFlow {
     this.log.info("Parsing exports from project:", path);
-    this.project = this.project.asLoading(null);
+    this.project = this.project.asLoading();
 
     try {
-      const result: ExportsProject = yield* call(exportsCommands.openProject(path));
+      const result: TDocument<ExportsProject> = yield* call(
+        this.session.open((sessionId) => exportsCommands.openProject(sessionId, path).then(restoreDocument))
+      );
 
       this.project = this.project.asReady(result);
     } catch (error: unknown) {
@@ -94,7 +101,7 @@ export class ExportsService {
 
       this.log.error("Failed to parse exports:", transformed);
 
-      this.project = this.project.asFailed(transformed, null);
+      this.project = this.project.asFailed(transformed);
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformed.message}`,
@@ -107,7 +114,7 @@ export class ExportsService {
 
   @ExclusiveFlow("project")
   public *refreshExportsProject(): TFlow {
-    const existing: Nullable<ExportsProject> = this.project.value;
+    const existing: Nullable<TDocument<ExportsProject>> = this.project.value;
 
     if (!existing) {
       return;
@@ -117,7 +124,9 @@ export class ExportsService {
     this.project = this.project.asLoading(existing);
 
     try {
-      const result: ExportsProject = yield* call(exportsCommands.openProject(existing.root));
+      const result: TDocument<ExportsProject> = yield* call(
+        this.session.open((sessionId) => exportsCommands.openProject(sessionId, existing.root).then(restoreDocument))
+      );
 
       this.project = this.project.asReady(result);
     } catch (error: unknown) {
@@ -136,15 +145,16 @@ export class ExportsService {
     }
   }
 
-  @ExclusiveFlow("project")
+  @LatestFlow("project")
   public *closeExportsProject(): TFlow {
-    const previous: Loadable<Nullable<ExportsProject>> = this.project;
+    const previous: Loadable<Nullable<TDocument<ExportsProject>>> = this.project;
 
     this.log.info("Closing exports project");
     this.project = this.project.asLoading();
 
     try {
-      yield* call(exportsCommands.closeProject());
+      yield* call(this.session.close(this.project.value?.sessionId));
+
       // Cleared on purpose: closing swaps the viewer for the application's picker in place. It used to
       // hold the project until the caller navigated away, because clearing it unmounted the editor
       // before React Router could process that navigation. Nothing navigates on close any more.

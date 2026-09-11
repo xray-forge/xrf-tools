@@ -3,6 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports/exports.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
@@ -34,9 +35,9 @@ describe("ExportsService notifications", () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
     setMockInvokeResponses({
-      ["plugin:exports|open_project"]: () => {
+      ["plugin:exports|open_project"]: mockDocumentResponse(() => {
         throw new Error("no scripts directory");
-      },
+      }),
     });
 
     await service.openExportsProject("C:\\game\\scripts");
@@ -50,14 +51,14 @@ describe("ExportsService notifications", () => {
   it("reports a refresh that could not complete", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockExportsProject() });
+    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockDocumentResponse(mockExportsProject()) });
 
     await service.openExportsProject("C:\\game\\scripts");
 
     setMockInvokeResponses({
-      ["plugin:exports|open_project"]: () => {
+      ["plugin:exports|open_project"]: mockDocumentResponse(() => {
         throw new Error("scripts moved");
-      },
+      }),
     });
 
     await service.refreshExportsProject();
@@ -70,7 +71,7 @@ describe("ExportsService notifications", () => {
   it("says nothing about a project that opened", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockExportsProject() });
+    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockDocumentResponse(mockExportsProject()) });
 
     await service.openExportsProject("C:\\game\\scripts");
 

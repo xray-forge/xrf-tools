@@ -40,7 +40,7 @@ const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 function createService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = Loadable.ready(mockArchivesProject([TEXTURE, TEXT]));
+  service.project = Loadable.ready({ ...mockArchivesProject([TEXTURE, TEXT]), sessionId: "fixture-session" });
 
   return service;
 }

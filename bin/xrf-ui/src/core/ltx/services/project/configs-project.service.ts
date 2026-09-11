@@ -6,10 +6,11 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -22,6 +23,8 @@ import { Nullable } from "@/lib/types/general";
 @Injectable()
 export class ConfigsProjectService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  private readonly session: DocumentSession = new DocumentSession((ids) => configsCommands.closeProject(ids));
 
   /** Whether the backend has been asked what it still has open. */
   @Observable()
@@ -63,28 +66,7 @@ export class ConfigsProjectService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      const descriptor: Nullable<ConfigsProjectDescriptor> = await configsCommands.getProject();
-
-      if (descriptor) {
-        this.log.info("Restoring opened configs project:", descriptor.root);
-
-        // Through the lane rather than around it, so a project the user opens while this is still restoring wins.
-        await flowResult(this.restore(descriptor));
-
-        return;
-      }
-    } catch (error) {
-      this.log.error("Failed to restore the opened configs project:", error);
-    }
-
-    runInAction(() => {
-      // Nothing to restore: the picker is the answer. A restore still in flight owns the announcement, so this speaks
-      // only when nothing is arriving.
-      if (!this.project.isLoading) {
-        this.isReady = true;
-      }
-    });
+    await flowResult(this.restore());
   }
 
   /**
@@ -94,11 +76,11 @@ export class ConfigsProjectService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the opened configs project");
 
+    releaseEditorProject(() => this.session.close(this.sessionId));
+
     runInAction(() => {
       this.project = this.project.asIdle(null);
     });
-
-    releaseEditorProject(configsCommands.closeProject);
   }
 
   /**
@@ -114,11 +96,14 @@ export class ConfigsProjectService {
 
     try {
       const descriptor: ConfigsProjectDescriptor = yield* call(
-        configsCommands.openProject({
-          isDltx,
-          prefix,
-          roots: createRoots([root]),
-        })
+        this.session.open((sessionId) =>
+          configsCommands.openProject({
+            sessionId,
+            isDltx,
+            prefix,
+            roots: createRoots([root]),
+          })
+        )
       );
 
       this.log.info("Opened configs project:", descriptor.root, descriptor.inventory.files.length, "configs");
@@ -138,25 +123,26 @@ export class ConfigsProjectService {
    */
   @LatestFlow("project")
   public *close(): TFlow {
-    this.project = this.project.asIdle(null);
-
     try {
-      yield* call(configsCommands.closeProject());
+      yield* call(this.session.close(this.sessionId));
+
+      this.project = this.project.asIdle(null);
     } catch (error) {
       this.log.error("Failed to close the configs project:", error);
     }
   }
 
-  /**
-   * Adopt a descriptor the backend already had open.
-   *
-   * @param descriptor - What the backend reported it is holding.
-   */
-  @LatestFlow("project")
-  private *restore(descriptor: ConfigsProjectDescriptor): TFlow {
-    this.project = this.project.asReady(descriptor);
-    this.isReady = true;
+  /** Adopts the committed native descriptor unless a user action has taken the project flow. */
+  @ExclusiveFlow("project")
+  private *restore(): TFlow {
+    try {
+      const descriptor: Nullable<ConfigsProjectDescriptor> = yield* call(configsCommands.getProject());
 
-    yield;
+      this.project = this.project.asReady(descriptor);
+    } catch (error) {
+      this.log.error("Failed to restore the configs project:", error);
+    } finally {
+      this.isReady = true;
+    }
   }
 }

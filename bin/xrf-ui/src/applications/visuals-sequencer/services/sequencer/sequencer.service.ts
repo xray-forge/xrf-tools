@@ -9,7 +9,6 @@ import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/x
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
@@ -111,14 +110,8 @@ export class SequencerService implements IVisualInspection {
   @OnProvision()
   public async onProvision(): Promise<void> {
     try {
-      const selected: Nullable<SelectedVisualDescription> = await visualsCommands.getModel();
-
-      if (selected) {
-        this.log.info("Restoring selected visual:", describeVisualSource(selected.source));
-
-        await flowResult(this.loadService.restore(selected));
-        await this.list();
-      }
+      await flowResult(this.loadService.restore());
+      await this.list();
     } catch (error) {
       this.log.error("Failed to restore selected visual:", error);
     } finally {
@@ -134,7 +127,6 @@ export class SequencerService implements IVisualInspection {
 
     this.sequenceService.clear();
     this.loadService.clear();
-    releaseEditorProject(visualsCommands.closeModel);
   }
 
   /**
@@ -154,14 +146,13 @@ export class SequencerService implements IVisualInspection {
   @BoundAction()
   public async close(): Promise<void> {
     this.sequenceService.clear();
-    this.loadService.clear();
 
     runInAction(() => {
       this.motions = this.motions.asIdle([]);
     });
 
     try {
-      await visualsCommands.closeModel();
+      await flowResult(this.loadService.close());
     } catch (error) {
       this.log.error("Failed to close visual:", error);
     }
@@ -208,7 +199,9 @@ export class SequencerService implements IVisualInspection {
    * Names what the open visual can play.
    */
   private async list(): Promise<void> {
-    if (!this.hasMotions) {
+    const sessionId = this.visual.value?.selected.sessionId;
+
+    if (!this.hasMotions || !sessionId) {
       return;
     }
 
@@ -217,9 +210,13 @@ export class SequencerService implements IVisualInspection {
     });
 
     try {
-      const names: Array<string> = await visualsCommands.listMotions();
+      const names: Array<string> = await visualsCommands.listMotions(sessionId);
 
       runInAction(() => {
+        if (this.visual.value?.selected.sessionId !== sessionId) {
+          return;
+        }
+
         this.motions = this.motions.asReady(names);
       });
     } catch (error: unknown) {
@@ -228,6 +225,10 @@ export class SequencerService implements IVisualInspection {
       this.log.error("Failed to list motions:", transformed);
 
       runInAction(() => {
+        if (this.visual.value?.selected.sessionId !== sessionId) {
+          return;
+        }
+
         this.motions = this.motions.asFailed(transformed, []);
       });
     }

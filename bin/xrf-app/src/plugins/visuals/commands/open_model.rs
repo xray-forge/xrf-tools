@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::MutexGuard;
+use std::sync::Arc;
 
 use tauri::State;
 use xrf_db::OgfFile;
@@ -8,6 +8,7 @@ use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
+use crate::core::session::{DocumentSession, DocumentSessionId, DocumentSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::read_source;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
@@ -24,11 +25,14 @@ use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_model"))]
 #[tauri::command(rename = "open_model")]
 pub async fn visuals_open_model(
+  session_id: DocumentSessionId,
   source: VisualSource,
   roots: XrayRoots,
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
-) -> TauriResult<SelectedVisualDescription> {
+) -> TauriResult<DocumentSnapshot<SelectedVisualDescription>> {
+  state.selected.begin_open(session_id)?;
+
   log::info!("Opening visual: {}", source.label());
 
   // Centred on the model unless the caller centred it elsewhere, and the effective roots is what travels back: a texture
@@ -60,36 +64,23 @@ pub async fn visuals_open_model(
       ))
     })??;
 
-  let description: SelectedVisualDescription = SelectedVisualDescription {
-    source: source.clone(),
-    roots: roots.clone(),
-    description: package.description.clone(),
-    dependencies: dependencies.clone(),
-    textures: textures.clone(),
-    materials: materials.clone(),
-    surfaces: surfaces.clone(),
-    textures_ltx: textures_ltx.clone(),
-  };
+  let selected: Arc<DocumentSnapshot<SelectedVisual>> = state.selected.commit_open(
+    session_id,
+    SelectedVisual {
+      source,
+      roots,
+      package,
+      dependencies,
+      skeleton,
+      posed: DocumentSession::new("visual motion"),
+      textures,
+      materials,
+      surfaces,
+      textures_ltx,
+    },
+  )?;
 
-  let mut selected: MutexGuard<Option<SelectedVisual>> = state
-    .selected
-    .lock()
-    .map_err(|error| format!("Failed to open visual - selection state is unavailable: {error}"))?;
-
-  *selected = Some(SelectedVisual {
-    source,
-    roots,
-    package,
-    dependencies,
-    skeleton,
-    posed: None,
-    textures,
-    materials,
-    surfaces,
-    textures_ltx,
-  });
-
-  Ok(description)
+  Ok(selected.map(SelectedVisual::describe))
 }
 
 /// Describes the file behind every located texture reference, once per file.

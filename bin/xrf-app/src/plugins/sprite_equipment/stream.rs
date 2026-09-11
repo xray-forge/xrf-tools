@@ -1,50 +1,48 @@
-use std::sync::MutexGuard;
-
 use tauri::http::Result as HttpResult;
-use tauri::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_LENGTH, CONTENT_TYPE, REFERER};
-use tauri::http::response::Builder;
+use tauri::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, REFERER};
 use tauri::http::{Request, Response};
-use tauri::{AppHandle, Manager, Runtime, State, UriSchemeContext};
+use tauri::{Manager, Runtime, UriSchemeContext};
 
+use crate::core::session::DocumentSessionId;
 use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
 
+/// Serves bytes from exactly the sprite identified by the URL, after releasing the session lock.
 pub fn get_sprite_stream_response<R: Runtime>(
   context: UriSchemeContext<R>,
   request: &Request<Vec<u8>>,
 ) -> HttpResult<Response<Vec<u8>>> {
-  let handle: &AppHandle<R> = context.app_handle();
-  let sprite_equipment_state: State<EquipmentSpriteState> = handle.state::<EquipmentSpriteState>();
+  let state = context.app_handle().state::<EquipmentSpriteState>();
+  sprite_response(&state, request)
+}
 
-  let sprite_lock: MutexGuard<Option<String>> = sprite_equipment_state.equipment_sprite_name.lock().unwrap();
-  let preview_lock: MutexGuard<Option<Vec<u8>>> = sprite_equipment_state.equipment_sprite_preview.lock().unwrap();
+pub(super) fn sprite_response(
+  state: &EquipmentSpriteState,
+  request: &Request<Vec<u8>>,
+) -> HttpResult<Response<Vec<u8>>> {
+  let uri = percent_encoding::percent_decode(request.uri().path().as_bytes()).decode_utf8_lossy();
 
-  let preview: Option<&Vec<u8>> = preview_lock.as_ref();
-  let sprite_name: Option<&String> = sprite_lock.as_ref();
+  let Some((id, name)) = uri.trim_matches('/').rsplit_once('/') else {
+    return Response::builder().status(404).body(Vec::new());
+  };
 
-  if let (Some(preview), Some(sprite_name)) = (preview, sprite_name) {
-    let uri: String = percent_encoding::percent_decode(request.uri().path().as_bytes())
-      .decode_utf8_lossy()
-      .to_string();
+  let opened = id
+    .parse::<DocumentSessionId>()
+    .ok()
+    .and_then(|id| state.require(id).ok());
 
-    if !uri.ends_with(&format!("/{}", sprite_name)) {
-      log::info!("Incorrect asset request: {uri}");
+  let Some(opened) = opened.filter(|opened| opened.metadata.name == name) else {
+    return Response::builder().status(404).body(Vec::new());
+  };
 
-      return Response::builder().status(404).body(Vec::new());
-    }
+  let mut response = Response::builder();
 
-    let mut response: Builder = Response::builder();
-
-    if let Some(referer) = request.headers().get(REFERER).map(|header| header.to_str().unwrap()) {
-      response = response.header(ACCESS_CONTROL_ALLOW_ORIGIN, referer.trim_matches('/'))
-    }
-
-    response
-      .header(CONTENT_TYPE, "image/png")
-      .header(CONTENT_LENGTH, preview.len())
-      .body(preview.clone())
-  } else {
-    log::info!("Incorrect asset request while not existing");
-
-    Response::builder().status(404).body(Vec::new())
+  if let Some(referer) = request.headers().get(REFERER).and_then(|header| header.to_str().ok()) {
+    response = response.header(ACCESS_CONTROL_ALLOW_ORIGIN, referer.trim_matches('/'));
   }
+
+  response
+    .header(CACHE_CONTROL, "no-store")
+    .header(CONTENT_TYPE, "image/png")
+    .header(CONTENT_LENGTH, opened.preview.len())
+    .body(opened.preview.clone())
 }

@@ -5,8 +5,8 @@ use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsFormatSupport, D
 use xrf_job::JobOutcome;
 use xrf_vfs::XrayRoots;
 
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
-use crate::plugins::textures::TextureSessionId;
 
 use crate::plugins::textures::source::TextureSource;
 
@@ -91,7 +91,7 @@ pub struct TextureEncodingCurrent {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureEncodingComparison {
-  pub session_id: TextureSessionId,
+  pub session_id: DocumentSessionId,
   pub source: TextureSource,
   pub roots: XrayRoots,
   /// Whether every candidate was weighed or the run stopped because it was asked to.
@@ -108,7 +108,7 @@ pub struct TextureEncodingComparison {
 
 /// The encodes one comparison produced, kept until somebody saves one or asks for another texture.
 pub struct TextureEncodingSession {
-  pub session_id: TextureSessionId,
+  pub session_id: DocumentSessionId,
   pub roots: XrayRoots,
   /// The texture these were encoded from, so a save cannot write one texture's bytes over another's file.
   ///

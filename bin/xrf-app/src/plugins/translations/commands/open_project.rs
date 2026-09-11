@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use tauri::State;
 use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, read_gamedata, read_source};
-use xrf_vfs::XrayRoots;
 
 use crate::core::error::error_to_string;
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
+use crate::plugins::translations::request::TranslationsOpenRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
 /// Open a translations tree.
@@ -14,11 +17,18 @@ use crate::plugins::translations::state::TranslationProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn translations_open_project(
-  roots: XrayRoots,
-  mode: TranslationProjectMode,
-  prefix: Option<String>,
+  request: TranslationsOpenRequest,
   state: State<'_, TranslationProjectState>,
-) -> TauriResult<TranslationProjectDescriptor> {
+) -> TauriResult<Arc<DocumentSnapshot<TranslationProjectDescriptor>>> {
+  let TranslationsOpenRequest {
+    session_id,
+    roots,
+    mode,
+    prefix,
+  } = request;
+
+  state.begin_open(session_id)?;
+
   let prefix: String = prefix.unwrap_or_else(|| mode.get_prefix().to_owned());
 
   log::info!(
@@ -45,7 +55,5 @@ pub async fn translations_open_project(
   );
 
   // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
-  state.open_project(descriptor.clone())?;
-
-  Ok(descriptor)
+  state.open_project(session_id, descriptor)
 }

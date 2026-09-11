@@ -11,7 +11,7 @@ impl ArchivesPlugin {
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(ArchiveProjectState::new());
+        application.manage(ArchiveProjectState::new("archive"));
 
         Ok(())
       })

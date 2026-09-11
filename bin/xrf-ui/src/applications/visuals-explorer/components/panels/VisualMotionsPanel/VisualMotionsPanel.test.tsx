@@ -8,6 +8,7 @@ import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualMotionBake, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -59,17 +60,17 @@ async function renderPanel(
   let listed: number = 0;
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: selected,
+    ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
     ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
     ["plugin:visuals|list_motions"]: () => {
       listed += 1;
 
       return names;
     },
-    ["plugin:visuals|open_motion"]: (parameters?: Record<string, unknown>) => ({
+    ["plugin:visuals|open_motion"]: mockDocumentResponse((parameters?: Record<string, unknown>) => ({
       ...bake,
       name: String((parameters as { name: string }).name),
-    }),
+    })),
     ["plugin:visuals|read_motion"]: mockVisualMotionTransforms(bake),
   });
 
@@ -179,13 +180,15 @@ describe("VisualMotionsPanel listing", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSelectedVisual({
-        dependencies: { motions: [mockMotionRef()], textures: [] },
-        description: mockVisualDescription({
-          submeshes: [mockPackedSubmesh(buffer)],
-          bufferLength: buffer.byteLength,
-        }),
-      }),
+      ["plugin:visuals|open_model"]: mockDocumentResponse(
+        mockSelectedVisual({
+          dependencies: { motions: [mockMotionRef()], textures: [] },
+          description: mockVisualDescription({
+            submeshes: [mockPackedSubmesh(buffer)],
+            bufferLength: buffer.byteLength,
+          }),
+        })
+      ),
       ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
       // Never settles, which is the state a 2,500-name actor is in for as long as its omf files are being read.
       ["plugin:visuals|list_motions"]: () => new Promise<Array<string>>(() => {}),

@@ -15,6 +15,7 @@ import {
   mockArchivesProject,
   mockPathCollision,
 } from "@/fixtures/mocks/archive.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -43,7 +44,7 @@ describe("opened archives editor", () => {
     jest.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|list_shared_payloads"]: [],
       ["plugin:archives|read_file"]: {
         name: TEXT_FILE.name,
@@ -101,6 +102,7 @@ describe("opened archives editor", () => {
     expect(await findByAltText(BINARY_FILE.name)).toHaveAttribute("src", "blob:decoded-texture");
     expect(await findByText("64 x 64 · DXT1 · no mips")).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", {
+      sessionId: expect.any(String),
       path: BINARY_FILE.name,
     });
   });
@@ -113,6 +115,7 @@ describe("opened archives editor", () => {
     expect(getByText("Preview unavailable")).toBeInTheDocument();
     expect(getByText(/this file type does not have a text preview/)).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", {
+      sessionId: expect.any(String),
       path: MESH_FILE.name,
     });
   });
@@ -137,7 +140,7 @@ describe("opened archives editor", () => {
     const nestedFile = mockArchiveFileDescriptor({ name: "configs\\system.ltx", sizeReal: 512, sizeCompressed: 512 });
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockArchivesProject([nestedFile, BINARY_FILE]),
+      ["plugin:archives|get_project"]: mockDocumentResponse(mockArchivesProject([nestedFile, BINARY_FILE])),
     });
 
     const { findByLabelText, findByRole, findByText, getByLabelText, queryByText } = renderEditor();
@@ -161,7 +164,7 @@ describe("opened archives editor", () => {
     let readCount: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|read_file"]: () => {
         readCount += 1;
 
@@ -229,7 +232,7 @@ describe("opened archives editor", () => {
     // The format keeps no alias field, so the panel says what reads alike and labels it as derived rather than as
     // something the packer wrote down.
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|list_shared_payloads"]: [mockArchiveSharedPayload(BINARY_FILE, ["texture_copy.dds"])],
       ["plugin:archives|describe_image"]: {
         size: BINARY_FILE.sizeReal,
@@ -265,7 +268,7 @@ describe("opened archives editor", () => {
     // The explorer used to show the winner and nothing else, so an entry nobody could reach was indistinguishable
     // from one nobody packed.
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
@@ -288,7 +291,7 @@ describe("opened archives editor", () => {
 
   it("dismisses the reachability notice without hiding the entries themselves", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
@@ -326,7 +329,7 @@ describe("opened archives editor", () => {
 
   it("stays open and reports a close failure", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|close_project"]: () => {
         throw new Error("archive is busy");
       },
@@ -346,7 +349,7 @@ describe("opened archives editor", () => {
     const save = jest.spyOn(dialog, "save").mockResolvedValue("C:\\out\\readme.ltx");
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:archives|read_file"]: { name: TEXT_FILE.name, content: "line", size: 4 },
       // Never settles, so the editor stays mid-extraction for the length of the assertion.
       ["plugin:archives|extract_file"]: () => new Promise(() => {}),
@@ -371,7 +374,7 @@ describe("opened archives editor", () => {
 
   it("supersedes a read still in flight with the next file opened", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: PROJECT,
+      ["plugin:archives|get_project"]: mockDocumentResponse(PROJECT),
       // Never settles, so the first selection is still in flight when the second one is made.
       ["plugin:archives|read_file"]: () => new Promise(() => {}),
       ["plugin:archives|describe_image"]: {

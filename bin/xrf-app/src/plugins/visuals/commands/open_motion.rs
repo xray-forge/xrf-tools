@@ -1,9 +1,10 @@
-use std::sync::MutexGuard;
+use std::sync::Arc;
 
 use tauri::State;
 use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
 use crate::core::assets::AssetMountState;
+use crate::core::session::{DocumentSessionId, DocumentSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
@@ -18,20 +19,17 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_motion"))]
 #[tauri::command(rename = "open_motion")]
 pub async fn visuals_open_motion(
+  session_id: DocumentSessionId,
+  motion_id: DocumentSessionId,
   name: String,
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
-) -> TauriResult<VisualMotionBake> {
+) -> TauriResult<DocumentSnapshot<VisualMotionBake>> {
   log::info!("Posing motion: {name}");
 
-  let mut selected: MutexGuard<Option<SelectedVisual>> = state
-    .selected
-    .lock()
-    .map_err(|error| format!("Failed to pose motion - selection state is unavailable: {error}"))?;
+  let current: Arc<DocumentSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
 
-  let Some(current) = selected.as_mut() else {
-    return Err(String::from("Cannot pose a motion while no visual is open"));
-  };
+  current.posed.begin_open(motion_id)?;
 
   let Some(skeleton) = current.skeleton.as_ref() else {
     return Err(String::from("The open visual carries no bind pose to animate"));
@@ -42,9 +40,7 @@ pub async fn visuals_open_motion(
     bake_named_motion(probe, skeleton, &current.dependencies, &name)
   })??;
 
-  let description: VisualMotionBake = posed.description.clone();
+  let opened: Arc<DocumentSnapshot<VisualMotionPose>> = current.posed.commit_open(motion_id, posed)?;
 
-  current.posed = Some(posed);
-
-  Ok(description)
+  Ok(opened.map(|pose| pose.description.clone()))
 }

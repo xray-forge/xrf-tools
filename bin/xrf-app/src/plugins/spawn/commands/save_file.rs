@@ -6,8 +6,8 @@ use xrf_db::XRayByteOrder;
 
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
+use crate::core::session::{DocumentSessionId, DocumentSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::spawn::SpawnSessionId;
 use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 
 /// Write the requested session using the existing spawn format writer.
@@ -15,11 +15,11 @@ use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 #[tauri::command(rename = "save_file")]
 pub async fn spawn_save_file(
   path: PathBuf,
-  session_id: SpawnSessionId,
+  session_id: DocumentSessionId,
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult {
-  let opened: Arc<SpawnSession> = state.require(session_id)?;
+  let opened: Arc<DocumentSnapshot<SpawnSession>> = state.require(session_id)?;
 
   execution
     .run_blocking("Writing spawn", move || {

@@ -11,8 +11,8 @@ import {
   ConfigsReadSectionsRequest,
   ConfigsResolvedRequest,
   ConfigsSectionRequest,
-  ConfigsSessionId,
   ConfigsVerifyRequest,
+  DocumentSessionId,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
@@ -40,7 +40,8 @@ export const configsCommands = {
    *
    * Reissues the session identity, so a read already in flight cannot commit against the project that follows.
    */
-  closeProject: () => __TAURI_INVOKE<null>("plugin:configs|close_project"),
+  closeProject: (sessionIds: Array<DocumentSessionId>) =>
+    __TAURI_INVOKE<null>("plugin:configs|close_project", { sessionIds }),
   /**
    * Rewrite the LTX configs roots exposes.
    *
@@ -62,7 +63,7 @@ export const configsCommands = {
   getProject: () =>
     __TAURI_INVOKE<{
       /** Identity every later read is addressed by. */
-      sessionId: ConfigsSessionId;
+      sessionId: DocumentSessionId;
       /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
       roots: XrayRoots;
       /** Scope inside those trees, or nothing for all of them. */
@@ -83,11 +84,6 @@ export const configsCommands = {
     } | null>("plugin:configs|get_project"),
   /**
    * Everything wrong with one resolved root, anchored to the file and line a person has to open.
-   *
-   * Per entry point rather than per project: verifying a whole tree is what `configs-verifier` is for, while an explorer
-   * is about the file on screen and the root it belongs to - which is also the unit an edit will invalidate. Both halves
-   * travel together because a reader does not care which pass noticed: what the scheme check found, and what the dialect
-   * said while resolving.
    *
    * Held with the resolution, so opening the panel a second time is a lookup rather than a second walk of every section
    * the root holds.
@@ -126,10 +122,6 @@ export const configsCommands = {
   /**
    * What one section is judged by, and how it measures against that.
    *
-   * Answered from the resolution, so a section inheriting its binding is explained by the rule the verifier judges it
-   * by rather than by what its own header says. A section bound to no scheme answers its plain fields, which is the
-   * same list of rows and the other half of the question.
-   *
    * `None` means the root does not hold the section, which a panel reaches by asking about a selection the index no
    * longer holds.
    */
@@ -142,22 +134,11 @@ export const configsCommands = {
       scheme: string | null;
       /** Whether a scheme file declares that name. False is itself a finding, and the verifier reports it as one. */
       isDeclared: boolean;
-      /**
-       * Whether the declaration refuses fields it does not name and demands the ones it does not mark optional.
-       *
-       * The distinction a reader has to see: under a loose scheme a missing field is silence, and under a strict one it
-       * is a finding.
-       */
+      /** Whether the declaration refuses fields it does not name and demands the ones it does not mark optional. */
       isStrict: boolean;
       /** The section the binding is written in, absent when this section writes it itself. */
       inheritedFrom: string | null;
-      /**
-       * Every field the scheme declares and every field the section holds, merged.
-       *
-       * Declared fields first, in the order the scheme declares them, then whatever the section holds beyond them in its
-       * own order. A row with no declaration is a field the scheme never named; a row with no value is one the section
-       * never supplied.
-       */
+      /** Every field the scheme declares and every field the section holds, merged. */
       fields: Array<LtxSchemeFieldReport>;
     } | null>("plugin:configs|read_section_scheme", { request }),
   /** Verifies LTX configs through the VFS, including archived files. */

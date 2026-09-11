@@ -23,7 +23,19 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService);
+    container.get(SpriteEquipmentEditorService).spriteImage = container
+      .get(SpriteEquipmentEditorService)
+      .spriteImage.asReady({
+        sessionId: "fixture-session",
+        isDltx: false,
+        ltxPath: "system.ltx",
+        descriptors: [],
+        path: "equipment.dds",
+        name: "equipment.png",
+        blob: new Blob(),
+        image: new Image(),
+      });
+
     container.deprovision();
 
     // The strict mode remount cancels the pending `unbindAll`, so this is the whole teardown it sees.
@@ -36,7 +48,18 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService);
+    container.get(SpriteEquipmentEditorService).spriteImage = container
+      .get(SpriteEquipmentEditorService)
+      .spriteImage.asReady({
+        sessionId: "fixture-session",
+        isDltx: false,
+        ltxPath: "system.ltx",
+        descriptors: [],
+        path: "equipment.dds",
+        name: "equipment.png",
+        blob: new Blob(),
+        image: new Image(),
+      });
 
     container.deprovision();
     container.unbindAll();
@@ -49,14 +72,36 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService);
+    container.get(SpriteEquipmentEditorService).spriteImage = container
+      .get(SpriteEquipmentEditorService)
+      .spriteImage.asReady({
+        sessionId: "fixture-session",
+        isDltx: false,
+        ltxPath: "system.ltx",
+        descriptors: [],
+        path: "equipment.dds",
+        name: "equipment.png",
+        blob: new Blob(),
+        image: new Image(),
+      });
 
     // Mount, throwaway unmount, remount - `unbindAll` never runs because the provider cancels it.
     container.deprovision();
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService);
+    container.get(SpriteEquipmentEditorService).spriteImage = container
+      .get(SpriteEquipmentEditorService)
+      .spriteImage.asReady({
+        sessionId: "fixture-session",
+        isDltx: false,
+        ltxPath: "system.ltx",
+        descriptors: [],
+        path: "equipment.dds",
+        name: "equipment.png",
+        blob: new Blob(),
+        image: new Image(),
+      });
 
     expect(closeCalls()).toBe(0);
 

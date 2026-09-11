@@ -14,6 +14,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
 const SPRITE: IEquipmentPngDescriptor = {
+  sessionId: "fixture-session",
   isDltx: false,
   ltxPath: "C:\\game\\system.ltx",
   descriptors: [],

@@ -2,6 +2,7 @@ use tauri::State;
 use xrf_translation::find_unwritable_character;
 
 use crate::core::error::error_to_string;
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::TranslationProjectState;
 
@@ -13,9 +14,12 @@ use crate::plugins::translations::state::TranslationProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "validate_text"))]
 #[tauri::command(rename = "validate_text")]
 pub async fn translations_validate_text(
+  session_id: DocumentSessionId,
   language: &str,
   text: &str,
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult<Option<String>> {
-  state.with_project(|descriptor| find_unwritable_character(descriptor, language, text).map_err(error_to_string))
+  let project = state.require(session_id)?;
+
+  find_unwritable_character(&project, language, text).map_err(error_to_string)
 }

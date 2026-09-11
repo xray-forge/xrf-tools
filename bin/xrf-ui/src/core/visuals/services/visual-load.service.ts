@@ -1,4 +1,4 @@
-import { Injectable } from "@wirestate/core";
+import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { Texture } from "three";
 
@@ -8,6 +8,8 @@ import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
+import { releaseEditorProject } from "@/core/ipc/release";
 import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { createVisualSurfaces, IVisualSurface, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
@@ -24,12 +26,12 @@ import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-
 import { formatDuration } from "@/lib/format/duration";
 import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** A visual that is loaded: what it is, where it came from, and the views the scene draws. */
 export interface IOpenVisual {
-  selected: SelectedVisualDescription;
+  selected: TDocument<SelectedVisualDescription>;
   views: IVisualModelViews;
 }
 
@@ -39,12 +41,6 @@ interface IVisualTextureRead {
   reason: Nullable<string>;
 }
 
-/**
- * Every texture of one visual, ready to publish beside its geometry.
- *
- * Submeshes sharing a file share the one `Texture`: `textures` maps several indices onto the same upload, which is why
- * anything freeing them has to go through the distinct values rather than the entries.
- */
 /** One half of a bump pair after upload: the texture when it made it, and what to report either way. */
 interface IVisualBumpHalf {
   texture: Nullable<Texture>;
@@ -52,6 +48,7 @@ interface IVisualBumpHalf {
   reason: Nullable<string>;
 }
 
+/** Texture uploads ready to publish with geometry. Submeshes sharing a file share one upload and its lifetime. */
 interface IVisualTextureLoad {
   textures: Map<number, Texture>;
   statuses: Map<number, IVisualTextureStatus>;
@@ -61,16 +58,16 @@ interface IVisualTextureLoad {
 }
 
 /**
- * Turning a named visual into something a scene can draw.
+ * Loads a native geometry snapshot and its resolved textures, publishing them together.
  *
- * Two calls by design - the description is typed and the geometry is raw bytes, and a tauri command returns one or the
- * other, never both - followed by the textures, which arrive one at a time so a model shows its first without waiting
- * for its last. Everything is addressed by source and roots rather than by what is currently loaded, so a response that
- * arrives after the caller moved on is discardable instead of being paired with the wrong model.
+ * Geometry uses the opening's identity; texture reads use the roots and paths resolved by that opening.
+ * A delayed response can therefore be discarded without pairing geometry with another model's description.
  */
 @Injectable()
 export class VisualLoadService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  private readonly session: DocumentSession = new DocumentSession((ids) => visualsCommands.closeModel(ids));
 
   @Observable()
   public visual: Loadable<Nullable<IOpenVisual>> = Loadable.idle(null);
@@ -113,9 +110,14 @@ export class VisualLoadService {
    */
   @Computed()
   public get hasMotions(): boolean {
-    const selected: Nullable<SelectedVisualDescription> = this.visual.value?.selected ?? null;
+    const selected: Nullable<TDocument<SelectedVisualDescription>> = this.visual.value?.selected ?? null;
 
     return Boolean(selected && (selected.dependencies.motions.length || selected.description.embeddedMotions.length));
+  }
+
+  @OnDeactivation()
+  public onDeactivation(): void {
+    this.clear();
   }
 
   /**
@@ -134,12 +136,11 @@ export class VisualLoadService {
     this.log.info("Loading visual:", describeVisualSource(source));
 
     try {
-      this.visual = this.visual.asLoading(null);
-      this.releaseTextures();
-      this.textureStatuses = new Map();
-      this.bumpStatuses = new Map();
+      this.visual = this.visual.asLoading();
 
-      const selected: SelectedVisualDescription = yield* call(visualsCommands.openModel(source, roots));
+      const selected: TDocument<SelectedVisualDescription> = yield* call(
+        this.session.open((sessionId) => visualsCommands.openModel(sessionId, source, roots).then(restoreDocument))
+      );
 
       this.log.info("Visual described in:", formatDuration(timer.lap()));
 
@@ -151,25 +152,38 @@ export class VisualLoadService {
 
       this.log.error("Load error after:", formatDuration(timer.elapsed()), transformed);
 
-      this.visual = this.visual.asFailed(transformed, null);
+      this.visual = this.visual.asFailed(transformed);
     }
   }
 
-  /**
-   * Put an already described visual on screen, for a selection the backend still holds.
-   *
-   * @param selected - Typed description and source the backend reported.
-   */
+  /** Restores the native selection in the same flow lane as opens, so a late restoration cannot replace a new view. */
+  @ExclusiveFlow("visual")
+  public *restore(): TFlow {
+    const snapshot = yield* call(visualsCommands.getModel());
+
+    if (snapshot) {
+      yield* this.view(restoreDocument(snapshot));
+    }
+  }
+
+  /** Close the document owned by this loader; the flow prevents a late close clearing a newer view. */
   @LatestFlow("visual")
-  public *restore(selected: SelectedVisualDescription): TFlow {
-    yield* this.view(selected);
+  public *close(): TFlow {
+    yield* call(this.session.close(this.visual.value?.selected.sessionId));
+
+    this.clearView();
   }
 
   /** Drop whatever is loaded, releasing the textures it uploaded. */
   @BoundAction()
   public clear(): void {
     cancelFlow(this, "visual");
+    releaseEditorProject(() => this.session.close(this.visual.value?.selected.sessionId));
 
+    this.clearView();
+  }
+
+  private clearView(): void {
     runInAction(() => {
       this.visual = this.visual.asIdle();
       this.releaseTextures();
@@ -183,12 +197,11 @@ export class VisualLoadService {
    *
    * @param selected - Typed description and source returned by the backend.
    */
-  private *view(selected: SelectedVisualDescription): TFlow {
+  private *view(selected: TDocument<SelectedVisualDescription>): TFlow {
     const timer: Timer = new Timer();
 
-    // The roots the open used travels back with the description, so a geometry read after a reload searches what the
-    // open searched rather than whatever the caller would name now.
-    const buffer: ArrayBuffer = yield* call(visualsRawCommands.readGeometry(selected.source, selected.roots));
+    // Geometry belongs to this parse, even if the same path has since been opened with different roots.
+    const buffer: ArrayBuffer = yield* call(visualsRawCommands.readGeometry(selected.sessionId));
 
     this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
 
@@ -212,22 +225,37 @@ export class VisualLoadService {
       .filter((status) => status.state === EVisualTextureState.UNSUPPORTED_FORMAT)
       .map((status) => status.submeshIndex);
 
-    if (declined.length) {
-      yield* call(this.decodeTextures(selected, declined, loaded));
+    let published: boolean = false;
+    let decoding: Promise<void> = Promise.resolve();
 
-      this.log.info(`Decoded ${declined.length} textures in:`, formatDuration(timer.lap()));
+    try {
+      if (declined.length) {
+        decoding = this.decodeTextures(selected, declined, loaded);
+
+        yield* call(decoding);
+
+        this.log.info(`Decoded ${declined.length} textures in:`, formatDuration(timer.lap()));
+      }
+
+      // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
+      // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief, and
+      // exactly long enough to read as grey plastic.
+      this.releaseTextures();
+
+      this.visual = this.visual.asReady({ selected, views });
+      this.textures = loaded.textures;
+      this.textureStatuses = loaded.statuses;
+      this.bumps = loaded.bumps;
+      this.bumpStatuses = loaded.bumpStatuses;
+
+      published = true;
+    } finally {
+      if (!published) {
+        const dispose = (): void => this.disposeTextures(loaded.textures, loaded.bumps);
+
+        void decoding.then(dispose, dispose);
+      }
     }
-
-    // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
-    // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief, and
-    // exactly long enough to read as grey plastic.
-    this.releaseTextures();
-
-    this.visual = this.visual.asReady({ selected, views });
-    this.textures = loaded.textures;
-    this.textureStatuses = loaded.statuses;
-    this.bumps = loaded.bumps;
-    this.bumpStatuses = loaded.bumpStatuses;
   }
 
   /**
@@ -242,7 +270,7 @@ export class VisualLoadService {
    * @param selected - Visual whose textures should be read.
    * @returns Each distinct file's bytes, or the reason there are none, by logical path.
    */
-  private async readTextures(selected: SelectedVisualDescription): Promise<Map<string, IVisualTextureRead>> {
+  private async readTextures(selected: TDocument<SelectedVisualDescription>): Promise<Map<string, IVisualTextureRead>> {
     // Base textures and bump pairs in one pass: a dummy pair shared by every degraded submesh is one read either way.
     const paths: Array<string> = [
       ...new Set([
@@ -293,7 +321,7 @@ export class VisualLoadService {
    * @returns Uploaded textures by submesh index, and every submesh's outcome.
    */
   private uploadTextures(
-    selected: SelectedVisualDescription,
+    selected: TDocument<SelectedVisualDescription>,
     surfaces: ReadonlyMap<number, IVisualSurface>,
     reads: Map<string, IVisualTextureRead>
   ): IVisualTextureLoad {
@@ -355,7 +383,7 @@ export class VisualLoadService {
    * @returns Complete pairs by submesh index, and every submesh's two outcomes.
    */
   private uploadBumps(
-    selected: SelectedVisualDescription,
+    selected: TDocument<SelectedVisualDescription>,
     reads: Map<string, IVisualTextureRead>,
     uploads: Map<string, Nullable<Texture>>
   ): Pick<IVisualTextureLoad, "bumps" | "bumpStatuses"> {
@@ -425,7 +453,7 @@ export class VisualLoadService {
    * @param loaded - Textures and statuses to fold the decoded ones into.
    */
   private async decodeTextures(
-    selected: SelectedVisualDescription,
+    selected: TDocument<SelectedVisualDescription>,
     declined: Array<number>,
     loaded: IVisualTextureLoad
   ): Promise<void> {
@@ -467,9 +495,18 @@ export class VisualLoadService {
   private releaseTextures(): void {
     // Through the distinct values: submeshes sharing a file share one upload, and disposing per entry would free it
     // once per submesh that named it. The bump pairs join the same set, since a dummy pair is shared the same way.
-    const uploaded: Set<Texture> = new Set(this.textures.values());
+    this.disposeTextures(this.textures, this.bumps);
+    this.textures = new Map();
+    this.bumps = new Map();
+  }
 
-    for (const pair of this.bumps.values()) {
+  private disposeTextures(
+    textures: ReadonlyMap<number, Texture>,
+    bumps: ReadonlyMap<number, IVisualBumpTextures>
+  ): void {
+    const uploaded: Set<Texture> = new Set(textures.values());
+
+    for (const pair of bumps.values()) {
       uploaded.add(pair.bump);
       uploaded.add(pair.companion);
     }
@@ -477,8 +514,5 @@ export class VisualLoadService {
     for (const texture of uploaded) {
       texture.dispose();
     }
-
-    this.textures = new Map();
-    this.bumps = new Map();
   }
 }

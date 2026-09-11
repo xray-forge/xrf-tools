@@ -8,6 +8,7 @@ use xrf_translation::{
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::core::error::error_to_string;
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
 
@@ -30,20 +31,22 @@ use crate::plugins::translations::state::{TranslationProjectState, TranslationSa
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
 #[tauri::command(rename = "save_file")]
 pub async fn translations_save_file(
+  session_id: DocumentSessionId,
   file: &str,
   edits: HashMap<String, Vec<TranslationEdit>>,
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult<TranslationSaveOutcome> {
-  save_into_open_project(&state, file, &edits)
+  save_into_open_project(&state, session_id, file, &edits)
 }
 
 /// Write `edits` into whichever project is open, and adopt what they left on disk while it still is.
 pub(in crate::plugins::translations) fn save_into_open_project(
   state: &TranslationProjectState,
+  session_id: DocumentSessionId,
   file: &str,
   edits: &HashMap<String, Vec<TranslationEdit>>,
 ) -> TauriResult<TranslationSaveOutcome> {
-  let plan: TranslationSavePlan = state.begin_save(file)?;
+  let plan: TranslationSavePlan = state.begin_save(session_id, file)?;
   let refreshed: TranslationProjectDescriptor = write_edits(&plan, edits)?;
 
   state.commit_save(&plan, refreshed)

@@ -14,7 +14,7 @@ impl SpriteEquipmentPlugin {
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(EquipmentSpriteState::new());
+        application.manage(EquipmentSpriteState::new("equipment sprite"));
 
         Ok(())
       })

@@ -3,8 +3,6 @@
 mod translation_project_state;
 mod translation_save_outcome;
 mod translation_save_plan;
-mod translation_session;
-mod translation_session_id;
 
 pub use translation_project_state::TranslationProjectState;
 pub use translation_save_outcome::TranslationSaveOutcome;

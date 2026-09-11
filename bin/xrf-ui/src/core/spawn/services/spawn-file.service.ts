@@ -2,9 +2,10 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
-import { SpawnSessionDescriptor, SpawnSessionId } from "@/core/bindings/types/xrf-app";
+import { DocumentSessionId, SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
 import { SpawnFile } from "@/core/bindings/types/xrf-db";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
@@ -26,11 +27,13 @@ type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: Loadable<SpawnFile[K
 export class SpawnFileService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => spawnCommands.closeFile(ids));
+
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  private session: Nullable<SpawnSessionDescriptor> = null;
+  private sessionDescriptor: Nullable<SpawnSessionDescriptor> = null;
 
   @Observable()
   public isOpening: boolean = false;
@@ -49,18 +52,18 @@ export class SpawnFileService {
   }
 
   @Computed()
-  public get sessionId(): Nullable<SpawnSessionId> {
-    return this.session?.id ?? null;
+  public get sessionId(): Nullable<DocumentSessionId> {
+    return this.sessionDescriptor?.sessionId ?? null;
   }
 
   @Computed()
   public get isOpen(): boolean {
-    return this.session !== null;
+    return this.sessionDescriptor !== null;
   }
 
   @Computed()
   public get path(): Nullable<string> {
-    return this.session?.path ?? null;
+    return this.sessionDescriptor?.path ?? null;
   }
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
@@ -122,7 +125,7 @@ export class SpawnFileService {
   public onDeactivation(): void {
     this.log.info("Deactivating");
 
-    releaseEditorProject(spawnCommands.closeFile);
+    releaseEditorProject(() => this.session.close(this.sessionId));
   }
 
   /**
@@ -151,24 +154,17 @@ export class SpawnFileService {
 
     this.isOpening = true;
 
-    if (!this.session) {
+    if (!this.sessionDescriptor) {
       this.setChunk("header", Loadable.idle());
     }
 
     try {
-      this.adoptSession(yield* call(spawnCommands.openFile(path)));
+      this.adoptSession(yield* call(this.session.open((sessionId) => spawnCommands.openFile(sessionId, path))));
       this.log.info("Spawn file opened");
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", error);
 
-      // An earlier open may have committed after its frontend flow was cancelled.
-      try {
-        this.adoptSession(yield* call(spawnCommands.getSession()));
-      } catch (restoreError: unknown) {
-        this.log.error("Failed to restore the spawn session:", restoreError);
-      }
-
-      if (!this.session) {
+      if (!this.sessionDescriptor) {
         this.setChunk("header", this.chunks.header.asFailed(transformError(error), null));
       }
 
@@ -188,7 +184,7 @@ export class SpawnFileService {
     this.log.info("Closing existing spawn file");
 
     try {
-      yield* call(spawnCommands.closeFile());
+      yield* call(this.session.close(this.sessionId));
 
       this.adoptSession(null);
       this.operation = this.operation.asIdle();
@@ -206,7 +202,7 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveFile(path: string): TFlow {
-    const session = this.session;
+    const session = this.sessionDescriptor;
 
     if (!session) {
       return;
@@ -217,7 +213,7 @@ export class SpawnFileService {
     this.operation = this.operation.asLoading(null);
 
     try {
-      yield* call(spawnCommands.saveFile(path, session.id));
+      yield* call(spawnCommands.saveFile(path, session.sessionId));
 
       this.operation = this.operation.asReady("save");
 
@@ -243,7 +239,7 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveUnpackedDirectory(path: string): TFlow {
-    const session = this.session;
+    const session = this.sessionDescriptor;
 
     if (!session) {
       return;
@@ -254,7 +250,7 @@ export class SpawnFileService {
     this.operation = this.operation.asLoading(null);
 
     try {
-      yield* call(spawnCommands.saveUnpackedDirectory(path, session.id));
+      yield* call(spawnCommands.saveUnpackedDirectory(path, session.sessionId));
 
       this.operation = this.operation.asReady("export");
 
@@ -330,9 +326,9 @@ export class SpawnFileService {
    */
   private *fetchChunk<K extends keyof SpawnFile>(
     key: K,
-    read: (sessionId: SpawnSessionId) => Promise<SpawnFile[K]>
+    read: (sessionId: DocumentSessionId) => Promise<SpawnFile[K]>
   ): TFlow {
-    const session = this.session;
+    const session = this.sessionDescriptor;
     const current: Loadable<SpawnFile[K]> = this.chunks[key];
 
     if (!session || current.isLoading || current.isReady) {
@@ -344,7 +340,7 @@ export class SpawnFileService {
     this.setChunk(key, loading);
 
     try {
-      const chunk: SpawnFile[K] = yield* call(read(session.id));
+      const chunk: SpawnFile[K] = yield* call(read(session.sessionId));
 
       this.setChunk(key, loading.asReady(chunk));
     } catch (error: unknown) {
@@ -371,11 +367,11 @@ export class SpawnFileService {
   }
 
   private adoptSession(session: Nullable<SpawnSessionDescriptor>): void {
-    if (!session || this.session?.id !== session.id) {
+    if (!session || this.sessionDescriptor?.sessionId !== session.sessionId) {
       this.resetChunks();
     }
 
-    this.session = session;
+    this.sessionDescriptor = session;
     this.setChunk("header", session ? Loadable.ready(session.header) : Loadable.idle());
   }
 

@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 import { runInAction } from "@wirestate/mobx";
 
 import { ESequenceMotionState, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -11,7 +12,7 @@ import { SequenceTrackPanel } from "./SequenceTrackPanel";
 
 /** A track with baked motions, ready for row actions without a backend read. */
 function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
-  const { container, service } = mockInjectedService(VisualSequenceService);
+  const { container, service } = mockInjectedService(VisualSequenceService, [VisualLoadService]);
 
   runInAction(() => {
     service.clips = names.map((motion, index) => ({ id: `clip-${index + 1}`, motion }));

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs/dialogs.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -46,26 +47,27 @@ const DIALOG: DialogDescriptor = {
 
 describe("DialogsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: () => null });
+    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockDocumentResponse(() => null) });
   });
 
   it("opens a project over roots and the layout mode", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({ ["plugin:dialogs|open_project"]: () => PROJECT });
+    setMockInvokeResponses({ ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT) });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
 
     // One request object rather than loose arguments, which is how every command with more than three is shaped.
     expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|open_project", {
       request: {
+        sessionId: expect.any(String),
         roots: createRoots(["C:\\game"]),
         mode: "gamedata",
         dialogsPrefix: null,
         translationsPrefix: null,
       },
     });
-    expect(service.project.value).toBe(PROJECT);
+    expect(service.project.value).toEqual({ ...PROJECT, sessionId: expect.any(String) });
     expect(service.languages).toEqual(["eng", "rus"]);
   });
 
@@ -73,7 +75,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: () => PROJECT,
+      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -81,9 +83,14 @@ describe("DialogsService", () => {
     await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|get_dialog", {
-      logicalPath: "configs\\gameplay\\dialogs.xml",
-      id: "trader",
-      language: null,
+      request: {
+        sessionId: expect.any(String),
+        ...{
+          logicalPath: "configs\\gameplay\\dialogs.xml",
+          id: "trader",
+          language: null,
+        },
+      },
     });
     expect(service.dialog.value).toBe(DIALOG);
     // Echoed back by the backend, so the bar shows what was actually resolved rather than what was asked.
@@ -94,7 +101,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: () => PROJECT,
+      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -106,9 +113,14 @@ describe("DialogsService", () => {
     // The index is resident on the backend, so switching costs a lookup rather than a re-read, which
     // is why this re-asks instead of the response carrying every language.
     expect(mockInvoke).toHaveBeenLastCalledWith("plugin:dialogs|get_dialog", {
-      logicalPath: "configs\\gameplay\\dialogs.xml",
-      id: "trader",
-      language: "rus",
+      request: {
+        sessionId: expect.any(String),
+        ...{
+          logicalPath: "configs\\gameplay\\dialogs.xml",
+          id: "trader",
+          language: "rus",
+        },
+      },
     });
   });
 
@@ -116,7 +128,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: () => PROJECT,
+      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => {
         throw new Error("No dialog 'trader' in 'configs\\gameplay\\dialogs.xml'");
       },
@@ -135,7 +147,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: () => PROJECT,
+      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -152,7 +164,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: () => ({ ...PROJECT, languages: [], textKeys: 0 }),
+      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => ({ ...PROJECT, languages: [], textKeys: 0 })),
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");

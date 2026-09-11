@@ -11,7 +11,7 @@ impl ExportsPlugin {
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(ExportsProjectState::new());
+        application.manage(ExportsProjectState::new("exports"));
 
         Ok(())
       })

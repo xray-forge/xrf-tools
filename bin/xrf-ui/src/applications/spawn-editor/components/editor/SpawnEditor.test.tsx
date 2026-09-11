@@ -138,7 +138,7 @@ describe("SpawnEditor", () => {
     expect(await findByText("1 level(s)")).toBeInTheDocument();
 
     setMockInvokeResponses({
-      "plugin:spawn|open_file": mockSpawnSession({ id: "replacement", path: SPAWN_PATH }),
+      "plugin:spawn|open_file": mockSpawnSession({ sessionId: "replacement", path: SPAWN_PATH }),
       "plugin:spawn|get_graphs": { ...mockSpawnFile().graphs, levels: [] },
     });
     await act(async () => {

@@ -3,20 +3,22 @@
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import {
+  DocumentRestore,
+  DocumentSessionId,
+  DocumentSnapshot,
   TranslationBuildRequest,
   TranslationBuildSummary,
   TranslationParseRequest,
   TranslationParseSummary,
   TranslationSaveOutcome,
   TranslationsFormatRequest,
+  TranslationsOpenRequest,
   TranslationsVerifyRequest,
   TranslationVerifySummary,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import {
   TranslationEdit,
-  TranslationFile,
-  TranslationFinding,
   TranslationFormatResult,
   TranslationProjectDescriptor,
   TranslationProjectMode,
@@ -44,7 +46,8 @@ export const translationsCommands = {
    */
   checkProjectFormat: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", { request, jobId, progress }),
-  closeProject: () => __TAURI_INVOKE<null>("plugin:translations|close_project"),
+  closeProject: (sessionIds: Array<DocumentSessionId>) =>
+    __TAURI_INVOKE<null>("plugin:translations|close_project", { sessionIds }),
   /**
    * Report which layout roots look like, for the open form to preselect.
    *
@@ -68,34 +71,7 @@ export const translationsCommands = {
    */
   formatProject: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", { request, jobId, progress }),
-  getProject: () =>
-    __TAURI_INVOKE<{
-      mode: TranslationProjectMode;
-      /** The roots this project was opened over, echoed back so a follow-up read addresses the same trees. */
-      roots: XrayRoots;
-      /** Logical prefix the string tables were read from. */
-      prefix: string;
-      /** Every language the root offers, in discovery order. */
-      languages: Array<string>;
-      /**
-       * The code page each language is written in, which is what limits the characters it can hold.
-       *
-       * Taken from the files themselves in gamedata mode, so a language XRF has never heard of still
-       * reports the encoding its own declaration claims.
-       */
-      encodings: { [key in string]: string };
-      /**
-       * Whether every file this project holds is loose, so an editing session could save all of it.
-       *
-       * One flag rather than a tree of them, so a surface can say up front that a project opened over an
-       * installation is read-only. Which particular file refuses is answered by its source's absent
-       * physical path.
-       */
-      isEditable: boolean;
-      /** Files keyed by the logical name the layout groups them under. */
-      files: { [key in string]: TranslationFile };
-      findings: Array<TranslationFinding>;
-    } | null>("plugin:translations|get_project"),
+  getProject: () => __TAURI_INVOKE<DocumentRestore<TranslationProjectDescriptor>>("plugin:translations|get_project"),
   /**
    * Open a translations tree.
    *
@@ -103,8 +79,8 @@ export const translationsCommands = {
    * readily as a loose tree and a gamedata tree layers in front of one. The prefix is this layout's
    * own half — where inside those trees the string tables sit — and defaults to what the mode implies.
    */
-  openProject: (roots: XrayRoots, mode: TranslationProjectMode, prefix: string | null) =>
-    __TAURI_INVOKE<TranslationProjectDescriptor>("plugin:translations|open_project", { roots, mode, prefix }),
+  openProject: (request: TranslationsOpenRequest) =>
+    __TAURI_INVOKE<DocumentSnapshot<TranslationProjectDescriptor>>("plugin:translations|open_project", { request }),
   /** Import one language's raw XML string tables into JSON sources. */
   parseProject: (request: TranslationParseRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationParseSummary>("plugin:translations|parse_project", { request, jobId, progress }),
@@ -126,8 +102,8 @@ export const translationsCommands = {
    * edits are on disk in either case; what a stale answer withholds is the refreshed tree, which belongs to a project
    * the application is no longer showing.
    */
-  saveFile: (file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
-    __TAURI_INVOKE<TranslationSaveOutcome>("plugin:translations|save_file", { file, edits }),
+  saveFile: (sessionId: DocumentSessionId, file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
+    __TAURI_INVOKE<TranslationSaveOutcome>("plugin:translations|save_file", { sessionId, file, edits }),
   /**
    * Report the first character a language cannot hold, or nothing when the value is writable.
    *
@@ -135,8 +111,8 @@ export const translationsCommands = {
    * browser has no encoder for, and on what each language's own files declared. Called when a cell is
    * committed, so a mistake is reported where it was made instead of at the end of a batch save.
    */
-  validateText: (language: string, text: string) =>
-    __TAURI_INVOKE<string | null>("plugin:translations|validate_text", { language, text }),
+  validateText: (sessionId: DocumentSessionId, language: string, text: string) =>
+    __TAURI_INVOKE<string | null>("plugin:translations|validate_text", { sessionId, language, text }),
   /**
    * Report which translations are missing from which languages.
    *

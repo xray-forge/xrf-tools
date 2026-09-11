@@ -11,6 +11,7 @@ import {
   TranslationBuildLanguageSummary,
   TranslationParseCensus,
   TranslationProjectDescriptor,
+  TranslationProjectMode,
   TranslationVerifyLanguageSummary,
 } from "@/core/bindings/types/xrf-translation";
 import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -18,6 +19,7 @@ import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf
 
 /** Directory extraction request for an open archive project. */
 export type ArchivesExtractRequest = {
+  sessionId: DocumentSessionId;
   /** Directory inside the archive to extract. */
   prefix: string;
   /** Directory to write the contents into. */
@@ -118,12 +120,7 @@ export type AudioSourceParameters = {
 export type ConfigsDocument = {
   text: LtxFileText;
   structure: LtxFileStructure;
-  /**
-   * What is wrong with this file itself: it will not parse, or an `#include` reached nothing.
-   *
-   * Its own findings rather than the root's. These are answered from the structure beside them and cost nothing
-   * extra, while everything the root's other configs raise waits until a reader asks for the Problems panel.
-   */
+  /** What is wrong with this file itself: it will not parse, or an `#include` reached nothing. */
   findings: Array<LtxAnchoredFinding>;
 };
 
@@ -137,6 +134,7 @@ export type ConfigsFormatRequest = {
 
 /** What opening a configs project for browsing was asked to do. */
 export type ConfigsOpenRequest = {
+  sessionId: DocumentSessionId;
   /** Trees to search, and how each is read. */
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
@@ -148,7 +146,7 @@ export type ConfigsOpenRequest = {
 /** What one open of the configs explorer answers with. */
 export type ConfigsProjectDescriptor = {
   /** Identity every later read is addressed by. */
-  sessionId: ConfigsSessionId;
+  sessionId: DocumentSessionId;
   /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
@@ -171,7 +169,7 @@ export type ConfigsProjectDescriptor = {
 /** Which config of which open a reader wants. */
 export type ConfigsReadDocumentRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: ConfigsSessionId;
+  sessionId: DocumentSessionId;
   /** Engine identity of the config to read. */
   path: string;
 };
@@ -179,7 +177,7 @@ export type ConfigsReadDocumentRequest = {
 /** Which sections of a resolved root a page wants. */
 export type ConfigsReadSectionsRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: ConfigsSessionId;
+  sessionId: DocumentSessionId;
   /** Engine identity of the entry point the sections belong to. */
   entry: string;
   /** Sections to read, as the index named them. */
@@ -189,7 +187,7 @@ export type ConfigsReadSectionsRequest = {
 /** Which resolved root a reader wants, of which open. */
 export type ConfigsResolvedRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: ConfigsSessionId;
+  sessionId: DocumentSessionId;
   /** Engine identity of the entry point to resolve. */
   entry: string;
 };
@@ -197,15 +195,12 @@ export type ConfigsResolvedRequest = {
 /** Which section of a resolved root a reader wants explained. */
 export type ConfigsSectionRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: ConfigsSessionId;
+  sessionId: DocumentSessionId;
   /** Engine identity of the entry point the section belongs to. */
   entry: string;
   /** The section to explain, as the index named it. */
   section: string;
 };
-
-/** Identifies one open of the configs explorer, and everything resolved under it. */
-export type ConfigsSessionId = string;
 
 /** What a config verification was asked to do. */
 export type ConfigsVerifyRequest = {
@@ -219,6 +214,7 @@ export type ConfigsVerifyRequest = {
 
 /** What opening a dialogs project was asked to do. */
 export type DialogsOpenRequest = {
+  sessionId: DocumentSessionId;
   /** Trees to search, and how each is read. */
   roots: XrayRoots;
   /** How much of the project to read. */
@@ -227,6 +223,30 @@ export type DialogsOpenRequest = {
   dialogsPrefix: string | null;
   /** Scope holding the string tables, or nothing for all of them. */
   translationsPrefix: string | null;
+};
+
+/** Identifies a dialog within one committed project. */
+export type DialogsReadRequest = {
+  sessionId: DocumentSessionId;
+  logicalPath: string;
+  id: string;
+  language: string | null;
+};
+
+/**
+ * The optional committed snapshot returned during restoration.
+ *
+ * A named wire type also keeps the generic parameter scoped when Specta exports nullable results.
+ */
+export type DocumentRestore<T> = DocumentSnapshot<T> | null;
+
+/** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
+export type DocumentSessionId = string;
+
+/** An immutable document addressed by the opening that produced it; a held snapshot survives close. */
+export type DocumentSnapshot<T> = {
+  sessionId: DocumentSessionId;
+  document: T;
 };
 
 export type EquipmentSpriteMetadata = {
@@ -387,12 +407,11 @@ export type PathKind = "missing" | "file" | "directory";
 /**
  * What the viewer is showing, paired with where it came from.
  *
- * The source travels back so a frontend that reloaded knows what to ask geometry for, without having to remember
- * anything of its own across the reload.
+ * The enclosing snapshot supplies the geometry identity; source and roots describe its inputs and texture lookups.
  */
 export type SelectedVisualDescription = {
   source: VisualSource;
-  /** The roots the selection was opened in, so a reloaded frontend asks for geometry the same way. */
+  /** The roots used to resolve this selection's texture files. */
   roots: XrayRoots;
   description: VisualDescription;
   dependencies: VisualDependencies;
@@ -424,13 +443,18 @@ export type SpawnConversionResult = {
 
 /** One coherent opening, restored without reading the large chunks. */
 export type SpawnSessionDescriptor = {
-  id: SpawnSessionId;
+  sessionId: DocumentSessionId;
   path: string;
   header: SpawnHeaderChunk;
 };
 
-/** Identifies one successful spawn opening and the reads addressed to it. */
-export type SpawnSessionId = string;
+/** The complete identity and inputs of one sprite opening. */
+export type SpriteEquipmentOpenRequest = {
+  sessionId: DocumentSessionId;
+  equipmentDdsPath: string;
+  systemLtxPath: string;
+  isDltx: boolean;
+};
 
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {
@@ -610,7 +634,7 @@ export type TextureEditTargets = {
 
 /** Every candidate weighed against one texture, with the texture itself for a baseline. */
 export type TextureEncodingComparison = {
-  sessionId: TextureSessionId;
+  sessionId: DocumentSessionId;
   source: TextureSource;
   roots: XrayRoots;
   /**
@@ -675,7 +699,7 @@ export type TextureEncodingReport = {
 
 /** The texture half of a save, which is one of the candidates a comparison already encoded. */
 export type TextureEncodingSave = {
-  sessionId: TextureSessionId;
+  sessionId: DocumentSessionId;
   target: TextureSaveTarget;
   format: TextureEncodingFormat;
 };
@@ -803,9 +827,6 @@ export type TextureSaveTarget = {
   expected: TextureFileStamp | null;
 };
 
-/** Identifies one revision of the texture session, including the comparison it may hold. */
-export type TextureSessionId = string;
-
 /** Where a texture is named from. */
 export type TextureSource =
   /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
@@ -865,6 +886,7 @@ export type TexturesBuildRequest = {
 
 /** What a format comparison was asked to weigh. */
 export type TexturesCompareRequest = {
+  sessionId: DocumentSessionId;
   /**
    * The texture to re-encode, named the way `describe` names one.
    *
@@ -1012,7 +1034,7 @@ export type TranslationParseSummary = {
 /** How a save ended, once its edits were on disk. */
 export type TranslationSaveOutcome =
   /** The edits are on disk, and this is the project as it now reads. */
-  | { kind: "saved"; project: TranslationProjectDescriptor }
+  | { kind: "saved"; project: DocumentSnapshot<TranslationProjectDescriptor> }
   /** The edits are on disk, but another project replaced this one while they were being written. */
   | { kind: "stale" };
 
@@ -1039,6 +1061,14 @@ export type TranslationsFormatRequest = {
   directory: string;
   /** Line endings to write, or nothing to keep what each file already uses. */
   lineEndings: string | null;
+};
+
+/** Inputs and caller-owned identity of one translations opening. */
+export type TranslationsOpenRequest = {
+  sessionId: DocumentSessionId;
+  roots: XrayRoots;
+  mode: TranslationProjectMode;
+  prefix: string | null;
 };
 
 /** What a translation verification was asked to do. */

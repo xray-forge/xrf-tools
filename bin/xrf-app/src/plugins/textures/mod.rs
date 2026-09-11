@@ -38,13 +38,10 @@ pub mod lease;
 pub mod plugin;
 pub mod request;
 pub mod save;
-mod session_id;
 pub mod source;
 pub mod state;
 pub mod summary;
 pub mod vocabulary;
-
-pub use session_id::TextureSessionId;
 
 #[cfg(test)]
 mod tests;

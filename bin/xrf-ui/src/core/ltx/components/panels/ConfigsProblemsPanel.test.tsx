@@ -45,6 +45,7 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
   } as ConfigsDocument);
 
   setMockInvokeResponses({
+    "plugin:configs|get_project": project.project.value,
     "plugin:configs|list_findings": findings,
     // What the jump reads: the config the finding names, which is not the one on screen.
     "plugin:configs|read_document": {

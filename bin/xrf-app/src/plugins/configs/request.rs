@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
-use crate::plugins::configs::session_id::ConfigsSessionId;
+use crate::core::session::DocumentSessionId;
 
 /// What opening a configs project for browsing was asked to do.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsOpenRequest {
+  pub session_id: DocumentSessionId,
   /// Trees to search, and how each is read.
   pub roots: XrayRoots,
   /// Scope inside those trees, or nothing for all of them.
@@ -22,7 +23,7 @@ pub struct ConfigsOpenRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsReadDocumentRequest {
   /// The open this read is addressed to; a read naming a replaced one is refused rather than answered.
-  pub session_id: ConfigsSessionId,
+  pub session_id: DocumentSessionId,
   /// Engine identity of the config to read.
   pub path: String,
 }
@@ -57,7 +58,7 @@ pub struct ConfigsFormatRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsResolvedRequest {
   /// The open this read is addressed to; a read naming a replaced one is refused rather than answered.
-  pub session_id: ConfigsSessionId,
+  pub session_id: DocumentSessionId,
   /// Engine identity of the entry point to resolve.
   pub entry: String,
 }
@@ -68,7 +69,7 @@ pub struct ConfigsResolvedRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsSectionRequest {
   /// The open this read is addressed to; a read naming a replaced one is refused rather than answered.
-  pub session_id: ConfigsSessionId,
+  pub session_id: DocumentSessionId,
   /// Engine identity of the entry point the section belongs to.
   pub entry: String,
   /// The section to explain, as the index named it.
@@ -81,7 +82,7 @@ pub struct ConfigsSectionRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsReadSectionsRequest {
   /// The open this read is addressed to; a read naming a replaced one is refused rather than answered.
-  pub session_id: ConfigsSessionId,
+  pub session_id: DocumentSessionId,
   /// Engine identity of the entry point the sections belong to.
   pub entry: String,
   /// Sections to read, as the index named them.

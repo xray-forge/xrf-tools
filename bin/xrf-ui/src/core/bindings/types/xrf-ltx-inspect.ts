@@ -203,12 +203,7 @@ export type LtxSchemeFieldDeclaration = {
   dataType: string;
   isArray: boolean;
   isOptional: boolean;
-  /**
-   * Whether this is the scheme's catch-all `*` rather than a declaration naming the field.
-   *
-   * Worth saying out loud: a section of arbitrary keys is typed by one line of its scheme, and a reader looking for
-   * the field by name in the scheme file would not find it.
-   */
+  /** Whether this is the scheme's catch-all `*` rather than a declaration naming the field. */
   isAny: boolean;
 };
 
@@ -236,22 +231,11 @@ export type LtxSectionSchemeReport = {
   scheme: string | null;
   /** Whether a scheme file declares that name. False is itself a finding, and the verifier reports it as one. */
   isDeclared: boolean;
-  /**
-   * Whether the declaration refuses fields it does not name and demands the ones it does not mark optional.
-   *
-   * The distinction a reader has to see: under a loose scheme a missing field is silence, and under a strict one it
-   * is a finding.
-   */
+  /** Whether the declaration refuses fields it does not name and demands the ones it does not mark optional. */
   isStrict: boolean;
   /** The section the binding is written in, absent when this section writes it itself. */
   inheritedFrom: string | null;
-  /**
-   * Every field the scheme declares and every field the section holds, merged.
-   *
-   * Declared fields first, in the order the scheme declares them, then whatever the section holds beyond them in its
-   * own order. A row with no declaration is a field the scheme never named; a row with no value is one the section
-   * never supplied.
-   */
+  /** Every field the scheme declares and every field the section holds, merged. */
   fields: Array<LtxSchemeFieldReport>;
 };
 

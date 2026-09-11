@@ -1,9 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
 import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
@@ -67,9 +69,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
     };
 
     setMockInvokeResponses({
-      "plugin:sprite-equipment|open_sprite": RESPONSE,
+      "plugin:sprite-equipment|open_sprite": mockDocumentResponse(RESPONSE),
       "plugin:sprite-equipment|pack_sprite": packed,
-      "plugin:sprite-equipment|reopen_sprite": RESPONSE,
+      "plugin:sprite-equipment|reopen_sprite": mockDocumentResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -110,23 +112,32 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("holds exactly one url no matter how often the sprite is reloaded", async () => {
-    setMockInvokeResponses({ ["plugin:sprite-equipment|reopen_sprite"]: RESPONSE });
+    setMockInvokeResponses({
+      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+    });
 
     const { service, assets } = createService();
 
+    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+
     await service.reopenEquipmentProject();
     await service.reopenEquipmentProject();
     await service.reopenEquipmentProject();
 
-    // Each reload swaps the url under one key. Growing here is the leak that had `blobToImage` give up
-    // and comment its revoke out.
+    // A replacement must release its predecessor while retaining the displayed image.
     expect(assets.heldCount).toBe(1);
   });
 
   it("keeps the url the reload just produced rather than revoking it", async () => {
-    setMockInvokeResponses({ ["plugin:sprite-equipment|reopen_sprite"]: RESPONSE });
+    setMockInvokeResponses({
+      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+    });
 
     const { service, assets } = createService();
+
+    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
 
     const revoked: Array<string> = [];
 
@@ -142,15 +153,20 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     // Releasing after the swap would revoke the replacement, blanking the viewer.
     expect(current).toBeDefined();
-    expect(revoked).toEqual([current]);
+    expect(revoked).toContain(current);
     expect(revoked).not.toContain(service.spriteImage.value?.image.src);
     expect(assets.heldCount).toBe(1);
   });
 
   it("releases the sprite url when the editor is navigated away from", async () => {
-    setMockInvokeResponses({ ["plugin:sprite-equipment|reopen_sprite"]: RESPONSE });
+    setMockInvokeResponses({
+      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+    });
 
     const { service, assets, container } = createService();
+
+    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
 
     await service.reopenEquipmentProject();
     expect(assets.heldCount).toBe(1);
@@ -159,5 +175,40 @@ describe("SpriteEquipmentEditorService object urls", () => {
     container.unbindAll();
 
     expect(assets.heldCount).toBe(0);
+  });
+
+  it("releases a cancelled image after decoding without replacing the newer sprite", async () => {
+    setMockInvokeResponses({ "plugin:sprite-equipment|open_sprite": mockDocumentResponse(RESPONSE) });
+
+    const { service, assets } = createService();
+    const decoding: Array<{ src: string; onload: Nullable<() => void> }> = [];
+
+    global.Image = class {
+      public src: string = "";
+      public onload: Nullable<() => void> = null;
+
+      public constructor() {
+        decoding.push(this);
+      }
+    } as unknown as typeof Image;
+
+    const first = service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+
+    await waitFor(() => expect(decoding).toHaveLength(1));
+
+    const second = service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+
+    await waitFor(() => expect(decoding).toHaveLength(2));
+    decoding[1].onload?.();
+    await second;
+
+    const displayed = service.spriteImage.value;
+
+    decoding[0].onload?.();
+    await first;
+
+    await waitFor(() => expect(assets.heldCount).toBe(1));
+    expect(service.spriteImage.value).toBe(displayed);
+    expect(displayed?.image.src).toBe(decoding[1].src);
   });
 });

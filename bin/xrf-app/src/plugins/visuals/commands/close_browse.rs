@@ -1,26 +1,12 @@
-use std::sync::MutexGuard;
-use xrf_vfs::XrayRoots;
-
 use tauri::State;
 
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualState;
 
-/// Stop browsing, leaving whatever visual is open on screen.
-///
-/// The mounted sources stay: they belong to the shared asset roots, which outlives any one session and is what makes
-/// browsing the same root again free.
+/// Release only the openings owned by the departing viewer.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_browse"))]
 #[tauri::command(rename = "close_browse")]
-pub async fn visuals_close_browse(state: State<'_, VisualState>) -> TauriResult {
-  log::info!("Closing browsed roots");
-
-  let mut browsed: MutexGuard<Option<XrayRoots>> = state
-    .browsed
-    .lock()
-    .map_err(|error| format!("Failed to close browse state: {error}"))?;
-
-  *browsed = None;
-
-  Ok(())
+pub async fn visuals_close_browse(session_ids: Vec<DocumentSessionId>, state: State<'_, VisualState>) -> TauriResult {
+  state.browsed.close(&session_ids)
 }

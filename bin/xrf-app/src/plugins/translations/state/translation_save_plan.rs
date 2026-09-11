@@ -1,14 +1,15 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use xrf_translation::{TranslationProjectMode, TranslationSource};
+use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, TranslationSource};
 use xrf_vfs::XrayRoots;
 
-use crate::plugins::translations::state::translation_session_id::TranslationSessionId;
+use crate::core::session::DocumentSnapshot;
 
 /// What one save was addressed to, taken as a single read before the filesystem work begins.
 #[derive(Debug)]
 pub struct TranslationSavePlan {
-  pub session_id: TranslationSessionId,
+  pub project: Arc<DocumentSnapshot<TranslationProjectDescriptor>>,
   /// The logical file being saved, keyed as the project keys it.
   pub file: String,
   pub roots: XrayRoots,

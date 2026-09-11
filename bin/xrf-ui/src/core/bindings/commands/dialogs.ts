@@ -2,19 +2,21 @@
 
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
-import { DialogsOpenRequest } from "@/core/bindings/types/xrf-app";
 import {
-  DialogDescriptor,
-  DialogFileDescriptor,
-  DialogFinding,
-  DialogProjectDescriptor,
-  DialogProjectMode,
-} from "@/core/bindings/types/xrf-dialog";
+  DialogsOpenRequest,
+  DialogsReadRequest,
+  DocumentRestore,
+  DocumentSessionId,
+  DocumentSnapshot,
+} from "@/core/bindings/types/xrf-app";
+import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 
 /** Commands */
 export const dialogsCommands = {
-  closeProject: () => __TAURI_INVOKE<null>("plugin:dialogs|close_project"),
+  /** Releases only the committed and pending openings owned by the closing frontend. */
+  closeProject: (sessionIds: Array<DocumentSessionId>) =>
+    __TAURI_INVOKE<null>("plugin:dialogs|close_project", { sessionIds }),
   /**
    * Report which layout roots looks like, for the open form to preselect.
    *
@@ -39,33 +41,9 @@ export const dialogsCommands = {
    * all of them: the index is already resident, so it costs a lookup, and one dialog in nine languages
    * would be nine times the bytes to display an eighth of it.
    */
-  getDialog: (logicalPath: string, id: string, language: string | null) =>
-    __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { logicalPath, id, language }),
-  /**
-   * The open project, described again rather than cached.
-   *
-   * Provisioning asks the backend what is open, so a reload restores the session; the descriptor is
-   * derived from the project on demand because the project is what state owns.
-   */
-  getProject: () =>
-    __TAURI_INVOKE<{
-      mode: DialogProjectMode;
-      /** The roots this project was opened over, echoed back so a follow-up read addresses the same trees. */
-      roots: XrayRoots;
-      /** Logical prefix the dialogs were read from. */
-      dialogsPrefix: string;
-      /** Logical prefix dialog text is read from. */
-      translationsPrefix: string;
-      /** Whether every file the project holds is loose, so an editing session could save all of it. */
-      isEditable: boolean;
-      /** Languages the text tree offers, which is what a language switcher is built from. */
-      languages: Array<string>;
-      /** Distinct translation keys the text tree defines. */
-      textKeys: number;
-      /** Files keyed by their logical path, in logical-path order. */
-      files: { [key in string]: DialogFileDescriptor };
-      findings: Array<DialogFinding>;
-    } | null>("plugin:dialogs|get_project"),
+  getDialog: (request: DialogsReadRequest) =>
+    __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { request }),
+  getProject: () => __TAURI_INVOKE<DocumentRestore<DialogProjectDescriptor>>("plugin:dialogs|get_project"),
   /**
    * Open a dialog tree.
    *
@@ -78,5 +56,5 @@ export const dialogsCommands = {
    * acted on here would decide what gets overwritten. `detect_mode` is what preselects it.
    */
   openProject: (request: DialogsOpenRequest) =>
-    __TAURI_INVOKE<DialogProjectDescriptor>("plugin:dialogs|open_project", { request }),
+    __TAURI_INVOKE<DocumentSnapshot<DialogProjectDescriptor>>("plugin:dialogs|open_project", { request }),
 };

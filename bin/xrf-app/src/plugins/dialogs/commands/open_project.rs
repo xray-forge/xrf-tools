@@ -2,6 +2,7 @@ use tauri::State;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 
 use crate::core::error::error_to_string;
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::dialogs::request::DialogsOpenRequest;
 use crate::plugins::dialogs::state::DialogProjectState;
@@ -20,13 +21,16 @@ use crate::plugins::dialogs::state::DialogProjectState;
 pub async fn dialogs_open_project(
   request: DialogsOpenRequest,
   state: State<'_, DialogProjectState>,
-) -> TauriResult<DialogProjectDescriptor> {
+) -> TauriResult<DocumentSnapshot<DialogProjectDescriptor>> {
   let DialogsOpenRequest {
+    session_id,
     roots,
     mode,
     dialogs_prefix,
     translations_prefix,
   } = request;
+
+  state.begin_open(session_id)?;
 
   log::info!("Opening dialogs project: {} root(s), {:?}", roots.roots.len(), mode);
 
@@ -47,7 +51,5 @@ pub async fn dialogs_open_project(
     descriptor.is_editable
   );
 
-  *state.project.lock().unwrap() = Some(project);
-
-  Ok(descriptor)
+  Ok(state.commit_open(session_id, project)?.map(|_| descriptor))
 }

@@ -5,6 +5,7 @@ use xrf_ltx_inspect::LtxSectionSchemeReport;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::execution::ExecutionState;
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsSectionRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
@@ -26,7 +27,7 @@ pub async fn configs_read_section_scheme(
     section,
   } = request;
 
-  let opened: Arc<ConfigsProject> = state.require(session_id)?;
+  let opened: Arc<DocumentSnapshot<ConfigsProject>> = state.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
 
   // Off the async worker for the same reason a page read is: the root is normally resolved by the time a section can

@@ -4,9 +4,11 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockArchiveFileDescriptor } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
+import { Loadable } from "@/lib/loadable";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\wpn.dds" });
 
@@ -17,6 +19,9 @@ interface IWatchedService {
 
 function watchNotifications(): IWatchedService {
   const { container, service }: IInjectedServiceMockDescriptor<ArchivesService> = mockInjectedService(ArchivesService);
+
+  service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+
   const raised: Array<INotificationPayload> = [];
 
   container
@@ -84,9 +89,9 @@ describe("ArchivesService notifications", () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: () => {
+      ["plugin:archives|open_project"]: mockDocumentResponse(() => {
         throw new Error("not an archive directory");
-      },
+      }),
     });
 
     await service.openProject("C:\\game");

@@ -1,6 +1,7 @@
 use tauri::State;
 use xrf_translation::TranslationProjectDescriptor;
 
+use crate::core::session::DocumentRestore;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::TranslationProjectState;
 
@@ -8,8 +9,6 @@ use crate::plugins::translations::state::TranslationProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn translations_get_project(
   state: State<'_, TranslationProjectState>,
-) -> TauriResult<Option<TranslationProjectDescriptor>> {
-  log::info!("Getting translations project");
-
-  state.get_project()
+) -> TauriResult<DocumentRestore<TranslationProjectDescriptor>> {
+  Ok(DocumentRestore::from(state.get_project()?))
 }

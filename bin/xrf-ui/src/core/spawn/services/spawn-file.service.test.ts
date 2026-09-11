@@ -70,7 +70,7 @@ describe("SpawnFileService sessions", () => {
     await service[load]();
 
     expect(read).toHaveBeenCalledTimes(1);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:spawn|" + command, { sessionId: session.id });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:spawn|" + command, { sessionId: session.sessionId });
     expect(service.chunks[key].isReady).toBe(true);
     expect(service.chunks[key].value).toEqual(chunk);
   });
@@ -139,24 +139,28 @@ describe("SpawnFileService sessions", () => {
   it("ignores an older open that finishes after its replacement", async () => {
     const { service } = await mockOpenedService();
     const older = deferred<SpawnSessionDescriptor>();
-    const latest = mockSpawnSession({ id: "latest", path: "latest.spawn" });
+    const latest = mockSpawnSession({ sessionId: "latest", path: "latest.spawn" });
 
     setMockInvokeResponses({ "plugin:spawn|open_file": () => older.promise });
 
     const oldOpen = flowResult(service.openFile("old.spawn"));
 
     setMockInvokeResponses({ "plugin:spawn|open_file": latest });
+
     await service.openFile(latest.path);
-    older.resolve(mockSpawnSession({ id: "old", path: "old.spawn" }));
+
+    older.resolve(mockSpawnSession({ sessionId: "old", path: "old.spawn" }));
+
     await oldOpen;
+
     expect(service.path).toBe(latest.path);
     expect(service.isOpening).toBe(false);
   });
 
-  it("reconciles an unobserved commit when a later open fails", async () => {
-    const { service } = await mockOpenedService();
+  it("retains the previous document when a replacement fails and a superseded open answers late", async () => {
+    const { service, session } = await mockOpenedService();
     const older = deferred<SpawnSessionDescriptor>();
-    const committed = mockSpawnSession({ id: "committed", path: "committed.spawn" });
+    const committed = mockSpawnSession({ sessionId: "committed", path: "committed.spawn" });
 
     setMockInvokeResponses({ "plugin:spawn|open_file": () => older.promise });
 
@@ -168,10 +172,13 @@ describe("SpawnFileService sessions", () => {
       },
       "plugin:spawn|get_session": committed,
     });
+
     await service.openFile("broken.spawn");
+
     older.resolve(committed);
     await oldOpen;
-    expect(service.path).toBe(committed.path);
+
+    expect(service.path).toBe(session.path);
   });
 
   it("keeps close authoritative over a pending open", async () => {
@@ -218,7 +225,7 @@ describe("SpawnFileService sessions", () => {
 
     setMockInvokeResponses({
       "plugin:spawn|get_graphs": () => answer.promise,
-      "plugin:spawn|open_file": mockSpawnSession({ id: "replacement" }),
+      "plugin:spawn|open_file": mockSpawnSession({ sessionId: "replacement" }),
     });
 
     const reading = flowResult(service.loadGraphs());

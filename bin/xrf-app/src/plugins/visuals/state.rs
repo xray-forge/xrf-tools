@@ -1,36 +1,26 @@
-use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Mutex;
+
+use serde::Serialize;
 use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
+use crate::core::session::DocumentSession;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
-/// What the viewer currently points at: the roots being browsed, and the visual open inside it.
-///
-/// Both are state for the same reason an open archive is: a reload re-provisions the frontend, and without them the
-/// viewer would come back empty while the window still says a model is open. Loading itself is not stateful - every
-/// command takes the source it acts on - so this only ever answers what was selected, never gates what can be read.
-///
-/// The mounted sources are not here. They live in `core/`'s asset roots, shared with every other domain, so opening the
-/// same gamedata in two surfaces indexes it once. What is here is the intent: which roots the user chose to browse.
+/// Independent ownership for the browsed roots and the selected model.
 pub struct VisualState {
-  pub selected: Mutex<Option<SelectedVisual>>,
-  /// The roots being browsed, or `None` when a single visual was opened directly.
-  ///
-  /// The listing is not kept beside it. It is derived from the roots by the generic asset listing, and the mounts that
-  /// listing reads are already cached, so re-deriving it after a reload costs a walk of an index that is in memory.
-  pub browsed: Mutex<Option<XrayRoots>>,
+  pub selected: DocumentSession<SelectedVisual>,
+  pub browsed: DocumentSession<XrayRoots>,
 }
 
 impl VisualState {
   pub fn new() -> Self {
     Self {
-      selected: Mutex::new(None),
-      browsed: Mutex::new(None),
+      selected: DocumentSession::new("visual"),
+      browsed: DocumentSession::new("visual browse"),
     }
   }
 }
@@ -45,7 +35,7 @@ pub struct SelectedVisual {
   /// What posing needs from the file, or `None` when the visual carries no bind pose.
   pub skeleton: Option<SelectedSkeleton>,
   /// The motion baked by the last `open_motion`, so reading its bytes serves that pose rather than composing again.
-  pub posed: Option<VisualMotionPose>,
+  pub posed: DocumentSession<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
@@ -93,14 +83,13 @@ impl VisualSource {
 
 /// What the viewer is showing, paired with where it came from.
 ///
-/// The source travels back so a frontend that reloaded knows what to ask geometry for, without having to remember
-/// anything of its own across the reload.
+/// The enclosing snapshot supplies the geometry identity; source and roots describe its inputs and texture lookups.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedVisualDescription {
   pub source: VisualSource,
-  /// The roots the selection was opened in, so a reloaded frontend asks for geometry the same way.
+  /// The roots used to resolve this selection's texture files.
   pub roots: XrayRoots,
   pub description: VisualDescription,
   pub dependencies: VisualDependencies,
@@ -112,4 +101,19 @@ pub struct SelectedVisualDescription {
   pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// A `textures.ltx` the searched roots hold, or `None`.
   pub textures_ltx: Option<XrayAsset>,
+}
+
+impl SelectedVisual {
+  pub fn describe(&self) -> SelectedVisualDescription {
+    SelectedVisualDescription {
+      source: self.source.clone(),
+      roots: self.roots.clone(),
+      description: self.package.description.clone(),
+      dependencies: self.dependencies.clone(),
+      textures: self.textures.clone(),
+      materials: self.materials.clone(),
+      surfaces: self.surfaces.clone(),
+      textures_ltx: self.textures_ltx.clone(),
+    }
+  }
 }

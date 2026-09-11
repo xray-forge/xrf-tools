@@ -7,6 +7,7 @@ import { ArchivesMenu } from "@/applications/archives-explorer/components/editor
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -20,7 +21,7 @@ interface IRenderedMenu {
 /** Renders the menu after the service restores its open project. */
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
-    ["plugin:archives|get_project"]: mockArchivesProject(files),
+    ["plugin:archives|get_project"]: mockDocumentResponse(mockArchivesProject(files)),
     ["plugin:archives|list_collisions"]: [],
     ["plugin:archives|list_shared_payloads"]: [],
     ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
@@ -57,7 +58,10 @@ describe("ArchivesMenu", () => {
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", { path: "configs\\system.ltx" })
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+        sessionId: expect.any(String),
+        path: "configs\\system.ltx",
+      })
     );
   });
 
@@ -93,7 +97,10 @@ describe("ArchivesMenu", () => {
 
     // The read in flight is abandoned for this one rather than swallowing the gesture that replaces it.
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", { path: "configs\\game.ltx" })
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+        sessionId: expect.any(String),
+        path: "configs\\game.ltx",
+      })
     );
   });
 

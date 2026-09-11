@@ -13,7 +13,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
 use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsOpenRequest;
-use crate::plugins::configs::session_id::ConfigsSessionId;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 
 /// What opening one configs project produced, on its way back from the blocking thread.
@@ -35,12 +34,17 @@ pub async fn configs_open_project(
   state: State<'_, ConfigsState>,
   request: ConfigsOpenRequest,
 ) -> TauriResult<Arc<ConfigsProjectDescriptor>> {
-  let ConfigsOpenRequest { roots, prefix, is_dltx } = request;
+  let ConfigsOpenRequest {
+    session_id,
+    roots,
+    prefix,
+    is_dltx,
+  } = request;
 
   log::info!("Opening ltx configs project in {}", roots.describe());
 
   // Claimed before the work, so a second open superseding this one cannot be committed over by it.
-  let session_id: ConfigsSessionId = state.begin_session()?;
+  state.begin_open(session_id)?;
   let state: ConfigsState = state.inner().clone();
 
   // Off the async worker: opening mounts every root, indexes the tree and reads the include list of every config in
@@ -67,7 +71,7 @@ pub async fn configs_open_project(
 
   // Shared rather than copied: the inventory of an installation is thousands of entries, and the session and every
   // later restore answer with the same one.
-  state.open(session_id, ConfigsProject::new(opened.project, Arc::clone(&descriptor)))?;
+  state.commit_open(session_id, ConfigsProject::new(opened.project, Arc::clone(&descriptor)))?;
 
   Ok(descriptor)
 }

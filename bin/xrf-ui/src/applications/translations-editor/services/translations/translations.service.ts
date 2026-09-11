@@ -12,6 +12,7 @@ import {
 } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -39,11 +40,13 @@ export type TPendingEdits = Record<string, Record<string, Record<string, TPendin
 export class TranslationsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => translationsCommands.closeProject(ids));
+
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<TranslationProjectDescriptor>> = Loadable.idle(null);
+  public project: Loadable<Nullable<TDocument<TranslationProjectDescriptor>>> = Loadable.idle(null);
 
   /**
    * Edits made but not written.
@@ -71,7 +74,7 @@ export class TranslationsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(translationsCommands.closeProject);
+    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
   }
 
   /**
@@ -83,7 +86,9 @@ export class TranslationsService {
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const response: Nullable<TranslationProjectDescriptor> = yield* call(translationsCommands.getProject());
+    const response: Nullable<TDocument<TranslationProjectDescriptor>> = yield* call(
+      translationsCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+    );
 
     this.log.info(response ? "Existing translations project detected" : "No existing translations project");
 
@@ -151,7 +156,7 @@ export class TranslationsService {
   /** Report the first character a language cannot hold, or `null` when the value is writable. */
   public async validateText(language: string, text: string): Promise<Nullable<string>> {
     try {
-      return await translationsCommands.validateText(language, text);
+      return await translationsCommands.validateText(requireDocumentSession(this.project.value), language, text);
     } catch (error) {
       this.log.warn("Could not validate translation text:", error);
 
@@ -164,9 +169,13 @@ export class TranslationsService {
     this.log.info("Opening translations project:", describeRoots(roots), mode, prefix);
 
     try {
-      this.project = this.project.asLoading(null);
+      this.project = this.project.asLoading();
 
-      const response: TranslationProjectDescriptor = yield* call(translationsCommands.openProject(roots, mode, prefix));
+      const response: TDocument<TranslationProjectDescriptor> = yield* call(
+        this.session.open((sessionId) =>
+          translationsCommands.openProject({ sessionId, roots, mode, prefix }).then(restoreDocument)
+        )
+      );
 
       this.log.info("Translations project opened:", Object.keys(response.files).length, "files");
 
@@ -175,7 +184,7 @@ export class TranslationsService {
     } catch (error) {
       this.log.error("Failed to open translations project:", error);
 
-      this.project = this.project.asFailed(error as Error, null);
+      this.project = this.project.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -237,7 +246,9 @@ ${transformError(error).message}`,
     this.savingFile = file;
 
     try {
-      const response: TranslationSaveOutcome = yield* call(translationsCommands.saveFile(file, edits));
+      const response: TranslationSaveOutcome = yield* call(
+        translationsCommands.saveFile(requireDocumentSession(this.project.value), file, edits)
+      );
 
       // Only cleared once the write came back: a failed save has to leave the work where it was. A stale save wrote
       // just as much, so the pending work is gone either way - what it does not get to do is say what is open.
@@ -256,7 +267,7 @@ ${transformError(error).message}`,
         return false;
       }
 
-      this.project = this.project.asReady(response.project);
+      this.project = this.project.asReady(restoreDocument(response.project));
 
       return true;
     } catch (error) {
@@ -287,7 +298,7 @@ ${transformError(error).message}`,
     this.project = loading;
 
     try {
-      yield* call(translationsCommands.closeProject());
+      yield* call(this.session.close(this.project.value?.sessionId));
 
       this.project = this.project.asIdle();
       this.edits = {};

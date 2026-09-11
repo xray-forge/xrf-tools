@@ -15,7 +15,7 @@ impl ConfigsPlugin {
         crate::ipc::registry::configs::handler(),
       ))
       .setup(|application, _| {
-        application.manage(ConfigsState::new());
+        application.manage(ConfigsState::new("configs"));
 
         Ok(())
       })

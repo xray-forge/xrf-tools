@@ -4,6 +4,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
 import { createRoots } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
@@ -36,6 +37,7 @@ describe("VisualsBrowseService", () => {
     let listParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
       ["plugin:assets|list_assets"]: (parameters?: Record<string, unknown>) => {
         listParameters = parameters ?? null;
 
@@ -56,6 +58,7 @@ describe("VisualsBrowseService", () => {
     const { service } = mockInjectedService(VisualsBrowseService);
 
     setMockInvokeResponses({
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
       ["plugin:assets|list_assets"]: () => {
         throw new Error("root does not exist");
       },
@@ -73,25 +76,26 @@ describe("VisualsBrowseService", () => {
 
     setMockInvokeResponses({
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
-      ["plugin:visuals|open_browse"]: (parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
         recorded = parameters ?? null;
 
-        return null;
-      },
+        return parameters?.roots;
+      }),
     });
 
     const { service } = mockInjectedService(VisualsBrowseService);
 
     await service.openRoot("C:\\gamedata");
 
-    expect(recorded).toEqual({ roots: createRoots(["C:\\gamedata"]) });
+    expect(recorded).toEqual({ sessionId: expect.any(String), roots: createRoots(["C:\\gamedata"]) });
   });
 
   it("comes back to the roots the backend is still browsing after a reload", async () => {
     // The session lives where every other application's does; a reload asks for it and derives the listing again, which
     // is cheap because the mounts that listing reads are already cached.
     setMockInvokeResponses({
-      ["plugin:visuals|get_browse"]: createRoots(["C:\\gamedata"]),
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
+      ["plugin:visuals|get_browse"]: mockDocumentResponse(createRoots(["C:\\gamedata"])),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 
@@ -109,8 +113,8 @@ describe("VisualsBrowseService", () => {
     const released: Array<string> = [];
 
     setMockInvokeResponses({
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
-      ["plugin:visuals|open_browse"]: null,
       ["plugin:visuals|close_browse"]: () => {
         released.push("closed");
 
@@ -133,15 +137,15 @@ describe("VisualsBrowseService", () => {
     const closed: Array<string> = [];
 
     setMockInvokeResponses({
+      ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
       ["plugin:assets|list_assets"]: [],
-      ["plugin:visuals|open_browse"]: null,
       ["plugin:visuals|close_browse"]: () => {
         closed.push("closed");
 
         return null;
       },
       // A session the backend no longer holds is what a later provisioning must find.
-      ["plugin:visuals|get_browse"]: null,
+      ["plugin:visuals|get_browse"]: mockDocumentResponse(null),
     });
 
     const { service } = mockInjectedService(VisualsBrowseService);

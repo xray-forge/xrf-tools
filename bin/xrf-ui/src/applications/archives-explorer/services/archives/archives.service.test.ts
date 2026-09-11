@@ -5,6 +5,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Loadable } from "@/lib/loadable";
@@ -14,7 +15,7 @@ function ignoreReadResult(): void {}
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = Loadable.ready(mockArchivesProject(files));
+  service.project = Loadable.ready({ ...mockArchivesProject(files), sessionId: "fixture-session" });
 
   return service;
 }
@@ -57,7 +58,10 @@ describe("ArchivesService file selection", () => {
 
     expect(service.selectedFile).toStrictEqual(descriptor);
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", { path: descriptor.name });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+      sessionId: expect.any(String),
+      path: descriptor.name,
+    });
   });
 
   it("selects unsupported files without invoking the read command", async () => {
@@ -169,7 +173,7 @@ describe("ArchivesService file selection", () => {
 });
 
 describe("ArchivesService visual preview lifecycle", () => {
-  it("drops the model its preview parked when the project closes", async () => {
+  it("closes only its archive; the preview owns its model", async () => {
     // The preview goes through the shared visuals session, so a model left selected there is the one the visuals
     // explorer restores next time it is opened - which is the leak issue 0010 records.
     const invoked: Array<string> = [];
@@ -181,10 +185,10 @@ describe("ArchivesService visual preview lifecycle", () => {
 
     await mockArchivesService([]).closeProject();
 
-    expect(invoked).toEqual(["plugin:archives|close_project", "plugin:visuals|close_model"]);
+    expect(invoked).toEqual(["plugin:archives|close_project"]);
   });
 
-  it("drops it when the application deactivates too", () => {
+  it("releases only its owned document when the application deactivates", () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
@@ -194,7 +198,7 @@ describe("ArchivesService visual preview lifecycle", () => {
 
     mockArchivesService([]).onDeactivation();
 
-    expect(invoked).toEqual(["plugin:archives|close_project", "plugin:visuals|close_model"]);
+    expect(invoked).toEqual(["plugin:archives|close_project"]);
   });
 });
 
@@ -203,7 +207,7 @@ describe("ArchivesService reachability", () => {
     const collision: XrayPathCollision = mockPathCollision();
 
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: [collision],
     });
 
@@ -212,12 +216,12 @@ describe("ArchivesService reachability", () => {
     await service.openProject("C:\\game\\database");
 
     expect(service.collisions.value).toEqual([collision]);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions");
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions", { sessionId: expect.any(String) });
   });
 
   it("keeps a project browsable when reachability cannot be answered", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: () => {
         throw new Error("fold failed");
       },
@@ -234,7 +238,7 @@ describe("ArchivesService reachability", () => {
 
   it("forgets them when the project closes", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockArchivesProject([]),
+      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
       ["plugin:archives|close_project"]: undefined,
     });

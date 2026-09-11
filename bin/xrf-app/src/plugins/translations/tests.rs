@@ -8,6 +8,7 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_g
 use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
@@ -55,11 +56,16 @@ fn value_on_disk(roots: &XrayRoots) -> TauriResult<String> {
 
 /// What the state reports as open, or `None` when nothing is.
 fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>> {
-  Ok(state.get_project()?.as_ref().map(entry_of))
+  Ok(state.get_project()?.as_ref().map(|project| entry_of(project)))
 }
 
 fn open_project(state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
-  state.open_project(read_project(roots)?)
+  let id = DocumentSessionId::new();
+
+  state.begin_open(id)?;
+  state.open_project(id, read_project(roots)?)?;
+
+  Ok(())
 }
 
 /// Replace the file's only entry with `value`.
@@ -73,6 +79,10 @@ fn edits(value: &str) -> HashMap<String, Vec<TranslationEdit>> {
   )])
 }
 
+fn current_id(state: &TranslationProjectState) -> DocumentSessionId {
+  state.get_project().unwrap().unwrap().session_id
+}
+
 #[test]
 fn a_save_commits_the_project_it_refreshed() -> TauriResult<()> {
   let state: TranslationProjectState = TranslationProjectState::new();
@@ -80,7 +90,7 @@ fn a_save_commits_the_project_it_refreshed() -> TauriResult<()> {
 
   open_project(&state, &roots)?;
 
-  match save_into_open_project(&state, FILE, &edits("after"))? {
+  match save_into_open_project(&state, current_id(&state), FILE, &edits("after"))? {
     TranslationSaveOutcome::Saved { project } => assert_eq!(entry_of(&project), "after"),
     TranslationSaveOutcome::Stale => panic!("a save of the open project is not stale"),
   }
@@ -100,7 +110,7 @@ fn a_project_opened_during_a_save_stays_the_open_one() -> TauriResult<()> {
   open_project(&state, &first)?;
 
   // The save of the first project pauses here, holding everything it was addressed to.
-  let plan: TranslationSavePlan = state.begin_save(FILE)?;
+  let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
   open_project(&state, &second)?;
 
@@ -127,9 +137,9 @@ fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
 
   open_project(&state, &roots)?;
 
-  let plan: TranslationSavePlan = state.begin_save(FILE)?;
+  let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
-  state.close_project()?;
+  state.close_project(&[current_id(&state)])?;
 
   let refreshed: TranslationProjectDescriptor = write_edits(&plan, &edits("after"))?;
 
@@ -151,7 +161,7 @@ fn reopening_the_same_project_is_still_a_different_session() -> TauriResult<()> 
 
   open_project(&state, &roots)?;
 
-  let plan: TranslationSavePlan = state.begin_save(FILE)?;
+  let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
   // The same tree, read again. Every field of the descriptor matches, which is exactly why identity is not derived
   // from them: this is a new opening, and the save that began before it no longer speaks for what is shown.
@@ -170,12 +180,12 @@ fn a_save_needs_an_open_project_holding_the_file() -> TauriResult<()> {
   let state: TranslationProjectState = TranslationProjectState::new();
   let roots: XrayRoots = write_project("translations_state/absent", "before")?;
 
-  assert_eq!(state.begin_save(FILE).unwrap_err(), "No translations project is open");
+  assert!(state.begin_save(DocumentSessionId::new(), FILE).is_err());
 
   open_project(&state, &roots)?;
 
   assert_eq!(
-    state.begin_save("st_missing.json").unwrap_err(),
+    state.begin_save(current_id(&state), "st_missing.json").unwrap_err(),
     "Translations file 'st_missing.json' is not part of the open project"
   );
 
@@ -211,7 +221,7 @@ fn formatting_is_refused_while_a_project_is_open_over_the_same_tree() -> TauriRe
   state.require_no_open_session_over(&sibling.roots[0].path)?;
 
   // Closing releases it.
-  state.close_project()?;
+  state.close_project(&[current_id(&state)])?;
   state.require_no_open_session_over(&root)?;
 
   Ok(())

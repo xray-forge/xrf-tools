@@ -5,6 +5,7 @@ import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -19,11 +20,21 @@ describe("SpriteEquipmentEditorService", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|reopen_sprite"]: () => {
+      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(() => {
         throw new Error("backend refused");
-      },
+      }),
     });
 
+    service.spriteImage = service.spriteImage.asReady({
+      sessionId: "fixture-session",
+      isDltx: false,
+      ltxPath: "system.ltx",
+      descriptors: [],
+      path: "equipment.dds",
+      name: "equipment.png",
+      blob: new Blob(),
+      image: new Image(),
+    });
     await expect(service.reopenEquipmentProject()).rejects.toThrow("backend refused");
 
     // Left loading, every command in the editor stays disabled for the rest of the session and the
@@ -36,6 +47,7 @@ describe("SpriteEquipmentEditorService", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asReady({
+      sessionId: "fixture-session",
       isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
@@ -56,6 +68,7 @@ describe("SpriteEquipmentEditorService", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     service.spriteImage = service.spriteImage.asReady({
+      sessionId: "fixture-session",
       isDltx: false,
       ltxPath: "C:\\game\\system.ltx",
       descriptors: [],
@@ -114,6 +127,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
     service.spriteImage = service.spriteImage.asReady({
+      sessionId: "fixture-session",
       isDltx: false,
       ltxPath: "system.ltx",
       descriptors: [],

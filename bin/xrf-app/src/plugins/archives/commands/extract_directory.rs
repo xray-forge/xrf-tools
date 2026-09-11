@@ -9,6 +9,7 @@ use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpa
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::request::ArchivesExtractRequest;
 use crate::plugins::archives::state::ArchiveProjectState;
@@ -32,7 +33,11 @@ pub async fn archives_extract_directory(
 ) -> TauriResult<ArchiveExtractDirectoryResult> {
   let start: JobStart = JobStart::new(job_id, JobKind::ArchivesExtract).with_request(&request);
 
-  let ArchivesExtractRequest { prefix, destination } = request;
+  let ArchivesExtractRequest {
+    session_id,
+    prefix,
+    destination,
+  } = request;
 
   log::info!(
     "Extracting archive directory '{}' to '{}'",
@@ -40,7 +45,7 @@ pub async fn archives_extract_directory(
     destination.display()
   );
 
-  let project: Arc<ArchiveProject> = state.require("extract directory")?;
+  let project: Arc<DocumentSnapshot<ArchiveProject>> = state.require(session_id)?;
   let prefix: String = prefix.to_owned();
 
   let (job, registration): (JobHandle, JobRegistration) = registry.register(

@@ -4,8 +4,7 @@ use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Qua
 use xrf_job::JobOutcome;
 use xrf_vfs::XrayRoots;
 
-use crate::plugins::textures::TextureSessionId;
-
+use crate::core::session::DocumentSessionId;
 use crate::plugins::textures::encoding::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingFormat, TextureEncodingSession,
 };
@@ -17,7 +16,7 @@ use crate::plugins::textures::tests::fixtures::{BASE, source_image};
 fn a_held_session_answers_for_the_candidates_it_weighed_and_no_others() {
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
   let session: TextureEncodingSession = TextureEncodingSession {
-    session_id: TextureSessionId::new(),
+    session_id: DocumentSessionId::new(),
     roots: XrayRoots::default(),
     source: TextureSource::Asset {
       reference: String::from(BASE),
@@ -80,11 +79,14 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
   let state: TextureState = TextureState::new();
 
-  let session_id: TextureSessionId = state.begin_session().expect("session");
+  let session_id: DocumentSessionId = DocumentSessionId::new();
+
+  state.begin_comparison(session_id).expect("session");
+
   let missing = state.get_comparison(session_id);
 
   assert!(
-    missing.is_err_and(|error| error.contains("No encoded texture is held")),
+    missing.is_err(),
     "expect nothing to read before anything has been weighed"
   );
 

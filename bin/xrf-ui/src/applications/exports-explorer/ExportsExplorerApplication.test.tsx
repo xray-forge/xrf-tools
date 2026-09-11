@@ -5,6 +5,7 @@ import { Route, Routes } from "react-router-dom";
 
 import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -16,8 +17,8 @@ describe("ExportsExplorerApplication", () => {
     window.localStorage.setItem("xrf.form.exports-explorer.project", "C:\\projects\\active-xrf");
 
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: null,
-      ["plugin:exports|open_project"]: mockExportsProject({ root: "C:\\projects\\active-xrf" }),
+      ["plugin:exports|get_project"]: mockDocumentResponse(null),
+      ["plugin:exports|open_project"]: mockDocumentResponse(mockExportsProject({ root: "C:\\projects\\active-xrf" })),
     });
   });
 
@@ -60,6 +61,7 @@ describe("ExportsExplorerApplication", () => {
     await userEvent.click(await findByRole("button", { name: "Open exports" }));
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|open_project", {
+      sessionId: expect.any(String),
       projectPath: "C:\\projects\\active-xrf",
     });
   });

@@ -2,29 +2,29 @@
 
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
-import { EquipmentSpriteMetadata, PackSpriteRequest } from "@/core/bindings/types/xrf-app";
+import {
+  DocumentRestore,
+  DocumentSessionId,
+  DocumentSnapshot,
+  EquipmentSpriteMetadata,
+  PackSpriteRequest,
+  SpriteEquipmentOpenRequest,
+} from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { InventorySpriteDescriptor, PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
+import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
 
 /** Commands */
 export const spriteEquipmentCommands = {
-  closeSprite: () => __TAURI_INVOKE<null>("plugin:sprite-equipment|close_sprite"),
-  getSprite: () =>
-    __TAURI_INVOKE<{
-      path: string;
-      name: string;
-      systemLtxPath: string;
-      /** Whether these descriptors came out of a DLTX-resolved config tree. */
-      isDltx: boolean;
-      equipmentDescriptors: Array<InventorySpriteDescriptor>;
-    } | null>("plugin:sprite-equipment|get_sprite"),
-  openSprite: (equipmentDdsPath: string, systemLtxPath: string, isDltx: boolean) =>
-    __TAURI_INVOKE<EquipmentSpriteMetadata>("plugin:sprite-equipment|open_sprite", {
-      equipmentDdsPath,
-      systemLtxPath,
-      isDltx,
+  closeSprite: (sessionIds: Array<DocumentSessionId>) =>
+    __TAURI_INVOKE<null>("plugin:sprite-equipment|close_sprite", { sessionIds }),
+  getSprite: () => __TAURI_INVOKE<DocumentRestore<EquipmentSpriteMetadata>>("plugin:sprite-equipment|get_sprite"),
+  openSprite: (request: SpriteEquipmentOpenRequest) =>
+    __TAURI_INVOKE<DocumentSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|open_sprite", { request }),
+  reopenSprite: (sessionId: DocumentSessionId, openingId: DocumentSessionId) =>
+    __TAURI_INVOKE<DocumentSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|reopen_sprite", {
+      sessionId,
+      openingId,
     }),
-  reopenSprite: () => __TAURI_INVOKE<EquipmentSpriteMetadata>("plugin:sprite-equipment|reopen_sprite"),
   /**
    * Draw every declared inventory icon into one equipment sprite sheet.
    *

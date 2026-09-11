@@ -13,8 +13,8 @@ use crate::core::assets::{AssetMountState, read_referenced_asset};
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::session::DocumentSessionId;
 use crate::core::types::TauriResult;
-use crate::plugins::textures::TextureSessionId;
 use crate::plugins::textures::encoding::{TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingSession};
 use crate::plugins::textures::lease::{TEXTURE_ENCODE_GROUP, TEXTURE_PHASE_WEIGH};
 use crate::plugins::textures::request::TexturesCompareRequest;
@@ -54,7 +54,10 @@ pub async fn textures_compare_encodings(
   let (job, registration): (JobHandle, JobRegistration) =
     registry.register(start.with_exclusion_group(TEXTURE_ENCODE_GROUP).with_progress(progress))?;
 
-  let session_id: TextureSessionId = state.begin_session()?;
+  let session_id: DocumentSessionId = request.session_id;
+
+  state.begin_comparison(session_id)?;
+
   let state: TextureState = TextureState::clone(&state);
   let assets: AssetMountState = AssetMountState::clone(&assets);
 
@@ -114,7 +117,7 @@ fn measure(
   job: &JobHandle,
   bytes: &[u8],
   request: &TexturesCompareRequest,
-  session_id: TextureSessionId,
+  session_id: DocumentSessionId,
   mipmaps: DdsMipmaps,
 ) -> TauriResult<MeasuredComparison> {
   let file: DdsFile = DdsFile::read_from_bytes(bytes).map_err(error_to_string)?;

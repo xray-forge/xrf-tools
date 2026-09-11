@@ -3,13 +3,11 @@ import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wir
 import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
-import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
 import { Vector3d } from "@/core/bindings/types/xrf-db";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
@@ -205,13 +203,7 @@ export class VisualsService implements IVisualInspection {
   @OnProvision()
   public async onProvision(): Promise<void> {
     try {
-      const selected: Nullable<SelectedVisualDescription> = await visualsCommands.getModel();
-
-      if (selected) {
-        this.log.info("Restoring selected visual:", describeVisualSource(selected.source));
-
-        await flowResult(this.loadService.restore(selected));
-      }
+      await flowResult(this.loadService.restore());
     } catch (error) {
       this.log.error("Failed to restore selected visual:", error);
     } finally {
@@ -226,7 +218,6 @@ export class VisualsService implements IVisualInspection {
     this.log.info("Deactivating and disposing visuals");
 
     this.loadService.clear();
-    releaseEditorProject(visualsCommands.closeModel);
   }
 
   /**
@@ -307,10 +298,9 @@ export class VisualsService implements IVisualInspection {
   @BoundAction()
   public async close(): Promise<void> {
     this.motionService.clear();
-    this.loadService.clear();
 
     try {
-      await visualsCommands.closeModel();
+      await flowResult(this.loadService.close());
     } catch (error) {
       this.log.error("Failed to close visual:", error);
     }

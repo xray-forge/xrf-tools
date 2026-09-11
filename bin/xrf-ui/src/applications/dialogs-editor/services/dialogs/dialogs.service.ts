@@ -6,12 +6,13 @@ import { dialogsCommands } from "@/core/bindings/commands/dialogs";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /** Which dialog is open, by the pair that addresses one: the file holding it and its id. */
@@ -24,11 +25,13 @@ export interface IDialogSelection {
 export class DialogsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => dialogsCommands.closeProject(ids));
+
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<DialogProjectDescriptor>> = Loadable.idle(null);
+  public project: Loadable<Nullable<TDocument<DialogProjectDescriptor>>> = Loadable.idle(null);
 
   /**
    * The dialog being looked at, fetched on selection.
@@ -68,7 +71,7 @@ export class DialogsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(dialogsCommands.closeProject);
+    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
   }
 
   /**
@@ -79,7 +82,9 @@ export class DialogsService {
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const response: Nullable<DialogProjectDescriptor> = yield* call(dialogsCommands.getProject());
+    const response: Nullable<TDocument<DialogProjectDescriptor>> = yield* call(
+      dialogsCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+    );
 
     this.log.info(response ? "Existing dialogs project detected" : "No existing dialogs project");
 
@@ -104,10 +109,14 @@ export class DialogsService {
     this.log.info("Opening dialogs project:", describeRoots(roots), mode);
 
     try {
-      this.project = this.project.asLoading(null);
+      this.project = this.project.asLoading();
 
-      const response: DialogProjectDescriptor = yield* call(
-        dialogsCommands.openProject({ roots, mode, dialogsPrefix: null, translationsPrefix: null })
+      const response: TDocument<DialogProjectDescriptor> = yield* call(
+        this.session.open((sessionId) =>
+          dialogsCommands
+            .openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
+            .then(restoreDocument)
+        )
       );
 
       this.log.info(
@@ -118,6 +127,8 @@ export class DialogsService {
         "text keys"
       );
 
+      cancelFlow(this, "dialog");
+
       this.project = this.project.asReady(response);
       this.selection = null;
       this.dialog = this.dialog.asIdle();
@@ -126,7 +137,7 @@ export class DialogsService {
     } catch (error) {
       this.log.error("Failed to open dialogs project:", error);
 
-      this.project = this.project.asFailed(error as Error, null);
+      this.project = this.project.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -140,8 +151,9 @@ ${transformError(error).message}`,
 
   @LatestFlow("project")
   public *closeProject(): TFlow {
-    yield* call(dialogsCommands.closeProject());
+    yield* call(this.session.close(this.project.value?.sessionId));
 
+    cancelFlow(this, "dialog");
     this.project = this.project.asIdle();
     this.dialog = this.dialog.asIdle();
     this.selection = null;
@@ -168,7 +180,14 @@ ${transformError(error).message}`,
     this.dialog = this.dialog.asLoading(null);
 
     try {
-      const response: DialogDescriptor = yield* call(dialogsCommands.getDialog(logicalPath, id, this.language));
+      const response: DialogDescriptor = yield* call(
+        dialogsCommands.getDialog({
+          sessionId: requireDocumentSession(this.project.value),
+          logicalPath,
+          id,
+          language: this.language,
+        })
+      );
 
       this.dialog = this.dialog.asReady(response);
     } catch (error) {

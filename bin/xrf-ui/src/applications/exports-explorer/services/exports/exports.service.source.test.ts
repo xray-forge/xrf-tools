@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports/exports.service";
 import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
+import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Loadable } from "@/lib/loadable";
 
 const SOURCE: ExportSourceContent = {
   name: "xr_effects.play",
@@ -21,13 +23,21 @@ describe("ExportsService export source", () => {
   it("reads the source of one declaration by name", async () => {
     const service: ExportsService = mockInjectedService(ExportsService).service;
 
+    service.project = Loadable.ready({ ...mockExportsProject(), sessionId: "fixture-session" });
+
     await expect(service.readExportSource("xr_effects.play")).resolves.toEqual(SOURCE);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_source", { name: "xr_effects.play" });
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_source", {
+      sessionId: expect.any(String),
+      name: "xr_effects.play",
+    });
   });
 
   it("propagates a failed read to its caller", async () => {
     // Reporting is the view's job here, so the service must not swallow this into a null result.
     const service: ExportsService = mockInjectedService(ExportsService).service;
+
+    service.project = Loadable.ready({ ...mockExportsProject(), sessionId: "fixture-session" });
 
     setMockInvokeResponses({
       ["plugin:exports|get_source"]: () => {

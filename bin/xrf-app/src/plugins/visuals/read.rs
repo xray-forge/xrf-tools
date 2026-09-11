@@ -1,20 +1,8 @@
 use xrf_db::{OgfFile, XRayByteOrder};
 use xrf_vfs::{XrayProbe, XrayResolution};
-use xrf_visual::{VisualPackage, VisualPacker};
 
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualSource;
-
-/// Read a visual and flatten it for rendering.
-///
-/// Shared by every command that needs geometry, so a description and the buffer it describes always come out of the
-/// same code path even when they were asked for separately.
-///
-/// A loose file is read from its path and an asset through the probe, because an archived entry has no file to slice —
-/// which is the whole reason a visual is addressable logically.
-pub fn pack_source(source: &VisualSource, probe: &XrayProbe) -> TauriResult<VisualPackage> {
-  Ok(VisualPacker::pack(&read_source(source, probe)?))
-}
 
 /// Reads a visual, whichever way its source names it.
 pub fn read_source(source: &VisualSource, probe: &XrayProbe) -> TauriResult<OgfFile> {

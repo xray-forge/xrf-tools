@@ -5,6 +5,7 @@ import { userEvent } from "@testing-library/user-event";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationsEditorApplication } from "@/applications/translations-editor/TranslationsEditorApplication";
 import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { mockDocument, mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -62,13 +63,13 @@ describe("translation editor lifecycle", () => {
     const { service, container } = mockInjectedService(TranslationsService);
 
     setMockInvokeResponses({
-      ["plugin:translations|get_project"]: PROJECT,
+      ["plugin:translations|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:translations|save_file"]: () => {
         if (outcome === "failed") {
           throw new Error("write failed");
         }
 
-        return { kind: "saved", project: PROJECT };
+        return { kind: "saved", project: mockDocument(PROJECT) };
       },
     });
 
@@ -84,7 +85,7 @@ describe("translation editor lifecycle", () => {
 
     expect(getByRole("dialog", { name: "Leave without saving?" })).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:translations|close_project", expect.anything());
-    expect(service.project.value).toBe(PROJECT);
+    expect(service.project.value).toEqual({ ...PROJECT, sessionId: "fixture-session" });
 
     await userEvent.click(getByRole("button", { name: "Save and leave" }));
 
@@ -94,7 +95,7 @@ describe("translation editor lifecycle", () => {
 
       expect(service.dirtyFiles).toEqual([]);
     } else {
-      expect(service.project.value).toBe(PROJECT);
+      expect(service.project.value).toEqual({ ...PROJECT, sessionId: "fixture-session" });
       expect(service.dirtyFiles).toEqual([FIRST_FILE]);
       expect(getByRole("dialog", { name: "Leave without saving?" })).toBeInTheDocument();
     }
@@ -134,7 +135,7 @@ describe("deferred translation validation", () => {
     pending.length = 0;
 
     setMockInvokeResponses({
-      ["plugin:translations|get_project"]: PROJECT,
+      ["plugin:translations|get_project"]: mockDocumentResponse(PROJECT),
       ["plugin:translations|close_project"]: undefined,
       // Answered by the test rather than by the mock: what this suite is about is when an answer lands,
       // not what it says.

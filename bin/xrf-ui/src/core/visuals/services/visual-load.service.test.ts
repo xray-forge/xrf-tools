@@ -8,6 +8,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -63,17 +64,21 @@ describe("VisualLoadService", () => {
     let openParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
         openParameters = parameters ?? null;
 
         return selected;
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
-    expect(openParameters).toEqual({ source: { kind: "asset", logicalPath: ENTRY }, roots: ROOTS });
+    expect(openParameters).toEqual({
+      sessionId: expect.any(String),
+      source: { kind: "asset", logicalPath: ENTRY },
+      roots: ROOTS,
+    });
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
     expect(service.sourceLabel).toBe(ENTRY);
   });
@@ -83,9 +88,9 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: () => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
         throw new Error("chunk declares more bytes than the entry holds");
-      },
+      }),
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -109,10 +114,10 @@ describe("VisualLoadService", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: () => {
         read.issued?.();
@@ -152,10 +157,10 @@ describe("VisualLoadService", () => {
     let readParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: (parameters?: Record<string, unknown>) => {
         readParameters = parameters ?? null;
@@ -180,10 +185,10 @@ describe("VisualLoadService", () => {
     let openWhileReading: Nullable<IOpenVisual> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: () => {
         openWhileReading = service.visual.value;
@@ -198,7 +203,7 @@ describe("VisualLoadService", () => {
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
   });
 
-  it("takes the previous model off screen as soon as another is asked for", async () => {
+  it("keeps the previous model until its replacement is ready", async () => {
     // An empty viewport under a progress indicator is one honest state. A model that is no longer the one being opened
     // is a screen disagreeing with the toolbar above it, which is what showing it until the replacement lands would be.
     const { selected, buffer } = mockLoadable();
@@ -212,7 +217,7 @@ describe("VisualLoadService", () => {
     let shownWhileReading: Nullable<string> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: described,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(described),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: () => {
         shownWhileReading = service.sourceLabel;
@@ -224,10 +229,10 @@ describe("VisualLoadService", () => {
     await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\first.ogf" }, ROOTS);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...described,
         source: { kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: () => {
         shownWhileReading = service.sourceLabel;
@@ -238,19 +243,19 @@ describe("VisualLoadService", () => {
 
     await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" }, ROOTS);
 
-    expect(shownWhileReading).toBeNull();
+    expect(shownWhileReading).toBe(ENTRY);
     expect(service.sourceLabel).toBe("C:\\gamedata\\meshes\\second.ogf");
   });
 
-  it("releases the textures of the model it takes off screen", async () => {
+  it("retains the previous textures until replacement is ready", async () => {
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
     });
@@ -262,17 +267,17 @@ describe("VisualLoadService", () => {
     let texturesWhileLoading: number = -1;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: () => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
         texturesWhileLoading = service.textures.size;
 
         return { ...selected, dependencies: { motions: [], textures: [] } };
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
-    expect(texturesWhileLoading).toBe(0);
+    expect(texturesWhileLoading).toBe(1);
   });
 
   it("restores a selection the backend still holds without opening it again", async () => {
@@ -282,15 +287,20 @@ describe("VisualLoadService", () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: () => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
         invoked.push("open_model");
 
         return selected;
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
-    await service.restore(selected);
+    setMockInvokeResponses({
+      ["plugin:visuals|get_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    await service.restore();
 
     expect(invoked).toEqual([]);
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
@@ -301,7 +311,7 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -343,7 +353,7 @@ describe("VisualLoadService shared textures", () => {
     const reads: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
         reads.push(String(args?.logicalPath));
@@ -364,7 +374,7 @@ describe("VisualLoadService shared textures", () => {
     const { selected, buffer } = mockSharedVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile(),
     });
@@ -382,7 +392,7 @@ describe("VisualLoadService shared textures", () => {
     const { selected, buffer } = mockSharedVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile(),
     });
@@ -426,10 +436,10 @@ describe("VisualLoadService texture decoding", () => {
     let decodedPath: Nullable<string> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
       ["plugin:visuals|read_texture"]: (parameters?: Record<string, unknown>) => {
@@ -454,10 +464,10 @@ describe("VisualLoadService texture decoding", () => {
     let decoded: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
       ["plugin:visuals|read_texture"]: () => {
@@ -479,10 +489,10 @@ describe("VisualLoadService texture decoding", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: {
+      ["plugin:visuals|open_model"]: mockDocumentResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
       ["plugin:visuals|read_texture"]: () => {

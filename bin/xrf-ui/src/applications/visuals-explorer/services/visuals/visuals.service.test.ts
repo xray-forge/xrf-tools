@@ -11,6 +11,7 @@ import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -86,7 +87,7 @@ describe("VisualsService bone highlight", () => {
     const { selected, buffer } = mockSkeletalVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -122,7 +123,7 @@ describe("VisualsService bone highlight", () => {
     const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -160,7 +161,7 @@ describe("VisualsService bone visibility", () => {
     const { selected, buffer } = mockWeaponVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -215,7 +216,7 @@ describe("VisualsService bone visibility", () => {
     const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -236,7 +237,7 @@ describe("VisualsService opening", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -251,9 +252,9 @@ describe("VisualsService opening", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: () => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
         throw new Error("not an ogf file");
-      },
+      }),
     });
 
     await service.openFile("C:\\gamedata\\broken.ogf");
@@ -269,7 +270,7 @@ describe("VisualsService opening", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
-      ["plugin:visuals|get_model"]: selected,
+      ["plugin:visuals|get_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -282,7 +283,7 @@ describe("VisualsService opening", () => {
   it("becomes ready with nothing open when the backend has no selection", async () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({ ["plugin:visuals|get_model"]: null });
+    setMockInvokeResponses({ ["plugin:visuals|get_model"]: mockDocumentResponse(null) });
 
     await service.onProvision();
 
@@ -303,17 +304,24 @@ describe("VisualsService opening", () => {
       releaseFirstGeometry = () => resolve(first.buffer);
     });
 
+    const firstSessions = new Set<unknown>();
+
     function isFirst(parameters?: Record<string, unknown>): boolean {
       const source: VisualSource = (parameters as { source: VisualSource }).source;
 
-      return describeVisualSource(source) === describeVisualSource(first.selected.source);
+      const firstMatch = describeVisualSource(source) === describeVisualSource(first.selected.source);
+
+      if (firstMatch) firstSessions.add(parameters?.sessionId);
+
+      return firstMatch;
     }
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) =>
-        isFirst(parameters) ? first.selected : second.selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) =>
+        isFirst(parameters) ? first.selected : second.selected
+      ),
       ["plugin:visuals|read_geometry"]: (parameters?: Record<string, unknown>) =>
-        isFirst(parameters) ? pendingFirst : second.buffer,
+        firstSessions.has(parameters?.sessionId) ? pendingFirst : second.buffer,
     });
 
     const opening: Promise<void> = service.openFile("C:\\gamedata\\first.ogf");
@@ -336,11 +344,11 @@ describe("VisualsService opening", () => {
 
     setMockInvokeResponses({
       // The backend echoes the roots it opened with, which is what later reads are addressed by.
-      ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => ({
+      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) => ({
         ...selected,
         roots: (parameters as { roots: XrayRoots }).roots,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      }),
+      })),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: (parameters?: Record<string, unknown>) => {
         readParameters = parameters ?? null;
@@ -372,7 +380,7 @@ describe("VisualsService opening", () => {
     const opened: Array<Record<string, unknown>> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: (parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
         opened.push(parameters ?? {});
 
         if (opened.length === 1) {
@@ -380,7 +388,7 @@ describe("VisualsService opening", () => {
         }
 
         return selected;
-      },
+      }),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -393,7 +401,8 @@ describe("VisualsService opening", () => {
     expect(service.visual.error).toBeNull();
     expect(service.visual.value?.views.submeshes).toHaveLength(1);
     expect(opened).toHaveLength(2);
-    expect(opened[1]).toEqual(opened[0]);
+    expect(opened[1]).toEqual({ ...opened[0], sessionId: expect.any(String) });
+    expect(opened[1]?.sessionId).not.toBe(opened[0]?.sessionId);
   });
 
   it("has nothing to retry before anything has been opened", async () => {
@@ -402,11 +411,11 @@ describe("VisualsService opening", () => {
     let openCalls: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: () => {
+      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
         openCalls += 1;
 
         return null;
-      },
+      }),
     });
 
     await service.retryOpen();
@@ -421,7 +430,7 @@ describe("VisualsService opening", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: selected,
+      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:visuals|close_model"]: null,
     });

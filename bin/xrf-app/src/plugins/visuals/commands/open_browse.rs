@@ -1,26 +1,20 @@
-use std::sync::MutexGuard;
-use xrf_vfs::XrayRoots;
+use std::sync::Arc;
 
 use tauri::State;
+use xrf_vfs::XrayRoots;
 
+use crate::core::session::{DocumentSessionId, DocumentSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualState;
 
-/// Start browsing roots of visuals.
-///
-/// Stores the intent rather than a listing: what the user chose is the roots, and everything shown of it is derived
-/// from that through the generic asset listing. A reload asks for this and derives the rest again.
+/// Remember the browsed roots with an identity independent from the selected model.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_browse"))]
 #[tauri::command(rename = "open_browse")]
-pub async fn visuals_open_browse(roots: XrayRoots, state: State<'_, VisualState>) -> TauriResult {
-  log::info!("Browsing visuals in: {}", roots.describe());
-
-  let mut browsed: MutexGuard<Option<XrayRoots>> = state
-    .browsed
-    .lock()
-    .map_err(|error| format!("Failed to browse visuals - browse state is unavailable: {error}"))?;
-
-  *browsed = Some(roots);
-
-  Ok(())
+pub async fn visuals_open_browse(
+  session_id: DocumentSessionId,
+  roots: XrayRoots,
+  state: State<'_, VisualState>,
+) -> TauriResult<Arc<DocumentSnapshot<XrayRoots>>> {
+  state.browsed.begin_open(session_id)?;
+  state.browsed.commit_open(session_id, roots)
 }

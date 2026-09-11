@@ -5,6 +5,7 @@ use xrf_ltx_inspect::LtxResolvedSection;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::execution::ExecutionState;
+use crate::core::session::DocumentSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsReadSectionsRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
@@ -48,7 +49,7 @@ pub async fn configs_read_resolved_sections(
     ));
   }
 
-  let opened: Arc<ConfigsProject> = state.require(session_id)?;
+  let opened: Arc<DocumentSnapshot<ConfigsProject>> = state.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
   execution
     .run_blocking("Configs resolved page", move || {

@@ -1,9 +1,8 @@
-use std::sync::MutexGuard;
-
 use tauri::State;
-use xrf_dialog::{DialogDescriptor, DialogProject};
+use xrf_dialog::DialogDescriptor;
 
 use crate::core::types::TauriResult;
+use crate::plugins::dialogs::request::DialogsReadRequest;
 use crate::plugins::dialogs::state::DialogProjectState;
 
 /// One dialog, with every phrase it declares.
@@ -23,15 +22,16 @@ use crate::plugins::dialogs::state::DialogProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_dialog"))]
 #[tauri::command(rename = "get_dialog")]
 pub async fn dialogs_get_dialog(
-  logical_path: String,
-  id: String,
-  language: Option<String>,
+  request: DialogsReadRequest,
   state: State<'_, DialogProjectState>,
 ) -> TauriResult<DialogDescriptor> {
-  let lock: MutexGuard<Option<DialogProject>> = state.project.lock().unwrap();
-  let Some(project) = lock.as_ref() else {
-    return Err(String::from("No dialogs project is open"));
-  };
+  let DialogsReadRequest {
+    session_id,
+    logical_path,
+    id,
+    language,
+  } = request;
+  let project = state.require(session_id)?;
 
   if project.find_file(&logical_path).is_none() {
     return Err(format!("The open dialogs project holds no file '{logical_path}'"));

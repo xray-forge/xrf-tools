@@ -4,7 +4,6 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import {
-  TextureBrowseSession,
   TextureCatalog,
   TextureCatalogMode,
   TextureMaterialSummary,
@@ -12,12 +11,13 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Loadable } from "@/lib/loadable";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -31,6 +31,8 @@ import { Nullable } from "@/lib/types/general";
 export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => texturesCommands.close(ids));
+
   /**
    * Whether the backend has been asked what it still has open.
    */
@@ -39,7 +41,7 @@ export class TextureCatalogService {
 
   /** Every texture of the browsed roots, or null when nothing is open. */
   @Observable()
-  public catalog: Loadable<Nullable<TextureCatalog>> = Loadable.idle(null);
+  public catalog: Loadable<Nullable<TDocument<TextureCatalog>>> = Loadable.idle(null);
 
   /** What each descriptor of those roots declares, empty until the sweep behind the listing finishes. */
   @Observable()
@@ -79,33 +81,7 @@ export class TextureCatalogService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      const session: Nullable<TextureBrowseSession> = await texturesCommands.getSession();
-
-      if (session) {
-        this.log.info("Restoring browsed texture roots:", describeRoots(session.roots));
-
-        // Through the lane rather than around it, so a root the user picks while this is still restoring wins.
-        //
-        // The listing announces readiness itself rather than this method announcing it afterwards. React's strict mode
-        // provisions twice, and the second restore cancels the first, so a `finally` here would report a ready screen
-        // while the catalog is still empty - which is the picker, opened for a quarter of a second over a session that
-        // was already coming back.
-        await flowResult(this.restore(session));
-
-        return;
-      }
-    } catch (error) {
-      this.log.error("Failed to restore browsed texture roots:", error);
-    }
-
-    runInAction(() => {
-      // Nothing to restore, or nothing that could be asked: the picker is the answer either way. A restore still in
-      // flight owns the announcement, so this speaks only when nothing is arriving.
-      if (!this.catalog.isLoading) {
-        this.isReady = true;
-      }
-    });
+    await flowResult(this.restore());
   }
 
   /**
@@ -115,12 +91,12 @@ export class TextureCatalogService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the browsed roots");
 
+    releaseEditorProject(() => this.session.close(this.catalog.value?.sessionId));
+
     runInAction(() => {
       this.catalog = this.catalog.asIdle();
       this.summaries = this.summaries.asIdle([]);
     });
-
-    releaseEditorProject(texturesCommands.close);
   }
 
   /**
@@ -154,12 +130,12 @@ export class TextureCatalogService {
    */
   @LatestFlow("catalog")
   public *close(): TFlow {
-    this.catalog = this.catalog.asIdle();
-    this.summaries = this.summaries.asIdle([]);
-    this.selectionService.clear();
-
     try {
-      yield* call(texturesCommands.close());
+      yield* call(this.session.close(this.catalog.value?.sessionId));
+
+      this.catalog = this.catalog.asIdle();
+      this.summaries = this.summaries.asIdle([]);
+      this.selectionService.clear();
     } catch (error) {
       this.log.error("Failed to close browsed texture roots:", error);
     }
@@ -188,11 +164,20 @@ export class TextureCatalogService {
   /**
    * Puts an already browsed session back on screen, for one the backend still holds.
    *
-   * @param session - What the backend reported as browsed, listed the way it was listed.
    */
-  @LatestFlow("catalog")
-  private *restore(session: TextureBrowseSession): TFlow {
-    yield* this.list(session.roots, session.mode);
+  @ExclusiveFlow("catalog")
+  private *restore(): TFlow {
+    try {
+      const session = yield* call(texturesCommands.getSession());
+
+      if (session) {
+        yield* this.list(session.document.roots, session.document.mode);
+      }
+    } catch (error) {
+      this.log.error("Failed to restore browsed texture roots:", error);
+    } finally {
+      this.isReady = true;
+    }
   }
 
   /**
@@ -209,7 +194,9 @@ export class TextureCatalogService {
     this.summaries = this.summaries.asIdle([]);
 
     try {
-      const catalog: TextureCatalog = yield* call(texturesCommands.open(roots, mode));
+      const catalog: TDocument<TextureCatalog> = yield* call(
+        this.session.open((sessionId) => texturesCommands.open(sessionId, roots, mode).then(restoreDocument))
+      );
 
       this.catalog = this.catalog.asReady(catalog);
       // Announced here rather than after the sweep: the tree can be drawn from the listing alone, and waiting for
@@ -229,7 +216,7 @@ export class TextureCatalogService {
 
       this.log.error("Failed to list textures:", transformed);
 
-      this.catalog = this.catalog.asFailed(transformed, null);
+      this.catalog = this.catalog.asFailed(transformed);
       this.isReady = true;
     }
   }

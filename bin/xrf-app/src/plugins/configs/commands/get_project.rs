@@ -12,5 +12,5 @@ use crate::plugins::configs::state::ConfigsState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_project"))]
 #[tauri::command(rename = "get_project")]
 pub fn configs_get_project(state: State<'_, ConfigsState>) -> TauriResult<Option<Arc<ConfigsProjectDescriptor>>> {
-  state.get_descriptor()
+  Ok(state.get()?.map(|opened| Arc::clone(&opened.descriptor)))
 }

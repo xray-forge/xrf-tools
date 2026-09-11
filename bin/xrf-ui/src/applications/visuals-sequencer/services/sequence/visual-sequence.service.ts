@@ -1,11 +1,13 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { Logger } from "@/lib/logging";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -161,6 +163,8 @@ export class VisualSequenceService {
       0
     );
   }
+
+  public constructor(private readonly loadService: VisualLoadService = inject(VisualLoadService)) {}
 
   /** Stops the ticker when the application goes away, so a hidden sequencer is not still animating. */
   @OnDeactivation()
@@ -353,8 +357,13 @@ export class VisualSequenceService {
       }
 
       try {
-        const bake: VisualMotionBake = await visualsCommands.openMotion(motion);
-        const bytes: ArrayBuffer = await visualsRawCommands.readMotion(motion);
+        const sessionId: string = requireDocumentSession(this.loadService.visual.value?.selected ?? null);
+
+        const bake: TDocument<VisualMotionBake> = restoreDocument(
+          await visualsCommands.openMotion(sessionId, crypto.randomUUID(), motion)
+        );
+
+        const bytes: ArrayBuffer = await visualsRawCommands.readMotion(sessionId, bake.sessionId);
         const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 
         if (bytes.byteLength !== expected) {

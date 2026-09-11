@@ -7,13 +7,32 @@ import {
   VisualSequenceService,
 } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockVisualMotionBake, mockVisualMotionTransforms } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockSelectedVisual,
+  mockVisualModelViews,
+  mockVisualMotionBake,
+  mockVisualMotionTransforms,
+} from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 /** Frames each mocked motion holds, keyed by name, so a boundary is reached at a known tick. */
 const FRAMES: Record<string, number> = { first: 2, second: 3, third: 2 };
+
+function mockService() {
+  const result = mockInjectedService(VisualSequenceService, [VisualLoadService]);
+
+  result.container.get(VisualLoadService).visual = Loadable.ready({
+    selected: { ...mockSelectedVisual(), sessionId: "fixture-session" },
+    views: mockVisualModelViews(),
+  });
+
+  return result;
+}
 
 function mockBake(name: string): VisualMotionBake {
   return mockVisualMotionBake({ name, frameCount: FRAMES[name] });
@@ -28,11 +47,13 @@ function mockBake(name: string): VisualMotionBake {
  */
 function mockMotions(markers: Record<string, number>, failing: Array<string> = []): Array<string> {
   const calls: Array<string> = [];
+  const names = new Map<string, string>();
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_motion"]: ((args) => {
+    ["plugin:visuals|open_motion"]: mockDocumentResponse(((args) => {
       const name: string = String(args?.name);
 
+      names.set(String(args?.motionId), name);
       calls.push(`open:${name}`);
 
       if (failing.includes(name)) {
@@ -40,9 +61,9 @@ function mockMotions(markers: Record<string, number>, failing: Array<string> = [
       }
 
       return mockBake(name);
-    }) as InvokeHandler,
+    }) as InvokeHandler),
     ["plugin:visuals|read_motion"]: ((args) => {
-      const name: string = String(args?.name);
+      const name: string = names.get(String(args?.motionId)) ?? "";
 
       calls.push(`read:${name}`);
 
@@ -65,7 +86,7 @@ describe("VisualSequenceService", () => {
   });
 
   it("applies its mobx annotations", () => {
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     expect(isObservableProp(service, "clips")).toBe(true);
     expect(isObservableProp(service, "motions")).toBe(true);
@@ -84,7 +105,7 @@ describe("VisualSequenceService", () => {
 
   it("adds clips in order and bakes each motion once", async () => {
     const calls: Array<string> = mockMotions({ first: 1, second: 2 });
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -105,14 +126,14 @@ describe("VisualSequenceService", () => {
     let open: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: ((args) => {
+      ["plugin:visuals|open_motion"]: mockDocumentResponse(((args) => {
         const name: string = String(args?.name);
 
         open += 1;
         inFlight.push(name);
 
         return mockBake(name);
-      }) as InvokeHandler,
+      }) as InvokeHandler),
       ["plugin:visuals|read_motion"]: ((args) => {
         const name: string = String(args?.name);
 
@@ -124,7 +145,7 @@ describe("VisualSequenceService", () => {
       }) as InvokeHandler,
     });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -138,7 +159,7 @@ describe("VisualSequenceService", () => {
   it("poses the playing clip's own transforms", async () => {
     mockMotions({ first: 1, second: 2 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -158,7 +179,7 @@ describe("VisualSequenceService", () => {
   it("cuts to the next clip at a boundary", async () => {
     mockMotions({ first: 1, second: 2 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -181,7 +202,7 @@ describe("VisualSequenceService", () => {
   it("loops back to the first clip, or stops on the last frame when it should not", async () => {
     mockMotions({ first: 1, second: 2 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
 
@@ -204,7 +225,7 @@ describe("VisualSequenceService", () => {
   it("keeps a clip that cannot be baked, saying why, and plays over it", async () => {
     mockMotions({ first: 1, third: 3 }, ["second"]);
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -228,7 +249,7 @@ describe("VisualSequenceService", () => {
   it("keeps playing the same clip when the track around it is reordered", async () => {
     mockMotions({ first: 1, second: 2 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -249,7 +270,7 @@ describe("VisualSequenceService", () => {
   it("removes a clip and steps playback off it", async () => {
     mockMotions({ first: 1, second: 2 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.add("second");
@@ -266,7 +287,7 @@ describe("VisualSequenceService", () => {
   it("drops the track and everything baked for it when cleared", async () => {
     mockMotions({ first: 1 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
 
@@ -284,7 +305,7 @@ describe("VisualSequenceService", () => {
   it("ignores a bake that lands after the track it belonged to was cleared", async () => {
     mockMotions({ first: 1 });
 
-    const { service } = mockInjectedService(VisualSequenceService);
+    const { service } = mockService();
 
     service.add("first");
     service.clear();

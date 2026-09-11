@@ -8,6 +8,7 @@ import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspe
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -33,7 +34,7 @@ async function renderPanel(): Promise<{ render: RenderResult; service: VisualsSe
   });
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: selected,
+    ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
     ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
   });
 

@@ -1,18 +1,20 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import {
+  DocumentSessionId,
   EJobKind,
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
-  TextureSessionId,
 } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
+import { DocumentSession } from "@/core/ipc/document";
+import { releaseEditorProject } from "@/core/ipc/release";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -30,13 +32,15 @@ import { Nullable } from "@/lib/types/general";
 export class TextureEncodingService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  private readonly session: DocumentSession = new DocumentSession((ids) => texturesCommands.close(ids));
+
   public readonly compare: JobOperation<TextureEncodingComparison>;
 
   /**
    * The candidate chosen to replace the base texture, or null when the file on disk still stands.
    */
   @Observable()
-  private choice: Nullable<{ sessionId: TextureSessionId; format: TextureEncodingFormat }> = null;
+  private choice: Nullable<{ sessionId: DocumentSessionId; format: TextureEncodingFormat }> = null;
 
   @Computed()
   public get chosen(): Nullable<TextureEncodingFormat> {
@@ -87,14 +91,23 @@ export class TextureEncodingService {
     this.compare = new JobOperation(jobsService, [EJobKind.TEXTURES_COMPARE_ENCODINGS], this.log);
   }
 
+  @OnDeactivation()
+  public onDeactivation(): void {
+    this.clear();
+  }
+
   /**
    * Forget the comparison and the choice, for a texture that is no longer the one on screen.
    */
   @BoundAction()
   public clear(): void {
+    releaseEditorProject(() => this.session.close(this.compare.result?.sessionId));
+
     this.choice = null;
     this.preview = this.preview.asIdle();
+
     cancelFlow(this, "preview");
+
     this.compare.reset();
   }
 
@@ -173,10 +186,12 @@ export class TextureEncodingService {
     yield* this.compare.run({
       kind: EJobKind.TEXTURES_COMPARE_ENCODINGS,
       invoke: (id: string, progress) =>
-        texturesCommands.compareEncodings(
-          { mipFilter, quality: "slow", roots: description.roots, source: description.source },
-          id,
-          progress
+        this.session.open((sessionId) =>
+          texturesCommands.compareEncodings(
+            { sessionId, mipFilter, quality: "slow", roots: description.roots, source: description.source },
+            id,
+            progress
+          )
         ),
       describe: (outcome: IJobOutcome<TextureEncodingComparison>): IJobNotice =>
         describeTextureCompareOutcome(description.reference, outcome),
