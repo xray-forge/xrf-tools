@@ -1,9 +1,20 @@
 import { describe, expect, it } from "@jest/globals";
-import { Binding, BindingType, Container, getBindingType, Newable, ServiceToken } from "@wirestate/core";
-import { isObservableObject } from "@wirestate/mobx";
+import {
+  Binding,
+  BindingType,
+  Container,
+  getBindingType,
+  Injectable,
+  OnDeactivation,
+  OnProvision,
+  ServiceToken,
+  WireStatus,
+} from "@wirestate/core";
+import { flowResult, isObservableProp, Observable, reaction } from "@wirestate/mobx";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
-import { hasObservableMembers } from "@/lib/mobx";
+import { noop } from "@/lib/callbacks/noop";
+import { call, LatestFlow, TFlow } from "@/lib/mobx";
 
 import { ROOT_BINDINGS } from "./bindings";
 import { createContainerPlugins } from "./plugins";
@@ -37,12 +48,37 @@ async function catalogServices(): Promise<Array<Binding>> {
   return [...bound];
 }
 
+@Injectable()
+class PluginTestService {
+  @Observable()
+  public result: number = 0;
+
+  public readonly events: Array<string> = [];
+
+  @OnProvision()
+  public async onProvision(): Promise<void> {
+    this.events.push("provision");
+  }
+
+  @OnDeactivation()
+  public onDeactivation(): void {
+    this.events.push("deactivation");
+  }
+
+  @LatestFlow()
+  public *load(response: Promise<number>): TFlow {
+    try {
+      this.result = yield* call(response);
+    } finally {
+      this.events.push("settled");
+    }
+  }
+}
+
 describe("createContainerPlugins", () => {
-  it("makes every service the catalog binds observable", async () => {
+  it("activates and lifecycle-tracks every service the catalog binds", async () => {
     const services: Array<Binding> = await catalogServices();
 
-    // Guards the failure this plugin can cause and lint cannot see: a container that omits it resolves services whose
-    // annotations were never applied, so their state is inert and every screen over it silently stops updating.
     expect(services.length).toBeGreaterThan(0);
 
     for (const service of services) {
@@ -52,14 +88,62 @@ describe("createContainerPlugins", () => {
       });
 
       const instance: object = container.get(service as ServiceToken<object>);
-      const name: string = (service as Newable<object>).name;
 
-      // A service with nothing annotated is left alone on purpose, so the invariant is the pair rather than the flag:
-      // whatever declares observable members must come out observable.
-      expect({ name, observable: isObservableObject(instance) }).toEqual({
-        name,
-        observable: hasObservableMembers(instance),
-      });
+      expect(WireStatus.for(instance).isDeactivated).toBe(false);
     }
+  });
+
+  it("makes service changes observable through inherited container plugins", async () => {
+    const parent = new Container({ plugins: createContainerPlugins() });
+    const child = new Container({ parent, bindings: [PluginTestService] });
+    const service = child.get(PluginTestService);
+    const values: Array<number> = [];
+    const dispose = reaction(
+      () => service.result,
+      (value) => values.push(value)
+    );
+
+    expect(isObservableProp(service, "result")).toBe(true);
+
+    await service.load(Promise.resolve(7));
+
+    expect(values).toEqual([7]);
+
+    dispose();
+    parent.destroy();
+  });
+
+  it("preserves pending flows across reprovision and cancels them after deactivation", async () => {
+    const container = new Container({ bindings: [PluginTestService], plugins: createContainerPlugins() });
+    const service = container.get(PluginTestService);
+    const status = WireStatus.for(service);
+
+    let resolve: (value: number) => void = noop;
+
+    const response = new Promise<number>((settle) => {
+      resolve = settle;
+    });
+
+    container.provision();
+
+    const firstCycle = status.provisionId;
+    const loading = flowResult(service.load(response));
+
+    container.deprovision();
+    container.provision();
+
+    expect(status.isStale(firstCycle)).toBe(true);
+    expect(service.events).toEqual(["provision", "provision"]);
+
+    container.destroy();
+    await loading;
+
+    expect(service.events).toEqual(["provision", "provision", "deactivation", "settled"]);
+    expect(status.isDeactivated).toBe(true);
+
+    resolve(42);
+    await response;
+
+    expect(service.result).toBe(0);
   });
 });

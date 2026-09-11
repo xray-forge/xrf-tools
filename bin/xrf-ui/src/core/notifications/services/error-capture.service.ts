@@ -39,8 +39,8 @@ export class ErrorCaptureService {
    * Remove global error and rejection listeners when the service is deactivated.
    */
   @OnDeactivation()
-  public onDeactivation(provisionId: ProvisionId): void {
-    this.log.info("Deprovisioning:", provisionId);
+  public onDeactivation(): void {
+    this.log.info("Deactivating");
 
     window.removeEventListener("error", this.onWindowError);
     window.removeEventListener("unhandledrejection", this.onUnhandledRejection);

@@ -51,17 +51,17 @@ importers:
         specifier: ^2.3.5
         version: 2.3.5
       '@wirestate/core':
-        specifier: ^1.0.0-experimental.16
-        version: 1.0.0-experimental.16
+        specifier: 1.0.0-experimental.18
+        version: 1.0.0-experimental.18
       '@wirestate/mobx':
-        specifier: ^1.0.0-experimental.16
-        version: 1.0.0-experimental.16(mobx@6.16.0)
+        specifier: 1.0.0-experimental.18
+        version: 1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(mobx@6.16.0)
       '@wirestate/react':
-        specifier: ^1.0.0-experimental.16
-        version: 1.0.0-experimental.16(@wirestate/core@1.0.0-experimental.16)(react@19.2.7)
+        specifier: 1.0.0-experimental.18
+        version: 1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(react@19.2.7)
       '@wirestate/react-mobx':
-        specifier: ^1.0.0-experimental.16
-        version: 1.0.0-experimental.16(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(mobx@6.16.0)(react@19.2.7)
+        specifier: 1.0.0-experimental.18
+        version: 1.0.0-experimental.18(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(mobx@6.16.0)(react@19.2.7)
       '@xyflow/react':
         specifier: ^12.11.3
         version: 12.11.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -124,8 +124,8 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(sass@1.100.0)(terser@5.48.0))
       '@wirestate/dev':
-        specifier: ^1.0.0-experimental.16
-        version: 1.0.0-experimental.16(@wirestate/core@1.0.0-experimental.16)
+        specifier: 1.0.0-experimental.18
+        version: 1.0.0-experimental.18(@swc/helpers@0.5.23)(@wirestate/core@1.0.0-experimental.18)
       babel-plugin-observing-components:
         specifier: ^0.2.0
         version: 0.2.0
@@ -1701,30 +1701,31 @@ packages:
       babel-plugin-react-compiler:
         optional: true
 
-  '@wirestate/core@1.0.0-experimental.16':
-    resolution: {integrity: sha512-EbDgKiN5bWyKUjHujKEbEVGyASb0k35g6xNmzOaLiZWTe+Q1MHW+5KdJAzVy8LE3bqGNNQxeKOzM0YBVJtgjmw==}
+  '@wirestate/core@1.0.0-experimental.18':
+    resolution: {integrity: sha512-51fx49ULEVh2F9uQNnygKm3XuTwaDbC3vtNTkjAU2bXF7eat0bwLvRBfB0KRFCExY/RVUW5XHsboWZ6HuFBdqA==}
 
-  '@wirestate/dev@1.0.0-experimental.16':
-    resolution: {integrity: sha512-ZmpVmkNPPjg1s8eSEs2RlhJDg8FlNrSgmq5c46z6w8mIOzTxYBWvmxnGNRj3EV7h2ADQUJTQ8QGkiDhHvfWapw==}
+  '@wirestate/dev@1.0.0-experimental.18':
+    resolution: {integrity: sha512-hoAP6ZfsjSFW/p+yOtJ+rws/R5BGLvhQNPbLW2DkpScRX2CZfidrjtTAELWjsCHbppAR3jJdPW4xXw9UpKwWRQ==}
     peerDependencies:
-      '@wirestate/core': 1.0.0-experimental.16
+      '@wirestate/core': 1.0.0-experimental.18
 
-  '@wirestate/mobx@1.0.0-experimental.16':
-    resolution: {integrity: sha512-rDS5YAi3M+sK7HzJWzVJfaIVKI0H6UuZh6r1aEw1uQ8z5Kmf2cVkxWJa2r5pjZqQHGaubkdQkU3Otpa5cfEnVw==}
+  '@wirestate/mobx@1.0.0-experimental.18':
+    resolution: {integrity: sha512-Krf9yGmA3M0ApfBgL0Lc+SJJVOzoVwBA0kxW5TLIlikofJPKwGb9pWBO+Xhv4mEwrKXr20n1PiZCTSOPn02DEg==}
     peerDependencies:
+      '@wirestate/core': 1.0.0-experimental.18
       mobx: '>=6.0.0'
 
-  '@wirestate/react-mobx@1.0.0-experimental.16':
-    resolution: {integrity: sha512-/J3hETQWBXleOc6/WBFl+aBRfCm9lg8NRXrCWp3RQOqEP31D2GWeWetV3udbzo7XujUwWcGY2rybOkh+glTtEw==}
+  '@wirestate/react-mobx@1.0.0-experimental.18':
+    resolution: {integrity: sha512-KbvHpCzgmaza5xU1EarltLngBXgvoh2CGU4vnWZ7daYTHQGhcb8cLVFQgS+udaApuGtNOSZ5RqYlMFuUewLglA==}
     peerDependencies:
       mobx: '>=6.0.0'
       mobx-react-lite: '>=4.0.0'
       react: '>=16.8.0 <20.0.0'
 
-  '@wirestate/react@1.0.0-experimental.16':
-    resolution: {integrity: sha512-SKEiIDBRAS6ubTYiOByWtjd78l2wnWvSGJOt4GoBf4gmZ9LzdKX4kCPYrwn4Q/9S0pBwjCxa/7hpapyNGL/gDw==}
+  '@wirestate/react@1.0.0-experimental.18':
+    resolution: {integrity: sha512-5KiaBjUM3s9fm0tDFc9V6It9LVvJOl73i3XDSC8P2haRKN02xQvmJL254ZqaaDyfireL/v4ZoOdfMMRRp84UZw==}
     peerDependencies:
-      '@wirestate/core': 1.0.0-experimental.16
+      '@wirestate/core': 1.0.0-experimental.18
       react: '>=16.8.0 <20.0.0'
 
   '@xyflow/react@12.11.3':
@@ -5499,27 +5500,31 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(sass@1.100.0)(terser@5.48.0)
 
-  '@wirestate/core@1.0.0-experimental.16':
+  '@wirestate/core@1.0.0-experimental.18':
     dependencies:
       '@swc/helpers': 0.5.23
 
-  '@wirestate/dev@1.0.0-experimental.16(@wirestate/core@1.0.0-experimental.16)':
+  '@wirestate/dev@1.0.0-experimental.18(@swc/helpers@0.5.23)(@wirestate/core@1.0.0-experimental.18)':
     dependencies:
-      '@wirestate/core': 1.0.0-experimental.16
+      '@swc/core': 1.15.47(@swc/helpers@0.5.23)
+      '@wirestate/core': 1.0.0-experimental.18
+    transitivePeerDependencies:
+      - '@swc/helpers'
 
-  '@wirestate/mobx@1.0.0-experimental.16(mobx@6.16.0)':
+  '@wirestate/mobx@1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(mobx@6.16.0)':
     dependencies:
+      '@wirestate/core': 1.0.0-experimental.18
       mobx: 6.16.0
 
-  '@wirestate/react-mobx@1.0.0-experimental.16(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(mobx@6.16.0)(react@19.2.7)':
+  '@wirestate/react-mobx@1.0.0-experimental.18(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(mobx@6.16.0)(react@19.2.7)':
     dependencies:
       mobx: 6.16.0
       mobx-react-lite: 4.1.1(mobx@6.16.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
 
-  '@wirestate/react@1.0.0-experimental.16(@wirestate/core@1.0.0-experimental.16)(react@19.2.7)':
+  '@wirestate/react@1.0.0-experimental.18(@wirestate/core@1.0.0-experimental.18)(react@19.2.7)':
     dependencies:
-      '@wirestate/core': 1.0.0-experimental.16
+      '@wirestate/core': 1.0.0-experimental.18
       react: 19.2.7
 
   '@xyflow/react@12.11.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':

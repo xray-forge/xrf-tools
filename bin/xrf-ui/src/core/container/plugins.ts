@@ -1,7 +1,8 @@
 import { EventsPlugin, WirestatePlugin } from "@wirestate/core";
 import { DevToolsPlugin } from "@wirestate/core/devtools";
+import { ObservablePlugin } from "@wirestate/mobx";
 
-import { ObservablePlugin } from "@/lib/mobx";
+import { FlowCancellationPlugin } from "@/lib/mobx/flow/cancellation.plugin";
 
 /**
  * The plugins every container runs with, application and test alike.
@@ -10,5 +11,10 @@ import { ObservablePlugin } from "@/lib/mobx";
  * @returns Plugin instances for one container.
  */
 export function createContainerPlugins(withDevtoolsPlugin: boolean = false): Array<WirestatePlugin> {
-  return [new ObservablePlugin(), new EventsPlugin(), ...(withDevtoolsPlugin ? [new DevToolsPlugin()] : [])];
+  return [
+    new EventsPlugin(),
+    new FlowCancellationPlugin(),
+    new ObservablePlugin(),
+    ...(withDevtoolsPlugin ? [new DevToolsPlugin()] : []),
+  ];
 }
