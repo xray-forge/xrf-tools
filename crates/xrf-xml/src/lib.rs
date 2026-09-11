@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub(crate) mod dom;
 pub(crate) mod encoding;
 pub(crate) mod escape;
