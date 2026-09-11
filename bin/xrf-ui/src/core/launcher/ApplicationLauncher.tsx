@@ -151,6 +151,9 @@ export function ApplicationLauncher({ applications, groups }: IApplicationLaunch
     ? search.results.map(({ item }: ISearchResult<TCatalogEntry>) => item)
     : searchable;
 
+  // todo: Separate component for the view itself.
+  // todo: Separate component for the view itself.
+  // todo: Separate component for the view itself.
   /** The one place that knows how a run of tools is drawn; everything above only chooses the run. */
   const renderTools = useCallback(
     (tools: Array<TCatalogEntry>): ReactElement =>

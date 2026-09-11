@@ -1,9 +1,10 @@
-import { EventBus, inject, Injectable, OnDeprovision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
+import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /** Writes all pending edits; false keeps the editor open. */
@@ -12,6 +13,8 @@ export type EditorSaver = () => Promise<boolean>;
 /** Owns navigation blocking and the active document's save/discard/stay sequence. */
 @Injectable()
 export class EditorLifecycleService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
   @Observable()
   public dirtyCount: number = 0;
 
@@ -50,8 +53,15 @@ export class EditorLifecycleService {
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
+  @OnProvision()
+  public async onProvision(provisionId: ProvisionId): Promise<void> {
+    this.log.info("Provisioning:", provisionId);
+  }
+
   @OnDeprovision()
-  public onDeprovision(): void {
+  public onDeprovision(provisionId: ProvisionId): void {
+    this.log.info("Deprovisioning:", provisionId);
+
     runInAction(() => {
       this.busyOwners = new Set();
       this.draftOwner = null;
@@ -112,9 +122,12 @@ export class EditorLifecycleService {
     }
 
     if (this.dirtyCount > 0) {
+      this.log.info("Pending leave detected:", this.dirtyCount);
+
       // A distinct request identity prevents a late save from completing a newer request.
       this.pendingLeave = () => leave();
     } else {
+      this.log.info("Leaving");
       leave();
     }
   }

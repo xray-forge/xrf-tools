@@ -22,6 +22,7 @@ import { getApplicationBackgroundSx } from "@/core/theme/application-background"
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Logger, useLogger } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
 
 /** Wide enough for a full windows path at the monospace size the picker rows use. */
@@ -69,6 +70,7 @@ export function PickerForm({
   status,
   result,
 }: IPickerFormProps): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
   const navigate: NavigateFunction = useNavigate();
 
   // Submission is the only moment this shell knows a parameter was meant rather than merely typed, and the rows are
@@ -93,6 +95,8 @@ export function PickerForm({
 
   const onFormSubmit = useCallback(
     (event: FormEvent) => {
+      log.info("Submit form:", { fields });
+
       event.preventDefault();
 
       if (onSubmit && !isSubmitDisabled && !isLoading) {
@@ -100,12 +104,16 @@ export function PickerForm({
         onSubmit();
       }
     },
-    [fields, isSubmitDisabled, isLoading, onSubmit]
+    [log, onSubmit, isSubmitDisabled, isLoading, fields]
   );
 
   const requestLeave = useRequestLeave();
 
-  const onLeave = useCallback(() => requestLeave(() => navigate("/", { replace: true })), [navigate, requestLeave]);
+  const onLeave = useCallback(() => {
+    log.info("Requesting leave");
+
+    requestLeave(() => navigate("/", { replace: true }));
+  }, [log, navigate, requestLeave]);
 
   const onFormKeyDown = useCallback(
     (event: KeyboardEvent) => {
