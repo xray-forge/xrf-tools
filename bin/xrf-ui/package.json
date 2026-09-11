@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/xray-forge/xrf-tools.git"
   },
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@12.3.4",
   "engines": {
     "node": ">=24"
   },

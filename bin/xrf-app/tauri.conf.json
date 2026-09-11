@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "identifier": "com.xrf.tools",
   "build": {
-    "beforeDevCommand": "pnpm --dir xrf-ui dev",
-    "beforeBuildCommand": "pnpm --dir xrf-ui build",
+    "beforeDevCommand": {
+      "script": "pnpm run dev",
+      "cwd": "../xrf-ui"
+    },
+    "beforeBuildCommand": {
+      "script": "pnpm run build",
+      "cwd": "../xrf-ui"
+    },
     "frontendDist": "../xrf-ui/target",
     "devUrl": "http://localhost:1420"
   },
