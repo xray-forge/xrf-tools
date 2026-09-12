@@ -1,44 +1,48 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveCollisionRow } from "./ArchiveCollisionRow";
 
-export interface IArchiveCollisionsPanelProps extends BaseComponentProps {
-  archivesService: ArchivesService;
-}
-
 /**
  * Every entry the open volume set holds that no engine lookup can reach.
- *
- * todo: Inject or supply data directly as props.
  */
-export function ArchiveCollisionsPanel({ archivesService }: IArchiveCollisionsPanelProps): ReactElement {
+export function ArchiveCollisionsPanel({
+  "data-testid": dataTestId = "archive-collisions-panel",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const archivesService: ArchivesService = useInjection(ArchivesService);
+
   const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
 
+  if (archivesService.collisions.error || !collisions.length) {
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Unreachable files"}>
+        <EditorPanelEmpty
+          label={
+            archivesService.collisions.error
+              ? "Could not read what this volume set cannot reach."
+              : "Every entry in this volume set resolves to a path of its own. No collisions."
+          }
+        />
+      </EditorPanel>
+    );
+  }
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <Box sx={{ padding: 2 }}>
-        <Typography variant={"subtitle2"}>Unreachable files</Typography>
-        <Typography variant={"caption"} sx={{ display: "block", marginTop: 0.5, color: "text.secondary" }}>
-          {archivesService.collisions.error
-            ? "Could not read what this volume set cannot reach."
-            : collisions.length
-              ? `${collisions.length} entry(ies) fold onto a path another entry already claims.`
-              : "Every entry in this volume set resolves to a path of its own. No collissions."}
-        </Typography>
-      </Box>
-
-      {collisions.length ? <Divider /> : null}
-
-      <Box sx={{ minHeight: 0, overflowY: "auto" }}>
-        {collisions.map((collision: XrayPathCollision) => (
-          <ArchiveCollisionRow key={`${collision.logicalPath}:${collision.unreachable}`} collision={collision} />
-        ))}
-      </Box>
-    </Box>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Unreachable files"}>
+      {collisions.map((collision: XrayPathCollision, index: number) => (
+        <ArchiveCollisionRow
+          key={`${collision.logicalPath}:${collision.unreachable}`}
+          collision={collision}
+          isFirst={index === 0}
+        />
+      ))}
+    </EditorPanel>
   );
 }

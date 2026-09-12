@@ -16,54 +16,60 @@ interface IPanelRender {
 /**
  * Renders the details panel with an optional selected row.
  *
+ * Awaited because the panel resolves its own service: providing the container provisions it, and the restore that
+ * starts there settles after the first paint.
+ *
  * @param selected - Spawn row to select before rendering.
  * @returns Render result and the backing spawn-file service.
  */
-function renderPanel(selected?: AnyObject): IPanelRender {
-  const { service }: { service: SpawnFileService } = mockInjectedService(SpawnFileService);
+async function renderPanel(selected?: AnyObject): Promise<IPanelRender> {
+  const { container, service } = mockInjectedService(SpawnFileService);
+  const render: RenderResult = await act(async () => renderWithProviders(<SpawnRowDetailsPanel />, { container }));
 
+  // Selected after provisioning, not before: the restore that provisioning starts finds no open file and drops
+  // whatever was selected into it, which is the behaviour the last case here asserts.
   if (selected) {
-    service.selectRow("Alife object", 0, selected);
+    act(() => service.selectRow("Alife object", 0, selected));
   }
 
-  return { render: renderWithProviders(<SpawnRowDetailsPanel spawnFileService={service} />), service };
+  return { render, service };
 }
 
 describe("SpawnRowDetailsPanel", () => {
-  it("asks for a selection rather than showing an empty frame", () => {
-    const { render }: IPanelRender = renderPanel();
+  it("asks for a selection rather than showing an empty frame", async () => {
+    const { render }: IPanelRender = await renderPanel();
 
     expect(render.getByText("Nothing selected")).toBeInTheDocument();
   });
 
-  it("names what kind of row is showing", () => {
-    const { render }: IPanelRender = renderPanel(mockAlifeObject());
+  it("names what kind of row is showing", async () => {
+    const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
     expect(render.getByText("Alife object")).toBeInTheDocument();
   });
 
-  it("shows the fields the table columns deliberately leave out", () => {
-    const { render }: IPanelRender = renderPanel(mockAlifeObject());
+  it("shows the fields the table columns deliberately leave out", async () => {
+    const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
     // `inherited` and `updateData` are not columns, which is the point of the panel.
     expect(render.getByText("inherited")).toBeInTheDocument();
     expect(render.getByText("updateData")).toBeInTheDocument();
   });
 
-  it("renders a vector readably rather than as JSON", () => {
-    const { render }: IPanelRender = renderPanel(mockAlifeObject());
+  it("renders a vector readably rather than as JSON", async () => {
+    const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
     expect(render.getByText("x: 12.5, y: 1.25, z: -30")).toBeInTheDocument();
   });
 
-  it("says an empty list is empty rather than printing nothing", () => {
-    const { render }: IPanelRender = renderPanel(mockAlifeObject());
+  it("says an empty list is empty rather than printing nothing", async () => {
+    const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
     expect(render.getByText("empty")).toBeInTheDocument();
   });
 
   it("drops the selection when the file it pointed into closes", async () => {
-    const { render, service }: IPanelRender = renderPanel(mockAlifeObject());
+    const { render, service }: IPanelRender = await renderPanel(mockAlifeObject());
 
     await act(() => service.closeFile());
 

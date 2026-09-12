@@ -2,13 +2,6 @@ import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { ArchiveAudioPreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview";
-import { ArchiveCodePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveCodePreview";
-import { ArchiveDirectoryContent } from "@/applications/archives-explorer/components/editor/preview/ArchiveDirectoryContent";
-import { ArchiveFileHeader } from "@/applications/archives-explorer/components/editor/preview/ArchiveFileHeader";
-import { ArchiveImagePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveImagePreview";
-import { ArchiveModelPreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveModelPreview";
-import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchivePreviewSupport, getArchivePreviewSupport, TArchiveContent, TArchiveSelection } from "@/core/archive";
 import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
@@ -20,6 +13,14 @@ import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
+
+import { ArchiveAudioPreview } from "./ArchiveAudioPreview";
+import { ArchiveCodePreview } from "./ArchiveCodePreview";
+import { ArchiveDirectoryContent } from "./ArchiveDirectoryContent";
+import { ArchiveFileHeader } from "./ArchiveFileHeader";
+import { ArchiveImagePreview } from "./ArchiveImagePreview";
+import { ArchiveModelPreview } from "./ArchiveModelPreview";
+import { ArchivePreviewError } from "./ArchivePreviewError";
 
 // Everything that renders its own preview leaves this union; what is left is a reason to explain.
 type TUnsupported = Exclude<
@@ -76,29 +77,6 @@ export function ArchivesFileContent({
 
   const support: ArchivePreviewSupport = getArchivePreviewSupport(descriptor, project.readPolicy);
 
-  const view = inline(() => {
-    switch (support.kind) {
-      case "image":
-        return <ArchiveImagePreview />;
-      case "audio":
-        return <ArchiveAudioPreview />;
-      case "model":
-        return <ArchiveModelPreview name={descriptor.name} />;
-    }
-
-    if (support.kind !== "supported") {
-      return <EmptyState title={"Preview unavailable"} description={onGetUnsupportedDescription(support)} />;
-    } else if (content.isLoading) {
-      return <DelayedProgress />;
-    } else if (content.error) {
-      return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
-    } else if (content.value?.kind === "text") {
-      return <ArchiveCodePreview file={content.value.result} />;
-    }
-
-    return <EmptyState title={"Preview unavailable"} description={"The selected file did not return any content."} />;
-  });
-
   return (
     <Box
       data-testid={dataTestId}
@@ -117,7 +95,30 @@ export function ArchivesFileContent({
           overflow: "hidden",
         }}
       >
-        {view}
+        {inline(() => {
+          switch (support.kind) {
+            case "image":
+              return <ArchiveImagePreview />;
+            case "audio":
+              return <ArchiveAudioPreview />;
+            case "model":
+              return <ArchiveModelPreview name={descriptor.name} />;
+          }
+
+          if (support.kind !== "supported") {
+            return <EmptyState title={"Preview unavailable"} description={onGetUnsupportedDescription(support)} />;
+          } else if (content.isLoading) {
+            return <DelayedProgress />;
+          } else if (content.error) {
+            return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
+          } else if (content.value?.kind === "text") {
+            return <ArchiveCodePreview file={content.value.result} />;
+          }
+
+          return (
+            <EmptyState title={"Preview unavailable"} description={"The selected file did not return any content."} />
+          );
+        })}
       </Box>
     </Box>
   );

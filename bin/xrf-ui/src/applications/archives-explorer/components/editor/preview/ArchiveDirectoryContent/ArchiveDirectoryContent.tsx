@@ -5,11 +5,11 @@ import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { ARCHIVE_EDITOR_MONOSPACE_FONT } from "@/applications/archives-explorer/components/editor/archive-editor.styles";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
+import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { AsyncState } from "@/lib/async-state";
 import { Logger, useLogger } from "@/lib/logging";
@@ -75,7 +75,7 @@ export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps)
     <CenteredColumn sx={{ padding: 3, gap: 1 }}>
       <FolderOpenIcon sx={{ color: "text.secondary" }} />
 
-      <Typography variant={"subtitle1"} sx={{ fontFamily: ARCHIVE_EDITOR_MONOSPACE_FONT, overflowWrap: "anywhere" }}>
+      <Typography variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily, overflowWrap: "anywhere" }}>
         {path || "Archive root"}
       </Typography>
 

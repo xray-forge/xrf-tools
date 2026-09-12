@@ -1,3 +1,4 @@
+import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import {
@@ -12,10 +13,6 @@ import { Nullable } from "@/lib/types/general";
 
 import { formatSpawnRowDetailsValue } from "./SpawnRowDetailsPanel.utils";
 
-export interface ISpawnRowDetailsPanelProps extends BaseComponentProps {
-  spawnFileService: SpawnFileService;
-}
-
 /**
  * Everything about the selected row.
  *
@@ -26,8 +23,9 @@ export function SpawnRowDetailsPanel({
   "data-testid": dataTestId = "spawn-row-details-panel",
   id,
   className,
-  spawnFileService,
-}: ISpawnRowDetailsPanelProps): ReactElement {
+}: BaseComponentProps): ReactElement {
+  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+
   const selection: Nullable<ISpawnRowSelection> = spawnFileService.selectedRow;
 
   if (!selection) {

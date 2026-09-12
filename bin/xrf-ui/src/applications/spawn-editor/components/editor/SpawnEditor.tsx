@@ -8,7 +8,7 @@ import { SpawnEditorArtefacts } from "@/applications/spawn-editor/components/edi
 import { SpawnEditorGraphs } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphs";
 import { SpawnEditorHeader } from "@/applications/spawn-editor/components/editor/chunks/header/SpawnEditorHeader";
 import { SpawnEditorPatrols } from "@/applications/spawn-editor/components/editor/chunks/patrol/SpawnEditorPatrols";
-import { createSpawnEditorPanels } from "@/applications/spawn-editor/components/editor/spawn-panels";
+import { SPAWN_EDITOR_PANELS } from "@/applications/spawn-editor/components/editor/spawn-panels";
 import { SpawnEditorActions } from "@/applications/spawn-editor/components/editor/SpawnEditorActions";
 import { SpawnEditorMenu } from "@/applications/spawn-editor/components/editor/SpawnEditorMenu";
 import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
@@ -36,9 +36,9 @@ export function SpawnEditor(): ReactElement {
         render: () => <SpawnEditorMenu />,
         side: "left",
       },
-      ...createSpawnEditorPanels(spawnFileService),
+      ...SPAWN_EDITOR_PANELS,
     ],
-    [spawnFileService]
+    []
   );
 
   // Closing does not navigate: the application shows its own picker again once nothing is open.

@@ -3,7 +3,7 @@ import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { createArchiveEditorPanels } from "@/applications/archives-explorer/components/editor/archive-panels";
+import { ARCHIVE_EDITOR_PANELS } from "@/applications/archives-explorer/components/editor/archive-panels";
 import { ArchivesFileContent } from "@/applications/archives-explorer/components/editor/preview/ArchivesFileContent";
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -35,8 +35,6 @@ export function ArchivesEditor(): ReactElement {
   const totalSize: number = project?.sizeReal ?? 0;
   const projectRoot: string = project?.root ?? "";
 
-  // The volume holding the selected entry, which is the file that actually exists: an entry is a name inside it, and
-  // the two together are the only honest answer to where a packed file is. With nothing chosen, the project stands in.
   const selectedFile: Nullable<ArchiveFileDescriptor> = archivesService.selectedFile;
   const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(project, selectedFile);
   const location: Nullable<IEditorLocation> = volume
@@ -80,9 +78,9 @@ export function ArchivesEditor(): ReactElement {
         render: () => <ArchivesMenu />,
         side: "left",
       },
-      ...createArchiveEditorPanels(archivesService),
+      ...ARCHIVE_EDITOR_PANELS,
     ],
-    [archivesService]
+    []
   );
 
   useEditorBusy(isBusy || Boolean(job));
