@@ -22,17 +22,17 @@ impl ExportsProjectParser {
   /// Scan one project and project every extern into its application-facing form.
   pub fn parse_project_from_path<P: AsRef<Path>>(&self, path: P) -> XrfResult<ExportsProject> {
     let root: &Path = path.as_ref();
-    let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(root)?;
+    let ParsedExternManifest { manifest, parsed } = ExternManifestParser::new().parse_directory(root)?;
 
     Ok(ExportsProject {
       root: root.to_path_buf(),
       declarations: self.project(parsed),
+      manifest,
     })
   }
 
-  fn project(&self, parsed: ParsedExternManifest) -> Vec<ExportDescriptor> {
+  fn project(&self, parsed: Vec<ParsedExtern>) -> Vec<ExportDescriptor> {
     let mut result: Vec<ExportDescriptor> = parsed
-      .parsed
       .into_iter()
       .map(|entry: ParsedExtern| {
         let source = ExportSourceDescriptor {

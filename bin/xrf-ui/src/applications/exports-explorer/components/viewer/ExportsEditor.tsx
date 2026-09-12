@@ -17,6 +17,7 @@ import { Nullable } from "@/lib/types/general";
 import { groupExports, IExportGroup } from "./exports/exports-groups";
 import { ExportsMenu } from "./exports/ExportsMenu";
 import { ExportsViewer } from "./exports/ExportsViewer";
+import { ExportsSaveAction } from "./ExportsSaveAction";
 
 export function ExportsEditor(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
@@ -30,7 +31,7 @@ export function ExportsEditor(): ReactElement {
   const groups: Array<IExportGroup> = useMemo(() => groupExports(declarations), [declarations]);
   const selectedDeclaration: Nullable<ExportDescriptor> =
     declarations.find((declaration: ExportDescriptor) => declaration.name === selectedName) ?? null;
-  const isBusy: boolean = exportsService.project.isLoading || isClosing;
+  const isBusy: boolean = exportsService.project.isLoading || exportsService.manifest.isLoading || isClosing;
 
   const onSelect = useCallback((name: string): void => setSelectedName(name), []);
 
@@ -86,13 +87,17 @@ export function ExportsEditor(): ReactElement {
         <EditorToolbar
           subtitle={project?.root ? <EditorToolbarLocation location={{ path: project.root }} /> : null}
           actions={
-            <EditorIconAction
-              label={"Refresh exports"}
-              description={"Refresh exports"}
-              icon={<RefreshIcon />}
-              isDisabled={isBusy}
-              onClick={onRefresh}
-            />
+            <>
+              <ExportsSaveAction isDisabled={isBusy} />
+
+              <EditorIconAction
+                label={"Refresh exports"}
+                description={"Refresh exports"}
+                icon={<RefreshIcon />}
+                isDisabled={isBusy}
+                onClick={onRefresh}
+              />
+            </>
           }
           onBack={() => void onClose()}
         />

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import * as dialog from "@tauri-apps/plugin-dialog";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
@@ -153,6 +154,74 @@ describe("opened exports editor", () => {
 
     expect(await findByText("Could not refresh exports: invalid declaration")).toBeInTheDocument();
     expect(getByText("Plays an actor sound.")).toBeInTheDocument();
+  });
+
+  it("saves the parsed manifest where the dialog points", async () => {
+    const save = jest.spyOn(dialog, "save").mockResolvedValue("C:\\out\\extern.json");
+
+    const { findByLabelText, findByText } = renderEditor();
+
+    await userEvent.click(await findByLabelText("Save exports"));
+
+    expect(save).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|export_manifest", {
+        sessionId: expect.any(String),
+        path: "C:\\out\\extern.json",
+      })
+    );
+    // The project stays open and unchanged; saving publishes an artifact rather than replacing what is on screen.
+    expect(await findByText("3 exports")).toBeInTheDocument();
+
+    save.mockRestore();
+  });
+
+  it("passes a destination naming another format through untouched", async () => {
+    // The extension is the whole of how a format is chosen, so nothing here may rewrite it.
+    const save = jest.spyOn(dialog, "save").mockResolvedValue("C:\\out\\extern.xml");
+
+    const { findByLabelText } = renderEditor();
+
+    await userEvent.click(await findByLabelText("Save exports"));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|export_manifest", {
+        sessionId: expect.any(String),
+        path: "C:\\out\\extern.xml",
+      })
+    );
+
+    save.mockRestore();
+  });
+
+  it("names the artifact JSON when the dialog answered with a bare name", async () => {
+    const save = jest.spyOn(dialog, "save").mockResolvedValue("C:\\out\\externs");
+
+    const { findByLabelText } = renderEditor();
+
+    await userEvent.click(await findByLabelText("Save exports"));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|export_manifest", {
+        sessionId: expect.any(String),
+        path: "C:\\out\\externs.json",
+      })
+    );
+
+    save.mockRestore();
+  });
+
+  it("writes nothing when the save dialog is cancelled", async () => {
+    const save = jest.spyOn(dialog, "save").mockResolvedValue(null);
+
+    const { findByLabelText } = renderEditor();
+
+    await userEvent.click(await findByLabelText("Save exports"));
+
+    expect(save).toHaveBeenCalled();
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:exports|export_manifest", expect.anything());
+
+    save.mockRestore();
   });
 
   it("closes into its own picker rather than navigating away", async () => {

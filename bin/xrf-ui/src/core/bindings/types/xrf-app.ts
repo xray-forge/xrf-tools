@@ -21,10 +21,6 @@ import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf
 /**
  * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
  *
- * One session value rather than two slots, because the two are alternatives and never coexist. Opening either
- * replaces the other by construction, so nothing has to remember to close one, and a reader never has to ask which of
- * two sessions the surface is showing.
- *
  * The two are not folded into one shape. A volume set can say which volume an entry sits in, at what offset, with
  * which recorded CRC; a world can say which copy of an engine path wins and what that decision hides. A single
  * descriptor covering both would have a loose file claiming a volume position, which is the fiction this split
@@ -52,12 +48,7 @@ export type ArchiveSubject =
  * session owns is the answer it published.
  */
 export type ArchiveWorld = {
-  /**
-   * How the world was opened, so every later read of it addresses exactly these mounts.
-   *
-   * Carried rather than rebuilt per call: a read addressed by freshly derived roots would answer for whatever the
-   * path means now, while the listing on screen describes what it meant when it was opened.
-   */
+  /** How the world was opened, so every later read of it addresses exactly these mounts. */
   roots: XrayRoots;
   /** Sources searched, highest priority first, as each one names itself. */
   mounts: Array<string>;
@@ -88,12 +79,7 @@ export type ArchiveWorldEntry = {
   container: XrayAssetContainer;
   /** Payload bytes once unpacked. */
   sizeReal: number;
-  /**
-   * Copies of this engine path no lookup reaches, in mount priority order behind the winner.
-   *
-   * Carried on the entry rather than fetched per selection: the listing pass already had them in hand, and a browser
-   * has to mark a shadowing row before anyone selects it.
-   */
+  /** Copies of this engine path no lookup reaches, in mount priority order behind the winner. */
   shadowed: Array<XrayAssetContainer>;
 };
 

@@ -22,6 +22,10 @@ export class ExportsService {
   @Observable()
   public isReady: boolean = false;
 
+  /** The last manifest written to disk, so a surface can report the outcome and block a second write. */
+  @Observable()
+  public manifest: AsyncState<string> = AsyncState.idle();
+
   @Observable()
   private projectState: AsyncState<SessionSnapshot<ExportsProject>> = AsyncState.idle();
 
@@ -85,6 +89,49 @@ export class ExportsService {
     this.log.info("Reading export source:", name);
 
     return exportsCommands.getSource(requireSessionId(this.projectState.value), name);
+  }
+
+  /**
+   * Writes the open project's externs out as one of the manifests the CLI publishes.
+   *
+   * @param path - Artifact to create or replace, named with the extension of the format it should hold.
+   */
+  @ExclusiveFlow("manifest")
+  public *exportManifest(path: string): TFlow {
+    const project: Nullable<SessionSnapshot<ExportsProject>> = this.projectState.value;
+
+    if (!project) {
+      return;
+    }
+
+    this.log.info("Exporting externs manifest:", path);
+    this.manifest = this.manifest.asLoading();
+
+    try {
+      yield* call(exportsCommands.exportManifest(project.sessionId, path));
+
+      this.manifest = this.manifest.asReady(path);
+
+      emitNotification(this.eventBus, {
+        details: path,
+        severity: ENotificationSeverity.SUCCESS,
+        source: EApplicationId.EXPORTS_EXPLORER,
+        title: `Exported ${project.value.declarations.length} externs`,
+      });
+    } catch (error: unknown) {
+      const transformed: Error = transformError(error);
+
+      this.log.error("Failed to export externs manifest:", transformed);
+
+      this.manifest = this.manifest.asFailed(transformed);
+
+      emitNotification(this.eventBus, {
+        details: `${path}\n${transformed.message}`,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.EXPORTS_EXPLORER,
+        title: "Could not export externs",
+      });
+    }
   }
 
   @LatestFlow("project")
@@ -156,6 +203,8 @@ export class ExportsService {
       yield* call(this.session.close());
 
       this.projectState = this.projectState.asIdle();
+      // The artifact described the project that just closed, so the next one starts without its outcome.
+      this.manifest = this.manifest.asIdle();
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 

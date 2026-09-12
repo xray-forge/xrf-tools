@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{LineEndings, apply_line_endings, format_path};
+use xrf_utils::{LineEndings, apply_line_endings, format_path, write_new_file_staged};
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
 use crate::extern_manifest::{ExternCallable, ExternExport, ExternManifest, ExternParameter};
@@ -83,6 +84,33 @@ pub fn render_extern_manifest(
   let ending: LineEndings = line_endings.unwrap_or_else(|| format.default_line_endings());
 
   Ok(apply_line_endings(&format!("{content}\n"), ending))
+}
+
+/// Publishes a rendered manifest at `path`, creating the directories above it.
+///
+/// An extern manifest is a checked-in artifact a later `--check` run, a CI job, and the desktop explorer all read back,
+/// so a write that fails part-way must leave the previous one whole rather than a prefix of this one.
+///
+/// # Errors
+///
+/// Returns an error when the manifest cannot be rendered, and an IO error when it cannot be published.
+pub fn write_extern_manifest(
+  manifest: &ExternManifest,
+  path: &Path,
+  format: ExternFormat,
+  line_endings: Option<LineEndings>,
+) -> XrfResult {
+  let content: String = render_extern_manifest(manifest, format, line_endings)?;
+
+  write_new_file_staged(path, content.as_bytes()).map_err(|error| {
+    XrfError::new_io_error(
+      format!(
+        "Failed to write the extern artifact to '{}': {error}",
+        format_path(path)
+      ),
+      error.kind(),
+    )
+  })
 }
 
 fn render_xml(manifest: &ExternManifest) -> String {
@@ -281,10 +309,14 @@ fn escape_html(value: &str) -> String {
 #[cfg(test)]
 mod tests {
   use std::collections::BTreeMap;
+  use std::fs;
+  use std::path::PathBuf;
 
-  use super::{ExternFormat, LineEndings, render_extern_manifest};
-  use crate::{ExternCallable, ExternExport, ExternManifest, ExternParameter, ExternValue};
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_xml::{XmlDocument, XmlParseOptions};
+
+  use super::{ExternFormat, LineEndings, Path, render_extern_manifest, write_extern_manifest};
+  use crate::{ExternCallable, ExternExport, ExternManifest, ExternParameter, ExternValue};
 
   #[test]
   fn renders_stable_json_with_crlf_by_default() {
@@ -345,6 +377,76 @@ mod tests {
     assert_eq!(
       document.elements_named("type").next().unwrap().text(),
       "Record<A, B> & C"
+    );
+  }
+
+  #[test]
+  fn infers_every_published_format_from_a_destination() {
+    // A surface that offers three formats names the one it wants in the destination and nowhere else.
+    for (name, expected) in [
+      ("extern.json", ExternFormat::Json),
+      ("extern.XML", ExternFormat::Xml),
+      ("extern.html", ExternFormat::Html),
+      ("extern.htm", ExternFormat::Html),
+    ] {
+      assert_eq!(
+        ExternFormat::from_extension(Path::new(name)).unwrap(),
+        expected,
+        "{name}"
+      );
+    }
+
+    assert!(ExternFormat::from_extension(Path::new("extern.txt")).is_err());
+    assert!(ExternFormat::from_extension(Path::new("extern")).is_err());
+  }
+
+  #[test]
+  fn publishes_the_rendered_artifact_over_whatever_was_there() {
+    let root: PathBuf = build_absolute_generated_test_resource_path("extern-manifest-write");
+    let path: PathBuf = root.join("nested/extern.json");
+
+    // A directory the artifact has never been written into, which is what a save dialog can name.
+    let _ = fs::remove_dir_all(&root);
+
+    write_extern_manifest(&ExternManifest::default(), &path, ExternFormat::Json, None).unwrap();
+
+    assert_eq!(
+      fs::read_to_string(&path).unwrap(),
+      render_extern_manifest(&ExternManifest::default(), ExternFormat::Json, None).unwrap()
+    );
+
+    let manifest: ExternManifest = ExternManifest {
+      exports: BTreeMap::from([(
+        String::from("test.run"),
+        ExternExport::Value(ExternValue {
+          doc: None,
+          source: String::from("src/test.ts"),
+          type_name: String::from("number"),
+        }),
+      )]),
+    };
+
+    write_extern_manifest(&manifest, &path, ExternFormat::Json, None).unwrap();
+
+    assert_eq!(
+      fs::read_to_string(&path).unwrap(),
+      render_extern_manifest(&manifest, ExternFormat::Json, None).unwrap()
+    );
+  }
+
+  #[test]
+  fn reports_an_artifact_it_could_not_publish() {
+    let root: PathBuf = build_absolute_generated_test_resource_path("extern-manifest-refused");
+
+    fs::create_dir_all(&root).unwrap();
+
+    // The directory itself, which no rename can replace.
+    let error = write_extern_manifest(&ExternManifest::default(), Path::new(&root), ExternFormat::Json, None)
+      .expect_err("a directory cannot be replaced by a file");
+
+    assert!(
+      error.to_string().contains("Failed to write the extern artifact"),
+      "{error}"
     );
   }
 }

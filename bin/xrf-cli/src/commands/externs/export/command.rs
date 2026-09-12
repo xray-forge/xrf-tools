@@ -4,9 +4,12 @@ use std::str::FromStr;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
-use xrf_export::{ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest};
+use xrf_export::{
+  ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest,
+  write_extern_manifest,
+};
 use xrf_output::OutputOptions;
-use xrf_utils::{LineEndings, format_path, normalize_line_endings, write_file_staged};
+use xrf_utils::{LineEndings, format_path, normalize_line_endings};
 
 use super::report::ExternsExportReport;
 use crate::core::command_context::CommandContext;
@@ -82,9 +85,8 @@ impl GenericCommand for ExportCommand {
       // Writing judges nothing, so invalid declarations are simply work the command cannot do.
       let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
       let externs: usize = parsed.manifest.exports.len();
-      let content: String = render_extern_manifest(&parsed.manifest, format, line_endings)?;
 
-      Self::write_output(path, &content)?;
+      write_extern_manifest(&parsed.manifest, path, format, line_endings)?;
 
       xrf_output::info!(output, "Exported {externs} externs to '{}'.", format_path(path));
 
@@ -167,26 +169,6 @@ impl ExportCommand {
       "--format is required when writing '{}'.",
       format_path(path)
     )))
-  }
-
-  /// Publish the artifact through the same staging helper a report goes through.
-  ///
-  /// An extern manifest is a checked-in artifact a later `--check` run and a CI job read back, so a
-  /// write that fails part-way must leave the previous one whole rather than a prefix of this one.
-  fn write_output(path: &Path, content: &str) -> Result<(), XrfError> {
-    if let Some(parent) = path.parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    write_file_staged(path, content.as_bytes()).map_err(|error| {
-      XrfError::new_io_error(
-        format!(
-          "Failed to write the extern artifact to '{}': {error}",
-          format_path(path)
-        ),
-        error.kind(),
-      )
-    })
   }
 
   fn verify_artifact(

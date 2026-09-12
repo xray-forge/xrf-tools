@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use xrf_error::{XrfError, XrfResult};
 
 use super::{ExportDescriptor, ExportSourceDescriptor};
+use crate::extern_manifest::ExternManifest;
 
 /// Parsed externs and the project they came from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -12,6 +13,11 @@ use super::{ExportDescriptor, ExportSourceDescriptor};
 pub struct ExportsProject {
   pub root: PathBuf,
   pub declarations: Vec<ExportDescriptor>,
+  /// The canonical manifest these declarations are a projection of, kept so a surface can publish the artifact
+  /// `xrf-cli externs export` writes without parsing the tree a second time and answering for a different read of it.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub manifest: ExternManifest,
 }
 
 /// The source text that declares one extern.
@@ -98,7 +104,11 @@ mod tests {
   }
 
   fn project_with(root: PathBuf, declarations: Vec<ExportDescriptor>) -> ExportsProject {
-    ExportsProject { root, declarations }
+    ExportsProject {
+      root,
+      declarations,
+      manifest: ExternManifest::default(),
+    }
   }
 
   fn write_sample(name: &str, contents: &str) -> PathBuf {

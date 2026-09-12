@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use super::{ExportContractDescriptor, ExportsProjectParser};
+use crate::render::{ExternFormat, render_extern_manifest};
 
 fn create_test_root(name: &str) -> PathBuf {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project-projection/{name}"));
@@ -132,6 +133,35 @@ fn projects_complete_callable_and_value_contracts() {
   assert_eq!(json["declarations"][1]["source"]["path"], "declarations.ts");
   assert!(json["declarations"][1]["source"]["line"].as_u64().unwrap() > 0);
   assert!(json["declarations"][1]["source"]["column"].as_u64().unwrap() > 0);
+}
+
+#[test]
+fn carries_the_manifest_its_declarations_were_projected_from() {
+  let root: PathBuf = create_test_root("manifest");
+
+  write_source(
+    &root,
+    "declarations.ts",
+    "export {};\nextern(\"xr_effects.run\", (): void => {});\nextern(\"settings\", rawValue as number);\n",
+  );
+
+  let project = ExportsProjectParser::new().parse_project_from_path(&root).unwrap();
+
+  // What a surface publishes has to describe what it is showing, name for name: both are ordered by name, so the
+  // artifact and the tree beside it can be read against each other.
+  assert_eq!(
+    project.manifest.exports.keys().cloned().collect::<Vec<String>>(),
+    project
+      .declarations
+      .iter()
+      .map(|declaration| declaration.name.clone())
+      .collect::<Vec<String>>()
+  );
+  assert!(
+    render_extern_manifest(&project.manifest, ExternFormat::Json, None)
+      .unwrap()
+      .contains("\"xr_effects.run\"")
+  );
 }
 
 #[test]

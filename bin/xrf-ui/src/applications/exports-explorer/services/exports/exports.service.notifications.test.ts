@@ -68,6 +68,38 @@ describe("ExportsService notifications", () => {
     expect(raised[0].details).toContain("scripts moved");
   });
 
+  it("reports the manifest it wrote", async () => {
+    const { raised, service }: IWatchedService = watchNotifications();
+
+    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()) });
+
+    await service.openExportsProject("C:\\game\\scripts");
+    await service.exportManifest("C:\\out\\extern.json");
+
+    expect(raised).toHaveLength(1);
+    expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);
+    expect(raised[0].details).toBe("C:\\out\\extern.json");
+  });
+
+  it("reports a manifest that could not be written", async () => {
+    const { raised, service }: IWatchedService = watchNotifications();
+
+    setMockInvokeResponses({
+      ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()),
+      ["plugin:exports|export_manifest"]: () => {
+        throw new Error("destination is read only");
+      },
+    });
+
+    await service.openExportsProject("C:\\game\\scripts");
+    await service.exportManifest("C:\\out\\extern.json");
+
+    expect(raised).toHaveLength(1);
+    expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);
+    expect(raised[0].details).toContain("destination is read only");
+    expect(service.manifest.error?.message).toContain("destination is read only");
+  });
+
   it("says nothing about a project that opened", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 

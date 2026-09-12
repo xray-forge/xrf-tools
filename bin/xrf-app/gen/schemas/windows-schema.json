@@ -4833,16 +4833,22 @@
           "markdownDescription": "Denies the open_project command without any pre-configured scope."
         },
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-open-project`\n- `allow-get-project`\n- `allow-get-source`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-export-manifest`\n- `allow-open-project`\n- `allow-get-project`\n- `allow-get-source`",
           "type": "string",
           "const": "exports:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-open-project`\n- `allow-get-project`\n- `allow-get-source`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-export-manifest`\n- `allow-open-project`\n- `allow-get-project`\n- `allow-get-source`"
         },
         {
           "description": "Enables the close_project command without any pre-configured scope.",
           "type": "string",
           "const": "exports:allow-close-project",
           "markdownDescription": "Enables the close_project command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the export_manifest command without any pre-configured scope.",
+          "type": "string",
+          "const": "exports:allow-export-manifest",
+          "markdownDescription": "Enables the export_manifest command without any pre-configured scope."
         },
         {
           "description": "Enables the get_project command without any pre-configured scope.",
@@ -4867,6 +4873,12 @@
           "type": "string",
           "const": "exports:deny-close-project",
           "markdownDescription": "Denies the close_project command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_manifest command without any pre-configured scope.",
+          "type": "string",
+          "const": "exports:deny-export-manifest",
+          "markdownDescription": "Denies the export_manifest command without any pre-configured scope."
         },
         {
           "description": "Denies the get_project command without any pre-configured scope.",

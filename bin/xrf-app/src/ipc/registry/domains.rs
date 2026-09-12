@@ -64,6 +64,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       exports => "exports" {
         close_project => crate::plugins::exports::commands::close_project::exports_close_project,
+        export_manifest => crate::plugins::exports::commands::export_manifest::exports_export_manifest,
         open_project => crate::plugins::exports::commands::open_project::exports_open_project,
         get_project => crate::plugins::exports::commands::get_project::exports_get_project,
         get_source => crate::plugins::exports::commands::get_source::exports_get_source,
