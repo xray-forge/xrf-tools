@@ -148,12 +148,7 @@ export function PickerForm({
   useEditorBusy(Boolean(isLoading));
 
   return (
-    <EditorLayout
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      toolbar={<EditorToolbar />}
-    >
+    <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
       <Box
         component={"form"}
         noValidate={true}

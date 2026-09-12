@@ -6,17 +6,24 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
-interface IArchivesUnpackResultProps {
+interface IArchivesUnpackResultProps extends BaseComponentProps {
   result: ArchiveUnpackResult;
   /** Where the run was told to write. The result's rendered `destination` is display text, not an address. */
   outputPath: Nullable<string>;
 }
 
-export function ArchivesUnpackResult({ result, outputPath }: IArchivesUnpackResultProps): ReactElement {
+export function ArchivesUnpackResult({
+  "data-testid": dataTestId = "archives-unpack-result",
+  id,
+  className,
+  result,
+  outputPath,
+}: IArchivesUnpackResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [{ field: "archive", headerName: "Archive", flex: 1, minWidth: 320, cellClassName: "monospace" }],
     []
@@ -40,6 +47,9 @@ export function ArchivesUnpackResult({ result, outputPath }: IArchivesUnpackResu
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={`Unpacked ${result.archives.length} archive(s) to ${result.destination}`}
       tone={"success"}
       stats={stats}

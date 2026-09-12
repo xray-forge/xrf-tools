@@ -1,10 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { DialogsEditor } from "@/applications/dialogs-editor/components/DialogsEditor";
-import { DialogsEditorOpenForm } from "@/applications/dialogs-editor/components/DialogsEditorOpenForm";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+
+import { DialogsEditor } from "./components/DialogsEditor";
+import { DialogsEditorOpenForm } from "./components/DialogsEditorOpenForm";
 
 /** Picker until a project is open, editor once it is. */
 export function DialogsEditorApplication(): ReactElement {

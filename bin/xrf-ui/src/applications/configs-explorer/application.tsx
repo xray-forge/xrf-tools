@@ -1,6 +1,5 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 
-import { CONFIGS_EXPLORER_HELP } from "@/applications/configs-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { CONFIGS_EXPLORER_HELP } from "./help";
 
 export const CONFIGS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

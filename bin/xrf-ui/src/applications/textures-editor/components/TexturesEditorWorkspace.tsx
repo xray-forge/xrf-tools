@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { createTexturesEditorPanels } from "@/applications/textures-editor/components/panels/textures-editor-panels";
+import { TEXTURES_EDITOR_PANELS } from "@/applications/textures-editor/components/panels/textures-editor-panels";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
@@ -29,7 +29,7 @@ export function TexturesEditorWorkspace({
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
-  const panels: Array<IEditorPanel> = useMemo(() => createTexturesEditorPanels(), []);
+  const panels: Array<IEditorPanel> = useMemo(() => TEXTURES_EDITOR_PANELS, []);
 
   // Only while a candidate is held. Weighing alone puts numbers in a panel; choosing one is what says somebody wants
   // to look at what it would do to the picture.

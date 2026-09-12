@@ -1,10 +1,11 @@
 import { ReactElement } from "react";
 
-import { ExportDeclarationView } from "@/applications/exports-explorer/components/viewer/exports/ExportDeclarationView";
-import { ExportsViewerState } from "@/applications/exports-explorer/components/viewer/exports/ExportsViewerState";
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { ExportDeclarationView } from "./ExportDeclarationView";
+import { ExportsViewerState } from "./ExportsViewerState";
 
 export interface IExportsViewerProps extends BaseComponentProps {
   declaration: Nullable<ExportDescriptor>;

@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { ConfigsVerifyResult } from "@/applications/configs-verifier/components/ConfigsVerifyResult";
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -10,6 +9,8 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
 
 export function ConfigsVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

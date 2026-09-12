@@ -1,24 +1,15 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
+import { MODE_DESCRIPTIONS, MODE_OPTIONS } from "@/applications/dialogs-editor/components/DialogsEditorOpenForm.utils";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { createRoots } from "@/core/assets/lib/roots";
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { ChoiceFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
-
-const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<DialogProjectMode>> = [
-  { value: "gamedata", label: "Game data" },
-  { value: "source", label: "Project sources" },
-];
-
-const MODE_DESCRIPTIONS: Record<DialogProjectMode, string> = {
-  gamedata: "Dialogs under configs\\gameplay, their text under configs\\text, as the game ships them.",
-  source: "Dialogs under configs\\gameplay, their text as multi-language JSON in translations.",
-};
 
 export function DialogsEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

@@ -4,12 +4,6 @@ import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import {
-  exportGroupsToTree,
-  getExportSearchText,
-  groupExports,
-  IExportGroup,
-} from "@/applications/exports-explorer/components/viewer/exports/exports-groups";
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { getFileItemPath, IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
@@ -18,6 +12,8 @@ import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { exportGroupsToTree, getExportSearchText, groupExports, IExportGroup } from "./exports-groups";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 const EXPORT_TREE_ICONS: IVirtualizedTreeIcons = {

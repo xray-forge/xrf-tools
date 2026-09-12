@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { ConfigsFormatResult } from "@/applications/configs-formatter/components/ConfigsFormatResult";
 import { FormatterService } from "@/applications/configs-formatter/services/formatter";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -10,6 +9,8 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { ConfigsFormatResult } from "./components/ConfigsFormatResult";
 
 export function ConfigsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

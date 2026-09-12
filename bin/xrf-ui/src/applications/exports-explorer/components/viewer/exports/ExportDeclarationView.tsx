@@ -2,12 +2,13 @@ import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { Box, Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { CallableExportDetails } from "@/applications/exports-explorer/components/viewer/exports/CallableExportDetails";
-import { ExportSection } from "@/applications/exports-explorer/components/viewer/exports/ExportSection";
-import { ExportSourceView } from "@/applications/exports-explorer/components/viewer/exports/ExportSourceView";
-import { formatExportSignature } from "@/applications/exports-explorer/components/viewer/exports/format-export-signature";
 import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { CallableExportDetails } from "./CallableExportDetails";
+import { ExportSection } from "./ExportSection";
+import { ExportSourceView } from "./ExportSourceView";
+import { formatExportSignature } from "./format-export-signature";
 
 export interface IExportDeclarationViewProps extends BaseComponentProps {
   declaration: ExportDescriptor;

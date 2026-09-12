@@ -2,7 +2,6 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { createConfigsExplorerPanels } from "@/applications/configs-explorer/components/panels/configs-explorer-panels";
 import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
 import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
@@ -14,9 +13,11 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { CONFIGS_EXPLORER_PANELS } from "./panels";
 
 /**
  * The browsing session: the project tree, and whichever config is open beside it.
@@ -33,7 +34,6 @@ export function ConfigsExplorerWorkspace({
   const schemeService: ConfigsSchemeService = useInjection(ConfigsSchemeService);
 
   const project: Nullable<ConfigsProjectDescriptor> = projectService.project.value;
-  const panels: Array<IEditorPanel> = useMemo(() => createConfigsExplorerPanels(), []);
 
   const selected: Nullable<string> = documentService.selected;
   const entry: Nullable<string> = documentService.entry;
@@ -67,7 +67,7 @@ export function ConfigsExplorerWorkspace({
     resolvedService.narrowTo(selected && selected !== entry ? selected : null);
   }, [entry, resolvedService, selected]);
 
-  useEditorPanels(() => panels, [panels]);
+  useEditorPanels(() => CONFIGS_EXPLORER_PANELS, []);
 
   useEditorStatus(
     useMemo(

@@ -1,3 +1,5 @@
+import { ExportDescriptor, ExportParameterDescriptor } from "@/core/bindings/types/xrf-export";
+
 export function formatExportSignature(declaration: ExportDescriptor): string {
   switch (declaration.kind) {
     case "callable":
@@ -16,4 +18,3 @@ export function formatExportSignature(declaration: ExportDescriptor): string {
     }
   }
 }
-import { ExportDescriptor, ExportParameterDescriptor } from "@/core/bindings/types/xrf-export";

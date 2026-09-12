@@ -1,10 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ExportsOpenForm } from "@/applications/exports-explorer/components/ExportsOpenForm";
-import { ExportsEditor } from "@/applications/exports-explorer/components/viewer/ExportsEditor";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+
+import { ExportsOpenForm } from "./components/ExportsOpenForm";
+import { ExportsEditor } from "./components/viewer/ExportsEditor";
 
 /** Picker until a project is open, viewer once it is. */
 export function ExportsExplorerApplication(): ReactElement {

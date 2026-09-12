@@ -14,34 +14,32 @@ import { IEditorPanel } from "@/core/shell/editor-shell";
  *
  * @returns The panels to register.
  */
-export function createConfigsExplorerPanels(): Array<IEditorPanel> {
-  return [
-    {
-      icon: <DescriptionIcon />,
-      id: "configs",
-      isOpenByDefault: true,
-      label: "Configs",
-      render: () => <ConfigsMenuPanel />,
-      side: "left" as const,
-    },
-    {
-      icon: <ListIcon />,
-      id: "sections",
-      isOpenByDefault: true,
-      label: "Sections",
-      render: () => <ConfigsSectionsPanel />,
-    },
-    {
-      icon: <RuleIcon />,
-      id: "scheme",
-      label: "Scheme",
-      render: () => <ConfigsSchemePanel />,
-    },
-    {
-      icon: <WarningIcon />,
-      id: "problems",
-      label: "Problems",
-      render: () => <ConfigsProblemsPanel />,
-    },
-  ];
-}
+export const CONFIGS_EXPLORER_PANELS: Array<IEditorPanel> = [
+  {
+    icon: <DescriptionIcon />,
+    id: "configs",
+    isOpenByDefault: true,
+    label: "Configs",
+    render: () => <ConfigsMenuPanel />,
+    side: "left" as const,
+  },
+  {
+    icon: <ListIcon />,
+    id: "sections",
+    isOpenByDefault: true,
+    label: "Sections",
+    render: () => <ConfigsSectionsPanel />,
+  },
+  {
+    icon: <RuleIcon />,
+    id: "scheme",
+    label: "Scheme",
+    render: () => <ConfigsSchemePanel />,
+  },
+  {
+    icon: <WarningIcon />,
+    id: "problems",
+    label: "Problems",
+    render: () => <ConfigsProblemsPanel />,
+  },
+];

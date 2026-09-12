@@ -1,6 +1,5 @@
 import { default as ForumIcon } from "@mui/icons-material/Forum";
 
-import { DIALOGS_EDITOR_HELP } from "@/applications/dialogs-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { DIALOGS_EDITOR_HELP } from "./help";
 
 export const DIALOGS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

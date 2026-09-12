@@ -9,6 +9,7 @@ import { buildDialogGraph, EDialogGraphNodeType, IDialogGraph } from "@/applicat
 import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { GraphCanvas } from "@/core/graph/components";
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 const NODE_TYPES: NodeTypes = {
@@ -16,7 +17,7 @@ const NODE_TYPES: NodeTypes = {
   [EDialogGraphNodeType.PHRASE]: DialogPhraseGraphNode,
 };
 
-export interface IDialogGraphProps {
+export interface IDialogGraphProps extends BaseComponentProps {
   dialog: DialogDescriptor;
   /** Which node the canvas selected, or `null` when a click cleared the selection. */
   onSelect: (nodeId: Nullable<string>) => void;
@@ -25,7 +26,13 @@ export interface IDialogGraphProps {
 /**
  * One dialog as a layered graph.
  */
-export function DialogGraph({ dialog, onSelect }: IDialogGraphProps): ReactElement {
+export function DialogGraph({
+  "data-testid": dataTestId = "dialog-graph",
+  id,
+  className,
+  dialog,
+  onSelect,
+}: IDialogGraphProps): ReactElement {
   const graph: IDialogGraph = useMemo(() => buildDialogGraph(dialog), [dialog]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<TGraphNode>(graph.nodes);
@@ -47,7 +54,9 @@ export function DialogGraph({ dialog, onSelect }: IDialogGraphProps): ReactEleme
 
   return (
     <GraphCanvas
-      data-testid={"dialog-graph"}
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}

@@ -4,11 +4,12 @@ import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { GRAPH_LAYOUT_DEFAULTS } from "@/core/graph/lib";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Lines of text a node shows before clamping. Past this the node stops being scannable at a glance. */
 const LABEL_LINES: number = 3;
 
-export interface IDialogGraphNodeFrameProps {
+export interface IDialogGraphNodeFrameProps extends BaseComponentProps {
   data: IDialogGraphNodeData;
   isSelected: boolean;
   /** Left border colour, which is how each node kind states what it is without a second label. */
@@ -32,6 +33,9 @@ export interface IDialogGraphNodeFrameProps {
  * it cannot disagree about how wide it is.
  */
 export function DialogGraphNodeFrame({
+  "data-testid": dataTestId = "dialog-graph-node-frame",
+  id,
+  className,
   data,
   isSelected,
   accent,
@@ -40,6 +44,9 @@ export function DialogGraphNodeFrame({
 }: IDialogGraphNodeFrameProps): ReactElement {
   return (
     <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       sx={{
         backgroundColor: "background.paper",
         border: "1px solid",

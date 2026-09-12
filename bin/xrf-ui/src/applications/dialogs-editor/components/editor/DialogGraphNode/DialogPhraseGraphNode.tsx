@@ -1,9 +1,11 @@
 import { NodeProps } from "@xyflow/react";
 import { ReactElement } from "react";
 
-import { DialogGraphNodeFrame } from "@/applications/dialogs-editor/components/editor/DialogGraphNode/DialogGraphNodeFrame";
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { TGraphNode } from "@/core/graph/lib";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { DialogGraphNodeFrame } from "./DialogGraphNodeFrame";
 
 /**
  * The accent a phrase draws in, which states which of three conditions its line is in.
@@ -21,9 +23,18 @@ function toPhraseAccent(data: IDialogGraphNodeData): string {
 }
 
 /** One phrase: the line the player reads, and the behaviour selecting it carries. */
-export function DialogPhraseGraphNode({ data, selected }: NodeProps<TGraphNode<IDialogGraphNodeData>>): ReactElement {
+export function DialogPhraseGraphNode({
+  "data-testid": dataTestId = "dialog-phrase-graph-node",
+  id,
+  className,
+  data,
+  selected,
+}: NodeProps<TGraphNode<IDialogGraphNodeData>> & BaseComponentProps): ReactElement {
   return (
     <DialogGraphNodeFrame
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       data={data}
       isSelected={Boolean(selected)}
       accent={toPhraseAccent(data)}

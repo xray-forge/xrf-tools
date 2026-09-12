@@ -5,13 +5,19 @@ import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
 import { TLtxSchemeError, toLtxSchemeErrors } from "@/core/ltx";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
-interface IConfigsVerifyResultProps {
+interface IConfigsVerifyResultProps extends BaseComponentProps {
   result: LtxProjectVerifyResult;
 }
 
-export function ConfigsVerifyResult({ result }: IConfigsVerifyResultProps): ReactElement {
+export function ConfigsVerifyResult({
+  "data-testid": dataTestId = "configs-verify-result",
+  id,
+  className,
+  result,
+}: IConfigsVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       { field: "section", headerName: "Section", width: 180, cellClassName: "monospace" },
@@ -46,6 +52,9 @@ export function ConfigsVerifyResult({ result }: IConfigsVerifyResultProps): Reac
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={
         findings.length
           ? `${findings.length} problem(s) found in ${result.invalidSections} section(s)`

@@ -4,14 +4,21 @@ import { ReactElement, useMemo } from "react";
 import { LtxProjectFormatResult } from "@/core/bindings/types/xrf-ltx";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
-interface IConfigsFormatResultProps {
+interface IConfigsFormatResultProps extends BaseComponentProps {
   isCheck: boolean;
   result: LtxProjectFormatResult;
 }
 
-export function ConfigsFormatResult({ isCheck, result }: IConfigsFormatResultProps): ReactElement {
+export function ConfigsFormatResult({
+  "data-testid": dataTestId = "configs-format-result",
+  id,
+  className,
+  isCheck,
+  result,
+}: IConfigsFormatResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [{ field: "file", headerName: "File", flex: 1, minWidth: 320, cellClassName: "monospace" }],
     []
@@ -39,6 +46,9 @@ export function ConfigsFormatResult({ isCheck, result }: IConfigsFormatResultPro
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={
         result.invalidFiles
           ? isCheck

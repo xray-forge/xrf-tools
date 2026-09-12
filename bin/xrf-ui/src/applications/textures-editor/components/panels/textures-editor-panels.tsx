@@ -18,49 +18,47 @@ import { TextureMaterialPanel } from "@/core/textures/components/panels/TextureM
  *
  * @returns The panels to register.
  */
-export function createTexturesEditorPanels(): Array<IEditorPanel> {
-  return [
-    {
-      icon: <EditNoteIcon />,
-      id: "descriptor",
-      isOpenByDefault: true,
-      label: "Descriptor",
-      render: () => <TextureDescriptorPanel />,
-    },
-    {
-      icon: <CompareIcon />,
-      id: "formats",
-      isOpenByDefault: false,
-      label: "Formats",
-      render: () => <TextureFormatsPanel />,
-    },
-    {
-      icon: <GradientIcon />,
-      id: "bump",
-      isOpenByDefault: false,
-      label: "Bump",
-      render: () => <TextureBumpPanel />,
-    },
-    {
-      icon: <InfoIcon />,
-      id: "material",
-      isOpenByDefault: false,
-      label: "Material",
-      render: () => <TextureMaterialPanel />,
-    },
-    {
-      icon: <LayersIcon />,
-      id: "files",
-      isOpenByDefault: false,
-      label: "Files",
-      render: () => <TextureFilesPanel />,
-    },
-    {
-      icon: <TuneIcon />,
-      id: "channels",
-      isOpenByDefault: false,
-      label: "Channels",
-      render: () => <TextureChannelsPanel />,
-    },
-  ];
-}
+export const TEXTURES_EDITOR_PANELS: Array<IEditorPanel> = [
+  {
+    icon: <EditNoteIcon />,
+    id: "descriptor",
+    isOpenByDefault: true,
+    label: "Descriptor",
+    render: () => <TextureDescriptorPanel />,
+  },
+  {
+    icon: <CompareIcon />,
+    id: "formats",
+    isOpenByDefault: false,
+    label: "Formats",
+    render: () => <TextureFormatsPanel />,
+  },
+  {
+    icon: <GradientIcon />,
+    id: "bump",
+    isOpenByDefault: false,
+    label: "Bump",
+    render: () => <TextureBumpPanel />,
+  },
+  {
+    icon: <InfoIcon />,
+    id: "material",
+    isOpenByDefault: false,
+    label: "Material",
+    render: () => <TextureMaterialPanel />,
+  },
+  {
+    icon: <LayersIcon />,
+    id: "files",
+    isOpenByDefault: false,
+    label: "Files",
+    render: () => <TextureFilesPanel />,
+  },
+  {
+    icon: <TuneIcon />,
+    id: "channels",
+    isOpenByDefault: false,
+    label: "Channels",
+    render: () => <TextureChannelsPanel />,
+  },
+];

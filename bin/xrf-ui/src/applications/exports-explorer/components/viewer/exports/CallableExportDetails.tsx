@@ -1,10 +1,11 @@
 import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ExportSection } from "@/applications/exports-explorer/components/viewer/exports/ExportSection";
 import { ExportParameterDescriptor } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor } from "@/core/exports";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { ExportSection } from "./ExportSection";
 
 export interface ICallableExportDetailsProps extends BaseComponentProps {
   declaration: TCallableExportDescriptor;

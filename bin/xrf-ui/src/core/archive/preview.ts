@@ -56,10 +56,7 @@ export function isArchiveImage(descriptor: IArchiveEntry, policy: ArchiveReadPol
  * @param policy - Backend-provided archive read capabilities.
  * @returns A discriminated result describing preview support or the reason it is unavailable.
  */
-export function getArchivePreviewSupport(
-  descriptor: IArchiveEntry,
-  policy: ArchiveReadPolicy
-): ArchivePreviewSupport {
+export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): ArchivePreviewSupport {
   // Models are read through the asset roots rather than through this project, so no policy limit applies to them.
   if (isArchiveModel(descriptor)) {
     return { kind: "model" };

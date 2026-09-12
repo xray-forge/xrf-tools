@@ -15,7 +15,9 @@ function ignoreReadResult(): void {}
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes(files))));
+  service["subjectState"] = AsyncState.ready(
+    mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes(files)))
+  );
 
   return service;
 }

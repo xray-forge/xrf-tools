@@ -4,9 +4,6 @@ import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { groupExports, IExportGroup } from "@/applications/exports-explorer/components/viewer/exports/exports-groups";
-import { ExportsMenu } from "@/applications/exports-explorer/components/viewer/exports/ExportsMenu";
-import { ExportsViewer } from "@/applications/exports-explorer/components/viewer/exports/ExportsViewer";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
@@ -16,6 +13,10 @@ import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Nullable } from "@/lib/types/general";
+
+import { groupExports, IExportGroup } from "./exports/exports-groups";
+import { ExportsMenu } from "./exports/ExportsMenu";
+import { ExportsViewer } from "./exports/ExportsViewer";
 
 export function ExportsEditor(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
@@ -52,6 +53,12 @@ export function ExportsEditor(): ReactElement {
     }
   }, [exportsService]);
 
+  useEffect(() => {
+    if (selectedName && !selectedDeclaration) {
+      setSelectedName(null);
+    }
+  }, [selectedDeclaration, selectedName]);
+
   useEditorPanels(
     () => [
       {
@@ -65,12 +72,6 @@ export function ExportsEditor(): ReactElement {
     ],
     [declarations, onSelect, selectedName]
   );
-
-  useEffect(() => {
-    if (selectedName && !selectedDeclaration) {
-      setSelectedName(null);
-    }
-  }, [selectedDeclaration, selectedName]);
 
   useEditorBusy(isBusy);
   useEditorStatus([

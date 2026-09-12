@@ -5,15 +5,21 @@ import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * Which language the phrase lines are read in.
  */
-export function DialogsEditorActions(): Nullable<ReactElement> {
+export function DialogsEditorActions({
+  "data-testid": dataTestId = "dialogs-editor-actions",
+  id,
+  className,
+}: BaseComponentProps): Nullable<ReactElement> {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
-  const actionId: string = useId();
+  const generatedActionId: string = useId();
+  const actionId: string = id ?? generatedActionId;
   const menuId: string = useId();
 
   const [anchor, setAnchor] = useState<Nullable<HTMLElement>>(null);
@@ -40,7 +46,9 @@ export function DialogsEditorActions(): Nullable<ReactElement> {
   return (
     <>
       <EditorIconAction
+        data-testid={dataTestId}
         id={actionId}
+        className={className}
         label={"Change language"}
         description={`Language: ${selected ?? "none"}`}
         icon={<TranslateIcon />}

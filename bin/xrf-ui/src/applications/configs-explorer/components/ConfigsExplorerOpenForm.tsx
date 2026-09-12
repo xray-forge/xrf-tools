@@ -1,31 +1,17 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
+import {
+  DIALECT_IDS,
+  DIALECT_OPTIONS,
+  EConfigsDialect,
+} from "@/applications/configs-explorer/components/ConfigsExplorerOpenForm.utils";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import {
-  ChoiceFormRow,
-  IChoiceFormRowOption,
-  IPathField,
-  PathFormRow,
-  usePathField,
-  useRememberedValue,
-} from "@/core/ui/form";
+import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-
-/** Which rules resolve the tree, named rather than flagged: the two read the same files to different values. */
-const enum EConfigsDialect {
-  LTX = "ltx",
-  DLTX = "dltx",
-}
-
-const DIALECT_IDS: ReadonlyArray<EConfigsDialect> = [EConfigsDialect.LTX, EConfigsDialect.DLTX];
-const DIALECT_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EConfigsDialect>> = [
-  { "aria-label": "Standard LTX", value: EConfigsDialect.LTX, label: "Standard" },
-  { "aria-label": "Monolith DLTX", value: EConfigsDialect.DLTX, label: "DLTX" },
-];
 
 interface IConfigsExplorerOpenFormProps extends BaseComponentProps {
   /** Called once an open attempt has finished, successfully or not. */

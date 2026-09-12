@@ -4,11 +4,6 @@ import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem"
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { DialogsEditorWorkspace } from "@/applications/dialogs-editor/components/DialogsEditorWorkspace";
-import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/editor/DialogInspectorPanel";
-import { DialogsEditorActions } from "@/applications/dialogs-editor/components/editor/DialogsEditorActions";
-import { DialogsProblemsPanel } from "@/applications/dialogs-editor/components/editor/DialogsProblemsPanel";
-import { DialogsTreeMenu } from "@/applications/dialogs-editor/components/editor/DialogsTreeMenu";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogFinding, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -17,6 +12,12 @@ import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { DialogsEditorWorkspace } from "./DialogsEditorWorkspace";
+import { DialogInspectorPanel } from "./editor/DialogInspectorPanel";
+import { DialogsEditorActions } from "./editor/DialogsEditorActions";
+import { DialogsProblemsPanel } from "./editor/DialogsProblemsPanel";
+import { DialogsTreeMenu } from "./editor/DialogsTreeMenu";
 
 export function DialogsEditor(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
