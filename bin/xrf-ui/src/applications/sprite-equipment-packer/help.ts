@@ -6,7 +6,7 @@ export const SPRITE_EQUIPMENT_PACKER_HELP: IApplicationHelp = {
     "by a system configuration.",
   workflow: [
     "Choose the directory of loose icons as `Source` and the `.dds` file to write as `Output`.",
-    "Choose the `system.ltx` that names the icons. Enable `DLTX` when it must be read with DLTX patch rules.",
+    "Choose the `system.ltx` that names the icons, then select `LTX` for standard rules or `DLTX` for patch rules.",
     "Select `Pack`, follow its progress, and inspect the result. Open the output in the equipment sprite editor " +
       "with the same configuration to check the layout.",
   ],

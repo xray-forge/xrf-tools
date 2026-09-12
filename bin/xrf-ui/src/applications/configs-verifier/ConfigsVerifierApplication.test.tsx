@@ -57,7 +57,7 @@ describe("Configs verifier outcomes", () => {
       }
 
       if (label === "DLTX") {
-        fireEvent.click(view.getByRole("checkbox", { name: label }));
+        fireEvent.click(view.getByRole("button", { name: label }));
       } else {
         fireEvent.change(view.getByRole("textbox", { name: label }), { target: { value: "C:\\changed" } });
       }

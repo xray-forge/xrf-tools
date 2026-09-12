@@ -1,15 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import {
-  DIALECT_IDS,
-  DIALECT_OPTIONS,
-  EConfigsDialect,
-} from "@/applications/configs-explorer/components/ConfigsExplorerOpenForm.utils";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -74,12 +71,10 @@ export function ConfigsExplorerOpenForm({
         field={root}
       />
 
-      <ChoiceFormRow
-        label={"Dialect"}
-        description={"DLTX applies the mod_*.ltx patch files a Monolith or Anomaly install carries"}
-        options={DIALECT_OPTIONS}
-        value={dialect}
-        onChange={setDialect}
+      <ConfigsDialectFormRow
+        isDltx={isDltx}
+        isDisabled={projectService.project.isLoading}
+        onChange={(isDltx) => setDialect(isDltx ? EConfigsDialect.DLTX : EConfigsDialect.LTX)}
       />
     </PickerForm>
   );

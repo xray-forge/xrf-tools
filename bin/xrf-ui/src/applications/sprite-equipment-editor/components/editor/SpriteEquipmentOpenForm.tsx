@@ -2,9 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -75,13 +76,7 @@ export function SpriteEquipmentOpenForm({
         field={systemLtx}
       />
 
-      <CheckboxFormRow
-        label={"DLTX"}
-        description={"Use DLTX patch rules when reading the system configuration"}
-        isChecked={isDltx}
-        isDisabled={isLoading}
-        onChange={setDltx}
-      />
+      <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isLoading} onChange={setDltx} />
     </PickerForm>
   );
 }

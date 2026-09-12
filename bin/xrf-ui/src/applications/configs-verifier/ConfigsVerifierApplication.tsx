@@ -4,9 +4,10 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -71,13 +72,7 @@ export function ConfigsVerifierApplication(): ReactElement {
         field={configs}
       />
 
-      <CheckboxFormRow
-        label={"DLTX"}
-        description={"Read configs using DLTX patch rules"}
-        isChecked={isDltx}
-        isDisabled={isRunning}
-        onChange={setDltx}
-      />
+      <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setDltx} />
     </PickerForm>
   );
 }

@@ -6,7 +6,7 @@ export const CONFIGS_VERIFIER_HELP: IApplicationHelp = {
     "section schemes declared in the project. Nothing is written.",
   workflow: [
     "Pick the configs directory. LTX files in its subdirectories are included.",
-    "Enable `DLTX` for configs that use Monolith/Anomaly patch rules. Leave it off for standard LTX.",
+    "Choose `DLTX` for configs that use Monolith/Anomaly patch rules, or `LTX` for standard rules.",
     "Click `Verify`, then review the checked, skipped and invalid section counts. Filter the findings by " +
       "section, field or file to locate a problem.",
   ],
@@ -17,7 +17,7 @@ export const CONFIGS_VERIFIER_HELP: IApplicationHelp = {
       "is invalid. Check the skipped count before treating a successful run as full validation.",
     "Included files are read through the configs that include them. The file count reports checked entry " +
       "points, so it can be smaller than the number of LTX files in the directory.",
-    "With `DLTX` enabled, matching `mod_<base>_*.ltx` files patch their base config instead of being checked " +
+    "With `DLTX` selected, matching `mod_<base>_*.ltx` files patch their base config instead of being checked " +
       "as separate configs.",
     "Reading uses the virtual filesystem, so configs in archives are included when you select a game tree " +
       "or installation containing them.",

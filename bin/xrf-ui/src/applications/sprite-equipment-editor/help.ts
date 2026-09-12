@@ -6,7 +6,7 @@ export const SPRITE_EQUIPMENT_EDITOR_HELP: IApplicationHelp = {
     "When loose icons are available beside the sprite, rebuild it and inspect the result in the same view.",
   workflow: [
     "Choose the equipment `.dds` and the `system.ltx` that describes its icons.",
-    "Enable `DLTX` if the configuration uses DLTX patch rules, then select `Open`.",
+    "Choose `LTX` for standard configuration rules or `DLTX` for patch rules, then select `Open`.",
     "Use the grid and zoom controls to inspect the sheet. Select a cell to see the sections using it.",
     "After editing loose icons outside the application, use `Repack sprite` and confirm the displayed source and output.",
   ],

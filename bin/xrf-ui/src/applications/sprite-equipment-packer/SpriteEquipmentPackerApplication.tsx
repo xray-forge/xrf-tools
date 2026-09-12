@@ -4,10 +4,11 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -101,13 +102,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
         field={systemLtx}
       />
 
-      <CheckboxFormRow
-        label={"DLTX"}
-        description={"Use DLTX patch rules when reading the system configuration"}
-        isChecked={isDltx}
-        isDisabled={isRunning}
-        onChange={setDltx}
-      />
+      <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setDltx} />
     </PickerForm>
   );
 }
