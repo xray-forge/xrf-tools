@@ -4,9 +4,10 @@ import { ChangeEvent, ReactElement } from "react";
 import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
 import { EditableList, EditableListItem } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { withoutAt } from "@/lib/types/array";
 
-interface IPackerDirectoryListProps {
+interface IPackerDirectoryListProps extends BaseComponentProps {
   directories: Array<ArchivePackDirectory>;
   isDisabled?: boolean;
   addLabel: string;
@@ -20,6 +21,9 @@ interface IPackerDirectoryListProps {
  * Editable list of directory rules, each a path relative to the packed root plus its recursive flag.
  */
 export function PackerDirectoryList({
+  "data-testid": dataTestId = "packer-directory-list",
+  id,
+  className,
   directories,
   isDisabled,
   addLabel,
@@ -29,6 +33,9 @@ export function PackerDirectoryList({
 }: IPackerDirectoryListProps): ReactElement {
   return (
     <EditableList
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       addLabel={addLabel}
       emptyLabel={emptyLabel}
       isDisabled={isDisabled}

@@ -11,9 +11,6 @@ interface IArchiveCollisionRowProps extends BaseComponentProps {
 
 /**
  * One engine path and the two files claiming it.
- *
- * Both sites are shown as authored, because the authored spelling is exactly what the fold destroys and the only thing
- * that says which of the two to remove.
  */
 export function ArchiveCollisionRow({
   "data-testid": dataTestId,

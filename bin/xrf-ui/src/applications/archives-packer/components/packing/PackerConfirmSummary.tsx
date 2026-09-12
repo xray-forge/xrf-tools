@@ -6,10 +6,11 @@ import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config
 import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
 import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
 
-interface IPackerConfirmSummaryProps {
+interface IPackerConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePackConfig;
   /** Volumes of this set the destination already holds, which packing refuses to replace unasked. */
   publishedVolumes: Array<string>;
@@ -25,6 +26,9 @@ interface IPackerConfirmSummaryProps {
  * asked for here rather than assumed.
  */
 export function PackerConfirmSummary({
+  "data-testid": dataTestId = "packer-confirm-summary",
+  id,
+  className,
   config,
   publishedVolumes,
   isForced,
@@ -34,7 +38,7 @@ export function PackerConfirmSummary({
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
   return (
-    <Stack spacing={1.5}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
       <ArchiveSummaryRow label={"Source"}>
         <ArchivePathText value={config.source} />
       </ArchiveSummaryRow>

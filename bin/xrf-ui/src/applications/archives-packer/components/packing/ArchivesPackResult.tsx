@@ -6,14 +6,20 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytesPair } from "@/lib/memory/format";
 
-interface IArchivesPackResultProps {
+interface IArchivesPackResultProps extends BaseComponentProps {
   result: ArchivePackResult;
 }
 
-export function ArchivesPackResult({ result }: IArchivesPackResultProps): ReactElement {
+export function ArchivesPackResult({
+  "data-testid": dataTestId = "archives-pack-result",
+  id,
+  className,
+  result,
+}: IArchivesPackResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [{ field: "volume", headerName: "Volume", flex: 1, minWidth: 320, cellClassName: "monospace" }],
     []
@@ -41,6 +47,9 @@ export function ArchivesPackResult({ result }: IArchivesPackResultProps): ReactE
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={`Packed ${result.filesTotal} file(s) into ${result.volumes.length} volume(s)`}
       tone={"success"}
       stats={stats}

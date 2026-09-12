@@ -18,7 +18,6 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
-import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -154,7 +153,6 @@ export function PickerForm({
       id={id}
       className={className}
       toolbar={<EditorToolbar />}
-      sx={getApplicationBackgroundSx}
     >
       <Box
         component={"form"}

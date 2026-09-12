@@ -8,6 +8,7 @@ import { ReactElement } from "react";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Named once, because the panel and its own heading must not drift apart. */
 export const PACKER_SECTIONS_PANEL_LABEL: string = "Configuration";
@@ -27,7 +28,11 @@ const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; 
 /**
  * Navigation for the packing configuration, drawn by the shell as the application's left panel.
  */
-export function PackerSectionsMenu(): ReactElement {
+export function PackerSectionsMenu({
+  "data-testid": dataTestId = "packer-sections-menu",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const packerService: PackerService = useInjection(PackerService);
 
   const items: Array<IEditorSideMenuItem> = SECTIONS.map((section) => ({
@@ -38,5 +43,13 @@ export function PackerSectionsMenu(): ReactElement {
     onClick: () => packerService.setSection(section.id),
   }));
 
-  return <EditorSideMenu header={<EditorPanelHeader title={PACKER_SECTIONS_PANEL_LABEL} />} sections={items} />;
+  return (
+    <EditorSideMenu
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      header={<EditorPanelHeader title={PACKER_SECTIONS_PANEL_LABEL} />}
+      sections={items}
+    />
+  );
 }

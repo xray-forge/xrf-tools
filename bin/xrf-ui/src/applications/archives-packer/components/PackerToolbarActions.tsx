@@ -6,8 +6,9 @@ import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPackerToolbarActionsProps {
+interface IPackerToolbarActionsProps extends BaseComponentProps {
   isBusy: boolean;
   isPackDisabled: boolean;
   onImport: () => void;
@@ -23,6 +24,9 @@ interface IPackerToolbarActionsProps {
  * wrapped so the tooltip still reaches them.
  */
 export function PackerToolbarActions({
+  "data-testid": dataTestId = "packer-toolbar-actions",
+  id,
+  className,
   isBusy,
   isPackDisabled,
   onImport,
@@ -30,7 +34,14 @@ export function PackerToolbarActions({
   onPack,
 }: IPackerToolbarActionsProps): ReactElement {
   return (
-    <Stack direction={"row"} spacing={0.5} sx={{ alignItems: "center", mr: 0.5 }}>
+    <Stack
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      direction={"row"}
+      spacing={0.5}
+      sx={{ alignItems: "center", mr: 0.5 }}
+    >
       <EditorIconAction
         label={"Import packing configuration"}
         description={"Import a packing configuration"}

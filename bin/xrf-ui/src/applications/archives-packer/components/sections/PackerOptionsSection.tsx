@@ -4,9 +4,10 @@ import { ChangeEvent, ReactElement } from "react";
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IPackerOptionsSectionProps {
+interface IPackerOptionsSectionProps extends BaseComponentProps {
   config: ArchivePackConfig;
   /** Ceiling reported by the packer, so the form does not carry its own copy of the format's limit. */
   maxVolumeSizeMegabytes: number;
@@ -21,6 +22,9 @@ interface IPackerOptionsSectionProps {
  * How the archive is written, as opposed to what goes into it.
  */
 export function PackerOptionsSection({
+  "data-testid": dataTestId = "packer-options-section",
+  id,
+  className,
   config,
   maxVolumeSizeMegabytes,
   volumeSize,
@@ -30,7 +34,7 @@ export function PackerOptionsSection({
   onChange,
 }: IPackerOptionsSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <ArchiveVolumeOptionsFields
         id={"packer"}
         config={config}

@@ -24,6 +24,8 @@ import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
+import { getApplicationBackgroundSx } from "@/core/theme/application-background";
+import { mergeSx } from "@/core/theme/merge-sx";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -95,7 +97,9 @@ export function ApplicationShellFrame({
       >
         <ApplicationTitleBar toolbarRef={setToolbarHost} isBusy={isBusy} />
 
-        <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0, flexWrap: "nowrap" }}>
+        <Box
+          sx={mergeSx(getApplicationBackgroundSx, { display: "flex", flexGrow: 1, minHeight: 0, flexWrap: "nowrap" })}
+        >
           <ApplicationRail
             panels={leftPanels}
             activePanelId={leftSelection.activePanelId}

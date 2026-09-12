@@ -2,7 +2,6 @@ import { ReactElement } from "react";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -11,7 +10,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
  */
 export function ApplicationLoader({ "data-testid": dataTestId, id, className }: BaseComponentProps): ReactElement {
   return (
-    <EditorLayout toolbar={<EditorToolbar />} sx={getApplicationBackgroundSx}>
+    <EditorLayout toolbar={<EditorToolbar />}>
       <DelayedProgress data-testid={dataTestId} id={id} className={className} />
     </EditorLayout>
   );

@@ -5,8 +5,9 @@ import { PackerDirectoryList } from "@/applications/archives-packer/components/c
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow, StringListFormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPackerSelectionSectionProps {
+interface IPackerSelectionSectionProps extends BaseComponentProps {
   config: ArchivePackConfig;
   isDisabled?: boolean;
   onChange: (patch: Partial<ArchivePackConfig>) => void;
@@ -15,9 +16,16 @@ interface IPackerSelectionSectionProps {
 /**
  * What goes into the archive: the sections an xrCompress configuration carries.
  */
-export function PackerSelectionSection({ config, isDisabled, onChange }: IPackerSelectionSectionProps): ReactElement {
+export function PackerSelectionSection({
+  "data-testid": dataTestId = "packer-selection-section",
+  id,
+  className,
+  config,
+  isDisabled,
+  onChange,
+}: IPackerSelectionSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       {isWholeDirectory(config) ? (
         <Alert severity={"info"}>
           Nothing is selected, so the whole source directory is packed. Add a directory or a file to narrow it.

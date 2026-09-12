@@ -3,8 +3,9 @@ import { ChangeEvent, ReactElement } from "react";
 
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPackerOutputSectionProps {
+interface IPackerOutputSectionProps extends BaseComponentProps {
   config: ArchivePackConfig;
   source: IPathField;
   destination: IPathField;
@@ -17,6 +18,9 @@ interface IPackerOutputSectionProps {
  * configuration file and so are never written to one.
  */
 export function PackerOutputSection({
+  "data-testid": dataTestId = "packer-output-section",
+  id,
+  className,
   config,
   source,
   destination,
@@ -24,7 +28,7 @@ export function PackerOutputSection({
   onChange,
 }: IPackerOutputSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <PathFormRow
         isDisabled={isDisabled}
         label={"Source"}
