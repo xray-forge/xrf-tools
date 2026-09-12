@@ -58,6 +58,11 @@ impl XrayAsset {
     &self.container
   }
 
+  /// Takes the container, for a consumer rebuilding this asset into a shape of its own.
+  pub fn into_container(self) -> XrayAssetContainer {
+    self.container
+  }
+
   /// Returns the kind this asset's extension identifies, when it is one the tools recognize.
   ///
   /// Derived from the logical path rather than stored, because the path is the only evidence: a container says where the

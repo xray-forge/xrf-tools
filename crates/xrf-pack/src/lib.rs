@@ -27,3 +27,4 @@ pub use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, A
 pub use crate::unpack::archive_unpack_options::{ArchiveUnpackOptions, UNPACK_PHASE_PREPARE, UNPACK_PHASE_WRITE};
 pub use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 pub use crate::unpack::archive_unpacker::ArchiveUnpacker;
+pub use crate::unpack::xray_world_extractor::XrayWorldExtractor;

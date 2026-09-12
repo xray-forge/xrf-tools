@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_error::XrfResult;
 
-use crate::vfs::XrayDirectoryListing;
+use crate::vfs::{XrayDirectoryListing, XrayMountedEntry};
 use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMount, XrayPathCollision, XrayVfs};
 
 impl XrayVfs {
@@ -122,6 +122,11 @@ impl XrayScopedVfs<'_> {
   /// Like [`XrayVfs::list_entries_all`], within this view's scope.
   pub fn list_entries_all(&self) -> Vec<XrayAsset> {
     self.vfs.list_entries_all_in(self.scope)
+  }
+
+  /// Like [`XrayVfs::list_mounted_entries`], within this view's scope.
+  pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
+    self.vfs.list_mounted_entries_in(self.scope)
   }
 
   /// Like [`XrayVfs::list_collisions`], within this view's scope.

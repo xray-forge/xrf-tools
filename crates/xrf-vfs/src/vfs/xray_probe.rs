@@ -1,10 +1,10 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
 
-use crate::vfs::{XrayResolution, XrayScopedVfs};
-use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
+use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs};
+use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMountId, XrayPathCollision, XrayVfs};
 
 /// One place a probe looks, and the name a report calls it by.
 ///
@@ -106,6 +106,23 @@ impl<'a> XrayProbe<'a> {
     }
 
     roots
+  }
+
+  /// Files any source this probe searches holds but cannot reach, because another file in that same source claims
+  /// their identity.
+  pub fn list_collisions(&self) -> Vec<XrayPathCollision> {
+    let mut seen: HashSet<XrayMountId> = HashSet::new();
+    let mut collisions: Vec<XrayPathCollision> = Vec::new();
+
+    for step in &self.steps {
+      for mount in self.vfs.mounts_in(step.get_scope()) {
+        if seen.insert(mount.get_id()) {
+          collisions.extend(mount.get_source().get_collisions().iter().cloned());
+        }
+      }
+    }
+
+    collisions
   }
 
   /// Resolves an engine reference of one kind, step by step, first hit winning.
@@ -218,6 +235,39 @@ impl<'a> XrayProbe<'a> {
     }
 
     assets
+  }
+
+  /// Every entry this probe can reach, once per engine identity, with the copies each one hides.
+  ///
+  /// Folded across steps the way a lookup resolves: a path an earlier step holds wins, and the later step's copy joins
+  /// what it shadows rather than being dropped. Reporting only the winner here would hide exactly the arrangement this
+  /// listing exists to show — a loose tree standing in front of an installation's volumes.
+  ///
+  /// Sorted by engine identity, because the per-step listings are each sorted and concatenating them is not.
+  pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
+    let mut entries: Vec<XrayMountedEntry> = Vec::new();
+    let mut seen: HashMap<String, usize> = HashMap::new();
+
+    for step in &self.steps {
+      for entry in self.vfs.scoped(step.get_scope()).list_mounted_entries() {
+        match seen.get(entry.get_logical_path()) {
+          Some(&index) => {
+            let XrayMountedEntry { asset, shadowed, .. } = entry;
+
+            entries[index].shadowed.push(asset);
+            entries[index].shadowed.extend(shadowed);
+          }
+          None => {
+            seen.insert(entry.get_logical_path().to_string(), entries.len());
+            entries.push(entry);
+          }
+        }
+      }
+    }
+
+    entries.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
+
+    entries
   }
 
   /// Reads a located asset through the VFS this probe searches.

@@ -9,7 +9,7 @@ use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
 use crate::source::XrayDirectorySource;
 use crate::trace::XrayReadTrace;
-use crate::vfs::XrayDirectoryListing;
+use crate::vfs::{XrayDirectoryListing, XrayMountedEntry};
 use crate::{
   XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayLookupScope, XrayMount,
   XrayMountId, XrayPathCollision, XraySkippedMount, XraySourceKind,
@@ -541,6 +541,48 @@ impl XrayVfs {
     located.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
 
     located
+  }
+
+  /// Returns winning entries with the copies each one hides, ordered by logical path.
+  ///
+  /// Sizes come from the mount that answered, as the walk meets it. Asking the VFS for each afterwards would repeat
+  /// the lookup this already performed, once per entry.
+  pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
+    self.list_mounted_entries_in(&XrayLookupScope::default())
+  }
+
+  pub(crate) fn list_mounted_entries_in(&self, scope: &XrayLookupScope) -> Vec<XrayMountedEntry> {
+    let mut located: Vec<(XrayAsset, u64)> = Vec::new();
+
+    for mount in self.mounts_in(scope) {
+      let Some(source_prefix) = mount.to_source_prefix(scope.get_prefix()) else {
+        continue;
+      };
+
+      for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
+        if let Ok(logical_path) = mount.to_logical_path(&source_path)
+          && let Some(asset) = Self::locate_at(mount, &logical_path, &source_path)
+        {
+          located.push((asset, mount.get_source().get_size(&source_path).unwrap_or_default()));
+        }
+      }
+    }
+
+    // Stable, so copies of one logical path keep the mount order they were enumerated in and the winner stays first.
+    located.sort_by(|first, second| first.0.get_logical_path().cmp(second.0.get_logical_path()));
+
+    let mut entries: Vec<XrayMountedEntry> = Vec::new();
+
+    for (asset, size) in located {
+      match entries.last_mut() {
+        Some(previous) if previous.get_logical_path() == asset.get_logical_path().as_str() => {
+          previous.shadowed.push(asset)
+        }
+        _ => entries.push(XrayMountedEntry::new(asset, size)),
+      }
+    }
+
+    entries
   }
 
   /// Writes bytes to the winning entry within a scope.
