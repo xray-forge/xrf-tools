@@ -48,17 +48,13 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
         <>
           <RailButton
             label={isLightMode ? "Dark theme" : "Light theme"}
-            icon={isLightMode ? <DarkModeIcon fontSize={"small"} /> : <LightModeIcon fontSize={"small"} />}
+            icon={isLightMode ? <DarkModeIcon /> : <LightModeIcon />}
             onClick={onToggleTheme}
           />
 
-          <RailButton label={"Source on github"} icon={<GitHubIcon fontSize={"small"} />} onClick={onOpenGithubLink} />
+          <RailButton label={"Source on github"} icon={<GitHubIcon />} onClick={onOpenGithubLink} />
 
-          <RailButton
-            label={"Settings"}
-            icon={<SettingsIcon fontSize={"small"} />}
-            onClick={() => setSettingsOpen(true)}
-          />
+          <RailButton label={"Settings"} icon={<SettingsIcon />} onClick={() => setSettingsOpen(true)} />
 
           <SettingsDialog isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
         </>

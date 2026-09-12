@@ -35,14 +35,12 @@ export const CONTROL_BACKGROUND = {
 } as const;
 
 export const LAYOUT = {
-  railWidth: 44,
-  /**
-   * Every control in either stripe.
-   *
-   * Sized to sit inside `toolbarHeight` with room to breathe, because Home and Notifications share
-   * that band with the toolbar and have to line up with its title.
-   */
-  railButtonSize: 32,
+  /** The button plus the breathing room on either side of it; the stripe holds nothing wider. */
+  railWidth: 36,
+  /** Every control in either stripe. */
+  railButtonSize: 28,
+  /** The glyph inside one, sized to fill the button rather than to sit in padding. */
+  railButtonIconSize: 20,
   /** Dense `MuiToolbar` and `MuiTab` still measure themselves against this; the window caption does not. */
   toolbarHeight: 40,
   statusBarHeight: 24,

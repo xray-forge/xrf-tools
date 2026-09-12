@@ -23,7 +23,9 @@ export function PanelStripeButton({ panel, side, isActive, onTogglePanel }: IPan
         sx={{
           width: LAYOUT.railButtonSize,
           height: LAYOUT.railButtonSize,
+          padding: 0,
           borderRadius: 1,
+          "& .MuiSvgIcon-root": { fontSize: LAYOUT.railButtonIconSize },
           color: isActive ? "primary.main" : "text.secondary",
           backgroundColor: isActive ? "action.selected" : "transparent",
         }}

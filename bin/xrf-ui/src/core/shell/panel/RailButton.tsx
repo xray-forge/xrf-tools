@@ -28,7 +28,9 @@ export function RailButton({ isSelected, isDisabled, label, icon, onClick }: IRa
           sx={{
             width: LAYOUT.railButtonSize,
             height: LAYOUT.railButtonSize,
+            padding: 0,
             borderRadius: 1,
+            "& .MuiSvgIcon-root": { fontSize: LAYOUT.railButtonIconSize },
             color: isSelected ? "primary.main" : "text.secondary",
             backgroundColor: isSelected ? "action.selected" : "transparent",
           }}

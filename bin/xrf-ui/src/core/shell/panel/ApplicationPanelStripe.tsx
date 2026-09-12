@@ -36,7 +36,7 @@ export function ApplicationPanelStripe({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 0.5,
+        gap: 0.75,
         width: LAYOUT.railWidth,
         minWidth: LAYOUT.railWidth,
         paddingY: 1,
