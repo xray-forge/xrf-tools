@@ -11,13 +11,15 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 
+const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
+const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
+const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
+
 const SOUND: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "sounds\\ambient\\wind.ogg",
   sizeCompressed: 4096,
   sizeReal: 8192,
 });
-
-const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
 const DESCRIPTOR: AudioDescriptor = {
   channels: 2,
@@ -25,16 +27,7 @@ const DESCRIPTOR: AudioDescriptor = {
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
 };
 
-/**
- * The roots an archive project mounts, which both media calls have to name identically.
- *
- * Read as `volumes`, so a volume in a subdirectory of the project root is searched too.
- */
-const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
-
-const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
-
-function createService(): ArchivesService {
+function mockService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
   service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject([SOUND, TEXTURE])));
@@ -51,7 +44,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("routes a sound to the audio commands rather than reading it as text", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(SOUND);
 
@@ -64,7 +57,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("describes and reads one file, from the same roots", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(SOUND);
 
@@ -81,7 +74,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("carries the engine parameters the archive stored, and the bytes beside them", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(SOUND);
 
@@ -94,7 +87,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("keeps textures on the image path", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
@@ -103,7 +96,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("reports a failed read instead of staying loading", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     setMockInvokeResponses({
       ["plugin:archives|describe_audio"]: () => {
@@ -119,7 +112,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("reports a failed byte read even when the description succeeds", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     setMockInvokeResponses({
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
@@ -137,7 +130,7 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("retries the audio read rather than falling back to text", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(SOUND);
     await service.retrySelectedFile();

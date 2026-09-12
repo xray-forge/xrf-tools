@@ -39,9 +39,16 @@ export class ArchivesService {
 
   private readonly session: Session = new Session(archivesCommands.closeProject);
 
+  /** The extraction this service started, while it runs. */
   @Observable()
-  public isReady: boolean = false;
+  public jobId: Nullable<string> = null;
 
+  @Computed()
+  public get job(): Nullable<IJobState> {
+    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_EXTRACT);
+  }
+
+  /** Idle until restoration settles; a closed project is ready with no value. */
   @Observable()
   private projectState: AsyncState<SessionSnapshot<ArchiveProject>> = AsyncState.idle();
 
@@ -50,19 +57,11 @@ export class ArchivesService {
     return this.projectState.map((snapshot) => snapshot.value);
   }
 
-  /**
-   * Entries the open volume set holds that no engine lookup can reach.
-   *
-   * Loaded beside the project rather than with it: the project is a name table keyed as authored, and what those names
-   * fold to is the backend's mount layer to answer. A failure here is reported and dropped - a volume set that opened
-   * is still browsable when nobody could tell what is unreachable in it.
-   */
+  /** Entries the open volume set holds that no engine lookup can reach. */
   @Observable()
   public collisions: AsyncState<Array<XrayPathCollision>> = AsyncState.idle([]);
 
-  /**
-   * Payloads several entries of the open volume set read at once.
-   */
+  /** Payloads several entries of the open volume set read at once. */
   @Observable()
   public sharedPayloads: AsyncState<Array<ArchiveSharedPayload>> = AsyncState.idle([]);
 
@@ -79,8 +78,6 @@ export class ArchivesService {
   public operation: AsyncState<TArchiveOperation> = AsyncState.idle();
 
   /**
-   * Returns the files the opened project holds, without the directories its volumes record.
-   *
    * @returns Descriptors of the entries that are files, empty when no project is open.
    */
   @Computed()
@@ -89,8 +86,6 @@ export class ArchivesService {
   }
 
   /**
-   * Returns the selected file, or null when a directory or nothing is selected.
-   *
    * @returns The selected file descriptor, or null.
    */
   @Computed()
@@ -99,8 +94,6 @@ export class ArchivesService {
   }
 
   /**
-   * Returns the selected directory, or null when a file or nothing is selected.
-   *
    * @returns The archive-relative directory path, with an empty string for the archive root, or null.
    */
   @Computed()
@@ -109,11 +102,6 @@ export class ArchivesService {
   }
 
   /**
-   * Reports whether a write to disk is in progress.
-   *
-   * Only a write holds the next open back. A read in flight does not: the `content` lane supersedes it, so the newer
-   * gesture cancels the older read rather than being dropped for it.
-   *
    * @returns Whether an extraction would race with another command.
    */
   @Computed()
@@ -121,37 +109,10 @@ export class ArchivesService {
     return this.operation.isLoading || this.job !== null;
   }
 
-  /** The extraction this service started, while it runs. */
-  @Observable()
-  public jobId: Nullable<string> = null;
-
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
     private readonly jobsService: JobsService = inject(JobsService)
   ) {}
-
-  /**
-   * @returns The extraction currently running, whether this service started it or found it again.
-   */
-  @Computed()
-  public get job(): Nullable<IJobState> {
-    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_EXTRACT);
-  }
-
-  /**
-   * Stops the running extraction, if there is one.
-   *
-   * What it has already written stays: the destination may hold the user's own files, and nothing here can tell those
-   * from this run's.
-   */
-  @BoundAction()
-  public cancelExtraction(): void {
-    const job: Nullable<IJobState> = this.job;
-
-    if (job) {
-      this.jobsService.cancel(job.id);
-    }
-  }
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
@@ -178,28 +139,24 @@ export class ArchivesService {
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const existing: Nullable<SessionSnapshot<ArchiveProject>> = yield* call(archivesCommands.getProject());
+    this.log.info("Restoring");
 
-    this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
+    try {
+      const existing: Nullable<SessionSnapshot<ArchiveProject>> = yield* call(archivesCommands.getProject());
 
-    this.projectState = this.projectState.asReady(existing);
+      this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
 
-    if (existing) {
-      yield* this.loadCollisions();
-      yield* this.loadSharedPayloads();
+      this.projectState = this.projectState.asReady(existing);
+
+      if (existing) {
+        yield* this.loadCollisions();
+        yield* this.loadSharedPayloads();
+      }
+    } catch (error: unknown) {
+      this.log.error("Failed to restore archives project:", error);
+
+      this.projectState = this.projectState.asFailed(transformError(error));
     }
-
-    this.isReady = true;
-  }
-
-  @BoundAction()
-  public resetArchivesProject(): void {
-    this.log.info("Reset archives project");
-
-    this.clearFileSelection();
-    this.projectState = this.projectState.asIdle();
-    this.collisions = this.collisions.asIdle([]);
-    this.sharedPayloads = this.sharedPayloads.asIdle([]);
   }
 
   @LatestFlow("project")
@@ -251,7 +208,7 @@ export class ArchivesService {
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 
       this.clearFileSelection();
-      this.projectState = this.projectState.asIdle();
+      this.projectState = this.projectState.asReady(null);
       this.collisions = this.collisions.asIdle([]);
       this.sharedPayloads = this.sharedPayloads.asIdle([]);
     } catch (error: unknown) {
@@ -316,6 +273,31 @@ export class ArchivesService {
     this.content = this.content.asIdle();
 
     yield* this.loadSelectedContent(descriptor);
+  }
+
+  /**
+   * Stops the running extraction, if there is one.
+   *
+   * What it has already written stays: the destination may hold the user's own files, and nothing here can tell those
+   * from this run's.
+   */
+  @BoundAction()
+  public cancelExtraction(): void {
+    const job: Nullable<IJobState> = this.job;
+
+    if (job) {
+      this.jobsService.cancel(job.id);
+    }
+  }
+
+  @BoundAction()
+  public resetArchivesProject(): void {
+    this.log.info("Reset archives project");
+
+    this.clearFileSelection();
+    this.projectState = this.projectState.asReady(null);
+    this.collisions = this.collisions.asIdle([]);
+    this.sharedPayloads = this.sharedPayloads.asIdle([]);
   }
 
   /**
@@ -462,9 +444,6 @@ export class ArchivesService {
   /**
    * Loads a selected file in its supported preview representation.
    *
-   * A generator so a selection moved past is abandoned here too, rather than reading on and publishing over whatever
-   * replaced it.
-   *
    * @param descriptor - Selected archive file to preview.
    */
   private *loadSelectedContent(descriptor: ArchiveFileDescriptor): TFlow {
@@ -485,52 +464,7 @@ export class ArchivesService {
   }
 
   /**
-   * Reads a sound as the description the engine would read plus the bytes the webview plays.
-   *
-   * Both calls name the same roots and the same logical path, so a late response cannot pair one file's numbers with
-   * another file's sound. In parallel because neither needs the other.
-   *
-   * @param descriptor - Archive entry naming the sound.
-   * @param project - Open project whose tree the sound is read out of.
-   * @returns The sound's description and its bytes as stored.
-   */
-  private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = createArchiveRoots(project);
-
-    const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(roots, descriptor.name),
-      assetsRawCommands.readAsset(roots, descriptor.name),
-    ]);
-
-    return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
-  }
-
-  /**
-   * Reads a texture as its source shape plus the png the backend decoded it into.
-   *
-   * The description answers for the DDS and the bytes for the picture, which is why the read is domain owned rather
-   * than the generic one the sound uses: the webview cannot paint a DDS.
-   *
-   * @param descriptor - Archive entry naming the texture.
-   * @param project - Open project whose tree the texture is read out of.
-   * @returns The texture's shape and the decoded png bytes.
-   */
-  private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = createArchiveRoots(project);
-
-    const [texture, bytes] = await Promise.all([
-      archivesCommands.describeImage(roots, descriptor.name),
-      archivesRawCommands.readImage(roots, descriptor.name),
-    ]);
-
-    return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };
-  }
-
-  /**
    * Loads and publishes one file preview.
-   *
-   * No staleness check of its own: a selection moved past cancels this where it stands, so the publish below the yield
-   * cannot run for a file the explorer no longer points at.
    *
    * @param descriptor - Archive file to read.
    * @param kind - Preview representation to request from the backend.
@@ -565,5 +499,41 @@ export class ArchivesService {
 
       this.content = this.content.asFailed(transformError(error), null);
     }
+  }
+
+  /**
+   * Reads a sound as the description the engine would read plus the bytes the webview plays.
+   *
+   * @param descriptor - Archive entry naming the sound.
+   * @param project - Open project whose tree the sound is read out of.
+   * @returns The sound's description and its bytes as stored.
+   */
+  private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
+    const roots: XrayRoots = createArchiveRoots(project);
+
+    const [audio, bytes] = await Promise.all([
+      archivesCommands.describeAudio(roots, descriptor.name),
+      assetsRawCommands.readAsset(roots, descriptor.name),
+    ]);
+
+    return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
+  }
+
+  /**
+   * Reads a texture as its source shape plus the png the backend decoded it into.
+   *
+   * @param descriptor - Archive entry naming the texture.
+   * @param project - Open project whose tree the texture is read out of.
+   * @returns The texture's shape and the decoded png bytes.
+   */
+  private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
+    const roots: XrayRoots = createArchiveRoots(project);
+
+    const [texture, bytes] = await Promise.all([
+      archivesCommands.describeImage(roots, descriptor.name),
+      archivesRawCommands.readImage(roots, descriptor.name),
+    ]);
+
+    return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };
   }
 }

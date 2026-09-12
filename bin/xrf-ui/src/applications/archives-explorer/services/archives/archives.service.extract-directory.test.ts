@@ -9,13 +9,7 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
-/**
- * Returns the result from the last directory extraction.
- *
- * @param service - Archives service state to inspect.
- * @returns Directory extraction result, or null when the last operation was not a directory extraction.
- */
-function extractedDirectory(service: ArchivesService): Nullable<ArchiveExtractDirectoryResult> {
+function getExtractedDirectory(service: ArchivesService): Nullable<ArchiveExtractDirectoryResult> {
   return service.operation.value?.kind === "extract-directory" ? service.operation.value.result : null;
 }
 
@@ -46,7 +40,7 @@ describe("ArchivesService directory extraction", () => {
       "plugin:archives|extract_directory",
       expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out" } })
     );
-    expect(extractedDirectory(service)?.extractedCount).toBe(12);
+    expect(getExtractedDirectory(service)?.extractedCount).toBe(12);
   });
 
   it("treats the archive root as an empty prefix", async () => {

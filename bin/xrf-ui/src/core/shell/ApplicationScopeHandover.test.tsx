@@ -15,7 +15,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 function ArchivesScopedPanel(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  return <div>{`archives panel ${archivesService.isReady}`}</div>;
+  return <div>{`archives panel ${archivesService.project.isReady}`}</div>;
 }
 
 /** Publishes a left panel bound to its own application's container, as the archives editor does. */

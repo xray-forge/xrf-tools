@@ -31,7 +31,7 @@ async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRendere
 
   const render = renderWithProviders(<ArchivesMenu />, { container });
 
-  await waitFor(() => expect(service.isReady).toBe(true));
+  await waitFor(() => expect(service.project.isReady).toBe(true));
 
   return { container, service, render };
 }

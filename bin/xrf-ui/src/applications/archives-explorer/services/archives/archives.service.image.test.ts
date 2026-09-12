@@ -11,34 +11,22 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 
+const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
+const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
+const TEXT: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+
 const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "textures\\ui\\wall.dds",
   sizeCompressed: 512,
   sizeReal: 2048,
 });
 
-const TEXT: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
-
 const DESCRIPTOR: AssetTextureDescriptor = {
   size: 2048,
   shape: { width: 256, height: 256, mipmapLevels: 9, format: "DXT5" },
 };
 
-/**
- * The roots an archive project mounts, which both media calls have to name identically.
- *
- * Read as `volumes`, so a volume in a subdirectory of the project root is searched too.
- */
-const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
-
-const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
-
-/**
- * Creates an archive service with fixture files classified by its open project.
- *
- * @returns Service ready to preview the fixture files.
- */
-function createService(): ArchivesService {
+function mockService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
   service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject([TEXTURE, TEXT])));
@@ -55,7 +43,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("decodes a texture instead of reading it as text", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
@@ -69,7 +57,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("describes and reads one file, from the same roots", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
@@ -86,7 +74,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("carries the decoded png beside the source shape", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
@@ -97,7 +85,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("leaves text files on the text path", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXT);
 
@@ -106,7 +94,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("reports a failed decode instead of staying loading", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     setMockInvokeResponses({
       ["plugin:archives|describe_image"]: DESCRIPTOR,
@@ -122,7 +110,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("retries the decode rather than falling back to a text read", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
     await service.retrySelectedFile();
@@ -134,7 +122,7 @@ describe("ArchivesService image preview", () => {
   });
 
   it("drops the decoded image when the selection changes", async () => {
-    const service: ArchivesService = createService();
+    const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
     expect(service.content.value?.kind).toBe("image");

@@ -139,6 +139,8 @@ describe("ArchivesService file selection", () => {
     await service.selectArchiveFile(descriptor);
     await service.closeProject();
 
+    expect(service.project.isReady).toBe(true);
+    expect(service.project.value).toBeNull();
     expect(service.selectedFile).toBeNull();
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
   });
@@ -150,6 +152,8 @@ describe("ArchivesService file selection", () => {
     await service.selectArchiveFile(descriptor);
     service.resetArchivesProject();
 
+    expect(service.project.isReady).toBe(true);
+    expect(service.project.value).toBeNull();
     expect(service.selectedFile).toBeNull();
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
   });

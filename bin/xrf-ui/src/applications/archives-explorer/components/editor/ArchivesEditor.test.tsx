@@ -70,6 +70,52 @@ describe("opened archives editor", () => {
     );
   }
 
+  it("waits for restoration before showing an empty project's open form", async () => {
+    let finishRestore: (value: null) => void;
+
+    setMockInvokeResponses({
+      ["plugin:archives|get_project"]: () => new Promise<null>((resolve) => (finishRestore = resolve)),
+    });
+
+    const { findByText, queryByText } = renderEditor();
+
+    expect(queryByText("Open game archives")).not.toBeInTheDocument();
+
+    await act(async () => finishRestore(null));
+
+    expect(await findByText("Open game archives")).toBeInTheDocument();
+  });
+
+  it.each(["list_collisions", "list_shared_payloads"])(
+    "shows the restored archive while %s is pending",
+    async (command) => {
+      setMockInvokeResponses({
+        ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+        ["plugin:archives|list_collisions"]: [],
+        ["plugin:archives|list_shared_payloads"]: [],
+        [`plugin:archives|${command}`]: () => new Promise(() => {}),
+      });
+
+      const { findByText } = renderEditor();
+
+      expect(await findByText("Select a file to preview")).toBeInTheDocument();
+      expect(mockInvoke).toHaveBeenCalledWith(`plugin:archives|${command}`, { sessionId: expect.any(String) });
+    }
+  );
+
+  it("shows the open form and error when restoring the archive fails", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|get_project"]: () => {
+        throw new Error("Archive session unavailable");
+      },
+    });
+
+    const { findByText } = renderEditor();
+
+    expect(await findByText("Open game archives")).toBeInTheDocument();
+    expect(await findByText("Archive session unavailable")).toBeInTheDocument();
+  });
+
   it("presents archive context, aggregate status, and a guided empty state", async () => {
     const { findByText, getByText } = renderEditor();
 

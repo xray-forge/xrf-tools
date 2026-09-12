@@ -11,13 +11,7 @@ import { Nullable } from "@/lib/types/general";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
-/**
- * Returns the file path from the last file extraction.
- *
- * @param service - Archives service state to inspect.
- * @returns Extracted file path, or null when the last operation was not a file extraction.
- */
-function extractedFile(service: ArchivesService): Nullable<string> {
+function getExtractedFile(service: ArchivesService): Nullable<string> {
   return service.operation.value?.kind === "extract-file" ? service.operation.value.destination : null;
 }
 
@@ -38,7 +32,7 @@ describe("ArchivesService extraction", () => {
       name: "configs\\system.ltx",
       destination: "C:\\out\\system.ltx",
     });
-    expect(extractedFile(service)).toBe("C:\\out\\system.ltx");
+    expect(getExtractedFile(service)).toBe("C:\\out\\system.ltx");
     expect(service.operation.isLoading).toBe(false);
   });
 

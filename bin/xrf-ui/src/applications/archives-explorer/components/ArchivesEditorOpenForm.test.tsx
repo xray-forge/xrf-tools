@@ -15,9 +15,9 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
 
-const mockOpen = jest.mocked(open<{ multiple: false }>);
-
 describe("ArchivesEditorOpenForm", () => {
+  const mockOpen = jest.mocked(open<{ multiple: false }>);
+
   beforeEach(() => {
     window.localStorage.clear();
 
@@ -143,11 +143,12 @@ describe("ArchivesEditorOpenForm", () => {
     const { getByDisplayValue, getByLabelText } = renderForm();
 
     mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
-    await userEvent.click(getByLabelText("Browse"));
 
+    await userEvent.click(getByLabelText("Browse"));
     await userEvent.click(getByLabelText("Open archive"));
 
     mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
+
     await userEvent.click(getByLabelText("Browse"));
 
     expect(getByDisplayValue(ARCHIVE_VOLUME)).toBeInTheDocument();

@@ -1,76 +1,48 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
+import {
+  ARCHIVE_FILTERS,
+  EArchiveOpenMode,
+  OPEN_MODE_OPTIONS,
+  OPEN_MODES,
+} from "@/applications/archives-explorer/components/ArchivesEditorOpenForm.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import {
-  ChoiceFormRow,
-  IChoiceFormRowOption,
-  IPathField,
-  PathFormRow,
-  usePathField,
-  useRememberedValue,
-} from "@/core/ui/form";
+import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-
-/** Which of the two things the picker is opening. */
-const enum EArchiveOpenMode {
-  DIRECTORY = "directory",
-  ARCHIVE = "archive",
-}
-
-const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EArchiveOpenMode>> = [
-  { value: EArchiveOpenMode.DIRECTORY, label: "Directory", "aria-label": "Open directory" },
-  { value: EArchiveOpenMode.ARCHIVE, label: "Archive", "aria-label": "Open archive" },
-];
-const OPEN_MODES: ReadonlyArray<EArchiveOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
-
-/** Volume extensions offered by the dialog. */
-const ARCHIVE_FILTERS: Array<DialogFilter> = [
-  {
-    name: "Archive volume",
-    extensions: ["db", "xdb"].flatMap((base: string) => [
-      base,
-      ...Array.from({ length: 10 }, (_, index: number) => `${base}${index}`),
-    ]),
-  },
-  { name: "All files", extensions: ["*"] },
-];
 
 /**
  * The way into the explorer: index a directory of volumes, or one volume on its own.
  */
 export function ArchivesEditorOpenForm(): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-
   const log: Logger = useLogger(__MODULE_NAME__);
+
+  const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const isLoading: boolean = archivesService.project.isLoading;
 
   // Browsing a directory is the primary workflow, so it is the fallback - and after that, whichever of the two was
   // last used, because someone who opens single volumes they downloaded does so every time.
   const [mode, setMode] = useRememberedValue<EArchiveOpenMode>({
-    allowed: OPEN_MODES,
-    application: EApplicationId.ARCHIVES_EXPLORER,
-    fallback: EArchiveOpenMode.DIRECTORY,
     id: "mode",
+    application: EApplicationId.ARCHIVES_EXPLORER,
+    allowed: OPEN_MODES,
+    fallback: EArchiveOpenMode.DIRECTORY,
   });
 
   const directory: IPathField = usePathField({
-    application: EApplicationId.ARCHIVES_EXPLORER,
     id: "source",
+    application: EApplicationId.ARCHIVES_EXPLORER,
     title: "Select archives directory",
     isDirectory: true,
     isDisabled: isLoading,
   });
 
-  // Unseeded on purpose: the only path a project offers is a directory, which would sit in a volume field looking like
-  // a choice without even giving the dialog somewhere to start.
   const archive: IPathField = usePathField({
-    application: EApplicationId.ARCHIVES_EXPLORER,
     id: "archive",
+    application: EApplicationId.ARCHIVES_EXPLORER,
     title: "Select archive volume",
     filters: ARCHIVE_FILTERS,
     isDisabled: isLoading,

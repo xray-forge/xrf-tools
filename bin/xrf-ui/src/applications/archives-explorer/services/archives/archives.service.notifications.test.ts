@@ -17,7 +17,7 @@ interface IWatchedService {
   raised: Array<INotificationPayload>;
 }
 
-function watchNotifications(): IWatchedService {
+function mockWatchedNotifications(): IWatchedService {
   const { container, service }: IInjectedServiceMockDescriptor<ArchivesService> = mockInjectedService(ArchivesService);
 
   service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
@@ -39,7 +39,7 @@ describe("ArchivesService notifications", () => {
   });
 
   it("reports a completed extraction, so the outcome survives leaving the editor", async () => {
-    const { raised, service }: IWatchedService = watchNotifications();
+    const { raised, service }: IWatchedService = mockWatchedNotifications();
 
     await service.extractFile(FILE, "C:\\out\\wpn.dds");
 
@@ -51,7 +51,7 @@ describe("ArchivesService notifications", () => {
   });
 
   it("reports a refused extraction with what the backend said", async () => {
-    const { raised, service }: IWatchedService = watchNotifications();
+    const { raised, service }: IWatchedService = mockWatchedNotifications();
 
     setMockInvokeResponses({
       ["plugin:archives|extract_file"]: () => {
@@ -67,7 +67,7 @@ describe("ArchivesService notifications", () => {
   });
 
   it("counts what a directory extraction wrote", async () => {
-    const { raised, service }: IWatchedService = watchNotifications();
+    const { raised, service }: IWatchedService = mockWatchedNotifications();
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: () => ({
@@ -86,7 +86,7 @@ describe("ArchivesService notifications", () => {
   });
 
   it("reports a project that could not be opened", async () => {
-    const { raised, service }: IWatchedService = watchNotifications();
+    const { raised, service }: IWatchedService = mockWatchedNotifications();
 
     setMockInvokeResponses({
       ["plugin:archives|open_project"]: mockSessionResponse(() => {
