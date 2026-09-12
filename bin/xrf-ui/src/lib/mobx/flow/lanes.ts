@@ -1,3 +1,4 @@
+import { Logger } from "@/lib/logging";
 import { swallowCancellation } from "@/lib/mobx/flow/cancellation";
 import { TCancellablePromise } from "@/lib/mobx/flow/types";
 import { Nullable } from "@/lib/types/general";
@@ -23,6 +24,8 @@ export function runLatestFlow<T>(
   slot: PropertyKey,
   start: () => TCancellablePromise<T>
 ): Promise<T | void> {
+  Logger.info("Run latest flow:", slot);
+
   cancelLane(instance, slot);
 
   return trackFlow(instance, slot, start());
@@ -41,6 +44,8 @@ export function runExclusiveFlow<T>(
   slot: PropertyKey,
   start: () => TCancellablePromise<T>
 ): Promise<T | void> {
+  Logger.info("Run exclusive flow:", slot);
+
   const running: Nullable<TCancellablePromise<T>> = RUNNING.get(instance)?.get(slot) ?? null;
 
   if (running) {
@@ -60,6 +65,7 @@ export function runExclusiveFlow<T>(
  * @param lane - Member the lane is named after: the field the run publishes to, or the method that owns it.
  */
 export function cancelFlow<T extends object>(instance: T, lane: keyof T): void {
+  Logger.info("Cancel flow:", lane);
   cancelLane(instance, lane as PropertyKey);
 }
 
@@ -75,7 +81,8 @@ export function cancelFlows(instance: object): void {
     return;
   }
 
-  for (const running of slots.values()) {
+  for (const [lane, running] of slots.entries()) {
+    Logger.info("Cancel flow:", lane);
     running.cancel();
   }
 
@@ -86,19 +93,19 @@ export function cancelFlows(instance: object): void {
  * Tracks a lane until its flow settles, preserving its result for the caller.
  *
  * @param instance - Instance owning the flow.
- * @param slot - Lane shared by the participating methods.
+ * @param lane - Lane shared by the participating methods.
  * @param promise - Flow to track until completion or cancellation.
  * @returns The flow's result, with cancellation settled quietly.
  */
-function trackFlow<T>(instance: object, slot: PropertyKey, promise: TCancellablePromise<T>): Promise<T | void> {
+function trackFlow<T>(instance: object, lane: PropertyKey, promise: TCancellablePromise<T>): Promise<T | void> {
   const slots: Map<PropertyKey, TCancellablePromise<any>> = RUNNING.get(instance) ?? new Map();
 
-  slots.set(slot, promise);
+  slots.set(lane, promise);
   RUNNING.set(instance, slots);
 
   function forget(): void {
-    if (RUNNING.get(instance)?.get(slot) === promise) {
-      RUNNING.get(instance)?.delete(slot);
+    if (RUNNING.get(instance)?.get(lane) === promise) {
+      RUNNING.get(instance)?.delete(lane);
     }
   }
 
@@ -119,15 +126,12 @@ function trackFlow<T>(instance: object, slot: PropertyKey, promise: TCancellable
 /**
  * Cancels one lane without the caller having to name it as a member.
  *
- * Internal because the public form deliberately forces a lane to be a real member name: it is the field the run
- * publishes to, or the method that owns it, so a rename cannot leave a cancel pointing at nothing.
- *
  * @param instance - Instance owning the run.
- * @param slot - Lane to abandon.
+ * @param lane - Lane to abandon.
  */
-function cancelLane(instance: object, slot: PropertyKey): void {
-  const running: Nullable<TCancellablePromise<any>> = RUNNING.get(instance)?.get(slot) ?? null;
+function cancelLane(instance: object, lane: PropertyKey): void {
+  const running: Nullable<TCancellablePromise<any>> = RUNNING.get(instance)?.get(lane) ?? null;
 
   running?.cancel();
-  RUNNING.get(instance)?.delete(slot);
+  RUNNING.get(instance)?.delete(lane);
 }
