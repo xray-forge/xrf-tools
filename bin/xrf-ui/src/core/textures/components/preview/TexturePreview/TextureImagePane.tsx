@@ -1,4 +1,4 @@
-import { Dispatch, ReactElement, SetStateAction } from "react";
+import { ReactElement } from "react";
 
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
@@ -7,7 +7,7 @@ import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { IPanZoomState } from "@/lib/media/pan-zoom";
+import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { Nullable } from "@/lib/types/general";
 
 import { TexturePreviewFrame } from "./TexturePreviewFrame";
@@ -22,8 +22,8 @@ interface ITextureImagePaneProps extends BaseComponentProps {
   preview: AsyncState<Nullable<ArrayBuffer>>;
   /** How large it is, which the viewport lays itself out against. */
   shape: Nullable<AssetTextureShape>;
-  state?: IPanZoomState;
-  onStateChange?: Dispatch<SetStateAction<IPanZoomState>>;
+  /** The camera this pane looks through, shared with the pane it is compared against. */
+  controller?: PanZoomController;
   hasControls?: boolean;
 }
 
@@ -42,14 +42,13 @@ export function TextureImagePane({
   assetKey,
   preview,
   shape,
-  state,
-  onStateChange,
+  controller,
   hasControls,
 }: ITextureImagePaneProps): ReactElement {
   const url: Nullable<string> = useAssetUrl(assetKey, preview.value);
 
   return (
-    <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption}>
+    <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption} isCheckered={false}>
       {preview.error ? <ErrorState title={"Could not show this encoding"} description={preview.error.message} /> : null}
 
       {!preview.error && (preview.isLoading || !url || !shape) ? (
@@ -62,8 +61,7 @@ export function TextureImagePane({
           src={url}
           width={shape.width}
           height={shape.height}
-          state={state}
-          onStateChange={onStateChange}
+          controller={controller}
           hasControls={hasControls}
         />
       ) : null}

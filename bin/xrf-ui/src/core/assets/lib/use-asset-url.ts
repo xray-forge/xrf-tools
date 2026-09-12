@@ -9,6 +9,10 @@ import { Nullable } from "@/lib/types/general";
  *
  * Blobbed from the view rather than its buffer, so a byte offset cannot silently widen the picture.
  *
+ * The key is released when the picture goes away as well as when it is replaced: leaving an editor unmounts the preview
+ * without deactivating the application it belongs to, and a url nobody revokes there keeps its bytes - and its entry in
+ * the webview's source list - for as long as the window lives.
+ *
  * @param key - Slot the url is held in. One key per picture on screen: a second pane comparing two of them needs two,
  *   or each would revoke the other's url as it arrived.
  * @param bytes - The encoded bytes, as a buffer or a view of one, or null when there is nothing to show.
@@ -23,8 +27,17 @@ export function useAssetUrl(key: string, bytes: Nullable<BlobPart>, type: string
   const blob: Nullable<Blob> = useMemo(() => (bytes ? new Blob([bytes], { type }) : null), [bytes, type]);
 
   useEffect(() => {
-    setUrl(blob ? assetService.swap(key, blob) : null);
+    if (blob) {
+      setUrl(assetService.swap(key, blob));
+    } else {
+      assetService.releaseKey(key);
+      setUrl(null);
+    }
   }, [assetService, blob, key]);
+
+  // Released on the way out only, not beside the swap above: swapping replaces in place and keeps the old url alive
+  // until its replacement exists.
+  useEffect(() => () => assetService.releaseKey(key), [assetService, key]);
 
   return url;
 }

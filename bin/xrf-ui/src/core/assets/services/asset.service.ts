@@ -22,7 +22,7 @@ export class AssetService {
   @OnDeactivation()
   public onDeactivation(): void {
     if (this.heldCount) {
-      this.log.info("Releasing held object urls:", this.heldCount);
+      this.log.info("Releasing held object URLs:", this.heldCount);
     }
 
     this.releaseAll();
@@ -39,6 +39,8 @@ export class AssetService {
    */
   public create(blob: Blob): string {
     const url: string = URL.createObjectURL(blob);
+
+    this.log.info("Create object URLs:", url);
 
     this.loose.add(url);
 
@@ -60,6 +62,8 @@ export class AssetService {
     const previous: Nullable<string> = this.keyed.get(key) ?? null;
     const url: string = URL.createObjectURL(blob);
 
+    this.log.info("Swap object URLs:", url, "previous:", previous);
+
     this.keyed.set(key, url);
 
     if (previous) {
@@ -78,6 +82,8 @@ export class AssetService {
    */
   public release(url: Nullable<string>): void {
     if (url && this.loose.delete(url)) {
+      this.log.info("Revoke object URL:", url);
+
       URL.revokeObjectURL(url);
     }
   }
@@ -91,6 +97,8 @@ export class AssetService {
     const url: Nullable<string> = this.keyed.get(key) ?? null;
 
     if (url) {
+      this.log.info("Revoke object URL of key:", key, url);
+
       this.keyed.delete(key);
       URL.revokeObjectURL(url);
     }
@@ -107,10 +115,12 @@ export class AssetService {
 
   public releaseAll(): void {
     for (const url of this.keyed.values()) {
+      this.log.info("Revoke object URL:", url);
       URL.revokeObjectURL(url);
     }
 
     for (const url of this.loose) {
+      this.log.info("Revoke object URL:", url);
       URL.revokeObjectURL(url);
     }
 

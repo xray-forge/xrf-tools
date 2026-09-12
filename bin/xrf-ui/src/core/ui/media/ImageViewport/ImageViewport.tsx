@@ -1,14 +1,14 @@
 import { Box } from "@mui/material";
 import {
-  Dispatch,
   MouseEvent,
   ReactElement,
   RefCallback,
-  SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   WheelEvent,
 } from "react";
 
@@ -28,6 +28,7 @@ import {
   zoomAround,
   zoomByWheel,
 } from "@/lib/media/pan-zoom";
+import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { IElementSize, useElementSize } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
 
@@ -46,10 +47,10 @@ interface IImageViewportProps {
   width: number;
   height: number;
   /**
-   * Where the camera looks, held by the caller, for two viewports that must show the same part of two pictures.
+   * The camera to look through, for two viewports that must show the same part of two pictures. A viewport given none
+   * keeps one of its own.
    */
-  state?: IPanZoomState;
-  onStateChange?: Dispatch<SetStateAction<IPanZoomState>>;
+  controller?: PanZoomController;
   /** Whether this viewport draws the zoom controls. Off for the second of a pair, which the first one moves. */
   hasControls?: boolean;
 }
@@ -62,30 +63,54 @@ export function ImageViewport({
   alt,
   width,
   height,
-  state: controlledState,
+  controller: sharedController,
   hasControls = true,
-  onStateChange,
 }: IImageViewportProps): ReactElement {
   const [viewportRef, measured]: [RefCallback<HTMLDivElement>, Nullable<IElementSize>] =
     useElementSize<HTMLDivElement>();
 
-  const [ownState, setOwnState] = useState<IPanZoomState>(PAN_ZOOM_FIT);
+  const imageRef = useRef<Nullable<HTMLImageElement>>(null);
   const dragOriginRef = useRef<Nullable<IPanZoomPoint>>(null);
 
-  const isControlled: boolean = controlledState !== undefined;
-  const state: IPanZoomState = controlledState ?? ownState;
-  const setState: Dispatch<SetStateAction<IPanZoomState>> = onStateChange ?? setOwnState;
+  const [ownController] = useState<PanZoomController>(() => new PanZoomController());
+  const controller: PanZoomController = sharedController ?? ownController;
 
-  const transform: IPanZoomTransform = toPanZoomTransform(state, { width, height }, measured ?? UNMEASURED);
+  /** Puts the picture where the camera looks, which is everything a pan has to do. */
+  const place = useCallback((): void => {
+    const element: Nullable<HTMLImageElement> = imageRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const transform: IPanZoomTransform = toPanZoomTransform(
+      controller.get(),
+      { width, height },
+      measured ?? UNMEASURED
+    );
+
+    element.style.transform = `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`;
+    // Nearest neighbour only above one to one, where the texels themselves are what is being looked at.
+    element.style.imageRendering = transform.scale > 1 ? "pixelated" : "auto";
+  }, [controller, height, measured, width]);
+
+  const subscribe = useCallback((listener: () => void): (() => void) => controller.subscribe(listener), [controller]);
+
+  // Read rather than held in state: a pan leaves the magnification alone and so renders nothing at all, and a zoom
+  // changes one number and renders the bar that shows it.
+  const scale: number = useSyncExternalStore(
+    subscribe,
+    (): number => toPanZoomTransform(controller.get(), { width, height }, measured ?? UNMEASURED).scale
+  );
 
   /** Moves whichever camera the current state resolves to, and leaves the viewport looking through the result. */
   const moveCamera = useCallback(
     (move: (camera: IPanZoomCamera) => IPanZoomCamera): void => {
-      setState((current: IPanZoomState) =>
+      controller.set((current: IPanZoomState) =>
         toManualPanZoom(move(resolvePanZoomCamera(current, { width, height }, measured ?? UNMEASURED)))
       );
     },
-    [height, measured, setState, width]
+    [controller, height, measured, width]
   );
 
   const onWheel = useCallback(
@@ -116,7 +141,7 @@ export function ImageViewport({
     [moveCamera]
   );
 
-  const onFit = useCallback((): void => setState(PAN_ZOOM_FIT), [setState]);
+  const onFit = useCallback((): void => controller.set(PAN_ZOOM_FIT), [controller]);
 
   const onMouseDown = useCallback((event: MouseEvent<HTMLDivElement>): void => {
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
@@ -144,13 +169,19 @@ export function ImageViewport({
     dragOriginRef.current = null;
   }, []);
 
+  useLayoutEffect(() => {
+    place();
+
+    return controller.subscribe(place);
+  }, [controller, place]);
+
   // A picture this viewport places itself opens fitted, rather than inheriting the last one's camera and opening
-  // somewhere off screen.
+  // somewhere off screen. A shared camera is reset by whoever owns it, since it outlives either picture on it.
   useEffect(() => {
-    if (!isControlled) {
-      setOwnState(PAN_ZOOM_FIT);
+    if (!sharedController) {
+      ownController.set(PAN_ZOOM_FIT);
     }
-  }, [isControlled, src]);
+  }, [ownController, sharedController, src]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
@@ -175,6 +206,7 @@ export function ImageViewport({
         onMouseLeave={onRelease}
       >
         <Box
+          ref={imageRef}
           component={"img"}
           alt={alt}
           src={src}
@@ -184,15 +216,14 @@ export function ImageViewport({
             left: 0,
             top: 0,
             transformOrigin: "0 0",
-            transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
-            imageRendering: transform.scale > 1 ? "pixelated" : "auto",
+            willChange: "transform",
             userSelect: "none",
           }}
         />
 
         {hasControls ? (
           <ImageViewportControls
-            scale={transform.scale}
+            scale={scale}
             onZoomIn={onZoomIn}
             onZoomOut={onZoomOut}
             onActualSize={onActualSize}

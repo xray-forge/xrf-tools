@@ -4,6 +4,7 @@ import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { IPanZoomTransform } from "@/lib/media/pan-zoom";
+import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { Nullable } from "@/lib/types/general";
 
 /** The picture under test, wider than it is tall so a fit letterboxes it and the centring is visible. */
@@ -145,6 +146,50 @@ describe("ImageViewport", () => {
     fireEvent.click(render.getByLabelText("Fit to view"));
 
     expect(readTransform(render)).toEqual(FITTED);
+  });
+
+  it("places the picture without restyling it", () => {
+    const { render, viewport } = renderViewport();
+
+    const styled: string = render.getByAltText("texture").className;
+
+    drag(viewport, 40, 25);
+
+    // The class is what Emotion mints a css rule for. A transform carried through `sx` mints one per frame of every
+    // drag, and the document keeps them, so the style recalculation behind a pan grows for as long as the window is
+    // open. The transform is written to the element instead, and the class it is written on never changes.
+    expect(render.getByAltText("texture").className).toBe(styled);
+    expect(readTransform(render).offsetX).toBeCloseTo(FITTED.offsetX + 40);
+  });
+
+  it("moves two viewports sharing one camera together", () => {
+    const controller: PanZoomController = new PanZoomController();
+
+    const render: RenderResult = renderWithProviders(
+      <>
+        <ImageViewport src={"on-disk.png"} alt={"on disk"} width={WIDTH} height={HEIGHT} controller={controller} />
+        <ImageViewport
+          src={"would-write.png"}
+          alt={"would write"}
+          width={WIDTH}
+          height={HEIGHT}
+          controller={controller}
+          hasControls={false}
+        />
+      </>
+    );
+
+    const first: HTMLElement = render.getByAltText("on disk").parentElement as HTMLElement;
+
+    fireEvent.mouseDown(first, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(first, { clientX: 160, clientY: 80 });
+    fireEvent.mouseUp(first);
+
+    // Panning one picture of a comparison to a corner and finding the other still centred is the one thing a pair must
+    // not do, and neither viewport re-renders to keep up: each writes its own element when the camera moves.
+    expect(getComputedStyle(render.getByAltText("would write")).transform).toBe(
+      getComputedStyle(render.getByAltText("on disk")).transform
+    );
   });
 
   it("opens the next picture fitted rather than under the last one's camera", () => {

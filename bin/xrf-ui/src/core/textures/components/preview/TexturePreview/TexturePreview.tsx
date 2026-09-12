@@ -18,7 +18,8 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { IPanZoomState, PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
+import { PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
+import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { Nullable } from "@/lib/types/general";
 
 import { TextureImagePane } from "./TextureImagePane";
@@ -59,7 +60,7 @@ export function TexturePreview({
 
   // Held here rather than in either pane, so a pair moves together: panning one picture to a corner and finding the
   // other still centred is the one thing a comparison must not do.
-  const [panZoom, setPanZoom] = useState<IPanZoomState>(PAN_ZOOM_FIT);
+  const [panZoom] = useState<PanZoomController>(() => new PanZoomController());
 
   // The description of the texture being replaced is still here while the next one is read, so what says a read is in
   // progress is the async state rather than the absence of a description.
@@ -69,7 +70,7 @@ export function TexturePreview({
   // Keyed on the texture rather than on either pane's url, which is what holding the camera for a pair means here: the
   // second picture is another encoding of the first, and re-encoding while zoomed into a block must not throw the
   // person back out to the fit.
-  useEffect(() => setPanZoom(PAN_ZOOM_FIT), [description?.reference]);
+  useEffect(() => panZoom.set(PAN_ZOOM_FIT), [panZoom, description?.reference]);
 
   if (selectionService.selected.error) {
     return (
@@ -129,8 +130,7 @@ export function TexturePreview({
           assetKey={TEXTURE_PREVIEW_ASSET_KEY}
           preview={selectionService.preview}
           shape={shape}
-          state={panZoom}
-          onStateChange={setPanZoom}
+          controller={panZoom}
         />
 
         <TextureImagePane
@@ -140,8 +140,7 @@ export function TexturePreview({
           assetKey={TEXTURE_COMPARISON_ASSET_KEY}
           preview={comparison.preview}
           shape={shape}
-          state={panZoom}
-          onStateChange={setPanZoom}
+          controller={panZoom}
           hasControls={false}
         />
       </Box>
