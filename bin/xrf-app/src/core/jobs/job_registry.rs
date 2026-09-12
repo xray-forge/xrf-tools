@@ -10,6 +10,7 @@ use serde_json::Value;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobProgress, ProgressSink};
+use xrf_utils::format_duration;
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
@@ -147,6 +148,20 @@ impl JobRegistry {
   /// What the job carries beyond its identity - what it holds, what it was asked to do, and who is watching - is
   /// described by `start` rather than passed alongside it, because a command knows all of it at once.
   pub fn register(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
+    let id: Uuid = start.id;
+    let kind: JobKind = start.kind;
+
+    self
+      .admit(start)
+      .inspect(|(handle, _)| match handle.is_cancelled() {
+        true => log::info!("Started job {kind} '{id}', already cancelled"),
+        false => log::info!("Started job {kind} '{id}'"),
+      })
+      .inspect_err(|reason| log::warn!("{reason}"))
+  }
+
+  /// Take the leases and start reporting the job as running, or answer why it cannot start.
+  fn admit(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
     let JobStart {
       id,
       kind,
@@ -158,6 +173,7 @@ impl JobRegistry {
 
     let resources: Vec<JobResource> = resources.iter().map(JobResource::resolve).collect::<TauriResult<_>>()?;
     let mut lease_keys: Vec<String> = resources.iter().map(JobResource::describe).collect();
+
     if let Some(group) = &exclusion_group {
       lease_keys.push(group.clone());
     }
@@ -166,6 +182,7 @@ impl JobRegistry {
       Some(channel) => JobProgressSink::new(channel),
       None => JobProgressSink::detached(),
     });
+
     let reporting: Arc<dyn ProgressSink> = Arc::clone(&sink) as Arc<dyn ProgressSink>;
     let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
     let mut state: MutexGuard<RegistryState> = self.lock();
@@ -246,6 +263,12 @@ impl JobRegistry {
     if let Some(job) = state.live.get_mut(&id) {
       job.is_cancel_requested = true;
       job.handle.cancel();
+
+      let kind: JobKind = job.kind;
+
+      drop(state);
+
+      log::info!("Cancelling job {kind} '{id}'");
 
       return true;
     }
@@ -341,11 +364,31 @@ impl JobRegistry {
       return;
     };
 
+    let kind: JobKind = job.kind;
+    let duration: Duration = job.started_at.elapsed();
+    let conclusion: JobConclusion = ending.conclusion;
+    let error: Option<String> = ending.error.clone();
+
     state.leases.release(id);
     state.finished.push_back(job.describe(id, Some(ending)));
 
     while state.finished.len() > RETAINED_JOBS {
       state.finished.pop_front();
+    }
+
+    drop(state);
+
+    let elapsed: String = format_duration(duration);
+
+    // Every way a job can end passes through here, including a panic unwinding out of the command, so this is the one
+    // place a run's ending is reported. What it was asked to do was logged by the command that asked.
+    match conclusion {
+      JobConclusion::Completed => log::info!("Completed job {kind} '{id}' in {elapsed}"),
+      JobConclusion::Cancelled => log::info!("Cancelled job {kind} '{id}' after {elapsed}"),
+      JobConclusion::Failed => match error {
+        Some(error) => log::error!("Failed job {kind} '{id}' after {elapsed}: {error}"),
+        None => log::error!("Failed job {kind} '{id}' after {elapsed}, reporting no reason"),
+      },
     }
   }
 
