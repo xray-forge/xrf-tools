@@ -13,7 +13,7 @@ describe("ApplicationHelp", () => {
   });
 
   it("offers no affordance where no help is authored yet", () => {
-    const { queryByLabelText } = renderWithProviders(<ApplicationHelp />, { route: "/spawn-editor" });
+    const { queryByLabelText } = renderWithProviders(<ApplicationHelp />, { route: "/characters-explorer" });
 
     expect(queryByLabelText("Help")).not.toBeInTheDocument();
   });
