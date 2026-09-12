@@ -11,6 +11,11 @@ import {
 /** Past a couple of screens nobody reads results, and the renderer pays for every one of them. */
 export const DEFAULT_SEARCH_LIMIT: number = 200;
 
+/**
+ * Dataset size up to which filtering runs on the keystroke itself rather than behind a deferred value.
+ */
+export const EAGER_SEARCH_LIMIT: number = 2000;
+
 export interface IUseRankedSearchOptions<T> {
   items: ReadonlyArray<T>;
   /** The identity of an item - what ranking is computed from. Keep it cheap rather than clever. */
@@ -41,10 +46,10 @@ export interface IUseRankedSearch<T> {
  * Searches a large list without blocking the input field.
  *
  * Three things make this fast, and all three matter: the searchable text is lowercased once per dataset
- * rather than once per keystroke, the query is deferred so react can abandon a filter that a newer
- * keystroke has already invalidated, and only `limit` results reach the renderer. The last is the one
- * that counts - filtering tens of thousands of rows costs a couple of milliseconds, while rendering
- * them costs seconds.
+ * rather than once per keystroke, a dataset past `EAGER_SEARCH_LIMIT` defers the query so react can
+ * abandon a filter that a newer keystroke has already invalidated, and only `limit` results reach the
+ * renderer. The last is the one that counts - filtering tens of thousands of rows costs a couple of
+ * milliseconds, while rendering them costs seconds.
  *
  * @param options - Search inputs and behavior.
  * @param options.items - Items to index and search.
@@ -72,9 +77,12 @@ export function useRankedSearch<T>({
     [items, toSearchText, toSecondaryText]
   );
 
+  // Small lists filter on the keystroke, so they never render a frame describing an older query.
+  const searchedQuery: string = index.length > EAGER_SEARCH_LIMIT ? deferredQuery : query;
+
   const outcome: IRankedSearchOutcome<T> = useMemo(
-    () => rankedSearch(index, deferredQuery, limit),
-    [index, deferredQuery, limit]
+    () => rankedSearch(index, searchedQuery, limit),
+    [index, searchedQuery, limit]
   );
 
   const currentIndex: number = Math.min(activeIndex, Math.max(0, outcome.results.length - 1));
@@ -120,7 +128,7 @@ export function useRankedSearch<T>({
     results: outcome.results,
     total: outcome.total,
     isSearching: Boolean(query.trim()),
-    isStale: query !== deferredQuery,
+    isStale: query !== searchedQuery,
     activeIndex: currentIndex,
     setActiveIndex,
     onInputKeyDown,

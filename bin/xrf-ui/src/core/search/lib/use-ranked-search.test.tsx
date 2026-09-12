@@ -83,6 +83,28 @@ describe("useRankedSearch", () => {
     expect(getByTestId("total")).toHaveTextContent("0");
   });
 
+  it("never renders a frame describing an older query for a small list", async () => {
+    const rendered: Array<{ query: string; isStale: boolean; total: number }> = [];
+
+    function Harness(): ReactElement {
+      const search: IUseRankedSearch<IFile> = useRankedSearch({ items: FILES, toSearchText });
+
+      rendered.push({ query: search.query, isStale: search.isStale, total: search.total });
+
+      return (
+        <input aria-label={"search"} value={search.query} onChange={(event) => search.setQuery(event.target.value)} />
+      );
+    }
+
+    const { getByLabelText } = renderWithProviders(<Harness />);
+
+    // Nonsense, because a query that matches nothing is where a stale frame used to show the unfiltered list.
+    await userEvent.type(getByLabelText("search"), "qqq");
+
+    expect(rendered.filter((frame) => frame.isStale)).toHaveLength(0);
+    expect(rendered.filter((frame) => frame.query !== "" && frame.total !== 0)).toHaveLength(0);
+  });
+
   it("returns nothing until something is typed", () => {
     const { queryAllByRole } = renderHarness(jest.fn());
 
