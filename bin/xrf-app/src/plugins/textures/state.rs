@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
-use crate::core::session::{Session, SessionId, SessionSnapshot};
+use crate::core::session::{Session, SessionId};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::TextureEncodingSession;
@@ -20,8 +18,10 @@ pub struct TextureBrowseSession {
 /// Browsing and encoded candidates have independent lifetimes; a failed replacement preserves each last success.
 #[derive(Clone)]
 pub struct TextureState {
-  browse: Session<TextureBrowseSession>,
-  comparison: Session<TextureEncodingSession>,
+  /// What the tree is listing.
+  pub browse: Session<TextureBrowseSession>,
+  /// The encodes one comparison weighed, held so a save can write the candidate it reported.
+  pub comparison: Session<TextureEncodingSession>,
 }
 
 impl TextureState {
@@ -32,38 +32,9 @@ impl TextureState {
     }
   }
 
-  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
-    self.browse.begin_open(id)
-  }
-
-  pub fn begin_comparison(&self, id: SessionId) -> TauriResult<()> {
-    self.comparison.begin_open(id)
-  }
-
-  pub fn get_browse(&self) -> TauriResult<Option<Arc<SessionSnapshot<TextureBrowseSession>>>> {
-    self.browse.get()
-  }
-
-  pub fn open_browse(
-    &self,
-    id: SessionId,
-    opened: TextureBrowseSession,
-  ) -> TauriResult<Arc<SessionSnapshot<TextureBrowseSession>>> {
-    self.browse.commit_open(id, opened)
-  }
-
+  /// Closes both, because a comparison is only ever about the texture the tree is showing.
   pub fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
     self.browse.close(ids)?;
     self.comparison.close(ids)
-  }
-
-  pub fn hold_comparison(&self, encodings: TextureEncodingSession) -> TauriResult<()> {
-    self.comparison.commit_open(encodings.session_id, encodings)?;
-
-    Ok(())
-  }
-
-  pub fn get_comparison(&self, id: SessionId) -> TauriResult<Arc<SessionSnapshot<TextureEncodingSession>>> {
-    self.comparison.require(id)
   }
 }

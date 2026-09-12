@@ -19,7 +19,7 @@ pub async fn spawn_save_file(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult {
-  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.session.require(session_id)?;
 
   execution
     .run_blocking("Writing spawn", move || {

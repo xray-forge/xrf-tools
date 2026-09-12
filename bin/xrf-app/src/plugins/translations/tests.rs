@@ -56,14 +56,14 @@ fn value_on_disk(roots: &XrayRoots) -> TauriResult<String> {
 
 /// What the state reports as open, or `None` when nothing is.
 fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>> {
-  Ok(state.get_project()?.as_ref().map(|project| entry_of(project)))
+  Ok(state.session.get()?.as_ref().map(|project| entry_of(project)))
 }
 
 fn open_project(state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
   let id = SessionId::new();
 
-  state.begin_open(id)?;
-  state.open_project(id, read_project(roots)?)?;
+  state.session.begin_open(id)?;
+  state.session.commit_open(id, read_project(roots)?)?;
 
   Ok(())
 }
@@ -80,7 +80,7 @@ fn edits(value: &str) -> HashMap<String, Vec<TranslationEdit>> {
 }
 
 fn current_id(state: &TranslationProjectState) -> SessionId {
-  state.get_project().unwrap().unwrap().session_id
+  state.session.get().unwrap().unwrap().session_id
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
 
   let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
-  state.close_project(&[current_id(&state)])?;
+  state.session.close(&[current_id(&state)])?;
 
   let refreshed: TranslationProjectDescriptor = write_edits(&plan, &edits("after"))?;
 
@@ -221,7 +221,7 @@ fn formatting_is_refused_while_a_project_is_open_over_the_same_tree() -> TauriRe
   state.require_no_open_session_over(&sibling.roots[0].path)?;
 
   // Closing releases it.
-  state.close_project(&[current_id(&state)])?;
+  state.session.close(&[current_id(&state)])?;
   state.require_no_open_session_over(&root)?;
 
   Ok(())

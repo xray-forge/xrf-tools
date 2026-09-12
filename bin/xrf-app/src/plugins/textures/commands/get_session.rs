@@ -8,5 +8,5 @@ use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_session"))]
 #[tauri::command(rename = "get_session")]
 pub async fn textures_get_session(state: State<'_, TextureState>) -> TauriResult<SessionRestore<TextureBrowseSession>> {
-  Ok(SessionRestore::from(state.get_browse()?))
+  Ok(SessionRestore::from(state.browse.get()?))
 }

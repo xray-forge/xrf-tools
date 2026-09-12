@@ -10,5 +10,5 @@ use crate::plugins::translations::state::TranslationProjectState;
 pub async fn translations_get_project(
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult<SessionRestore<TranslationProjectDescriptor>> {
-  Ok(SessionRestore::from(state.get_project()?))
+  Ok(SessionRestore::from(state.session.get()?))
 }

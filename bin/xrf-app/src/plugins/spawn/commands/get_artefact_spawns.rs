@@ -16,7 +16,7 @@ pub async fn spawn_get_artefact_spawns(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SpawnArtefactSpawnsChunk> {
-  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.session.require(session_id)?;
 
   execution
     .run_blocking("Reading spawn artefact_spawn", move || {

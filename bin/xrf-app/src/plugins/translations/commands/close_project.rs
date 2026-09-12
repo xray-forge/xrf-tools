@@ -12,5 +12,5 @@ pub async fn translations_close_project(
 ) -> TauriResult {
   log::info!("Closing translations project");
 
-  state.close_project(&session_ids)
+  state.session.close(&session_ids)
 }

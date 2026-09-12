@@ -16,7 +16,7 @@ pub async fn spawn_get_graphs(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SpawnGraphsChunk> {
-  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.session.require(session_id)?;
 
   execution
     .run_blocking("Reading spawn graphs", move || opened.file.graphs.clone())

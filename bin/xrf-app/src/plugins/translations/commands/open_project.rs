@@ -27,7 +27,7 @@ pub async fn translations_open_project(
     prefix,
   } = request;
 
-  state.begin_open(session_id)?;
+  state.session.begin_open(session_id)?;
 
   let prefix: String = prefix.unwrap_or_else(|| mode.get_prefix().to_owned());
 
@@ -55,5 +55,5 @@ pub async fn translations_open_project(
   );
 
   // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
-  state.open_project(session_id, descriptor)
+  state.session.commit_open(session_id, descriptor)
 }

@@ -16,7 +16,7 @@ pub async fn spawn_get_alife_spawns(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SpawnALifeSpawnsChunk> {
-  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.session.require(session_id)?;
 
   execution
     .run_blocking("Reading spawn alife_spawn", move || opened.file.alife_spawn.clone())

@@ -16,7 +16,7 @@ pub async fn spawn_get_patrols(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SpawnPatrolsChunk> {
-  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.session.require(session_id)?;
 
   execution
     .run_blocking("Reading spawn patrols", move || opened.file.patrols.clone())

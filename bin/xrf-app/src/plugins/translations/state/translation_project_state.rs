@@ -10,7 +10,8 @@ use crate::plugins::translations::state::{TranslationSaveOutcome, TranslationSav
 
 /// Owns publication; domain save planning retains exactly the snapshot it read.
 pub struct TranslationProjectState {
-  session: Session<TranslationProjectDescriptor>,
+  /// Publication itself, in the one vocabulary every plugin addresses an opening by.
+  pub session: Session<TranslationProjectDescriptor>,
 }
 
 impl TranslationProjectState {
@@ -18,30 +19,6 @@ impl TranslationProjectState {
     Self {
       session: Session::new("translations"),
     }
-  }
-
-  pub fn get_project(&self) -> TauriResult<Option<Arc<SessionSnapshot<TranslationProjectDescriptor>>>> {
-    self.session.get()
-  }
-
-  pub fn require(&self, id: SessionId) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
-    self.session.require(id)
-  }
-
-  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
-    self.session.begin_open(id)
-  }
-
-  pub fn open_project(
-    &self,
-    id: SessionId,
-    descriptor: TranslationProjectDescriptor,
-  ) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
-    self.session.commit_open(id, descriptor)
-  }
-
-  pub fn close_project(&self, ids: &[SessionId]) -> TauriResult<()> {
-    self.session.close(ids)
   }
 
   /// Resolves a save against the caller's document before touching any file.

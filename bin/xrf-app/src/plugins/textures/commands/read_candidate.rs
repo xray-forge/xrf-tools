@@ -24,7 +24,7 @@ pub async fn textures_read_candidate(
 ) -> TauriResult<Response> {
   log::info!("Decoding held encoding candidate: {format:?}");
 
-  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.get_comparison(session_id)?;
+  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.comparison.require(session_id)?;
   let png: Vec<u8> = execution
     .run_blocking("Decoding texture candidate", move || {
       Ok::<_, String>(held.require(format)?.to_png().map_err(error_to_string)?.bytes)

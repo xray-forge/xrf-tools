@@ -19,7 +19,7 @@ pub async fn translations_validate_text(
   text: &str,
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult<Option<String>> {
-  let project = state.require(session_id)?;
+  let project = state.session.require(session_id)?;
 
   find_unwritable_character(&project, language, text).map_err(error_to_string)
 }

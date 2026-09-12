@@ -22,7 +22,7 @@ pub async fn open_spawn(
   state: &SpawnFileState,
   execution: &ExecutionState,
 ) -> TauriResult<SpawnSessionDescriptor> {
-  state.begin_open(id)?;
+  state.session.begin_open(id)?;
 
   let state: SpawnFileState = state.clone();
 

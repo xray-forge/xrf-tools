@@ -16,34 +16,36 @@ fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
   let state: TextureState = TextureState::new();
   let first: SessionId = SessionId::new();
 
-  state.begin_comparison(first).expect("first session");
+  state.comparison.begin_open(first).expect("first session");
 
   state
-    .hold_comparison(comparison(first, "first"))
+    .comparison
+    .commit_open(first, comparison(first, "first"))
     .expect("first comparison");
 
   let second: SessionId = SessionId::new();
 
-  state.begin_comparison(second).expect("second session");
+  state.comparison.begin_open(second).expect("second session");
 
   assert!(
-    state.get_comparison(first).is_ok(),
+    state.comparison.require(first).is_ok(),
     "a failed replacement must leave the previous candidates readable"
   );
   assert!(
-    state.get_comparison(second).is_err(),
+    state.comparison.require(second).is_err(),
     "an unfinished comparison has no candidates"
   );
   state
-    .hold_comparison(comparison(second, "second"))
+    .comparison
+    .commit_open(second, comparison(second, "second"))
     .expect("second comparison");
 
   assert!(
-    state.get_comparison(first).is_err(),
+    state.comparison.require(first).is_err(),
     "matching labels and formats do not identify a comparison"
   );
   assert_eq!(
-    state.get_comparison(second).expect("new comparison").roots,
+    state.comparison.require(second).expect("new comparison").roots,
     roots("second")
   );
 }
@@ -53,17 +55,20 @@ fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
   let state: TextureState = TextureState::new();
   let id: SessionId = SessionId::new();
 
-  state.begin_comparison(id).expect("session");
+  state.comparison.begin_open(id).expect("session");
 
-  state.hold_comparison(comparison(id, "first")).expect("comparison");
-  let held = Arc::downgrade(&state.get_comparison(id).expect("snapshot"));
+  state
+    .comparison
+    .commit_open(id, comparison(id, "first"))
+    .expect("comparison");
+  let held = Arc::downgrade(&state.comparison.require(id).expect("snapshot"));
 
   state.close(&[id]).expect("close");
 
   assert!(held.upgrade().is_none(), "closing releases unreferenced encodes");
-  assert!(state.get_comparison(id).is_err());
-  assert!(state.hold_comparison(comparison(id, "first")).is_err());
-  assert!(state.get_browse().expect("browse").is_none());
+  assert!(state.comparison.require(id).is_err());
+  assert!(state.comparison.commit_open(id, comparison(id, "first")).is_err());
+  assert!(state.browse.get().expect("browse").is_none());
 }
 
 #[test]
@@ -71,18 +76,18 @@ fn a_late_comparison_cannot_replace_a_reopened_session() {
   let state: TextureState = TextureState::new();
   let first: SessionId = SessionId::new();
 
-  state.begin_comparison(first).expect("first session");
+  state.comparison.begin_open(first).expect("first session");
 
   state.close(&[first]).expect("close");
 
   let second: SessionId = SessionId::new();
 
-  state.begin_open(second).expect("reopened session");
-  state.open_browse(second, browse("second")).expect("reopen");
+  state.browse.begin_open(second).expect("reopened session");
+  state.browse.commit_open(second, browse("second")).expect("reopen");
 
-  assert!(state.hold_comparison(comparison(first, "first")).is_err());
+  assert!(state.comparison.commit_open(first, comparison(first, "first")).is_err());
   assert_eq!(
-    state.get_browse().expect("browse").expect("opened").value,
+    state.browse.get().expect("browse").expect("opened").value,
     browse("second")
   );
 }
@@ -92,19 +97,19 @@ fn a_late_open_cannot_undo_close_or_a_newer_open() {
   let state: TextureState = TextureState::new();
   let first: SessionId = SessionId::new();
 
-  state.begin_open(first).expect("pending open");
+  state.browse.begin_open(first).expect("pending open");
   state.close(&[first]).expect("close");
 
-  assert!(state.open_browse(first, browse("first")).is_err());
+  assert!(state.browse.commit_open(first, browse("first")).is_err());
 
   let second: SessionId = SessionId::new();
 
-  state.begin_open(second).expect("new open");
-  state.open_browse(second, browse("second")).expect("new listing");
+  state.browse.begin_open(second).expect("new open");
+  state.browse.commit_open(second, browse("second")).expect("new listing");
 
-  assert!(state.open_browse(first, browse("first")).is_err());
+  assert!(state.browse.commit_open(first, browse("first")).is_err());
   assert_eq!(
-    state.get_browse().expect("browse").expect("opened").value,
+    state.browse.get().expect("browse").expect("opened").value,
     browse("second")
   );
 }
@@ -114,10 +119,13 @@ fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
   let state: TextureState = TextureState::new();
   let id: SessionId = SessionId::new();
 
-  state.begin_comparison(id).expect("session");
-  state.hold_comparison(comparison(id, "first")).expect("comparison");
+  state.comparison.begin_open(id).expect("session");
+  state
+    .comparison
+    .commit_open(id, comparison(id, "first"))
+    .expect("comparison");
 
-  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.get_comparison(id).expect("snapshot");
+  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.comparison.require(id).expect("snapshot");
   let bytes: Vec<u8> = held
     .require(TextureEncodingFormat::Bc3)
     .expect("candidate")
@@ -128,9 +136,10 @@ fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
 
   let next: SessionId = SessionId::new();
 
-  state.begin_comparison(next).expect("next session");
+  state.comparison.begin_open(next).expect("next session");
   state
-    .hold_comparison(comparison(next, "second"))
+    .comparison
+    .commit_open(next, comparison(next, "second"))
     .expect("new comparison");
 
   assert_eq!(held.session_id, id);

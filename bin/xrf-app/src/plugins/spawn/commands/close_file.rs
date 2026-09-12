@@ -13,7 +13,7 @@ pub async fn spawn_close_file(
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult {
-  let closed = state.close(&session_ids)?;
+  let closed = state.session.detach(&session_ids)?;
 
   execution.run_blocking("Closing spawn", move || drop(closed)).await
 }

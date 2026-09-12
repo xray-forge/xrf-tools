@@ -81,9 +81,9 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
 
   let session_id: SessionId = SessionId::new();
 
-  state.begin_comparison(session_id).expect("session");
+  state.comparison.begin_open(session_id).expect("session");
 
-  let missing = state.get_comparison(session_id);
+  let missing = state.comparison.require(session_id);
 
   assert!(
     missing.is_err(),
@@ -91,19 +91,24 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   );
 
   state
-    .hold_comparison(TextureEncodingSession {
+    .comparison
+    .commit_open(
       session_id,
-      roots: XrayRoots::default(),
-      source: TextureSource::Asset {
-        reference: String::from(BASE),
+      TextureEncodingSession {
+        session_id,
+        roots: XrayRoots::default(),
+        source: TextureSource::Asset {
+          reference: String::from(BASE),
+        },
+        label: String::from(BASE),
+        attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
       },
-      label: String::from(BASE),
-      attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
-    })
+    )
     .expect("hold comparison");
 
   let png: Vec<u8> = state
-    .get_comparison(session_id)
+    .comparison
+    .require(session_id)
     .expect("comparison")
     .require(TextureEncodingFormat::Bc3)
     .expect("candidate")
@@ -113,7 +118,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
 
   assert!(!png.is_empty(), "expect the held encode to decode to a picture");
 
-  let held = state.get_comparison(session_id).expect("comparison");
+  let held = state.comparison.require(session_id).expect("comparison");
   let unweighed = held.require(TextureEncodingFormat::Bc7);
 
   assert!(
