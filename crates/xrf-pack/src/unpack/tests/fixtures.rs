@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crc32fast::hash;
-use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
@@ -91,7 +91,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
       size_real: payload.len() as u64,
     }],
     files,
-    read_policy: ArchiveProjectReadPolicy::default(),
+    read_policy: ArchiveReadPolicy::default(),
     root: directory.into(),
     size_real: payload.len() as u64,
   }

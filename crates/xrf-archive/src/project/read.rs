@@ -1,9 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::encode_w1251_bytes_to_string;
 
 use crate::ArchiveProject;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
-use crate::project::archive_project_read_result::ProjectReadResult;
+use crate::project::archive_read_result::ArchiveReadResult;
 
 impl ArchiveProject {
   /// Read one archived file into memory, decompressing it when it is stored compressed.
@@ -29,37 +28,17 @@ impl ArchiveProject {
   ///
   /// # Errors
   ///
-  /// Returns an error when the extension is not one the policy reads as text, the entry is absent, it exceeds the
-  /// policy's size limit, or its bytes cannot be read or decoded.
-  pub fn read_file_as_string(&self, filename: &str) -> XrfResult<ProjectReadResult> {
+  /// Returns an error when the entry is absent, the policy refuses it, or its bytes cannot be read or decoded.
+  pub fn read_file_as_string(&self, filename: &str) -> XrfResult<ArchiveReadResult> {
     log::info!("Trying to read file from archive: {filename}");
-
-    if !self.read_policy.supports_file(filename) {
-      return Err(XrfError::new_read_error(format!(
-        "File '{filename}' cannot be read, file extension is not allowed to be read"
-      )));
-    }
 
     let descriptor: &ArchiveFileDescriptor = self
       .files
       .get(filename)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{filename}' is not found in the archive project")))?;
 
-    if descriptor.size_real > self.read_policy.maximum_size {
-      return Err(XrfError::new_read_error(format!(
-        "File '{filename}' is too big to be read - {}, {} is maximum allowed",
-        descriptor.size_real, self.read_policy.maximum_size
-      )));
-    }
+    self.read_policy.require_text_read(filename, descriptor.size_real)?;
 
-    let bytes: Vec<u8> = self.read_file_bytes(filename)?;
-
-    // Archive text is Windows-1251, like every engine text format: a lossy UTF-8 read here turned Cyrillic configs
-    // into replacement characters in the archive explorer.
-    Ok(ProjectReadResult::new(
-      filename,
-      &encode_w1251_bytes_to_string(&bytes)?,
-      descriptor.size_real,
-    ))
+    ArchiveReadResult::decode(filename, &self.read_file_bytes(filename)?, descriptor.size_real)
   }
 }

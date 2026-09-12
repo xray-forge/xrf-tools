@@ -10,7 +10,7 @@ use xrf_utils::format_path;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::request::ArchivesPatchRequest;
+use crate::plugins::archives::patch::ArchivesPatchRequest;
 
 /// Compares two roots without writing files.
 ///

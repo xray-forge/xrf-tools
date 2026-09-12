@@ -292,7 +292,7 @@ mod tests {
   use std::path::{Path, PathBuf};
   use std::sync::Arc;
 
-  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveProjectReadPolicy};
+  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 
   use crate::{XrayAssetSource, XrayCollisionSite, XrayPathCollision};
 
@@ -338,7 +338,7 @@ mod tests {
           )
         })
         .collect(),
-      read_policy: ArchiveProjectReadPolicy::default(),
+      read_policy: ArchiveReadPolicy::default(),
       root: PathBuf::from("C:\\game\\db"),
       size_real: 0,
     }

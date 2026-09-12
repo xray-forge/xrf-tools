@@ -2211,16 +2211,16 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-export-patch-config`\n- `allow-import-pack-config`\n- `allow-import-patch-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-patch-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-project`\n- `allow-compare-archives`\n- `allow-default-pack-config`\n- `allow-default-patch-config`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-export-pack-config`\n- `allow-export-patch-config`\n- `allow-import-pack-config`\n- `allow-import-patch-config`\n- `allow-extract-file`\n- `allow-extract-directory`\n- `allow-get-project`\n- `allow-has-project`\n- `allow-list-collisions`\n- `allow-list-pack-volumes`\n- `allow-list-patch-volumes`\n- `allow-list-shared-payloads`\n- `allow-open-project`\n- `allow-pack-directory`\n- `allow-patch-archives`\n- `allow-read-file`\n- `allow-unpack-directory`\n- `allow-read-image`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
-          "description": "Enables the close_project command without any pre-configured scope.",
+          "description": "Enables the close_subject command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:allow-close-project",
-          "markdownDescription": "Enables the close_project command without any pre-configured scope."
+          "const": "archives:allow-close-subject",
+          "markdownDescription": "Enables the close_subject command without any pre-configured scope."
         },
         {
           "description": "Enables the compare_archives command without any pre-configured scope.",
@@ -2277,16 +2277,10 @@
           "markdownDescription": "Enables the extract_file command without any pre-configured scope."
         },
         {
-          "description": "Enables the get_project command without any pre-configured scope.",
+          "description": "Enables the get_subject command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:allow-get-project",
-          "markdownDescription": "Enables the get_project command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the has_project command without any pre-configured scope.",
-          "type": "string",
-          "const": "archives:allow-has-project",
-          "markdownDescription": "Enables the has_project command without any pre-configured scope."
+          "const": "archives:allow-get-subject",
+          "markdownDescription": "Enables the get_subject command without any pre-configured scope."
         },
         {
           "description": "Enables the import_pack_config command without any pre-configured scope.",
@@ -2325,10 +2319,16 @@
           "markdownDescription": "Enables the list_shared_payloads command without any pre-configured scope."
         },
         {
-          "description": "Enables the open_project command without any pre-configured scope.",
+          "description": "Enables the open_volumes command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:allow-open-project",
-          "markdownDescription": "Enables the open_project command without any pre-configured scope."
+          "const": "archives:allow-open-volumes",
+          "markdownDescription": "Enables the open_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_world command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-open-world",
+          "markdownDescription": "Enables the open_world command without any pre-configured scope."
         },
         {
           "description": "Enables the pack_directory command without any pre-configured scope.",
@@ -2361,10 +2361,10 @@
           "markdownDescription": "Enables the unpack_directory command without any pre-configured scope."
         },
         {
-          "description": "Denies the close_project command without any pre-configured scope.",
+          "description": "Denies the close_subject command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:deny-close-project",
-          "markdownDescription": "Denies the close_project command without any pre-configured scope."
+          "const": "archives:deny-close-subject",
+          "markdownDescription": "Denies the close_subject command without any pre-configured scope."
         },
         {
           "description": "Denies the compare_archives command without any pre-configured scope.",
@@ -2421,16 +2421,10 @@
           "markdownDescription": "Denies the extract_file command without any pre-configured scope."
         },
         {
-          "description": "Denies the get_project command without any pre-configured scope.",
+          "description": "Denies the get_subject command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:deny-get-project",
-          "markdownDescription": "Denies the get_project command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the has_project command without any pre-configured scope.",
-          "type": "string",
-          "const": "archives:deny-has-project",
-          "markdownDescription": "Denies the has_project command without any pre-configured scope."
+          "const": "archives:deny-get-subject",
+          "markdownDescription": "Denies the get_subject command without any pre-configured scope."
         },
         {
           "description": "Denies the import_pack_config command without any pre-configured scope.",
@@ -2469,10 +2463,16 @@
           "markdownDescription": "Denies the list_shared_payloads command without any pre-configured scope."
         },
         {
-          "description": "Denies the open_project command without any pre-configured scope.",
+          "description": "Denies the open_volumes command without any pre-configured scope.",
           "type": "string",
-          "const": "archives:deny-open-project",
-          "markdownDescription": "Denies the open_project command without any pre-configured scope."
+          "const": "archives:deny-open-volumes",
+          "markdownDescription": "Denies the open_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_world command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-open-world",
+          "markdownDescription": "Denies the open_world command without any pre-configured scope."
         },
         {
           "description": "Denies the pack_directory command without any pre-configured scope.",

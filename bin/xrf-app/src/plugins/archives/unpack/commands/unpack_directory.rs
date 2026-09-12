@@ -10,7 +10,7 @@ use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::archives::request::ArchivesUnpackRequest;
+use crate::plugins::archives::unpack::ArchivesUnpackRequest;
 
 /// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
 ///

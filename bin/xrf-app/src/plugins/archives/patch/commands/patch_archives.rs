@@ -11,7 +11,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::lease::PUBLISH_ACTION_GROUP;
-use crate::plugins::archives::request::ArchivesPatchRequest;
+use crate::plugins::archives::patch::ArchivesPatchRequest;
 
 /// Publishes added and modified entries as patch volumes.
 ///

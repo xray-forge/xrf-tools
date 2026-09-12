@@ -16,5 +16,5 @@ pub use constants::{
   CHUNK_ID_DATA, CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_METADATA, DESCRIPTOR_ROW_FIELDS_SIZE,
   DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
 };
-pub use project::{ArchiveOpenVolumes, ArchiveProject, ArchiveProjectReadPolicy, ProjectReadResult};
+pub use project::{ArchiveOpenVolumes, ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
 pub use xrf_chunk::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_SIZE_FIELD_SIZE};

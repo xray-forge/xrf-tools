@@ -10,7 +10,7 @@ use xrf_utils::{format_path, format_path_or, to_format_size};
 
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
-use crate::project::archive_project_read_policy::ArchiveProjectReadPolicy;
+use crate::project::archive_read_policy::ArchiveReadPolicy;
 use crate::reader::ArchiveReader;
 
 /// One volume set at a path the caller names, merged into a single name table.
@@ -30,7 +30,7 @@ pub struct ArchiveProject {
   /// Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
   #[cfg_attr(feature = "typescript-bindings", specta(type = HashMap<String, ArchiveFileDescriptor>))]
   pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
-  pub read_policy: ArchiveProjectReadPolicy,
+  pub read_policy: ArchiveReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
   /// caller reading an entry's bytes back out of the filesystem needs.
@@ -167,7 +167,7 @@ impl ArchiveProject {
     Ok(Self {
       archives,
       files,
-      read_policy: ArchiveProjectReadPolicy::default(),
+      read_policy: ArchiveReadPolicy::default(),
       root,
       size_real,
     })

@@ -1,7 +1,7 @@
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 
-use crate::plugins::archives::state::ArchiveProjectState;
+use crate::plugins::archives::browse::ArchiveBrowseState;
 
 pub struct ArchivesPlugin {}
 
@@ -11,7 +11,7 @@ impl ArchivesPlugin {
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(ArchiveProjectState::new("archive"));
+        application.manage(ArchiveBrowseState::new("archive browse"));
 
         Ok(())
       })

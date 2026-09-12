@@ -8,8 +8,8 @@ use xrf_pack::ArchivePackConfig;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::core::types::TauriResult;
-use crate::plugins::archives::commands::export_pack_config::archives_export_pack_config;
-use crate::plugins::archives::commands::import_pack_config::archives_import_pack_config;
+use crate::plugins::archives::pack::commands::export_pack_config::archives_export_pack_config;
+use crate::plugins::archives::pack::commands::import_pack_config::archives_import_pack_config;
 
 /// Drive one command to its answer.
 ///
