@@ -17,6 +17,7 @@ import { ChangeEvent, KeyboardEvent, ReactElement, RefObject } from "react";
 
 import { EApplicationGroupId, IApplicationGroup } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
+import { getControlBackgroundSx } from "@/core/theme/control-background";
 import { Nullable } from "@/lib/types/general";
 
 export interface IApplicationLauncherGroupFilter {
@@ -165,6 +166,7 @@ export function ApplicationLauncherHeader({
           label={`All ${totalCount}`}
           color={selectedGroupId === null ? "primary" : "default"}
           variant={selectedGroupId === null ? "filled" : "outlined"}
+          sx={selectedGroupId === null ? undefined : getControlBackgroundSx}
           onClick={() => onSelectGroup(null)}
         />
 
@@ -179,6 +181,7 @@ export function ApplicationLauncherHeader({
               aria-pressed={isSelected}
               color={isSelected ? "primary" : "default"}
               variant={isSelected ? "filled" : "outlined"}
+              sx={isSelected ? undefined : getControlBackgroundSx}
               // Clicking the active chip is how someone gets back to everything without aiming at `All`.
               onClick={() => onSelectGroup(isSelected ? null : group.id)}
             />

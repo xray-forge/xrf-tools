@@ -25,6 +25,15 @@ export const APPLICATION_BACKGROUND = {
   secondary: { x: 24, y: 16, opacity: { light: "7%", dark: "2%" } },
 } as const;
 
+/**
+ * A control's own tint, for something too small to sample the window's fields.
+ */
+export const CONTROL_BACKGROUND = {
+  angle: "-90deg",
+  primary: { share: { light: "16%", dark: "4%" }, hoverShare: { light: "26%", dark: "14%" } },
+  secondary: { share: { light: "14%", dark: "4%" }, hoverShare: { light: "24%", dark: "12%" } },
+} as const;
+
 export const LAYOUT = {
   railWidth: 44,
   /**
