@@ -1,9 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { VISUALS_EXPLORER_PANELS } from "@/applications/visuals-explorer/components/panels/visuals-explorer-panels";
-import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
-import { VisualsExplorerOpenForm } from "@/applications/visuals-explorer/components/VisualsExplorerOpenForm";
 import { toVisualLocation } from "@/applications/visuals-explorer/lib/visual-location";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -13,6 +10,10 @@ import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPre
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { VISUALS_EXPLORER_PANELS } from "./components/panels";
+import { VisualsMenu } from "./components/tree";
+import { VisualsExplorerOpenForm } from "./components/VisualsExplorerOpenForm";
 
 /**
  * Browse a tree of visuals, or look at one model on its own.

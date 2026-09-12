@@ -44,10 +44,10 @@ interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
  * The way into the explorer: browse a game tree, browse a folder of loose textures, or inspect one texture.
  */
 export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
-
-  const log: Logger = useLogger(__MODULE_NAME__);
 
   const isLoading: boolean = catalogService.catalog.isLoading || selectionService.selected.isLoading;
 

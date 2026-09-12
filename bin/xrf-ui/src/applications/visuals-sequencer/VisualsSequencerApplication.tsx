@@ -1,10 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 
-import { SEQUENCER_PANELS } from "@/applications/visuals-sequencer/components/panels/sequencer-panels";
-import { SequencerTransport } from "@/applications/visuals-sequencer/components/SequencerTransport";
-import { SequencerViewport } from "@/applications/visuals-sequencer/components/SequencerViewport";
-import { VisualsSequencerOpenForm } from "@/applications/visuals-sequencer/components/VisualsSequencerOpenForm";
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { IVisualPreviewViewportProps } from "@/core/visuals/components/preview";
@@ -12,6 +8,11 @@ import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPre
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { SEQUENCER_PANELS } from "./components/panels";
+import { SequencerTransport } from "./components/SequencerTransport";
+import { SequencerViewport } from "./components/SequencerViewport";
+import { VisualsSequencerOpenForm } from "./components/VisualsSequencerOpenForm";
 
 /**
  * Compose an ordered track out of one visual's motions and watch it play.

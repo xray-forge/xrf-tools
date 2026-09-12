@@ -1,10 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { TranslationsEditor } from "@/applications/translations-editor/components/TranslationsEditor";
-import { TranslationsEditorOpenForm } from "@/applications/translations-editor/components/TranslationsEditorOpenForm";
-import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+
+import { TranslationsEditor } from "./components/TranslationsEditor";
+import { TranslationsEditorOpenForm } from "./components/TranslationsEditorOpenForm";
+import { TranslationsService } from "./services/translations";
 
 /** Picker until a project is open, editor once it is. */
 export function TranslationsEditorApplication(): ReactElement {

@@ -1,6 +1,5 @@
 import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
 
-import { TRANSLATIONS_PARSER_HELP } from "@/applications/translations-parser/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { TRANSLATIONS_PARSER_HELP } from "./help";
 
 export const TRANSLATIONS_PARSER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

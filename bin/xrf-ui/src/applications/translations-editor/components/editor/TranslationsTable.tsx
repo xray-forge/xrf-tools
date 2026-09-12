@@ -40,6 +40,7 @@ function renderValue(value: Nullable<string>): ReactElement {
   );
 }
 
+// todo: Splite the file.
 export function TranslationsTable({
   rows,
   targetLanguage,

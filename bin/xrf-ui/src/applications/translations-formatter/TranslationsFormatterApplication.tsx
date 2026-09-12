@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsFormatResult } from "@/applications/translations-formatter/components/TranslationsFormatResult";
 import { TranslationsFormatterService } from "@/applications/translations-formatter/services/formatter";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -10,6 +9,8 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsFormatResult } from "./components/TranslationsFormatResult";
 
 export function TranslationsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

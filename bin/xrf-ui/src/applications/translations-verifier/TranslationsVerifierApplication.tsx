@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { TranslationsVerifyResult } from "@/applications/translations-verifier/components/TranslationsVerifyResult";
 import { TranslationsVerifierService } from "@/applications/translations-verifier/services/verifier";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -11,6 +10,8 @@ import { TranslationLanguageField } from "@/core/translations/components/Transla
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsVerifyResult } from "./components/TranslationsVerifyResult";
 
 export function TranslationsVerifierApplication(): ReactElement {
   const verifierService: TranslationsVerifierService = useInjection(TranslationsVerifierService);

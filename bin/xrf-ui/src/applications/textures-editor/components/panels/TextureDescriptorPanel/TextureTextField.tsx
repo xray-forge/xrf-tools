@@ -22,7 +22,7 @@ export function TextureTextField({
   helperText,
   onChange,
 }: ITextureTextFieldProps): ReactElement {
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value), [onChange]);
+  const onFieldChange = useCallback((event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value), [onChange]);
 
   return (
     <TextField
@@ -35,7 +35,7 @@ export function TextureTextField({
       label={label}
       value={value}
       helperText={helperText}
-      onChange={handleChange}
+      onChange={onFieldChange}
     />
   );
 }

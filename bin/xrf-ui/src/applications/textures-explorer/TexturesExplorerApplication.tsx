@@ -1,21 +1,20 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TexturesExplorerOpenForm } from "@/applications/textures-explorer/components/TexturesExplorerOpenForm";
-import { TexturesExplorerWorkspace } from "@/applications/textures-explorer/components/TexturesExplorerWorkspace";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface ITexturesExplorerApplicationProps extends BaseComponentProps {}
+import { TexturesExplorerOpenForm } from "./components/TexturesExplorerOpenForm";
+import { TexturesExplorerWorkspace } from "./components/TexturesExplorerWorkspace";
 
 /**
  * Browse a root set of textures, or inspect one texture on its own.
  */
 export function TexturesExplorerApplication({
   "data-testid": dataTestId = "textures-explorer-application",
-}: ITexturesExplorerApplicationProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const isOpen: boolean = catalogService.isBrowsing || selectionService.selected.value !== null;

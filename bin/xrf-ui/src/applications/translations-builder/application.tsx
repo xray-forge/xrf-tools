@@ -1,6 +1,5 @@
 import { default as BuildIcon } from "@mui/icons-material/Build";
 
-import { TRANSLATIONS_BUILDER_HELP } from "@/applications/translations-builder/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { TRANSLATIONS_BUILDER_HELP } from "./help";
 
 export const TRANSLATIONS_BUILDER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

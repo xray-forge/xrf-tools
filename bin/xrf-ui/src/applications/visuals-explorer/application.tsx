@@ -1,6 +1,5 @@
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 
-import { VISUALS_EXPLORER_HELP } from "@/applications/visuals-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { VISUALS_EXPLORER_HELP } from "./help";
 
 export const VISUALS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

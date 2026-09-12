@@ -2,7 +2,6 @@ import { Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsBuildResult } from "@/applications/translations-builder/components/TranslationsBuildResult";
 import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -12,6 +11,8 @@ import { TranslationLanguageField } from "@/core/translations/components/Transla
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsBuildResult } from "./components/TranslationsBuildResult";
 
 export function TranslationsBuilderApplication(): ReactElement {
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);

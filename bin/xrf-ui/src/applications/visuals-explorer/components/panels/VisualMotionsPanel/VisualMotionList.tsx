@@ -89,19 +89,36 @@ export function VisualMotionList({
   }, [expandAll, filter, nodes]);
 
   if (service.motions.isLoading) {
-    return <EditorPanelEmpty label={"Listing motions. Every animation file the visual references is read once."} />;
+    return (
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={"Listing motions. Every animation file the visual references is read once."}
+      />
+    );
   }
 
   if (!listed?.length) {
     return (
       <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
         label={service.motions.error?.message ?? "This visual references animation files that name no motions."}
       />
     );
   }
 
   if (!nodes.length) {
-    return <EditorPanelEmpty label={`No motion of the ${listed.length} this visual plays matches that.`} />;
+    return (
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={`No motion of the ${listed.length} this visual plays matches that.`}
+      />
+    );
   }
 
   return (

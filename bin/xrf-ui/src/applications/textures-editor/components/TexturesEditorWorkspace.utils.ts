@@ -1,4 +1,4 @@
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -16,7 +16,7 @@ export function describeEditedTextureStatus(description: Nullable<TextureDescrip
   }
 
   const status: Array<string> = [description.reference];
-  const shape = description.base?.shape ?? null;
+  const shape: Nullable<AssetTextureShape> = description.base?.shape ?? null;
 
   if (shape) {
     status.push(`${shape.width}x${shape.height}`, shape.format);

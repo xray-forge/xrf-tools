@@ -1,6 +1,5 @@
 import { default as EditNoteIcon } from "@mui/icons-material/EditNote";
 
-import { TEXTURES_EDITOR_HELP } from "@/applications/textures-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { TEXTURES_EDITOR_HELP } from "./help";
 
 export const TEXTURES_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

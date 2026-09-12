@@ -1,6 +1,5 @@
 import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
 
-import { TRANSLATIONS_VERIFIER_HELP } from "@/applications/translations-verifier/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { TRANSLATIONS_VERIFIER_HELP } from "./help";
 
 export const TRANSLATIONS_VERIFIER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

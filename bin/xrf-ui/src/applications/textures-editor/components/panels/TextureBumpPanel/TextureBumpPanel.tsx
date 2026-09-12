@@ -2,7 +2,6 @@ import { Alert, Button, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TextureGlossField } from "@/applications/textures-editor/components/panels/TextureBumpPanel/TextureGlossField";
 import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { toBumpReference, toCompanionReference } from "@/applications/textures-editor/lib/texture-bump-target";
 import { DEFAULT_VIRTUAL_HEIGHT } from "@/applications/textures-editor/lib/texture-descriptor-form";
@@ -20,6 +19,8 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { TextureGlossField } from "./TextureGlossField";
 
 /** Images the generator can read a plane out of, which is whatever `image` decodes. */
 const IMAGE_FILTERS = [{ extensions: ["png", "tga", "bmp", "jpg", "jpeg"], name: "Image" }];

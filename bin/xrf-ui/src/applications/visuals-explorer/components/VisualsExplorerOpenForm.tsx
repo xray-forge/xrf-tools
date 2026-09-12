@@ -7,35 +7,15 @@ import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import {
-  ChoiceFormRow,
-  IChoiceFormRowOption,
-  IPathField,
-  PathFormRow,
-  usePathField,
-  useRememberedValue,
-} from "@/core/ui/form";
+import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-/** Which of the two things the picker is opening. */
-const enum EVisualOpenMode {
-  FOLDER = "folder",
-  MODEL = "model",
-}
-
-const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EVisualOpenMode>> = [
-  { value: EVisualOpenMode.FOLDER, label: "Folder", "aria-label": "Open folder" },
-  { value: EVisualOpenMode.MODEL, label: "Model", "aria-label": "Open model" },
-];
-const OPEN_MODES: ReadonlyArray<EVisualOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
+import { EVisualOpenMode, OPEN_MODE_OPTIONS, OPEN_MODES } from "./VisualsExplorerOpenForm.utils";
 
 interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
   /**
    * Called once an open attempt has finished, successfully or not.
-   *
-   * A failed open leaves nothing on screen, so the form stays visible with its error either way; this
-   * only dismisses a picker that was reopened over a model.
    */
   onFinished?: () => void;
 }
@@ -46,7 +26,12 @@ interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
  * One row whose dialog follows the mode rather than two rows and a rule for when both are filled. Each mode keeps its
  * own remembered path, so switching back does not cost the last folder or the last file.
  */
-export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenFormProps): ReactElement {
+export function VisualsExplorerOpenForm({
+  "data-testid": dataTestId = "visuals-explorer-open-form",
+  id,
+  className,
+  onFinished,
+}: IVisualsExplorerOpenFormProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
 
@@ -106,6 +91,9 @@ export function VisualsExplorerOpenForm({ onFinished }: IVisualsExplorerOpenForm
 
   return (
     <PickerForm
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       isLoading={isLoading}
       title={"Open game visuals"}
       description={

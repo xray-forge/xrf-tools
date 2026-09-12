@@ -3,9 +3,6 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { TranslationsEditorActions } from "@/applications/translations-editor/components/editor/TranslationsEditorActions";
-import { TranslationsProblemsPanel } from "@/applications/translations-editor/components/editor/TranslationsProblemsPanel";
-import { TranslationsEditorWorkspace } from "@/applications/translations-editor/components/TranslationsEditorWorkspace";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationFinding, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -14,6 +11,10 @@ import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsEditorActions } from "./editor/TranslationsEditorActions";
+import { TranslationsProblemsPanel } from "./editor/TranslationsProblemsPanel";
+import { TranslationsEditorWorkspace } from "./TranslationsEditorWorkspace";
 
 export function TranslationsEditor(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

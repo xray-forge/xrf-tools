@@ -1,6 +1,5 @@
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 
-import { TEXTURES_EXPLORER_HELP } from "@/applications/textures-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { TEXTURES_EXPLORER_HELP } from "./help";
 
 export const TEXTURES_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

@@ -1,11 +1,13 @@
 import { Box, MenuItem, TextField, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
 function describe(language: string, encodings: Record<string, string>): string {
   return encodings[language] ? `${language} · ${encodings[language]}` : language;
 }
 
-export interface ITranslationsLanguageBarProps {
+export interface ITranslationsLanguageBarProps extends BaseComponentProps {
   languages: ReadonlyArray<string>;
   encodings: Record<string, string>;
   reference: string;
@@ -18,6 +20,9 @@ export interface ITranslationsLanguageBarProps {
  * Which language is being translated, and which one from.
  */
 export function TranslationsLanguageBar({
+  "data-testid": dataTestId = "translations-language-bar",
+  id,
+  className,
   languages,
   encodings,
   reference,
@@ -26,7 +31,12 @@ export function TranslationsLanguageBar({
   onTargetChange,
 }: ITranslationsLanguageBarProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}
+    >
       <TextField
         select
         size={"small"}

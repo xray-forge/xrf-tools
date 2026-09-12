@@ -2,7 +2,6 @@ import { Alert, Box, Button, List, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { TextureFormatRow } from "@/applications/textures-editor/components/panels/TextureFormatsPanel/TextureFormatRow";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@/core/bindings/types/xrf-app";
 import {
@@ -15,6 +14,8 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
+
+import { TextureFormatRow } from "./TextureFormatRow";
 
 /**
  * What every format would cost this texture, and which one a save would write.

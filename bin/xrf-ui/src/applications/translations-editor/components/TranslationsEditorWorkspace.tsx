@@ -2,12 +2,6 @@ import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { TranslationsFilesMenu } from "@/applications/translations-editor/components/editor/TranslationsFilesMenu";
-import { TranslationsLanguageBar } from "@/applications/translations-editor/components/editor/TranslationsLanguageBar";
-import {
-  ITranslationRow,
-  TranslationsTable,
-} from "@/applications/translations-editor/components/editor/TranslationsTable";
 import {
   ITranslationValidation,
   useTranslationValidation,
@@ -16,6 +10,10 @@ import { TranslationsService } from "@/applications/translations-editor/services
 import { TranslationFile, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsFilesMenu } from "./editor/TranslationsFilesMenu";
+import { TranslationsLanguageBar } from "./editor/TranslationsLanguageBar";
+import { ITranslationRow, TranslationsTable } from "./editor/TranslationsTable";
 
 export function TranslationsEditorWorkspace(): ReactElement {
   const translationsService: TranslationsService = useInjection(TranslationsService);

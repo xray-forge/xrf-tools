@@ -2,7 +2,6 @@ import { Button, Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsParseResult } from "@/applications/translations-parser/components/TranslationsParseResult";
 import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -12,6 +11,8 @@ import { TranslationLanguageField } from "@/core/translations/components/Transla
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
+
+import { TranslationsParseResult } from "./components/TranslationsParseResult";
 
 export function TranslationsParserApplication(): ReactElement {
   const parserService: TranslationsParserService = useInjection(TranslationsParserService);
