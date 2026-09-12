@@ -5,7 +5,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
-import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
@@ -15,7 +15,9 @@ function ignoreReadResult(): void {}
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject(files)));
+  service["projectState"] = AsyncState.ready(
+    mockRestoredSession(service, mockSessionSnapshot(mockArchivesProject(files)))
+  );
 
   return service;
 }

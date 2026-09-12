@@ -131,7 +131,7 @@ export class ArchivesService {
   public onDeactivation(): void {
     this.log.info("Deactivating, release archive project");
 
-    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -146,6 +146,7 @@ export class ArchivesService {
 
       this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
 
+      this.session.adopt(existing);
       this.projectState = this.projectState.asReady(existing);
 
       if (existing) {
@@ -203,7 +204,7 @@ export class ArchivesService {
     this.log.info("Closing existing archives project");
 
     try {
-      yield* call(this.session.close(this.projectState.value?.sessionId));
+      yield* call(this.session.close());
 
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 

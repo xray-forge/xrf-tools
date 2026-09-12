@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockRestoredSession } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -8,6 +9,22 @@ import { SpriteEquipmentEditorService } from "./editor.service";
 
 function closeCalls(): number {
   return mockInvoke.mock.calls.filter(([command]) => command === "plugin:sprite-equipment|close_sprite").length;
+}
+
+/** Puts a sprite on screen the way a restore does, so the service owns the opening its teardown releases. */
+function showSprite(service: SpriteEquipmentEditorService): void {
+  service.spriteImage = service.spriteImage.asReady(
+    mockRestoredSession(service, {
+      sessionId: "fixture-session",
+      isDltx: false,
+      ltxPath: "system.ltx",
+      descriptors: [],
+      path: "equipment.dds",
+      name: "equipment.png",
+      blob: new Blob(),
+      image: new Image(),
+    })
+  );
 }
 
 /**
@@ -23,18 +40,7 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService).spriteImage = container
-      .get(SpriteEquipmentEditorService)
-      .spriteImage.asReady({
-        sessionId: "fixture-session",
-        isDltx: false,
-        ltxPath: "system.ltx",
-        descriptors: [],
-        path: "equipment.dds",
-        name: "equipment.png",
-        blob: new Blob(),
-        image: new Image(),
-      });
+    showSprite(container.get(SpriteEquipmentEditorService));
 
     container.deprovision();
 
@@ -48,18 +54,7 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService).spriteImage = container
-      .get(SpriteEquipmentEditorService)
-      .spriteImage.asReady({
-        sessionId: "fixture-session",
-        isDltx: false,
-        ltxPath: "system.ltx",
-        descriptors: [],
-        path: "equipment.dds",
-        name: "equipment.png",
-        blob: new Blob(),
-        image: new Image(),
-      });
+    showSprite(container.get(SpriteEquipmentEditorService));
 
     container.deprovision();
     container.unbindAll();
@@ -72,36 +67,14 @@ describe("SpriteEquipmentEditorService deactivation", () => {
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService).spriteImage = container
-      .get(SpriteEquipmentEditorService)
-      .spriteImage.asReady({
-        sessionId: "fixture-session",
-        isDltx: false,
-        ltxPath: "system.ltx",
-        descriptors: [],
-        path: "equipment.dds",
-        name: "equipment.png",
-        blob: new Blob(),
-        image: new Image(),
-      });
+    showSprite(container.get(SpriteEquipmentEditorService));
 
     // Mount, throwaway unmount, remount - `unbindAll` never runs because the provider cancels it.
     container.deprovision();
 
     await container.provision();
 
-    container.get(SpriteEquipmentEditorService).spriteImage = container
-      .get(SpriteEquipmentEditorService)
-      .spriteImage.asReady({
-        sessionId: "fixture-session",
-        isDltx: false,
-        ltxPath: "system.ltx",
-        descriptors: [],
-        path: "equipment.dds",
-        name: "equipment.png",
-        blob: new Blob(),
-        image: new Image(),
-      });
+    showSprite(container.get(SpriteEquipmentEditorService));
 
     expect(closeCalls()).toBe(0);
 

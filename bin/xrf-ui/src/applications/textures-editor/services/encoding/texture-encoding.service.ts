@@ -101,7 +101,7 @@ export class TextureEncodingService {
    */
   @BoundAction()
   public clear(): void {
-    releaseEditorProject(() => this.session.close(this.compare.result?.sessionId));
+    releaseEditorProject(() => this.session.close());
 
     this.choice = null;
     this.preview = this.preview.asIdle();
@@ -201,5 +201,6 @@ export class TextureEncodingService {
   @OnEvent(JOB_SETTLED_EVENT)
   public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
     this.compare.adopt(event.payload);
+    this.session.adopt(this.compare.result);
   }
 }

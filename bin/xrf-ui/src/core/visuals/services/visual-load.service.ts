@@ -163,6 +163,8 @@ export class VisualLoadService {
   public *restore(): TFlow {
     const snapshot = yield* call(visualsCommands.getModel());
 
+    this.session.adopt(snapshot);
+
     if (snapshot) {
       yield* this.view(snapshot);
     }
@@ -173,7 +175,7 @@ export class VisualLoadService {
    */
   @LatestFlow("visual")
   public *close(): TFlow {
-    yield* call(this.session.close(this.visual.value?.selected.sessionId));
+    yield* call(this.session.close());
 
     this.clearView();
   }
@@ -184,7 +186,7 @@ export class VisualLoadService {
   @BoundAction()
   public clear(): void {
     cancelFlow(this, "visual");
-    releaseEditorProject(() => this.session.close(this.visual.value?.selected.sessionId));
+    releaseEditorProject(() => this.session.close());
 
     this.clearView();
   }

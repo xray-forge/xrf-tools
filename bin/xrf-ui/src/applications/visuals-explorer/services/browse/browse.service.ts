@@ -75,7 +75,7 @@ export class VisualsBrowseService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the project");
 
-    releaseEditorProject(() => this.session.close(this.browsed?.sessionId));
+    releaseEditorProject(() => this.session.close());
 
     runInAction(() => {
       this.browsed = null;
@@ -106,7 +106,7 @@ export class VisualsBrowseService {
   @LatestFlow("visuals")
   public *close(): TFlow {
     try {
-      yield* call(this.session.close(this.browsed?.sessionId));
+      yield* call(this.session.close());
 
       this.browsed = null;
       this.visuals = this.visuals.asIdle([]);
@@ -122,6 +122,8 @@ export class VisualsBrowseService {
   private *restore(): TFlow {
     try {
       const snapshot = yield* call(visualsCommands.getBrowse());
+
+      this.session.adopt(snapshot);
 
       if (snapshot) {
         yield* this.list(snapshot);

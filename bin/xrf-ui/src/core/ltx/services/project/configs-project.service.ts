@@ -73,7 +73,7 @@ export class ConfigsProjectService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the opened configs project");
 
-    releaseEditorProject(() => this.session.close(this.sessionId));
+    releaseEditorProject(() => this.session.close());
 
     runInAction(() => {
       this.project = this.project.asIdle(null);
@@ -121,7 +121,7 @@ export class ConfigsProjectService {
   @LatestFlow("project")
   public *close(): TFlow {
     try {
-      yield* call(this.session.close(this.sessionId));
+      yield* call(this.session.close());
 
       this.project = this.project.asIdle(null);
     } catch (error) {
@@ -137,6 +137,7 @@ export class ConfigsProjectService {
     try {
       const descriptor: Nullable<ConfigsProjectDescriptor> = yield* call(configsCommands.getProject());
 
+      this.session.adopt(descriptor);
       this.project = this.project.asReady(descriptor);
     } catch (error) {
       this.log.error("Failed to restore the configs project:", error);

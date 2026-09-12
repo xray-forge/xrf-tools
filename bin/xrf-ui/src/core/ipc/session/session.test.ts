@@ -65,7 +65,38 @@ describe("Session", () => {
     expect(release).toHaveBeenCalledWith([first.sessionId]);
   });
 
-  it("can retry a failed release and includes the restored session", async () => {
+  it("releases an adopted opening as its own, and ignores an absent one", async () => {
+    const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
+    const session = new Session(release);
+
+    session.adopt(null);
+    session.adopt(undefined);
+
+    await session.close();
+
+    expect(release).not.toHaveBeenCalled();
+
+    session.adopt({ sessionId: "restored" });
+
+    await session.close();
+
+    expect(release).toHaveBeenCalledWith(["restored"]);
+  });
+
+  it("drops an adopted opening once a later open replaces it", async () => {
+    const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
+    const session = new Session(release);
+
+    session.adopt({ sessionId: "restored" });
+
+    const opened = await session.open(async (sessionId) => ({ sessionId }));
+
+    await session.close();
+
+    expect(release.mock.calls).toEqual([[[opened.sessionId]]]);
+  });
+
+  it("can retry a failed release and includes the adopted session", async () => {
     const release = jest
       .fn<(ids: Array<string>) => Promise<void>>()
       .mockRejectedValueOnce(new Error("transport unavailable"))
@@ -73,7 +104,9 @@ describe("Session", () => {
 
     const session = new Session(release);
 
-    await expect(session.close("restored")).rejects.toThrow("transport unavailable");
+    session.adopt({ sessionId: "restored" });
+
+    await expect(session.close()).rejects.toThrow("transport unavailable");
     await session.close();
 
     expect(release.mock.calls).toEqual([[["restored"]], [["restored"]]]);

@@ -1,6 +1,6 @@
 import { SessionId } from "@/core/bindings/types/xrf-app";
 import { ISessionIdentity } from "@/core/ipc/session/session.types";
-import { Nullable } from "@/lib/types/general";
+import { Maybe } from "@/lib/types/general";
 
 /**
  * Owns native openings through completion and teardown, including cancelled frontend flows.
@@ -12,6 +12,17 @@ export class Session {
   private revision: number = 0;
 
   public constructor(private readonly release: (sessionIds: Array<SessionId>) => Promise<unknown>) {}
+
+  /**
+   * Takes responsibility for an opening this view did not allocate.
+   *
+   * @param session - Identity to take over, or nothing when the backend holds none.
+   */
+  public adopt(session: Maybe<ISessionIdentity>): void {
+    if (session) {
+      this.owned.add(session.sessionId);
+    }
+  }
 
   /**
    * Allocates an identity before dispatch and releases superseded results.
@@ -65,16 +76,12 @@ export class Session {
   }
 
   /**
-   * Releases owned openings. Failed releases remain retryable.
+   * Releases every owned opening, allocated or adopted. Failed releases remain retryable.
    *
-   * @param restoredId - Identity restored by this view, if any.
+   * @returns Resolves once the backend has dropped them.
    */
-  public async close(restoredId?: Nullable<SessionId>): Promise<void> {
+  public async close(): Promise<void> {
     this.revision += 1;
-
-    if (restoredId) {
-      this.owned.add(restoredId);
-    }
 
     const ids: Array<SessionId> = [...this.owned];
 

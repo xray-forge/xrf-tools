@@ -77,7 +77,7 @@ export class DialogsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -88,6 +88,8 @@ export class DialogsService {
     const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(dialogsCommands.getProject());
 
     this.log.info(response ? "Existing dialogs project detected" : "No existing dialogs project");
+
+    this.session.adopt(response);
 
     this.isReady = true;
 
@@ -150,7 +152,7 @@ ${transformError(error).message}`,
 
   @LatestFlow("project")
   public *closeProject(): TFlow {
-    yield* call(this.session.close(this.projectState.value?.sessionId));
+    yield* call(this.session.close());
 
     cancelFlow(this, "dialog");
     this.projectState = this.projectState.asIdle();

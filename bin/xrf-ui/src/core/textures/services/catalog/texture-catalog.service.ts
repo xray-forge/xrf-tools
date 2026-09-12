@@ -97,7 +97,7 @@ export class TextureCatalogService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the browsed roots");
 
-    releaseEditorProject(() => this.session.close(this.catalogState.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
 
     runInAction(() => {
       this.catalogState = this.catalogState.asIdle();
@@ -137,7 +137,7 @@ export class TextureCatalogService {
   @LatestFlow("catalog")
   public *close(): TFlow {
     try {
-      yield* call(this.session.close(this.catalogState.value?.sessionId));
+      yield* call(this.session.close());
 
       this.catalogState = this.catalogState.asIdle();
       this.summaries = this.summaries.asIdle([]);
@@ -175,6 +175,8 @@ export class TextureCatalogService {
   private *restore(): TFlow {
     try {
       const session = yield* call(texturesCommands.getSession());
+
+      this.session.adopt(session);
 
       if (session) {
         yield* this.list(session.value.roots, session.value.mode);

@@ -85,7 +85,7 @@ export class SpriteEquipmentEditorService {
 
     this.assetService.release(this.spriteImage.value?.image.src ?? null);
 
-    releaseEditorProject(() => this.session.close(this.spriteImage.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -106,6 +106,7 @@ export class SpriteEquipmentEditorService {
     }
 
     this.log.info("Existing equipment sprite detected");
+    this.session.adopt(response);
     this.isReady = true;
 
     yield* this.viewSprite(response);
@@ -301,7 +302,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      yield* call(this.session.close(this.spriteImage.value?.sessionId));
+      yield* call(this.session.close());
 
       this.assetService.release(this.spriteImage.value?.image.src ?? null);
 

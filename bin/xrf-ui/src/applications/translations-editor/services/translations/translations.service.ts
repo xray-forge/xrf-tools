@@ -79,7 +79,7 @@ export class TranslationsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -94,7 +94,7 @@ export class TranslationsService {
     this.log.info(response ? "Existing translations project detected" : "No existing translations project");
 
     this.isReady = true;
-
+    this.session.adopt(response);
     this.projectState = this.projectState.asReady(response);
   }
 
@@ -297,7 +297,7 @@ ${transformError(error).message}`,
     this.projectState = loading;
 
     try {
-      yield* call(this.session.close(this.projectState.value?.sessionId));
+      yield* call(this.session.close());
 
       this.projectState = this.projectState.asIdle();
       this.edits = {};

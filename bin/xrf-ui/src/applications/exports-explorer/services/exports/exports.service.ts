@@ -40,7 +40,7 @@ export class ExportsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -53,8 +53,9 @@ export class ExportsService {
 
       this.log.info(project ? "Existing exports project detected" : "No existing exports project");
 
-      this.projectState = this.projectState.asReady(project);
       this.isReady = true;
+      this.session.adopt(project);
+      this.projectState = this.projectState.asReady(project);
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -151,7 +152,7 @@ export class ExportsService {
     this.projectState = this.projectState.asLoading();
 
     try {
-      yield* call(this.session.close(this.projectState.value?.sessionId));
+      yield* call(this.session.close());
 
       this.projectState = this.projectState.asIdle();
     } catch (error: unknown) {

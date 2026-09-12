@@ -121,7 +121,7 @@ export class SpawnFileService {
   public onDeactivation(): void {
     this.log.info("Deactivating");
 
-    releaseEditorProject(() => this.session.close(this.sessionId));
+    releaseEditorProject(() => this.session.close());
   }
 
   /**
@@ -176,7 +176,7 @@ export class SpawnFileService {
     this.log.info("Closing existing spawn file");
 
     try {
-      yield* call(this.session.close(this.sessionId));
+      yield* call(this.session.close());
 
       this.adoptSession(null);
       this.operation = this.operation.asIdle();
@@ -360,7 +360,9 @@ export class SpawnFileService {
       this.resetChunks();
     }
 
+    this.session.adopt(session);
     this.sessionDescriptor = session;
+
     this.setChunk("header", session ? AsyncState.ready(session.header) : AsyncState.idle());
   }
 
