@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { ArchivesUnpackResult } from "@/applications/archives-unpacker/components/ArchivesUnpackResult";
 import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -11,6 +10,8 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { ArchivesUnpackResult } from "./components/ArchivesUnpackResult";
 
 export function ArchivesUnpackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

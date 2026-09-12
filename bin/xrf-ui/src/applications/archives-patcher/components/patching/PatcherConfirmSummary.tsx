@@ -4,10 +4,11 @@ import { ReactElement } from "react";
 import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
 import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
 
-interface IPatcherConfirmSummaryProps {
+interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   /** Whether the run reports the difference or writes it, which changes almost everything below. */
   isPreviewOnly: boolean;
@@ -21,6 +22,9 @@ interface IPatcherConfirmSummaryProps {
  * What a run is about to do, read from the configuration it will be given.
  */
 export function PatcherConfirmSummary({
+  "data-testid": dataTestId = "patcher-confirm-summary",
+  id,
+  className,
   config,
   isPreviewOnly,
   publishedVolumes,
@@ -31,7 +35,7 @@ export function PatcherConfirmSummary({
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
   return (
-    <Stack spacing={1.5}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
       <ArchiveSummaryRow label={"Game"}>
         <ArchivePathText value={config.input} />
       </ArchiveSummaryRow>

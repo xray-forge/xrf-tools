@@ -4,18 +4,6 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { ArchivesPatchResult } from "@/applications/archives-patcher/components/ArchivesPatchResult";
-import {
-  PATCHER_SECTIONS_PANEL_LABEL,
-  PatcherSectionsMenu,
-} from "@/applications/archives-patcher/components/PatcherSectionsMenu";
-import { PatcherToolbarActions } from "@/applications/archives-patcher/components/PatcherToolbarActions";
-import { PatcherConfirmSummary } from "@/applications/archives-patcher/components/patching/PatcherConfirmSummary";
-import { PatcherComparisonSection } from "@/applications/archives-patcher/components/sections/PatcherComparisonSection";
-import { PatcherHeaderSection } from "@/applications/archives-patcher/components/sections/PatcherHeaderSection";
-import { PatcherOptionsSection } from "@/applications/archives-patcher/components/sections/PatcherOptionsSection";
-import { PatcherOutputSection } from "@/applications/archives-patcher/components/sections/PatcherOutputSection";
-import { PatcherSelectionSection } from "@/applications/archives-patcher/components/sections/PatcherSelectionSection";
 import { PATCH_CONFIG_EXTENSIONS, withPatchConfigExtension } from "@/applications/archives-patcher/lib/patch-config";
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
 import { ArchivesPatchRequest } from "@/core/bindings/types/xrf-app";
@@ -33,6 +21,18 @@ import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { ArchivesPatchResult } from "./components/ArchivesPatchResult";
+import { PATCHER_SECTIONS_PANEL_LABEL, PatcherSectionsMenu } from "./components/PatcherSectionsMenu";
+import { PatcherToolbarActions } from "./components/PatcherToolbarActions";
+import { PatcherConfirmSummary } from "./components/patching";
+import {
+  PatcherComparisonSection,
+  PatcherHeaderSection,
+  PatcherOptionsSection,
+  PatcherOutputSection,
+  PatcherSelectionSection,
+} from "./components/sections";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
 const IMPORT_CONFIG_FILTERS = [{ name: "Patching configuration", extensions: [...PATCH_CONFIG_EXTENSIONS] }];

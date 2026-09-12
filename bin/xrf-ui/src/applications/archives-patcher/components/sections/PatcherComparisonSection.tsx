@@ -3,8 +3,9 @@ import { ReactElement } from "react";
 
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { CheckboxFormRow, IPathField, PathFormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPatcherComparisonSectionProps {
+interface IPatcherComparisonSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   input: IPathField;
   target: IPathField;
@@ -16,6 +17,9 @@ interface IPatcherComparisonSectionProps {
  * What the patch is built from: the game, and optionally a tree of its own.
  */
 export function PatcherComparisonSection({
+  "data-testid": dataTestId = "patcher-comparison-section",
+  id,
+  className,
   config,
   input,
   target,
@@ -25,7 +29,7 @@ export function PatcherComparisonSection({
   const isDeliveringOwnTree: boolean = config.target !== null;
 
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <PathFormRow
         isDisabled={isDisabled}
         label={"Game"}

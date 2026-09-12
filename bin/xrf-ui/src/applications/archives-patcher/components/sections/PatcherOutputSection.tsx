@@ -3,8 +3,9 @@ import { ChangeEvent, ReactElement } from "react";
 
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPatcherOutputSectionProps {
+interface IPatcherOutputSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   destination: IPathField;
   isDisabled?: boolean;
@@ -15,13 +16,16 @@ interface IPatcherOutputSectionProps {
  * Where the volumes land and what they are called.
  */
 export function PatcherOutputSection({
+  "data-testid": dataTestId = "patcher-output-section",
+  id,
+  className,
   config,
   destination,
   isDisabled,
   onChange,
 }: IPatcherOutputSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <PathFormRow
         isDisabled={isDisabled}
         label={"Output"}

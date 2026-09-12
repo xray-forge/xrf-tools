@@ -4,9 +4,10 @@ import { ChangeEvent, ReactElement } from "react";
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IPatcherOptionsSectionProps {
+interface IPatcherOptionsSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   /** Ceiling reported by the backend, so the form does not carry its own copy of the format's limit. */
   maxVolumeSizeMegabytes: number;
@@ -25,6 +26,9 @@ interface IPatcherOptionsSectionProps {
  * How the patch is written and how carefully the comparison decides, as opposed to what goes into it.
  */
 export function PatcherOptionsSection({
+  "data-testid": dataTestId = "patcher-options-section",
+  id,
+  className,
   config,
   maxVolumeSizeMegabytes,
   volumeSize,
@@ -38,7 +42,7 @@ export function PatcherOptionsSection({
   onChange,
 }: IPatcherOptionsSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <ArchiveVolumeOptionsFields
         id={"patcher"}
         config={config}

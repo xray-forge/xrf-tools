@@ -9,6 +9,7 @@ import { ReactElement } from "react";
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Named once, because the panel and its own heading must not drift apart. */
 export const PATCHER_SECTIONS_PANEL_LABEL: string = "Configuration";
@@ -29,7 +30,11 @@ const SECTIONS: Array<{ id: EPatcherSection; label: string; description: string;
 /**
  * Navigation for the patching configuration, drawn by the shell as the application's left panel.
  */
-export function PatcherSectionsMenu(): ReactElement {
+export function PatcherSectionsMenu({
+  "data-testid": dataTestId = "patcher-sections-menu",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const patcherService: PatcherService = useInjection(PatcherService);
 
   const items: Array<IEditorSideMenuItem> = SECTIONS.map((section) => ({
@@ -40,5 +45,13 @@ export function PatcherSectionsMenu(): ReactElement {
     onClick: () => patcherService.openSection(section.id),
   }));
 
-  return <EditorSideMenu header={<EditorPanelHeader title={PATCHER_SECTIONS_PANEL_LABEL} />} sections={items} />;
+  return (
+    <EditorSideMenu
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      header={<EditorPanelHeader title={PATCHER_SECTIONS_PANEL_LABEL} />}
+      sections={items}
+    />
+  );
 }

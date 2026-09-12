@@ -47,7 +47,7 @@ export function ArchivesUnpackResult({ result, outputPath }: IArchivesUnpackResu
         <RevealPathButton application={EApplicationId.ARCHIVES_UNPACKER} path={outputPath} label={"Show output"} />
       }
     >
-      <CommandResultFindings<{ archive: string }>
+      <CommandResultFindings
         rows={rows}
         columns={columns}
         getRowId={(row) => row.archive}

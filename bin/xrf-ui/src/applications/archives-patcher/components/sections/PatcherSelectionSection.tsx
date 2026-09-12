@@ -3,8 +3,9 @@ import { ReactElement } from "react";
 
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { StringListFormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPatcherSelectionSectionProps {
+interface IPatcherSelectionSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   isDisabled?: boolean;
   onChange: (patch: Partial<ArchivePatchConfig>) => void;
@@ -13,9 +14,16 @@ interface IPatcherSelectionSectionProps {
 /**
  * What the comparison is allowed to look at.
  */
-export function PatcherSelectionSection({ config, isDisabled, onChange }: IPatcherSelectionSectionProps): ReactElement {
+export function PatcherSelectionSection({
+  "data-testid": dataTestId = "patcher-selection-section",
+  id,
+  className,
+  config,
+  isDisabled,
+  onChange,
+}: IPatcherSelectionSectionProps): ReactElement {
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <StringListFormRow
         label={"Only compare"}
         description={"Logical prefixes the comparison is restricted to, such as configs"}

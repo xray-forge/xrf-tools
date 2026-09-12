@@ -9,6 +9,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -27,13 +28,19 @@ const CHANGE_COLORS: Record<ArchivePatchClass, string> = {
 /** Read from is off by default: two loose trees repeat one of two roots on every row. */
 const HIDDEN_COLUMNS: Array<string> = ["origin"];
 
-interface IArchivesPatchResultProps {
+interface IArchivesPatchResultProps extends BaseComponentProps {
   result: ArchivePatchResult;
   /** Where the run was told to publish, for revealing what it wrote. */
   outputPath: Nullable<string>;
 }
 
-export function ArchivesPatchResult({ result, outputPath }: IArchivesPatchResultProps): ReactElement {
+export function ArchivesPatchResult({
+  "data-testid": dataTestId = "archives-patch-result",
+  id,
+  className,
+  result,
+  outputPath,
+}: IArchivesPatchResultProps): ReactElement {
   const rows: Array<IPatchChangeRow> = useMemo(() => toPatchChangeRows(result), [result]);
 
   const columns: Array<GridColDef<IPatchChangeRow>> = useMemo(
@@ -81,6 +88,9 @@ export function ArchivesPatchResult({ result, outputPath }: IArchivesPatchResult
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={describePatchHeadline(result)}
       tone={"success"}
       stats={stats}

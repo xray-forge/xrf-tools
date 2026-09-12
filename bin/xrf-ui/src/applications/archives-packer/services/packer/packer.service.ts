@@ -161,16 +161,6 @@ export class PackerService {
   ) {}
 
   /**
-   * Stops the running pack, if there is one.
-   */
-  @BoundAction()
-  public cancel(): void {
-    if (this.job) {
-      this.jobsService.cancel(this.job.id);
-    }
-  }
-
-  /**
    * Opens the editor on the packer's own defaults.
    *
    * A failure falls back to a local copy of them rather than leaving the editor shut: the values are the
@@ -179,6 +169,16 @@ export class PackerService {
   @OnProvision()
   public async onProvision(): Promise<void> {
     await flowResult(this.restore());
+  }
+
+  /**
+   * Stops the running pack, if there is one.
+   */
+  @BoundAction()
+  public cancel(): void {
+    if (this.job) {
+      this.jobsService.cancel(this.job.id);
+    }
   }
 
   /**

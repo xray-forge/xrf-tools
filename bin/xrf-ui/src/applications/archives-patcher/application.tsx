@@ -1,6 +1,5 @@
 import { default as DifferenceIcon } from "@mui/icons-material/Difference";
 
-import { ARCHIVES_PATCHER_HELP } from "@/applications/archives-patcher/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { ARCHIVES_PATCHER_HELP } from "./help";
 
 export const ARCHIVES_PATCHER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

@@ -7,8 +7,9 @@ import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IPatcherToolbarActionsProps {
+interface IPatcherToolbarActionsProps extends BaseComponentProps {
   isBusy: boolean;
   isRunDisabled: boolean;
   onImport: () => void;
@@ -21,6 +22,9 @@ interface IPatcherToolbarActionsProps {
  * Toolbar actions for the patcher.
  */
 export function PatcherToolbarActions({
+  "data-testid": dataTestId = "patcher-toolbar-actions",
+  id,
+  className,
   isBusy,
   isRunDisabled,
   onImport,
@@ -31,7 +35,14 @@ export function PatcherToolbarActions({
   const disabledReason: string = "Choose a game and an output first";
 
   return (
-    <Stack direction={"row"} spacing={0.5} sx={{ alignItems: "center", mr: 0.5 }}>
+    <Stack
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      direction={"row"}
+      spacing={0.5}
+      sx={{ alignItems: "center", mr: 0.5 }}
+    >
       <EditorIconAction
         label={"Import patching configuration"}
         description={"Import a patching configuration"}

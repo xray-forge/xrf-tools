@@ -10,9 +10,6 @@ import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** Named once, because the panel and its own heading must not drift apart. */
-export const PACKER_SECTIONS_PANEL_LABEL: string = "Configuration";
-
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [
   {
     id: EPackerSection.OUTPUT,
@@ -48,7 +45,7 @@ export function PackerSectionsMenu({
       data-testid={dataTestId}
       id={id}
       className={className}
-      header={<EditorPanelHeader title={PACKER_SECTIONS_PANEL_LABEL} />}
+      header={<EditorPanelHeader title={"Configuration"} />}
       sections={items}
     />
   );

@@ -18,10 +18,6 @@ interface IPackerToolbarActionsProps extends BaseComponentProps {
 
 /**
  * Toolbar actions for the packer.
- *
- * The caption row is sized for icon buttons, so the two configuration actions are icons and only the
- * primary verb keeps its label. A tooltip carries what each icon means, and the disabled ones are
- * wrapped so the tooltip still reaches them.
  */
 export function PackerToolbarActions({
   "data-testid": dataTestId = "packer-toolbar-actions",

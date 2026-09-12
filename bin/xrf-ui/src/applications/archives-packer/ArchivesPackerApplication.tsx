@@ -4,17 +4,6 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  PACKER_SECTIONS_PANEL_LABEL,
-  PackerSectionsMenu,
-} from "@/applications/archives-packer/components/PackerSectionsMenu";
-import { PackerToolbarActions } from "@/applications/archives-packer/components/PackerToolbarActions";
-import { ArchivesPackResult } from "@/applications/archives-packer/components/packing/ArchivesPackResult";
-import { PackerConfirmSummary } from "@/applications/archives-packer/components/packing/PackerConfirmSummary";
-import { PackerHeaderSection } from "@/applications/archives-packer/components/sections/PackerHeaderSection";
-import { PackerOptionsSection } from "@/applications/archives-packer/components/sections/PackerOptionsSection";
-import { PackerOutputSection } from "@/applications/archives-packer/components/sections/PackerOutputSection";
-import { PackerSelectionSection } from "@/applications/archives-packer/components/sections/PackerSelectionSection";
 import { PACK_CONFIG_EXTENSIONS, withPackConfigExtension } from "@/applications/archives-packer/lib/pack-config";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
@@ -30,6 +19,16 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { Nullable } from "@/lib/types/general";
+
+import { PackerSectionsMenu } from "./components/PackerSectionsMenu";
+import { PackerToolbarActions } from "./components/PackerToolbarActions";
+import { ArchivesPackResult, PackerConfirmSummary } from "./components/packing";
+import {
+  PackerHeaderSection,
+  PackerOptionsSection,
+  PackerOutputSection,
+  PackerSelectionSection,
+} from "./components/sections";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
 const IMPORT_CONFIG_FILTERS = [{ name: "Packing configuration", extensions: [...PACK_CONFIG_EXTENSIONS] }];
@@ -142,7 +141,7 @@ export function ArchivesPackerApplication(): ReactElement {
         icon: <TuneIcon />,
         id: "packer-sections",
         isOpenByDefault: true,
-        label: PACKER_SECTIONS_PANEL_LABEL,
+        label: "Configuration",
         render: () => <PackerSectionsMenu />,
         side: "left",
       },

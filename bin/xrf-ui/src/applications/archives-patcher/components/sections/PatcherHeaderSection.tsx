@@ -4,9 +4,10 @@ import { ReactElement } from "react";
 import { DEFAULT_ENTRY_POINT, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IPatcherHeaderSectionProps {
+interface IPatcherHeaderSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   isDisabled?: boolean;
   onChange: (patch: Partial<ArchivePatchConfig>) => void;
@@ -15,11 +16,18 @@ interface IPatcherHeaderSectionProps {
 /**
  * The header written into the patch volumes, which is how the engine decides where they mount.
  */
-export function PatcherHeaderSection({ config, isDisabled, onChange }: IPatcherHeaderSectionProps): ReactElement {
+export function PatcherHeaderSection({
+  "data-testid": dataTestId = "patcher-header-section",
+  id,
+  className,
+  config,
+  isDisabled,
+  onChange,
+}: IPatcherHeaderSectionProps): ReactElement {
   const entryPoint: Nullable<string> = readHeaderValue(config.header, HEADER_ENTRY_POINT);
 
   return (
-    <Stack spacing={2}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       {entryPoint ? null : (
         <Alert severity={"warning"}>
           The engine reads the entry point without checking whether it is there, so volumes without one stop the game on
