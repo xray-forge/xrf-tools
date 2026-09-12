@@ -1,8 +1,12 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+
+import { mockIsTauri, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 
 import { ISessionIdentity, Session } from "./index";
 
 describe("Session", () => {
+  beforeEach(resetMockIsTauri);
+
   it("releases an opening before its response and releases a late publication again", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
     const session = new Session(release);
@@ -110,6 +114,38 @@ describe("Session", () => {
     await session.close();
 
     expect(release.mock.calls).toEqual([[["restored"]], [["restored"]]]);
+  });
+
+  it("swallows a teardown failure, and retries it on the next close", async () => {
+    const release = jest
+      .fn<(ids: Array<string>) => Promise<void>>()
+      .mockRejectedValueOnce(new Error("transport unavailable"))
+      .mockResolvedValue(undefined);
+
+    const session = new Session(release);
+
+    session.adopt({ sessionId: "restored" });
+
+    // Nothing to reject into: deactivation has already returned by the time the release settles.
+    expect(() => session.release()).not.toThrow();
+
+    await Promise.resolve();
+    await session.close();
+
+    expect(release.mock.calls).toEqual([[["restored"]], [["restored"]]]);
+  });
+
+  it("releases nothing outside the desktop shell, where there is no backend to ask", async () => {
+    const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
+    const session = new Session(release);
+
+    mockIsTauri.mockReturnValue(false);
+    session.adopt({ sessionId: "restored" });
+    session.release();
+
+    await Promise.resolve();
+
+    expect(release).not.toHaveBeenCalled();
   });
 
   it("retains a late publication when releasing it fails", async () => {

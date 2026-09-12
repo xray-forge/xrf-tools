@@ -8,7 +8,6 @@ import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -186,7 +185,7 @@ export class VisualLoadService {
   @BoundAction()
   public clear(): void {
     cancelFlow(this, "visual");
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
 
     this.clearView();
   }

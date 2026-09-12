@@ -7,7 +7,6 @@ import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
@@ -73,9 +72,9 @@ export class VisualsBrowseService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating and releasing the project");
+    this.log.info("Deactivating, release");
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
 
     runInAction(() => {
       this.browsed = null;

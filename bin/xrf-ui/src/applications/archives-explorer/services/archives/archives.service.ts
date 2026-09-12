@@ -20,7 +20,6 @@ import { ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload } from "@/c
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -129,9 +128,9 @@ export class ArchivesService {
   /** Releases this editor's archive session; visual previews own their model sessions separately. */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating, release archive project");
+    this.log.info("Deactivating, release");
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
   }
 
   /**

@@ -12,7 +12,6 @@ import {
 } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -79,7 +78,9 @@ export class TranslationsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close());
+    this.log.info("Deactivating, release");
+
+    this.session.release();
   }
 
   /**

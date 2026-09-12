@@ -9,7 +9,6 @@ import { AssetService } from "@/core/assets/services";
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
 import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
@@ -85,7 +84,7 @@ export class SpriteEquipmentEditorService {
 
     this.assetService.release(this.spriteImage.value?.image.src ?? null);
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
   }
 
   /**

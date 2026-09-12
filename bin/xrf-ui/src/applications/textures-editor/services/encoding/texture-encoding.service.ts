@@ -13,7 +13,6 @@ import {
   TextureEncodingReport,
 } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
@@ -101,7 +100,7 @@ export class TextureEncodingService {
    */
   @BoundAction()
   public clear(): void {
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
 
     this.choice = null;
     this.preview = this.preview.asIdle();

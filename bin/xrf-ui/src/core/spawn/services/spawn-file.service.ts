@@ -5,7 +5,6 @@ import { spawnCommands } from "@/core/bindings/commands/spawn";
 import { SessionId, SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
 import { SpawnFile } from "@/core/bindings/types/xrf-db";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
@@ -119,9 +118,9 @@ export class SpawnFileService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating");
+    this.log.info("Deactivating, release");
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
   }
 
   /**

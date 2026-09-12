@@ -12,7 +12,6 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -95,9 +94,9 @@ export class TextureCatalogService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating and releasing the browsed roots");
+    this.log.info("Deactivating, release");
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
 
     runInAction(() => {
       this.catalogState = this.catalogState.asIdle();

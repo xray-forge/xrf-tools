@@ -5,7 +5,6 @@ import { exportsCommands } from "@/core/bindings/commands/exports";
 import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -40,7 +39,9 @@ export class ExportsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close());
+    this.log.info("Deactivating, release");
+
+    this.session.release();
   }
 
   /**

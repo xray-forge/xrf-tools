@@ -6,7 +6,6 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
-import { releaseEditorProject } from "@/core/ipc/release";
 import { Session } from "@/core/ipc/session";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
@@ -71,9 +70,9 @@ export class ConfigsProjectService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating and releasing the opened configs project");
+    this.log.info("Deactivating, release");
 
-    releaseEditorProject(() => this.session.close());
+    this.session.release();
 
     runInAction(() => {
       this.project = this.project.asIdle(null);

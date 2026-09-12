@@ -1,5 +1,8 @@
+import { isTauri } from "@tauri-apps/api/core";
+
 import { SessionId } from "@/core/bindings/types/xrf-app";
 import { ISessionIdentity } from "@/core/ipc/session/session.types";
+import { Logger } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
 
 /**
@@ -11,10 +14,16 @@ export class Session {
 
   private revision: number = 0;
 
-  public constructor(private readonly release: (sessionIds: Array<SessionId>) => Promise<unknown>) {}
+  /**
+   * @param closeSessions - Backend command releasing the named openings, typically a generated `close` command.
+   */
+  public constructor(private readonly closeSessions: (sessionIds: Array<SessionId>) => Promise<unknown>) {}
 
   /**
    * Takes responsibility for an opening this view did not allocate.
+   *
+   * Restoration reads the committed opening straight from the backend, and a settled job reports one that outlived a
+   * reload; neither passes through `open`, so neither is owned until it is adopted.
    *
    * @param session - Identity to take over, or nothing when the backend holds none.
    */
@@ -38,41 +47,42 @@ export class Session {
     const sessionId: SessionId = crypto.randomUUID();
     const revision: number = ++this.revision;
 
+    let response: T;
+
     this.owned.add(sessionId);
     this.pending.add(sessionId);
 
-    let published: boolean = false;
-
     try {
-      const response: T = await command(sessionId, ...args);
-
-      published = true;
-
-      if (revision !== this.revision) {
-        // A close may have finished before this publication reached us; retain it if the second release fails.
-        this.owned.add(sessionId);
-        await this.release([sessionId]);
-
-        this.owned.delete(sessionId);
-      } else {
-        // Successful publication replaced the committed value; unfinished calls retain their own identities.
-        for (const id of this.owned) {
-          if (id !== sessionId && !this.pending.has(id)) {
-            this.owned.delete(id);
-          }
-        }
-      }
-
-      return response;
+      response = await command(sessionId, ...args);
     } catch (error) {
-      if (!published) {
-        this.owned.delete(sessionId);
-      }
+      // Only the open is guarded here, so reaching this means the backend committed nothing there is to release.
+      this.owned.delete(sessionId);
 
       throw error;
     } finally {
       this.pending.delete(sessionId);
     }
+
+    if (revision === this.revision) {
+      // Successful publication replaced the committed value; unfinished calls retain their own identities.
+      for (const id of this.owned) {
+        if (id !== sessionId && !this.pending.has(id)) {
+          this.owned.delete(id);
+        }
+      }
+
+      return response;
+    }
+
+    // A close finished before this publication reached us, so releasing it falls to this call. Re-owned first because
+    // that close already forgot it, which is what leaves it retryable when the release below fails.
+    this.owned.add(sessionId);
+
+    await this.closeSessions([sessionId]);
+
+    this.owned.delete(sessionId);
+
+    return response;
   }
 
   /**
@@ -89,10 +99,26 @@ export class Session {
       return;
     }
 
-    await this.release(ids);
+    await this.closeSessions(ids);
 
     for (const id of ids) {
       this.owned.delete(id);
     }
+  }
+
+  /**
+   * Starts the release that a teardown cannot wait for.
+   *
+   * Deactivation is synchronous, so a failure is reported here rather than propagated: there is no longer a surface to
+   * report it to, and anything still owned is released again by the next close.
+   */
+  public release(): void {
+    if (!isTauri()) {
+      return;
+    }
+
+    this.close().catch((error: unknown) => {
+      Logger.error("Failed to release a session on deactivation:", error);
+    });
   }
 }
