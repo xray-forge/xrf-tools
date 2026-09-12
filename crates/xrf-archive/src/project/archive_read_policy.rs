@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::get_file_extension;
 
 use crate::project::constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS,
@@ -61,9 +60,7 @@ impl ArchiveReadPolicy {
   }
 
   fn has_extension(filename: &str, extensions: &[&str]) -> bool {
-    Path::new(filename)
-      .extension()
-      .and_then(|extension| extension.to_str())
+    get_file_extension(filename)
       .is_some_and(|extension| extensions.iter().any(|allowed| extension.eq_ignore_ascii_case(allowed)))
   }
 }
@@ -99,6 +96,12 @@ mod tests {
     assert!(!policy.supports_file("preview.dds"));
     assert!(!policy.supports_file("ambient.ogg"));
     assert!(!policy.supports_file("preview"));
+  }
+
+  #[test]
+  fn the_shader_script_the_engine_ships_without_a_name_reads_as_text() {
+    // `Path::extension` calls `shaders\r1\.s` a hidden file and refuses it; it is a Lua script the engine loads.
+    assert!(ArchiveReadPolicy::default().supports_file("shaders\\r1\\.s"));
   }
 
   #[test]

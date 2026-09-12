@@ -16,7 +16,7 @@ import { XrayAssetContainer, XrayPathCollision } from "@/core/bindings/types/xrf
  */
 export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}): ArchiveReadPolicy {
   return {
-    extensions: ["ltx", "script", "ps", "ds", "h", "hs", "s", "vs", "cmd", "xml"],
+    extensions: ["cmd", "ds", "h", "hs", "json", "ltx", "md", "ps", "s", "script", "vs", "xml"],
     maximumSize: 10 * 1024 * 1024,
     imageExtensions: ["dds"],
     maximumImageSize: 32 * 1024 * 1024,

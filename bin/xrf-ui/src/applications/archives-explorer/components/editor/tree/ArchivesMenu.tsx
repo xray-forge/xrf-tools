@@ -4,6 +4,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import {
   ARCHIVE_TREE_ICONS,
+  decorateArchiveIcon,
   toSearchText,
 } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -149,6 +150,7 @@ export function ArchivesMenu({
         <VirtualizedTree<IArchiveEntry>
           ariaLabel={"Archive files"}
           icons={ARCHIVE_TREE_ICONS}
+          decorateIcon={decorateArchiveIcon}
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}

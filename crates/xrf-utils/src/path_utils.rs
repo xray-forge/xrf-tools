@@ -90,11 +90,52 @@ pub fn to_absolute_path<T: AsRef<Path>>(path: T) -> XrfResult<PathBuf> {
   Ok(normalized)
 }
 
+/// The extension of an engine or host file name, without its dot.
+///
+/// X-Ray's own rule rather than `Path::extension`'s, on one point that matters: a name beginning with a dot is an
+/// extension here, not a hidden file. The engine ships `shaders\r1\.s` and `shaders\r2\.s` — Lua scripts it loads
+/// like any other shader — and `Path::extension` answers `None` for both, which had a viewer refusing to show them.
+/// Nothing in game data is a Unix dotfile.
+///
+/// Returned as authored. A name table records a name as it was written, so folding case is the caller's decision.
+pub fn get_file_extension(name: &str) -> Option<&str> {
+  let segment: &str = match name.rfind(['\\', '/']) {
+    Some(separator) => &name[separator + 1..],
+    None => name,
+  };
+
+  segment.rsplit_once('.').map(|(_, extension)| extension)
+}
+
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{format_path, format_path_or, to_absolute_path, to_portable_path_string};
+  use super::{format_path, format_path_or, get_file_extension, to_absolute_path, to_portable_path_string};
+
+  #[test]
+  fn an_extension_is_whatever_follows_the_last_dot_of_the_last_segment() {
+    assert_eq!(get_file_extension("configs\\system.ltx"), Some("ltx"));
+    assert_eq!(get_file_extension("configs/system.ltx"), Some("ltx"));
+    assert_eq!(get_file_extension("system.ltx"), Some("ltx"));
+    assert_eq!(get_file_extension("meshes\\actor.anm1"), Some("anm1"));
+    // Folded by whoever compares it, never here: a name table records a name as it was authored.
+    assert_eq!(get_file_extension("TEXTURES\\A.DDS"), Some("DDS"));
+  }
+
+  #[test]
+  fn a_leading_dot_names_an_extension_because_the_engine_ships_one() {
+    // `shaders\r1\.s` and `shaders\r2\.s` are Lua scripts the engine loads. `Path::extension` calls both hidden files
+    // and answers `None`, which is a Unix rule game data has no instance of.
+    assert_eq!(get_file_extension("shaders\\r1\\.s"), Some("s"));
+    assert_eq!(get_file_extension(".s"), Some("s"));
+  }
+
+  #[test]
+  fn a_dot_in_a_directory_name_is_not_the_extension_of_an_extensionless_file() {
+    assert_eq!(get_file_extension("configs\\weapons.old\\readme"), None);
+    assert_eq!(get_file_extension("gamedata\\spawns"), None);
+  }
 
   #[test]
   fn renders_separators_the_same_way_on_every_platform() {

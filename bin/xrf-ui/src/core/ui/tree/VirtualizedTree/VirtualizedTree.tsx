@@ -10,6 +10,16 @@ import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTr
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
+/**
+ * How one row's icon is tinted, and what the tint says.
+ */
+export interface ITreeIconDecoration {
+  /** Theme colour path the icon inherits, such as `primary.main`. */
+  color: string;
+  /** What the tint means, shown on hover. */
+  title: string;
+}
+
 /** Icons the tree draws beside the chevron, chosen per row by what the row is. */
 export interface IVirtualizedTreeIcons {
   /** A node with children that is closed. */
@@ -29,6 +39,8 @@ interface IVirtualizedTreeProps<T> extends StyledComponentProps {
   icons?: IVirtualizedTreeIcons;
   /** Decorates a row's label, for a consumer that marks where the entry came from. */
   renderLabel?: (item: ITreeNode<T>) => ReactNode;
+  /** Tints a row's icon, for a tree whose rows come from sources worth telling apart. Null leaves it neutral. */
+  decorateIcon?: (item: ITreeNode<T>) => Nullable<ITreeIconDecoration>;
   onToggleExpanded: (id: string) => void;
   /** A row was chosen for inspection, by click or by arrow key. */
   onSelect: (item: ITreeNode<T>) => void;
@@ -55,6 +67,7 @@ export function VirtualizedTree<T>({
   ariaLabel,
   icons,
   renderLabel,
+  decorateIcon,
   onToggleExpanded,
   onSelect,
   onActivate,
@@ -121,6 +134,7 @@ export function VirtualizedTree<T>({
           row={row}
           rowId={rowIdOf(params.rowIndex)}
           icon={icon}
+          iconDecoration={decorateIcon?.(row.item) ?? null}
           isSelected={row.item.id === selectedId}
           label={renderLabel?.(row.item)}
           onSelect={(it: IFlatTreeRow<T>) => onSelect(it.item)}

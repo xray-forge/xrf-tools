@@ -1,5 +1,10 @@
 /// Extensions a viewer reads as text rather than as binary.
-pub const ALLOWED_TEXT_EXTENSIONS: &[&str] = &["ltx", "script", "ps", "ds", "h", "hs", "s", "vs", "cmd", "xml"];
+///
+/// Engine formats, the shader sources beside them, and the plain text a mod ships its notes and manifests in. `s` also
+/// covers `shaders\r1\.s`, whose whole name is its extension.
+pub const ALLOWED_TEXT_EXTENSIONS: &[&str] = &[
+  "cmd", "ds", "h", "hs", "json", "ltx", "md", "ps", "s", "script", "vs", "xml",
+];
 
 pub const ALLOWED_TEXT_SIZE: u32 = 10 * 1024 * 1024; // 10 MBytes
 

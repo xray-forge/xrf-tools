@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_utils::get_file_extension;
 
 use crate::path::XrayLogicalPath;
 
@@ -102,7 +103,7 @@ impl XrayAssetType {
   }
 
   pub(crate) fn from_logical_path(path: &str) -> Option<Self> {
-    match path.rsplit_once('.').map(|(_, extension)| extension) {
+    match get_file_extension(path) {
       Some("ai") => Some(Self::Ai),
       Some("anm" | "anm1") => Some(Self::Anm),
       Some("cform") => Some(Self::CForm),

@@ -2,6 +2,8 @@ import { default as DescriptionOutlinedIcon } from "@mui/icons-material/Descript
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { getApplicationBackgroundSx } from "@/core/theme/application-background";
+import { mergeSx } from "@/core/theme/merge-sx";
 import { CONTENT_STATE } from "@/core/theme/tokens";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -32,7 +34,12 @@ export function EmptyState({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ padding: CONTENT_STATE.padding, gap: CONTENT_STATE.gap, minWidth: 0, textAlign: "center" }}
+      sx={mergeSx(getApplicationBackgroundSx, {
+        padding: CONTENT_STATE.padding,
+        gap: CONTENT_STATE.gap,
+        minWidth: 0,
+        textAlign: "center",
+      })}
     >
       <Box aria-hidden={true} sx={{ display: "flex", "& .MuiSvgIcon-root": { fontSize: CONTENT_STATE.iconSize } }}>
         {icon ?? <DescriptionOutlinedIcon sx={{ color: "text.secondary", opacity: 0.55 }} />}

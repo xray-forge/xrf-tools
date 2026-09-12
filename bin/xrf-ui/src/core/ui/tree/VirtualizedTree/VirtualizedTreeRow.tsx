@@ -6,6 +6,7 @@ import { MouseEvent, ReactElement, ReactNode } from "react";
 import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { ITreeIconDecoration } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
 import { Nullable } from "@/lib/types/general";
 
 interface IVirtualizedTreeRowProps<T> {
@@ -15,6 +16,8 @@ interface IVirtualizedTreeRowProps<T> {
   isSelected: boolean;
   /** Drawn beside the chevron: open, closed, or leaf, chosen by the tree. Null for a tree that types nothing. */
   icon: Nullable<ReactNode>;
+  /** How to tint that icon and what the tint says. Null leaves it in the neutral colour every other row uses. */
+  iconDecoration: Nullable<ITreeIconDecoration>;
   /** Overrides the plain label, for a consumer that decorates its rows. */
   label?: ReactNode;
   onSelect: (row: IFlatTreeRow<T>) => void;
@@ -35,6 +38,7 @@ export function VirtualizedTreeRow<T>({
   rowId,
   isSelected,
   icon,
+  iconDecoration,
   label,
   onSelect,
   onActivate,
@@ -97,9 +101,10 @@ export function VirtualizedTreeRow<T>({
 
       {icon === null ? null : (
         <Box
+          title={iconDecoration?.title}
           sx={{
             alignItems: "center",
-            color: "text.secondary",
+            color: iconDecoration?.color ?? "text.secondary",
             display: "flex",
             flexShrink: 0,
             justifyContent: "center",

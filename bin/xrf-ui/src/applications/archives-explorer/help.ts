@@ -17,8 +17,10 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "`patches` are loaded last, so their files win.",
     "Directory and Archive modes show archives only. A loose `gamedata` tree beside them is not listed, even though " +
       "the engine would load it instead - use `Installation` mode to see that arrangement.",
-    "Installation mode lists one row per engine path: the copy the engine would open. `File details` names where " +
-      "that copy sits and which copies it hides, and the status bar counts how many paths are answered more than once.",
+    "Installation mode lists one row per engine path: the copy the engine would open. Its icon is tinted by where " +
+      "the bytes come from - loose on disk, or inside a volume - and hovering it says which. `File details` names " +
+      "where that copy sits and which copies it hides, and the status bar counts how many paths are answered more " +
+      "than once.",
     "Installation mode reads `fsgame.ltx` when the folder declares one, and otherwise treats the folder as a game " +
       "data tree. Previews and extraction resolve the same copy the tree shows.",
     "Archive paths are case-insensitive. `Textures\\A.DDS` and `textures\\a.dds` name the same file to the engine. " +

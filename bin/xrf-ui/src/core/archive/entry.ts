@@ -1,3 +1,5 @@
+import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+
 /**
  * One file the explorer browses, whichever subject it came from.
  *
@@ -12,4 +14,6 @@ export interface IArchiveEntry {
   sizeReal: number;
   /** Whether the entry is a volume's directory record rather than a file with bytes. */
   isDirectory?: boolean;
+  /** Where the winning copy physically sits. */
+  container?: XrayAssetContainer;
 }

@@ -2,12 +2,13 @@ import { findLastSeparator } from "@/lib/path/separator";
 
 /**
  * Reads the extension out of a file name, in either separator style.
+ * X-Ray's rule rather than the Unix one.
  *
  * The backend used to carry this per entry, which cost one string allocation for every name in an opened archive and
  * was read by nothing on the Rust side. It is a pure function of the name, so the name is all that crosses the wire
  * now and the derivation lives here.
  *
- * @param name - Archive entry name or host file name, `\` or `/` separated.
+ * @param name - Engine entry name or host file name, `\` or `/` separated.
  * @returns The extension without its dot and lower-cased, or an empty string when the name has none.
  */
 export function getFileExtension(name: string): string {
@@ -15,6 +16,5 @@ export function getFileExtension(name: string): string {
   const segment: string = name.slice(findLastSeparator(name) + 1);
   const dot: number = segment.lastIndexOf(".");
 
-  // A leading dot names a hidden file rather than an extension, so index zero is not a separator.
-  return dot < 1 ? "" : segment.slice(dot + 1).toLowerCase();
+  return dot < 0 ? "" : segment.slice(dot + 1).toLowerCase();
 }
