@@ -4,9 +4,10 @@ import { FilePickerInput } from "@/core/ui/form/file-picker/FilePickerInput";
 import { useCommitOnSubmit } from "@/core/ui/form/form-commit";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IPathFormRowProps {
+interface IPathFormRowProps extends BaseComponentProps {
   label: string;
   description?: string;
   /** Describes the current path when there is no validation error. */
@@ -24,6 +25,9 @@ interface IPathFormRowProps {
  * called above it. A row outside a form joins nothing, which is why a screen with its own run action commits itself.
  */
 export function PathFormRow({
+  "data-testid": dataTestId = "path-form-row",
+  id,
+  className,
   label,
   description,
   fact,
@@ -35,7 +39,16 @@ export function PathFormRow({
   useCommitOnSubmit(field.commit);
 
   return (
-    <FormRow label={label} description={description} isRequired={isRequired} error={field.error} fact={fact}>
+    <FormRow
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      label={label}
+      description={description}
+      isRequired={isRequired}
+      error={field.error}
+      fact={fact}
+    >
       {({ "aria-describedby": describedBy, "aria-invalid": isInvalid, id }) => (
         <FilePickerInput
           id={id}

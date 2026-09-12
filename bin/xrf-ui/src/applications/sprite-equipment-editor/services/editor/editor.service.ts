@@ -4,7 +4,7 @@ import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
-import { urlToImage } from "@/core/assets/image";
+import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
 import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
