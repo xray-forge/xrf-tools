@@ -4,9 +4,10 @@ import { ReactElement, useCallback } from "react";
 
 import { SpawnFileService } from "@/core/spawn/services";
 import { DataTable } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface ISpawnTableProps<T extends GridValidRowModel> {
+interface ISpawnTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   /** What one row is, for the details panel heading. */
   source: string;
   rows: Array<T>;
@@ -22,6 +23,9 @@ interface ISpawnTableProps<T extends GridValidRowModel> {
  * A spawn chunk table, wired to the details panel.
  */
 export function SpawnTable<T extends GridValidRowModel>({
+  "data-testid": dataTestId = "spawn-table",
+  id,
+  className,
   source,
   rows,
   columns,
@@ -42,6 +46,9 @@ export function SpawnTable<T extends GridValidRowModel>({
 
   return (
     <DataTable<T>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       countNoun={countNoun}
       emptyLabel={emptyLabel}

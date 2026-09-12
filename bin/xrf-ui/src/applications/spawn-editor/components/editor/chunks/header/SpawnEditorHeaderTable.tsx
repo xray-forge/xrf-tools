@@ -4,16 +4,22 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { identifierColumn, textColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IHeaderRow extends SpawnHeaderChunk {
   id: string;
 }
 
-interface ISpawnEditorHeaderTableProps {
+interface ISpawnEditorHeaderTableProps extends BaseComponentProps {
   header: SpawnHeaderChunk;
 }
 
-export function SpawnEditorHeaderTable({ header }: ISpawnEditorHeaderTableProps): ReactElement {
+export function SpawnEditorHeaderTable({
+  "data-testid": dataTestId = "spawn-editor-header-table",
+  id,
+  className,
+  header,
+}: ISpawnEditorHeaderTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("version", "Version"),
@@ -30,6 +36,9 @@ export function SpawnEditorHeaderTable({ header }: ISpawnEditorHeaderTableProps)
 
   return (
     <SpawnTable<IHeaderRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       rows={rows}
       countNoun={"header"}

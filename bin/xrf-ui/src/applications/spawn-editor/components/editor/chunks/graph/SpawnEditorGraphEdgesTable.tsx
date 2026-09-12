@@ -4,16 +4,22 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { GraphEdge } from "@/core/bindings/types/xrf-db";
 import { decimalColumn, textColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IGraphEdgeRow extends GraphEdge {
   index: number;
 }
 
-interface ISpawnEditorGraphEdgesTableProps {
+interface ISpawnEditorGraphEdgesTableProps extends BaseComponentProps {
   edges: Array<GraphEdge>;
 }
 
-export function SpawnEditorGraphEdgesTable({ edges }: ISpawnEditorGraphEdgesTableProps): ReactElement {
+export function SpawnEditorGraphEdgesTable({
+  "data-testid": dataTestId = "spawn-editor-graph-edges-table",
+  id,
+  className,
+  edges,
+}: ISpawnEditorGraphEdgesTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("index", "#", 90),
@@ -30,6 +36,9 @@ export function SpawnEditorGraphEdgesTable({ edges }: ISpawnEditorGraphEdgesTabl
 
   return (
     <SpawnTable<IGraphEdgeRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       rows={rows}
       countNoun={"edge"}

@@ -4,6 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { Patrol, PatrolLink } from "@/core/bindings/types/xrf-db";
 import { identifierColumn, textColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 interface IPatrolLinkRow {
@@ -15,11 +16,16 @@ interface IPatrolLinkRow {
   links: string;
 }
 
-interface ISpawnEditorPatrolLinksTableProps {
+interface ISpawnEditorPatrolLinksTableProps extends BaseComponentProps {
   patrols: Array<Patrol>;
 }
 
-export function SpawnEditorPatrolLinksTable({ patrols }: ISpawnEditorPatrolLinksTableProps): ReactElement {
+export function SpawnEditorPatrolLinksTable({
+  "data-testid": dataTestId = "spawn-editor-patrol-links-table",
+  id,
+  className,
+  patrols,
+}: ISpawnEditorPatrolLinksTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       identifierColumn("patrol", "Patrol", 300),
@@ -46,6 +52,9 @@ export function SpawnEditorPatrolLinksTable({ patrols }: ISpawnEditorPatrolLinks
 
   return (
     <SpawnTable<IPatrolLinkRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       rows={rows}
       countNoun={"link"}

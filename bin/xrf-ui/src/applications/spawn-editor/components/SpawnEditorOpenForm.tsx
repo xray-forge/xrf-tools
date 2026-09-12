@@ -5,9 +5,14 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnFileService } from "@/core/spawn/services";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-export function SpawnEditorOpenForm(): ReactElement {
+export function SpawnEditorOpenForm({
+  "data-testid": dataTestId = "spawn-editor-open-form",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
@@ -32,6 +37,9 @@ export function SpawnEditorOpenForm(): ReactElement {
 
   return (
     <PickerForm
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       isLoading={isLoading}
       isSubmitDisabled={!spawn.isValid}
       title={"Open spawn file"}

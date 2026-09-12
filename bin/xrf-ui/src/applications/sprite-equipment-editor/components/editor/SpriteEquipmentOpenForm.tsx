@@ -5,9 +5,14 @@ import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-ed
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-export function SpriteEquipmentOpenForm(): ReactElement {
+export function SpriteEquipmentOpenForm({
+  "data-testid": dataTestId = "sprite-equipment-open-form",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
@@ -45,6 +50,9 @@ export function SpriteEquipmentOpenForm(): ReactElement {
 
   return (
     <PickerForm
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       isLoading={isLoading}
       isSubmitDisabled={!sprite.isValid || !systemLtx.isValid}
       title={"Open equipment sprite"}

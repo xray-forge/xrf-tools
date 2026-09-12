@@ -4,6 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { GraphVertex } from "@/core/bindings/types/xrf-db";
 import { textColumn, tupleColumn, vectorColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Offsets locate a vertex inside the file rather than in the roots; available, off by default. */
 const HIDDEN_COLUMNS: Array<string> = ["edgesOffset", "levelPointsOffset"];
@@ -12,11 +13,16 @@ interface IGraphVertexRow extends GraphVertex {
   index: number;
 }
 
-interface ISpawnEditorGraphVerticesTableProps {
+interface ISpawnEditorGraphVerticesTableProps extends BaseComponentProps {
   vertices: Array<GraphVertex>;
 }
 
-export function SpawnEditorGraphVerticesTable({ vertices }: ISpawnEditorGraphVerticesTableProps): ReactElement {
+export function SpawnEditorGraphVerticesTable({
+  "data-testid": dataTestId = "spawn-editor-graph-vertices-table",
+  id,
+  className,
+  vertices,
+}: ISpawnEditorGraphVerticesTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("index", "#", 90),
@@ -40,6 +46,9 @@ export function SpawnEditorGraphVerticesTable({ vertices }: ISpawnEditorGraphVer
 
   return (
     <SpawnTable<IGraphVertexRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       rows={rows}
       countNoun={"vertex"}

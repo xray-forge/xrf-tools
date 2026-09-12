@@ -3,7 +3,7 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
 
-import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentRepackAction";
+import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/editor/EquipmentRepackAction";
 import {
   IEquipmentPngDescriptor,
   SpriteEquipmentEditorService,

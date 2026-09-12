@@ -4,18 +4,24 @@ import { clamp } from "@mui/x-data-grid/internals";
 import { useInjection } from "@wirestate/react";
 import { MouseEvent, ReactElement, useCallback, useMemo, useState, WheelEvent } from "react";
 
-import { EquipmentGridControls } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridControls";
-import { EquipmentGridDetails } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridDetails";
-import { EquipmentGridMoveOver } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridMoveOver";
-import { EquipmentGridZoom } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridZoom";
-import { EquipmentSpriteGrid } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentSpriteGrid";
 import { equipmentViewerConfig } from "@/applications/sprite-equipment-editor/configs/EquipmentViewerConfig";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { GridMapper } from "@/core/sprite-equipment";
 import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export function EquipmentSpriteViewer(): ReactElement {
+import { EquipmentGridControls } from "./EquipmentGridControls";
+import { EquipmentGridDetails } from "./EquipmentGridDetails";
+import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";
+import { EquipmentGridZoom } from "./EquipmentGridZoom";
+import { EquipmentSpriteGrid } from "./EquipmentSpriteGrid";
+
+export function EquipmentSpriteViewer({
+  "data-testid": dataTestId = "equipment-sprite-viewer",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
   const [holdingOrigin, setHoldingOrigin] = useState<Nullable<[number, number]>>(null);
@@ -141,7 +147,12 @@ export function EquipmentSpriteViewer(): ReactElement {
   );
 
   return (
-    <Box sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}
+    >
       <Box
         sx={{
           position: "absolute",

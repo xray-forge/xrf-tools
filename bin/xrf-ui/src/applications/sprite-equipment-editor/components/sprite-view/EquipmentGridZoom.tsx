@@ -4,16 +4,29 @@ import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IEquipmentGridZoomProps {
+interface IEquipmentGridZoomProps extends BaseComponentProps {
   zoom: number;
   onZoomUp: () => void;
   onZoomDown: () => void;
 }
 
-export function EquipmentGridZoom({ zoom, onZoomUp, onZoomDown }: IEquipmentGridZoomProps): ReactElement {
+export function EquipmentGridZoom({
+  "data-testid": dataTestId = "equipment-grid-zoom",
+  id,
+  className,
+  zoom,
+  onZoomUp,
+  onZoomDown,
+}: IEquipmentGridZoomProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", position: "absolute", right: 4, bottom: 4 }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", alignItems: "center", position: "absolute", right: 4, bottom: 4 }}
+    >
       <EditorIconAction
         label={"Zoom out"}
         description={"Decrease sprite magnification"}

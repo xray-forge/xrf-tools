@@ -4,8 +4,9 @@ import { Box, FormControlLabel, Switch } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IEquipmentGridControlsProps {
+interface IEquipmentGridControlsProps extends BaseComponentProps {
   isGridVisible: boolean;
   gridSize: number;
   onSetGridSize: (size: number) => void;
@@ -13,6 +14,9 @@ interface IEquipmentGridControlsProps {
 }
 
 export function EquipmentGridControls({
+  "data-testid": dataTestId = "equipment-grid-controls",
+  id,
+  className,
   isGridVisible,
   gridSize,
   onSetGridSize,
@@ -31,7 +35,12 @@ export function EquipmentGridControls({
   }, [gridSize, onSetGridSize]);
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", position: "absolute", right: 4, top: 4 }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", alignItems: "center", position: "absolute", right: 4, top: 4 }}
+    >
       <FormControlLabel
         label={"Grid"}
         labelPlacement={"start"}

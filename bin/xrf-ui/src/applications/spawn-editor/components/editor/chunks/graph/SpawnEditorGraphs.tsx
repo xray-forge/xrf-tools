@@ -2,27 +2,36 @@ import { Box, Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { SpawnEditorGraphCrossTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphCrossTable";
-import { SpawnEditorGraphEdgesTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphEdgesTable";
-import { SpawnEditorGraphHeaderTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphHeaderTable";
-import { SpawnEditorGraphLevelsTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphLevelsTable";
-import { SpawnEditorGraphPointsTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphPointsTable";
-import { SpawnEditorGraphVerticesTable } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphVerticesTable";
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/applications/spawn-editor/components/editor/chunks/use-chunk-tab";
 import { SpawnGraphsChunk } from "@/core/bindings/types/xrf-db";
 import { SpawnFileService } from "@/core/spawn/services";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { SpawnEditorGraphCrossTable } from "./SpawnEditorGraphCrossTable";
+import { SpawnEditorGraphEdgesTable } from "./SpawnEditorGraphEdgesTable";
+import { SpawnEditorGraphHeaderTable } from "./SpawnEditorGraphHeaderTable";
+import { SpawnEditorGraphLevelsTable } from "./SpawnEditorGraphLevelsTable";
+import { SpawnEditorGraphPointsTable } from "./SpawnEditorGraphPointsTable";
+import { SpawnEditorGraphVerticesTable } from "./SpawnEditorGraphVerticesTable";
 
 const BASE_PATH: string = "/spawn-editor/graph";
 const TABS: Array<string> = ["header", "levels", "vertices", "edges", "points", "cross-tables"];
 
-export function SpawnEditorGraphs(): ReactElement {
+export function SpawnEditorGraphs({
+  "data-testid": dataTestId = "spawn-editor-graphs",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
 
   const [activeTab, onChangeTab]: [string, TChunkTabChange] = useChunkTab(BASE_PATH, TABS, "header");
 
   return (
     <SpawnChunkView<SpawnGraphsChunk>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       chunk={spawnFileService.chunks.graphs}
       render={(chunk: SpawnGraphsChunk) => (
         <>

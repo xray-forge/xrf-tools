@@ -6,13 +6,18 @@ import { ReactElement, useCallback, useState } from "react";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * Toolbar command that rebuilds the open sprite from its unpacked icons.
  */
-export function EquipmentRepackAction(): ReactElement {
+export function EquipmentRepackAction({
+  "data-testid": dataTestId = "equipment-repack-action",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
@@ -41,6 +46,9 @@ export function EquipmentRepackAction(): ReactElement {
   return (
     <>
       <EditorIconAction
+        data-testid={dataTestId}
+        id={id}
+        className={className}
         label={"Repack sprite"}
         description={
           repackSourcePath ? "Rebuild the sprite from its unpacked icons" : "No unpacked icons beside the sprite"

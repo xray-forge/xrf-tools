@@ -4,12 +4,18 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { GraphLevel } from "@/core/bindings/types/xrf-db";
 import { identifierColumn, textColumn, vectorColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ISpawnEditorGraphLevelsTableProps {
+interface ISpawnEditorGraphLevelsTableProps extends BaseComponentProps {
   levels: Array<GraphLevel>;
 }
 
-export function SpawnEditorGraphLevelsTable({ levels }: ISpawnEditorGraphLevelsTableProps): ReactElement {
+export function SpawnEditorGraphLevelsTable({
+  "data-testid": dataTestId = "spawn-editor-graph-levels-table",
+  id,
+  className,
+  levels,
+}: ISpawnEditorGraphLevelsTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("id", "Id", 80),
@@ -23,6 +29,9 @@ export function SpawnEditorGraphLevelsTable({ levels }: ISpawnEditorGraphLevelsT
 
   return (
     <SpawnTable<GraphLevel>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       rows={levels}
       countNoun={"level"}

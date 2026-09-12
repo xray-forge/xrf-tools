@@ -4,10 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { AlifeObject } from "@/core/bindings/types/xrf-db";
 import { flagsColumn, identifierColumn, textColumn, vectorColumn } from "@/core/ui/table";
-
-interface ISpawnEditorAlifeObjectsTableProps {
-  objects: Array<AlifeObject>;
-}
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IAlifeObjectRow extends AlifeObject {
   index: number;
@@ -30,7 +27,16 @@ const HIDDEN_COLUMNS: Array<string> = [
   "direction",
 ];
 
-export function SpawnEditorAlifeObjectsTable({ objects }: ISpawnEditorAlifeObjectsTableProps): ReactElement {
+interface ISpawnEditorAlifeObjectsTableProps extends BaseComponentProps {
+  objects: Array<AlifeObject>;
+}
+
+export function SpawnEditorAlifeObjectsTable({
+  "data-testid": dataTestId = "spawn-editor-alife-objects-table",
+  id,
+  className,
+  objects,
+}: ISpawnEditorAlifeObjectsTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("index", "#", 70),
@@ -63,6 +69,9 @@ export function SpawnEditorAlifeObjectsTable({ objects }: ISpawnEditorAlifeObjec
 
   return (
     <SpawnTable<IAlifeObjectRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       countNoun={"object"}
       emptyLabel={"This file spawns no alife objects."}

@@ -4,8 +4,6 @@ import { useInjection } from "@wirestate/react";
 import { format } from "date-fns";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentRepackAction";
-import { EquipmentSpriteEditorWorkspace } from "@/applications/sprite-equipment-editor/components/equipment-editor/EquipmentSpriteEditorWorkspace";
 import {
   IEquipmentPngDescriptor,
   SpriteEquipmentEditorService,
@@ -15,10 +13,18 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/editor-shell";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
-export function EquipmentSpriteEditor(): ReactElement {
+import { EquipmentRepackAction } from "./EquipmentRepackAction";
+import { EquipmentSpriteEditorWorkspace } from "./EquipmentSpriteEditorWorkspace";
+
+export function EquipmentSpriteEditor({
+  "data-testid": dataTestId = "equipment-sprite-editor",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
@@ -67,6 +73,9 @@ export function EquipmentSpriteEditor(): ReactElement {
 
   return (
     <EditorLayout
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       toolbar={
         <EditorToolbar
           subtitle={spriteImage?.path}

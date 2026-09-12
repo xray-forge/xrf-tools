@@ -3,9 +3,10 @@ import { SxProps } from "@mui/system";
 import { memo, ReactElement, useMemo } from "react";
 
 import { GridMapper, TEquipmentCell } from "@/core/sprite-equipment";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IEquipmentSpriteGridProps {
+interface IEquipmentSpriteGridProps extends BaseComponentProps {
   isGridVisible: boolean;
   selectedCell: Nullable<TEquipmentCell>;
   gridMapper: GridMapper;
@@ -15,6 +16,9 @@ interface IEquipmentSpriteGridProps {
 
 export const EquipmentSpriteGrid = memo(
   ({
+    "data-testid": dataTestId = "equipment-sprite-grid",
+    id,
+    className,
     selectedCell,
     isGridVisible,
     gridMapper,
@@ -44,7 +48,12 @@ export const EquipmentSpriteGrid = memo(
     );
 
     return (
-      <Box sx={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, bgcolor: "#66666608" }}>
+      <Box
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        sx={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, bgcolor: "#66666608" }}
+      >
         {gridMapper.grid.map((row, rowIndex) => (
           <Box key={rowIndex} sx={{ display: "flex" }}>
             {row.map((column, columnIndex) => (

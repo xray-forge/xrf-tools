@@ -4,16 +4,22 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { ArtefactSpawnPoint } from "@/core/bindings/types/xrf-db";
 import { decimalColumn, textColumn, vectorColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArtefactNodeRow extends ArtefactSpawnPoint {
   index: number;
 }
 
-interface ISpawnEditorArtefactsNodesTableProps {
+interface ISpawnEditorArtefactsNodesTableProps extends BaseComponentProps {
   nodes: Array<ArtefactSpawnPoint>;
 }
 
-export function SpawnEditorArtefactsNodesTable({ nodes }: ISpawnEditorArtefactsNodesTableProps): ReactElement {
+export function SpawnEditorArtefactsNodesTable({
+  "data-testid": dataTestId = "spawn-editor-artefacts-nodes-table",
+  id,
+  className,
+  nodes,
+}: ISpawnEditorArtefactsNodesTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       textColumn("index", "#", 70),
@@ -31,6 +37,9 @@ export function SpawnEditorArtefactsNodesTable({ nodes }: ISpawnEditorArtefactsN
 
   return (
     <SpawnTable<IArtefactNodeRow>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       countNoun={"node"}
       emptyLabel={"This file spawns no artefacts."}

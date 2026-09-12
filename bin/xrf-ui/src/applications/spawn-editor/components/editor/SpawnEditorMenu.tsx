@@ -7,8 +7,7 @@ import { ReactElement, ReactNode, useMemo } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-
-const EDITOR_PATH: string = "/spawn-editor";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ISpawnChunkSection {
   label: string;
@@ -24,7 +23,13 @@ const SECTIONS: Array<ISpawnChunkSection> = [
   { label: "Graph", icon: <AccountTreeIcon />, path: "graph" },
 ];
 
-export function SpawnEditorMenu(): ReactElement {
+const EDITOR_PATH: string = "/spawn-editor";
+
+export function SpawnEditorMenu({
+  "data-testid": dataTestId = "spawn-editor-menu",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const navigate: NavigateFunction = useNavigate();
   const { pathname } = useLocation();
 
@@ -39,5 +44,5 @@ export function SpawnEditorMenu(): ReactElement {
     [navigate, pathname]
   );
 
-  return <EditorSideMenu sections={sections} />;
+  return <EditorSideMenu data-testid={dataTestId} id={id} className={className} sections={sections} />;
 }

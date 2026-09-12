@@ -4,12 +4,18 @@ import { ReactElement, useMemo } from "react";
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { GraphCrossTable } from "@/core/bindings/types/xrf-db";
 import { identifierColumn, textColumn } from "@/core/ui/table";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ISpawnEditorGraphCrossTableProps {
+interface ISpawnEditorGraphCrossTableProps extends BaseComponentProps {
   crossTables: Array<GraphCrossTable>;
 }
 
-export function SpawnEditorGraphCrossTable({ crossTables }: ISpawnEditorGraphCrossTableProps): ReactElement {
+export function SpawnEditorGraphCrossTable({
+  "data-testid": dataTestId = "spawn-editor-graph-cross-table",
+  id,
+  className,
+  crossTables,
+}: ISpawnEditorGraphCrossTableProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       identifierColumn("levelGuid", "Level guid", 260),
@@ -23,6 +29,9 @@ export function SpawnEditorGraphCrossTable({ crossTables }: ISpawnEditorGraphCro
 
   return (
     <SpawnTable<GraphCrossTable>
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       columns={columns}
       countNoun={"cross table"}
       emptyLabel={"This graph has no cross tables."}

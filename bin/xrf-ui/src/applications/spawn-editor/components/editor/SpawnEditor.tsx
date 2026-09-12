@@ -3,14 +3,6 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
-import { SpawnEditorAlife } from "@/applications/spawn-editor/components/editor/chunks/alife/SpawnEditorAlife";
-import { SpawnEditorArtefacts } from "@/applications/spawn-editor/components/editor/chunks/artefacts/SpawnEditorArtefacts";
-import { SpawnEditorGraphs } from "@/applications/spawn-editor/components/editor/chunks/graph/SpawnEditorGraphs";
-import { SpawnEditorHeader } from "@/applications/spawn-editor/components/editor/chunks/header/SpawnEditorHeader";
-import { SpawnEditorPatrols } from "@/applications/spawn-editor/components/editor/chunks/patrol/SpawnEditorPatrols";
-import { SPAWN_EDITOR_PANELS } from "@/applications/spawn-editor/components/editor/spawn-panels";
-import { SpawnEditorActions } from "@/applications/spawn-editor/components/editor/SpawnEditorActions";
-import { SpawnEditorMenu } from "@/applications/spawn-editor/components/editor/SpawnEditorMenu";
 import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
@@ -18,13 +10,30 @@ import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { SpawnFileService } from "@/core/spawn/services";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export function SpawnEditor(): ReactElement {
+import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";
+import { SpawnEditorArtefacts } from "./chunks/artefacts/SpawnEditorArtefacts";
+import { SpawnEditorGraphs } from "./chunks/graph/SpawnEditorGraphs";
+import { SpawnEditorHeader } from "./chunks/header/SpawnEditorHeader";
+import { SpawnEditorPatrols } from "./chunks/patrol/SpawnEditorPatrols";
+import { SPAWN_EDITOR_PANELS } from "./spawn-panels";
+import { SpawnEditorActions } from "./SpawnEditorActions";
+import { SpawnEditorMenu } from "./SpawnEditorMenu";
+
+export function SpawnEditor({
+  "data-testid": dataTestId = "spawn-editor",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
 
   const header: Nullable<SpawnHeaderChunk> = spawnFileService.chunks.header.value;
   const path: Nullable<string> = spawnFileService.path;
+
+  // Closing does not navigate: the application shows its own picker again once nothing is open.
+  const onClose = useCallback(() => spawnFileService.closeFile(), [spawnFileService]);
 
   useEditorPanels(
     () => [
@@ -41,9 +50,6 @@ export function SpawnEditor(): ReactElement {
     []
   );
 
-  // Closing does not navigate: the application shows its own picker again once nothing is open.
-  const onClose = useCallback(() => spawnFileService.closeFile(), [spawnFileService]);
-
   useEditorBusy(spawnFileService.isBusy);
 
   useEditorStatus(
@@ -52,6 +58,9 @@ export function SpawnEditor(): ReactElement {
 
   return (
     <EditorLayout
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       toolbar={
         <EditorToolbar
           actions={<SpawnEditorActions />}

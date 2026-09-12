@@ -1,5 +1,6 @@
 import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
 import { default as SaveIcon } from "@mui/icons-material/Save";
+import { Box } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
@@ -7,12 +8,17 @@ import { ReactElement, useCallback, useState } from "react";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * Commands that act on the open spawn file.
  */
-export function SpawnEditorActions(): ReactElement {
+export function SpawnEditorActions({
+  "data-testid": dataTestId = "spawn-editor-actions",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
 
   const [exportPath, setExportPath] = useState<Nullable<string>>(null);
@@ -53,7 +59,7 @@ export function SpawnEditorActions(): ReactElement {
   }, [exportPath, spawnFileService]);
 
   return (
-    <>
+    <Box data-testid={dataTestId} id={id} className={className} sx={{ display: "flex", alignItems: "center" }}>
       <EditorIconAction
         label={"Save spawn file"}
         description={"Write the open spawn file to a chosen path"}
@@ -79,6 +85,6 @@ export function SpawnEditorActions(): ReactElement {
         onClose={() => setExportPath(null)}
         onConfirm={onConfirmExport}
       />
-    </>
+    </Box>
   );
 }

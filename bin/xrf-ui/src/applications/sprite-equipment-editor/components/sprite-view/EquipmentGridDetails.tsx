@@ -4,16 +4,24 @@ import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { GridMapper, IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { stopPropagation } from "@/lib/dom/event";
 import { Nullable } from "@/lib/types/general";
 
-interface IEquipmentGridDetailsProps {
+interface IEquipmentGridDetailsProps extends BaseComponentProps {
   cell: TEquipmentCell;
   gridMapper: GridMapper;
   onClose: () => void;
 }
 
-export function EquipmentGridDetails({ gridMapper, cell, onClose }: IEquipmentGridDetailsProps): ReactElement {
+export function EquipmentGridDetails({
+  "data-testid": dataTestId = "equipment-grid-details",
+  id,
+  className,
+  gridMapper,
+  cell,
+  onClose,
+}: IEquipmentGridDetailsProps): ReactElement {
   const [row, column] = cell;
   const items: Nullable<Array<IEquipmentSectionDescriptor>> = gridMapper.grid[row][column] ?? null;
 
@@ -25,6 +33,9 @@ export function EquipmentGridDetails({ gridMapper, cell, onClose }: IEquipmentGr
 
   return (
     <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       onMouseMove={stopPropagation}
       onWheel={stopPropagation}
       onMouseDown={stopPropagation}

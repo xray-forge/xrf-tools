@@ -5,6 +5,7 @@ import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describ
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/bindings/types/xrf-app";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
 /**
@@ -17,11 +18,16 @@ const STATUS_TONES: Record<string, TCommandResultTone> = {
   skipped: "info",
 };
 
-interface IGamedataVerifyResultProps {
+interface IGamedataVerifyResultProps extends BaseComponentProps {
   result: GamedataVerifySummary;
 }
 
-export function GamedataVerifyResult({ result }: IGamedataVerifyResultProps): ReactElement {
+export function GamedataVerifyResult({
+  "data-testid": dataTestId = "gamedata-verify-result",
+  id,
+  className,
+  result,
+}: IGamedataVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
       { field: "check", headerName: "Check", width: 160, cellClassName: "monospace" },
@@ -63,6 +69,9 @@ export function GamedataVerifyResult({ result }: IGamedataVerifyResultProps): Re
 
   return (
     <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       headline={
         result.outcome === "cancelled"
           ? "Verification stopped — some checks are incomplete or were not run"

@@ -11,9 +11,6 @@ import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The gamedata verification run and what it found.
- *
- * A service rather than component state because the run outlives the view that started it: a full pass over an
- * installation is minutes of work, and reloading the window must find it still going.
  */
 @Injectable()
 export class GamedataVerifierService {

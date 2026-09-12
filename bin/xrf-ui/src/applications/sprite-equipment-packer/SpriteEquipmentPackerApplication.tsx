@@ -2,7 +2,6 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { EquipmentPackResult } from "@/applications/sprite-equipment-packer/components/EquipmentPackResult";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -11,6 +10,8 @@ import { SpriteEquipmentPackerService } from "@/core/sprite-equipment";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
+
+import { EquipmentPackResult } from "./components/EquipmentPackResult";
 
 export function SpriteEquipmentPackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
