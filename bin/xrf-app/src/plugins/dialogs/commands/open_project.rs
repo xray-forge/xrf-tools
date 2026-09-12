@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 
 use crate::core::error::error_to_string;
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::dialogs::request::DialogsOpenRequest;
 use crate::plugins::dialogs::state::DialogProjectState;
@@ -21,7 +21,7 @@ use crate::plugins::dialogs::state::DialogProjectState;
 pub async fn dialogs_open_project(
   request: DialogsOpenRequest,
   state: State<'_, DialogProjectState>,
-) -> TauriResult<DocumentSnapshot<DialogProjectDescriptor>> {
+) -> TauriResult<SessionSnapshot<DialogProjectDescriptor>> {
   let DialogsOpenRequest {
     session_id,
     roots,

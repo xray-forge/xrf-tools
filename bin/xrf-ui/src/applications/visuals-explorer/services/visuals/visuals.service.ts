@@ -17,7 +17,7 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { findLastSeparator } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -66,7 +66,7 @@ export class VisualsService implements IVisualInspection {
    * Forwarded rather than mirrored: two copies of one state is how a screen ends up disagreeing with itself.
    */
   @Computed()
-  public get visual(): Loadable<Nullable<IOpenVisual>> {
+  public get visual(): AsyncState<IOpenVisual> {
     return this.loadService.visual;
   }
 
@@ -103,12 +103,12 @@ export class VisualsService implements IVisualInspection {
   /**
    * @returns What the backend reported about the open visual, or null when nothing is open.
    *
-   * The one place the loadable is unwrapped for its contents, so a panel asking what the model contains does not also
+   * The one place the async state is unwrapped for its contents, so a panel asking what the model contains does not also
    * acquire an opinion about whether it is still arriving.
    */
   @Computed()
   public get selected(): Nullable<SelectedVisualDescription> {
-    return this.visual.value?.selected ?? null;
+    return this.visual.value?.selected.value ?? null;
   }
 
   /**

@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 import { TextureCatalog, TextureMaterialSummary } from "@/core/bindings/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_BUMP,
@@ -33,7 +33,7 @@ async function renderMenu(
     ["plugin:textures|describe"]: mockTextureDescription(),
     ["plugin:textures|describe_catalog"]: summaries,
     ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|open"]: mockDocumentResponse(catalog),
+    ["plugin:textures|open"]: mockSessionResponse(catalog),
   });
 
   // Both halves: the catalog lists, and choosing a row hands the reference to the selection.

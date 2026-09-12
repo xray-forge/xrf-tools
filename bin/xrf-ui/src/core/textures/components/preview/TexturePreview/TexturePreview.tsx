@@ -62,7 +62,7 @@ export function TexturePreview({
   const [panZoom, setPanZoom] = useState<IPanZoomState>(PAN_ZOOM_FIT);
 
   // The description of the texture being replaced is still here while the next one is read, so what says a read is in
-  // progress is the loadable rather than the absence of a description.
+  // progress is the async state rather than the absence of a description.
   const isReading: boolean = selectionService.selected.isLoading || selectionService.preview.isLoading;
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 

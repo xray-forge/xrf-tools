@@ -8,7 +8,7 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 import { TexturePreview } from "./TexturePreview";
@@ -24,8 +24,8 @@ function renderPreview(
 ): RenderResult {
   const { service, container } = mockInjectedService(TextureSelectionService, [AssetService]);
 
-  service.selected = isReading ? Loadable.loading(selected) : Loadable.ready(selected);
-  service.preview = Loadable.ready(selected ? new ArrayBuffer(4) : null);
+  service.selected = isReading ? AsyncState.loading(selected) : AsyncState.ready(selected);
+  service.preview = AsyncState.ready(selected ? new ArrayBuffer(4) : null);
 
   return renderWithProviders(<TexturePreview comparison={comparison} />, { container });
 }
@@ -68,7 +68,7 @@ describe("TexturePreview", () => {
     // pictures of the same texels, and the captions have to say which is which.
     const { getByTestId, getByText } = renderPreview(SHAPED, false, {
       label: "BC7",
-      preview: Loadable.ready(new ArrayBuffer(4)),
+      preview: AsyncState.ready(new ArrayBuffer(4)),
     });
 
     expect(getByTestId("texture-image-pane-current")).toBeTruthy();
@@ -82,7 +82,7 @@ describe("TexturePreview", () => {
     // jump away and come back.
     const { getByTestId, getByText } = renderPreview(SHAPED, false, {
       label: "BC7",
-      preview: Loadable.loading(null),
+      preview: AsyncState.loading(),
     });
 
     expect(getByTestId("texture-image-pane-current")).toBeTruthy();

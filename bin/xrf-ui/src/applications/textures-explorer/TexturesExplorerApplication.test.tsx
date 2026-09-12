@@ -6,7 +6,7 @@ import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer/
 import { TexturesExplorerApplication } from "@/applications/textures-explorer/TexturesExplorerApplication";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
@@ -49,7 +49,7 @@ describe("TexturesExplorerApplication", () => {
       ["plugin:textures|describe"]: mockTextureDescription(),
       ["plugin:textures|describe_catalog"]: [mockBumpedTextureSummary()],
       ["plugin:textures|get_roots"]: null,
-      ["plugin:textures|open"]: mockDocumentResponse(mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)])),
+      ["plugin:textures|open"]: mockSessionResponse(mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)])),
       ["plugin:textures|read_texture"]: new ArrayBuffer(0),
     });
 

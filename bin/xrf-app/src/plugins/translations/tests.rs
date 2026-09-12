@@ -8,7 +8,7 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_g
 use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
@@ -60,7 +60,7 @@ fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>
 }
 
 fn open_project(state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
-  let id = DocumentSessionId::new();
+  let id = SessionId::new();
 
   state.begin_open(id)?;
   state.open_project(id, read_project(roots)?)?;
@@ -79,7 +79,7 @@ fn edits(value: &str) -> HashMap<String, Vec<TranslationEdit>> {
   )])
 }
 
-fn current_id(state: &TranslationProjectState) -> DocumentSessionId {
+fn current_id(state: &TranslationProjectState) -> SessionId {
   state.get_project().unwrap().unwrap().session_id
 }
 
@@ -180,7 +180,7 @@ fn a_save_needs_an_open_project_holding_the_file() -> TauriResult<()> {
   let state: TranslationProjectState = TranslationProjectState::new();
   let roots: XrayRoots = write_project("translations_state/absent", "before")?;
 
-  assert!(state.begin_save(DocumentSessionId::new(), FILE).is_err());
+  assert!(state.begin_save(SessionId::new(), FILE).is_err());
 
   open_project(&state, &roots)?;
 

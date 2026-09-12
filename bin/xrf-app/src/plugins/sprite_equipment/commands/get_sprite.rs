@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::core::session::DocumentRestore;
+use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, EquipmentSpriteState};
 
@@ -8,8 +8,8 @@ use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, Equipment
 #[tauri::command(rename = "get_sprite")]
 pub async fn sprite_equipment_get_sprite(
   state: State<'_, EquipmentSpriteState>,
-) -> TauriResult<DocumentRestore<EquipmentSpriteMetadata>> {
-  Ok(DocumentRestore::from(
+) -> TauriResult<SessionRestore<EquipmentSpriteMetadata>> {
+  Ok(SessionRestore::from(
     state
       .get()?
       .map(|opened| opened.map(|document| document.metadata.clone())),

@@ -7,7 +7,7 @@ import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -16,7 +16,7 @@ import { Nullable } from "@/lib/types/general";
 export function DialogsEditorWorkspace(): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
-  const dialog: Loadable<Nullable<DialogDescriptor>> = dialogsService.dialog;
+  const dialog: AsyncState<Nullable<DialogDescriptor>> = dialogsService.dialog;
 
   if (dialog.value) {
     return <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />;

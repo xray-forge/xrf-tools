@@ -8,7 +8,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -64,7 +64,7 @@ describe("VisualLoadService", () => {
     let openParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         openParameters = parameters ?? null;
 
         return selected;
@@ -88,7 +88,7 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
+      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
         throw new Error("chunk declares more bytes than the entry holds");
       }),
     });
@@ -114,7 +114,7 @@ describe("VisualLoadService", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -157,7 +157,7 @@ describe("VisualLoadService", () => {
     let readParameters: Nullable<Record<string, unknown>> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -185,7 +185,7 @@ describe("VisualLoadService", () => {
     let openWhileReading: Nullable<IOpenVisual> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -217,7 +217,7 @@ describe("VisualLoadService", () => {
     let shownWhileReading: Nullable<string> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(described),
+      ["plugin:visuals|open_model"]: mockSessionResponse(described),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: () => {
         shownWhileReading = service.sourceLabel;
@@ -229,7 +229,7 @@ describe("VisualLoadService", () => {
     await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\first.ogf" }, ROOTS);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...described,
         source: { kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" },
       }),
@@ -252,7 +252,7 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -267,7 +267,7 @@ describe("VisualLoadService", () => {
     let texturesWhileLoading: number = -1;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
+      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
         texturesWhileLoading = service.textures.size;
 
         return { ...selected, dependencies: { motions: [], textures: [] } };
@@ -287,7 +287,7 @@ describe("VisualLoadService", () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
+      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
         invoked.push("open_model");
 
         return selected;
@@ -296,7 +296,7 @@ describe("VisualLoadService", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:visuals|get_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|get_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -311,7 +311,7 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
     });
 
@@ -353,7 +353,7 @@ describe("VisualLoadService shared textures", () => {
     const reads: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
         reads.push(String(args?.logicalPath));
@@ -374,7 +374,7 @@ describe("VisualLoadService shared textures", () => {
     const { selected, buffer } = mockSharedVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile(),
     });
@@ -392,7 +392,7 @@ describe("VisualLoadService shared textures", () => {
     const { selected, buffer } = mockSharedVisual();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile(),
     });
@@ -436,7 +436,7 @@ describe("VisualLoadService texture decoding", () => {
     let decodedPath: Nullable<string> = null;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -464,7 +464,7 @@ describe("VisualLoadService texture decoding", () => {
     let decoded: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
@@ -489,7 +489,7 @@ describe("VisualLoadService texture decoding", () => {
     const { service } = mockInjectedService(VisualLoadService);
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),

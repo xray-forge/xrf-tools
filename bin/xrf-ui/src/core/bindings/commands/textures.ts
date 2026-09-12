@@ -3,9 +3,9 @@
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import {
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
   TextureBrowseSession,
   TextureBuildOutcome,
   TextureCatalog,
@@ -41,7 +41,7 @@ export const texturesCommands = {
   buildFromSource: (request: TexturesBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureBuildOutcome>("plugin:textures|build_from_source", { request, jobId, progress }),
   /** Close browse state and invalidate held or unfinished comparisons. */
-  close: (sessionIds: Array<DocumentSessionId>) => __TAURI_INVOKE<null>("plugin:textures|close", { sessionIds }),
+  close: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:textures|close", { sessionIds }),
   /**
    * Weigh every candidate format against one texture, and keep the encodes.
    *
@@ -65,7 +65,7 @@ export const texturesCommands = {
   describeCatalog: (roots: XrayRoots) =>
     __TAURI_INVOKE<Array<TextureMaterialSummary>>("plugin:textures|describe_catalog", { roots }),
   /** The session the explorer was browsing, or null when nothing is open. */
-  getSession: () => __TAURI_INVOKE<DocumentRestore<TextureBrowseSession>>("plugin:textures|get_session"),
+  getSession: () => __TAURI_INVOKE<SessionRestore<TextureBrowseSession>>("plugin:textures|get_session"),
   /**
    * The names the SDK gives the numbers a descriptor stores.
    *
@@ -83,8 +83,8 @@ export const texturesCommands = {
    * on screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
    * person browses while it runs rather than waiting on it.
    */
-  open: (sessionId: DocumentSessionId, roots: XrayRoots, mode: TextureCatalogMode) =>
-    __TAURI_INVOKE<DocumentSnapshot<TextureCatalog>>("plugin:textures|open", { sessionId, roots, mode }),
+  open: (sessionId: SessionId, roots: XrayRoots, mode: TextureCatalogMode) =>
+    __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>("plugin:textures|open", { sessionId, roots, mode }),
   /** Write one node's pending files: its descriptor, its base texture, or both. */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>("plugin:textures|save", { request, jobId, progress }),

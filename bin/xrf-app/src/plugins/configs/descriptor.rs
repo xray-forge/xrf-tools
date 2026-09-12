@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory};
 use xrf_vfs::XrayRoots;
 
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 
 /// What one open of the configs explorer answers with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -10,7 +10,7 @@ use crate::core::session::DocumentSessionId;
 #[serde(rename_all = "camelCase")]
 pub struct ConfigsProjectDescriptor {
   /// Identity every later read is addressed by.
-  pub session_id: DocumentSessionId,
+  pub session_id: SessionId,
   /// The trees this project searched, as the backend resolved them, so a reload restores the same open.
   pub roots: XrayRoots,
   /// Scope inside those trees, or nothing for all of them.

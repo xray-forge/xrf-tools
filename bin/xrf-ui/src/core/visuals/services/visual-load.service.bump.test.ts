@@ -7,7 +7,7 @@ import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockDx10DdsFile } from "@/fixtures/mocks/dds.mocks";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockMaterialDescriptor,
@@ -96,7 +96,7 @@ describe("VisualLoadService bump pairs", () => {
     const reads: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
         reads.push(String(args?.logicalPath));
@@ -125,7 +125,7 @@ describe("VisualLoadService bump pairs", () => {
     const reads: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
         reads.push(String(args?.logicalPath));
@@ -148,7 +148,7 @@ describe("VisualLoadService bump pairs", () => {
     const { selected, buffer } = mockBumpedVisual(mockMaterialDescriptor());
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
         // BC7 is a layout the renderer's loader has no branch for, and it logs the refusal itself.
@@ -174,7 +174,7 @@ describe("VisualLoadService bump pairs", () => {
     const { selected, buffer } = mockBumpedVisual(mockMaterialDescriptor());
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT5" }),
     });

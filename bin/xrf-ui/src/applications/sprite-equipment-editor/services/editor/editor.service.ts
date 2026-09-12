@@ -7,9 +7,10 @@ import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 import { urlToImage } from "@/core/assets/image";
 import { AssetService } from "@/core/assets/services";
 import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
+import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import {
@@ -18,7 +19,7 @@ import {
   IPackEquipmentResult,
 } from "@/core/sprite-equipment/equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -40,7 +41,7 @@ export interface IEquipmentPngDescriptor {
 export class SpriteEquipmentEditorService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => spriteEquipmentCommands.closeSprite(ids));
+  private readonly session: Session = new Session(spriteEquipmentCommands.closeSprite);
 
   @Observable()
   public isReady: boolean = false;
@@ -52,7 +53,7 @@ export class SpriteEquipmentEditorService {
   public gridSize: number = 50;
 
   @Observable()
-  public spriteImage: Loadable<Nullable<IEquipmentPngDescriptor>> = Loadable.idle(null);
+  public spriteImage: AsyncState<IEquipmentPngDescriptor> = AsyncState.idle();
 
   /**
    * Directory the sprite can be rebuilt from, or null when there is nothing to rebuild from.
@@ -88,16 +89,12 @@ export class SpriteEquipmentEditorService {
   }
 
   /**
-   * Puts back whatever the backend already had open.
-   *
-   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
-   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
-   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("spriteImage")
   private *restore(): TFlow {
-    const response: Nullable<TDocument<IEquipmentSpriteMetadata>> = yield* call(
-      spriteEquipmentCommands.getSprite().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+    const response: Nullable<SessionSnapshot<IEquipmentSpriteMetadata>> = yield* call(
+      spriteEquipmentCommands.getSprite()
     );
 
     if (!response) {
@@ -149,11 +146,9 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: TDocument<IEquipmentSpriteMetadata> = yield* call(
+      const response: SessionSnapshot<IEquipmentSpriteMetadata> = yield* call(
         this.session.open((sessionId) =>
-          spriteEquipmentCommands
-            .openSprite({ sessionId, equipmentDdsPath, systemLtxPath, isDltx })
-            .then(restoreDocument)
+          spriteEquipmentCommands.openSprite({ sessionId, equipmentDdsPath, systemLtxPath, isDltx })
         )
       );
 
@@ -191,11 +186,9 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: TDocument<IEquipmentSpriteMetadata> = yield* call(
+      const response: SessionSnapshot<IEquipmentSpriteMetadata> = yield* call(
         this.session.open((openingId) =>
-          spriteEquipmentCommands
-            .reopenSprite(requireDocumentSession(this.spriteImage.value), openingId)
-            .then(restoreDocument)
+          spriteEquipmentCommands.reopenSprite(requireSessionId(this.spriteImage.value), openingId)
         )
       );
 
@@ -215,7 +208,7 @@ export class SpriteEquipmentEditorService {
 
   @ExclusiveFlow("spriteImage")
   public *repackAndOpenProject(): TFlow {
-    const { spriteImage, repackSourcePath } = this;
+    const { spriteImage: spriteImage, repackSourcePath } = this;
 
     if (!spriteImage.value || spriteImage.isLoading) {
       throw new Error("Invalid attempt to reopen project that is loading or not open.");
@@ -331,8 +324,12 @@ export class SpriteEquipmentEditorService {
     }
   }
 
-  /** Publish the decoded sprite once; release candidates even when their flow is cancelled. */
-  private *viewSprite(response: TDocument<IEquipmentSpriteMetadata>): TFlow {
+  /**
+   * Publishes a decoded sprite and releases candidates abandoned by cancellation.
+   *
+   * @param response - Native snapshot whose preview should be displayed.
+   */
+  private *viewSprite(response: SessionSnapshot<IEquipmentSpriteMetadata>): TFlow {
     const pending: Promise<IEquipmentPngDescriptor> = this.spriteFromResponse(response);
 
     let published: boolean = false;
@@ -354,23 +351,26 @@ export class SpriteEquipmentEditorService {
     }
   }
 
-  private async spriteFromResponse(response: TDocument<IEquipmentSpriteMetadata>): Promise<IEquipmentPngDescriptor> {
-    const blob: Blob = await fetch(convertFileSrc(response.sessionId + "/" + response.name, "stream")).then(
-      (response) => response.blob()
-    );
+  private async spriteFromResponse(
+    response: SessionSnapshot<IEquipmentSpriteMetadata>
+  ): Promise<IEquipmentPngDescriptor> {
+    const { sessionId, value: metadata } = response;
+
+    const preview: Response = await fetch(convertFileSrc(sessionId + "/" + metadata.name, "stream"));
+    const blob: Blob = await preview.blob();
 
     const url: string = this.assetService.create(blob);
 
     try {
       return {
-        sessionId: response.sessionId,
+        sessionId,
         blob,
-        isDltx: response.isDltx,
-        ltxPath: response.systemLtxPath,
-        descriptors: response.equipmentDescriptors,
+        isDltx: metadata.isDltx,
+        ltxPath: metadata.systemLtxPath,
+        descriptors: metadata.equipmentDescriptors,
         image: await urlToImage(url),
-        name: response.name,
-        path: response.path,
+        name: metadata.name,
+        path: metadata.path,
       };
     } catch (error) {
       this.assetService.release(url);

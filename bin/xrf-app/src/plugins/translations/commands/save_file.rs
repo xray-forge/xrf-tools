@@ -8,7 +8,7 @@ use xrf_translation::{
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::core::error::error_to_string;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
 
@@ -31,7 +31,7 @@ use crate::plugins::translations::state::{TranslationProjectState, TranslationSa
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
 #[tauri::command(rename = "save_file")]
 pub async fn translations_save_file(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   file: &str,
   edits: HashMap<String, Vec<TranslationEdit>>,
   state: State<'_, TranslationProjectState>,
@@ -42,7 +42,7 @@ pub async fn translations_save_file(
 /// Write `edits` into whichever project is open, and adopt what they left on disk while it still is.
 pub(in crate::plugins::translations) fn save_into_open_project(
   state: &TranslationProjectState,
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   file: &str,
   edits: &HashMap<String, Vec<TranslationEdit>>,
 ) -> TauriResult<TranslationSaveOutcome> {

@@ -5,8 +5,8 @@ import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
+import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Loadable } from "@/lib/loadable";
 import { IPanZoomState } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
@@ -19,7 +19,7 @@ interface ITextureImagePaneProps extends BaseComponentProps {
   /** Slot the decoded bytes are held under, unique to this pane. */
   assetKey: string;
   /** The picture, as png bytes. */
-  preview: Loadable<Nullable<ArrayBuffer>>;
+  preview: AsyncState<Nullable<ArrayBuffer>>;
   /** How large it is, which the viewport lays itself out against. */
   shape: Nullable<AssetTextureShape>;
   state?: IPanZoomState;

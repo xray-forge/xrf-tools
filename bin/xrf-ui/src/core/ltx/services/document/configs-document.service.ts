@@ -6,7 +6,7 @@ import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -57,7 +57,7 @@ export class ConfigsDocumentService {
 
   /** The selected config's lines and structure. */
   @Observable()
-  public document: Loadable<Nullable<ConfigsDocument>> = Loadable.idle(null);
+  public document: AsyncState<ConfigsDocument> = AsyncState.idle();
 
   /**
    * @returns The entry point the selected config is judged against, or null when nothing reaches it.

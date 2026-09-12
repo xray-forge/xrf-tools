@@ -8,7 +8,7 @@ import { ArchiveFileExtractAction } from "@/applications/archives-explorer/compo
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -20,7 +20,7 @@ const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
 class TestArchivesService extends ArchivesService {}
 
 function renderAction(): RenderResult {
-  setMockInvokeResponses({ "plugin:archives|get_project": mockDocumentResponse(mockArchivesProject()) });
+  setMockInvokeResponses({ "plugin:archives|get_project": mockSessionResponse(mockArchivesProject()) });
 
   return renderWithProviders(<ArchiveFileExtractAction descriptor={FILE} />, {
     bindings: [{ token: ArchivesService, type: "Instance", value: TestArchivesService }],

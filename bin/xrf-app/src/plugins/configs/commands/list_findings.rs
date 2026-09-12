@@ -5,7 +5,7 @@ use xrf_ltx_inspect::LtxAnchoredFinding;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsResolvedRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
@@ -23,7 +23,7 @@ pub async fn configs_list_findings(
 ) -> TauriResult<Vec<LtxAnchoredFinding>> {
   let ConfigsResolvedRequest { session_id, entry } = request;
 
-  let opened: Arc<DocumentSnapshot<ConfigsProject>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
 
   // Bounded by the root: verifying it walks every section it holds, which on a game tree is tens of thousands.

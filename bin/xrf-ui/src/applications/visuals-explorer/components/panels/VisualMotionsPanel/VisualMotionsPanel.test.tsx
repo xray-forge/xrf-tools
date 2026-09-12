@@ -8,7 +8,7 @@ import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
 import { VisualMotionBake, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -60,14 +60,14 @@ async function renderPanel(
   let listed: number = 0;
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+    ["plugin:visuals|open_model"]: mockSessionResponse(selected),
     ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
     ["plugin:visuals|list_motions"]: () => {
       listed += 1;
 
       return names;
     },
-    ["plugin:visuals|open_motion"]: mockDocumentResponse((parameters?: Record<string, unknown>) => ({
+    ["plugin:visuals|open_motion"]: mockSessionResponse((parameters?: Record<string, unknown>) => ({
       ...bake,
       name: String((parameters as { name: string }).name),
     })),
@@ -180,7 +180,7 @@ describe("VisualMotionsPanel listing", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(
+      ["plugin:visuals|open_model"]: mockSessionResponse(
         mockSelectedVisual({
           dependencies: { motions: [mockMotionRef()], textures: [] },
           description: mockVisualDescription({

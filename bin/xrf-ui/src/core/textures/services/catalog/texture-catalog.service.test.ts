@@ -3,7 +3,7 @@ import { Container } from "@wirestate/core";
 
 import { TextureCatalogMode } from "@/core/bindings/types/xrf-app";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
@@ -37,8 +37,8 @@ function mockService(): { service: TextureCatalogService; asked: IAsked } {
 
       return [mockTextureSummary(MOCK_TEXTURE)];
     },
-    ["plugin:textures|get_session"]: mockDocumentResponse(null),
-    ["plugin:textures|open"]: mockDocumentResponse((args?: Record<string, unknown>) => {
+    ["plugin:textures|get_session"]: mockSessionResponse(null),
+    ["plugin:textures|open"]: mockSessionResponse((args?: Record<string, unknown>) => {
       const mode: TextureCatalogMode = args?.mode as TextureCatalogMode;
 
       asked.openModes.push(mode);

@@ -5,11 +5,11 @@ import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/e
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 const DIALOG: DialogDescriptor = {
@@ -42,7 +42,7 @@ function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor
   const container = mockContainer([DialogsService]);
   const service: DialogsService = container.get(DialogsService);
 
-  service.dialog = Loadable.ready(dialog);
+  service.dialog = AsyncState.ready(dialog);
   service.inspectedNodeId = nodeId;
 
   return renderWithProviders(<DialogInspectorPanel />, { container });
@@ -50,7 +50,7 @@ function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor
 
 describe("DialogInspectorPanel", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockDocumentResponse(null) });
+    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockSessionResponse(null) });
   });
 
   it("invites a selection when nothing on the canvas is picked", () => {

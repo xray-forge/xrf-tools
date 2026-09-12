@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 
-/// Publishes complete documents atomically, retaining the last success while a replacement is pending.
-pub(crate) struct DocumentSession<T> {
+/// Publishes session snapshots atomically, retaining the last success while a replacement is pending.
+pub(crate) struct Session<T> {
   name: &'static str,
   state: Arc<Mutex<SessionState<T>>>,
 }
 
-impl<T> Clone for DocumentSession<T> {
+impl<T> Clone for Session<T> {
   fn clone(&self) -> Self {
     Self {
       name: self.name,
@@ -19,11 +19,11 @@ impl<T> Clone for DocumentSession<T> {
 }
 
 struct SessionState<T> {
-  opening: Option<DocumentSessionId>,
-  opened: Option<Arc<DocumentSnapshot<T>>>,
+  opening: Option<SessionId>,
+  opened: Option<Arc<SessionSnapshot<T>>>,
 }
 
-impl<T> DocumentSession<T> {
+impl<T> Session<T> {
   pub fn new(name: &'static str) -> Self {
     Self {
       name,
@@ -34,22 +34,18 @@ impl<T> DocumentSession<T> {
     }
   }
 
-  /// Reserves publication before doing work, without invalidating the committed document's readers.
-  pub fn begin_open(&self, id: DocumentSessionId) -> TauriResult<()> {
+  /// Reserves publication before doing work, without invalidating the committed value's readers.
+  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
     self.lock()?.opening = Some(id);
 
     Ok(())
   }
 
-  /// Reserves a reload only while the document it reloads is still committed.
-  pub fn begin_reload(
-    &self,
-    id: DocumentSessionId,
-    previous: DocumentSessionId,
-  ) -> TauriResult<Arc<DocumentSnapshot<T>>> {
+  /// Reserves a reload only while the value it reloads is still committed.
+  pub fn begin_reload(&self, id: SessionId, previous: SessionId) -> TauriResult<Arc<SessionSnapshot<T>>> {
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
-    let opened: Arc<DocumentSnapshot<T>> = state
+    let opened: Arc<SessionSnapshot<T>> = state
       .opened
       .as_ref()
       .filter(|opened| opened.session_id == previous)
@@ -62,11 +58,8 @@ impl<T> DocumentSession<T> {
   }
 
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
-  pub fn commit_open(&self, id: DocumentSessionId, document: T) -> TauriResult<Arc<DocumentSnapshot<T>>> {
-    let opened: Arc<DocumentSnapshot<T>> = Arc::new(DocumentSnapshot {
-      session_id: id,
-      document,
-    });
+  pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot { session_id: id, value });
 
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
@@ -77,7 +70,7 @@ impl<T> DocumentSession<T> {
       ));
     }
 
-    let previous: Option<Arc<DocumentSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
+    let previous: Option<Arc<SessionSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
 
     state.opening = None;
 
@@ -87,13 +80,13 @@ impl<T> DocumentSession<T> {
     Ok(opened)
   }
 
-  /// Restores the committed document without copying its content or exposing the session lock.
-  pub fn get(&self) -> TauriResult<Option<Arc<DocumentSnapshot<T>>>> {
+  /// Restores the committed value without copying its content or exposing the session lock.
+  pub fn get(&self) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
     Ok(self.lock()?.opened.clone())
   }
 
-  /// Takes the exact document requested, never whichever document happens to be open now.
-  pub fn require(&self, id: DocumentSessionId) -> TauriResult<Arc<DocumentSnapshot<T>>> {
+  /// Takes the exact value requested, never whichever value happens to be open now.
+  pub fn require(&self, id: SessionId) -> TauriResult<Arc<SessionSnapshot<T>>> {
     self
       .get()?
       .filter(|opened| opened.session_id == id)
@@ -101,14 +94,10 @@ impl<T> DocumentSession<T> {
   }
 
   /// Replaces a saved snapshot only if no other publication has replaced the snapshot it was based on.
-  pub fn replace(
-    &self,
-    previous: &Arc<DocumentSnapshot<T>>,
-    document: T,
-  ) -> TauriResult<Option<Arc<DocumentSnapshot<T>>>> {
-    let opened: Arc<DocumentSnapshot<T>> = Arc::new(DocumentSnapshot {
+  pub fn replace(&self, previous: &Arc<SessionSnapshot<T>>, value: T) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
+    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
       session_id: previous.session_id,
-      document,
+      value,
     });
 
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
@@ -121,7 +110,7 @@ impl<T> DocumentSession<T> {
       return Ok(None);
     }
 
-    let discarded: Option<Arc<DocumentSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
+    let discarded: Option<Arc<SessionSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
 
     drop(state);
     drop(discarded);
@@ -130,21 +119,21 @@ impl<T> DocumentSession<T> {
   }
 
   /// Closes only the caller's committed or pending openings. A delayed teardown cannot close its successor.
-  pub fn close(&self, ids: &[DocumentSessionId]) -> TauriResult<()> {
+  pub fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
     drop(self.detach(ids)?);
 
     Ok(())
   }
 
-  /// Detaches ownership so a caller can dispose a large document on its execution pool.
-  pub fn detach(&self, ids: &[DocumentSessionId]) -> TauriResult<Option<Arc<DocumentSnapshot<T>>>> {
+  /// Detaches ownership so a caller can dispose a large value on its execution pool.
+  pub fn detach(&self, ids: &[SessionId]) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
     if state.opening.is_some_and(|id| ids.contains(&id)) {
       state.opening = None;
     }
 
-    let previous: Option<Arc<DocumentSnapshot<T>>> = if state
+    let previous: Option<Arc<SessionSnapshot<T>>> = if state
       .opened
       .as_ref()
       .is_some_and(|opened| ids.contains(&opened.session_id))

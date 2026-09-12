@@ -4,7 +4,7 @@ use tauri::State;
 use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
@@ -19,15 +19,15 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_motion"))]
 #[tauri::command(rename = "open_motion")]
 pub async fn visuals_open_motion(
-  session_id: DocumentSessionId,
-  motion_id: DocumentSessionId,
+  session_id: SessionId,
+  motion_id: SessionId,
   name: String,
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
-) -> TauriResult<DocumentSnapshot<VisualMotionBake>> {
+) -> TauriResult<SessionSnapshot<VisualMotionBake>> {
   log::info!("Posing motion: {name}");
 
-  let current: Arc<DocumentSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
 
   current.posed.begin_open(motion_id)?;
 
@@ -40,7 +40,7 @@ pub async fn visuals_open_motion(
     bake_named_motion(probe, skeleton, &current.dependencies, &name)
   })??;
 
-  let opened: Arc<DocumentSnapshot<VisualMotionPose>> = current.posed.commit_open(motion_id, posed)?;
+  let opened: Arc<SessionSnapshot<VisualMotionPose>> = current.posed.commit_open(motion_id, posed)?;
 
   Ok(opened.map(|pose| pose.description.clone()))
 }

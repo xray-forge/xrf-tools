@@ -4,7 +4,7 @@ use tauri::State;
 use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, read_gamedata, read_source};
 
 use crate::core::error::error_to_string;
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::request::TranslationsOpenRequest;
 use crate::plugins::translations::state::TranslationProjectState;
@@ -19,7 +19,7 @@ use crate::plugins::translations::state::TranslationProjectState;
 pub async fn translations_open_project(
   request: TranslationsOpenRequest,
   state: State<'_, TranslationProjectState>,
-) -> TauriResult<Arc<DocumentSnapshot<TranslationProjectDescriptor>>> {
+) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
   let TranslationsOpenRequest {
     session_id,
     roots,

@@ -6,9 +6,10 @@ import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 
 const SOUND: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "sounds\\ambient\\wind.ogg",
@@ -36,7 +37,7 @@ const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 function createService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = Loadable.ready({ ...mockArchivesProject([SOUND, TEXTURE]), sessionId: "fixture-session" });
+  service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject([SOUND, TEXTURE])));
 
   return service;
 }

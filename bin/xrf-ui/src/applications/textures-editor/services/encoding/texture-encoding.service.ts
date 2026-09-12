@@ -5,22 +5,22 @@ import { describeTextureCompareOutcome } from "@/applications/textures-editor/li
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import {
-  DocumentSessionId,
   EJobKind,
+  SessionId,
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
 } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { Session } from "@/core/ipc/session";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -32,7 +32,7 @@ import { Nullable } from "@/lib/types/general";
 export class TextureEncodingService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => texturesCommands.close(ids));
+  private readonly session: Session = new Session(texturesCommands.close);
 
   public readonly compare: JobOperation<TextureEncodingComparison>;
 
@@ -40,7 +40,7 @@ export class TextureEncodingService {
    * The candidate chosen to replace the base texture, or null when the file on disk still stands.
    */
   @Observable()
-  private choice: Nullable<{ sessionId: DocumentSessionId; format: TextureEncodingFormat }> = null;
+  private choice: Nullable<{ sessionId: SessionId; format: TextureEncodingFormat }> = null;
 
   @Computed()
   public get chosen(): Nullable<TextureEncodingFormat> {
@@ -51,7 +51,7 @@ export class TextureEncodingService {
    * The chosen candidate as a picture, for showing it beside the texture it would replace.
    */
   @Observable()
-  public preview: Loadable<Nullable<ArrayBuffer>> = Loadable.idle(null);
+  public preview: AsyncState<ArrayBuffer> = AsyncState.idle();
 
   /**
    * @returns The comparison to show, or null when none belongs to the texture on screen.

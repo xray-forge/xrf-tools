@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs/dialogs.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -47,13 +47,13 @@ const DIALOG: DialogDescriptor = {
 
 describe("DialogsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockDocumentResponse(() => null) });
+    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockSessionResponse(() => null) });
   });
 
   it("opens a project over roots and the layout mode", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({ ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT) });
+    setMockInvokeResponses({ ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT) });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
 
@@ -67,7 +67,7 @@ describe("DialogsService", () => {
         translationsPrefix: null,
       },
     });
-    expect(service.project.value).toEqual({ ...PROJECT, sessionId: expect.any(String) });
+    expect(service.project.value).toEqual(PROJECT);
     expect(service.languages).toEqual(["eng", "rus"]);
   });
 
@@ -75,7 +75,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -101,7 +101,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -128,7 +128,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => {
         throw new Error("No dialog 'trader' in 'configs\\gameplay\\dialogs.xml'");
       },
@@ -147,7 +147,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
       ["plugin:dialogs|get_dialog"]: () => DIALOG,
     });
 
@@ -164,7 +164,7 @@ describe("DialogsService", () => {
     const { service } = mockInjectedService(DialogsService);
 
     setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockDocumentResponse(() => ({ ...PROJECT, languages: [], textKeys: 0 })),
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => ({ ...PROJECT, languages: [], textKeys: 0 })),
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");

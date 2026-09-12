@@ -4,7 +4,7 @@ use std::sync::Arc;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Quality};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingSession};
 use crate::plugins::textures::source::TextureSource;
@@ -14,7 +14,7 @@ use crate::plugins::textures::tests::fixtures::{BASE, source_image};
 #[test]
 fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
   let state: TextureState = TextureState::new();
-  let first: DocumentSessionId = DocumentSessionId::new();
+  let first: SessionId = SessionId::new();
 
   state.begin_comparison(first).expect("first session");
 
@@ -22,7 +22,7 @@ fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
     .hold_comparison(comparison(first, "first"))
     .expect("first comparison");
 
-  let second: DocumentSessionId = DocumentSessionId::new();
+  let second: SessionId = SessionId::new();
 
   state.begin_comparison(second).expect("second session");
 
@@ -51,7 +51,7 @@ fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
 #[test]
 fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
   let state: TextureState = TextureState::new();
-  let id: DocumentSessionId = DocumentSessionId::new();
+  let id: SessionId = SessionId::new();
 
   state.begin_comparison(id).expect("session");
 
@@ -69,20 +69,20 @@ fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
 #[test]
 fn a_late_comparison_cannot_replace_a_reopened_session() {
   let state: TextureState = TextureState::new();
-  let first: DocumentSessionId = DocumentSessionId::new();
+  let first: SessionId = SessionId::new();
 
   state.begin_comparison(first).expect("first session");
 
   state.close(&[first]).expect("close");
 
-  let second: DocumentSessionId = DocumentSessionId::new();
+  let second: SessionId = SessionId::new();
 
   state.begin_open(second).expect("reopened session");
   state.open_browse(second, browse("second")).expect("reopen");
 
   assert!(state.hold_comparison(comparison(first, "first")).is_err());
   assert_eq!(
-    state.get_browse().expect("browse").expect("opened").document,
+    state.get_browse().expect("browse").expect("opened").value,
     browse("second")
   );
 }
@@ -90,21 +90,21 @@ fn a_late_comparison_cannot_replace_a_reopened_session() {
 #[test]
 fn a_late_open_cannot_undo_close_or_a_newer_open() {
   let state: TextureState = TextureState::new();
-  let first: DocumentSessionId = DocumentSessionId::new();
+  let first: SessionId = SessionId::new();
 
   state.begin_open(first).expect("pending open");
   state.close(&[first]).expect("close");
 
   assert!(state.open_browse(first, browse("first")).is_err());
 
-  let second: DocumentSessionId = DocumentSessionId::new();
+  let second: SessionId = SessionId::new();
 
   state.begin_open(second).expect("new open");
   state.open_browse(second, browse("second")).expect("new listing");
 
   assert!(state.open_browse(first, browse("first")).is_err());
   assert_eq!(
-    state.get_browse().expect("browse").expect("opened").document,
+    state.get_browse().expect("browse").expect("opened").value,
     browse("second")
   );
 }
@@ -112,12 +112,12 @@ fn a_late_open_cannot_undo_close_or_a_newer_open() {
 #[test]
 fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
   let state: TextureState = TextureState::new();
-  let id: DocumentSessionId = DocumentSessionId::new();
+  let id: SessionId = SessionId::new();
 
   state.begin_comparison(id).expect("session");
   state.hold_comparison(comparison(id, "first")).expect("comparison");
 
-  let held: Arc<DocumentSnapshot<TextureEncodingSession>> = state.get_comparison(id).expect("snapshot");
+  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.get_comparison(id).expect("snapshot");
   let bytes: Vec<u8> = held
     .require(TextureEncodingFormat::Bc3)
     .expect("candidate")
@@ -126,7 +126,7 @@ fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
 
   state.close(&[id]).expect("close while snapshot is held");
 
-  let next: DocumentSessionId = DocumentSessionId::new();
+  let next: SessionId = SessionId::new();
 
   state.begin_comparison(next).expect("next session");
   state
@@ -164,7 +164,7 @@ fn browse(path: &str) -> TextureBrowseSession {
   }
 }
 
-fn comparison(session_id: DocumentSessionId, path: &str) -> TextureEncodingSession {
+fn comparison(session_id: SessionId, path: &str) -> TextureEncodingSession {
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("mip chain");
 
   TextureEncodingSession {

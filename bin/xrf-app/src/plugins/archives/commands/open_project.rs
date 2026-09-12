@@ -5,18 +5,18 @@ use tauri::State;
 use xrf_archive::ArchiveProject;
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn archives_open_project(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   execution: State<'_, ExecutionState>,
   path: &str,
   state: State<'_, ArchiveProjectState>,
-) -> TauriResult<Arc<DocumentSnapshot<ArchiveProject>>> {
+) -> TauriResult<Arc<SessionSnapshot<ArchiveProject>>> {
   state.begin_open(session_id)?;
   log::info!("Opening archives project");
 

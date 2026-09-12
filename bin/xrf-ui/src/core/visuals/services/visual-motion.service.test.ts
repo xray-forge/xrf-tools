@@ -4,7 +4,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockSelectedVisual,
@@ -13,7 +13,7 @@ import {
   mockVisualMotionTransforms,
 } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 const BAKE: VisualMotionBake = mockVisualMotionBake();
@@ -21,8 +21,8 @@ const BAKE: VisualMotionBake = mockVisualMotionBake();
 function mockService() {
   const result = mockInjectedService(VisualMotionService, [VisualLoadService]);
 
-  result.container.get(VisualLoadService).visual = Loadable.ready({
-    selected: { ...mockSelectedVisual(), sessionId: "fixture-session" },
+  result.container.get(VisualLoadService).visual = AsyncState.ready({
+    selected: mockSessionSnapshot(mockSelectedVisual()),
     views: mockVisualModelViews(),
   });
 
@@ -37,7 +37,7 @@ function mockFloatCount(bake: VisualMotionBake): number {
 function mockMotion(bake: VisualMotionBake = BAKE, transforms: ArrayBuffer = mockVisualMotionTransforms(bake)): void {
   setMockInvokeResponses({
     ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
-    ["plugin:visuals|open_motion"]: mockDocumentResponse(bake),
+    ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
     ["plugin:visuals|read_motion"]: transforms,
   });
 }
@@ -81,7 +81,7 @@ describe("VisualMotionService", () => {
     await service.list();
     await service.list();
 
-    expect(service.motions.value).toEqual(["norm_walk_fwd_1"]);
+    expect(service.motions.value ?? []).toEqual(["norm_walk_fwd_1"]);
     expect(calls).toBe(1);
   });
 
@@ -105,7 +105,7 @@ describe("VisualMotionService", () => {
 
     await listed;
 
-    expect(service.motions.value).toEqual([]);
+    expect(service.motions.value ?? []).toEqual([]);
   });
 
   it("poses a motion and starts it playing", async () => {
@@ -224,7 +224,7 @@ describe("VisualMotionService", () => {
     service.clear();
 
     expect(service.posed.value).toBeNull();
-    expect(service.motions.value).toEqual([]);
+    expect(service.motions.value ?? []).toEqual([]);
     expect(service.frame).toBe(0);
     expect(service.isPlaying).toBe(false);
     expect(service.floatsPerBone).toBe(0);
@@ -286,7 +286,7 @@ describe("VisualMotionService playback state", () => {
     let firstMotionId: unknown;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_motion"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         if (parameters?.name === first.name) {
           firstMotionId = parameters.motionId;
 
@@ -377,6 +377,6 @@ describe("VisualMotionService playback state", () => {
     service.clear();
 
     expect(service.fps).toBe(15);
-    expect(service.motions.value).toEqual([]);
+    expect(service.motions.value ?? []).toEqual([]);
   });
 });

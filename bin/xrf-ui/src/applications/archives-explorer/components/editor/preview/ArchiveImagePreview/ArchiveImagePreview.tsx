@@ -11,7 +11,7 @@ import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /** One texture is previewed at a time, so its url lives under a fixed key and displaces the last one. */
@@ -22,7 +22,7 @@ const ARCHIVE_IMAGE_ASSET_KEY: string = "archive-image";
  */
 export function ArchiveImagePreview(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
+  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
   // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
   const image: Nullable<TArchiveContent & { kind: "image" }> = useLastContent(

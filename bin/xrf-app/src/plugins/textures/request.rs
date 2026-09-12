@@ -10,7 +10,7 @@ use xrf_dds::{DdsMipFilter, DdsMipmaps};
 use xrf_vfs::XrayRoots;
 
 use crate::core::jobs::JobResource;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
@@ -42,7 +42,7 @@ pub struct TextureDescriptorSave {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureEncodingSave {
-  pub session_id: DocumentSessionId,
+  pub session_id: SessionId,
   pub target: TextureSaveTarget,
   pub format: TextureEncodingFormat,
 }
@@ -112,7 +112,7 @@ pub struct TexturesMakeBumpRequest {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TexturesCompareRequest {
-  pub session_id: DocumentSessionId,
+  pub session_id: SessionId,
   /// The texture to re-encode, named the way `describe` names one.
   ///
   /// A source rather than an engine reference, because a file outside every tree has no reference and is addressed by

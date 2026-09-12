@@ -11,7 +11,7 @@ import { isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -33,7 +33,7 @@ export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps)
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const files: Array<ArchiveFileDescriptor> = archivesService.files;
-  const operation: Loadable<Nullable<TArchiveOperation>> = archivesService.operation;
+  const operation: AsyncState<Nullable<TArchiveOperation>> = archivesService.operation;
   // A file extraction started elsewhere must not be reported here as if this directory had been written.
   const extracted: Nullable<ArchiveExtractDirectoryResult> =
     operation.value?.kind === "extract-directory" ? operation.value.result : null;

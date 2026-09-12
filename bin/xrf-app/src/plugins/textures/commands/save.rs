@@ -8,7 +8,7 @@ use xrf_job::{JobHandle, JobProgress};
 use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::encoding::TextureEncodingSession;
 use crate::plugins::textures::request::TexturesSaveRequest;
@@ -34,7 +34,7 @@ pub async fn textures_save(
     request.texture.is_some()
   );
 
-  let comparison: Option<Arc<DocumentSnapshot<TextureEncodingSession>>> = request
+  let comparison: Option<Arc<SessionSnapshot<TextureEncodingSession>>> = request
     .texture
     .as_ref()
     .map(|save| state.get_comparison(save.session_id))

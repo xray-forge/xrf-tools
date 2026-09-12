@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::state::SpawnFileState;
 
@@ -9,7 +9,7 @@ use crate::plugins::spawn::state::SpawnFileState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_file"))]
 #[tauri::command(rename = "close_file")]
 pub async fn spawn_close_file(
-  session_ids: Vec<DocumentSessionId>,
+  session_ids: Vec<SessionId>,
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult {

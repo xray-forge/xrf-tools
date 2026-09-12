@@ -5,7 +5,7 @@ import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -20,7 +20,7 @@ describe("SpriteEquipmentEditorService", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(() => {
+      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(() => {
         throw new Error("backend refused");
       }),
     });
@@ -96,7 +96,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     service.clearSpriteError();
 
-    expect(service.spriteImage.isReady).toBe(true);
+    expect(service.spriteImage.isLoading).toBe(false);
     expect(service.spriteImage.value).toBe(sprite);
     expect(service.spriteImage.error).toBeNull();
   });
@@ -109,7 +109,8 @@ describe("SpriteEquipmentEditorService", () => {
     service.clearSpriteError();
 
     expect(service.spriteImage.error).toBeNull();
-    expect(service.spriteImage.isIdle).toBe(true);
+    expect(service.spriteImage.value).toBeNull();
+    expect(service.spriteImage.isLoading).toBe(false);
   });
 
   it("does not mark an in-progress load ready when dismissing an error", () => {
@@ -159,7 +160,8 @@ describe("SpriteEquipmentEditorService", () => {
 
     await service.repackAndOpenProject();
 
-    expect(service.spriteImage).toBe(previous);
+    expect(service.spriteImage.value).toBe(previous.value);
+    expect(service.spriteImage.error).toBe(previous.error);
     expect(service.spriteImage.isLoading).toBe(false);
     expect(service.repackedAt).toBeNull();
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reopen_sprite", expect.anything());

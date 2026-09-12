@@ -5,8 +5,8 @@ use xrf_archive::ArchiveProject;
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::DocumentSessionId;
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionId;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -21,13 +21,13 @@ use crate::plugins::archives::state::ArchiveProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_collisions"))]
 #[tauri::command(rename = "list_collisions")]
 pub async fn archives_list_collisions(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   execution: State<'_, ExecutionState>,
   state: State<'_, ArchiveProjectState>,
 ) -> TauriResult<Vec<XrayPathCollision>> {
   log::info!("Listing archive project collisions");
 
-  let project: Arc<DocumentSnapshot<ArchiveProject>> = state.require(session_id)?;
+  let project: Arc<SessionSnapshot<ArchiveProject>> = state.require(session_id)?;
 
   // Off the async worker: the fold walks the merged name table, which an installation sizes rather than a gesture.
   let collisions: Vec<XrayPathCollision> = execution

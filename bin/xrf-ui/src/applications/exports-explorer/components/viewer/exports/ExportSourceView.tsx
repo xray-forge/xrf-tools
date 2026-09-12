@@ -9,8 +9,8 @@ import { getSyntaxLanguage } from "@/core/syntax/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
+import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 export interface IExportSourceViewProps extends BaseComponentProps {
@@ -28,8 +28,8 @@ export function ExportSourceView({
 }: IExportSourceViewProps): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
-  const [source, setSource] = useState<Loadable<Nullable<ExportSourceContent>>>(() =>
-    Loadable.loading<ExportSourceContent>()
+  const [source, setSource] = useState<AsyncState<Nullable<ExportSourceContent>>>(() =>
+    AsyncState.loading<ExportSourceContent>()
   );
   const [retry, setRetry] = useState(0);
 

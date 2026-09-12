@@ -19,7 +19,7 @@ import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf
 
 /** Directory extraction request for an open archive project. */
 export type ArchivesExtractRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Directory inside the archive to extract. */
   prefix: string;
   /** Directory to write the contents into. */
@@ -134,7 +134,7 @@ export type ConfigsFormatRequest = {
 
 /** What opening a configs project for browsing was asked to do. */
 export type ConfigsOpenRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Trees to search, and how each is read. */
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
@@ -146,7 +146,7 @@ export type ConfigsOpenRequest = {
 /** What one open of the configs explorer answers with. */
 export type ConfigsProjectDescriptor = {
   /** Identity every later read is addressed by. */
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
@@ -169,7 +169,7 @@ export type ConfigsProjectDescriptor = {
 /** Which config of which open a reader wants. */
 export type ConfigsReadDocumentRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Engine identity of the config to read. */
   path: string;
 };
@@ -177,7 +177,7 @@ export type ConfigsReadDocumentRequest = {
 /** Which sections of a resolved root a page wants. */
 export type ConfigsReadSectionsRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Engine identity of the entry point the sections belong to. */
   entry: string;
   /** Sections to read, as the index named them. */
@@ -187,7 +187,7 @@ export type ConfigsReadSectionsRequest = {
 /** Which resolved root a reader wants, of which open. */
 export type ConfigsResolvedRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Engine identity of the entry point to resolve. */
   entry: string;
 };
@@ -195,7 +195,7 @@ export type ConfigsResolvedRequest = {
 /** Which section of a resolved root a reader wants explained. */
 export type ConfigsSectionRequest = {
   /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Engine identity of the entry point the section belongs to. */
   entry: string;
   /** The section to explain, as the index named it. */
@@ -214,7 +214,7 @@ export type ConfigsVerifyRequest = {
 
 /** What opening a dialogs project was asked to do. */
 export type DialogsOpenRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /** Trees to search, and how each is read. */
   roots: XrayRoots;
   /** How much of the project to read. */
@@ -227,26 +227,10 @@ export type DialogsOpenRequest = {
 
 /** Identifies a dialog within one committed project. */
 export type DialogsReadRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   logicalPath: string;
   id: string;
   language: string | null;
-};
-
-/**
- * The optional committed snapshot returned during restoration.
- *
- * A named wire type also keeps the generic parameter scoped when Specta exports nullable results.
- */
-export type DocumentRestore<T> = DocumentSnapshot<T> | null;
-
-/** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
-export type DocumentSessionId = string;
-
-/** An immutable document addressed by the opening that produced it; a held snapshot survives close. */
-export type DocumentSnapshot<T> = {
-  sessionId: DocumentSessionId;
-  document: T;
 };
 
 export type EquipmentSpriteMetadata = {
@@ -425,6 +409,22 @@ export type SelectedVisualDescription = {
   texturesLtx: XrayAsset | null;
 };
 
+/** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
+export type SessionId = string;
+
+/**
+ * The optional committed snapshot returned during restoration.
+ *
+ * A named wire type also keeps the generic parameter scoped when Specta exports nullable results.
+ */
+export type SessionRestore<T> = SessionSnapshot<T> | null;
+
+/** An immutable value addressed by the opening that produced it; a held snapshot survives close. */
+export type SessionSnapshot<T> = {
+  sessionId: SessionId;
+  value: T;
+};
+
 /** The conversion performed, retained with the result after a window reload. */
 export type SpawnConversion = "pack" | "unpack";
 
@@ -443,14 +443,14 @@ export type SpawnConversionResult = {
 
 /** One coherent opening, restored without reading the large chunks. */
 export type SpawnSessionDescriptor = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   path: string;
   header: SpawnHeaderChunk;
 };
 
 /** The complete identity and inputs of one sprite opening. */
 export type SpriteEquipmentOpenRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   equipmentDdsPath: string;
   systemLtxPath: string;
   isDltx: boolean;
@@ -634,7 +634,7 @@ export type TextureEditTargets = {
 
 /** Every candidate weighed against one texture, with the texture itself for a baseline. */
 export type TextureEncodingComparison = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   source: TextureSource;
   roots: XrayRoots;
   /**
@@ -699,7 +699,7 @@ export type TextureEncodingReport = {
 
 /** The texture half of a save, which is one of the candidates a comparison already encoded. */
 export type TextureEncodingSave = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   target: TextureSaveTarget;
   format: TextureEncodingFormat;
 };
@@ -886,7 +886,7 @@ export type TexturesBuildRequest = {
 
 /** What a format comparison was asked to weigh. */
 export type TexturesCompareRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   /**
    * The texture to re-encode, named the way `describe` names one.
    *
@@ -1034,7 +1034,7 @@ export type TranslationParseSummary = {
 /** How a save ended, once its edits were on disk. */
 export type TranslationSaveOutcome =
   /** The edits are on disk, and this is the project as it now reads. */
-  | { kind: "saved"; project: DocumentSnapshot<TranslationProjectDescriptor> }
+  | { kind: "saved"; project: SessionSnapshot<TranslationProjectDescriptor> }
   /** The edits are on disk, but another project replaced this one while they were being written. */
   | { kind: "stale" };
 
@@ -1065,7 +1065,7 @@ export type TranslationsFormatRequest = {
 
 /** Inputs and caller-owned identity of one translations opening. */
 export type TranslationsOpenRequest = {
-  sessionId: DocumentSessionId;
+  sessionId: SessionId;
   roots: XrayRoots;
   mode: TranslationProjectMode;
   prefix: string | null;

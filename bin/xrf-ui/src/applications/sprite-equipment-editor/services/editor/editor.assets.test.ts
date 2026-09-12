@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 import { AssetService } from "@/core/assets/services";
 import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
@@ -69,9 +69,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
     };
 
     setMockInvokeResponses({
-      "plugin:sprite-equipment|open_sprite": mockDocumentResponse(RESPONSE),
+      "plugin:sprite-equipment|open_sprite": mockSessionResponse(RESPONSE),
       "plugin:sprite-equipment|pack_sprite": packed,
-      "plugin:sprite-equipment|reopen_sprite": mockDocumentResponse(RESPONSE),
+      "plugin:sprite-equipment|reopen_sprite": mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -113,8 +113,8 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
   it("holds exactly one url no matter how often the sprite is reloaded", async () => {
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -131,8 +131,8 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
   it("keeps the url the reload just produced rather than revoking it", async () => {
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -160,8 +160,8 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
   it("releases the sprite url when the editor is navigated away from", async () => {
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockDocumentResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockDocumentResponse(RESPONSE),
+      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -178,7 +178,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("releases a cancelled image after decoding without replacing the newer sprite", async () => {
-    setMockInvokeResponses({ "plugin:sprite-equipment|open_sprite": mockDocumentResponse(RESPONSE) });
+    setMockInvokeResponses({ "plugin:sprite-equipment|open_sprite": mockSessionResponse(RESPONSE) });
 
     const { service, assets } = createService();
     const decoding: Array<{ src: string; onload: Nullable<() => void> }> = [];

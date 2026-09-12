@@ -8,7 +8,7 @@ import {
 } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockSelectedVisual,
@@ -17,7 +17,7 @@ import {
   mockVisualMotionTransforms,
 } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /** Frames each mocked motion holds, keyed by name, so a boundary is reached at a known tick. */
@@ -26,8 +26,8 @@ const FRAMES: Record<string, number> = { first: 2, second: 3, third: 2 };
 function mockService() {
   const result = mockInjectedService(VisualSequenceService, [VisualLoadService]);
 
-  result.container.get(VisualLoadService).visual = Loadable.ready({
-    selected: { ...mockSelectedVisual(), sessionId: "fixture-session" },
+  result.container.get(VisualLoadService).visual = AsyncState.ready({
+    selected: mockSessionSnapshot(mockSelectedVisual()),
     views: mockVisualModelViews(),
   });
 
@@ -50,7 +50,7 @@ function mockMotions(markers: Record<string, number>, failing: Array<string> = [
   const names = new Map<string, string>();
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_motion"]: mockDocumentResponse(((args) => {
+    ["plugin:visuals|open_motion"]: mockSessionResponse(((args) => {
       const name: string = String(args?.name);
 
       names.set(String(args?.motionId), name);
@@ -126,7 +126,7 @@ describe("VisualSequenceService", () => {
     let open: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: mockDocumentResponse(((args) => {
+      ["plugin:visuals|open_motion"]: mockSessionResponse(((args) => {
         const name: string = String(args?.name);
 
         open += 1;

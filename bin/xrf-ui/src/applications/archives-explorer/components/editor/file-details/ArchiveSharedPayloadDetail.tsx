@@ -3,12 +3,12 @@ import { ReactElement, useMemo } from "react";
 import { listPayloadSharersOf } from "@/core/archive/files";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
+import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Loadable } from "@/lib/loadable";
 
 interface IArchiveSharedPayloadDetailProps extends BaseComponentProps {
   descriptor: ArchiveFileDescriptor;
-  sharedPayloads: Loadable<Array<ArchiveSharedPayload>>;
+  sharedPayloads: AsyncState<Array<ArchiveSharedPayload>>;
 }
 
 /**

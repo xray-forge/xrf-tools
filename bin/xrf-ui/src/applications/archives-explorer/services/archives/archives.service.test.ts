@@ -5,17 +5,17 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 
 function ignoreReadResult(): void {}
 
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service.project = Loadable.ready({ ...mockArchivesProject(files), sessionId: "fixture-session" });
+  service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject(files)));
 
   return service;
 }
@@ -207,7 +207,7 @@ describe("ArchivesService reachability", () => {
     const collision: XrayPathCollision = mockPathCollision();
 
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
+      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: [collision],
     });
 
@@ -215,13 +215,13 @@ describe("ArchivesService reachability", () => {
 
     await service.openProject("C:\\game\\database");
 
-    expect(service.collisions.value).toEqual([collision]);
+    expect(service.collisions.value ?? []).toEqual([collision]);
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions", { sessionId: expect.any(String) });
   });
 
   it("keeps a project browsable when reachability cannot be answered", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
+      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: () => {
         throw new Error("fold failed");
       },
@@ -238,7 +238,7 @@ describe("ArchivesService reachability", () => {
 
   it("forgets them when the project closes", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockDocumentResponse(mockArchivesProject([])),
+      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
       ["plugin:archives|close_project"]: undefined,
     });
@@ -248,6 +248,6 @@ describe("ArchivesService reachability", () => {
     await service.openProject("C:\\game\\database");
     await service.closeProject();
 
-    expect(service.collisions.value).toEqual([]);
+    expect(service.collisions.value ?? []).toEqual([]);
   });
 });

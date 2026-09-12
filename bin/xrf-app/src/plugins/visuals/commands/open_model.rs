@@ -8,7 +8,7 @@ use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
-use crate::core::session::{DocumentSession, DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::read_source;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
@@ -25,12 +25,12 @@ use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_model"))]
 #[tauri::command(rename = "open_model")]
 pub async fn visuals_open_model(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   source: VisualSource,
   roots: XrayRoots,
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
-) -> TauriResult<DocumentSnapshot<SelectedVisualDescription>> {
+) -> TauriResult<SessionSnapshot<SelectedVisualDescription>> {
   state.selected.begin_open(session_id)?;
 
   log::info!("Opening visual: {}", source.label());
@@ -64,7 +64,7 @@ pub async fn visuals_open_model(
       ))
     })??;
 
-  let selected: Arc<DocumentSnapshot<SelectedVisual>> = state.selected.commit_open(
+  let selected: Arc<SessionSnapshot<SelectedVisual>> = state.selected.commit_open(
     session_id,
     SelectedVisual {
       source,
@@ -72,7 +72,7 @@ pub async fn visuals_open_model(
       package,
       dependencies,
       skeleton,
-      posed: DocumentSession::new("visual motion"),
+      posed: Session::new("visual motion"),
       textures,
       materials,
       surfaces,

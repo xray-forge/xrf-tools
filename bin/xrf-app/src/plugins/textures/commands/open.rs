@@ -3,7 +3,7 @@ use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode};
 use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
@@ -16,13 +16,13 @@ use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open"))]
 #[tauri::command(rename = "open")]
 pub async fn textures_open(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   roots: XrayRoots,
   mode: TextureCatalogMode,
   state: State<'_, TextureState>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
-) -> TauriResult<DocumentSnapshot<TextureCatalog>> {
+) -> TauriResult<SessionSnapshot<TextureCatalog>> {
   log::info!("Opening textures in: {} as {mode:?}", roots.describe());
 
   state.begin_open(session_id)?;

@@ -22,7 +22,7 @@ pub struct PackSpriteRequest {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SpriteEquipmentOpenRequest {
-  pub session_id: crate::core::session::DocumentSessionId,
+  pub session_id: crate::core::session::SessionId,
   pub equipment_dds_path: String,
   pub system_ltx_path: String,
   pub is_dltx: bool,

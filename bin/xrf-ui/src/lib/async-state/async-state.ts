@@ -1,7 +1,7 @@
 import { Nullable } from "@/lib/types/general";
 
 /** Lifecycle status, independent of whether a resource has a value. */
-export const enum ELoadableStatus {
+export const enum EAsyncStatus {
   IDLE = "idle",
   LOADING = "loading",
   READY = "ready",
@@ -9,24 +9,24 @@ export const enum ELoadableStatus {
 }
 
 /** A failure is required only for the failed state. */
-type TLoadableState<E> =
-  | { readonly status: ELoadableStatus.IDLE | ELoadableStatus.LOADING | ELoadableStatus.READY }
-  | { readonly status: ELoadableStatus.FAILED; readonly error: E };
+type TAsyncState<E> =
+  | { readonly status: EAsyncStatus.IDLE | EAsyncStatus.LOADING | EAsyncStatus.READY }
+  | { readonly status: EAsyncStatus.FAILED; readonly error: E };
 
 /**
  * Immutable lifecycle and value for an asynchronous resource.
  *
  * Loading and failure can retain previous content. A ready value may be empty; an idle value may be a fallback.
  */
-export class Loadable<T, E = Error> {
+export class AsyncState<T, E = Error> {
   /**
    * Creates an idle resource with an optional fallback.
    *
    * @param value - Initial fallback, or null when no value is available.
    * @returns A new idle state.
    */
-  public static idle<T, E = Error>(value: Nullable<T> = null): Loadable<T, E> {
-    return new Loadable<T, E>(value, { status: ELoadableStatus.IDLE });
+  public static idle<T, E = Error>(value: Nullable<T> = null): AsyncState<T, E> {
+    return new AsyncState<T, E>(value, { status: EAsyncStatus.IDLE });
   }
 
   /**
@@ -35,8 +35,8 @@ export class Loadable<T, E = Error> {
    * @param value - Successful result.
    * @returns A new ready state.
    */
-  public static ready<T, E = Error>(value: Nullable<T>): Loadable<T, E> {
-    return new Loadable<T, E>(value, { status: ELoadableStatus.READY });
+  public static ready<T, E = Error>(value: Nullable<T>): AsyncState<T, E> {
+    return new AsyncState<T, E>(value, { status: EAsyncStatus.READY });
   }
 
   /**
@@ -45,8 +45,8 @@ export class Loadable<T, E = Error> {
    * @param value - Optional content to expose while loading.
    * @returns A new loading state.
    */
-  public static loading<T, E = Error>(value: Nullable<T> = null): Loadable<T, E> {
-    return new Loadable<T, E>(value, { status: ELoadableStatus.LOADING });
+  public static loading<T, E = Error>(value: Nullable<T> = null): AsyncState<T, E> {
+    return new AsyncState<T, E>(value, { status: EAsyncStatus.LOADING });
   }
 
   /**
@@ -56,43 +56,53 @@ export class Loadable<T, E = Error> {
    * @param value - Optional content to expose after failure.
    * @returns A new failed state.
    */
-  public static failed<T, E = Error>(error: E, value: Nullable<T> = null): Loadable<T, E> {
-    return new Loadable<T, E>(value, { status: ELoadableStatus.FAILED, error });
+  public static failed<T, E = Error>(error: E, value: Nullable<T> = null): AsyncState<T, E> {
+    return new AsyncState<T, E>(value, { status: EAsyncStatus.FAILED, error });
   }
 
   private constructor(
     public readonly value: Nullable<T>,
-    private readonly state: TLoadableState<E>
+    private readonly state: TAsyncState<E>
   ) {}
 
   /** @returns The resource lifecycle, independent of its value. */
-  public get status(): ELoadableStatus {
+  public get status(): EAsyncStatus {
     return this.state.status;
   }
 
   /** @returns Whether the resource has been initialized or reset without a completed request. */
   public get isIdle(): boolean {
-    return this.status === ELoadableStatus.IDLE;
+    return this.status === EAsyncStatus.IDLE;
   }
 
   /** @returns Whether a request is in progress. */
   public get isLoading(): boolean {
-    return this.status === ELoadableStatus.LOADING;
+    return this.status === EAsyncStatus.LOADING;
   }
 
   /** @returns Whether the request succeeded, including an empty result. */
   public get isReady(): boolean {
-    return this.status === ELoadableStatus.READY;
+    return this.status === EAsyncStatus.READY;
   }
 
   /** @returns Whether the request failed. */
   public get isFailed(): boolean {
-    return this.status === ELoadableStatus.FAILED;
+    return this.status === EAsyncStatus.FAILED;
   }
 
   /** @returns The failure, or null outside the failed state. */
   public get error(): Nullable<E> {
-    return this.state.status === ELoadableStatus.FAILED ? this.state.error : null;
+    return this.state.status === EAsyncStatus.FAILED ? this.state.error : null;
+  }
+
+  /**
+   * Projects an available value while preserving its lifecycle and failure.
+   *
+   * @param project - Projection applied only when a value is present.
+   * @returns The projected state.
+   */
+  public map<U>(project: (value: T) => U): AsyncState<U, E> {
+    return new AsyncState(this.value === null ? null : project(this.value), this.state);
   }
 
   /**
@@ -101,8 +111,8 @@ export class Loadable<T, E = Error> {
    * @param value - Optional fallback for the reset resource.
    * @returns A new idle state.
    */
-  public asIdle(value: Nullable<T> = null): Loadable<T, E> {
-    return Loadable.idle<T, E>(value);
+  public asIdle(value: Nullable<T> = null): AsyncState<T, E> {
+    return AsyncState.idle<T, E>(value);
   }
 
   /**
@@ -111,8 +121,8 @@ export class Loadable<T, E = Error> {
    * @param value - Ready value, defaulting to the current value.
    * @returns A new ready state.
    */
-  public asReady(value: Nullable<T> = this.value): Loadable<T, E> {
-    return Loadable.ready<T, E>(value);
+  public asReady(value: Nullable<T> = this.value): AsyncState<T, E> {
+    return AsyncState.ready<T, E>(value);
   }
 
   /**
@@ -121,8 +131,8 @@ export class Loadable<T, E = Error> {
    * @param value - Value to retain while loading.
    * @returns A new loading state.
    */
-  public asLoading(value: Nullable<T> = this.value): Loadable<T, E> {
-    return Loadable.loading<T, E>(value);
+  public asLoading(value: Nullable<T> = this.value): AsyncState<T, E> {
+    return AsyncState.loading<T, E>(value);
   }
 
   /**
@@ -132,7 +142,7 @@ export class Loadable<T, E = Error> {
    * @param value - Value to retain after failure.
    * @returns A new failed state.
    */
-  public asFailed(error: E, value: Nullable<T> = this.value): Loadable<T, E> {
-    return Loadable.failed<T, E>(error, value);
+  public asFailed(error: E, value: Nullable<T> = this.value): AsyncState<T, E> {
+    return AsyncState.failed<T, E>(error, value);
   }
 }

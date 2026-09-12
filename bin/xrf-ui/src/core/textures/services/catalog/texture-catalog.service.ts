@@ -4,6 +4,7 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/bindings/commands/textures";
 import {
+  SessionSnapshot,
   TextureCatalog,
   TextureCatalogMode,
   TextureMaterialSummary,
@@ -11,11 +12,11 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { Session } from "@/core/ipc/session";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -31,7 +32,7 @@ import { Nullable } from "@/lib/types/general";
 export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => texturesCommands.close(ids));
+  private readonly session: Session = new Session(texturesCommands.close);
 
   /**
    * Whether the backend has been asked what it still has open.
@@ -41,18 +42,23 @@ export class TextureCatalogService {
 
   /** Every texture of the browsed roots, or null when nothing is open. */
   @Observable()
-  public catalog: Loadable<Nullable<TDocument<TextureCatalog>>> = Loadable.idle(null);
+  private catalogState: AsyncState<SessionSnapshot<TextureCatalog>> = AsyncState.idle();
+
+  @Computed()
+  public get catalog(): AsyncState<TextureCatalog> {
+    return this.catalogState.map((snapshot) => snapshot.value);
+  }
 
   /** What each descriptor of those roots declares, empty until the sweep behind the listing finishes. */
   @Observable()
-  public summaries: Loadable<Array<TextureMaterialSummary>> = Loadable.idle([]);
+  public summaries: AsyncState<Array<TextureMaterialSummary>> = AsyncState.idle([]);
 
   /**
    * @returns Whether a root set is open, which is what publishes the tree.
    */
   @Computed()
   public get isBrowsing(): boolean {
-    return this.catalog.value !== null;
+    return this.catalogState.value !== null;
   }
 
   /**
@@ -91,10 +97,10 @@ export class TextureCatalogService {
   public onDeactivation(): void {
     this.log.info("Deactivating and releasing the browsed roots");
 
-    releaseEditorProject(() => this.session.close(this.catalog.value?.sessionId));
+    releaseEditorProject(() => this.session.close(this.catalogState.value?.sessionId));
 
     runInAction(() => {
-      this.catalog = this.catalog.asIdle();
+      this.catalogState = this.catalogState.asIdle();
       this.summaries = this.summaries.asIdle([]);
     });
   }
@@ -131,9 +137,9 @@ export class TextureCatalogService {
   @LatestFlow("catalog")
   public *close(): TFlow {
     try {
-      yield* call(this.session.close(this.catalog.value?.sessionId));
+      yield* call(this.session.close(this.catalogState.value?.sessionId));
 
-      this.catalog = this.catalog.asIdle();
+      this.catalogState = this.catalogState.asIdle();
       this.summaries = this.summaries.asIdle([]);
       this.selectionService.clear();
     } catch (error) {
@@ -171,7 +177,7 @@ export class TextureCatalogService {
       const session = yield* call(texturesCommands.getSession());
 
       if (session) {
-        yield* this.list(session.document.roots, session.document.mode);
+        yield* this.list(session.value.roots, session.value.mode);
       }
     } catch (error) {
       this.log.error("Failed to restore browsed texture roots:", error);
@@ -190,33 +196,33 @@ export class TextureCatalogService {
    * @param mode - How to address what is found, which also decides whether a sweep can say anything.
    */
   private *list(roots: XrayRoots, mode: TextureCatalogMode): TFlow {
-    this.catalog = this.catalog.asLoading();
+    this.catalogState = this.catalogState.asLoading();
     this.summaries = this.summaries.asIdle([]);
 
     try {
-      const catalog: TDocument<TextureCatalog> = yield* call(
-        this.session.open((sessionId) => texturesCommands.open(sessionId, roots, mode).then(restoreDocument))
+      const catalog: SessionSnapshot<TextureCatalog> = yield* call(
+        this.session.open(texturesCommands.open, roots, mode)
       );
 
-      this.catalog = this.catalog.asReady(catalog);
+      this.catalogState = this.catalogState.asReady(catalog);
       // Announced here rather than after the sweep: the tree can be drawn from the listing alone, and waiting for
       // thousands of descriptors would hold a loader over a screen that is ready to browse. A cancelled flow never
       // reaches this line, which is what keeps a superseded restore from announcing a screen it no longer owns.
       this.isReady = true;
 
-      this.log.info(`Listed ${catalog.entries.length} textures in:`, describeRoots(catalog.roots));
+      this.log.info(`Listed ${catalog.value.entries.length} textures in:`, describeRoots(catalog.value.roots));
 
       // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run
       // and ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
       if (mode === "roots") {
-        yield* this.sweep(catalog.roots);
+        yield* this.sweep(catalog.value.roots);
       }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
       this.log.error("Failed to list textures:", transformed);
 
-      this.catalog = this.catalog.asFailed(transformed);
+      this.catalogState = this.catalogState.asFailed(transformed);
       this.isReady = true;
     }
   }

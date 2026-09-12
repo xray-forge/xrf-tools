@@ -4,8 +4,8 @@ use tauri::State;
 use xrf_archive::ArchiveProject;
 use xrf_pack::{ArchiveExtractResult, ArchiveUnpacker};
 
-use crate::core::session::DocumentSessionId;
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionId;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -13,14 +13,14 @@ use crate::plugins::archives::state::ArchiveProjectState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "extract_file"))]
 #[tauri::command(rename = "extract_file")]
 pub async fn archives_extract_file(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   name: &str,
   destination: &str,
   state: State<'_, ArchiveProjectState>,
 ) -> TauriResult<ArchiveExtractResult> {
   // Stays on the calling worker, unlike whole-directory extraction: one entry is one seek and one payload, which is a
   // short request rather than work bounded by the size of the archive.
-  let project: Arc<DocumentSnapshot<ArchiveProject>> = state.require(session_id)?;
+  let project: Arc<SessionSnapshot<ArchiveProject>> = state.require(session_id)?;
 
   log::info!("Extracting archive file '{}' to '{}'", name, destination);
 

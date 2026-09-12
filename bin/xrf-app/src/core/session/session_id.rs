@@ -8,15 +8,15 @@ use uuid::Uuid;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub(crate) struct DocumentSessionId(Uuid);
+pub(crate) struct SessionId(Uuid);
 
-impl Display for DocumentSessionId {
+impl Display for SessionId {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
     self.0.fmt(formatter)
   }
 }
 
-impl FromStr for DocumentSessionId {
+impl FromStr for SessionId {
   type Err = uuid::Error;
 
   fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -25,7 +25,7 @@ impl FromStr for DocumentSessionId {
 }
 
 #[cfg(test)]
-impl DocumentSessionId {
+impl SessionId {
   pub(crate) fn new() -> Self {
     Self(Uuid::new_v4())
   }

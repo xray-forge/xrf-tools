@@ -8,7 +8,7 @@ import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspe
 import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
@@ -33,7 +33,7 @@ async function renderVisibility(
   });
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: mockDocumentResponse(selected),
+    ["plugin:visuals|open_model"]: mockSessionResponse(selected),
     ["plugin:visuals|read_geometry"]: buffer.toArrayBuffer(),
   });
 

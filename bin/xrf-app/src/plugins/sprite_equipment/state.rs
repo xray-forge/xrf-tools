@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_texture::InventorySpriteDescriptor;
 
-use crate::core::session::DocumentSession;
+use crate::core::session::Session;
 
 /// Metadata and bytes belong to one immutable publication.
 pub struct EquipmentSpriteDocument {
@@ -9,7 +9,7 @@ pub struct EquipmentSpriteDocument {
   pub preview: Vec<u8>,
 }
 
-pub type EquipmentSpriteState = DocumentSession<EquipmentSpriteDocument>;
+pub type EquipmentSpriteState = Session<EquipmentSpriteDocument>;
 
 #[derive(Clone, Debug, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

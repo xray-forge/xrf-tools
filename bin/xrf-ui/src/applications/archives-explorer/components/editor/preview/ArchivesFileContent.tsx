@@ -15,9 +15,9 @@ import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { AsyncState } from "@/lib/async-state";
 import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Loadable } from "@/lib/loadable";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
@@ -36,7 +36,7 @@ export function ArchivesFileContent({
 
   const selection: TArchiveSelection = archivesService.selection;
   const project: Nullable<ArchiveProject> = archivesService.project.value;
-  const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
+  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
   const onGetUnsupportedDescription = useCallback((support: TUnsupported): string => {
     switch (support.kind) {

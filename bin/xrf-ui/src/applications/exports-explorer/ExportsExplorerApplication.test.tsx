@@ -5,8 +5,8 @@ import { Route, Routes } from "react-router-dom";
 
 import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -17,8 +17,8 @@ describe("ExportsExplorerApplication", () => {
     window.localStorage.setItem("xrf.form.exports-explorer.project", "C:\\projects\\active-xrf");
 
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse(null),
-      ["plugin:exports|open_project"]: mockDocumentResponse(mockExportsProject({ root: "C:\\projects\\active-xrf" })),
+      ["plugin:exports|get_project"]: mockSessionResponse(null),
+      ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject({ root: "C:\\projects\\active-xrf" })),
     });
   });
 

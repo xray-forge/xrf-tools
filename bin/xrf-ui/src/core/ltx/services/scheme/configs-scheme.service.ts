@@ -5,7 +5,7 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { LtxSectionSchemeReport } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -32,7 +32,7 @@ export class ConfigsSchemeService {
    * before a reopen reaches.
    */
   @Observable()
-  public report: Loadable<Nullable<LtxSectionSchemeReport>> = Loadable.idle(null);
+  public report: AsyncState<LtxSectionSchemeReport> = AsyncState.idle();
 
   public constructor(private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService)) {}
 

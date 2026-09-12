@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
@@ -28,7 +29,7 @@ describe("ArchivesService extraction", () => {
   it("asks the backend for the file by its archived name", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 
@@ -44,7 +45,7 @@ describe("ArchivesService extraction", () => {
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     setMockInvokeResponses({
       ["plugin:archives|extract_file"]: () => {
@@ -62,7 +63,7 @@ describe("ArchivesService extraction", () => {
   it("clears a reported outcome", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 

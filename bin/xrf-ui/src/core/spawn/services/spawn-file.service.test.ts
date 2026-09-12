@@ -41,7 +41,7 @@ describe("SpawnFileService sessions", () => {
     const { service } = mockInjectedService(SpawnFileService);
     const session = mockSpawnSession();
 
-    expect(service.chunks.header.isIdle).toBe(true);
+    expect(service.chunks.header.value).toBeNull();
     await service.loadGraphs();
     expect(mockInvoke).not.toHaveBeenCalled();
 
@@ -51,7 +51,7 @@ describe("SpawnFileService sessions", () => {
     expect(mockInvoke.mock.calls).toEqual([["plugin:spawn|get_session"]]);
     expect(service.chunks.header.value).toEqual(session.header);
     expect(service.path).toBe(session.path);
-    expect(service.chunks.graphs.isIdle).toBe(true);
+    expect(service.chunks.graphs.value).toBeNull();
     expect(service.isReady).toBe(true);
   });
 
@@ -71,7 +71,6 @@ describe("SpawnFileService sessions", () => {
 
     expect(read).toHaveBeenCalledTimes(1);
     expect(mockInvoke).toHaveBeenCalledWith("plugin:spawn|" + command, { sessionId: session.sessionId });
-    expect(service.chunks[key].isReady).toBe(true);
     expect(service.chunks[key].value).toEqual(chunk);
   });
 
@@ -100,7 +99,8 @@ describe("SpawnFileService sessions", () => {
     expect(read).toHaveBeenCalledTimes(1);
     answer.resolve(mockSpawnFile().graphs);
     await Promise.all([first, second]);
-    expect(service.chunks.graphs.isReady).toBe(true);
+    expect(service.chunks.graphs.value).toEqual(mockSpawnFile().graphs);
+    expect(service.chunks.graphs.isLoading).toBe(false);
   });
 
   it("keeps the committed file and caches after a failed replacement", async () => {
@@ -112,7 +112,7 @@ describe("SpawnFileService sessions", () => {
     await service.loadGraphs();
     service.selectRow("graphs", 1, { name: "selection" });
 
-    const cached = service.chunks.graphs;
+    const cached = service.chunks.graphs.value;
     const selection = service.selectedRow;
 
     setMockInvokeResponses({
@@ -125,14 +125,14 @@ describe("SpawnFileService sessions", () => {
     expect(service.isOpening).toBe(true);
     expect(service.isBusy).toBe(true);
     expect(service.path).toBe(session.path);
-    expect(service.chunks.graphs).toBe(cached);
+    expect(service.chunks.graphs.value).toBe(cached);
 
     answer.reject(new Error("corrupt file"));
     await opening;
     expect(service.isOpening).toBe(false);
     expect(service.isOpen).toBe(true);
     expect(service.chunks.header.value).toEqual(session.header);
-    expect(service.chunks.graphs).toBe(cached);
+    expect(service.chunks.graphs.value).toBe(cached);
     expect(service.selectedRow).toBe(selection);
   });
 
@@ -194,7 +194,7 @@ describe("SpawnFileService sessions", () => {
     await opening;
     expect(service.isOpen).toBe(false);
     expect(service.path).toBeNull();
-    expect(service.chunks.header.isIdle).toBe(true);
+    expect(service.chunks.header.value).toBeNull();
     expect(service.isOpening).toBe(false);
   });
 
@@ -208,7 +208,7 @@ describe("SpawnFileService sessions", () => {
 
     cancelFlow(service, "loadGraphs");
     await reading;
-    expect(service.chunks.graphs.isIdle).toBe(true);
+    expect(service.chunks.graphs.value).toBeNull();
 
     const graphs = mockSpawnFile().graphs;
 
@@ -238,7 +238,7 @@ describe("SpawnFileService sessions", () => {
 
     answer.resolve(mockSpawnFile().graphs);
     await reading;
-    expect(service.chunks.graphs.isIdle).toBe(true);
+    expect(service.chunks.graphs.value).toBeNull();
     expect(service.chunks.graphs.value).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::document::read_sprite;
 use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, EquipmentSpriteState};
@@ -8,10 +8,10 @@ use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, Equipment
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "reopen_sprite"))]
 #[tauri::command(rename = "reopen_sprite")]
 pub async fn sprite_equipment_reopen_sprite(
-  session_id: DocumentSessionId,
-  opening_id: DocumentSessionId,
+  session_id: SessionId,
+  opening_id: SessionId,
   state: State<'_, EquipmentSpriteState>,
-) -> TauriResult<DocumentSnapshot<EquipmentSpriteMetadata>> {
+) -> TauriResult<SessionSnapshot<EquipmentSpriteMetadata>> {
   let previous = state.begin_reload(opening_id, session_id)?;
   let metadata = &previous.metadata;
   let document = read_sprite(&metadata.path, &metadata.system_ltx_path, metadata.is_dltx)?;

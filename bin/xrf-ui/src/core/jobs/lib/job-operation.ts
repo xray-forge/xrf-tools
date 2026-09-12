@@ -4,8 +4,8 @@ import { EJobKind } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "@/core/jobs/lib/jobs-types";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
-import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -20,7 +20,7 @@ export type JobCompletion<T> = { result: T; error: null } | { result: null; erro
  */
 export class JobOperation<T> {
   @Observable()
-  private state: Loadable<T> = Loadable.idle<T>();
+  private state: AsyncState<T> = AsyncState.idle<T>();
 
   @Observable()
   private jobId: Nullable<string> = null;

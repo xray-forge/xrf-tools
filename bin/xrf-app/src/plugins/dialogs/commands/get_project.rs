@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor};
 
-use crate::core::session::DocumentRestore;
+use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
 use crate::plugins::dialogs::state::DialogProjectState;
 
@@ -9,8 +9,8 @@ use crate::plugins::dialogs::state::DialogProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn dialogs_get_project(
   state: State<'_, DialogProjectState>,
-) -> TauriResult<DocumentRestore<DialogProjectDescriptor>> {
-  Ok(DocumentRestore::from(
+) -> TauriResult<SessionRestore<DialogProjectDescriptor>> {
+  Ok(SessionRestore::from(
     state.get()?.map(|opened| opened.map(DialogProject::describe)),
   ))
 }

@@ -4,7 +4,7 @@ use tauri::State;
 use xrf_db::SpawnHeaderChunk;
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 
@@ -12,11 +12,11 @@ use crate::plugins::spawn::state::{SpawnFileState, SpawnSession};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_header"))]
 #[tauri::command(rename = "get_header")]
 pub async fn spawn_get_header(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   state: State<'_, SpawnFileState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SpawnHeaderChunk> {
-  let opened: Arc<DocumentSnapshot<SpawnSession>> = state.require(session_id)?;
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.require(session_id)?;
 
   execution
     .run_blocking("Reading spawn header", move || opened.file.header.clone())

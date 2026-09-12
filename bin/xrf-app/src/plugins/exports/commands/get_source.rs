@@ -2,14 +2,14 @@ use tauri::State;
 use xrf_export::ExportSourceContent;
 
 use crate::core::error::error_to_string;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::exports::state::ExportsProjectState;
 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_source"))]
 #[tauri::command(rename = "get_source")]
 pub async fn exports_get_source(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   name: &str,
   state: State<'_, ExportsProjectState>,
 ) -> TauriResult<ExportSourceContent> {

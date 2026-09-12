@@ -1,6 +1,5 @@
 import { ReactElement, useCallback } from "react";
 
-import { ArchiveSharedPayloadDetail } from "@/applications/archives-explorer/components/editor/file-details/ArchiveSharedPayloadDetail";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf } from "@/core/archive/files";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
@@ -15,6 +14,9 @@ import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
 import { Nullable } from "@/lib/types/general";
 
+import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";
+
+// todo: Inject or supply data directly as props.
 export interface IArchiveFileDetailsPanelProps extends BaseComponentProps {
   archivesService: ArchivesService;
 }

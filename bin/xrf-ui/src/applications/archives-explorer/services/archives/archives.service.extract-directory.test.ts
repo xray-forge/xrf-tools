@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -26,7 +27,7 @@ describe("ArchivesService directory extraction", () => {
   it("sends the directory prefix and destination root", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: {
@@ -51,7 +52,7 @@ describe("ArchivesService directory extraction", () => {
   it("treats the archive root as an empty prefix", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     service.selectArchiveDirectory("");
 
@@ -68,7 +69,7 @@ describe("ArchivesService directory extraction", () => {
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: () => {
@@ -85,7 +86,7 @@ describe("ArchivesService directory extraction", () => {
   it("keeps file and directory selection mutually exclusive", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service.project = Loadable.ready({ ...mockArchivesProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
 
     service.selectArchiveDirectory("configs");
     expect(service.selectedDirectory).toBe("configs");

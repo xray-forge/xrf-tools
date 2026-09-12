@@ -7,7 +7,7 @@ import { ExportsService } from "@/applications/exports-explorer/services/exports
 import { ExportsProject } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor, TValueExportDescriptor } from "@/core/exports";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Logger } from "@/lib/logging";
@@ -49,8 +49,8 @@ const PROJECT: ExportsProject = {
 describe("opened exports editor", () => {
   beforeEach(() => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse(PROJECT),
-      ["plugin:exports|open_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:exports|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:exports|close_project"]: undefined,
     });
   });
@@ -120,8 +120,8 @@ describe("opened exports editor", () => {
     };
 
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse(PROJECT),
-      ["plugin:exports|open_project"]: mockDocumentResponse(refreshed),
+      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:exports|open_project"]: mockSessionResponse(refreshed),
     });
 
     const { findByLabelText, findByText } = renderEditor();
@@ -139,8 +139,8 @@ describe("opened exports editor", () => {
 
   it("keeps the selected snapshot and reports a refresh failure", async () => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse(PROJECT),
-      ["plugin:exports|open_project"]: mockDocumentResponse(() => {
+      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:exports|open_project"]: mockSessionResponse(() => {
         throw new Error("invalid declaration");
       }),
     });
@@ -177,7 +177,7 @@ describe("opened exports editor", () => {
     const releaseError = jest.spyOn(Logger, "error").mockImplementation(() => undefined);
 
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
       ["plugin:exports|close_project"]: () => {
         throw new Error("project is busy");
       },
@@ -200,7 +200,7 @@ describe("opened exports editor", () => {
 describe("empty exports editor", () => {
   it("keeps an empty project open", async () => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockDocumentResponse({ root: PROJECT.root, declarations: [] }),
+      ["plugin:exports|get_project"]: mockSessionResponse({ root: PROJECT.root, declarations: [] }),
     });
 
     const { findAllByText, findByText } = renderWithProviders(<ExportsExplorerApplication />, {

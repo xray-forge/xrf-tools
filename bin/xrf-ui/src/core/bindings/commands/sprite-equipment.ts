@@ -3,11 +3,11 @@
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import {
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
   EquipmentSpriteMetadata,
   PackSpriteRequest,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
   SpriteEquipmentOpenRequest,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
@@ -15,13 +15,13 @@ import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
 
 /** Commands */
 export const spriteEquipmentCommands = {
-  closeSprite: (sessionIds: Array<DocumentSessionId>) =>
+  closeSprite: (sessionIds: Array<SessionId>) =>
     __TAURI_INVOKE<null>("plugin:sprite-equipment|close_sprite", { sessionIds }),
-  getSprite: () => __TAURI_INVOKE<DocumentRestore<EquipmentSpriteMetadata>>("plugin:sprite-equipment|get_sprite"),
+  getSprite: () => __TAURI_INVOKE<SessionRestore<EquipmentSpriteMetadata>>("plugin:sprite-equipment|get_sprite"),
   openSprite: (request: SpriteEquipmentOpenRequest) =>
-    __TAURI_INVOKE<DocumentSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|open_sprite", { request }),
-  reopenSprite: (sessionId: DocumentSessionId, openingId: DocumentSessionId) =>
-    __TAURI_INVOKE<DocumentSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|reopen_sprite", {
+    __TAURI_INVOKE<SessionSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|open_sprite", { request }),
+  reopenSprite: (sessionId: SessionId, openingId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|reopen_sprite", {
       sessionId,
       openingId,
     }),

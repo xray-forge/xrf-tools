@@ -7,7 +7,7 @@ import { createRoots } from "@/core/assets/lib/roots";
 import { TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
 import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
-import { mockDocument, mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -50,7 +50,7 @@ async function openWithEdit(service: TranslationsService): Promise<void> {
 
 describe("TranslationsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:translations|get_project"]: mockDocumentResponse(() => null) });
+    setMockInvokeResponses({ ["plugin:translations|get_project"]: mockSessionResponse(() => null) });
   });
 
   it("saves all dirty files sequentially and excludes another batch", async () => {
@@ -62,10 +62,10 @@ describe("TranslationsService", () => {
     const write = jest
       .fn()
       .mockImplementationOnce(() => answer)
-      .mockImplementation(() => ({ kind: "saved", project: mockDocument(PROJECT) }));
+      .mockImplementation(() => ({ kind: "saved", project: mockSessionSnapshot(PROJECT) }));
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:translations|save_file"]: write,
     });
 
@@ -79,7 +79,7 @@ describe("TranslationsService", () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(service.savingFile).toBe(FILE);
 
-    finish({ kind: "saved", project: mockDocument(PROJECT) });
+    finish({ kind: "saved", project: mockSessionSnapshot(PROJECT) });
 
     expect(await saving).toBe(true);
     expect(await overlapping).toBe(true);
@@ -103,7 +103,7 @@ describe("TranslationsService", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:translations|save_file"]: write,
     });
 
@@ -120,8 +120,8 @@ describe("TranslationsService", () => {
     const { service } = mockInjectedService(TranslationsService);
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(() => PROJECT),
-      ["plugin:translations|save_file"]: () => ({ kind: "saved", project: mockDocument(OTHER_PROJECT) }),
+      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
+      ["plugin:translations|save_file"]: () => ({ kind: "saved", project: mockSessionSnapshot(OTHER_PROJECT) }),
     });
 
     await openWithEdit(service);
@@ -133,7 +133,7 @@ describe("TranslationsService", () => {
       file: FILE,
       edits: { [LANGUAGE]: [{ kind: "set", id: ID, value: "edited" }] },
     });
-    expect(service.project.value).toEqual({ ...OTHER_PROJECT, sessionId: expect.any(String) });
+    expect(service.project.value).toEqual(OTHER_PROJECT);
     expect(service.dirtyFiles).toEqual([]);
     expect(service.savingFile).toBeNull();
   });
@@ -142,7 +142,7 @@ describe("TranslationsService", () => {
     const { service } = mockInjectedService(TranslationsService);
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
       // What the backend answers when the project was replaced while the edits were being written. It withholds the
       // refreshed tree on purpose, and the shown project has to survive that answer untouched.
       ["plugin:translations|save_file"]: () => ({ kind: "stale" }),
@@ -154,7 +154,7 @@ describe("TranslationsService", () => {
     // looking at.
     expect(await flowResult(service.saveFile(FILE))).toBe(false);
 
-    expect(service.project.value).toEqual({ ...PROJECT, sessionId: expect.any(String) });
+    expect(service.project.value).toEqual(PROJECT);
     expect(service.savingFile).toBeNull();
     // The edits did land on disk, so they are not pending work any more.
     expect(service.dirtyFiles).toEqual([]);
@@ -164,7 +164,7 @@ describe("TranslationsService", () => {
     const { service } = mockInjectedService(TranslationsService);
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
       ["plugin:translations|save_file"]: () => {
         throw new Error("Translations file is no longer in the mounted roots");
       },
@@ -174,7 +174,7 @@ describe("TranslationsService", () => {
 
     expect(await flowResult(service.saveFile(FILE))).toBe(false);
 
-    expect(service.project.value).toEqual({ ...PROJECT, sessionId: expect.any(String) });
+    expect(service.project.value).toEqual(PROJECT);
     expect(service.dirtyFiles).toEqual([FILE]);
     expect(service.savingFile).toBeNull();
   });
@@ -183,7 +183,7 @@ describe("TranslationsService", () => {
     const { service } = mockInjectedService(TranslationsService);
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(() => PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
       // A save that never answers, so the open below lands while its write is still in flight.
       ["plugin:translations|save_file"]: () => new Promise(() => undefined),
     });
@@ -210,7 +210,7 @@ describe("TranslationsService", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:translations|close_project"]: () => {
         throw "backend refused";
       },
@@ -218,11 +218,11 @@ describe("TranslationsService", () => {
 
     await openWithEdit(service);
 
-    const previous = service.project;
+    const previous = service.project.value;
 
     await service.closeProject();
 
-    expect(service.project).toBe(previous);
+    expect(service.project.value).toBe(previous);
     expect(service.project.isLoading).toBe(false);
     expect(service.resolveValue(FILE, LANGUAGE, ID)).toBe("edited");
     expect(service.dirtyFiles).toEqual([FILE]);
@@ -237,7 +237,8 @@ describe("TranslationsService", () => {
     setMockInvokeResponses({});
     await service.closeProject();
 
-    expect(service.project.isIdle).toBe(true);
+    expect(service.project.isLoading).toBe(false);
+    expect(service.project.error).toBeNull();
     expect(service.project.value).toBeNull();
     expect(service.edits).toEqual({});
     expect(service.dirtyFiles).toEqual([]);
@@ -251,7 +252,7 @@ describe("TranslationsService", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:translations|close_project"]: () => answer,
     });
 
@@ -260,13 +261,14 @@ describe("TranslationsService", () => {
     const closing = flowResult(service.closeProject());
 
     expect(service.project.isLoading).toBe(true);
-    expect(service.project.value).toEqual({ ...PROJECT, sessionId: expect.any(String) });
+    expect(service.project.value).toEqual(PROJECT);
     expect(service.dirtyFiles).toEqual([FILE]);
 
     finishClose();
     await closing;
 
-    expect(service.project.isIdle).toBe(true);
+    expect(service.project.isLoading).toBe(false);
+    expect(service.project.error).toBeNull();
     expect(service.project.value).toBeNull();
     expect(service.edits).toEqual({});
     expect(service.savingFile).toBeNull();

@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 import { DialogsTreeMenu } from "@/applications/dialogs-editor/components/editor/DialogsTreeMenu";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -31,7 +31,7 @@ const PROJECT: DialogProjectDescriptor = {
 
 async function renderMenu(): Promise<{ render: RenderResult; container: Container }> {
   setMockInvokeResponses({
-    ["plugin:dialogs|get_project"]: mockDocumentResponse(PROJECT),
+    ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),
     ["plugin:dialogs|get_dialog"]: null,
   });
 

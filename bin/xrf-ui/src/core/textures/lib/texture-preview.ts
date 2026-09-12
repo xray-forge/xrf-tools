@@ -1,5 +1,5 @@
 import { ETextureSurfaceShape, ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /** The two ways one texture file can be looked at here. */
@@ -36,7 +36,7 @@ export interface ITexturePreviewComparison {
   /** What this encoding is called, on its own caption. */
   label: string;
   /** It, decoded to png. */
-  preview: Loadable<Nullable<ArrayBuffer>>;
+  preview: AsyncState<Nullable<ArrayBuffer>>;
 }
 
 /** What is missing when a texture cannot be shown, in the words that say which of the two things is absent. */

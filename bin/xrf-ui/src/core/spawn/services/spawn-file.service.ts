@@ -2,14 +2,14 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { spawnCommands } from "@/core/bindings/commands/spawn";
-import { DocumentSessionId, SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
+import { SessionId, SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
 import { SpawnFile } from "@/core/bindings/types/xrf-db";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { AnyObject, Nullable } from "@/lib/types/general";
@@ -21,13 +21,13 @@ export interface ISpawnRowSelection {
   row: AnyObject;
 }
 
-type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: Loadable<SpawnFile[K]> };
+type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: AsyncState<SpawnFile[K]> };
 
 @Injectable()
 export class SpawnFileService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => spawnCommands.closeFile(ids));
+  private readonly session: Session = new Session(spawnCommands.closeFile);
 
   @Observable()
   public isReady: boolean = false;
@@ -39,20 +39,16 @@ export class SpawnFileService {
   public isOpening: boolean = false;
 
   @Observable()
-  private chunkStates: TSpawnChunkStates = {
-    header: Loadable.idle(),
-    alifeSpawn: Loadable.idle(),
-    artefactSpawn: Loadable.idle(),
-    patrols: Loadable.idle(),
-    graphs: Loadable.idle(),
+  public chunks: TSpawnChunkStates = {
+    header: AsyncState.idle(),
+    alifeSpawn: AsyncState.idle(),
+    artefactSpawn: AsyncState.idle(),
+    patrols: AsyncState.idle(),
+    graphs: AsyncState.idle(),
   };
 
-  public get chunks(): TSpawnChunkStates {
-    return this.chunkStates;
-  }
-
   @Computed()
-  public get sessionId(): Nullable<DocumentSessionId> {
+  public get sessionId(): Nullable<SessionId> {
     return this.sessionDescriptor?.sessionId ?? null;
   }
 
@@ -68,7 +64,7 @@ export class SpawnFileService {
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
-  public operation: Loadable<Nullable<string>> = Loadable.idle(null);
+  public operation: AsyncState<string> = AsyncState.idle();
 
   /**
    * The row the details panel is showing.
@@ -129,11 +125,7 @@ export class SpawnFileService {
   }
 
   /**
-   * Puts back whatever the backend already had open.
-   *
-   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
-   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
-   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("isOpening")
   private *restore(): TFlow {
@@ -155,11 +147,11 @@ export class SpawnFileService {
     this.isOpening = true;
 
     if (!this.sessionDescriptor) {
-      this.setChunk("header", Loadable.idle());
+      this.setChunk("header", AsyncState.idle());
     }
 
     try {
-      this.adoptSession(yield* call(this.session.open((sessionId) => spawnCommands.openFile(sessionId, path))));
+      this.adoptSession(yield* call(this.session.open(spawnCommands.openFile, path)));
       this.log.info("Spawn file opened");
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", error);
@@ -324,12 +316,9 @@ export class SpawnFileService {
    * @param key - State field that stores the requested chunk.
    * @param read - Command returning that chunk for the committed session.
    */
-  private *fetchChunk<K extends keyof SpawnFile>(
-    key: K,
-    read: (sessionId: DocumentSessionId) => Promise<SpawnFile[K]>
-  ): TFlow {
+  private *fetchChunk<K extends keyof SpawnFile>(key: K, read: (sessionId: SessionId) => Promise<SpawnFile[K]>): TFlow {
     const session = this.sessionDescriptor;
-    const current: Loadable<SpawnFile[K]> = this.chunks[key];
+    const current: AsyncState<SpawnFile[K]> = this.chunks[key];
 
     if (!session || current.isLoading || current.isReady) {
       return;
@@ -362,8 +351,8 @@ export class SpawnFileService {
     }
   }
 
-  private setChunk<K extends keyof SpawnFile>(key: K, value: Loadable<SpawnFile[K]>): void {
-    this.chunkStates = { ...this.chunks, [key]: value };
+  private setChunk<K extends keyof SpawnFile>(key: K, value: AsyncState<SpawnFile[K]>): void {
+    this.chunks = { ...this.chunks, [key]: value };
   }
 
   private adoptSession(session: Nullable<SpawnSessionDescriptor>): void {
@@ -372,7 +361,7 @@ export class SpawnFileService {
     }
 
     this.sessionDescriptor = session;
-    this.setChunk("header", session ? Loadable.ready(session.header) : Loadable.idle());
+    this.setChunk("header", session ? AsyncState.ready(session.header) : AsyncState.idle());
   }
 
   private resetChunks(): void {
@@ -381,12 +370,12 @@ export class SpawnFileService {
       cancelFlow(this, lane);
     }
 
-    this.chunkStates = {
-      header: Loadable.idle(),
-      alifeSpawn: Loadable.idle(),
-      artefactSpawn: Loadable.idle(),
-      patrols: Loadable.idle(),
-      graphs: Loadable.idle(),
+    this.chunks = {
+      header: AsyncState.idle(),
+      alifeSpawn: AsyncState.idle(),
+      artefactSpawn: AsyncState.idle(),
+      patrols: AsyncState.idle(),
+      graphs: AsyncState.idle(),
     };
 
     // A selection outlives its table, so it has to be dropped with the data it pointed into.

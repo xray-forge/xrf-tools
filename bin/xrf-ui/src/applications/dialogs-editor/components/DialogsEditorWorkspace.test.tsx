@@ -6,7 +6,7 @@ import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsE
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -66,7 +66,7 @@ describe("opened dialogs editor", () => {
     window.localStorage.clear();
 
     setMockInvokeResponses({
-      ["plugin:dialogs|get_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),
       ["plugin:dialogs|get_dialog"]: DIALOG,
       ["plugin:dialogs|close_project"]: undefined,
     });
@@ -93,7 +93,7 @@ describe("opened dialogs editor", () => {
     // The defect this covers: the placeholder branched on the selection rather than on the resource,
     // so a failed read reported "Reading dialog" permanently and the error never reached the surface.
     setMockInvokeResponses({
-      ["plugin:dialogs|get_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),
       ["plugin:dialogs|get_dialog"]: () => {
         throw new Error("No dialog 'trader' in 'configs\\gameplay\\dialogs.xml'");
       },
@@ -118,7 +118,7 @@ describe("opened dialogs editor", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:dialogs|get_project"]: mockDocumentResponse(PROJECT),
+      ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),
       ["plugin:dialogs|get_dialog"]: () => response,
     });
 
@@ -170,7 +170,7 @@ describe("opened dialogs editor", () => {
     // A switcher over no languages offers a choice that cannot be made, and the status bar already
     // says the project read no text.
     setMockInvokeResponses({
-      ["plugin:dialogs|get_project"]: mockDocumentResponse({ ...PROJECT, languages: [], textKeys: 0 }),
+      ["plugin:dialogs|get_project"]: mockSessionResponse({ ...PROJECT, languages: [], textKeys: 0 }),
       ["plugin:dialogs|get_dialog"]: DIALOG,
     });
 

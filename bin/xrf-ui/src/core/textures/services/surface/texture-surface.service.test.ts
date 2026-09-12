@@ -3,6 +3,7 @@ import { isObservableProp } from "@wirestate/mobx";
 import { Texture } from "three";
 
 import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -40,9 +41,9 @@ describe("TextureSurfaceService", () => {
 
     await service.load(mockBumpedDescription());
 
-    expect(service.textures.value?.base).toBeInstanceOf(Texture);
-    expect(service.textures.value?.bump?.bump).toBeInstanceOf(Texture);
-    expect(service.textures.value?.bump?.companion).toBeInstanceOf(Texture);
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeInstanceOf(Texture);
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.bump).toBeInstanceOf(Texture);
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.companion).toBeInstanceOf(Texture);
     expect(service.uploaded).toBe(MOCK_TEXTURE);
   });
 
@@ -51,8 +52,8 @@ describe("TextureSurfaceService", () => {
 
     await service.load(mockTextureDescription());
 
-    expect(service.textures.value?.base).toBeInstanceOf(Texture);
-    expect(service.textures.value?.bump).toBeNull();
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeInstanceOf(Texture);
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
   });
 
   it("releases what it uploaded when cleared", async () => {
@@ -63,9 +64,9 @@ describe("TextureSurfaceService", () => {
     const released: Array<Texture> = [];
 
     for (const texture of [
-      service.textures.value?.base,
-      service.textures.value?.bump?.bump,
-      service.textures.value?.bump?.companion,
+      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).base,
+      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.bump,
+      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.companion,
     ]) {
       texture?.addEventListener("dispose", () => released.push(texture));
     }
@@ -73,7 +74,7 @@ describe("TextureSurfaceService", () => {
     service.clear();
 
     expect(released).toHaveLength(3);
-    expect(service.textures.value).toEqual({ aspect: 1, base: null, bump: null });
+    expect(service.textures.value ?? EMPTY_TEXTURE_SURFACE).toEqual({ aspect: 1, base: null, bump: null });
     expect(service.uploaded).toBeNull();
   });
 
@@ -103,7 +104,7 @@ describe("TextureSurfaceService", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(dispose).toHaveBeenCalled();
-    expect(service.textures.value?.base).toBeNull();
+    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeNull();
 
     dispose.mockRestore();
   });

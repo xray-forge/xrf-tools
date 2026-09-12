@@ -1,12 +1,12 @@
-mod document_restore;
-mod document_session;
-mod document_session_id;
-mod document_snapshot;
+mod session;
+mod session_id;
+mod session_restore;
+mod session_snapshot;
 
-pub(crate) use document_restore::DocumentRestore;
-pub(crate) use document_session::DocumentSession;
-pub(crate) use document_session_id::DocumentSessionId;
-pub(crate) use document_snapshot::DocumentSnapshot;
+pub(crate) use session::Session;
+pub(crate) use session_id::SessionId;
+pub(crate) use session_restore::SessionRestore;
+pub(crate) use session_snapshot::SessionSnapshot;
 
 #[cfg(test)]
 mod tests;

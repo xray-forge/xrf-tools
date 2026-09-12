@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use xrf_pack::{ArchivePackConfig, ArchivePatchConfig};
 
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 
 /// Archive unpacking request.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -45,7 +45,7 @@ pub struct ArchivesPatchRequest {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ArchivesExtractRequest {
-  pub session_id: DocumentSessionId,
+  pub session_id: SessionId,
   /// Directory inside the archive to extract.
   pub prefix: String,
   /// Directory to write the contents into.

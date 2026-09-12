@@ -19,7 +19,7 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -35,7 +35,7 @@ export class TextureEditorService {
 
   /** The names the SDK gives the numbers a descriptor stores, asked for once when the editor opens. */
   @Observable()
-  public vocabulary: Loadable<Nullable<TextureVocabulary>> = Loadable.idle(null);
+  public vocabulary: AsyncState<TextureVocabulary> = AsyncState.idle();
 
   /** The form as edited, or null when no texture is selected. */
   @Observable()

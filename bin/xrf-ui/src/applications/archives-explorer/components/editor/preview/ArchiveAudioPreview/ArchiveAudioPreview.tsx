@@ -13,7 +13,7 @@ import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
 /** One sound is previewed at a time, so its url lives under a fixed key and displaces the last one. */
@@ -27,7 +27,7 @@ const ARCHIVE_AUDIO_PREVIEW_WIDTH: number = 640;
  */
 export function ArchiveAudioPreview(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: Loadable<Nullable<TArchiveContent>> = archivesService.content;
+  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
   // The previous sound stays on screen while the next one loads, so the transport is never torn down mid-selection.
   const audio: Nullable<TArchiveContent & { kind: "audio" }> = useLastContent(

@@ -9,9 +9,9 @@ import {
   ArchivesUnpackRequest,
   AssetTextureDescriptor,
   AudioDescriptor,
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
 } from "@/core/bindings/types/xrf-app";
 import { ArchiveProject, ArchiveSharedPayload, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
@@ -29,8 +29,7 @@ import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 /** Commands */
 export const archivesCommands = {
   /** Releases only the committed and pending openings owned by the closing frontend. */
-  closeProject: (sessionIds: Array<DocumentSessionId>) =>
-    __TAURI_INVOKE<null>("plugin:archives|close_project", { sessionIds }),
+  closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:archives|close_project", { sessionIds }),
   /**
    * Compares two roots without writing files.
    *
@@ -98,7 +97,7 @@ export const archivesCommands = {
   importPatchConfig: (path: string, config: ArchivePatchConfig) =>
     __TAURI_INVOKE<ArchivePatchConfig>("plugin:archives|import_patch_config", { path, config }),
   /** Write a single archived file to a path the user chose. */
-  extractFile: (sessionId: DocumentSessionId, name: string, destination: string) =>
+  extractFile: (sessionId: SessionId, name: string, destination: string) =>
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { sessionId, name, destination }),
   /**
    * Write every archived file under one directory into a destination root.
@@ -111,7 +110,7 @@ export const archivesCommands = {
    */
   extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", { request, jobId, progress }),
-  getProject: () => __TAURI_INVOKE<DocumentRestore<ArchiveProject>>("plugin:archives|get_project"),
+  getProject: () => __TAURI_INVOKE<SessionRestore<ArchiveProject>>("plugin:archives|get_project"),
   hasProject: () => __TAURI_INVOKE<boolean>("plugin:archives|has_project"),
   /**
    * Entries the open volume set holds that no engine lookup can reach.
@@ -123,7 +122,7 @@ export const archivesCommands = {
    * those onto engine identities is `xrf-vfs`'s to do. Asking the mount layer here is what keeps the explorer's answer
    * the same one `gamedata list` and `archive verify` give.
    */
-  listCollisions: (sessionId: DocumentSessionId) =>
+  listCollisions: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions", { sessionId }),
   /**
    * Volumes of this configuration's set the destination already holds.
@@ -155,10 +154,10 @@ export const archivesCommands = {
    * this is what a reader observes from equal descriptors and never what the packer recorded. See
    * [`ArchiveSharedPayload`].
    */
-  listSharedPayloads: (sessionId: DocumentSessionId) =>
+  listSharedPayloads: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads", { sessionId }),
-  openProject: (sessionId: DocumentSessionId, path: string) =>
-    __TAURI_INVOKE<DocumentSnapshot<ArchiveProject>>("plugin:archives|open_project", { sessionId, path }),
+  openProject: (sessionId: SessionId, path: string) =>
+    __TAURI_INVOKE<SessionSnapshot<ArchiveProject>>("plugin:archives|open_project", { sessionId, path }),
   /**
    * Packs a directory using the supplied configuration.
    *
@@ -175,7 +174,7 @@ export const archivesCommands = {
    */
   patchArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePatchResult>("plugin:archives|patch_archives", { request, jobId, progress }),
-  readFile: (sessionId: DocumentSessionId, path: string) =>
+  readFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<ProjectReadResult>("plugin:archives|read_file", { sessionId, path }),
   /**
    * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.

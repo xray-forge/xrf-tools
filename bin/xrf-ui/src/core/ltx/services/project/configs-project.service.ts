@@ -6,25 +6,22 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
-import { Loadable } from "@/lib/loadable";
+import { Session } from "@/core/ipc/session";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * Which configs project is open, and what it holds.
- *
- * The session is the backend's, not this object's: everything read later is addressed by the id the open answered
- * with, so a reopen invalidates every document and resolution the frontend is holding without either side tracking
- * them individually.
+ * Owns the configs project and addresses reads by its committed session identity.
+ * Failed replacements leave the current project usable.
  */
 @Injectable()
 export class ConfigsProjectService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => configsCommands.closeProject(ids));
+  private readonly session: Session = new Session(configsCommands.closeProject);
 
   /** Whether the backend has been asked what it still has open. */
   @Observable()
@@ -32,7 +29,7 @@ export class ConfigsProjectService {
 
   /** The open project, or null when nothing is open. */
   @Observable()
-  public project: Loadable<Nullable<ConfigsProjectDescriptor>> = Loadable.idle(null);
+  public project: AsyncState<ConfigsProjectDescriptor> = AsyncState.idle();
 
   /**
    * @returns Whether a project is open, which is what puts the tree on screen.
@@ -132,7 +129,9 @@ export class ConfigsProjectService {
     }
   }
 
-  /** Adopts the committed native descriptor unless a user action has taken the project flow. */
+  /**
+   * Restores the committed descriptor unless a user action has taken the project flow.
+   */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     try {

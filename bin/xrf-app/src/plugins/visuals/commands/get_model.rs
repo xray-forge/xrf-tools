@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::core::session::DocumentRestore;
+use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::state::VisualState;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription};
@@ -10,8 +10,8 @@ use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription};
 #[tauri::command(rename = "get_model")]
 pub async fn visuals_get_model(
   state: State<'_, VisualState>,
-) -> TauriResult<DocumentRestore<SelectedVisualDescription>> {
-  Ok(DocumentRestore::from(
+) -> TauriResult<SessionRestore<SelectedVisualDescription>> {
+  Ok(SessionRestore::from(
     state.selected.get()?.map(|opened| opened.map(SelectedVisual::describe)),
   ))
 }

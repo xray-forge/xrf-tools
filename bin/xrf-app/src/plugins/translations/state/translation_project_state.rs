@@ -4,49 +4,49 @@ use std::sync::Arc;
 use xrf_translation::{TranslationFile, TranslationProjectDescriptor};
 
 use crate::core::jobs::resolve_lease_path;
-use crate::core::session::{DocumentSession, DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationSaveOutcome, TranslationSavePlan};
 
 /// Owns publication; domain save planning retains exactly the snapshot it read.
 pub struct TranslationProjectState {
-  session: DocumentSession<TranslationProjectDescriptor>,
+  session: Session<TranslationProjectDescriptor>,
 }
 
 impl TranslationProjectState {
   pub fn new() -> Self {
     Self {
-      session: DocumentSession::new("translations"),
+      session: Session::new("translations"),
     }
   }
 
-  pub fn get_project(&self) -> TauriResult<Option<Arc<DocumentSnapshot<TranslationProjectDescriptor>>>> {
+  pub fn get_project(&self) -> TauriResult<Option<Arc<SessionSnapshot<TranslationProjectDescriptor>>>> {
     self.session.get()
   }
 
-  pub fn require(&self, id: DocumentSessionId) -> TauriResult<Arc<DocumentSnapshot<TranslationProjectDescriptor>>> {
+  pub fn require(&self, id: SessionId) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
     self.session.require(id)
   }
 
-  pub fn begin_open(&self, id: DocumentSessionId) -> TauriResult<()> {
+  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
     self.session.begin_open(id)
   }
 
   pub fn open_project(
     &self,
-    id: DocumentSessionId,
+    id: SessionId,
     descriptor: TranslationProjectDescriptor,
-  ) -> TauriResult<Arc<DocumentSnapshot<TranslationProjectDescriptor>>> {
+  ) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
     self.session.commit_open(id, descriptor)
   }
 
-  pub fn close_project(&self, ids: &[DocumentSessionId]) -> TauriResult<()> {
+  pub fn close_project(&self, ids: &[SessionId]) -> TauriResult<()> {
     self.session.close(ids)
   }
 
   /// Resolves a save against the caller's document before touching any file.
-  pub fn begin_save(&self, id: DocumentSessionId, file: &str) -> TauriResult<TranslationSavePlan> {
-    let project: Arc<DocumentSnapshot<TranslationProjectDescriptor>> = self.session.require(id)?;
+  pub fn begin_save(&self, id: SessionId, file: &str) -> TauriResult<TranslationSavePlan> {
+    let project: Arc<SessionSnapshot<TranslationProjectDescriptor>> = self.session.require(id)?;
     let entry: &TranslationFile = project
       .files
       .get(file)

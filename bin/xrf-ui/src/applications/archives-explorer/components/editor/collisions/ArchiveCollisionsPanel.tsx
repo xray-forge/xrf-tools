@@ -1,10 +1,11 @@
 import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ArchiveCollisionRow } from "@/applications/archives-explorer/components/editor/collisions/ArchiveCollisionRow";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { ArchiveCollisionRow } from "./ArchiveCollisionRow";
 
 export interface IArchiveCollisionsPanelProps extends BaseComponentProps {
   archivesService: ArchivesService;
@@ -13,8 +14,7 @@ export interface IArchiveCollisionsPanelProps extends BaseComponentProps {
 /**
  * Every entry the open volume set holds that no engine lookup can reach.
  *
- * The banner says how many there are; this says which, because a person cannot fix an archive without knowing which of
- * the two spellings to remove.
+ * todo: Inject or supply data directly as props.
  */
 export function ArchiveCollisionsPanel({ archivesService }: IArchiveCollisionsPanelProps): ReactElement {
   const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];

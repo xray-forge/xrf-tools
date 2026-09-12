@@ -4,11 +4,12 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/bindings/commands/assets";
 import { visualsCommands } from "@/core/bindings/commands/visuals";
+import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
-import { Loadable } from "@/lib/loadable";
+import { Session } from "@/core/ipc/session";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -23,14 +24,14 @@ import { Nullable } from "@/lib/types/general";
 export class VisualsBrowseService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => visualsCommands.closeBrowse(ids));
+  private readonly session: Session = new Session(visualsCommands.closeBrowse);
 
   /** What is being browsed, or null when a single model was opened directly. */
   @Observable()
-  public browsed: Nullable<TDocument<XrayRoots>> = null;
+  private browsed: Nullable<SessionSnapshot<XrayRoots>> = null;
 
   @Observable()
-  public visuals: Loadable<Array<XrayAsset>> = Loadable.idle([]);
+  public visuals: AsyncState<Array<XrayAsset>> = AsyncState.idle([]);
 
   /**
    * @returns Whether anything is open, which is what publishes the tree panel.
@@ -45,7 +46,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get root(): Nullable<string> {
-    return this.browsed?.roots[0]?.path ?? null;
+    return this.browsed?.value.roots[0]?.path ?? null;
   }
 
   /**
@@ -53,7 +54,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get rootPaths(): Array<string> {
-    return this.browsed?.roots.map((root: XrayRoot) => root.path) ?? [];
+    return this.browsed?.value.roots.map((root: XrayRoot) => root.path) ?? [];
   }
 
   /**
@@ -96,9 +97,7 @@ export class VisualsBrowseService {
 
     this.log.info("Browsing root:", root);
 
-    const opened = yield* call(
-      this.session.open((sessionId) => visualsCommands.openBrowse(sessionId, roots).then(restoreDocument))
-    );
+    const opened = yield* call(this.session.open(visualsCommands.openBrowse, roots));
 
     yield* this.list(opened);
   }
@@ -117,8 +116,7 @@ export class VisualsBrowseService {
   }
 
   /**
-   * Puts an already browsed roots back on screen, for a session the backend still holds.
-   *
+   * Restores browsed roots unless a user action has taken the browsing flow.
    */
   @ExclusiveFlow("visuals")
   private *restore(): TFlow {
@@ -126,7 +124,7 @@ export class VisualsBrowseService {
       const snapshot = yield* call(visualsCommands.getBrowse());
 
       if (snapshot) {
-        yield* this.list(restoreDocument(snapshot));
+        yield* this.list(snapshot);
       }
     } catch (error) {
       this.log.error("Failed to restore browsed roots:", error);
@@ -141,8 +139,8 @@ export class VisualsBrowseService {
    *
    * @param opened - Roots and identity already committed by the backend.
    */
-  private *list(opened: TDocument<XrayRoots>): TFlow {
-    const roots: XrayRoots = { asset: opened.asset, roots: opened.roots };
+  private *list(opened: SessionSnapshot<XrayRoots>): TFlow {
+    const roots: XrayRoots = opened.value;
 
     this.browsed = opened;
     this.visuals = this.visuals.asLoading();

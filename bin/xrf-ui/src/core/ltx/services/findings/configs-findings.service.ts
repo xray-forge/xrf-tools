@@ -6,7 +6,7 @@ import { LtxAnchoredFinding } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -24,7 +24,7 @@ export class ConfigsFindingsService {
 
   /** What verifying that entry point found, in the order a reader walks them. */
   @Observable()
-  public findings: Loadable<Array<LtxAnchoredFinding>> = Loadable.idle([]);
+  public findings: AsyncState<Array<LtxAnchoredFinding>> = AsyncState.idle([]);
 
   public constructor(private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService)) {}
 

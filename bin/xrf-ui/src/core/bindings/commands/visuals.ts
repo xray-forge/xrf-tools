@@ -3,10 +3,10 @@
 import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 import {
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
   SelectedVisualDescription,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
   VisualSource,
 } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -15,15 +15,13 @@ import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 /** Commands */
 export const visualsCommands = {
   /** Release only the openings owned by the departing viewer. */
-  closeBrowse: (sessionIds: Array<DocumentSessionId>) =>
-    __TAURI_INVOKE<null>("plugin:visuals|close_browse", { sessionIds }),
+  closeBrowse: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:visuals|close_browse", { sessionIds }),
   /** Release only the openings owned by the departing viewer. */
-  closeModel: (sessionIds: Array<DocumentSessionId>) =>
-    __TAURI_INVOKE<null>("plugin:visuals|close_model", { sessionIds }),
+  closeModel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:visuals|close_model", { sessionIds }),
   /** Restore the committed browse scope. */
-  getBrowse: () => __TAURI_INVOKE<DocumentRestore<XrayRoots>>("plugin:visuals|get_browse"),
+  getBrowse: () => __TAURI_INVOKE<SessionRestore<XrayRoots>>("plugin:visuals|get_browse"),
   /** Restore the committed model descriptor and its exact geometry identity. */
-  getModel: () => __TAURI_INVOKE<DocumentRestore<SelectedVisualDescription>>("plugin:visuals|get_model"),
+  getModel: () => __TAURI_INVOKE<SessionRestore<SelectedVisualDescription>>("plugin:visuals|get_model"),
   /**
    * Every motion the open visual can play, by name.
    *
@@ -31,11 +29,10 @@ export const visualsCommands = {
    * references - about fifty milliseconds each against a seventy millisecond open. The viewer already knows whether a
    * visual animates at all, from its references, so nothing needs this until something is about to play one.
    */
-  listMotions: (sessionId: DocumentSessionId) =>
-    __TAURI_INVOKE<Array<string>>("plugin:visuals|list_motions", { sessionId }),
+  listMotions: (sessionId: SessionId) => __TAURI_INVOKE<Array<string>>("plugin:visuals|list_motions", { sessionId }),
   /** Remember the browsed roots with an identity independent from the selected model. */
-  openBrowse: (sessionId: DocumentSessionId, roots: XrayRoots) =>
-    __TAURI_INVOKE<DocumentSnapshot<XrayRoots>>("plugin:visuals|open_browse", { sessionId, roots }),
+  openBrowse: (sessionId: SessionId, roots: XrayRoots) =>
+    __TAURI_INVOKE<SessionSnapshot<XrayRoots>>("plugin:visuals|open_browse", { sessionId, roots }),
   /**
    * Select a visual and return what it contains, with every reference it declares resolved.
    *
@@ -46,8 +43,8 @@ export const visualsCommands = {
    * textures from costing forty round trips, and it is why the outcomes travel with the description rather than being
    * asked for afterwards.
    */
-  openModel: (sessionId: DocumentSessionId, source: VisualSource, roots: XrayRoots) =>
-    __TAURI_INVOKE<DocumentSnapshot<SelectedVisualDescription>>("plugin:visuals|open_model", {
+  openModel: (sessionId: SessionId, source: VisualSource, roots: XrayRoots) =>
+    __TAURI_INVOKE<SessionSnapshot<SelectedVisualDescription>>("plugin:visuals|open_model", {
       sessionId,
       source,
       roots,
@@ -61,6 +58,6 @@ export const visualsCommands = {
    * Baked whole rather than sampled per frame because playback runs at thirty frames a second. A measured motion
    * averages 78 frames, which for a fifty bone skeleton is tens of kilobytes: cheaper once than eighty times.
    */
-  openMotion: (sessionId: DocumentSessionId, motionId: DocumentSessionId, name: string) =>
-    __TAURI_INVOKE<DocumentSnapshot<VisualMotionBake>>("plugin:visuals|open_motion", { sessionId, motionId, name }),
+  openMotion: (sessionId: SessionId, motionId: SessionId, name: string) =>
+    __TAURI_INVOKE<SessionSnapshot<VisualMotionBake>>("plugin:visuals|open_motion", { sessionId, motionId, name }),
 };

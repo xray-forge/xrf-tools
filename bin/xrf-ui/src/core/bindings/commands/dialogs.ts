@@ -5,9 +5,9 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 import {
   DialogsOpenRequest,
   DialogsReadRequest,
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
 } from "@/core/bindings/types/xrf-app";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
@@ -15,8 +15,7 @@ import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 /** Commands */
 export const dialogsCommands = {
   /** Releases only the committed and pending openings owned by the closing frontend. */
-  closeProject: (sessionIds: Array<DocumentSessionId>) =>
-    __TAURI_INVOKE<null>("plugin:dialogs|close_project", { sessionIds }),
+  closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:dialogs|close_project", { sessionIds }),
   /**
    * Report which layout roots looks like, for the open form to preselect.
    *
@@ -43,7 +42,7 @@ export const dialogsCommands = {
    */
   getDialog: (request: DialogsReadRequest) =>
     __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { request }),
-  getProject: () => __TAURI_INVOKE<DocumentRestore<DialogProjectDescriptor>>("plugin:dialogs|get_project"),
+  getProject: () => __TAURI_INVOKE<SessionRestore<DialogProjectDescriptor>>("plugin:dialogs|get_project"),
   /**
    * Open a dialog tree.
    *
@@ -56,5 +55,5 @@ export const dialogsCommands = {
    * acted on here would decide what gets overwritten. `detect_mode` is what preselects it.
    */
   openProject: (request: DialogsOpenRequest) =>
-    __TAURI_INVOKE<DocumentSnapshot<DialogProjectDescriptor>>("plugin:dialogs|open_project", { request }),
+    __TAURI_INVOKE<SessionSnapshot<DialogProjectDescriptor>>("plugin:dialogs|open_project", { request }),
 };

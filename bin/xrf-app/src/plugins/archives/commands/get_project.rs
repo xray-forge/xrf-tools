@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_archive::ArchiveProject;
 
-use crate::core::session::DocumentRestore;
+use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::state::ArchiveProjectState;
 
@@ -9,6 +9,6 @@ use crate::plugins::archives::state::ArchiveProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn archives_get_project(
   state: State<'_, ArchiveProjectState>,
-) -> TauriResult<DocumentRestore<ArchiveProject>> {
-  Ok(DocumentRestore::from(state.get()?))
+) -> TauriResult<SessionRestore<ArchiveProject>> {
+  Ok(SessionRestore::from(state.get()?))
 }

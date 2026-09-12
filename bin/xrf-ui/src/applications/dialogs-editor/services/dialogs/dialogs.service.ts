@@ -3,14 +3,15 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib/roots";
 import { dialogsCommands } from "@/core/bindings/commands/dialogs";
+import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -25,19 +26,24 @@ export interface IDialogSelection {
 export class DialogsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => dialogsCommands.closeProject(ids));
+  private readonly session: Session = new Session(dialogsCommands.closeProject);
 
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<TDocument<DialogProjectDescriptor>>> = Loadable.idle(null);
+  private projectState: AsyncState<SessionSnapshot<DialogProjectDescriptor>> = AsyncState.idle();
+
+  @Computed()
+  public get project(): AsyncState<DialogProjectDescriptor> {
+    return this.projectState.map((snapshot) => snapshot.value);
+  }
 
   /**
    * The dialog being looked at, fetched on selection.
    */
   @Observable()
-  public dialog: Loadable<Nullable<DialogDescriptor>> = Loadable.idle(null);
+  public dialog: AsyncState<DialogDescriptor> = AsyncState.idle();
 
   @Observable()
   public selection: Nullable<IDialogSelection> = null;
@@ -71,26 +77,21 @@ export class DialogsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
+    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
   }
 
   /**
-   * Puts back whatever the backend already had open.
-   *
-   * Exclusive rather than latest, matching the translations editor: a restore must lose to anything
-   * the user started, where superseding would cancel the very open they asked for.
+   * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const response: Nullable<TDocument<DialogProjectDescriptor>> = yield* call(
-      dialogsCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
-    );
+    const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(dialogsCommands.getProject());
 
     this.log.info(response ? "Existing dialogs project detected" : "No existing dialogs project");
 
     this.isReady = true;
 
-    this.project = this.project.asReady(response);
+    this.projectState = this.projectState.asReady(response);
   }
 
   /** Reports the layout roots look like, so the open form can preselect it. */
@@ -109,27 +110,25 @@ export class DialogsService {
     this.log.info("Opening dialogs project:", describeRoots(roots), mode);
 
     try {
-      this.project = this.project.asLoading();
+      this.projectState = this.projectState.asLoading();
 
-      const response: TDocument<DialogProjectDescriptor> = yield* call(
+      const response: SessionSnapshot<DialogProjectDescriptor> = yield* call(
         this.session.open((sessionId) =>
-          dialogsCommands
-            .openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
-            .then(restoreDocument)
+          dialogsCommands.openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
         )
       );
 
       this.log.info(
         "Dialogs project opened:",
-        Object.keys(response.files).length,
+        Object.keys(response.value.files).length,
         "files,",
-        response.textKeys,
+        response.value.textKeys,
         "text keys"
       );
 
       cancelFlow(this, "dialog");
 
-      this.project = this.project.asReady(response);
+      this.projectState = this.projectState.asReady(response);
       this.selection = null;
       this.dialog = this.dialog.asIdle();
       this.inspectedNodeId = null;
@@ -137,7 +136,7 @@ export class DialogsService {
     } catch (error) {
       this.log.error("Failed to open dialogs project:", error);
 
-      this.project = this.project.asFailed(error as Error);
+      this.projectState = this.projectState.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -151,10 +150,10 @@ ${transformError(error).message}`,
 
   @LatestFlow("project")
   public *closeProject(): TFlow {
-    yield* call(this.session.close(this.project.value?.sessionId));
+    yield* call(this.session.close(this.projectState.value?.sessionId));
 
     cancelFlow(this, "dialog");
-    this.project = this.project.asIdle();
+    this.projectState = this.projectState.asIdle();
     this.dialog = this.dialog.asIdle();
     this.selection = null;
     this.inspectedNodeId = null;
@@ -182,7 +181,7 @@ ${transformError(error).message}`,
     try {
       const response: DialogDescriptor = yield* call(
         dialogsCommands.getDialog({
-          sessionId: requireDocumentSession(this.project.value),
+          sessionId: requireSessionId(this.projectState.value),
           logicalPath,
           id,
           language: this.language,

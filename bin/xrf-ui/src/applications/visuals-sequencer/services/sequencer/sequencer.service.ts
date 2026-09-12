@@ -16,7 +16,7 @@ import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visua
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -32,13 +32,13 @@ export class SequencerService implements IVisualInspection {
 
   /** Every motion the open visual can play, which is what clips are picked from. */
   @Observable()
-  public motions: Loadable<Array<string>> = Loadable.idle([]);
+  public motions: AsyncState<Array<string>> = AsyncState.idle([]);
 
   /**
    * @returns The visual being shown, straight from the loader.
    */
   @Computed()
-  public get visual(): Loadable<Nullable<IOpenVisual>> {
+  public get visual(): AsyncState<IOpenVisual> {
     return this.loadService.visual;
   }
 
@@ -52,7 +52,7 @@ export class SequencerService implements IVisualInspection {
    */
   @Computed()
   public get selected(): Nullable<SelectedVisualDescription> {
-    return this.visual.value?.selected ?? null;
+    return this.visual.value?.selected.value ?? null;
   }
 
   /**

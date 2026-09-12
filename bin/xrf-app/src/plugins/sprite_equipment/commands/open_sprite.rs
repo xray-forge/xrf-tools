@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::core::session::DocumentSnapshot;
+use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::document::read_sprite;
 use crate::plugins::sprite_equipment::request::SpriteEquipmentOpenRequest;
@@ -11,7 +11,7 @@ use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, Equipment
 pub async fn sprite_equipment_open_sprite(
   request: SpriteEquipmentOpenRequest,
   state: State<'_, EquipmentSpriteState>,
-) -> TauriResult<DocumentSnapshot<EquipmentSpriteMetadata>> {
+) -> TauriResult<SessionSnapshot<EquipmentSpriteMetadata>> {
   let SpriteEquipmentOpenRequest {
     session_id,
     equipment_dds_path,

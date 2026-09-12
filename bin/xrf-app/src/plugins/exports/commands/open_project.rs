@@ -4,17 +4,17 @@ use tauri::State;
 use xrf_export::{ExportsProject, ExportsProjectParser};
 
 use crate::core::error::error_to_string;
-use crate::core::session::{DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::exports::state::ExportsProjectState;
 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn exports_open_project(
-  session_id: DocumentSessionId,
+  session_id: SessionId,
   project_path: &str,
   state: State<'_, ExportsProjectState>,
-) -> TauriResult<Arc<DocumentSnapshot<ExportsProject>>> {
+) -> TauriResult<Arc<SessionSnapshot<ExportsProject>>> {
   state.begin_open(session_id)?;
   log::info!("Parsing externs from project: {project_path}");
 

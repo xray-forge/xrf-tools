@@ -1,23 +1,25 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { DocumentSession, IDocumentSession } from "./index";
+import { ISessionIdentity, Session } from "./index";
 
-describe("DocumentSession", () => {
+describe("Session", () => {
   it("releases an opening before its response and releases a late publication again", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new DocumentSession(release);
+    const session = new Session(release);
 
-    let finish!: (value: IDocumentSession) => void;
+    let finish!: (value: ISessionIdentity) => void;
     let id: string = "";
 
-    const pending = session.open((sessionId) => {
+    const command = jest.fn<(sessionId: string, path: string) => Promise<ISessionIdentity>>((sessionId) => {
       id = sessionId;
 
-      return new Promise<IDocumentSession>((resolve) => (finish = resolve));
+      return new Promise<ISessionIdentity>((resolve) => (finish = resolve));
     });
+    const pending = session.open(command, "project");
 
     await session.close();
 
+    expect(command).toHaveBeenCalledWith(id, "project");
     expect(release).toHaveBeenCalledWith([id]);
 
     finish({ sessionId: id });
@@ -34,7 +36,7 @@ describe("DocumentSession", () => {
       .mockImplementationOnce(() => new Promise<void>((resolve) => (finishClose = resolve)))
       .mockResolvedValue(undefined);
 
-    const session = new DocumentSession(release);
+    const session = new Session(release);
     const first = await session.open(async (sessionId) => ({ sessionId }));
     const closing = session.close();
     const next = await session.open(async (sessionId) => ({ sessionId }));
@@ -47,9 +49,9 @@ describe("DocumentSession", () => {
     expect(release.mock.calls).toEqual([[[first.sessionId]], [[next.sessionId]]]);
   });
 
-  it("retains the committed document when a replacement fails", async () => {
+  it("retains the committed session when a replacement fails", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new DocumentSession(release);
+    const session = new Session(release);
     const first = await session.open(async (sessionId) => ({ sessionId }));
 
     await expect(
@@ -63,13 +65,13 @@ describe("DocumentSession", () => {
     expect(release).toHaveBeenCalledWith([first.sessionId]);
   });
 
-  it("can retry a failed release and includes the restored document", async () => {
+  it("can retry a failed release and includes the restored session", async () => {
     const release = jest
       .fn<(ids: Array<string>) => Promise<void>>()
       .mockRejectedValueOnce(new Error("transport unavailable"))
       .mockResolvedValue(undefined);
 
-    const session = new DocumentSession(release);
+    const session = new Session(release);
 
     await expect(session.close("restored")).rejects.toThrow("transport unavailable");
     await session.close();
@@ -84,7 +86,7 @@ describe("DocumentSession", () => {
       .mockRejectedValueOnce(new Error("transport unavailable"))
       .mockResolvedValue(undefined);
 
-    const session = new DocumentSession(release);
+    const session = new Session(release);
 
     let finish!: () => void;
     let id: string = "";
@@ -92,7 +94,7 @@ describe("DocumentSession", () => {
     const opening = session.open((sessionId) => {
       id = sessionId;
 
-      return new Promise<IDocumentSession>((resolve) => (finish = () => resolve({ sessionId })));
+      return new Promise<ISessionIdentity>((resolve) => (finish = () => resolve({ sessionId })));
     });
 
     await session.close();

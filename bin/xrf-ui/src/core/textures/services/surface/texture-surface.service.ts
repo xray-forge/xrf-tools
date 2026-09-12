@@ -22,7 +22,7 @@ import {
   IVisualTextureTexels,
   readDdsTexels,
 } from "@/core/visuals/lib/visual-texture";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -41,7 +41,7 @@ export class TextureSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
-  public textures: Loadable<ITextureSurfaceTextures> = Loadable.idle(EMPTY_TEXTURE_SURFACE);
+  public textures: AsyncState<ITextureSurfaceTextures> = AsyncState.idle(EMPTY_TEXTURE_SURFACE);
 
   /**
    * Which texture the uploads above belong to, once one has been attempted for it.

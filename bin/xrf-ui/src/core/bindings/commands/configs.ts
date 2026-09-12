@@ -12,7 +12,7 @@ import {
   ConfigsResolvedRequest,
   ConfigsSectionRequest,
   ConfigsVerifyRequest,
-  DocumentSessionId,
+  SessionId,
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
@@ -40,8 +40,7 @@ export const configsCommands = {
    *
    * Reissues the session identity, so a read already in flight cannot commit against the project that follows.
    */
-  closeProject: (sessionIds: Array<DocumentSessionId>) =>
-    __TAURI_INVOKE<null>("plugin:configs|close_project", { sessionIds }),
+  closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:configs|close_project", { sessionIds }),
   /**
    * Rewrite the LTX configs roots exposes.
    *
@@ -63,7 +62,7 @@ export const configsCommands = {
   getProject: () =>
     __TAURI_INVOKE<{
       /** Identity every later read is addressed by. */
-      sessionId: DocumentSessionId;
+      sessionId: SessionId;
       /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
       roots: XrayRoots;
       /** Scope inside those trees, or nothing for all of them. */

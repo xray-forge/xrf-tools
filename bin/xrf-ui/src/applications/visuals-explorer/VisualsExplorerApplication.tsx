@@ -34,7 +34,7 @@ export function VisualsExplorerApplication({
   const visual: Nullable<IOpenVisual> = visualsService.visual.value;
   const isBrowsing: boolean = browseService.isBrowsing;
 
-  const source = visual?.selected.source ?? null;
+  const source = visualsService.selected?.source ?? null;
   const location = useMemo(() => {
     if (!source && browseService.root) {
       return { path: browseService.root };

@@ -7,7 +7,7 @@ import { Container } from "@wirestate/core";
 import { ArchivesEditorOpenForm } from "@/applications/archives-explorer/components/ArchivesEditorOpenForm";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -22,8 +22,8 @@ describe("ArchivesEditorOpenForm", () => {
     window.localStorage.clear();
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockDocumentResponse(null),
-      ["plugin:archives|open_project"]: mockDocumentResponse(null),
+      ["plugin:archives|get_project"]: mockSessionResponse(null),
+      ["plugin:archives|open_project"]: mockSessionResponse(null),
     });
   });
 

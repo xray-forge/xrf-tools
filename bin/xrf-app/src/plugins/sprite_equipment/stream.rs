@@ -3,7 +3,7 @@ use tauri::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_LE
 use tauri::http::{Request, Response};
 use tauri::{Manager, Runtime, UriSchemeContext};
 
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
 
 /// Serves bytes from exactly the sprite identified by the URL, after releasing the session lock.
@@ -25,10 +25,7 @@ pub(super) fn sprite_response(
     return Response::builder().status(404).body(Vec::new());
   };
 
-  let opened = id
-    .parse::<DocumentSessionId>()
-    .ok()
-    .and_then(|id| state.require(id).ok());
+  let opened = id.parse::<SessionId>().ok().and_then(|id| state.require(id).ok());
 
   let Some(opened) = opened.filter(|opened| opened.metadata.name == name) else {
     return Response::builder().status(404).body(Vec::new());

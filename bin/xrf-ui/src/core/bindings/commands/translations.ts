@@ -3,9 +3,9 @@
 import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
 
 import {
-  DocumentRestore,
-  DocumentSessionId,
-  DocumentSnapshot,
+  SessionId,
+  SessionRestore,
+  SessionSnapshot,
   TranslationBuildRequest,
   TranslationBuildSummary,
   TranslationParseRequest,
@@ -46,7 +46,7 @@ export const translationsCommands = {
    */
   checkProjectFormat: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|check_project_format", { request, jobId, progress }),
-  closeProject: (sessionIds: Array<DocumentSessionId>) =>
+  closeProject: (sessionIds: Array<SessionId>) =>
     __TAURI_INVOKE<null>("plugin:translations|close_project", { sessionIds }),
   /**
    * Report which layout roots look like, for the open form to preselect.
@@ -71,7 +71,7 @@ export const translationsCommands = {
    */
   formatProject: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", { request, jobId, progress }),
-  getProject: () => __TAURI_INVOKE<DocumentRestore<TranslationProjectDescriptor>>("plugin:translations|get_project"),
+  getProject: () => __TAURI_INVOKE<SessionRestore<TranslationProjectDescriptor>>("plugin:translations|get_project"),
   /**
    * Open a translations tree.
    *
@@ -80,7 +80,7 @@ export const translationsCommands = {
    * own half — where inside those trees the string tables sit — and defaults to what the mode implies.
    */
   openProject: (request: TranslationsOpenRequest) =>
-    __TAURI_INVOKE<DocumentSnapshot<TranslationProjectDescriptor>>("plugin:translations|open_project", { request }),
+    __TAURI_INVOKE<SessionSnapshot<TranslationProjectDescriptor>>("plugin:translations|open_project", { request }),
   /** Import one language's raw XML string tables into JSON sources. */
   parseProject: (request: TranslationParseRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationParseSummary>("plugin:translations|parse_project", { request, jobId, progress }),
@@ -102,7 +102,7 @@ export const translationsCommands = {
    * edits are on disk in either case; what a stale answer withholds is the refreshed tree, which belongs to a project
    * the application is no longer showing.
    */
-  saveFile: (sessionId: DocumentSessionId, file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
+  saveFile: (sessionId: SessionId, file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
     __TAURI_INVOKE<TranslationSaveOutcome>("plugin:translations|save_file", { sessionId, file, edits }),
   /**
    * Report the first character a language cannot hold, or nothing when the value is writable.
@@ -111,7 +111,7 @@ export const translationsCommands = {
    * browser has no encoder for, and on what each language's own files declared. Called when a cell is
    * committed, so a mistake is reported where it was made instead of at the end of a batch save.
    */
-  validateText: (sessionId: DocumentSessionId, language: string, text: string) =>
+  validateText: (sessionId: SessionId, language: string, text: string) =>
     __TAURI_INVOKE<string | null>("plugin:translations|validate_text", { sessionId, language, text }),
   /**
    * Report which translations are missing from which languages.

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
-use crate::core::session::{DocumentSession, DocumentSessionId, DocumentSnapshot};
+use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::TextureEncodingSession;
@@ -20,39 +20,39 @@ pub struct TextureBrowseSession {
 /// Browsing and encoded candidates have independent lifetimes; a failed replacement preserves each last success.
 #[derive(Clone)]
 pub struct TextureState {
-  browse: DocumentSession<TextureBrowseSession>,
-  comparison: DocumentSession<TextureEncodingSession>,
+  browse: Session<TextureBrowseSession>,
+  comparison: Session<TextureEncodingSession>,
 }
 
 impl TextureState {
   pub fn new() -> Self {
     Self {
-      browse: DocumentSession::new("texture browse"),
-      comparison: DocumentSession::new("texture comparison"),
+      browse: Session::new("texture browse"),
+      comparison: Session::new("texture comparison"),
     }
   }
 
-  pub fn begin_open(&self, id: DocumentSessionId) -> TauriResult<()> {
+  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
     self.browse.begin_open(id)
   }
 
-  pub fn begin_comparison(&self, id: DocumentSessionId) -> TauriResult<()> {
+  pub fn begin_comparison(&self, id: SessionId) -> TauriResult<()> {
     self.comparison.begin_open(id)
   }
 
-  pub fn get_browse(&self) -> TauriResult<Option<Arc<DocumentSnapshot<TextureBrowseSession>>>> {
+  pub fn get_browse(&self) -> TauriResult<Option<Arc<SessionSnapshot<TextureBrowseSession>>>> {
     self.browse.get()
   }
 
   pub fn open_browse(
     &self,
-    id: DocumentSessionId,
+    id: SessionId,
     opened: TextureBrowseSession,
-  ) -> TauriResult<Arc<DocumentSnapshot<TextureBrowseSession>>> {
+  ) -> TauriResult<Arc<SessionSnapshot<TextureBrowseSession>>> {
     self.browse.commit_open(id, opened)
   }
 
-  pub fn close(&self, ids: &[DocumentSessionId]) -> TauriResult<()> {
+  pub fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
     self.browse.close(ids)?;
     self.comparison.close(ids)
   }
@@ -63,7 +63,7 @@ impl TextureState {
     Ok(())
   }
 
-  pub fn get_comparison(&self, id: DocumentSessionId) -> TauriResult<Arc<DocumentSnapshot<TextureEncodingSession>>> {
+  pub fn get_comparison(&self, id: SessionId) -> TauriResult<Arc<SessionSnapshot<TextureEncodingSession>>> {
     self.comparison.require(id)
   }
 }

@@ -15,20 +15,20 @@ import {
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
-import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { EJobKind, SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { requireSessionId, Session } from "@/core/ipc/session";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { EApplicationId } from "@/core/routing/application";
+import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
-import { Loadable } from "@/lib/loadable";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -37,13 +37,18 @@ import { Nullable } from "@/lib/types/general";
 export class ArchivesService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => archivesCommands.closeProject(ids));
+  private readonly session: Session = new Session(archivesCommands.closeProject);
 
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<TDocument<ArchiveProject>>> = Loadable.idle(null);
+  private projectState: AsyncState<SessionSnapshot<ArchiveProject>> = AsyncState.idle();
+
+  @Computed()
+  public get project(): AsyncState<ArchiveProject> {
+    return this.projectState.map((snapshot) => snapshot.value);
+  }
 
   /**
    * Entries the open volume set holds that no engine lookup can reach.
@@ -53,13 +58,13 @@ export class ArchivesService {
    * is still browsable when nobody could tell what is unreachable in it.
    */
   @Observable()
-  public collisions: Loadable<Array<XrayPathCollision>> = Loadable.idle([]);
+  public collisions: AsyncState<Array<XrayPathCollision>> = AsyncState.idle([]);
 
   /**
    * Payloads several entries of the open volume set read at once.
    */
   @Observable()
-  public sharedPayloads: Loadable<Array<ArchiveSharedPayload>> = Loadable.idle([]);
+  public sharedPayloads: AsyncState<Array<ArchiveSharedPayload>> = AsyncState.idle([]);
 
   /** What the explorer points at. Exactly one kind at a time, by construction. */
   @Observable()
@@ -67,11 +72,11 @@ export class ArchivesService {
 
   /** Whatever was loaded for the selection - text, or a decoded texture or sound with its description. */
   @Observable()
-  public content: Loadable<Nullable<TArchiveContent>> = Loadable.idle(null);
+  public content: AsyncState<TArchiveContent> = AsyncState.idle();
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
-  public operation: Loadable<Nullable<TArchiveOperation>> = Loadable.idle(null);
+  public operation: AsyncState<TArchiveOperation> = AsyncState.idle();
 
   /**
    * Returns the files the opened project holds, without the directories its volumes record.
@@ -165,25 +170,19 @@ export class ArchivesService {
   public onDeactivation(): void {
     this.log.info("Deactivating, release archive project");
 
-    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
+    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
   }
 
   /**
-   * Puts back whatever the backend already had open.
-   *
-   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
-   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
-   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const existing: Nullable<TDocument<ArchiveProject>> = yield* call(
-      archivesCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
-    );
+    const existing: Nullable<SessionSnapshot<ArchiveProject>> = yield* call(archivesCommands.getProject());
 
     this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
 
-    this.project = this.project.asReady(existing);
+    this.projectState = this.projectState.asReady(existing);
 
     if (existing) {
       yield* this.loadCollisions();
@@ -198,7 +197,7 @@ export class ArchivesService {
     this.log.info("Reset archives project");
 
     this.clearFileSelection();
-    this.project = this.project.asIdle();
+    this.projectState = this.projectState.asIdle();
     this.collisions = this.collisions.asIdle([]);
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
   }
@@ -212,24 +211,24 @@ export class ArchivesService {
     try {
       this.clearFileSelection();
 
-      this.project = this.project.asLoading();
+      this.projectState = this.projectState.asLoading();
       this.collisions = this.collisions.asIdle([]);
       this.sharedPayloads = this.sharedPayloads.asIdle([]);
 
-      const response: TDocument<ArchiveProject> = yield* call(
-        this.session.open((sessionId) => archivesCommands.openProject(sessionId, path).then(restoreDocument))
+      const response: SessionSnapshot<ArchiveProject> = yield* call(
+        this.session.open(archivesCommands.openProject, path)
       );
 
       this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
 
-      this.project = this.project.asReady(response);
+      this.projectState = this.projectState.asReady(response);
 
       yield* this.loadCollisions();
       yield* this.loadSharedPayloads();
     } catch (error: unknown) {
       this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
 
-      this.project = this.project.asFailed(transformError(error));
+      this.projectState = this.projectState.asFailed(transformError(error));
 
       emitNotification(this.eventBus, {
         details: `${path}\n${transformError(error).message}`,
@@ -247,12 +246,12 @@ export class ArchivesService {
     this.log.info("Closing existing archives project");
 
     try {
-      yield* call(this.session.close(this.project.value?.sessionId));
+      yield* call(this.session.close(this.projectState.value?.sessionId));
 
       this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
 
       this.clearFileSelection();
-      this.project = this.project.asIdle();
+      this.projectState = this.projectState.asIdle();
       this.collisions = this.collisions.asIdle([]);
       this.sharedPayloads = this.sharedPayloads.asIdle([]);
     } catch (error: unknown) {
@@ -273,7 +272,7 @@ export class ArchivesService {
       this.collisions = this.collisions.asLoading([]);
 
       const collisions: Array<XrayPathCollision> = yield* call(
-        archivesCommands.listCollisions(requireDocumentSession(this.project.value))
+        archivesCommands.listCollisions(requireSessionId(this.projectState.value))
       );
 
       this.log.info("Archives project unreachable entries:", collisions.length);
@@ -296,7 +295,7 @@ export class ArchivesService {
       this.sharedPayloads = this.sharedPayloads.asLoading([]);
 
       const payloads: Array<ArchiveSharedPayload> = yield* call(
-        archivesCommands.listSharedPayloads(requireDocumentSession(this.project.value))
+        archivesCommands.listSharedPayloads(requireSessionId(this.projectState.value))
       );
 
       this.log.info("Archives project shared payloads:", payloads.length);
@@ -363,7 +362,7 @@ export class ArchivesService {
       this.operation = this.operation.asLoading(null);
 
       yield* call(
-        archivesCommands.extractFile(requireDocumentSession(this.project.value), descriptor.name, destination)
+        archivesCommands.extractFile(requireSessionId(this.projectState.value), descriptor.name, destination)
       );
 
       this.log.info("Archive file extracted in:", formatDuration(timer.elapsed()));
@@ -417,7 +416,7 @@ export class ArchivesService {
         kind: EJobKind.ARCHIVES_EXTRACT,
         invoke: (id: string, progress) =>
           archivesCommands.extractDirectory(
-            { sessionId: requireDocumentSession(this.project.value), prefix, destination },
+            { sessionId: requireSessionId(this.projectState.value), prefix, destination },
             id,
             progress
           ),
@@ -469,18 +468,18 @@ export class ArchivesService {
    * @param descriptor - Selected archive file to preview.
    */
   private *loadSelectedContent(descriptor: ArchiveFileDescriptor): TFlow {
-    const project: Nullable<TDocument<ArchiveProject>> = this.project.value;
+    const project: Nullable<SessionSnapshot<ArchiveProject>> = this.projectState.value;
 
     if (!project) {
       return;
     }
 
     // todo: Switch case based on type?
-    if (isArchiveAudio(descriptor, project.readPolicy)) {
+    if (isArchiveAudio(descriptor, project.value.readPolicy)) {
       return yield* this.readContent(descriptor, "audio", project);
-    } else if (isArchiveImage(descriptor, project.readPolicy)) {
+    } else if (isArchiveImage(descriptor, project.value.readPolicy)) {
       return yield* this.readContent(descriptor, "image", project);
-    } else if (getArchivePreviewSupport(descriptor, project.readPolicy).kind === "supported") {
+    } else if (getArchivePreviewSupport(descriptor, project.value.readPolicy).kind === "supported") {
       return yield* this.readContent(descriptor, "text", project);
     }
   }
@@ -495,10 +494,7 @@ export class ArchivesService {
    * @param project - Open project whose tree the sound is read out of.
    * @returns The sound's description and its bytes as stored.
    */
-  private async readAudioContent(
-    descriptor: ArchiveFileDescriptor,
-    project: TDocument<ArchiveProject>
-  ): Promise<TArchiveContent> {
+  private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
     const roots: XrayRoots = createArchiveRoots(project);
 
     const [audio, bytes] = await Promise.all([
@@ -519,10 +515,7 @@ export class ArchivesService {
    * @param project - Open project whose tree the texture is read out of.
    * @returns The texture's shape and the decoded png bytes.
    */
-  private async readImageContent(
-    descriptor: ArchiveFileDescriptor,
-    project: TDocument<ArchiveProject>
-  ): Promise<TArchiveContent> {
+  private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
     const roots: XrayRoots = createArchiveRoots(project);
 
     const [texture, bytes] = await Promise.all([
@@ -546,7 +539,7 @@ export class ArchivesService {
   private *readContent(
     descriptor: ArchiveFileDescriptor,
     kind: TArchiveContent["kind"],
-    project: TDocument<ArchiveProject>
+    project: SessionSnapshot<ArchiveProject>
   ): TFlow {
     const timer: Timer = new Timer();
 
@@ -556,9 +549,9 @@ export class ArchivesService {
     try {
       const content: TArchiveContent = yield* call(
         kind === "audio"
-          ? this.readAudioContent(descriptor, project)
+          ? this.readAudioContent(descriptor, project.value)
           : kind === "image"
-            ? this.readImageContent(descriptor, project)
+            ? this.readImageContent(descriptor, project.value)
             : archivesCommands
                 .readFile(project.sessionId, descriptor.name)
                 .then((result): TArchiveContent => ({ kind: "text", result }))

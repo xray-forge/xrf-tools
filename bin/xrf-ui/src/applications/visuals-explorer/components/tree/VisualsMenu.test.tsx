@@ -9,7 +9,7 @@ import { createRoots } from "@/core/assets/lib";
 import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockDocumentResponse } from "@/fixtures/mocks/document.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -25,9 +25,9 @@ function mockArchivedVisual(logicalPath: string): XrayAsset {
 /** Renders the menu over a browse service that has already listed roots. */
 async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderResult; container: Container }> {
   setMockInvokeResponses({
-    ["plugin:visuals|open_browse"]: mockDocumentResponse((args?: Record<string, unknown>) => args?.roots),
+    ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
     ["plugin:assets|list_assets"]: visuals,
-    ["plugin:visuals|get_model"]: mockDocumentResponse(null),
+    ["plugin:visuals|get_model"]: mockSessionResponse(null),
   });
 
   const container: Container = mockContainer([
@@ -72,7 +72,7 @@ describe("VisualsMenu", () => {
     let openCalls: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse(() => {
+      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
         openCalls += 1;
 
         return null;
@@ -93,7 +93,7 @@ describe("VisualsMenu", () => {
     let openParameters: Record<string, unknown> = {};
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockDocumentResponse((parameters?: Record<string, unknown>) => {
+      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         openParameters = parameters ?? {};
 
         throw new Error("stop before geometry");

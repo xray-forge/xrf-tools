@@ -121,7 +121,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
       @raw {
-        read_candidate(sessionId: "DocumentSessionId", format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
+        read_candidate(sessionId: "SessionId", format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::commands::read_texture::textures_read_texture,
       }
       visuals => "visuals" {
@@ -137,8 +137,8 @@ macro_rules! for_each_tauri_command_domain {
       // Returns `tauri::ipc::Response`, so it is dispatched and permitted like any command but cannot join
       // the Specta collection.
       @raw {
-        read_geometry(sessionId: "DocumentSessionId") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
-        read_motion(sessionId: "DocumentSessionId", motionId: "DocumentSessionId") => crate::plugins::visuals::commands::read_motion::visuals_read_motion,
+        read_geometry(sessionId: "SessionId") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
+        read_motion(sessionId: "SessionId", motionId: "SessionId") => crate::plugins::visuals::commands::read_motion::visuals_read_motion,
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::commands::read_texture::visuals_read_texture,
       }
       translations => "translations" {

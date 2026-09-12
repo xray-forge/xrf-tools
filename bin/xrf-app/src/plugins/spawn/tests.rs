@@ -11,7 +11,7 @@ use xrf_job::ExecutionRequest;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 
 pub(super) fn synthetic_spawn() -> SpawnFile {
   serde_json::from_value(json!({
@@ -28,7 +28,7 @@ pub(super) fn synthetic_spawn() -> SpawnFile {
 #[test]
 fn pending_replacement_keeps_the_committed_file_readable() {
   let state = SpawnFileState::new();
-  let first = DocumentSessionId::new();
+  let first = SessionId::new();
 
   state.begin_open(first).unwrap();
 
@@ -36,7 +36,7 @@ fn pending_replacement_keeps_the_committed_file_readable() {
     .commit_open(first, "first.spawn".into(), synthetic_spawn())
     .unwrap();
   let snapshot = state.require(first).unwrap();
-  let next = DocumentSessionId::new();
+  let next = SessionId::new();
 
   state.begin_open(next).unwrap();
 
@@ -57,11 +57,11 @@ fn pending_replacement_keeps_the_committed_file_readable() {
 #[test]
 fn newer_open_prevents_an_older_open_from_committing() {
   let state = SpawnFileState::new();
-  let older = DocumentSessionId::new();
+  let older = SessionId::new();
 
   state.begin_open(older).unwrap();
 
-  let newer = DocumentSessionId::new();
+  let newer = SessionId::new();
 
   state.begin_open(newer).unwrap();
 
@@ -78,7 +78,7 @@ fn newer_open_prevents_an_older_open_from_committing() {
 #[test]
 fn close_invalidates_pending_opens_and_reads_but_preserves_acquired_snapshots() {
   let state = SpawnFileState::new();
-  let first = DocumentSessionId::new();
+  let first = SessionId::new();
 
   state.begin_open(first).unwrap();
   state
@@ -86,7 +86,7 @@ fn close_invalidates_pending_opens_and_reads_but_preserves_acquired_snapshots() 
     .unwrap();
 
   let snapshot = state.require(first).unwrap();
-  let pending = DocumentSessionId::new();
+  let pending = SessionId::new();
 
   state.begin_open(pending).unwrap();
   state.close(&[first, pending]).unwrap();
@@ -100,7 +100,7 @@ fn close_invalidates_pending_opens_and_reads_but_preserves_acquired_snapshots() 
   );
   assert_eq!(snapshot.descriptor.session_id, first);
 
-  let reopened = DocumentSessionId::new();
+  let reopened = SessionId::new();
 
   state.begin_open(reopened).unwrap();
   state
@@ -128,7 +128,7 @@ fn packed_and_unpacked_opens_preserve_the_session_when_a_replacement_fails() {
 
   tauri::async_runtime::block_on(async {
     for (path, input) in [(packed, SpawnInput::Packed), (unpacked, SpawnInput::Unpacked)] {
-      let opened = open_spawn(DocumentSessionId::new(), path.clone(), input, &state, &execution)
+      let opened = open_spawn(SessionId::new(), path.clone(), input, &state, &execution)
         .await
         .unwrap();
 
@@ -140,7 +140,7 @@ fn packed_and_unpacked_opens_preserve_the_session_when_a_replacement_fails() {
 
       for input in [SpawnInput::Packed, SpawnInput::Unpacked] {
         assert!(
-          open_spawn(DocumentSessionId::new(), corrupt.clone(), input, &state, &execution)
+          open_spawn(SessionId::new(), corrupt.clone(), input, &state, &execution)
             .await
             .is_err()
         );

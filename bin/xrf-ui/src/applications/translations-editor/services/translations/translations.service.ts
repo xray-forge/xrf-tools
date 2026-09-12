@@ -3,7 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib/roots";
 import { translationsCommands } from "@/core/bindings/commands/translations";
-import { TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
+import { SessionSnapshot, TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
 import {
   TranslationEdit,
   TranslationProjectDescriptor,
@@ -12,11 +12,11 @@ import {
 } from "@/core/bindings/types/xrf-translation";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { DocumentSession, requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
 import { releaseEditorProject } from "@/core/ipc/release";
+import { requireSessionId, Session } from "@/core/ipc/session";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
@@ -40,13 +40,18 @@ export type TPendingEdits = Record<string, Record<string, Record<string, TPendin
 export class TranslationsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: DocumentSession = new DocumentSession((ids) => translationsCommands.closeProject(ids));
+  private readonly session: Session = new Session(translationsCommands.closeProject);
 
   @Observable()
   public isReady: boolean = false;
 
   @Observable()
-  public project: Loadable<Nullable<TDocument<TranslationProjectDescriptor>>> = Loadable.idle(null);
+  private projectState: AsyncState<SessionSnapshot<TranslationProjectDescriptor>> = AsyncState.idle();
+
+  @Computed()
+  public get project(): AsyncState<TranslationProjectDescriptor> {
+    return this.projectState.map((snapshot) => snapshot.value);
+  }
 
   /**
    * Edits made but not written.
@@ -74,27 +79,23 @@ export class TranslationsService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    releaseEditorProject(() => this.session.close(this.project.value?.sessionId));
+    releaseEditorProject(() => this.session.close(this.projectState.value?.sessionId));
   }
 
   /**
-   * Puts back whatever the backend already had open.
-   *
-   * Exclusive rather than latest. A restore must lose to anything the user started: joining the lane
-   * leaves an open in progress alone, where superseding would cancel the very thing the user asked for. The user's
-   * own actions take the lane the other way round, so an open cancels a restore that is still in flight.
+   * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const response: Nullable<TDocument<TranslationProjectDescriptor>> = yield* call(
-      translationsCommands.getProject().then((snapshot) => (snapshot ? restoreDocument(snapshot) : null))
+    const response: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = yield* call(
+      translationsCommands.getProject()
     );
 
     this.log.info(response ? "Existing translations project detected" : "No existing translations project");
 
     this.isReady = true;
 
-    this.project = this.project.asReady(response);
+    this.projectState = this.projectState.asReady(response);
   }
 
   /**
@@ -150,13 +151,13 @@ export class TranslationsService {
 
   /** What is on disk for a cell, before any pending edit is laid over it. */
   private committedValue(file: string, language: string, id: string): Nullable<TranslationVariant> {
-    return this.project.value?.files[file]?.entries[id]?.[language] ?? null;
+    return this.projectState.value?.value.files[file]?.entries[id]?.[language] ?? null;
   }
 
   /** Report the first character a language cannot hold, or `null` when the value is writable. */
   public async validateText(language: string, text: string): Promise<Nullable<string>> {
     try {
-      return await translationsCommands.validateText(requireDocumentSession(this.project.value), language, text);
+      return await translationsCommands.validateText(requireSessionId(this.projectState.value), language, text);
     } catch (error) {
       this.log.warn("Could not validate translation text:", error);
 
@@ -169,22 +170,20 @@ export class TranslationsService {
     this.log.info("Opening translations project:", describeRoots(roots), mode, prefix);
 
     try {
-      this.project = this.project.asLoading();
+      this.projectState = this.projectState.asLoading();
 
-      const response: TDocument<TranslationProjectDescriptor> = yield* call(
-        this.session.open((sessionId) =>
-          translationsCommands.openProject({ sessionId, roots, mode, prefix }).then(restoreDocument)
-        )
+      const response: SessionSnapshot<TranslationProjectDescriptor> = yield* call(
+        this.session.open((sessionId) => translationsCommands.openProject({ sessionId, roots, mode, prefix }))
       );
 
-      this.log.info("Translations project opened:", Object.keys(response.files).length, "files");
+      this.log.info("Translations project opened:", Object.keys(response.value.files).length, "files");
 
-      this.project = this.project.asReady(response);
+      this.projectState = this.projectState.asReady(response);
       this.edits = {};
     } catch (error) {
       this.log.error("Failed to open translations project:", error);
 
-      this.project = this.project.asFailed(error as Error);
+      this.projectState = this.projectState.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
         details: `${describeRoots(roots)}
@@ -247,7 +246,7 @@ ${transformError(error).message}`,
 
     try {
       const response: TranslationSaveOutcome = yield* call(
-        translationsCommands.saveFile(requireDocumentSession(this.project.value), file, edits)
+        translationsCommands.saveFile(requireSessionId(this.projectState.value), file, edits)
       );
 
       // Only cleared once the write came back: a failed save has to leave the work where it was. A stale save wrote
@@ -267,7 +266,7 @@ ${transformError(error).message}`,
         return false;
       }
 
-      this.project = this.project.asReady(restoreDocument(response.project));
+      this.projectState = this.projectState.asReady(response.project);
 
       return true;
     } catch (error) {
@@ -292,15 +291,15 @@ ${transformError(error).message}`,
   public *closeProject(): TFlow {
     this.log.info("Closing translations project");
 
-    const previous = this.project;
+    const previous = this.projectState;
     const loading = previous.asLoading();
 
-    this.project = loading;
+    this.projectState = loading;
 
     try {
-      yield* call(this.session.close(this.project.value?.sessionId));
+      yield* call(this.session.close(this.projectState.value?.sessionId));
 
-      this.project = this.project.asIdle();
+      this.projectState = this.projectState.asIdle();
       this.edits = {};
 
       this.log.info("Translations project closed");
@@ -317,8 +316,8 @@ ${transformError(error).message}`,
       });
     } finally {
       // A failed or abandoned close keeps the open project and its edits available for retry.
-      if (this.project === loading) {
-        this.project = previous;
+      if (this.projectState === loading) {
+        this.projectState = previous;
       }
     }
   }

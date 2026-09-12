@@ -5,7 +5,7 @@ import { configsCommands } from "@/core/bindings/commands/configs";
 import { LtxResolvedIndex, LtxResolvedIndexEntry, LtxResolvedSection } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -27,7 +27,7 @@ export class ConfigsResolvedService {
 
   /** Every section the entry point resolves to, named and counted. */
   @Observable()
-  public index: Loadable<Nullable<LtxResolvedIndex>> = Loadable.idle(null);
+  public index: AsyncState<LtxResolvedIndex> = AsyncState.idle();
 
   /**
    * How many pages have landed, which is what a consumer re-reads `sections` on.

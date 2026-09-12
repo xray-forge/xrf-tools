@@ -32,7 +32,7 @@ pub struct TranslationsFormatRequest {
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationsOpenRequest {
-  pub session_id: crate::core::session::DocumentSessionId,
+  pub session_id: crate::core::session::SessionId,
   pub roots: XrayRoots,
   pub mode: xrf_translation::TranslationProjectMode,
   pub prefix: Option<String>,

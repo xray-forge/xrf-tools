@@ -10,8 +10,8 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/components/scene";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
+import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Loadable } from "@/lib/loadable";
 import { Nullable } from "@/lib/types/general";
 
 interface IArchiveModelPreviewProps extends BaseComponentProps {
@@ -32,7 +32,7 @@ export function ArchiveModelPreview({
   const loadService: VisualLoadService = useInjection(VisualLoadService);
 
   const project: Nullable<ArchiveProject> = archivesService.project.value;
-  const visual: Loadable<Nullable<IOpenVisual>> = loadService.visual;
+  const visual: AsyncState<Nullable<IOpenVisual>> = loadService.visual;
 
   const [cameraResetToken, setCameraResetToken] = useState(0);
 

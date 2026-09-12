@@ -7,20 +7,20 @@ use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
-use crate::core::session::DocumentSession;
+use crate::core::session::Session;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
 /// Independent ownership for the browsed roots and the selected model.
 pub struct VisualState {
-  pub selected: DocumentSession<SelectedVisual>,
-  pub browsed: DocumentSession<XrayRoots>,
+  pub selected: Session<SelectedVisual>,
+  pub browsed: Session<XrayRoots>,
 }
 
 impl VisualState {
   pub fn new() -> Self {
     Self {
-      selected: DocumentSession::new("visual"),
-      browsed: DocumentSession::new("visual browse"),
+      selected: Session::new("visual"),
+      browsed: Session::new("visual browse"),
     }
   }
 }
@@ -35,7 +35,7 @@ pub struct SelectedVisual {
   /// What posing needs from the file, or `None` when the visual carries no bind pose.
   pub skeleton: Option<SelectedSkeleton>,
   /// The motion baked by the last `open_motion`, so reading its bytes serves that pose rather than composing again.
-  pub posed: DocumentSession<VisualMotionPose>,
+  pub posed: Session<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.

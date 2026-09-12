@@ -4,12 +4,12 @@ import { ReactElement, ReactNode } from "react";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { useMountEffect } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
 
 export interface ISpawnChunkViewProps<T> {
-  chunk: Loadable<Nullable<T>>;
+  chunk: AsyncState<Nullable<T>>;
   /**
    * Loads a lazy chunk on mount or retry. Omitted for the header supplied by the session.
    */

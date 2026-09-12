@@ -7,7 +7,7 @@ import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
 import { TextureDescription, TextureSource } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -21,11 +21,11 @@ export class TextureSelectionService {
 
   /** The texture being looked at, or null when none has been chosen. */
   @Observable()
-  public selected: Loadable<Nullable<TextureDescription>> = Loadable.idle(null);
+  public selected: AsyncState<TextureDescription> = AsyncState.idle();
 
   /** The selected texture decoded to png, or null when it is a descriptor with no texture to show. */
   @Observable()
-  public preview: Loadable<Nullable<ArrayBuffer>> = Loadable.idle(null);
+  public preview: AsyncState<ArrayBuffer> = AsyncState.idle();
 
   /**
    * What the last inspection asked for, so a failed one can be asked for again.

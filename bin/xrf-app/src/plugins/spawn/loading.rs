@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use xrf_db::{SpawnFile, XRayByteOrder};
 
 use crate::core::execution::ExecutionState;
-use crate::core::session::DocumentSessionId;
+use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::SpawnSessionDescriptor;
 use crate::plugins::spawn::state::SpawnFileState;
@@ -16,7 +16,7 @@ pub enum SpawnInput {
 
 /// Parse on the application pool, then publish only if this opening still owns its reservation.
 pub async fn open_spawn(
-  id: DocumentSessionId,
+  id: SessionId,
   path: PathBuf,
   input: SpawnInput,
   state: &SpawnFileState,

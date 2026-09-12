@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ExportsService } from "@/applications/exports-explorer/services/exports/exports.service";
 import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 
 const SOURCE: ExportSourceContent = {
   name: "xr_effects.play",
@@ -23,7 +24,7 @@ describe("ExportsService export source", () => {
   it("reads the source of one declaration by name", async () => {
     const service: ExportsService = mockInjectedService(ExportsService).service;
 
-    service.project = Loadable.ready({ ...mockExportsProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockExportsProject()));
 
     await expect(service.readExportSource("xr_effects.play")).resolves.toEqual(SOURCE);
 
@@ -37,7 +38,7 @@ describe("ExportsService export source", () => {
     // Reporting is the view's job here, so the service must not swallow this into a null result.
     const service: ExportsService = mockInjectedService(ExportsService).service;
 
-    service.project = Loadable.ready({ ...mockExportsProject(), sessionId: "fixture-session" });
+    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockExportsProject()));
 
     setMockInvokeResponses({
       ["plugin:exports|get_source"]: () => {

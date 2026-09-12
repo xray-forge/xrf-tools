@@ -3,12 +3,13 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/bindings/commands/visuals";
 import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
+import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
-import { requireDocumentSession, restoreDocument, TDocument } from "@/core/ipc/document";
+import { requireSessionId } from "@/core/ipc/session";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Loadable } from "@/lib/loadable";
+import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -39,10 +40,10 @@ export class VisualMotionService {
    * each, and most models are opened to be looked at rather than played.
    */
   @Observable()
-  public motions: Loadable<Array<string>> = Loadable.idle([]);
+  public motions: AsyncState<Array<string>> = AsyncState.idle([]);
 
   @Observable()
-  public posed: Loadable<Nullable<IPosedMotion>> = Loadable.idle(null);
+  public posed: AsyncState<IPosedMotion> = AsyncState.idle();
 
   @Observable()
   public frame: number = 0;
@@ -100,7 +101,7 @@ export class VisualMotionService {
 
     try {
       const names: Array<string> = yield* call(
-        visualsCommands.listMotions(requireDocumentSession(this.loadService.visual.value?.selected ?? null))
+        visualsCommands.listMotions(requireSessionId(this.loadService.visual.value?.selected ?? null))
       );
 
       this.motions = this.motions.asReady(names);
@@ -137,13 +138,13 @@ export class VisualMotionService {
     this.posed = this.posed.asLoading();
 
     try {
-      const sessionId: string = requireDocumentSession(this.loadService.visual.value?.selected ?? null);
-
-      const bake: TDocument<VisualMotionBake> = restoreDocument(
-        yield* call(visualsCommands.openMotion(sessionId, crypto.randomUUID(), name))
+      const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
+      const snapshot: SessionSnapshot<VisualMotionBake> = yield* call(
+        visualsCommands.openMotion(sessionId, crypto.randomUUID(), name)
       );
 
-      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(sessionId, bake.sessionId));
+      const bake: VisualMotionBake = snapshot.value;
+      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(sessionId, snapshot.sessionId));
 
       const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 
