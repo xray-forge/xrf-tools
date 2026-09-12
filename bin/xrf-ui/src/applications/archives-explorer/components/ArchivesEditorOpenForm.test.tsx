@@ -14,6 +14,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
+const INSTALLATION: string = "C:\\game";
 
 describe("ArchivesEditorOpenForm", () => {
   const mockOpen = jest.mocked(open<{ multiple: false }>);
@@ -22,8 +23,9 @@ describe("ArchivesEditorOpenForm", () => {
     window.localStorage.clear();
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(null),
-      ["plugin:archives|open_project"]: mockSessionResponse(null),
+      ["plugin:archives|get_subject"]: mockSessionResponse(null),
+      ["plugin:archives|open_volumes"]: mockSessionResponse(null),
+      ["plugin:archives|open_world"]: mockSessionResponse(null),
     });
   });
 
@@ -55,7 +57,7 @@ describe("ArchivesEditorOpenForm", () => {
     const { findByRole } = renderForm();
 
     expect(await findByRole("group", { name: "Open" })).toHaveAccessibleDescription(
-      "Browse a whole directory, or one archive on its own"
+      "Browse a whole directory, one archive on its own, or the game as the engine mounts it"
     );
   });
 
@@ -116,7 +118,7 @@ describe("ArchivesEditorOpenForm", () => {
     await userEvent.click(getByLabelText("Browse"));
     await userEvent.click(getByRole("button", { name: "Open" }));
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_project", {
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_volumes", {
       sessionId: expect.any(String),
       path: ARCHIVE_VOLUME,
     });
@@ -154,6 +156,50 @@ describe("ArchivesEditorOpenForm", () => {
     expect(getByDisplayValue(ARCHIVE_VOLUME)).toBeInTheDocument();
 
     // Two fields rather than one, so returning to a mode returns to what it was pointed at.
+    await userEvent.click(getByLabelText("Open directory"));
+
+    expect(getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+  });
+  it("opens a game folder as a world rather than as a set of volumes", async () => {
+    mockOpen.mockResolvedValue(INSTALLATION);
+
+    const { getByLabelText, getByRole, getByText } = renderForm();
+
+    await userEvent.click(getByLabelText("Open installation"));
+
+    expect(
+      getByText(
+        "Indexes the game the way the engine mounts it: its archives, and the loose gamedata tree standing in " +
+          "front of them."
+      )
+    ).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByRole("button", { name: "Open" }));
+
+    // `auto` rather than `installation`: a folder that declares no `fsgame.ltx` is still read as the game data tree
+    // it looks like, instead of being refused for not declaring one.
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_world", {
+      sessionId: expect.any(String),
+      roots: { asset: null, roots: [{ mode: "auto", path: INSTALLATION }] },
+    });
+  });
+
+  it("keeps the game folder apart from the archives directory", async () => {
+    // A game folder is the parent of the `db` directory the other mode wants, so one shared field would hand each
+    // mode the other's answer.
+    const { getByDisplayValue, getByLabelText, queryByDisplayValue } = renderForm();
+
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByLabelText("Open installation"));
+
+    expect(queryByDisplayValue(ARCHIVES_DIRECTORY)).not.toBeInTheDocument();
+
+    mockOpen.mockResolvedValue(INSTALLATION);
+
+    await userEvent.click(getByLabelText("Browse"));
     await userEvent.click(getByLabelText("Open directory"));
 
     expect(getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();

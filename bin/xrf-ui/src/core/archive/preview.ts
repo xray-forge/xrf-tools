@@ -1,4 +1,5 @@
-import { ArchiveFileDescriptor, ArchiveProjectReadPolicy } from "@/core/bindings/types/xrf-archive";
+import { IArchiveEntry } from "@/core/archive/entry";
+import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { getFileExtension } from "@/lib/path/extension";
 
 export type ArchivePreviewSupport =
@@ -10,23 +11,23 @@ export type ArchivePreviewSupport =
   | { kind: "too-large"; maximumSize: number };
 
 /**
- * Checks whether an archive entry is a model the viewer can render.
+ * Checks whether a browsed entry is a model the viewer can render.
  *
- * @param descriptor - Archive file metadata whose extension is checked.
+ * @param descriptor - Browsed entry whose extension is checked.
  * @returns Whether the descriptor names a model.
  */
-export function isArchiveModel(descriptor: ArchiveFileDescriptor): boolean {
+export function isArchiveModel(descriptor: IArchiveEntry): boolean {
   return getFileExtension(descriptor.name) === "ogf";
 }
 
 /**
  * Checks whether the policy permits audio preview for an archive file.
  *
- * @param descriptor - Archive file metadata whose extension is checked.
+ * @param descriptor - Browsed entry whose extension is checked.
  * @param policy - Backend-provided archive read policy.
  * @returns Whether the descriptor extension supports audio preview.
  */
-export function isArchiveAudio(descriptor: ArchiveFileDescriptor, policy: ArchiveProjectReadPolicy): boolean {
+export function isArchiveAudio(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
   const extension: string = getFileExtension(descriptor.name);
 
   return policy.audioExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
@@ -38,11 +39,11 @@ export function isArchiveAudio(descriptor: ArchiveFileDescriptor, policy: Archiv
  * Both lists come from the project's own read policy, so the frontend never has to keep its own copy of
  * what the backend is willing to do.
  *
- * @param descriptor - Archive file metadata whose extension is checked.
+ * @param descriptor - Browsed entry whose extension is checked.
  * @param policy - Backend-provided archive read policy.
  * @returns Whether the descriptor extension supports image preview.
  */
-export function isArchiveImage(descriptor: ArchiveFileDescriptor, policy: ArchiveProjectReadPolicy): boolean {
+export function isArchiveImage(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
   const extension: string = getFileExtension(descriptor.name);
 
   return policy.imageExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
@@ -51,13 +52,13 @@ export function isArchiveImage(descriptor: ArchiveFileDescriptor, policy: Archiv
 /**
  * Determine whether the backend can provide a text preview for an archive file.
  *
- * @param descriptor - Archive file metadata used to validate type, size, and compression state.
+ * @param descriptor - Browsed entry used to validate type and size.
  * @param policy - Backend-provided archive read capabilities.
  * @returns A discriminated result describing preview support or the reason it is unavailable.
  */
 export function getArchivePreviewSupport(
-  descriptor: ArchiveFileDescriptor,
-  policy: ArchiveProjectReadPolicy
+  descriptor: IArchiveEntry,
+  policy: ArchiveReadPolicy
 ): ArchivePreviewSupport {
   // Models are read through the asset roots rather than through this project, so no policy limit applies to them.
   if (isArchiveModel(descriptor)) {

@@ -6,8 +6,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
@@ -38,7 +37,7 @@ export function ArchiveDirectoryContent({
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const files: Array<ArchiveFileDescriptor> = archivesService.files;
+  const files: Array<IArchiveEntry> = archivesService.entries;
   const operation: AsyncState<Nullable<TArchiveOperation>> = archivesService.operation;
   // A file extraction started elsewhere must not be reported here as if this directory had been written.
   const extracted: Nullable<ArchiveExtractDirectoryResult> =
@@ -49,10 +48,10 @@ export function ArchiveDirectoryContent({
     let size: number = 0;
 
     // Same rule the backend extracts by, so the promised count is the delivered one.
-    for (const descriptor of files) {
-      if (isUnderArchiveDirectory(descriptor, path)) {
+    for (const entry of files) {
+      if (isUnderArchiveDirectory(entry, path)) {
         count += 1;
-        size += descriptor.sizeReal;
+        size += entry.sizeReal;
       }
     }
 
@@ -61,7 +60,7 @@ export function ArchiveDirectoryContent({
 
   const onExtract = useCallback(async () => {
     const destination: Nullable<string> = (await dialog.open({
-      title: path ? `Extract ${path}` : "Extract archive",
+      title: path ? `Extract ${path}` : "Extract everything",
       directory: true,
     })) as Nullable<string>;
 
@@ -82,7 +81,7 @@ export function ArchiveDirectoryContent({
       <FolderOpenIcon sx={{ color: "text.secondary" }} />
 
       <Typography variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily, overflowWrap: "anywhere" }}>
-        {path || "Archive root"}
+        {path || "Tree root"}
       </Typography>
 
       <Typography variant={"body2"} sx={{ color: "text.secondary" }}>

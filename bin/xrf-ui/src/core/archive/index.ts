@@ -1,3 +1,4 @@
+export * from "./entry";
 export * from "./files";
 export * from "./header";
 export * from "./components/ArchiveHeaderEntries";
@@ -7,4 +8,5 @@ export * from "./preview";
 export * from "./roots";
 export * from "./tree";
 export * from "./selection";
+export * from "./subject";
 export * from "./use-last-content";

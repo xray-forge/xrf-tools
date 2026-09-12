@@ -6,7 +6,7 @@ import { runInAction } from "@wirestate/mobx";
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -21,7 +21,7 @@ interface IRenderedMenu {
 /** Renders the menu after the service restores its open project. */
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
-    ["plugin:archives|get_project"]: mockSessionResponse(mockArchivesProject(files)),
+    ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
     ["plugin:archives|list_collisions"]: [],
     ["plugin:archives|list_shared_payloads"]: [],
     ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
@@ -31,7 +31,7 @@ async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRendere
 
   const render = renderWithProviders(<ArchivesMenu />, { container });
 
-  await waitFor(() => expect(service.project.isReady).toBe(true));
+  await waitFor(() => expect(service.subject.isReady).toBe(true));
 
   return { container, service, render };
 }

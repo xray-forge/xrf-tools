@@ -6,13 +6,13 @@ import { userEvent } from "@testing-library/user-event";
 import { ArchivesExplorerApplication } from "@/applications/archives-explorer/ArchivesExplorerApplication";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import {
   mockArchiveFileDescriptor,
   mockArchiveSharedPayload,
-  mockArchivesProject,
+  mockArchivesVolumes,
   mockPathCollision,
 } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -33,7 +33,7 @@ const MESH_FILE = mockArchiveFileDescriptor({
   sizeCompressed: 4096,
 });
 
-const PROJECT: ArchiveProject = mockArchivesProject([TEXT_FILE, BINARY_FILE, MESH_FILE]);
+const PROJECT: ArchiveSubject = mockArchivesVolumes([TEXT_FILE, BINARY_FILE, MESH_FILE]);
 
 describe("opened archives editor", () => {
   beforeEach(() => {
@@ -44,14 +44,14 @@ describe("opened archives editor", () => {
     jest.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_shared_payloads"]: [],
       ["plugin:archives|read_file"]: {
         name: TEXT_FILE.name,
         content: "line one\nline two",
         size: TEXT_FILE.sizeReal,
       },
-      ["plugin:archives|close_project"]: undefined,
+      ["plugin:archives|close_subject"]: undefined,
       ["plugin:archives|describe_image"]: {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
@@ -74,7 +74,7 @@ describe("opened archives editor", () => {
     let finishRestore: (value: null) => void;
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: () => new Promise<null>((resolve) => (finishRestore = resolve)),
+      ["plugin:archives|get_subject"]: () => new Promise<null>((resolve) => (finishRestore = resolve)),
     });
 
     const { findByText, queryByText } = renderEditor();
@@ -90,7 +90,7 @@ describe("opened archives editor", () => {
     "shows the restored archive while %s is pending",
     async (command) => {
       setMockInvokeResponses({
-        ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+        ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
         ["plugin:archives|list_collisions"]: [],
         ["plugin:archives|list_shared_payloads"]: [],
         [`plugin:archives|${command}`]: () => new Promise(() => {}),
@@ -105,7 +105,7 @@ describe("opened archives editor", () => {
 
   it("shows the open form and error when restoring the archive fails", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: () => {
+      ["plugin:archives|get_subject"]: () => {
         throw new Error("Archive session unavailable");
       },
     });
@@ -186,7 +186,7 @@ describe("opened archives editor", () => {
     const nestedFile = mockArchiveFileDescriptor({ name: "configs\\system.ltx", sizeReal: 512, sizeCompressed: 512 });
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(mockArchivesProject([nestedFile, BINARY_FILE])),
+      ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesVolumes([nestedFile, BINARY_FILE])),
     });
 
     const { findByLabelText, findByRole, findByText, getByLabelText, queryByText } = renderEditor();
@@ -210,7 +210,7 @@ describe("opened archives editor", () => {
     let readCount: number = 0;
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|read_file"]: () => {
         readCount += 1;
 
@@ -247,11 +247,11 @@ describe("opened archives editor", () => {
 
     const detailsButton: HTMLElement = await findByLabelText("File details");
 
-    expect(queryByText("Select a file to inspect its archive metadata.")).not.toBeInTheDocument();
+    expect(queryByText("Select a file to inspect where it comes from.")).not.toBeInTheDocument();
 
     await userEvent.click(detailsButton);
 
-    expect(await findByText("Select a file to inspect its archive metadata.")).toBeInTheDocument();
+    expect(await findByText("Select a file to inspect where it comes from.")).toBeInTheDocument();
   });
 
   it("renders the selected file metadata in Details", async () => {
@@ -278,7 +278,7 @@ describe("opened archives editor", () => {
     // The format keeps no alias field, so the panel says what reads alike and labels it as derived rather than as
     // something the packer wrote down.
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_shared_payloads"]: [mockArchiveSharedPayload(BINARY_FILE, ["texture_copy.dds"])],
       ["plugin:archives|describe_image"]: {
         size: BINARY_FILE.sizeReal,
@@ -314,7 +314,7 @@ describe("opened archives editor", () => {
     // The explorer used to show the winner and nothing else, so an entry nobody could reach was indistinguishable
     // from one nobody packed.
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
@@ -337,7 +337,7 @@ describe("opened archives editor", () => {
 
   it("dismisses the reachability notice without hiding the entries themselves", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
     });
 
@@ -375,8 +375,8 @@ describe("opened archives editor", () => {
 
   it("stays open and reports a close failure", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
-      ["plugin:archives|close_project"]: () => {
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|close_subject"]: () => {
         throw new Error("archive is busy");
       },
     });
@@ -395,7 +395,7 @@ describe("opened archives editor", () => {
     const save = jest.spyOn(dialog, "save").mockResolvedValue("C:\\out\\readme.ltx");
 
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|read_file"]: { name: TEXT_FILE.name, content: "line", size: 4 },
       // Never settles, so the editor stays mid-extraction for the length of the assertion.
       ["plugin:archives|extract_file"]: () => new Promise(() => {}),
@@ -420,7 +420,7 @@ describe("opened archives editor", () => {
 
   it("supersedes a read still in flight with the next file opened", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       // Never settles, so the first selection is still in flight when the second one is made.
       ["plugin:archives|read_file"]: () => new Promise(() => {}),
       ["plugin:archives|describe_image"]: {

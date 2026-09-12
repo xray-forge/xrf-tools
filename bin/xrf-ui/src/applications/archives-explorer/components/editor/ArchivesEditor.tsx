@@ -4,8 +4,17 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { getArchiveVolumeOf } from "@/core/archive";
-import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import {
+  EArchiveSubject,
+  getArchiveVolumeOf,
+  getSubjectRoot,
+  getSubjectShadowedCount,
+  getSubjectSize,
+  getSubjectSourceCount,
+} from "@/core/archive";
+import { describeAssetContainer } from "@/core/assets/lib";
+import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
+import { ArchiveDescriptor } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -27,21 +36,29 @@ export function ArchivesEditor(): ReactElement {
   const [isClosing, setClosing] = useState<boolean>(false);
   const [closeError, setCloseError] = useState<Nullable<string>>(null);
   const [isCollisionNoticeDismissed, setCollisionNoticeDismissed] = useState<boolean>(false);
+  const [isShadowNoticeDismissed, setShadowNoticeDismissed] = useState<boolean>(false);
 
-  const project: Nullable<ArchiveProject> = archivesService.project.value;
+  const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
 
-  const archiveCount: number = project?.archives.length ?? 0;
-  const fileCount: number = archivesService.files.length;
-  const totalSize: number = project?.sizeReal ?? 0;
-  const projectRoot: string = project?.root ?? "";
+  const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
+  const shadowedCount: number = getSubjectShadowedCount(subject);
 
-  const selectedFile: Nullable<ArchiveFileDescriptor> = archivesService.selectedFile;
-  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(project, selectedFile);
-  const location: Nullable<IEditorLocation> = volume
-    ? { entry: selectedFile?.name, path: volume.path }
-    : projectRoot
-      ? { path: projectRoot }
+  // A volume set names the volume its name table points into; a world names where the winning copy actually sits.
+  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
+    subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
+    archivesService.selectedDescriptor
+  );
+  const container: Nullable<string> = archivesService.selectedWorldEntry
+    ? describeAssetContainer(archivesService.selectedWorldEntry.container)
+    : null;
+  const source: Nullable<string> = container ?? volume?.path ?? null;
+
+  const root: string = getSubjectRoot(subject);
+  const location: Nullable<IEditorLocation> = source
+    ? { entry: archivesService.selectedEntry?.name, path: source }
+    : root
+      ? { path: root }
       : null;
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
@@ -53,6 +70,7 @@ export function ArchivesEditor(): ReactElement {
   const isExtracting: boolean = archivesService.operation.isLoading;
   const isBusy: boolean = isClosing || isExtracting;
   const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
+  const isShadowNoticeShown: boolean = shadowedCount > 0 && !isShadowNoticeDismissed;
 
   const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
 
@@ -61,7 +79,7 @@ export function ArchivesEditor(): ReactElement {
     setCloseError(null);
 
     try {
-      await archivesService.closeProject();
+      await archivesService.closeSubject();
     } catch (error: unknown) {
       setCloseError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -86,7 +104,12 @@ export function ArchivesEditor(): ReactElement {
 
   useEditorBusy(isBusy || Boolean(job));
 
-  useEditorStatus([`${archiveCount} archives`, `${fileCount} files`, formatBytes(totalSize)]);
+  useEditorStatus([
+    `${getSubjectSourceCount(subject)} ${isWorld ? "sources" : "archives"}`,
+    `${archivesService.entries.length} files`,
+    formatBytes(getSubjectSize(subject)),
+    ...(isWorld ? [`${shadowedCount} overridden`] : []),
+  ]);
 
   return (
     <EditorLayout
@@ -97,7 +120,7 @@ export function ArchivesEditor(): ReactElement {
         />
       }
       banner={
-        job || closeError || isCollisionNoticeShown ? (
+        job || closeError || isCollisionNoticeShown || isShadowNoticeShown ? (
           <>
             {job ? (
               <Box sx={{ paddingX: 2, paddingY: 1 }}>
@@ -108,6 +131,17 @@ export function ArchivesEditor(): ReactElement {
             {closeError ? (
               <Alert severity={"error"} onClose={() => setCloseError(null)}>
                 Could not close archives: {closeError}
+              </Alert>
+            ) : null}
+
+            {isShadowNoticeShown ? (
+              <Alert
+                severity={"info"}
+                closeText={"Dismiss overridden files notice"}
+                onClose={() => setShadowNoticeDismissed(true)}
+              >
+                {shadowedCount} file(s) here exist in more than one source. The tree shows the copy the engine would
+                load; the rest are listed under Origin in File details.
               </Alert>
             ) : null}
 

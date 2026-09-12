@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { getArchivePreviewSupport } from "@/core/archive/preview";
-import { ArchiveProjectReadPolicy } from "@/core/bindings/types/xrf-archive";
+import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "@/fixtures/mocks/archive.mocks";
 
-const READ_POLICY: ArchiveProjectReadPolicy = mockArchiveReadPolicy();
+const READ_POLICY: ArchiveReadPolicy = mockArchiveReadPolicy();
 
 describe("archive preview support", () => {
   it.each(READ_POLICY.extensions)("accepts uncompressed .%s files within the backend limit", (extension: string) => {
@@ -69,7 +69,7 @@ describe("archive preview support", () => {
   });
 
   it("uses backend-provided policy values", () => {
-    const policy: ArchiveProjectReadPolicy = mockArchiveReadPolicy({
+    const policy: ArchiveReadPolicy = mockArchiveReadPolicy({
       extensions: ["xml"],
       maximumSize: 1024,
     });

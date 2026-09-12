@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -21,7 +21,7 @@ describe("ArchivesService directory extraction", () => {
   it("sends the directory prefix and destination root", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
+    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: {
@@ -46,7 +46,7 @@ describe("ArchivesService directory extraction", () => {
   it("treats the archive root as an empty prefix", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
+    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
     service.selectArchiveDirectory("");
 
@@ -63,7 +63,7 @@ describe("ArchivesService directory extraction", () => {
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
+    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
     setMockInvokeResponses({
       ["plugin:archives|extract_directory"]: () => {
@@ -80,7 +80,7 @@ describe("ArchivesService directory extraction", () => {
   it("keeps file and directory selection mutually exclusive", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
+    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
     service.selectArchiveDirectory("configs");
     expect(service.selectedDirectory).toBe("configs");
@@ -88,9 +88,9 @@ describe("ArchivesService directory extraction", () => {
     // Both being set at once would leave the content area with two things claiming to be selected.
     await service.selectArchiveFile(mockArchiveFileDescriptor({ name: "configs\\system.ltx" }));
     expect(service.selectedDirectory).toBeNull();
-    expect(service.selectedFile).not.toBeNull();
+    expect(service.selectedEntry).not.toBeNull();
 
     service.selectArchiveDirectory("configs");
-    expect(service.selectedFile).toBeNull();
+    expect(service.selectedEntry).toBeNull();
   });
 });

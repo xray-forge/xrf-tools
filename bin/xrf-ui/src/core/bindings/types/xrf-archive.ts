@@ -82,7 +82,7 @@ export type ArchiveProject = {
   archives: Array<ArchiveDescriptor>;
   /** Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`. */
   files: { [key in string]: ArchiveFileDescriptor };
-  readPolicy: ArchiveProjectReadPolicy;
+  readPolicy: ArchiveReadPolicy;
   /**
    * The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
    * parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
@@ -93,15 +93,16 @@ export type ArchiveProject = {
 };
 
 /**
- * What an archive viewer may read out of a project, by extension and size.
+ * What a viewer may read out of a mounted tree, by extension and size.
  *
  * A gate for interactive consumers rather than a format rule: [`crate::ArchiveProject::read_file_bytes`] ignores it,
- * while [`crate::ArchiveProject::read_file_as_string`] refuses what the policy does not cover.
+ * while every text read asks [`Self::require_text_read`] first. Both of the archives explorer's subjects answer to
+ * this one policy, so a file too large to preview is refused the same way whichever tree it came from.
  *
  * Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
- * both through the shared mounted assets rather than through this project, and so answers to no limit of its own.
+ * both through the shared mounted assets and so answers to no limit of its own.
  */
-export type ArchiveProjectReadPolicy = {
+export type ArchiveReadPolicy = {
   extensions: Array<string>;
   maximumSize: number;
   /** Extensions decoded into a picture. Compression does not apply: it is undone before decoding. */
@@ -110,6 +111,16 @@ export type ArchiveProjectReadPolicy = {
   /** Extensions played by the webview itself, so the backend only has to hand over the bytes. */
   audioExtensions: Array<string>;
   maximumAudioSize: number;
+};
+
+/** One text file read for display: its name, decoded content, and unpacked size. */
+export type ArchiveReadResult = {
+  /** Name the content was read under. */
+  name: string;
+  /** Text decoded from Windows-1251, like every engine text format. */
+  content: string;
+  /** Bytes once unpacked, before decoding. */
+  size: number;
 };
 
 /**
@@ -132,14 +143,4 @@ export type ArchiveSharedPayload = {
   crc: number;
   /** Authored names of every file entry located here, in name order; always two or more. */
   names: Array<string>;
-};
-
-/** One archived text file read for display: its name, decoded content, and unpacked size. */
-export type ProjectReadResult = {
-  /** Entry name the content was read under. */
-  name: string;
-  /** Entry text decoded from Windows-1251, like every engine text format. */
-  content: string;
-  /** Entry bytes once unpacked, before decoding. */
-  size: number;
 };

@@ -9,9 +9,9 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 export function ArchivesExplorerApplication(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  if (archivesService.project.isIdle) {
+  if (archivesService.subject.isIdle) {
     return <ApplicationLoader />;
   }
 
-  return archivesService.project.value ? <ArchivesEditor /> : <ArchivesEditorOpenForm />;
+  return archivesService.subject.value ? <ArchivesEditor /> : <ArchivesEditorOpenForm />;
 }

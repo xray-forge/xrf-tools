@@ -5,7 +5,7 @@ import { createRoot } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -29,7 +29,7 @@ const DESCRIPTOR: AssetTextureDescriptor = {
 function mockService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject([TEXTURE, TEXT])));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([TEXTURE, TEXT])));
 
   return service;
 }

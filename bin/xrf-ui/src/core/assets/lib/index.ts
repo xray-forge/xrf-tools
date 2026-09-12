@@ -1,4 +1,5 @@
 export * from "./asset-location";
+export * from "./container";
 export * from "./resolution";
 export * from "./root-probe";
 export * from "./roots";

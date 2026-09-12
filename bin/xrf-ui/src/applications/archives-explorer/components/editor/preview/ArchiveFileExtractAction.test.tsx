@@ -7,7 +7,7 @@ import { Injectable } from "@wirestate/core";
 import { ArchiveFileExtractAction } from "@/applications/archives-explorer/components/editor/preview/ArchiveFileExtractAction";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -20,9 +20,9 @@ const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
 class TestArchivesService extends ArchivesService {}
 
 function renderAction(): RenderResult {
-  setMockInvokeResponses({ "plugin:archives|get_project": mockSessionResponse(mockArchivesProject()) });
+  setMockInvokeResponses({ "plugin:archives|get_subject": mockSessionResponse(mockArchivesVolumes()) });
 
-  return renderWithProviders(<ArchiveFileExtractAction descriptor={FILE} />, {
+  return renderWithProviders(<ArchiveFileExtractAction entry={FILE} />, {
     bindings: [{ token: ArchivesService, type: "Instance", value: TestArchivesService }],
   });
 }

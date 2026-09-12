@@ -73,7 +73,7 @@ export function ArchiveImagePreview({
       sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
     >
       <ImageViewport
-        alt={archivesService.selectedFile?.name ?? "Texture"}
+        alt={archivesService.selectedEntry?.name ?? "Texture"}
         src={url}
         width={shape.width}
         height={shape.height}

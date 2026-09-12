@@ -1,5 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { ArchiveProject, ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
 import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
@@ -14,13 +15,96 @@ import {
   TranslationProjectMode,
   TranslationVerifyLanguageSummary,
 } from "@/core/bindings/types/xrf-translation";
-import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayAssetContainer, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
 
-/** Directory extraction request for an open archive project. */
+/**
+ * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
+ *
+ * One session value rather than two slots, because the two are alternatives and never coexist. Opening either
+ * replaces the other by construction, so nothing has to remember to close one, and a reader never has to ask which of
+ * two sessions the surface is showing.
+ *
+ * The two are not folded into one shape. A volume set can say which volume an entry sits in, at what offset, with
+ * which recorded CRC; a world can say which copy of an engine path wins and what that decision hides. A single
+ * descriptor covering both would have a loose file claiming a volume position, which is the fiction this split
+ * exists to avoid.
+ *
+ * Every difference between them is answered here, so a command stays an adapter and a reader asking how browsing an
+ * installation differs from browsing a volume set opens one file.
+ */
+export type ArchiveSubject =
+  /** The volumes at one path, merged into a single name table. */
+  | { kind: "volumes"; project: ArchiveProject }
+  /** A game folder read as the engine mounts it, archives and loose tree together. */
+  | { kind: "world"; world: ArchiveWorld };
+
+/**
+ * One mounted world the explorer browses: an installation, or any tree read as the engine would read it.
+ *
+ * The other subject of the same explorer answers for one volume set and nothing else. Pointing that at a game folder
+ * lists the archives and silently omits the loose `gamedata` tree in front of them, so it shows the archived payload
+ * for files the engine would serve from disk. This one answers the other question: which copy actually wins, and what
+ * that decision hides.
+ *
+ * A listing rather than a VFS. The mounts live in the application's one [`crate::core::assets::AssetMountState`],
+ * where every other surface's reads already go and where mounting one installation twice costs one index; what the
+ * session owns is the answer it published.
+ */
+export type ArchiveWorld = {
+  /**
+   * How the world was opened, so every later read of it addresses exactly these mounts.
+   *
+   * Carried rather than rebuilt per call: a read addressed by freshly derived roots would answer for whatever the
+   * path means now, while the listing on screen describes what it meant when it was opened.
+   */
+  roots: XrayRoots;
+  /** Sources searched, highest priority first, as each one names itself. */
+  mounts: Array<string>;
+  /** Winning entries, one per engine path, ordered by that path. */
+  files: Array<ArchiveWorldEntry>;
+  readPolicy: ArchiveReadPolicy;
+  /** Unpacked bytes of the winning entries. What is shadowed is not counted; it is not what the engine would load. */
+  sizeReal: number;
+  /** Engine paths this world answers with more than one copy for. */
+  shadowedCount: number;
+};
+
+/**
+ * One file of a mounted world, as the explorer lists it.
+ *
+ * Shaped like [`xrf_archive::ArchiveFileDescriptor`] where the two can agree — a `name` and a `size_real` — because
+ * the tree, the filter and the preview gate above them need nothing else, and giving each subject its own spelling of
+ * those two would fork every one of those surfaces.
+ *
+ * Where they cannot agree, this says less rather than inventing something. A loose file has no volume position, no
+ * stored size and no recorded CRC, so nothing here claims one; what it has instead is the copies it stands in front
+ * of, which a volume set has no way to express.
+ */
+export type ArchiveWorldEntry = {
+  /** Engine identity: lower-case and backslash separated, which is what every read of this world is addressed by. */
+  name: string;
+  /** Where the winning copy physically sits — a file on disk, or an entry of a volume. */
+  container: XrayAssetContainer;
+  /** Payload bytes once unpacked. */
+  sizeReal: number;
+  /**
+   * Copies of this engine path no lookup reaches, in mount priority order behind the winner.
+   *
+   * Carried on the entry rather than fetched per selection: the listing pass already had them in hand, and a browser
+   * has to mark a shadowing row before anyone selects it.
+   */
+  shadowed: Array<XrayAssetContainer>;
+};
+
+/**
+ * Directory extraction request for whichever subject the explorer has open.
+ *
+ * One shape for both: the two differ in where the bytes come from, never in what a person asked for.
+ */
 export type ArchivesExtractRequest = {
   sessionId: SessionId;
-  /** Directory inside the archive to extract. */
+  /** Directory inside the opened tree to extract. An empty prefix means everything. */
   prefix: string;
   /** Directory to write the contents into. */
   destination: string;

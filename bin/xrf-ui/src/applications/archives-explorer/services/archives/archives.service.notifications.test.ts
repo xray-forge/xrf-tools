@@ -4,7 +4,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
@@ -20,7 +20,7 @@ interface IWatchedService {
 function mockWatchedNotifications(): IWatchedService {
   const { container, service }: IInjectedServiceMockDescriptor<ArchivesService> = mockInjectedService(ArchivesService);
 
-  service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesProject()));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
   const raised: Array<INotificationPayload> = [];
 
@@ -89,12 +89,12 @@ describe("ArchivesService notifications", () => {
     const { raised, service }: IWatchedService = mockWatchedNotifications();
 
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockSessionResponse(() => {
+      ["plugin:archives|open_volumes"]: mockSessionResponse(() => {
         throw new Error("not an archive directory");
       }),
     });
 
-    await service.openProject("C:\\game");
+    await service.openVolumes("C:\\game");
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);

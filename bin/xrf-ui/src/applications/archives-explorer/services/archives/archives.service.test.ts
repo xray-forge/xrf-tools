@@ -2,9 +2,9 @@ import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
+import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/bindings/types/xrf-archive";
 import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
-import { mockArchiveFileDescriptor, mockArchivesProject, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -15,9 +15,7 @@ function ignoreReadResult(): void {}
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["projectState"] = AsyncState.ready(
-    mockRestoredSession(service, mockSessionSnapshot(mockArchivesProject(files)))
-  );
+  service["subjectState"] = AsyncState.ready(mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes(files))));
 
   return service;
 }
@@ -26,8 +24,8 @@ describe("ArchivesService file selection", () => {
   it("registers derived state as MobX computed properties", () => {
     const service: ArchivesService = mockArchivesService([]);
 
-    expect(isComputedProp(service, "files")).toBe(true);
-    expect(isComputedProp(service, "selectedFile")).toBe(true);
+    expect(isComputedProp(service, "entries")).toBe(true);
+    expect(isComputedProp(service, "selectedEntry")).toBe(true);
     expect(isComputedProp(service, "selectedDirectory")).toBe(true);
     expect(isComputedProp(service, "isWriting")).toBe(true);
   });
@@ -39,18 +37,18 @@ describe("ArchivesService file selection", () => {
       mockArchiveFileDescriptor({ name: "meshes\\actors\\stalker.ogf" }),
     ]);
 
-    expect(service.files.map((descriptor) => descriptor.name)).toEqual(["meshes\\actors\\stalker.ogf"]);
+    expect(service.entries.map((descriptor) => descriptor.name)).toEqual(["meshes\\actors\\stalker.ogf"]);
   });
 
   it("has no files before a project is opened", () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    expect(service.files).toEqual([]);
+    expect(service.entries).toEqual([]);
   });
 
   it("loads supported selected files", async () => {
     const descriptor = mockArchiveFileDescriptor();
-    const result: ProjectReadResult = { name: descriptor.name, content: "[system]", size: 8 };
+    const result: ArchiveReadResult = { name: descriptor.name, content: "[system]", size: 8 };
 
     setMockInvokeResponses({ ["plugin:archives|read_file"]: result });
 
@@ -58,7 +56,7 @@ describe("ArchivesService file selection", () => {
 
     await service.selectArchiveFile(descriptor);
 
-    expect(service.selectedFile).toStrictEqual(descriptor);
+    expect(service.selectedEntry).toStrictEqual(descriptor);
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
       sessionId: expect.any(String),
@@ -72,7 +70,7 @@ describe("ArchivesService file selection", () => {
 
     await service.selectArchiveFile(descriptor);
 
-    expect(service.selectedFile).toStrictEqual(descriptor);
+    expect(service.selectedEntry).toStrictEqual(descriptor);
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
     expect(mockInvoke).not.toHaveBeenCalled();
   });
@@ -80,12 +78,12 @@ describe("ArchivesService file selection", () => {
   it("allows only the latest selection to publish a completed read", async () => {
     const first = mockArchiveFileDescriptor({ name: "configs\\first.ltx" });
     const second = mockArchiveFileDescriptor({ name: "configs\\second.ltx" });
-    let resolveFirst: (value: ProjectReadResult) => void = ignoreReadResult;
-    let resolveSecond: (value: ProjectReadResult) => void = ignoreReadResult;
-    const firstResult: Promise<ProjectReadResult> = new Promise((resolve) => {
+    let resolveFirst: (value: ArchiveReadResult) => void = ignoreReadResult;
+    let resolveSecond: (value: ArchiveReadResult) => void = ignoreReadResult;
+    const firstResult: Promise<ArchiveReadResult> = new Promise((resolve) => {
       resolveFirst = resolve;
     });
-    const secondResult: Promise<ProjectReadResult> = new Promise((resolve) => {
+    const secondResult: Promise<ArchiveReadResult> = new Promise((resolve) => {
       resolveSecond = resolve;
     });
 
@@ -103,7 +101,7 @@ describe("ArchivesService file selection", () => {
     resolveFirst({ name: first.name, content: "first", size: 5 });
     await firstRead;
 
-    expect(service.selectedFile).toStrictEqual(second);
+    expect(service.selectedEntry).toStrictEqual(second);
     expect(service.content.value?.kind === "text" ? service.content.value.result.name : null).toBe(second.name);
     expect(service.content.value?.kind === "text" ? service.content.value.result.content : null).toBe("second");
   });
@@ -134,16 +132,16 @@ describe("ArchivesService file selection", () => {
   it("clears file state when the project closes", async () => {
     const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
-    setMockInvokeResponses({ ["plugin:archives|close_project"]: undefined });
+    setMockInvokeResponses({ ["plugin:archives|close_subject"]: undefined });
 
     const service: ArchivesService = mockArchivesService([descriptor]);
 
     await service.selectArchiveFile(descriptor);
-    await service.closeProject();
+    await service.closeSubject();
 
-    expect(service.project.isReady).toBe(true);
-    expect(service.project.value).toBeNull();
-    expect(service.selectedFile).toBeNull();
+    expect(service.subject.isReady).toBe(true);
+    expect(service.subject.value).toBeNull();
+    expect(service.selectedEntry).toBeNull();
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
   });
 
@@ -152,11 +150,11 @@ describe("ArchivesService file selection", () => {
     const service: ArchivesService = mockArchivesService([descriptor]);
 
     await service.selectArchiveFile(descriptor);
-    service.resetArchivesProject();
+    service.resetSubject();
 
-    expect(service.project.isReady).toBe(true);
-    expect(service.project.value).toBeNull();
-    expect(service.selectedFile).toBeNull();
+    expect(service.subject.isReady).toBe(true);
+    expect(service.subject.value).toBeNull();
+    expect(service.selectedEntry).toBeNull();
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
   });
 
@@ -164,7 +162,7 @@ describe("ArchivesService file selection", () => {
     const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
     setMockInvokeResponses({
-      ["plugin:archives|close_project"]: () => {
+      ["plugin:archives|close_subject"]: () => {
         throw new Error("archive is busy");
       },
     });
@@ -173,8 +171,8 @@ describe("ArchivesService file selection", () => {
 
     await service.selectArchiveFile(descriptor);
 
-    await expect(service.closeProject()).rejects.toThrow("archive is busy");
-    expect(service.selectedFile).toStrictEqual(descriptor);
+    await expect(service.closeSubject()).rejects.toThrow("archive is busy");
+    expect(service.selectedEntry).toStrictEqual(descriptor);
   });
 });
 
@@ -185,26 +183,26 @@ describe("ArchivesService visual preview lifecycle", () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:archives|close_project"]: () => void invoked.push("plugin:archives|close_project"),
+      ["plugin:archives|close_subject"]: () => void invoked.push("plugin:archives|close_subject"),
       ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
     });
 
-    await mockArchivesService([]).closeProject();
+    await mockArchivesService([]).closeSubject();
 
-    expect(invoked).toEqual(["plugin:archives|close_project"]);
+    expect(invoked).toEqual(["plugin:archives|close_subject"]);
   });
 
   it("releases only its owned document when the application deactivates", () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
-      ["plugin:archives|close_project"]: () => void invoked.push("plugin:archives|close_project"),
+      ["plugin:archives|close_subject"]: () => void invoked.push("plugin:archives|close_subject"),
       ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
     });
 
     mockArchivesService([]).onDeactivation();
 
-    expect(invoked).toEqual(["plugin:archives|close_project"]);
+    expect(invoked).toEqual(["plugin:archives|close_subject"]);
   });
 });
 
@@ -213,13 +211,13 @@ describe("ArchivesService reachability", () => {
     const collision: XrayPathCollision = mockPathCollision();
 
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
+      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
       ["plugin:archives|list_collisions"]: [collision],
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
-    await service.openProject("C:\\game\\database");
+    await service.openVolumes("C:\\game\\database");
 
     expect(service.collisions.value ?? []).toEqual([collision]);
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions", { sessionId: expect.any(String) });
@@ -227,7 +225,7 @@ describe("ArchivesService reachability", () => {
 
   it("keeps a project browsable when reachability cannot be answered", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
+      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
       ["plugin:archives|list_collisions"]: () => {
         throw new Error("fold failed");
       },
@@ -235,24 +233,24 @@ describe("ArchivesService reachability", () => {
 
     const { service } = mockInjectedService(ArchivesService);
 
-    await service.openProject("C:\\game\\database");
+    await service.openVolumes("C:\\game\\database");
 
-    expect(service.project.value).not.toBeNull();
-    expect(service.project.error).toBeNull();
+    expect(service.subject.value).not.toBeNull();
+    expect(service.subject.error).toBeNull();
     expect(service.collisions.error?.message).toBe("fold failed");
   });
 
   it("forgets them when the project closes", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|open_project"]: mockSessionResponse(mockArchivesProject([])),
+      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
       ["plugin:archives|list_collisions"]: [mockPathCollision()],
-      ["plugin:archives|close_project"]: undefined,
+      ["plugin:archives|close_subject"]: undefined,
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
-    await service.openProject("C:\\game\\database");
-    await service.closeProject();
+    await service.openVolumes("C:\\game\\database");
+    await service.closeSubject();
 
     expect(service.collisions.value ?? []).toEqual([]);
   });

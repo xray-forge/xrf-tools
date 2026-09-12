@@ -1,11 +1,12 @@
+import { ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/bindings/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
   ArchiveProject,
-  ArchiveProjectReadPolicy,
+  ArchiveReadPolicy,
   ArchiveSharedPayload,
 } from "@/core/bindings/types/xrf-archive";
-import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { XrayAssetContainer, XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
 
 /**
  * Creates an archive read policy fixture.
@@ -13,7 +14,7 @@ import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
  * @param overrides - Field values to override.
  * @returns An archive read policy fixture.
  */
-export function mockArchiveReadPolicy(overrides: Partial<ArchiveProjectReadPolicy> = {}): ArchiveProjectReadPolicy {
+export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}): ArchiveReadPolicy {
   return {
     extensions: ["ltx", "script", "ps", "ds", "h", "hs", "s", "vs", "cmd", "xml"],
     maximumSize: 10 * 1024 * 1024,
@@ -122,4 +123,90 @@ export function mockPathCollision(overrides: Partial<XrayPathCollision> = {}): X
     unreachable: "C:/game/database/patch.db0::Textures/A.DDS",
     ...overrides,
   };
+}
+
+/**
+ * Creates a mounted-world entry fixture: one engine path, where it is read from, and what it hides.
+ *
+ * @param overrides - Field values to override.
+ * @returns A world entry fixture.
+ */
+export function mockArchiveWorldEntry(overrides: Partial<ArchiveWorldEntry> = {}): ArchiveWorldEntry {
+  return {
+    container: mockLooseContainer(),
+    name: "configs\\system.ltx",
+    shadowed: [],
+    sizeReal: 2048,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a loose-file container fixture.
+ *
+ * @param relativePath - Path below the root, defaulting to the shared config fixture.
+ * @param root - Tree the file sits in.
+ * @returns A container naming a file on disk.
+ */
+export function mockLooseContainer(
+  relativePath: string = "configs\\system.ltx",
+  root: string = "C:\\game\\gamedata"
+): XrayAssetContainer {
+  return { kind: "directory", relativePath, root };
+}
+
+/**
+ * Creates an archived-entry container fixture.
+ *
+ * @param path - Volume holding the entry.
+ * @returns A container naming an entry of a volume.
+ */
+export function mockArchivedContainer(path: string = "C:\\game\\db\\configs.db0"): XrayAssetContainer {
+  return { kind: "archive", path };
+}
+
+/**
+ * Creates a mounted-world fixture: a game folder listed as the engine would resolve it.
+ *
+ * @param files - Entries to include, or one shadowing entry when omitted.
+ * @returns A world fixture.
+ */
+export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorld {
+  const entries: Array<ArchiveWorldEntry> = files ?? [
+    mockArchiveWorldEntry({ shadowed: [mockArchivedContainer()] }),
+    mockArchiveWorldEntry({
+      container: mockArchivedContainer(),
+      name: "scripts\\actor.script",
+      sizeReal: 1024,
+    }),
+  ];
+
+  return {
+    files: entries,
+    mounts: ["C:\\game\\gamedata", "C:\\game\\db"],
+    readPolicy: mockArchiveReadPolicy(),
+    roots: { asset: null, roots: [{ mode: "auto", path: "C:\\game" }] },
+    shadowedCount: entries.filter((entry: ArchiveWorldEntry) => entry.shadowed.length).length,
+    sizeReal: entries.reduce((total: number, entry: ArchiveWorldEntry) => total + entry.sizeReal, 0),
+  };
+}
+
+/**
+ * Creates the subject fixture a volume set opens as.
+ *
+ * @param files - File descriptors to include, or the default fixtures when omitted.
+ * @returns What the explorer has open when it indexed volumes.
+ */
+export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): ArchiveSubject {
+  return { kind: "volumes", project: mockArchivesProject(files) };
+}
+
+/**
+ * Creates the subject fixture a game folder opens as.
+ *
+ * @param files - Entries to include, or the default fixtures when omitted.
+ * @returns What the explorer has open when it mounted a world.
+ */
+export function mockArchivesWorldSubject(files?: Array<ArchiveWorldEntry>): ArchiveSubject {
+  return { kind: "world", world: mockArchivesWorld(files) };
 }

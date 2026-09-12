@@ -7,8 +7,7 @@ import {
   toSearchText,
 } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveTreeItem, parseTree } from "@/core/archive";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
@@ -31,38 +30,45 @@ export function ArchivesMenu({
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
 
-  const files: Array<ArchiveFileDescriptor> = archivesService.files;
+  const files: Array<IArchiveEntry> = archivesService.entries;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
+
+  // Indexed once per listing rather than searched per activation: a filter hit and a tree row both address a file by
+  // its engine path, and a world answers with a list where a volume set answers with a map.
+  const byName: Map<string, IArchiveEntry> = useMemo(
+    () => new Map(files.map((entry: IArchiveEntry) => [entry.name, entry])),
+    [files]
+  );
 
   // Only a write holds an open back: an extraction runs outside the archive and cannot be abandoned, while a read
   // is simply superseded by the next open. Selecting is inert and never waits for anything.
   const isWriting: boolean = archivesService.isWriting;
 
-  const onOpenDescriptor = useCallback(
-    (descriptor: ArchiveFileDescriptor) => {
+  const onOpenEntry = useCallback(
+    (entry: IArchiveEntry) => {
       if (isWriting) {
         return;
       }
 
       // Opened from the filter rather than from the tree, so the tree is told where the user landed. Written on
       // the request, not derived from what came back, so a failed read leaves the row selected to retry.
-      reveal(toFileItemId(descriptor.name));
+      reveal(toFileItemId(entry.name));
 
-      void archivesService.selectArchiveFile(descriptor);
+      void archivesService.selectArchiveFile(entry);
     },
     [archivesService, isWriting, reveal]
   );
 
-  const search: IUseRankedSearch<ArchiveFileDescriptor> = useRankedSearch({
+  const search: IUseRankedSearch<IArchiveEntry> = useRankedSearch({
     items: files,
     toSearchText,
-    onSelect: onOpenDescriptor,
+    onSelect: onOpenEntry,
   });
 
   const rows: Array<IEditorSearchResultRow> = useMemo(
     () =>
-      search.results.map((result: ISearchResult<ArchiveFileDescriptor>) => {
+      search.results.map((result: ISearchResult<IArchiveEntry>) => {
         const { name, directory } = splitLogicalPath(result.item.name);
 
         return { id: result.item.name, label: name, description: directory ?? undefined };
@@ -72,19 +78,19 @@ export function ArchivesMenu({
 
   const onOpenPath = useCallback(
     (path: string) => {
-      const descriptor: Optional<ArchiveFileDescriptor> = archivesService.project.value?.files[path];
+      const entry: Optional<IArchiveEntry> = byName.get(path);
 
-      if (descriptor) {
-        onOpenDescriptor(descriptor);
+      if (entry) {
+        onOpenEntry(entry);
       }
     },
-    [archivesService, onOpenDescriptor]
+    [byName, onOpenEntry]
   );
 
-  const onSelectItem = useCallback((item: ITreeNode<ArchiveFileDescriptor>) => tree.select(item.id), [tree]);
+  const onSelectItem = useCallback((item: ITreeNode<IArchiveEntry>) => tree.select(item.id), [tree]);
 
   const onActivateItem = useCallback(
-    (item: ITreeNode<ArchiveFileDescriptor>) => {
+    (item: ITreeNode<IArchiveEntry>) => {
       if (isWriting) {
         return;
       }
@@ -100,7 +106,7 @@ export function ArchivesMenu({
 
       const directoryPath: Nullable<string> = getDirectoryItemPath(itemId);
 
-      // The synthetic root node stands for the whole archive, which the backend spells as an empty prefix rather than a
+      // The synthetic root node stands for the whole tree, which the backend spells as an empty prefix rather than a
       // literal path - which is what `getDirectoryItemPath` answers for it.
       if (directoryPath !== null) {
         archivesService.selectArchiveDirectory(directoryPath);
@@ -140,7 +146,7 @@ export function ArchivesMenu({
           onSelect={(row) => onOpenPath(row.id)}
         />
       ) : items.length ? (
-        <VirtualizedTree<ArchiveFileDescriptor>
+        <VirtualizedTree<IArchiveEntry>
           ariaLabel={"Archive files"}
           icons={ARCHIVE_TREE_ICONS}
           items={items}

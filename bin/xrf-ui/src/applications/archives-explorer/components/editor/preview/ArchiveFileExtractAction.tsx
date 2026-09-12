@@ -4,7 +4,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { IArchiveEntry } from "@/core/archive";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -13,17 +13,17 @@ import { getFileExtension } from "@/lib/path/extension";
 import { Nullable } from "@/lib/types/general";
 
 export interface IArchiveFileExtractActionProps extends BaseComponentProps {
-  descriptor: ArchiveFileDescriptor;
+  entry: IArchiveEntry;
 }
 
 /**
- * Writes the selected archived file out to disk.
+ * Writes the selected file out to disk, whichever tree the explorer has open.
  */
 export function ArchiveFileExtractAction({
   "data-testid": dataTestId,
   id,
   className,
-  descriptor,
+  entry,
 }: IArchiveFileExtractActionProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
@@ -32,10 +32,10 @@ export function ArchiveFileExtractAction({
   const isExtracting: boolean = archivesService.operation.isLoading;
 
   const onExtract = useCallback(async () => {
-    // The archived name is a full logical path; only its leaf is a file name.
-    const suggested: string = splitLogicalPath(descriptor.name).name;
+    // The engine name is a full logical path; only its leaf is a file name.
+    const suggested: string = splitLogicalPath(entry.name).name;
 
-    const extension: string = getFileExtension(descriptor.name);
+    const extension: string = getFileExtension(entry.name);
     const destination: Nullable<string> = await dialog.save({
       title: "Extract file",
       defaultPath: suggested,
@@ -47,12 +47,12 @@ export function ArchiveFileExtractAction({
     }
 
     try {
-      await archivesService.extractFile(descriptor, destination);
+      await archivesService.extractFile(entry, destination);
     } catch (error) {
       // Published on the service as the extraction failure, which the header reports. Logged for the stack.
       log.error("Failed to extract archive file:", error);
     }
-  }, [archivesService, descriptor, log]);
+  }, [archivesService, entry, log]);
 
   return (
     <EditorIconAction

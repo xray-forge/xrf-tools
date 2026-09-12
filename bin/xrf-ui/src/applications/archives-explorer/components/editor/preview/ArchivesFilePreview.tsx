@@ -3,8 +3,15 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivePreviewSupport, getArchivePreviewSupport, TArchiveContent, TArchiveSelection } from "@/core/archive";
-import { ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import {
+  ArchivePreviewSupport,
+  getArchivePreviewSupport,
+  getSubjectReadPolicy,
+  IArchiveEntry,
+  TArchiveContent,
+  TArchiveSelection,
+} from "@/core/archive";
+import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -36,7 +43,7 @@ export function ArchivesFilePreview({
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const selection: TArchiveSelection = archivesService.selection;
-  const project: Nullable<ArchiveProject> = archivesService.project.value;
+  const policy: Nullable<ArchiveReadPolicy> = getSubjectReadPolicy(archivesService.subject.value);
   const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
   const onGetUnsupportedDescription = useCallback((support: TUnsupported): string => {
@@ -49,7 +56,7 @@ export function ArchivesFilePreview({
       case "too-large":
         return (
           `This file exceeds the ${formatBytes(support.maximumSize)} preview limit. ` +
-          "Its archive metadata is still available in Details."
+          "Its metadata is still available in Details."
         );
     }
   }, []);
@@ -59,23 +66,22 @@ export function ArchivesFilePreview({
     return <ArchiveDirectoryContent path={selection.path} />;
   }
 
-  const descriptor: Nullable<ArchiveFileDescriptor> =
-    selection.kind === EPathEntryKind.FILE ? selection.descriptor : null;
+  const entry: Nullable<IArchiveEntry> = selection.kind === EPathEntryKind.FILE ? selection.entry : null;
 
-  if (!descriptor || !project) {
+  if (!entry || !policy) {
     return (
       <EmptyState
         title={"Select a file to preview"}
         description={
-          project
-            ? `Supported text files up to ${formatBytes(project.readPolicy.maximumSize)} can be displayed.`
+          policy
+            ? `Supported text files up to ${formatBytes(policy.maximumSize)} can be displayed.`
             : "Supported text files can be displayed."
         }
       />
     );
   }
 
-  const support: ArchivePreviewSupport = getArchivePreviewSupport(descriptor, project.readPolicy);
+  const support: ArchivePreviewSupport = getArchivePreviewSupport(entry, policy);
 
   return (
     <Box
@@ -84,7 +90,7 @@ export function ArchivesFilePreview({
       className={className}
       sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
     >
-      <ArchiveFileHeader descriptor={descriptor} />
+      <ArchiveFileHeader entry={entry} />
 
       <Box
         sx={{
@@ -102,7 +108,7 @@ export function ArchivesFilePreview({
             case "audio":
               return <ArchiveAudioPreview />;
             case "model":
-              return <ArchiveModelPreview name={descriptor.name} />;
+              return <ArchiveModelPreview name={entry.name} />;
           }
 
           if (support.kind !== "supported") {

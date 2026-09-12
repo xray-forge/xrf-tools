@@ -3,11 +3,14 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
-  createArchiveRoots,
+  EArchiveSubject,
   getArchivePreviewSupport,
+  getSubjectReadPolicy,
+  getSubjectRoots,
+  IArchiveEntry,
   isArchiveAudio,
   isArchiveImage,
-  listArchiveFiles,
+  listSubjectEntries,
   TArchiveContent,
   TArchiveOperation,
   TArchiveSelection,
@@ -15,8 +18,8 @@ import {
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
-import { EJobKind, SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
+import { ArchiveSubject, ArchiveWorldEntry, EJobKind, SessionId, SessionSnapshot } from "@/core/bindings/types/xrf-app";
+import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
@@ -36,7 +39,7 @@ import { Nullable } from "@/lib/types/general";
 export class ArchivesService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(archivesCommands.closeProject);
+  private readonly session: Session = new Session(archivesCommands.closeSubject);
 
   /** The extraction this service started, while it runs. */
   @Observable()
@@ -47,20 +50,21 @@ export class ArchivesService {
     return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_EXTRACT);
   }
 
-  /** Idle until restoration settles; a closed project is ready with no value. */
+  /** Idle until restoration settles; a closed explorer is ready with no value. */
   @Observable()
-  private projectState: AsyncState<SessionSnapshot<ArchiveProject>> = AsyncState.idle();
+  private subjectState: AsyncState<SessionSnapshot<ArchiveSubject>> = AsyncState.idle();
 
+  /** What the explorer is browsing: a volume set, or a mounted world. */
   @Computed()
-  public get project(): AsyncState<ArchiveProject> {
-    return this.projectState.map((snapshot) => snapshot.value);
+  public get subject(): AsyncState<ArchiveSubject> {
+    return this.subjectState.map((snapshot) => snapshot.value);
   }
 
-  /** Entries the open volume set holds that no engine lookup can reach. */
+  /** Entries the open subject holds that no engine lookup can reach. */
   @Observable()
   public collisions: AsyncState<Array<XrayPathCollision>> = AsyncState.idle([]);
 
-  /** Payloads several entries of the open volume set read at once. */
+  /** Payloads several entries of the open volume set read at once. Empty for a world, which has no name table. */
   @Observable()
   public sharedPayloads: AsyncState<Array<ArchiveSharedPayload>> = AsyncState.idle([]);
 
@@ -77,23 +81,60 @@ export class ArchivesService {
   public operation: AsyncState<TArchiveOperation> = AsyncState.idle();
 
   /**
-   * @returns Descriptors of the entries that are files, empty when no project is open.
+   * @returns The files the open subject holds, empty when nothing is open.
    */
   @Computed()
-  public get files(): Array<ArchiveFileDescriptor> {
-    return listArchiveFiles(this.project.value);
+  public get entries(): Array<IArchiveEntry> {
+    return listSubjectEntries(this.subject.value);
   }
 
   /**
-   * @returns The selected file descriptor, or null.
+   * @returns The selected entry, or null.
    */
   @Computed()
-  public get selectedFile(): Nullable<ArchiveFileDescriptor> {
-    return this.selection.kind === EPathEntryKind.FILE ? this.selection.descriptor : null;
+  public get selectedEntry(): Nullable<IArchiveEntry> {
+    return this.selection.kind === EPathEntryKind.FILE ? this.selection.entry : null;
   }
 
   /**
-   * @returns The archive-relative directory path, with an empty string for the archive root, or null.
+   * The name-table descriptor of the selected entry, which only a volume set has.
+   *
+   * Looked up rather than carried on the selection: a selection is the one shape both subjects share, and widening it
+   * to a union would make every surface that only shows a name narrow it first.
+   *
+   * @returns The descriptor, or null when a world is open or nothing is selected.
+   */
+  @Computed()
+  public get selectedDescriptor(): Nullable<ArchiveFileDescriptor> {
+    const subject: Nullable<ArchiveSubject> = this.subject.value;
+    const entry: Nullable<IArchiveEntry> = this.selectedEntry;
+
+    if (!entry || subject?.kind !== EArchiveSubject.VOLUMES) {
+      return null;
+    }
+
+    return subject.project.files[entry.name] ?? null;
+  }
+
+  /**
+   * The mounted-world entry selected, which carries where its bytes are and what it hides.
+   *
+   * @returns The entry, or null when a volume set is open or nothing is selected.
+   */
+  @Computed()
+  public get selectedWorldEntry(): Nullable<ArchiveWorldEntry> {
+    const subject: Nullable<ArchiveSubject> = this.subject.value;
+    const entry: Nullable<IArchiveEntry> = this.selectedEntry;
+
+    if (!entry || subject?.kind !== EArchiveSubject.WORLD) {
+      return null;
+    }
+
+    return subject.world.files.find((candidate: ArchiveWorldEntry) => candidate.name === entry.name) ?? null;
+  }
+
+  /**
+   * @returns The engine directory path, with an empty string for the tree root, or null.
    */
   @Computed()
   public get selectedDirectory(): Nullable<string> {
@@ -125,7 +166,7 @@ export class ArchivesService {
     this.log.info("Deprovisioning:", provisionId);
   }
 
-  /** Releases this editor's archive session; visual previews own their model sessions separately. */
+  /** Releases this editor's subject; visual previews own their model sessions separately. */
   @OnDeactivation()
   public onDeactivation(): void {
     this.log.info("Deactivating, release");
@@ -136,143 +177,79 @@ export class ArchivesService {
   /**
    * Restores the committed session without superseding a user action in the same flow.
    */
-  @ExclusiveFlow("project")
+  @ExclusiveFlow("subject")
   private *restore(): TFlow {
     this.log.info("Restoring");
 
     try {
-      const existing: Nullable<SessionSnapshot<ArchiveProject>> = yield* call(archivesCommands.getProject());
+      const existing: Nullable<SessionSnapshot<ArchiveSubject>> = yield* call(archivesCommands.getSubject());
 
-      this.log.info(existing ? "Existing archives project detected" : "No existing archives project");
+      this.log.info(existing ? `Existing archives ${existing.value.kind} detected` : "No existing archives subject");
 
       this.session.adopt(existing);
-      this.projectState = this.projectState.asReady(existing);
+      this.subjectState = this.subjectState.asReady(existing);
 
       if (existing) {
-        yield* this.loadCollisions();
-        yield* this.loadSharedPayloads();
+        yield* this.loadPanels();
       }
     } catch (error: unknown) {
-      this.log.error("Failed to restore archives project:", error);
+      this.log.error("Failed to restore archives subject:", error);
 
-      this.projectState = this.projectState.asFailed(transformError(error));
+      this.subjectState = this.subjectState.asFailed(transformError(error));
     }
   }
 
-  @LatestFlow("project")
-  public *openProject(path: string): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Opening archives project:", path);
-
-    try {
-      this.clearFileSelection();
-
-      this.projectState = this.projectState.asLoading();
-      this.collisions = this.collisions.asIdle([]);
-      this.sharedPayloads = this.sharedPayloads.asIdle([]);
-
-      const response: SessionSnapshot<ArchiveProject> = yield* call(
-        this.session.open(archivesCommands.openProject, path)
-      );
-
-      this.log.info("Archives project opened in:", formatDuration(timer.elapsed()));
-
-      this.projectState = this.projectState.asReady(response);
-
-      yield* this.loadCollisions();
-      yield* this.loadSharedPayloads();
-    } catch (error: unknown) {
-      this.log.error("Failed to open archives project after:", formatDuration(timer.elapsed()), error);
-
-      this.projectState = this.projectState.asFailed(transformError(error));
-
-      emitNotification(this.eventBus, {
-        details: `${path}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title: "Could not open archives project",
-      });
-    }
+  /**
+   * Opens a set of `.db` volumes at a path: one volume, or every volume beneath a directory.
+   *
+   * @param path - Volume or directory of volumes to index.
+   */
+  @LatestFlow("subject")
+  public *openVolumes(path: string): TFlow {
+    yield* this.open("archive volumes", path, "Could not open archive volumes", () =>
+      this.session.open(archivesCommands.openVolumes, path)
+    );
   }
 
-  @LatestFlow("project")
-  public *closeProject(): TFlow {
+  /**
+   * Opens a game folder as the engine mounts it, so a loose `gamedata` tree stands in front of the archives behind it.
+   *
+   * @param roots - Where to read from, as the open form named it.
+   */
+  @LatestFlow("subject")
+  public *openWorld(roots: XrayRoots): TFlow {
+    yield* this.open("archive world", roots.roots[0]?.path ?? "", "Could not open game folder", () =>
+      this.session.open(archivesCommands.openWorld, roots)
+    );
+  }
+
+  @LatestFlow("subject")
+  public *closeSubject(): TFlow {
     const timer: Timer = new Timer();
 
-    this.log.info("Closing existing archives project");
+    this.log.info("Closing existing archives subject");
 
     try {
       yield* call(this.session.close());
 
-      this.log.info("Archives project closed in:", formatDuration(timer.elapsed()));
+      this.log.info("Archives subject closed in:", formatDuration(timer.elapsed()));
 
-      this.clearFileSelection();
-      this.projectState = this.projectState.asReady(null);
-      this.collisions = this.collisions.asIdle([]);
-      this.sharedPayloads = this.sharedPayloads.asIdle([]);
+      this.resetSubject();
     } catch (error: unknown) {
-      this.log.error("Failed to close archives project after:", formatDuration(timer.elapsed()), error);
+      this.log.error("Failed to close archives subject after:", formatDuration(timer.elapsed()), error);
 
       throw transformError(error);
     }
   }
 
-  /**
-   * Loads what the open volume set cannot reach, inside whichever flow opened it.
-   *
-   * Undecorated on purpose: it belongs to the open that asked for it, so a superseding open cancels this with the rest
-   * of its own work instead of racing it from a lane of its own.
-   */
-  private *loadCollisions(): TFlow {
-    try {
-      this.collisions = this.collisions.asLoading([]);
-
-      const collisions: Array<XrayPathCollision> = yield* call(
-        archivesCommands.listCollisions(requireSessionId(this.projectState.value))
-      );
-
-      this.log.info("Archives project unreachable entries:", collisions.length);
-
-      this.collisions = this.collisions.asReady(collisions);
-    } catch (error: unknown) {
-      this.log.error("Failed to list archives project collisions:", error);
-
-      this.collisions = this.collisions.asFailed(transformError(error), []);
-    }
-  }
-
-  /**
-   * Loads which entries of the open volume set read the same bytes, inside whichever flow opened it.
-   *
-   * Undecorated for the same reason as the collisions: it belongs to the open that asked for it.
-   */
-  private *loadSharedPayloads(): TFlow {
-    try {
-      this.sharedPayloads = this.sharedPayloads.asLoading([]);
-
-      const payloads: Array<ArchiveSharedPayload> = yield* call(
-        archivesCommands.listSharedPayloads(requireSessionId(this.projectState.value))
-      );
-
-      this.log.info("Archives project shared payloads:", payloads.length);
-
-      this.sharedPayloads = this.sharedPayloads.asReady(payloads);
-    } catch (error: unknown) {
-      this.log.error("Failed to list archives project shared payloads:", error);
-
-      this.sharedPayloads = this.sharedPayloads.asFailed(transformError(error), []);
-    }
-  }
-
   @LatestFlow("content")
-  public *selectArchiveFile(descriptor: ArchiveFileDescriptor): TFlow {
-    this.log.info("Select archive file:", descriptor);
+  public *selectArchiveFile(entry: IArchiveEntry): TFlow {
+    this.log.info("Select archive file:", entry.name);
 
-    this.selection = { kind: EPathEntryKind.FILE, descriptor };
+    this.selection = { kind: EPathEntryKind.FILE, entry };
     this.content = this.content.asIdle();
 
-    yield* this.loadSelectedContent(descriptor);
+    yield* this.loadSelectedContent(entry);
   }
 
   /**
@@ -291,19 +268,19 @@ export class ArchivesService {
   }
 
   @BoundAction()
-  public resetArchivesProject(): void {
-    this.log.info("Reset archives project");
+  public resetSubject(): void {
+    this.log.info("Reset archives subject");
 
     this.clearFileSelection();
-    this.projectState = this.projectState.asReady(null);
+    this.subjectState = this.subjectState.asReady(null);
     this.collisions = this.collisions.asIdle([]);
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
   }
 
   /**
-   * Selects an archive directory instead of a file.
+   * Selects a directory instead of a file.
    *
-   * @param path - Archive-relative directory path; an empty string selects the archive root.
+   * @param path - Engine directory path; an empty string selects the tree root.
    */
   @BoundAction()
   public selectArchiveDirectory(path: string): void {
@@ -316,38 +293,36 @@ export class ArchivesService {
 
   @LatestFlow("content")
   public *retrySelectedFile(): TFlow {
-    const descriptor: Nullable<ArchiveFileDescriptor> = this.selectedFile;
+    const entry: Nullable<IArchiveEntry> = this.selectedEntry;
 
-    if (descriptor) {
-      yield* this.loadSelectedContent(descriptor);
+    if (entry) {
+      yield* this.loadSelectedContent(entry);
     }
   }
 
   /**
-   * Extracts an archived file to a destination path.
+   * Extracts one file to a destination path.
    *
-   * @param descriptor - Archived file to extract.
+   * @param entry - File to extract.
    * @param destination - Output file path.
    * @returns Resolves after the extraction outcome is published.
    */
   @ExclusiveFlow("operation")
-  public *extractFile(descriptor: ArchiveFileDescriptor, destination: string): TFlow {
+  public *extractFile(entry: IArchiveEntry, destination: string): TFlow {
     if (this.isWriting) {
       return;
     }
 
     const timer: Timer = new Timer();
 
-    this.log.info("Extracting archive file:", descriptor.name, destination);
+    this.log.info("Extracting file:", entry.name, destination);
 
     try {
       this.operation = this.operation.asLoading(null);
 
-      yield* call(
-        archivesCommands.extractFile(requireSessionId(this.projectState.value), descriptor.name, destination)
-      );
+      yield* call(archivesCommands.extractFile(this.requireSubjectSession(), entry.name, destination));
 
-      this.log.info("Archive file extracted in:", formatDuration(timer.elapsed()));
+      this.log.info("File extracted in:", formatDuration(timer.elapsed()));
 
       this.operation = this.operation.asReady({ kind: "extract-file", destination });
 
@@ -355,10 +330,10 @@ export class ArchivesService {
         details: destination,
         severity: ENotificationSeverity.SUCCESS,
         source: EApplicationId.ARCHIVES_EXPLORER,
-        title: `Extracted ${descriptor.name}`,
+        title: `Extracted ${entry.name}`,
       });
     } catch (error: unknown) {
-      this.log.error("Failed to extract archive file after:", formatDuration(timer.elapsed()), error);
+      this.log.error("Failed to extract file after:", formatDuration(timer.elapsed()), error);
 
       this.operation = this.operation.asFailed(transformError(error), null);
 
@@ -366,7 +341,7 @@ export class ArchivesService {
         details: `${destination}\n${transformError(error).message}`,
         severity: ENotificationSeverity.ERROR,
         source: EApplicationId.ARCHIVES_EXPLORER,
-        title: `Could not extract ${descriptor.name}`,
+        title: `Could not extract ${entry.name}`,
       });
 
       throw transformError(error);
@@ -374,9 +349,9 @@ export class ArchivesService {
   }
 
   /**
-   * Extracts files beneath an archive directory into a destination root. An empty prefix extracts the archive root.
+   * Extracts files beneath a directory into a destination root. An empty prefix extracts the whole tree.
    *
-   * @param prefix - Archive-relative directory prefix; an empty string selects the archive root.
+   * @param prefix - Engine directory prefix; an empty string selects the tree root.
    * @param destination - Output directory path.
    */
   @ExclusiveFlow("operation")
@@ -387,21 +362,18 @@ export class ArchivesService {
 
     const timer: Timer = new Timer();
 
-    this.log.info("Extracting archive directory:", prefix || "<root>", destination);
+    this.log.info("Extracting directory:", prefix || "<root>", destination);
 
     try {
       this.operation = this.operation.asLoading(null);
 
-      // Started through the jobs service rather than invoked here: an empty prefix extracts the whole archive, so this
-      // writes as much as an unpack does and wants the same identity, lease, and cancel control.
+      const request = { sessionId: this.requireSubjectSession(), prefix, destination };
+
+      // Started through the jobs service rather than invoked here: an empty prefix extracts everything, so this writes
+      // as much as an unpack does and wants the same identity, lease, and cancel control.
       const run: IJobRun<ArchiveExtractDirectoryResult> = this.jobsService.run<ArchiveExtractDirectoryResult>({
         kind: EJobKind.ARCHIVES_EXTRACT,
-        invoke: (id: string, progress) =>
-          archivesCommands.extractDirectory(
-            { sessionId: requireSessionId(this.projectState.value), prefix, destination },
-            id,
-            progress
-          ),
+        invoke: (id: string, progress) => archivesCommands.extractDirectory(request, id, progress),
         describe: (outcome: IJobOutcome<ArchiveExtractDirectoryResult>): IJobNotice =>
           describeExtractOutcome(prefix, destination, outcome),
       });
@@ -410,11 +382,11 @@ export class ArchivesService {
 
       const result: ArchiveExtractDirectoryResult = yield* call(run.promise);
 
-      this.log.info("Archive directory extracted in:", formatDuration(timer.elapsed()));
+      this.log.info("Directory extracted in:", formatDuration(timer.elapsed()));
 
       this.operation = this.operation.asReady({ kind: "extract-directory", result });
     } catch (error: unknown) {
-      this.log.error("Failed to extract archive directory after:", formatDuration(timer.elapsed()), error);
+      this.log.error("Failed to extract directory after:", formatDuration(timer.elapsed()), error);
 
       this.operation = this.operation.asFailed(transformError(error), null);
 
@@ -442,78 +414,179 @@ export class ArchivesService {
   }
 
   /**
+   * Opens whichever subject the form asked for, which differs only in the command it dispatches.
+   *
+   * @param what - Subject being opened, for the log line.
+   * @param path - Path the person named, for the failure notice.
+   * @param failureTitle - What to call a failure in the notification.
+   * @param dispatch - Sends the open, called once the previous subject has left the screen.
+   */
+  private *open(
+    what: string,
+    path: string,
+    failureTitle: string,
+    dispatch: () => Promise<SessionSnapshot<ArchiveSubject>>
+  ): TFlow {
+    const timer: Timer = new Timer();
+
+    this.log.info(`Opening ${what}:`, path);
+
+    try {
+      this.clearFileSelection();
+
+      this.subjectState = this.subjectState.asLoading();
+      this.collisions = this.collisions.asIdle([]);
+      this.sharedPayloads = this.sharedPayloads.asIdle([]);
+
+      this.subjectState = this.subjectState.asReady(yield* call(dispatch()));
+
+      this.log.info(`Opened ${what} in:`, formatDuration(timer.elapsed()));
+
+      yield* this.loadPanels();
+    } catch (error: unknown) {
+      this.log.error(`Failed to open ${what} after:`, formatDuration(timer.elapsed()), error);
+
+      this.subjectState = this.subjectState.asFailed(transformError(error));
+
+      emitNotification(this.eventBus, {
+        details: `${path}\n${transformError(error).message}`,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.ARCHIVES_EXPLORER,
+        title: failureTitle,
+      });
+    }
+  }
+
+  /**
+   * Loads what the side panels report about the open subject, inside whichever flow opened it.
+   *
+   * Undecorated on purpose: these belong to the open that asked for them, so a superseding open cancels them with the
+   * rest of its own work instead of racing it from a lane of its own.
+   */
+  private *loadPanels(): TFlow {
+    yield* this.loadCollisions();
+
+    // A name table only. A world derives nothing about shared payloads, so asking would answer a question it cannot
+    // see rather than answer it with an empty list.
+    if (this.subject.value?.kind === EArchiveSubject.VOLUMES) {
+      yield* this.loadSharedPayloads();
+    }
+  }
+
+  private *loadCollisions(): TFlow {
+    try {
+      this.collisions = this.collisions.asLoading([]);
+
+      const collisions: Array<XrayPathCollision> = yield* call(
+        archivesCommands.listCollisions(this.requireSubjectSession())
+      );
+
+      this.log.info("Archives unreachable entries:", collisions.length);
+
+      this.collisions = this.collisions.asReady(collisions);
+    } catch (error: unknown) {
+      this.log.error("Failed to list archives collisions:", error);
+
+      this.collisions = this.collisions.asFailed(transformError(error), []);
+    }
+  }
+
+  private *loadSharedPayloads(): TFlow {
+    try {
+      this.sharedPayloads = this.sharedPayloads.asLoading([]);
+
+      const payloads: Array<ArchiveSharedPayload> = yield* call(
+        archivesCommands.listSharedPayloads(this.requireSubjectSession())
+      );
+
+      this.log.info("Archives shared payloads:", payloads.length);
+
+      this.sharedPayloads = this.sharedPayloads.asReady(payloads);
+    } catch (error: unknown) {
+      this.log.error("Failed to list archives shared payloads:", error);
+
+      this.sharedPayloads = this.sharedPayloads.asFailed(transformError(error), []);
+    }
+  }
+
+  /**
    * Loads a selected file in its supported preview representation.
    *
-   * @param descriptor - Selected archive file to preview.
+   * @param entry - Selected file to preview.
    */
-  private *loadSelectedContent(descriptor: ArchiveFileDescriptor): TFlow {
-    const project: Nullable<SessionSnapshot<ArchiveProject>> = this.projectState.value;
+  private *loadSelectedContent(entry: IArchiveEntry): TFlow {
+    const subject: Nullable<ArchiveSubject> = this.subject.value;
+    const policy: Nullable<ArchiveReadPolicy> = getSubjectReadPolicy(subject);
 
-    if (!project) {
+    if (!subject || !policy) {
       return;
     }
 
     // todo: Switch case based on type?
-    if (isArchiveAudio(descriptor, project.value.readPolicy)) {
-      return yield* this.readContent(descriptor, "audio", project);
-    } else if (isArchiveImage(descriptor, project.value.readPolicy)) {
-      return yield* this.readContent(descriptor, "image", project);
-    } else if (getArchivePreviewSupport(descriptor, project.value.readPolicy).kind === "supported") {
-      return yield* this.readContent(descriptor, "text", project);
+    if (isArchiveAudio(entry, policy)) {
+      return yield* this.readContent(entry, "audio", subject);
+    } else if (isArchiveImage(entry, policy)) {
+      return yield* this.readContent(entry, "image", subject);
+    } else if (getArchivePreviewSupport(entry, policy).kind === "supported") {
+      return yield* this.readContent(entry, "text", subject);
     }
   }
 
   /**
    * Loads and publishes one file preview.
    *
-   * @param descriptor - Archive file to read.
+   * @param entry - File to read.
    * @param kind - Preview representation to request from the backend.
-   * @param project - Target project to read from.
+   * @param subject - Open subject the file is read out of.
    */
-  private *readContent(
-    descriptor: ArchiveFileDescriptor,
-    kind: TArchiveContent["kind"],
-    project: SessionSnapshot<ArchiveProject>
-  ): TFlow {
+  private *readContent(entry: IArchiveEntry, kind: TArchiveContent["kind"], subject: ArchiveSubject): TFlow {
     const timer: Timer = new Timer();
 
-    this.log.info("Reading archive content:", kind, descriptor.name);
+    this.log.info("Reading archive content:", kind, entry.name);
     this.content = this.content.asLoading(null);
 
     try {
       const content: TArchiveContent = yield* call(
         kind === "audio"
-          ? this.readAudioContent(descriptor, project.value)
+          ? this.readAudioContent(entry, subject)
           : kind === "image"
-            ? this.readImageContent(descriptor, project.value)
-            : archivesCommands
-                .readFile(project.sessionId, descriptor.name)
-                .then((result): TArchiveContent => ({ kind: "text", result }))
+            ? this.readImageContent(entry, subject)
+            : this.readTextContent(entry)
       );
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 
       this.content = this.content.asReady(content);
     } catch (error: unknown) {
-      this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), descriptor.name, error);
+      this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), entry.name, error);
 
       this.content = this.content.asFailed(transformError(error), null);
     }
   }
 
   /**
+   * Reads a file as the Windows-1251 text an engine surface shows.
+   *
+   * @param entry - Entry naming the file.
+   * @returns The decoded text.
+   */
+  private async readTextContent(entry: IArchiveEntry): Promise<TArchiveContent> {
+    return { kind: "text", result: await archivesCommands.readFile(this.requireSubjectSession(), entry.name) };
+  }
+
+  /**
    * Reads a sound as the description the engine would read plus the bytes the webview plays.
    *
-   * @param descriptor - Archive entry naming the sound.
-   * @param project - Open project whose tree the sound is read out of.
+   * @param entry - Entry naming the sound.
+   * @param subject - Open subject whose tree the sound is read out of.
    * @returns The sound's description and its bytes as stored.
    */
-  private async readAudioContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = createArchiveRoots(project);
+  private async readAudioContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
+    const roots: XrayRoots = getSubjectRoots(subject);
 
     const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(roots, descriptor.name),
-      assetsRawCommands.readAsset(roots, descriptor.name),
+      archivesCommands.describeAudio(roots, entry.name),
+      assetsRawCommands.readAsset(roots, entry.name),
     ]);
 
     return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
@@ -522,18 +595,23 @@ export class ArchivesService {
   /**
    * Reads a texture as its source shape plus the png the backend decoded it into.
    *
-   * @param descriptor - Archive entry naming the texture.
-   * @param project - Open project whose tree the texture is read out of.
+   * @param entry - Entry naming the texture.
+   * @param subject - Open subject whose tree the texture is read out of.
    * @returns The texture's shape and the decoded png bytes.
    */
-  private async readImageContent(descriptor: ArchiveFileDescriptor, project: ArchiveProject): Promise<TArchiveContent> {
-    const roots: XrayRoots = createArchiveRoots(project);
+  private async readImageContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
+    const roots: XrayRoots = getSubjectRoots(subject);
 
     const [texture, bytes] = await Promise.all([
-      archivesCommands.describeImage(roots, descriptor.name),
-      archivesRawCommands.readImage(roots, descriptor.name),
+      archivesCommands.describeImage(roots, entry.name),
+      archivesRawCommands.readImage(roots, entry.name),
     ]);
 
     return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };
+  }
+
+  /** The session every read and write of the open subject is addressed by. */
+  private requireSubjectSession(): SessionId {
+    return requireSessionId(this.subjectState.value);
   }
 }

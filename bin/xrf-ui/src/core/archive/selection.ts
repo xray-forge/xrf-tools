@@ -1,5 +1,6 @@
+import { IArchiveEntry } from "@/core/archive/entry";
 import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
-import { ArchiveFileDescriptor, ProjectReadResult } from "@/core/bindings/types/xrf-archive";
+import { ArchiveReadResult } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 
@@ -8,7 +9,7 @@ import { EPathEntryKind } from "@/core/path/entry-kind";
  */
 export type TArchiveSelection =
   | { kind: "none" }
-  | { kind: EPathEntryKind.FILE; descriptor: ArchiveFileDescriptor }
+  | { kind: EPathEntryKind.FILE; entry: IArchiveEntry }
   | { kind: EPathEntryKind.DIRECTORY; path: string };
 
 /**
@@ -27,7 +28,7 @@ export type TArchiveBytes = Uint8Array<ArrayBuffer>;
  * always describe the same file.
  */
 export type TArchiveContent =
-  | { kind: "text"; result: ProjectReadResult }
+  | { kind: "text"; result: ArchiveReadResult }
   | { kind: "image"; descriptor: AssetTextureDescriptor; bytes: TArchiveBytes }
   | { kind: "audio"; descriptor: AudioDescriptor; bytes: TArchiveBytes };
 

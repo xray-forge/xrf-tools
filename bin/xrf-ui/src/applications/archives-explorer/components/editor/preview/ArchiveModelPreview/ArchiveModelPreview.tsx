@@ -3,8 +3,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { createArchiveRoots } from "@/core/archive";
-import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { getSubjectRoots } from "@/core/archive";
+import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
@@ -19,7 +19,7 @@ interface IArchiveModelPreviewProps extends BaseComponentProps {
 }
 
 /**
- * Shows an archived model, read out of the volumes it sits in.
+ * Shows a model, read out of whichever tree the explorer has open.
  */
 export function ArchiveModelPreview({
   "data-testid": dataTestId = "archive-model-preview",
@@ -30,18 +30,18 @@ export function ArchiveModelPreview({
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const loadService: VisualLoadService = useInjection(VisualLoadService);
 
-  const project: Nullable<ArchiveProject> = archivesService.project.value;
+  const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const visual: AsyncState<Nullable<IOpenVisual>> = loadService.visual;
 
   const [cameraResetToken, setCameraResetToken] = useState(0);
 
   useEffect(() => {
-    if (project) {
-      void loadService.load({ kind: "asset", logicalPath: name }, createArchiveRoots(project));
+    if (subject) {
+      void loadService.load({ kind: "asset", logicalPath: name }, getSubjectRoots(subject));
     }
 
     return () => loadService.clear();
-  }, [loadService, name, project]);
+  }, [loadService, name, subject]);
 
   // Refit once the model is on screen. The scene fits its camera when the geometry lands, but this viewport mounts with
   // the selection rather than with the application, so at that moment the panel is still taking its width - and a fit
