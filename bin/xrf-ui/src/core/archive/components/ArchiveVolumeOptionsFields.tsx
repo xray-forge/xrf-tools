@@ -1,15 +1,15 @@
-import { MenuItem, TextField } from "@mui/material";
-import { ChangeEvent, ReactElement } from "react";
+import { MenuItem, Stack, TextField } from "@mui/material";
+import { ChangeEvent, ReactElement, useId } from "react";
 
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 type ArchiveVolumeOptions = Pick<ArchivePackConfig, "mode" | "volumeExtension">;
 
-interface IArchiveVolumeOptionsFieldsProps {
-  id: string;
+interface IArchiveVolumeOptionsFieldsProps extends BaseComponentProps {
   config: ArchiveVolumeOptions;
   maxVolumeSizeMegabytes: number;
   volumeSize: string;
@@ -21,7 +21,9 @@ interface IArchiveVolumeOptionsFieldsProps {
 
 /** Common write options for packed archives and patches. */
 export function ArchiveVolumeOptionsFields({
+  "data-testid": dataTestId = "archive-volume-options-fields",
   id,
+  className,
   config,
   maxVolumeSizeMegabytes,
   volumeSize,
@@ -30,15 +32,18 @@ export function ArchiveVolumeOptionsFields({
   onVolumeSizeChange,
   onChange,
 }: IArchiveVolumeOptionsFieldsProps): ReactElement {
+  const generatedId: string = useId();
+  const controlId: string = id ?? generatedId;
+
   return (
-    <>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
       <FormRow
         label={"Compression"}
         description={"Compressed packs what the engine expects compressed and stores the rest"}
-        controlId={`${id}-mode`}
+        controlId={`${controlId}-mode`}
       >
         <TextField
-          id={`${id}-mode`}
+          id={`${controlId}-mode`}
           size={"small"}
           fullWidth
           select
@@ -56,11 +61,11 @@ export function ArchiveVolumeOptionsFields({
       <FormRow
         label={"Volume size"}
         description={`Megabytes before a new volume starts, up to ${maxVolumeSizeMegabytes}`}
-        controlId={`${id}-volume-size`}
+        controlId={`${controlId}-volume-size`}
         error={volumeSizeError}
       >
         <TextField
-          id={`${id}-volume-size`}
+          id={`${controlId}-volume-size`}
           size={"small"}
           fullWidth
           type={"number"}
@@ -76,10 +81,10 @@ export function ArchiveVolumeOptionsFields({
       <FormRow
         label={"Extension"}
         description={"An xdb archive is never mistaken for an encrypted Shadow of Chernobyl one"}
-        controlId={`${id}-extension`}
+        controlId={`${controlId}-extension`}
       >
         <TextField
-          id={`${id}-extension`}
+          id={`${controlId}-extension`}
           size={"small"}
           fullWidth
           select
@@ -93,6 +98,6 @@ export function ArchiveVolumeOptionsFields({
           <MenuItem value={ARCHIVE_VOLUME_EXTENSION.Xdb}>{ARCHIVE_VOLUME_SUFFIX.Xdb}</MenuItem>
         </TextField>
       </FormRow>
-    </>
+    </Stack>
   );
 }

@@ -10,7 +10,7 @@ import {
   IArchiveEntry,
   TArchiveContent,
   TArchiveSelection,
-} from "@/core/archive";
+} from "@/core/archive/lib";
 import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

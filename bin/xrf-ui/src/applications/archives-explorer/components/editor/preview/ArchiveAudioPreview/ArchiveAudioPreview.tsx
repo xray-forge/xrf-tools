@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 import { formatAudioChannels } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview/ArchiveAudioPreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive";
+import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";

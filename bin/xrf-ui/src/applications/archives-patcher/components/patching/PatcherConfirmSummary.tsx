@@ -1,8 +1,9 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ArchivePathText, ArchiveSummaryRow, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/volume-options";
+import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
+import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
 import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";

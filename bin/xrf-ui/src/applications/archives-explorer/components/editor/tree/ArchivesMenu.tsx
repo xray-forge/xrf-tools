@@ -8,7 +8,7 @@ import {
   toSearchText,
 } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive";
+import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive/lib";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

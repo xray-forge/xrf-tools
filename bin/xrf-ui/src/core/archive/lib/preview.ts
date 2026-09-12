@@ -1,4 +1,4 @@
-import { IArchiveEntry } from "@/core/archive/entry";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { getFileExtension } from "@/lib/path/extension";
 

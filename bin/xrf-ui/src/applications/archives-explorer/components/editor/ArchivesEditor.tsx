@@ -11,7 +11,7 @@ import {
   getSubjectShadowedCount,
   getSubjectSize,
   getSubjectSourceCount,
-} from "@/core/archive";
+} from "@/core/archive/lib";
 import { describeAssetContainer } from "@/core/assets/lib";
 import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
 import { ArchiveDescriptor } from "@/core/bindings/types/xrf-archive";

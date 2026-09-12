@@ -2,8 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { EArchiveSubject, IArchiveEntry } from "@/core/archive";
-import { getArchiveVolumeOf } from "@/core/archive/files";
+import { EArchiveSubject, getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
 import { ArchiveSubject, ArchiveWorldEntry } from "@/core/bindings/types/xrf-app";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
 import {

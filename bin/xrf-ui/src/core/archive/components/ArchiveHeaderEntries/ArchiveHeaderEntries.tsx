@@ -2,12 +2,13 @@ import { default as AddIcon } from "@mui/icons-material/Add";
 import { Stack, TextField, Typography } from "@mui/material";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { readHeaderEntries, RESERVED_HEADER_KEYS, writeHeaderValue } from "@/core/archive";
+import { readHeaderEntries, RESERVED_HEADER_KEYS, writeHeaderValue } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditableListItem, FormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IArchiveHeaderEntriesProps {
+interface IArchiveHeaderEntriesProps extends BaseComponentProps {
   header: Nullable<string>;
   isDisabled?: boolean;
   onChange: (header: Nullable<string>) => void;
@@ -16,7 +17,14 @@ interface IArchiveHeaderEntriesProps {
 /**
  * Custom header values and the draft used to append a key without replacing an existing one.
  */
-export function ArchiveHeaderEntries({ header, isDisabled, onChange }: IArchiveHeaderEntriesProps): ReactElement {
+export function ArchiveHeaderEntries({
+  "data-testid": dataTestId = "archive-header-entries",
+  id,
+  className,
+  header,
+  isDisabled,
+  onChange,
+}: IArchiveHeaderEntriesProps): ReactElement {
   const [newKey, setNewKey] = useState<string>("");
   const [newValue, setNewValue] = useState<string>("");
 
@@ -39,7 +47,14 @@ export function ArchiveHeaderEntries({ header, isDisabled, onChange }: IArchiveH
   }, [header, isDisabled, isDuplicateKey, newValue, onChange, trimmedKey]);
 
   return (
-    <FormRow label={"Other header values"} description={"Carried into the archive as they are"} error={keyError}>
+    <FormRow
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      label={"Other header values"}
+      description={"Carried into the archive as they are"}
+      error={keyError}
+    >
       <Stack spacing={1}>
         {customEntries.length ? (
           customEntries.map(([key, value]) => (

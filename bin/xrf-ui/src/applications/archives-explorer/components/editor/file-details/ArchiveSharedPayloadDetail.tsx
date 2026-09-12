@@ -1,6 +1,6 @@
 import { ReactElement, useMemo } from "react";
 
-import { listPayloadSharersOf } from "@/core/archive/files";
+import { listPayloadSharersOf } from "@/core/archive/lib";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { AsyncState } from "@/lib/async-state";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { findSharedPayloadOf, listPayloadSharersOf } from "@/core/archive/files";
+import { findSharedPayloadOf, listPayloadSharersOf } from "@/core/archive/lib/files";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchiveSharedPayload } from "@/fixtures/mocks/archive.mocks";
 

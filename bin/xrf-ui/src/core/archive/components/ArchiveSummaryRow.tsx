@@ -1,15 +1,30 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-interface IArchiveSummaryRowProps {
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+interface IArchiveSummaryRowProps extends BaseComponentProps {
   label: string;
   children: ReactNode;
 }
 
 /** One labelled line of a summary, with the labels in a column of their own. */
-export function ArchiveSummaryRow({ label, children }: IArchiveSummaryRowProps): ReactElement {
+export function ArchiveSummaryRow({
+  "data-testid": dataTestId = "archive-summary-row",
+  id,
+  className,
+  label,
+  children,
+}: IArchiveSummaryRowProps): ReactElement {
   return (
-    <Stack direction={"row"} spacing={2} sx={{ alignItems: "baseline" }}>
+    <Stack
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      direction={"row"}
+      spacing={2}
+      sx={{ alignItems: "baseline" }}
+    >
       <Typography variant={"caption"} sx={{ width: 116, flexShrink: 0, color: "text.secondary" }}>
         {label}
       </Typography>

@@ -1,5 +1,4 @@
-import { DEFAULT_ENTRY_POINT } from "@/core/archive";
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION } from "@/core/archive/volume-options";
+import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, DEFAULT_ENTRY_POINT } from "@/core/archive/lib";
 import { ArchivePackConfig, ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 

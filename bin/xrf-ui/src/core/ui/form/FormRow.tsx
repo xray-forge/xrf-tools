@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** Attributes that associate a control or group with its row's label and visible messages. */
@@ -11,7 +12,7 @@ export interface IFormRowControlProps {
   id: string;
 }
 
-interface IFormRowProps {
+interface IFormRowProps extends BaseComponentProps {
   label: string;
   description?: string;
   isRequired?: boolean;
@@ -39,6 +40,9 @@ interface IFormRowProps {
  * One labelled row of a form.
  */
 export function FormRow({
+  "data-testid": dataTestId = "form-row",
+  id,
+  className,
   label,
   description,
   isRequired = true,
@@ -85,6 +89,9 @@ export function FormRow({
 
   return (
     <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       sx={
         isInline
           ? { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }

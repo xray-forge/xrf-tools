@@ -1,6 +1,6 @@
-import { IArchiveEntry } from "@/core/archive/entry";
-import { listArchiveFiles } from "@/core/archive/files";
-import { createArchiveRoots } from "@/core/archive/roots";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { listArchiveFiles } from "@/core/archive/lib/files";
+import { createArchiveRoots } from "@/core/archive/lib/roots";
 import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
 import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";

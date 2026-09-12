@@ -2,7 +2,7 @@ import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 
-import { IArchiveEntry } from "@/core/archive";
+import { IArchiveEntry } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
 import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
 import { ITreeNode } from "@/core/ui/tree/tree-node";

@@ -1,4 +1,4 @@
-import { IArchiveEntry } from "@/core/archive/entry";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
 import { ArchiveReadResult } from "@/core/bindings/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { renderHook } from "@testing-library/react";
 
-import { useLastContent } from "@/core/archive/use-last-content";
+import { useLastContent } from "@/core/archive/lib/use-last-content";
 import { Nullable } from "@/lib/types/general";
 
 interface IRenderProps {

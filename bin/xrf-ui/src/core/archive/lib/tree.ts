@@ -1,4 +1,4 @@
-import { IArchiveEntry } from "@/core/archive/entry";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { IPathDirectoryTreeItem, IPathFileTreeItem, IPathTreeItem, parsePathTree } from "@/core/ui/tree/path-tree";
 
 /**

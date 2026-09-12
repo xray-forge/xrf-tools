@@ -1,8 +1,8 @@
 import { Alert, Stack } from "@mui/material";
 import { ReactElement } from "react";
 
-import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive";
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
+import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
 import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

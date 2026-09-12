@@ -4,7 +4,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveEntry } from "@/core/archive";
+import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";

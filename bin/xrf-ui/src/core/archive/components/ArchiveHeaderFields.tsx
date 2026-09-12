@@ -1,5 +1,5 @@
-import { Switch, TextField } from "@mui/material";
-import { ChangeEvent, ReactElement } from "react";
+import { Stack, Switch, TextField } from "@mui/material";
+import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ArchiveHeaderEntries } from "@/core/archive/components/ArchiveHeaderEntries";
 import {
@@ -10,12 +10,12 @@ import {
   readHeaderValue,
   writeHeaderFlag,
   writeHeaderValue,
-} from "@/core/archive/header";
+} from "@/core/archive/lib";
 import { FormRow } from "@/core/ui/form";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-interface IArchiveHeaderFieldsProps {
-  id: string;
+interface IArchiveHeaderFieldsProps extends BaseComponentProps {
   header: Nullable<string>;
   entryPointDescription: string;
   isDisabled?: boolean;
@@ -24,20 +24,24 @@ interface IArchiveHeaderFieldsProps {
 
 /** Edits archive mounting and custom header entries without changing unrelated header values. */
 export function ArchiveHeaderFields({
+  "data-testid": dataTestId = "archive-header-fields",
   id,
+  className,
   header,
   entryPointDescription,
   isDisabled,
   onChange,
 }: IArchiveHeaderFieldsProps): ReactElement {
+  const generatedId: string = useId();
+  const controlId: string = id ?? generatedId;
   const entryPoint: Nullable<string> = readHeaderValue(header, HEADER_ENTRY_POINT);
   const isAutoLoad: boolean = readHeaderFlag(header, HEADER_AUTO_LOAD);
 
   return (
-    <>
-      <FormRow label={"Entry point"} description={entryPointDescription} controlId={`${id}-entry-point`}>
+    <Stack data-testid={dataTestId} id={id} className={className} spacing={2}>
+      <FormRow label={"Entry point"} description={entryPointDescription} controlId={`${controlId}-entry-point`}>
         <TextField
-          id={`${id}-entry-point`}
+          id={`${controlId}-entry-point`}
           size={"small"}
           fullWidth
           disabled={isDisabled}
@@ -52,11 +56,11 @@ export function ArchiveHeaderFields({
       <FormRow
         label={"Mount at startup"}
         description={"Whether the engine loads these volumes on its own"}
-        controlId={`${id}-auto-load`}
+        controlId={`${controlId}-auto-load`}
         isInline={true}
       >
         <Switch
-          id={`${id}-auto-load`}
+          id={`${controlId}-auto-load`}
           size={"small"}
           checked={isAutoLoad}
           disabled={isDisabled}
@@ -68,6 +72,6 @@ export function ArchiveHeaderFields({
       </FormRow>
 
       <ArchiveHeaderEntries header={header} isDisabled={isDisabled} onChange={onChange} />
-    </>
+    </Stack>
   );
 }

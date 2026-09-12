@@ -2,7 +2,7 @@ import { default as DescriptionOutlinedIcon } from "@mui/icons-material/Descript
 import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { IArchiveEntry } from "@/core/archive";
+import { IArchiveEntry } from "@/core/archive/lib";
 import { MONOSPACE } from "@/core/theme";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";

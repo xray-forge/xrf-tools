@@ -6,7 +6,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive";
+import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive/lib";
 import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";

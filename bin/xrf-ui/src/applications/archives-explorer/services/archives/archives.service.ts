@@ -14,7 +14,7 @@ import {
   TArchiveContent,
   TArchiveOperation,
   TArchiveSelection,
-} from "@/core/archive";
+} from "@/core/archive/lib";
 import { archivesCommands } from "@/core/bindings/commands/archives";
 import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
 import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
