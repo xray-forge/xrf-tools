@@ -12,15 +12,17 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { AsyncState } from "@/lib/async-state";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
-
-/** One texture is previewed at a time, so its url lives under a fixed key and displaces the last one. */
-const ARCHIVE_IMAGE_ASSET_KEY: string = "archive-image";
 
 /**
  * Shows an archived texture the backend decoded into a PNG.
  */
-export function ArchiveImagePreview(): ReactElement {
+export function ArchiveImagePreview({
+  "data-testid": dataTestId = "archive-image-preview",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
@@ -35,22 +37,41 @@ export function ArchiveImagePreview(): ReactElement {
   const shape: Nullable<AssetTextureShape> = image?.descriptor.shape ?? null;
   const bytes: Nullable<TArchiveBytes> = image?.bytes ?? null;
 
-  const url: Nullable<string> = useAssetUrl(ARCHIVE_IMAGE_ASSET_KEY, bytes, "image/png");
+  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-image`, bytes, "image/png");
 
   if (content.error) {
-    return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
+    return (
+      <ArchivePreviewError
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        error={content.error}
+        onRetry={archivesService.retrySelectedFile}
+      />
+    );
   }
 
   if (!shape || !url) {
     return content.isLoading ? (
-      <DelayedProgress />
+      <DelayedProgress data-testid={dataTestId} id={id} className={className} />
     ) : (
-      <EmptyState title={"Preview unavailable"} description={"This texture could not be decoded."} />
+      <EmptyState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Preview unavailable"}
+        description={"This texture could not be decoded."}
+      />
     );
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
+    >
       <ImageViewport
         alt={archivesService.selectedFile?.name ?? "Texture"}
         src={url}

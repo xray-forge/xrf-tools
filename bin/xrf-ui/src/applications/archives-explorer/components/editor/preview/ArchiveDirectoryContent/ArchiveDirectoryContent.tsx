@@ -12,11 +12,12 @@ import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
 import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { AsyncState } from "@/lib/async-state";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
-interface IArchiveDirectoryContentProps {
+interface IArchiveDirectoryContentProps extends BaseComponentProps {
   path: string;
 }
 
@@ -27,7 +28,12 @@ interface IArchiveDirectoryContentProps {
  * much data - and offers the command. The counts are computed here rather than taken from the tree
  * because the tree only knows its own shape, while the totals people care about are recursive.
  */
-export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps): ReactElement {
+export function ArchiveDirectoryContent({
+  "data-testid": dataTestId = "archive-directory-content",
+  id,
+  className,
+  path,
+}: IArchiveDirectoryContentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const archivesService: ArchivesService = useInjection(ArchivesService);
@@ -72,7 +78,7 @@ export function ArchiveDirectoryContent({ path }: IArchiveDirectoryContentProps)
   }, [archivesService, log, path]);
 
   return (
-    <CenteredColumn sx={{ padding: 3, gap: 1 }}>
+    <CenteredColumn data-testid={dataTestId} id={id} className={className} sx={{ padding: 3, gap: 1 }}>
       <FolderOpenIcon sx={{ color: "text.secondary" }} />
 
       <Typography variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily, overflowWrap: "anywhere" }}>

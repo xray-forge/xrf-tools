@@ -10,9 +10,15 @@ interface IArchivePreviewErrorProps extends BaseComponentProps {
   onRetry: () => void;
 }
 
-export function ArchivePreviewError({ error, onRetry }: IArchivePreviewErrorProps): ReactElement {
+export function ArchivePreviewError({
+  "data-testid": dataTestId,
+  id,
+  className,
+  error,
+  onRetry,
+}: IArchivePreviewErrorProps): ReactElement {
   return (
-    <CenteredColumn sx={{ padding: 3, textAlign: "center" }}>
+    <CenteredColumn data-testid={dataTestId} id={id} className={className} sx={{ padding: 3, textAlign: "center" }}>
       <ErrorOutlineIcon color={"error"} sx={{ fontSize: 40 }} />
 
       <Typography variant={"subtitle1"}>Could not read this file</Typography>

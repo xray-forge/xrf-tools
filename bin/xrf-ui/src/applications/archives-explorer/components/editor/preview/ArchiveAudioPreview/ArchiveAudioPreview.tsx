@@ -14,18 +14,17 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
 import { AsyncState } from "@/lib/async-state";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
-
-/** One sound is previewed at a time, so its url lives under a fixed key and displaces the last one. */
-const ARCHIVE_AUDIO_ASSET_KEY: string = "archive-audio";
-
-/** Wide enough for a waveform to be readable, narrow enough that the detail rows stay scannable. */
-const ARCHIVE_AUDIO_PREVIEW_WIDTH: number = 640;
 
 /**
  * Plays an archived sound and reports what the engine would read from it.
  */
-export function ArchiveAudioPreview(): ReactElement {
+export function ArchiveAudioPreview({
+  "data-testid": dataTestId = "archive-audio-preview",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
@@ -37,22 +36,39 @@ export function ArchiveAudioPreview(): ReactElement {
 
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
   const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
-  const url: Nullable<string> = useAssetUrl(ARCHIVE_AUDIO_ASSET_KEY, bytes, "audio/ogg");
+  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-audio`, bytes, "audio/ogg");
 
   if (content.error) {
-    return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
+    return (
+      <ArchivePreviewError
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        error={content.error}
+        onRetry={archivesService.retrySelectedFile}
+      />
+    );
   }
 
   if (!descriptor || !url) {
     return content.isLoading ? (
-      <DelayedProgress />
+      <DelayedProgress data-testid={dataTestId} id={id} className={className} />
     ) : (
-      <EmptyState title={"Preview unavailable"} description={"This sound could not be read."} />
+      <EmptyState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Preview unavailable"}
+        description={"This sound could not be read."}
+      />
     );
   }
 
   return (
     <CenteredColumn
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       sx={{
         padding: 3,
         gap: 2.5,
@@ -60,11 +76,11 @@ export function ArchiveAudioPreview(): ReactElement {
         justifyContent: "safe center",
       }}
     >
-      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: ARCHIVE_AUDIO_PREVIEW_WIDTH }}>
+      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: 640 }}>
         <AudioPlayer src={url} bytes={bytes} />
       </Box>
 
-      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: ARCHIVE_AUDIO_PREVIEW_WIDTH }}>
+      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: 640 }}>
         <Typography variant={"subtitle2"}>Stream</Typography>
 
         <EditorPanelProperty label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
