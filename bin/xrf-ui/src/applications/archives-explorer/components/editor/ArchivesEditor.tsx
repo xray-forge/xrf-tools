@@ -3,9 +3,6 @@ import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { ARCHIVE_EDITOR_PANELS } from "@/applications/archives-explorer/components/editor/archive-panels";
-import { ArchivesFileContent } from "@/applications/archives-explorer/components/editor/preview/ArchivesFileContent";
-import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf } from "@/core/archive";
 import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
@@ -19,6 +16,10 @@ import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
+
+import { ARCHIVE_EDITOR_PANELS } from "./archive-panels";
+import { ArchivesFilePreview } from "./preview";
+import { ArchivesMenu } from "./tree";
 
 export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
@@ -124,7 +125,7 @@ export function ArchivesEditor(): ReactElement {
         ) : null
       }
     >
-      <ArchivesFileContent />
+      <ArchivesFilePreview />
     </EditorLayout>
   );
 }

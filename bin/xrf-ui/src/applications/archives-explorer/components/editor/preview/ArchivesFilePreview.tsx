@@ -28,9 +28,9 @@ type TUnsupported = Exclude<
   { kind: "supported" } | { kind: "image" } | { kind: "audio" } | { kind: "model" }
 >;
 
-export function ArchivesFileContent({
-  "data-testid": dataTestId = "archives-file-content",
-  id = "archives-file-content",
+export function ArchivesFilePreview({
+  "data-testid": dataTestId = "archives-file-preview",
+  id = "archives-file-preview",
   className,
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);

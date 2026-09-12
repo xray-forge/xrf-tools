@@ -1,10 +1,11 @@
-import { default as DescriptionIcon } from "@mui/icons-material/Description";
-import { default as FolderIcon } from "@mui/icons-material/Folder";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import {
+  ARCHIVE_TREE_ICONS,
+  toSearchText,
+} from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveTreeItem, parseTree } from "@/core/archive";
 import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
@@ -15,21 +16,10 @@ import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import { getDirectoryItemPath, getFileItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
+import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
-
-/** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
-const ARCHIVE_TREE_ICONS: IVirtualizedTreeIcons = {
-  collapsed: <FolderIcon />,
-  expanded: <FolderOpenIcon />,
-  leaf: <DescriptionIcon />,
-};
-
-function toSearchText(descriptor: ArchiveFileDescriptor): string {
-  return descriptor.name;
-}
 
 export function ArchivesMenu({
   "data-testid": dataTestId = "archives-menu",

@@ -23,7 +23,7 @@ export function ArchiveSharedPayloadDetail({
 }: IArchiveSharedPayloadDetailProps): ReactElement {
   const others: Array<string> = listPayloadSharersOf(sharedPayloads.value ?? [], descriptor);
 
-  const description = useMemo(() => {
+  const description: string = useMemo(() => {
     if (sharedPayloads.isLoading) {
       return "Deriving from the name table...";
     }
@@ -44,6 +44,7 @@ export function ArchiveSharedPayloadDetail({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <EditorPanelProperty label={"Shared payload"} value={description} />
+
       {others.map((name: string) => (
         <EditorPanelProperty key={name} label={"Entry"} value={name} isMonospace />
       ))}
