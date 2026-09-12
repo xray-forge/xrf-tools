@@ -137,6 +137,7 @@ export class TextureSurfaceScene {
     this.material.dispose();
     this.edgeMaterial.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.container = null;
   }

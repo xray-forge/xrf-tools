@@ -409,6 +409,7 @@ export class VisualPreviewScene {
 
     this.checker.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
 
     this.container = null;

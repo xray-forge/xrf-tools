@@ -83,7 +83,7 @@ export function ArchivesFileContent({
       case "audio":
         return <ArchiveAudioPreview />;
       case "model":
-        return <ArchiveModelPreview key={descriptor.name} name={descriptor.name} />;
+        return <ArchiveModelPreview name={descriptor.name} />;
     }
 
     if (support.kind !== "supported") {
