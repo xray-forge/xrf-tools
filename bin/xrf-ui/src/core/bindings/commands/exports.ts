@@ -1,9 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
-
 import { SessionId, SessionRestore, SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const exportsCommands = {
@@ -11,9 +10,6 @@ export const exportsCommands = {
   closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:exports|close_project", { sessionIds }),
   /**
    * Write the open project's externs out as one of the manifests `xrf-cli externs export` publishes.
-   *
-   * The writer is chosen from the destination's extension, the way a packing configuration picks one, so a surface
-   * offering three formats needs no fourth argument to say which it asked for.
    *
    * Rendered from the manifest the open parsed rather than from a fresh read of the tree, so the artifact describes
    * exactly the declarations on screen; refreshing is how a person asks for a later read of the sources.

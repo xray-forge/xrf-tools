@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
 
 import {
   SessionId,
@@ -17,6 +17,7 @@ import {
   SpawnPatrolsChunk,
 } from "@/core/bindings/types/xrf-db";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const spawnCommands = {

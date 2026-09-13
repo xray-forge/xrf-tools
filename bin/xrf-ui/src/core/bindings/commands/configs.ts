@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
 
 import {
   ConfigsDocument,
@@ -24,6 +24,7 @@ import {
   LtxSchemeFieldReport,
 } from "@/core/bindings/types/xrf-ltx-inspect";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const configsCommands = {

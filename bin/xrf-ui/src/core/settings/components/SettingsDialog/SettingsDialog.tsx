@@ -1,29 +1,34 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { ReactElement, useId, useState } from "react";
 
-import { SettingsBuildInfo } from "@/core/settings/components/SettingsBuildInfo";
-import { SettingsGeneralSection } from "@/core/settings/components/SettingsGeneralSection";
-import { SettingsStorageSection } from "@/core/settings/components/SettingsStorageSection";
 import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
+
+import { SettingsAboutSection } from "./SettingsAboutSection";
+import { SettingsGeneralSection } from "./SettingsGeneralSection";
+import { SettingsIpcSection } from "./SettingsIpcSection";
+import { SettingsStorageSection } from "./SettingsStorageSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
 const enum ESettingsSection {
   GENERAL = "general",
   STORAGE = "storage",
+  IPC = "ipc",
   ABOUT = "about",
 }
 
 const SECTION_LABELS: Record<ESettingsSection, string> = {
   [ESettingsSection.GENERAL]: "General",
   [ESettingsSection.STORAGE]: "Storage",
+  [ESettingsSection.IPC]: "IPC",
   [ESettingsSection.ABOUT]: "About",
 };
 
 const SECTIONS: ReadonlyArray<ESettingsSection> = [
   ESettingsSection.GENERAL,
   ESettingsSection.STORAGE,
+  ESettingsSection.IPC,
   ESettingsSection.ABOUT,
 ];
 
@@ -79,8 +84,10 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
                 return <SettingsGeneralSection />;
               case ESettingsSection.STORAGE:
                 return <SettingsStorageSection />;
+              case ESettingsSection.IPC:
+                return <SettingsIpcSection />;
               case ESettingsSection.ABOUT:
-                return <SettingsBuildInfo />;
+                return <SettingsAboutSection />;
             }
           })}
         </Box>

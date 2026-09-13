@@ -1,7 +1,5 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
-
 import {
   DialogsOpenRequest,
   DialogsReadRequest,
@@ -11,6 +9,7 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const dialogsCommands = {

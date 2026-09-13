@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE, Channel } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
 
 import {
   EquipmentSpriteMetadata,
@@ -12,6 +12,7 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const spriteEquipmentCommands = {

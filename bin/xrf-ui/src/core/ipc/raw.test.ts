@@ -1,15 +1,26 @@
-import { describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 
+import { IIpcCommandMetrics, IPC_METRICS } from "@/core/ipc/metrics";
 import { invokeRaw } from "@/core/ipc/raw";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { Optional } from "@/lib/types/general";
 
 const COMMAND: string = "plugin:visuals|read_geometry";
+
+/** @returns What the recorder holds for the command under test, if anything. */
+function recorded(): Optional<IIpcCommandMetrics> {
+  return IPC_METRICS.read().commands.find((it: IIpcCommandMetrics) => it.command === "visuals|read_geometry");
+}
 
 function bytes(values: Array<number>): ArrayBuffer {
   return new Uint8Array(values).buffer;
 }
 
 describe("invokeRaw", () => {
+  beforeEach(() => {
+    IPC_METRICS.reset();
+  });
+
   it("passes the command and arguments straight through", async () => {
     setMockInvokeResponses({ [COMMAND]: bytes([1, 2, 3]) });
 
@@ -78,5 +89,39 @@ describe("invokeRaw", () => {
     });
 
     await expect(invokeRaw(COMMAND, {})).rejects.toThrow("visual is not open");
+  });
+
+  it("counts the bytes it answered with, without being asked to weigh anything", async () => {
+    // These are the commands whose size costs nothing to know, which is why they are measured whether or not
+    // payload weighing is on.
+    setMockInvokeResponses({ [COMMAND]: bytes([1, 2, 3, 4, 5]) });
+
+    await invokeRaw(COMMAND, {});
+
+    expect(recorded()?.calls).toBe(1);
+    expect(recorded()?.received).toBe(5);
+    expect(recorded()?.weighed).toBe(1);
+  });
+
+  it("counts a rejected call as a failure and not as a call", async () => {
+    setMockInvokeResponses({
+      [COMMAND]: () => {
+        throw new Error("visual is not open");
+      },
+    });
+
+    await expect(invokeRaw(COMMAND, {})).rejects.toThrow("visual is not open");
+
+    expect(recorded()?.calls).toBe(0);
+    expect(recorded()?.failures).toBe(1);
+  });
+
+  it("counts an answer that was not bytes as a failure of this call", async () => {
+    setMockInvokeResponses({ [COMMAND]: { unexpected: true } });
+
+    await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/Expected raw bytes/);
+
+    expect(recorded()?.failures).toBe(1);
+    expect(recorded()?.received).toBe(0);
   });
 });

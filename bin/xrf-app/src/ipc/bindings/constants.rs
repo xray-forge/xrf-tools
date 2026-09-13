@@ -15,5 +15,23 @@ pub(super) const TYPES_DIRECTORY: &str = "types";
 /// Directory holding one module per Tauri plugin, each exporting only that plugin's commands.
 pub(super) const COMMANDS_DIRECTORY: &str = "commands";
 
+/// Tauri Specta's own invoke import, for a module that also carries a job command's channel.
+pub(super) const SPECTA_INVOKE_IMPORT_WITH_CHANNEL: &str =
+  "import { invoke as __TAURI_INVOKE, Channel } from \"@tauri-apps/api/core\";";
+
+/// The same import for a module with no channel, which is the only other spelling Specta writes.
+pub(super) const SPECTA_INVOKE_IMPORT: &str = "import { invoke as __TAURI_INVOKE } from \"@tauri-apps/api/core\";";
+
+/// Where a generated module takes `invoke` from instead.
+///
+/// The wrapper counts every call, which is why the redirect is written here rather than left to a hundred call sites
+/// to remember: a command added later is measured by existing. `Channel` still comes from Tauri, being a transport
+/// handle the wrapper has no business in.
+pub(super) const COUNTED_INVOKE_IMPORT: &str = "import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
+
+/// The channel-carrying spelling, split so the redirect leaves `Channel` where it was.
+pub(super) const CHANNEL_IMPORT_AND_COUNTED_INVOKE: &str =
+  "import { Channel } from \"@tauri-apps/api/core\";\nimport { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
+
 /// Bindings import specifier root, matching the `@/*` path alias of the frontend.
 pub(super) const BINDINGS_ROOT: &str = "@/core/bindings";

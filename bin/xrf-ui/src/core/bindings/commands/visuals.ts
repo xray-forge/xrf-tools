@@ -1,7 +1,5 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
-
 import {
   SelectedVisualDescription,
   SessionId,
@@ -11,6 +9,7 @@ import {
 } from "@/core/bindings/types/xrf-app";
 import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const visualsCommands = {

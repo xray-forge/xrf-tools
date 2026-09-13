@@ -1,9 +1,10 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface ISettingsSectionProps {
+export interface ISettingsSectionProps extends BaseComponentProps {
   title: string;
   description: string;
   /** What the setting currently amounts to, stated opposite the title. */
@@ -15,9 +16,17 @@ export interface ISettingsSectionProps {
 /**
  * A titled setting: what it is, one sentence on why, and whatever it controls.
  */
-export function SettingsSection({ title, description, fact = null, children }: ISettingsSectionProps): ReactElement {
+export function SettingsSection({
+  "data-testid": dataTestId = "settings-section",
+  className,
+  id,
+  title,
+  description,
+  fact = null,
+  children,
+}: ISettingsSectionProps): ReactElement {
   return (
-    <Box>
+    <Box data-testid={dataTestId} className={className} id={id}>
       <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
         <Typography variant={"subtitle2"} sx={{ color: "text.primary" }}>
           {title}

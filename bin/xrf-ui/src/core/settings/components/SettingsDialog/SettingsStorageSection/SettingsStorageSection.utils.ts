@@ -65,7 +65,14 @@ export interface IStorageUsage {
  * Named rather than matched by prefix because they are not spelled alike: three naming styles reached this list, and a
  * table is the honest way to say so.
  */
-const PREFERENCE_KEYS: ReadonlyArray<string> = ["theme", "xrf-catalog-view", "xrf-dev-mode", "xrf.media.volume"];
+const PREFERENCE_KEYS: ReadonlyArray<string> = [
+  // todo: Standardize naming approach, kebab vs dot split.
+  "theme",
+  "xrf-catalog-view",
+  "xrf-dev-mode",
+  "xrf-ipc-profiling",
+  "xrf.media.volume",
+];
 
 /**
  * Every group, most specific first.

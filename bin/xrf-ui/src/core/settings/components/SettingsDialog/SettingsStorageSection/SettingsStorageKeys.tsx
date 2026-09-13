@@ -2,9 +2,10 @@ import { Box, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { SettingsSection } from "@/core/settings/components/SettingsSection";
-import { describeKeyCount, IStorageEntry } from "@/core/settings/lib/storage-usage";
 import { MONOSPACE } from "@/core/theme/tokens";
 import { formatBytes } from "@/lib/memory/format";
+
+import { describeKeyCount, IStorageEntry } from "./SettingsStorageSection.utils";
 
 /** How many keys are listed before it stops, so a store full of one field's history cannot fill the dialog. */
 const KEY_LIMIT: number = 256;

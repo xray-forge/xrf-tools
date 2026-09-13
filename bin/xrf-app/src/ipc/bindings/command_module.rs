@@ -5,7 +5,10 @@ use std::path::Path;
 
 use xrf_utils::{format_path, to_camel_case};
 
-use crate::ipc::bindings::constants::{GENERATED_HEADER, TYPES_MARKER};
+use crate::ipc::bindings::constants::{
+  CHANNEL_IMPORT_AND_COUNTED_INVOKE, COUNTED_INVOKE_IMPORT, GENERATED_HEADER, SPECTA_INVOKE_IMPORT,
+  SPECTA_INVOKE_IMPORT_WITH_CHANNEL, TYPES_MARKER,
+};
 use crate::ipc::bindings::output::write_generated;
 use crate::ipc::bindings::ownership::TypeOwnership;
 
@@ -23,7 +26,18 @@ pub(super) fn finalize_command_module(path: &Path, plugin: &str, ownership: &Typ
     .replace(
       "export const commands = {",
       &format!("export const {}Commands = {{", to_camel_case(plugin)),
-    );
+    )
+    // The wider spelling first: replacing the bare one first would leave its `, Channel` behind.
+    .replace(SPECTA_INVOKE_IMPORT_WITH_CHANNEL, CHANNEL_IMPORT_AND_COUNTED_INVOKE)
+    .replace(SPECTA_INVOKE_IMPORT, COUNTED_INVOKE_IMPORT);
+
+  // A module still importing `invoke` from Tauri would be dispatched and never counted, and nothing downstream would
+  // say so. Specta changing how it writes that import is the way this stops being true, so it is asserted here.
+  assert!(
+    commands.contains(COUNTED_INVOKE_IMPORT),
+    "{} does not route invoke through the counted wrapper; Tauri Specta's import spelling has changed",
+    format_path(path)
+  );
 
   ownership.assert_no_foreign_references(&commands, plugin);
 

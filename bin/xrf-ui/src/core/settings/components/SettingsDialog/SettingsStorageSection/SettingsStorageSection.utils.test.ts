@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
+import { Optional } from "@/lib/types/general";
+
 import {
   clearStorageGroup,
   describeKeyCount,
@@ -10,8 +12,7 @@ import {
   IStorageUsage,
   measureLocalStorage,
   STORAGE_GROUPS,
-} from "@/core/settings/lib/storage-usage";
-import { Optional } from "@/lib/types/general";
+} from "./SettingsStorageSection.utils";
 
 /** The measured group with this identity, so a test says which group it means rather than where it sits. */
 function findGroup(usage: IStorageUsage, id: EStorageGroup): IStorageGroupUsage {

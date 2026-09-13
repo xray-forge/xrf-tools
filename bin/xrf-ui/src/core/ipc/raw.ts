@@ -1,5 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";
+import { Nullable } from "@/lib/types/general";
+
 /**
  * Call a command that answers with bytes rather than a typed value.
  *
@@ -17,16 +20,34 @@ import { invoke } from "@tauri-apps/api/core";
  * @returns The raw response bytes.
  */
 export async function invokeRaw(command: string, args: Record<string, unknown>): Promise<ArrayBuffer> {
-  const response: unknown = await invoke<unknown>(command, args);
+  const call: IpcCallMeasurement = IPC_METRICS.measure(command);
+  const sent: Nullable<number> = call.isWeighing ? weighIpcPayload(args) : null;
+
+  let response: unknown;
+
+  try {
+    response = await invoke<unknown>(command, args);
+  } catch (error: unknown) {
+    call.recordFailure();
+
+    throw error;
+  }
 
   if (response instanceof ArrayBuffer) {
+    call.recordAnswer(response.byteLength, sent);
+
     return response;
   }
 
   // A typed array would still be usable, but only by accident, so it is converted explicitly.
   if (response instanceof Uint8Array) {
+    call.recordAnswer(response.byteLength, sent);
+
     return response.buffer.slice(response.byteOffset, response.byteOffset + response.byteLength) as ArrayBuffer;
   }
+
+  // The command answered, but not with what it promised, which is a failure of this call rather than of the backend.
+  call.recordFailure();
 
   throw new Error(
     `Expected raw bytes from '${command}', got ${typeof response}. ` +

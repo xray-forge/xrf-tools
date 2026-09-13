@@ -1,9 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
-
 import { PathDescription } from "@/core/bindings/types/xrf-app";
 import { BuildInfo } from "@/core/bindings/types/xrf-build-info";
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
 /** Commands */
 export const systemCommands = {

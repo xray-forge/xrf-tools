@@ -3,7 +3,13 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SettingsSection } from "@/core/settings/components/SettingsSection";
-import { SettingsStorageKeys } from "@/core/settings/components/SettingsStorageKeys";
+import { SettingsService } from "@/core/settings/services/settings";
+import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { useLocalStorageRevision } from "@/lib/local-storage";
+import { formatBytes } from "@/lib/memory/format";
+import { Nullable } from "@/lib/types/general";
+
+import { SettingsStorageKeys } from "./SettingsStorageKeys";
 import {
   clearStorageGroup,
   describeKeyCount,
@@ -12,12 +18,7 @@ import {
   IStorageUsage,
   measureLocalStorage,
   STORAGE_BUDGET_BYTES,
-} from "@/core/settings/lib/storage-usage";
-import { SettingsService } from "@/core/settings/services/settings";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
-import { useLocalStorageRevision } from "@/lib/local-storage";
-import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
+} from "./SettingsStorageSection.utils";
 
 /** Room the size and clear columns keep, so the group rows line up whatever they hold. */
 const ACTION_COLUMN_WIDTH: number = 72;
