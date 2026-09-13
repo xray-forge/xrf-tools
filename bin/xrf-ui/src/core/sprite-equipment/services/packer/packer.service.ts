@@ -19,7 +19,7 @@ export class SpriteEquipmentPackerService {
   public readonly operation: JobOperation<IPackEquipmentResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.SPRITE_EQUIPMENT_PACK], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.SPRITE_EQUIPMENT_PACK]);
   }
 
   /**

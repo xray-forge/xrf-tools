@@ -89,7 +89,7 @@ export class TextureEncodingService {
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.compare = new JobOperation(jobsService, [EJobKind.TEXTURES_COMPARE_ENCODINGS], this.log);
+    this.compare = new JobOperation(jobsService, [EJobKind.TEXTURES_COMPARE_ENCODINGS]);
   }
 
   @OnDeactivation()

@@ -21,7 +21,7 @@ export class FormatterService {
   public readonly operation: JobOperation<LtxProjectFormatResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.CONFIGS_CHECK_FORMAT, EJobKind.CONFIGS_FORMAT], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.CONFIGS_CHECK_FORMAT, EJobKind.CONFIGS_FORMAT]);
   }
 
   /**

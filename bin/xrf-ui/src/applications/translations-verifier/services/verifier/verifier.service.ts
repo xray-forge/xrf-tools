@@ -20,7 +20,7 @@ export class TranslationsVerifierService {
   public readonly operation: JobOperation<TranslationVerifySummary>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_VERIFY], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_VERIFY]);
   }
 
   /**

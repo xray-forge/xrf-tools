@@ -24,7 +24,7 @@ export class TranslationsBuilderService {
   public readonly operation: JobOperation<TranslationBuildSummary>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_BUILD], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_BUILD]);
   }
 
   /**

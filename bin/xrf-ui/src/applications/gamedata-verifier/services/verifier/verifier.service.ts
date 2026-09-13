@@ -19,7 +19,7 @@ export class GamedataVerifierService {
   public readonly operation: JobOperation<GamedataVerifySummary>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.GAMEDATA_VERIFY], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.GAMEDATA_VERIFY]);
   }
 
   /**

@@ -24,7 +24,7 @@ export class UnpackerService {
   public readonly operation: JobOperation<ArchiveUnpackResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.ARCHIVES_UNPACK], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.ARCHIVES_UNPACK]);
   }
 
   /**

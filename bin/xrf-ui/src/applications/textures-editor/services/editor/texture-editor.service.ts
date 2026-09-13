@@ -99,7 +99,7 @@ export class TextureEditorService {
     private readonly encodingService: TextureEncodingService = inject(TextureEncodingService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.save = new JobOperation(jobsService, [EJobKind.TEXTURES_SAVE], this.log);
+    this.save = new JobOperation(jobsService, [EJobKind.TEXTURES_SAVE]);
   }
 
   /**

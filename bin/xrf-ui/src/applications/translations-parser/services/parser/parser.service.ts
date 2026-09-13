@@ -20,7 +20,7 @@ export class TranslationsParserService {
   public readonly operation: JobOperation<TranslationParseSummary>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_PARSE], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_PARSE]);
   }
 
   /**

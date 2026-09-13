@@ -21,7 +21,7 @@ export class VerifierService {
   public readonly operation: JobOperation<LtxProjectVerifyResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.CONFIGS_VERIFY], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.CONFIGS_VERIFY]);
   }
 
   /**

@@ -62,7 +62,7 @@ export class TextureBumpService {
     private readonly editorService: TextureEditorService = inject(TextureEditorService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.generate = new JobOperation(jobsService, [EJobKind.TEXTURES_MAKE_BUMP], this.log);
+    this.generate = new JobOperation(jobsService, [EJobKind.TEXTURES_MAKE_BUMP]);
   }
 
   /**

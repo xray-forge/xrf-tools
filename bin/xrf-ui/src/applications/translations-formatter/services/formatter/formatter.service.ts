@@ -20,11 +20,7 @@ export class TranslationsFormatterService {
   public readonly operation: JobOperation<TranslationFormatResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(
-      jobsService,
-      [EJobKind.TRANSLATIONS_CHECK_FORMAT, EJobKind.TRANSLATIONS_FORMAT],
-      this.log
-    );
+    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_CHECK_FORMAT, EJobKind.TRANSLATIONS_FORMAT]);
   }
 
   /**

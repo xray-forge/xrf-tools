@@ -17,7 +17,7 @@ export class SpawnConversionService {
   public readonly operation: JobOperation<SpawnConversionResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.SPAWN_PACK, EJobKind.SPAWN_UNPACK], this.log);
+    this.operation = new JobOperation(jobsService, [EJobKind.SPAWN_PACK, EJobKind.SPAWN_UNPACK]);
   }
 
   /**
