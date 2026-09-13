@@ -2,22 +2,9 @@
 
 Indexes X-Ray assets and layers their physical sources in a virtual file system.
 
-`XrayVfs::open` is the front door: a mode and a path become something you can resolve and read against. Everything a
-consumer needs is exported from the crate root, so `use xrf_vfs::XrayVfs` is the import regardless of how the inside is
-arranged. The root exports only types; helpers and constants hang off the type that owns their concept.
-
-## Why not `std::fs`
-
-The engine does not see a disk — it sees ordered sources. An installation's `fsgame.ltx` declares directories of loose
-files and directories of `.db` archive volumes, the engine registers them all, and a later registration shadows an
-earlier one. Many assets have no file of their own: on Anomaly, meshes and level bundles come out of `db\` volumes.
-Identities are engine paths — lower case, `\`-separated on every platform — not host paths.
-
-`std::fs` answers "what is on disk". This crate answers "what would the engine load, and from where":
-
-- One lookup spans loose trees and archive volumes, first hit wins — the same winner `CLocatorAPI` picks.
-- `XrayLogicalPath` keeps engine identities apart from host paths.
-- Reading goes through the VFS, so an asset resolves the same whether it is loose or archived.
+Use `XrayVfs::open` to turn a mode and path into mounted sources. Lookups span loose files and archive entries in
+priority order. Installation plans read that order from `fsgame.ltx`, so an override resolves to the file the engine
+would load.
 
 ## Quickstart
 
@@ -40,7 +27,7 @@ let bytes: Vec<u8> = vfs.read_bytes("configs\\system.ltx")?;
 - **Mode** — `XrayMountMode` says how a caller's path becomes mounts: `Auto` detects an installation at exactly the
   given path, `Directory` forces a loose root, `Volumes` mounts every `.db` volume beneath the path rather than only
   the ones directly under it, `Installation` requires an `fsgame.ltx`, and `ContainingInstallation` searches upward for
-  one. Every tool surface exposes this same vocabulary, so `--source` means the same thing everywhere.
+  one, falling back to a loose root when none exists.
 - **Plan** — `XrayMountPlan` is the inspectable list of sources a mode decided to mount, before anything is opened.
   Reach for it only to inspect or chain plans; `XrayVfs::open` plans and mounts in one call.
 - **Scope** — `XrayLookupScope` narrows where one lookup may look: which mounts, and which logical subtree. Lookups on
@@ -61,8 +48,7 @@ let tree: XrayVfs = XrayVfs::open(XrayMountMode::Directory, "C:\\work\\gamedata"
 
 println!("{} + {} mounts", installation.get_mounts().len(), tree.get_mounts().len());
 
-// Mounting is tolerant: a volume that fails to open is skipped and recorded, so report these too —
-// a mount that silently vanished reads as content that is silently missing.
+// Report sources that could not be opened.
 for skipped in installation.get_skipped_mounts() {
   eprintln!("skipped {}: {}", skipped.path.display(), skipped.reason);
 }
@@ -113,8 +99,9 @@ println!(
 # }
 ```
 
-Listings are winners only, ordered by logical path; `list_entries_all` keeps shadowed copies for override auditing, and
-`list_collisions` reports files a mount holds but cannot reach.
+Listings are ordered by logical path. `list_entries` returns winners; `list_entries_all` includes shadowed copies;
+`list_mounted_entries` groups each winner with its size and hidden copies. `list_collisions` reports conflicting names
+within mounts. `XrayProbe` offers the same listing shapes across ordered lookup steps.
 
 ## Resolve engine references
 
@@ -164,7 +151,7 @@ Advanced flows are documented on their types: layering a mod tree over an instal
 ## Errors
 
 | Operation            | Absent asset               | Failure                                                                                              |
-|----------------------|----------------------------|------------------------------------------------------------------------------------------------------|
+| -------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `find`, `resolve`    | `Ok(None)`                 | `Err` — invalid path or kind                                                                         |
 | `read`, `read_asset` | `Err` (`NotFound` variant) | `Err` — the source's own read error                                                                  |
 | `read_size`          | `None`                     | `None` — a size gate discards the difference                                                         |
@@ -175,7 +162,6 @@ without parsing messages.
 
 ## Related crates
 
-- `xrf-archive` — the `.db` volume format underneath this crate's archive source.
-- `xrf-pack` — pack and unpack tooling over both.
-- `xrf-ltx`, `xrf-gamedata` — config and gamedata projects that read through this VFS, so archived installations verify
-  as readily as loose trees.
+- [xrf-archive](../xrf-archive/README.md) — the `.db` volume format.
+- [xrf-pack](../xrf-pack/README.md) — packing and extraction.
+- [xrf-ltx](../xrf-ltx/README.md), [xrf-gamedata](../xrf-gamedata/README.md) — config and gamedata projects over the VFS.

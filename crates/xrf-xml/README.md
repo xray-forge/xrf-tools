@@ -20,16 +20,17 @@ Neither tree is a complete representation for re-serializing an existing documen
 ```rust
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
-# fn main() -> xrf_error::XrfResult {
-    let document: XmlDocument = XmlDocument::parse(
-        "<root><sound>weapons\\shot</sound><group><sound>ambient\\wind</sound></group></root>",
-        XmlParseOptions::default(),
-    )?;
+fn main() -> xrf_error::XrfResult {
+  let document: XmlDocument = XmlDocument::parse(
+    "<root><sound>weapons\\shot</sound><group><sound>ambient\\wind</sound></group></root>",
+    XmlParseOptions::default(),
+  )?;
 
-    let references: Vec<&str> = document.elements_named("sound").map(|element| element.text()).collect();
-    assert_eq!(references, ["weapons\\shot", "ambient\\wind"]);
-    # Ok(())
-    #
+  let references: Vec<&str> = document.elements_named("sound").map(|element| element.text()).collect();
+
+  assert_eq!(references, ["weapons\\shot", "ambient\\wind"]);
+
+  Ok(())
 }
 ```
 
@@ -48,22 +49,23 @@ dialog readers supply their own legacy fallback and retain encoding metadata for
 ```rust
 use xrf_xml::{XmlParseOptions, XmlSourceDocument, escape_xml_text};
 
-# fn main() -> xrf_error::XrfResult {
-    let document: XmlSourceDocument = XmlSourceDocument::parse(
-        "<root><!-- keep this --><text>old &amp; new</text></root>".to_owned(),
-        XmlParseOptions::default(),
-    )?;
+fn main() -> xrf_error::XrfResult {
+  let document: XmlSourceDocument = XmlSourceDocument::parse(
+    "<root><!-- keep this --><text>old &amp; new</text></root>".to_owned(),
+    XmlParseOptions::default(),
+  )?;
 
-    let text = document.root().child_named("text").expect("text element");
-    assert_eq!(text.text(), "old & new");
-    let range = text.content_range().expect("paired tags").clone();
-    assert_eq!(&document.source()[range.clone()], "old &amp; new");
+  let text = document.root().child_named("text").expect("text element");
+  assert_eq!(text.text(), "old & new");
 
-    let mut edited: String = document.into_source();
-    edited.replace_range(range, &escape_xml_text("replacement & text"));
-    assert_eq!(edited, "<root><!-- keep this --><text>replacement &amp; text</text></root>");
-    # Ok(())
-    #
+  let range = text.content_range().expect("paired tags").clone();
+  assert_eq!(&document.source()[range.clone()], "old &amp; new");
+
+  let mut edited: String = document.into_source();
+  edited.replace_range(range, &escape_xml_text("replacement & text"));
+  assert_eq!(edited, "<root><!-- keep this --><text>replacement &amp; text</text></root>");
+
+  Ok(())
 }
 ```
 
@@ -87,14 +89,15 @@ use xrf_xml::serialize_xml;
 #[derive(Serialize)]
 #[serde(rename = "root")]
 struct Root {
-    value: String,
+  value: String,
 }
 
-# fn main() -> xrf_error::XrfResult {
-    let output: String = serialize_xml(&Root { value: String::new() })?;
-    assert_eq!(output, "<root>\n  <value></value>\n</root>");
-    # Ok(())
-    #
+fn main() -> xrf_error::XrfResult {
+  let output: String = serialize_xml(&Root { value: String::new() })?;
+
+  assert_eq!(output, "<root>\n  <value></value>\n</root>");
+
+  Ok(())
 }
 ```
 

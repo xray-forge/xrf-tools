@@ -1,6 +1,7 @@
 # xrf-pack
 
-Pack, unpack, and patch X-Ray `.db` archive volumes. The volume format is defined in `xrf-archive`.
+Packs, unpacks, and patches X-Ray `.db` archive volumes. The volume format is defined in
+[xrf-archive](../xrf-archive/README.md).
 
 ## Pack and unpack
 
@@ -27,29 +28,27 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
 # }
 ```
 
-Unpacking is synchronous. On an async executor, run the call on a blocking thread. Use `unpack_opt` with
+Operations are synchronous. On an async executor, run the call on a blocking thread. Use `unpack_opt` with
 `ArchiveUnpackOptions::with_job` for progress and cancellation.
 
 `unpack` and `extract_directory` reject existing symlinks, junctions, and other reparse points below the destination
 root. `extract_file` writes to the exact path supplied by the caller, which may be linked.
 
+`XrayWorldExtractor::extract_directory` extracts the winning assets from an `XrayProbe`, including loose overrides.
+It preserves paths below the selected prefix; an empty prefix extracts the whole world. Shadowed copies are omitted.
+
+Packing refuses existing volumes with the same name unless forced. Forced packing cannot roll back or remove stale
+volumes from a longer previous set. Extraction can leave completed files behind after failure or cancellation.
+
 ## Build a patch
 
 `ArchivePatcher` compares what a patch is built against with what it delivers. `compare` reports changes without
-writing; `patch` also writes added and modified entries into new volumes. Entries only the compared side holds are
-not reported at all: a patch adds to and overrides, and `CLocatorAPI::Register` has no way to remove a descriptor, so
-naming them would be naming every file the author left alone.
+writing; `patch` also writes added and modified entries into new volumes. A patch cannot remove base entries, so
+files present only in the base are not reported.
 
-An installation on its own is the whole configuration. `XrayMountPlan::from_fsgame` expands `fsgame.ltx` into every
-root the game declares, and splitting that one plan by source kind gives the two sides: the volumes holding the
-release, and the loose `gamedata\` overriding it. That answers "what have I changed in my game" — a question no pair
-of paths can pose, because the loose tree wins inside the installation's own merged world and naming `db\` by hand
-mounts only the volumes sitting directly in it.
-
-Name a `target` to deliver a tree of its own instead.
-
-Write patches outside the input, then deploy them where `fsgame.ltx` loads them after the base archives: stock and
-Anomaly configurations both declare `$arch_dir_patches$` immediately before `$game_data$`.
+With one installation as input, the patcher compares its archives against its loose overrides using `fsgame.ltx`.
+Set `target` to compare against a separate tree. Write patches outside the input and deploy them where the
+installation loads them after its base archives.
 
 ```rust,no_run
 use xrf_pack::{ArchivePatchConfig, ArchivePatchResult, ArchivePatcher};
