@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { act, within } from "@testing-library/react";
+import { act, fireEvent, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
@@ -209,6 +209,25 @@ describe("ApplicationLauncher", () => {
     act(() => container.get(LauncherSearchService).focusSearch());
 
     expect(getByLabelText("Search tools")).toHaveFocus();
+  });
+
+  it("releases the caret on Escape, keeping the query it was given", () => {
+    const container: Container = mockContainer();
+    const { getByLabelText } = renderWithProviders(
+      <ApplicationLauncher applications={APPLICATIONS} groups={GROUPS} />,
+      { container }
+    );
+    const field: HTMLElement = getByLabelText("Search tools");
+
+    act(() => container.get(LauncherSearchService).focusSearch());
+
+    expect(field).toHaveFocus();
+
+    fireEvent.change(field, { target: { value: "editor" } });
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(field).not.toHaveFocus();
+    expect(field).toHaveValue("editor");
   });
 
   it("opens on the dense rows, so the whole catalog is readable before anything is chosen", () => {

@@ -1,7 +1,7 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
 import { Box, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
-import { ChangeEvent, KeyboardEvent, ReactElement, RefObject } from "react";
+import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -28,6 +28,20 @@ export function ApplicationLauncherSearchField({
   onKeyDown,
   onQueryChange,
 }: IApplicationLauncherSearchFieldProps): ReactElement {
+  const onFieldKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        inputRef.current?.blur();
+
+        return;
+      }
+
+      onKeyDown(event);
+    },
+    [inputRef, onKeyDown]
+  );
+
   return (
     <TextField
       data-testid={dataTestId}
@@ -77,7 +91,7 @@ export function ApplicationLauncherSearchField({
           ),
         },
       }}
-      onKeyDown={onKeyDown}
+      onKeyDown={onFieldKeyDown}
       onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
     />
   );
