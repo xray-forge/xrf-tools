@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::has_extension;
 use xrf_utils::format_path;
 
 /// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
@@ -76,8 +77,6 @@ impl XrayLogicalPath {
   }
 
   /// Whether the path carries `extension`, which is compared without case.
-  ///
-  /// `extension` is matched with its leading dot, as in `.ltx`.
   pub fn has_extension(&self, extension: &str) -> bool {
     has_extension(&self.0, extension)
   }
@@ -257,24 +256,11 @@ pub(crate) fn join(prefix: &str, path: &str) -> XrfResult<String> {
   Ok(joined.into_owned())
 }
 
-/// Whether a logical path carries `extension`, compared without case.
-pub(crate) fn has_extension(path: &str, extension: &str) -> bool {
-  path.len() > extension.len()
-    && path
-      .get(path.len() - extension.len()..)
-      .is_some_and(|tail| tail.eq_ignore_ascii_case(extension))
-}
-
 #[cfg(test)]
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{XrayLogicalPath, has_extension, join, normalize, normalize_host_relative, to_host_relative};
-
-  #[test]
-  fn does_not_treat_a_bare_extension_as_a_named_asset() {
-    assert!(!has_extension(".ltx", ".ltx"));
-  }
+  use super::{XrayLogicalPath, join, normalize, normalize_host_relative, to_host_relative};
 
   #[test]
   fn normalizes_case_and_separators() {
@@ -356,7 +342,7 @@ mod tests {
   fn matches_an_extension_without_case_and_a_prefix_by_component() {
     let path: XrayLogicalPath = XrayLogicalPath::new("configs\\system.ltx").expect("valid");
 
-    assert!(path.has_extension(".LTX"));
+    assert!(path.has_extension("LTX"));
     assert!(path.is_under("configs").expect("valid prefix"));
     assert!(!path.is_under("configs_backup").expect("valid prefix"));
   }

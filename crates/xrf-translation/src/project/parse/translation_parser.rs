@@ -73,7 +73,7 @@ impl TranslationParser {
     let mut assets: Vec<XrayAsset> = scoped
       .list_entries()
       .into_iter()
-      .filter(|asset| asset.get_logical_path().has_extension(xml::FILE_EXTENSION_DOT))
+      .filter(|asset| asset.get_logical_path().has_extension(xml::FILE_EXTENSION))
       .filter(|asset| Self::is_selected(asset, options.file.as_deref()))
       .collect();
 

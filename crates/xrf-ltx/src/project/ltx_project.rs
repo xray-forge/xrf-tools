@@ -224,7 +224,7 @@ impl LtxProject {
 
     for location in vfs.scoped(scope).list_entries() {
       // Already an engine identity, so nothing is re-validated here.
-      if location.get_logical_path().has_extension(&format!(".{LTX_EXTENSION}")) {
+      if location.get_logical_path().has_extension(LTX_EXTENSION) {
         paths.push(location.get_logical_path().clone());
       }
     }

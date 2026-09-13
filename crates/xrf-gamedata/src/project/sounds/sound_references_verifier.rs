@@ -106,7 +106,7 @@ impl<'a> SoundReferencesVerifier<'a> {
 
       let logical_path: &XrayLogicalPath = location.get_logical_path();
 
-      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension(".xml") {
+      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension("xml") {
         continue;
       }
 

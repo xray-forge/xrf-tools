@@ -61,7 +61,7 @@ impl LtxFormatSelection {
     visited: &mut HashSet<PathBuf>,
   ) -> XrfResult<()> {
     for location in vfs.list_entries() {
-      if !location.get_logical_path().has_extension(&format!(".{LTX_EXTENSION}")) {
+      if !location.get_logical_path().has_extension(LTX_EXTENSION) {
         continue;
       }
 

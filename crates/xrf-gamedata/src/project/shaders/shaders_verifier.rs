@@ -178,10 +178,7 @@ impl<'a> ShadersVerifier<'a> {
         break;
       }
 
-      if !file
-        .get_logical_path()
-        .has_extension(&format!(".{SHADER_SCRIPT_FILE_EXTENSION}"))
-      {
+      if !file.get_logical_path().has_extension(SHADER_SCRIPT_FILE_EXTENSION) {
         continue;
       }
 

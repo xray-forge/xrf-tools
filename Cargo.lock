@@ -6847,6 +6847,7 @@ dependencies = [
  "walkdir",
  "xrf-chunk",
  "xrf-error",
+ "xrf-extension",
  "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
@@ -7006,6 +7007,15 @@ dependencies = [
  "xrf-typescript",
  "xrf-utils",
  "xrf-xml",
+]
+
+[[package]]
+name = "xrf-extension"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
 ]
 
 [[package]]
@@ -7252,6 +7262,7 @@ dependencies = [
  "walkdir",
  "xrf-archive",
  "xrf-error",
+ "xrf-extension",
  "xrf-test-utils",
  "xrf-utils",
 ]

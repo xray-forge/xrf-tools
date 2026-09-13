@@ -1,6 +1,6 @@
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::get_file_extension;
+use xrf_extension::get_file_extension;
 
 use crate::project::constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS,

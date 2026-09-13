@@ -82,7 +82,7 @@ pub fn read_gamedata_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfRe
 
 /// Whether an asset in a language directory is a string table the engine would load.
 fn is_string_table(asset: &XrayAsset) -> bool {
-  asset.get_logical_path().has_extension(xml::FILE_EXTENSION_DOT)
+  asset.get_logical_path().has_extension(xml::FILE_EXTENSION)
 }
 
 fn merge_file(

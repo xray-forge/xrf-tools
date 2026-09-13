@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_utils::get_file_extension;
+use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 use crate::path::XrayLogicalPath;
 
@@ -102,43 +102,80 @@ impl XrayAssetType {
     })
   }
 
-  pub(crate) fn from_logical_path(path: &str) -> Option<Self> {
-    match get_file_extension(path) {
-      Some("ai") => Some(Self::Ai),
-      Some("anm" | "anm1") => Some(Self::Anm),
-      Some("cform") => Some(Self::CForm),
-      Some("dds") => Some(Self::Dds),
-      Some("details") => Some(Self::Details),
-      Some("dm") => Some(Self::Dm),
-      Some("efd") => Some(Self::Efd),
-      Some("env_mod") => Some(Self::EnvMod),
-      Some("fog_vol") => Some(Self::FogVol),
-      Some("game") => Some(Self::Game),
-      Some("geom") => Some(Self::Geom),
-      Some("geomx") => Some(Self::GeomX),
-      Some("hom") => Some(Self::Hom),
-      Some("ini") => Some(Self::Ini),
-      Some("lights") => Some(Self::Lights),
-      Some("log" | "bat" | "py" | "cmd") => Some(Self::Misc),
-      Some("ltx") => Some(Self::Ltx),
-      Some("ogf") => Some(Self::Ogf),
-      Some("ogg") => Some(Self::Ogg),
-      Some("ogm") => Some(Self::Ogm),
-      Some("omf") => Some(Self::Omf),
-      Some("ppe") => Some(Self::Ppe),
-      Some("ps" | "s" | "s_" | "h" | "vs" | "cs" | "hs" | "ds" | "gs") => Some(Self::Shader),
-      Some("ps_static") => Some(Self::PsStatic),
-      Some("script") => Some(Self::Script),
-      Some("seq" | "seq_") => Some(Self::Seq),
-      Some("snd_static") => Some(Self::SndStatic),
-      Some("spawn") => Some(Self::Spawn),
-      Some("thm") => Some(Self::Thm),
-      Some("wallmarks") => Some(Self::Wallmarks),
-      Some("xr") => Some(Self::XrPack),
-      // Reached only by a path carrying no `.` at all, which is how a level bundle's `level` file is named.
-      _ if path.ends_with("level") => Some(Self::Level),
-      _ => None,
+  /// The kind an extension names, or `None` for one that names no asset this models.
+  ///
+  /// Where an extension stops being a spelling and becomes engine-tree knowledge. The vocabulary knows that `anm` and
+  /// `anm1` are two different files; only here is it known that the engine loads both as animations, that nine
+  /// spellings are all shader sources, and that `log` and `bat` are not assets so much as things found beside them.
+  pub fn of(extension: XrayExtension) -> Option<Self> {
+    Some(match extension {
+      XrayExtension::Ai => Self::Ai,
+      // Two spellings of one animation container, loaded the same way.
+      XrayExtension::Anm | XrayExtension::Anm1 => Self::Anm,
+      XrayExtension::CForm => Self::CForm,
+      XrayExtension::Dds => Self::Dds,
+      XrayExtension::Details => Self::Details,
+      XrayExtension::Dm => Self::Dm,
+      XrayExtension::Efd => Self::Efd,
+      XrayExtension::EnvMod => Self::EnvMod,
+      XrayExtension::FogVol => Self::FogVol,
+      XrayExtension::Game => Self::Game,
+      XrayExtension::Geom => Self::Geom,
+      XrayExtension::GeomX => Self::GeomX,
+      XrayExtension::Hom => Self::Hom,
+      XrayExtension::Ini => Self::Ini,
+      XrayExtension::Lights => Self::Lights,
+      // Not assets: the logs, scripts and batch files a tree accumulates beside them, kept in one bucket because no
+      // consumer resolves one by reference.
+      XrayExtension::Log | XrayExtension::Bat | XrayExtension::Py | XrayExtension::Cmd => Self::Misc,
+      XrayExtension::Ltx => Self::Ltx,
+      XrayExtension::Ogf => Self::Ogf,
+      XrayExtension::Ogg => Self::Ogg,
+      XrayExtension::Ogm => Self::Ogm,
+      XrayExtension::Omf => Self::Omf,
+      XrayExtension::Ppe => Self::Ppe,
+      // Every renderer source spelling: the Lua script pair, the HLSL stages, and the headers they include. Which of
+      // them a given renderer compiles is `xrf-shaders`' question, not this one.
+      XrayExtension::Ps
+      | XrayExtension::S
+      | XrayExtension::S_
+      | XrayExtension::H
+      | XrayExtension::Vs
+      | XrayExtension::Cs
+      | XrayExtension::Hs
+      | XrayExtension::Ds
+      | XrayExtension::Gs => Self::Shader,
+      XrayExtension::PsStatic => Self::PsStatic,
+      XrayExtension::Script => Self::Script,
+      XrayExtension::Seq | XrayExtension::Seq_ => Self::Seq,
+      XrayExtension::SndStatic => Self::SndStatic,
+      XrayExtension::Spawn => Self::Spawn,
+      XrayExtension::Thm => Self::Thm,
+      XrayExtension::Wallmarks => Self::Wallmarks,
+      XrayExtension::Xr => Self::XrPack,
+      // Real files a tree holds that no mounted world resolves by kind: a texture's authoring sources, the formats
+      // XRF's own tooling reads and writes, and the notes a mod ships. Listed rather than swept up by a wildcard, so
+      // that adding a spelling to the vocabulary is a decision taken here instead of a silent `None`.
+      XrayExtension::Bmp
+      | XrayExtension::Tga
+      | XrayExtension::Png
+      | XrayExtension::Htm
+      | XrayExtension::Html
+      | XrayExtension::Json
+      | XrayExtension::Md
+      | XrayExtension::Ts
+      | XrayExtension::Xml => return None,
+    })
+  }
+
+  /// The kind a logical path names, read from its extension and then from its name.
+  pub fn from_logical_path(path: &str) -> Option<Self> {
+    if let Some(asset_type) = XrayExtensionOf::of(path).known().and_then(Self::of) {
+      return Some(asset_type);
     }
+
+    // Reached only by a path carrying no extension this maps to, which is how a level bundle's `level` file is named.
+    path.ends_with("level").then_some(Self::Level)
   }
 }
 
@@ -176,6 +213,8 @@ impl XrayAssetRules {
 
 #[cfg(test)]
 mod tests {
+  use xrf_extension::XrayExtension;
+
   use super::{XrayAssetRules, XrayAssetType};
   use crate::path::XrayLogicalPath;
 
@@ -328,5 +367,66 @@ mod tests {
       Some(XrayAssetType::Level)
     );
     assert_eq!(XrayAssetType::from_logical_path("readme"), None);
+  }
+
+  #[test]
+  fn gathers_the_spellings_the_engine_loads_the_same_way() {
+    // The groupings are this crate's knowledge, not the vocabulary's: `anm1` is a different file from `anm`, and a
+    // reader outside a mounted world is free to treat them differently.
+    for extension in [XrayExtension::Anm, XrayExtension::Anm1] {
+      assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Anm));
+    }
+
+    for extension in [
+      XrayExtension::Ps,
+      XrayExtension::S,
+      XrayExtension::S_,
+      XrayExtension::H,
+      XrayExtension::Vs,
+      XrayExtension::Cs,
+      XrayExtension::Hs,
+      XrayExtension::Ds,
+      XrayExtension::Gs,
+    ] {
+      assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Shader));
+    }
+
+    for extension in [XrayExtension::Seq, XrayExtension::Seq_] {
+      assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Seq));
+    }
+
+    for extension in [
+      XrayExtension::Log,
+      XrayExtension::Bat,
+      XrayExtension::Py,
+      XrayExtension::Cmd,
+    ] {
+      assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Misc));
+    }
+  }
+
+  #[test]
+  fn names_no_kind_for_a_spelling_no_mounted_world_resolves_by_kind() {
+    // `ps_static` is an asset and `png` is not, though both are files a gamedata tree really holds.
+    assert_eq!(
+      XrayAssetType::of(XrayExtension::PsStatic),
+      Some(XrayAssetType::PsStatic)
+    );
+    assert_eq!(XrayAssetType::of(XrayExtension::Png), None);
+    assert_eq!(XrayAssetType::of(XrayExtension::Tga), None);
+    assert_eq!(XrayAssetType::of(XrayExtension::Xml), None);
+  }
+
+  #[test]
+  fn reads_a_kind_off_an_extension_whatever_case_a_name_was_authored_in() {
+    // A name table records a name as it was written, and an archive built on Windows holds plenty of upper case.
+    assert_eq!(
+      XrayAssetType::from_logical_path("TEXTURES\\WPN\\AK74.DDS"),
+      Some(XrayAssetType::Dds)
+    );
+    assert_eq!(
+      XrayAssetType::from_logical_path("Shaders\\R1\\.S"),
+      Some(XrayAssetType::Shader)
+    );
   }
 }
