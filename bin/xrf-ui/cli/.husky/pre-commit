@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+# Git runs hooks from the working tree root; the frontend toolchain lives in the nested package.
+ui="bin/xrf-ui"
+
+# Most commits here are Rust only, and they must not need an installed frontend to land.
+if ! git diff --cached --name-only --diff-filter=ACMR -- "$ui" | grep -Eq '\.(cjs|js|mjs|ts|tsx)$'; then
+  exit 0
+fi
+
+if [ ! -d "$ui/node_modules" ]; then
+  printf >&2 "\n%s\n\n" "Frontend sources are staged but $ui has no node_modules: run 'pnpm --dir $ui install'."
+  exit 1
+fi
+
+cd "$ui" || exit 1
+
+# No `--` before the flags: pnpm forwards it to the script verbatim, and lint-staged then stops parsing.
+pnpm run lint:staged --hide-all --concurrent false

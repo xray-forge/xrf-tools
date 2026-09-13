@@ -12,6 +12,7 @@
     "node": ">=24.15.0"
   },
   "scripts": {
+    "prepare": "node cli/hooks/install.mjs",
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
@@ -21,6 +22,7 @@
     "preview:prod": "pnpm run build && vite preview",
     "lint": "eslint . --config cli/lint/eslint.config.mjs --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
     "format": "prettier --write \"**/*.(js|ts|tsx|md)\" && pnpm run lint --fix",
+    "lint:staged": "lint-staged --config cli/hooks/lint-staged.config.mjs --max-arg-length 7000",
     "generate:bindings": "cargo make --cwd ../.. generate-typescript",
     "format:bindings": "eslint --config cli/lint/eslint.generated.config.mjs --no-cache --fix src/core/bindings && prettier --write --log-level warn \"src/core/bindings/**/*.ts\""
   },
@@ -82,8 +84,10 @@
     "eslint-plugin-sort-keys-fix": "^1.1.2",
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^17.12.0",
+    "husky": "^9.1.7",
     "jest": "^30.5.1",
     "jest-environment-jsdom": "^30.5.1",
+    "lint-staged": "^17.5.1",
     "mobx-react-observer": "^2.0.0",
     "prettier": "^3.9.6",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
