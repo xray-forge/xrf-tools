@@ -167,8 +167,8 @@ export const MONOSPACE_CHARACTER_WIDTH: number = 7.25;
 
 export const ACCENT = {
   primary: {
-    main: { light: "#795108", dark: "#ffb51a" },
-    contrastText: { light: "#ffffff", dark: "#241b06" },
+    main: { light: "#bf740b", dark: "#ffb51a" },
+    contrastText: { light: "#ffffff", dark: "#35290a" },
   },
   secondary: {
     main: { light: "#1b5e90", dark: "#60bcff" },
@@ -193,8 +193,8 @@ export const STATUS = {
 
 export const SURFACE = {
   default: { light: "#eef1f5", dark: "#171717" },
-  paper: { light: "#f8fafc", dark: "#242424" },
-  raised: { light: "#ffffff", dark: "#303030" },
+  paper: { light: "#f8fafc", dark: "#202020" },
+  raised: { light: "#ffffff", dark: "#262626" },
   input: { light: "#ffffff", dark: "#1d1d1d" },
 } as const;
 
