@@ -9,7 +9,6 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 import { mockInvoke, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { Logger } from "@/lib/logging";
 
 interface IResult {
   count: number;
@@ -27,7 +26,7 @@ function deferred<T>() {
 
 function setup(kinds: ReadonlyArray<EJobKind> = [EJobKind.CONFIGS_VERIFY]) {
   const { service: jobs } = mockInjectedService(JobsService);
-  const operation = new JobOperation<IResult>(jobs, kinds, new Logger("job-operation.test"));
+  const operation = new JobOperation<IResult>(jobs, kinds);
 
   return { operation, jobs };
 }
@@ -169,17 +168,17 @@ describe("JobOperation", () => {
   it("adopts matching success and failure outcomes but ignores other commands", () => {
     const { operation } = setup();
 
-    operation.adopt(settled());
-    operation.adopt(settled({ kind: EJobKind.TRANSLATIONS_BUILD, result: { count: 99 } }));
+    expect(operation.adopt(settled())).toBe(true);
+    expect(operation.adopt(settled({ kind: EJobKind.TRANSLATIONS_BUILD, result: { count: 99 } }))).toBe(false);
 
     expect(operation.result).toEqual({ count: 4 });
 
-    operation.adopt(settled({ conclusion: "failed", error: "cannot read", result: null }));
+    expect(operation.adopt(settled({ conclusion: "failed", error: "cannot read", result: null }))).toBe(true);
 
     expect(operation.result).toBeNull();
     expect(operation.error).toBe("cannot read");
 
-    operation.adopt(undefined);
+    expect(operation.adopt(undefined)).toBe(false);
 
     expect(operation.error).toBe("cannot read");
   });
@@ -191,7 +190,7 @@ describe("JobOperation", () => {
       return yield* operation.run(descriptor(answer.promise));
     })();
 
-    operation.adopt(settled());
+    expect(operation.adopt(settled())).toBe(false);
     operation.reset();
 
     expect(operation.result).toBeNull();
@@ -216,5 +215,35 @@ describe("JobOperation", () => {
 
     expect(operation.error).toBe("cannot start");
     expect(operation.isRunning).toBe(false);
+  });
+
+  it("clears a failure without discarding its partial result", () => {
+    const { operation } = setup();
+
+    operation.adopt(settled({ conclusion: "failed", error: "could not finish", result: { count: 2 } }));
+    operation.clearError();
+
+    expect(operation.error).toBeNull();
+    expect(operation.result).toEqual({ count: 2 });
+    expect(operation.isRunning).toBe(false);
+  });
+
+  it("leaves a pending run active when its error is cleared", async () => {
+    const { operation } = setup();
+    const answer = deferred<IResult>();
+    const running = flow(function* () {
+      return yield* operation.run(descriptor(answer.promise));
+    })();
+    const job = operation.job;
+
+    operation.clearError();
+
+    expect(operation.isRunning).toBe(true);
+    expect(operation.job).toBe(job);
+
+    answer.resolve({ count: 3 });
+    await running;
+
+    expect(operation.result).toEqual({ count: 3 });
   });
 });

@@ -63,11 +63,11 @@ describe("PackerService editing", () => {
 
     await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
 
-    expect(service.result).not.toBeNull();
+    expect(service.operation.result).not.toBeNull();
 
     service.patchConfig({ name: "renamed" });
 
-    expect(service.result).toBeNull();
+    expect(service.operation.result).toBeNull();
   });
 
   it("keeps a failed run reportable instead of throwing at the editor", async () => {
@@ -82,32 +82,46 @@ describe("PackerService editing", () => {
     await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
 
     expect(service.error).toBe("source is empty");
-    expect(service.result).toBeNull();
+    expect(service.operation.result).toBeNull();
     expect(service.isBusy).toBe(false);
   });
 });
 
 describe("PackerService volume ceiling", () => {
-  it.each(["success", "failure"])("clears the previous %s when the ceiling changes", async (outcome) => {
+  it("clears the previous result when the ceiling changes", async () => {
+    const service = mockPackerService();
+
+    setMockInvokeResponses({
+      ["plugin:archives|pack_directory"]: { volumes: ["gamedata.db"], filesTotal: 1 },
+    });
+
+    await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
+
+    expect(service.operation.result).not.toBeNull();
+
+    service.setVolumeSize("512");
+
+    expect(service.operation.result).toBeNull();
+    expect(service.error).toBeNull();
+    expect(service.isDirty).toBe(false);
+  });
+
+  it("clears the previous failure when the ceiling changes", async () => {
     const service = mockPackerService();
 
     setMockInvokeResponses({
       ["plugin:archives|pack_directory"]: () => {
-        if (outcome === "failure") {
-          throw new Error("cannot pack");
-        }
-
-        return { volumes: ["gamedata.db"], filesTotal: 1 };
+        throw new Error("cannot pack");
       },
     });
 
     await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
 
-    expect(service.result !== null || service.error !== null).toBe(true);
+    expect(service.error).toBe("cannot pack");
 
     service.setVolumeSize("512");
 
-    expect(service.result).toBeNull();
+    expect(service.operation.result).toBeNull();
     expect(service.error).toBeNull();
     expect(service.isDirty).toBe(false);
   });
@@ -278,8 +292,7 @@ describe("PackerService adoption", () => {
   }
 
   it("renders the answer of a pack it never awaited", () => {
-    // The command replied to a page that no longer exists. What the backend retained arrives as an announcement, and
-    // the cast to a pack result belongs here because this is what knows a pack when it sees one.
+    // The command replied to a page that no longer exists; the retained result arrives through the event bus.
     const { service, container }: IInjectedServiceMockDescriptor<PackerService> = provisionedPacker();
     const result: Partial<ArchivePackResult> = { volumes: ["textures.db0"], filesTotal: 2 };
 
@@ -291,7 +304,7 @@ describe("PackerService adoption", () => {
       result,
     });
 
-    expect(service.result).toStrictEqual(result);
+    expect(service.operation.result).toStrictEqual(result);
   });
 
   it("leaves another tool's job alone", () => {
@@ -305,7 +318,7 @@ describe("PackerService adoption", () => {
       result: { extracted: 4 },
     });
 
-    expect(service.result).toBeNull();
+    expect(service.operation.result).toBeNull();
   });
 
   it("shows why a pack it never awaited failed", () => {
@@ -319,7 +332,7 @@ describe("PackerService adoption", () => {
       result: null,
     });
 
-    expect(service.result).toBeNull();
+    expect(service.operation.result).toBeNull();
     expect(service.error).toBe("volume cap refuses particles.xr");
   });
 });

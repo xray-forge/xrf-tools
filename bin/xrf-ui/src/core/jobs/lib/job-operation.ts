@@ -19,6 +19,8 @@ export type JobCompletion<T> = { result: T; error: null } | { result: null; erro
  * Notifications and backend cancellation remain with `JobsService`.
  */
 export class JobOperation<T> {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
   @Observable()
   private state: AsyncState<T> = AsyncState.idle<T>();
 
@@ -57,19 +59,26 @@ export class JobOperation<T> {
     return this.state.error?.message ?? null;
   }
 
+  public constructor(
+    private readonly jobsService: JobsService,
+    private readonly kinds: ReadonlyArray<EJobKind>
+  ) {
+    // Composed state is not activated by the container's observable plugin.
+    makeObservable(this);
+  }
+
   /** Clears the displayed outcome without cancelling work in progress. */
   @BoundAction()
   public reset(): void {
     this.state = this.state.isLoading ? this.state.asLoading(null) : this.state.asIdle();
   }
 
-  public constructor(
-    private readonly jobsService: JobsService,
-    private readonly kinds: ReadonlyArray<EJobKind>,
-    private readonly log: Logger
-  ) {
-    // Composed state is not activated by the container's observable plugin.
-    makeObservable(this);
+  /** Clears a reported failure while retaining its result and leaving active work alone. */
+  @BoundAction()
+  public clearError(): void {
+    if (this.state.isFailed) {
+      this.state = this.state.asIdle(this.state.value);
+    }
   }
 
   /** Requests cooperative cancellation; partial output remains described by the command's result. */
@@ -116,11 +125,16 @@ export class JobOperation<T> {
     }
   }
 
-  /** Accepts only this operation's job kinds; an awaited run publishes through its own flow. */
+  /**
+   * Accepts only this operation's job kinds; an awaited run publishes through its own flow.
+   *
+   * @param settled - Retained outcome announced by the jobs service, if available.
+   * @returns Whether the outcome was accepted.
+   */
   @BoundAction()
-  public adopt(settled: Optional<IJobSettledPayload>): void {
+  public adopt(settled: Optional<IJobSettledPayload>): boolean {
     if (!settled || !this.kinds.some((kind) => kind === settled.kind) || this.jobId !== null) {
-      return;
+      return false;
     }
 
     // The owner pairs these kinds with T from the generated binding. Retained backend results use that same shape.
@@ -128,5 +142,7 @@ export class JobOperation<T> {
 
     this.state =
       settled.error === null ? this.state.asReady(result) : this.state.asFailed(new Error(settled.error), result);
+
+    return true;
   }
 }

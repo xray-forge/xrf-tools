@@ -7,7 +7,8 @@ import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { IJobNotice, IJobOutcome, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -52,6 +53,8 @@ function toSavedState(config: ArchivePackConfig): string {
 export class PackerService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  public readonly operation: JobOperation<ArchivePackResult>;
+
   /** Which section of the configuration is open. */
   @Observable()
   public section: EPackerSection = EPackerSection.OUTPUT;
@@ -63,10 +66,15 @@ export class PackerService {
   public isBusy: boolean = false;
 
   @Observable()
-  public error: Nullable<string> = null;
+  private configError: Nullable<string> = null;
 
-  @Observable()
-  public result: Nullable<ArchivePackResult> = null;
+  /**
+   * @returns The latest configuration I/O failure, or the packing failure when configuration I/O has not failed.
+   */
+  @Computed()
+  public get error(): Nullable<string> {
+    return this.configError ?? this.operation.error;
+  }
 
   /** Configuration file this was read from or last written to. */
   @Observable()
@@ -143,42 +151,19 @@ export class PackerService {
       : this.config.maxVolumeSize;
   }
 
-  /** The pack this service started, while it runs. Null once it settles, and after a reload until re-attach. */
-  @Observable()
-  public jobId: Nullable<string> = null;
-
-  /**
-   * @returns The pack currently running, whether this service started it or found it again.
-   */
-  @Computed()
-  public get job(): Nullable<IJobState> {
-    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_PACK);
-  }
-
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly jobsService: JobsService = inject(JobsService)
-  ) {}
+    public readonly jobsService: JobsService = inject(JobsService)
+  ) {
+    this.operation = new JobOperation(jobsService, [EJobKind.ARCHIVES_PACK]);
+  }
 
   /**
    * Opens the editor on the packer's own defaults.
-   *
-   * A failure falls back to a local copy of them rather than leaving the editor shut: the values are the
-   * packer's to own, but not at the cost of an editor that never appears.
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
     await flowResult(this.restore());
-  }
-
-  /**
-   * Stops the running pack, if there is one.
-   */
-  @BoundAction()
-  public cancel(): void {
-    if (this.job) {
-      this.jobsService.cancel(this.job.id);
-    }
   }
 
   /**
@@ -208,11 +193,13 @@ export class PackerService {
     this.resetResult();
   }
 
-  /** Clears the outcome when any input to the pack changes. */
+  /**
+   * Clears the displayed outcome and configuration error when a packing input changes.
+   */
   @BoundAction()
   public resetResult(): void {
-    this.result = null;
-    this.error = null;
+    this.operation.reset();
+    this.configError = null;
   }
 
   /**
@@ -261,7 +248,7 @@ export class PackerService {
    */
   @ExclusiveFlow("isBusy")
   public *importConfig(path: string): TFlow {
-    if (!this.config || this.job) {
+    if (!this.config || this.operation.isRunning) {
       return;
     }
 
@@ -270,7 +257,8 @@ export class PackerService {
     this.log.info("Importing config:", path);
 
     this.isBusy = true;
-    this.error = null;
+    this.configError = null;
+    this.operation.clearError();
 
     try {
       const imported: ArchivePackConfig = yield* call(archivesCommands.importPackConfig(path, this.config));
@@ -280,11 +268,11 @@ export class PackerService {
       this.config = imported;
       this.configPath = path;
       this.savedState = toSavedState(imported);
-      this.result = null;
+      this.operation.reset();
     } catch (error: unknown) {
       this.log.error("Import error after:", formatDuration(timer.elapsed()), error);
 
-      this.error = transformError(error).message;
+      this.configError = transformError(error).message;
     } finally {
       // Deactivation also releases the form's local busy state.
       this.isBusy = false;
@@ -300,7 +288,7 @@ export class PackerService {
   public *exportConfig(path: string): TFlow {
     const config: Nullable<ArchivePackConfig> = this.config;
 
-    if (!config || this.job) {
+    if (!config || this.operation.isRunning) {
       return;
     }
 
@@ -309,7 +297,8 @@ export class PackerService {
     this.log.info("Exporting config:", path);
 
     this.isBusy = true;
-    this.error = null;
+    this.configError = null;
+    this.operation.clearError();
 
     try {
       yield* call(archivesCommands.exportPackConfig(path, config));
@@ -328,7 +317,7 @@ export class PackerService {
     } catch (error: unknown) {
       this.log.error("Export error after:", formatDuration(timer.elapsed()), error);
 
-      this.error = transformError(error).message;
+      this.configError = transformError(error).message;
     } finally {
       this.isBusy = false;
     }
@@ -345,45 +334,24 @@ export class PackerService {
    */
   @ExclusiveFlow("isBusy")
   public *pack(config: ArchivePackConfig, isForced: boolean): TFlow {
-    if (this.job) {
+    if (this.operation.isRunning) {
       return;
     }
-
-    const timer: Timer = new Timer();
 
     this.log.info("Packing:", config.source);
 
     this.isBusy = true;
-    this.result = null;
-    this.error = null;
-
-    // Started through the jobs service rather than invoked here, so the run has an identity the cancel control can
-    // reach and survives this view being torn down. What it answers is still this service's to render.
-    const run: IJobRun<ArchivePackResult> = this.jobsService.run<ArchivePackResult>({
-      kind: EJobKind.ARCHIVES_PACK,
-      invoke: (id: string, progress) => archivesCommands.packDirectory({ config, isForced }, id, progress),
-      describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
-    });
-
-    this.jobId = run.id;
+    this.configError = null;
 
     try {
-      const packed: ArchivePackResult = yield* call(run.promise);
-
-      this.log.info("Packed in:", formatDuration(timer.elapsed()), `(backend ${formatDuration(packed.duration)})`);
-
-      this.result = packed;
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Pack error after:", formatDuration(timer.elapsed()), transformed);
-
-      this.error = transformed.message;
+      yield* this.operation.run({
+        kind: EJobKind.ARCHIVES_PACK,
+        invoke: (id: string, progress) => archivesCommands.packDirectory({ config, isForced }, id, progress),
+        describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
+      });
     } finally {
-      // Reached on cancellation of this generator too, which is a superseded view rather than a stopped job: the run
-      // itself keeps going and reports through the jobs service.
+      // Releasing this view unlocks the form; the job continues through JobsService.
       this.isBusy = false;
-      this.jobId = null;
     }
   }
 
@@ -397,13 +365,8 @@ export class PackerService {
    */
   @OnEvent(JOB_SETTLED_EVENT)
   public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    const settled: Nullable<IJobSettledPayload> = event.payload ?? null;
-
-    if (settled?.kind === EJobKind.ARCHIVES_PACK) {
-      this.log.info("Adopting the outcome of a pack this window did not start:", settled.id, settled.conclusion);
-
-      this.result = (settled.result as Nullable<ArchivePackResult>) ?? null;
-      this.error = settled.error;
+    if (this.operation.adopt(event.payload)) {
+      this.configError = null;
     }
   }
 }

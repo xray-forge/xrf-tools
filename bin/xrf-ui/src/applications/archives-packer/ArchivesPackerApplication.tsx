@@ -51,7 +51,7 @@ export function ArchivesPackerApplication(): ReactElement {
   const [isForced, setIsForced] = useState<boolean>(false);
 
   const config: Nullable<ArchivePackConfig> = packerService.config;
-  const job: Nullable<IJobState> = packerService.job;
+  const job: Nullable<IJobState> = packerService.operation.job;
 
   const isBusy: boolean = packerService.isBusy;
   const isPacking: boolean = Boolean(job);
@@ -158,7 +158,7 @@ export function ArchivesPackerApplication(): ReactElement {
   useEditorStatus([
     packerService.configName ?? "no configuration",
     ...(packerService.isDirty ? ["unsaved changes"] : []),
-    ...(packerService.result ? [`${packerService.result.volumes.length} volume(s)`] : []),
+    ...(packerService.operation.result ? [`${packerService.operation.result.volumes.length} volume(s)`] : []),
   ]);
 
   useEditorLifecycle({
@@ -192,7 +192,7 @@ export function ArchivesPackerApplication(): ReactElement {
         <Stack spacing={2} sx={{ maxWidth: 860 }}>
           {packerService.error ? <Alert severity={"error"}>{packerService.error}</Alert> : null}
 
-          {job ? <JobProgressView job={job} onCancel={packerService.cancel} /> : null}
+          {job ? <JobProgressView job={job} onCancel={packerService.operation.cancel} /> : null}
 
           {packerService.section === EPackerSection.OUTPUT ? (
             <PackerOutputSection
@@ -224,11 +224,11 @@ export function ArchivesPackerApplication(): ReactElement {
             />
           ) : null}
 
-          {packerService.result ? (
+          {packerService.operation.result ? (
             <>
               <Divider />
               <Typography variant={"subtitle2"}>Last run</Typography>
-              <ArchivesPackResult result={packerService.result} />
+              <ArchivesPackResult result={packerService.operation.result} />
             </>
           ) : null}
         </Stack>

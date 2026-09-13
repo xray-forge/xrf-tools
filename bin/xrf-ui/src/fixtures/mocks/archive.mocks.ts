@@ -7,7 +7,35 @@ import {
   ArchiveSharedPayload,
 } from "@/core/ipc/types/xrf-archive";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+
+/**
+ * Creates the complete result of a packing run.
+ *
+ * @param overrides - Result fields to override.
+ * @returns A packing result with volume lists and timing metrics.
+ */
+export function mockArchivePackResult(overrides: Partial<ArchivePackResult> = {}): ArchivePackResult {
+  return {
+    outcome: "completed",
+    volumes: ["C:\\out\\gamedata.db"],
+    volumesOpened: ["C:\\out\\gamedata.db"],
+    filesTotal: 1,
+    filesSkipped: 0,
+    filesStored: 1,
+    filesCompressed: 0,
+    filesAliased: 0,
+    sizeSource: 100,
+    sizeWritten: 120,
+    duration: 1000,
+    collectDuration: 100,
+    writeDuration: 800,
+    finalizeDuration: 100,
+    speed: 100,
+    ...overrides,
+  };
+}
 
 /**
  * Creates an archive read policy fixture.
