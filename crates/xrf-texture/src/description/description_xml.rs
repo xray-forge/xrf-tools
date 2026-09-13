@@ -1,12 +1,7 @@
-//! The extension a texture description file carries, and the element and attribute names it is written in.
+//! The element and attribute names a texture description file is written in.
 //!
 //! One vocabulary, in one place, because the reader and the writer have to agree on every one of them: a tag renamed
 //! on one side and not the other produces a file the engine silently ignores rather than an error anybody sees.
-
-use xrf_extension::XrayExtension;
-
-/// Extension of a description file, which is what a directory of them is selected by.
-pub(crate) const XML_EXTENSION: XrayExtension = XrayExtension::Xml;
 
 /// Root node of a ui texture description file, wrapping all of its `file` nodes.
 pub(crate) const XML_TAG_WINDOW: &str = "w";

@@ -1,10 +1,10 @@
 use image::{DynamicImage, GenericImageView, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
 use crate::crop::{CropTextureOptions, CropTextureResult};
-use crate::image_file::PNG_EXTENSION;
 use crate::image_file::{fit_image_into_bounds, save_image_as_ui_dds, save_image_as_ui_png};
 
 pub struct CropTextureProcessor {}
@@ -45,11 +45,7 @@ impl CropTextureProcessor {
       _ => cropped,
     };
 
-    if options
-      .output_path
-      .to_str()
-      .is_some_and(|name| PNG_EXTENSION.matches(name))
-    {
+    if XrayExtension::Png.matches_path(&options.output_path) {
       save_image_as_ui_png(&options.output_path, &result)?;
     } else {
       save_image_as_ui_dds(
@@ -123,6 +119,41 @@ mod tests {
     let mut options: CropTextureOptions = options_for("upper-case-png");
 
     options.output_path = options.output_path.with_file_name("upper-case-png-output.PNG");
+
+    CropTextureProcessor::crop(&options).expect("expect crop to succeed");
+
+    let written: Vec<u8> = std::fs::read(&options.output_path).expect("expect an output file");
+
+    assert_eq!(
+      &written[..4],
+      b"\x89PNG",
+      "the output has to be a PNG, not a DDS wearing the name of one"
+    );
+  }
+
+  /// The other half of the same rule. A mod tree named in CP1251 is bytes rather than text on Linux, so converting
+  /// the whole output path with `to_str` answered `None` for every file inside it and the writer fell to the DDS
+  /// branch - writing DDS bytes into a file named `.png`, silently, because the test was `is_some_and`.
+  ///
+  /// Unix only because the file has to exist: NTFS refuses the Windows form of an unreadable name. The rule itself is
+  /// pinned on both platforms in `xrf-extension`.
+  #[test]
+  #[cfg(unix)]
+  fn writes_a_png_under_a_parent_directory_that_is_not_valid_text() {
+    use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, build_non_unicode_file_name};
+
+    let mut options: CropTextureOptions = options_for("non-unicode-parent");
+    let directory: PathBuf =
+      build_absolute_generated_test_resource_path("xrf-texture/crop").join(build_non_unicode_file_name());
+
+    std::fs::create_dir_all(&directory).expect("expect a scratch directory");
+
+    options.output_path = directory.join("cropped.png");
+
+    assert!(
+      options.output_path.to_str().is_none(),
+      "the whole path has to be unreadable as text"
+    );
 
     CropTextureProcessor::crop(&options).expect("expect crop to succeed");
 

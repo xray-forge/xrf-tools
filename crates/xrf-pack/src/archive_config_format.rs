@@ -23,9 +23,6 @@ pub enum ArchiveConfigFormat {
 }
 
 impl ArchiveConfigFormat {
-  pub const EXTENSION_LTX: XrayExtension = XrayExtension::Ltx;
-  pub const EXTENSION_JSON: XrayExtension = XrayExtension::Json;
-
   /// Select the codec of a packing configuration from its path's extension.
   ///
   /// # Errors
@@ -51,25 +48,23 @@ impl ArchiveConfigFormat {
   /// Never guessed from contents: a configuration is a file a person named, so `pack.txt` holding LTX is a naming
   /// mistake to report rather than a format to detect.
   fn of_config(path: &Path, subject: &str) -> XrfResult<Self> {
-    let extension: XrayExtensionOf<'_> = path.to_str().map_or(XrayExtensionOf::None, XrayExtensionOf::of);
-
-    match extension {
-      XrayExtensionOf::Known(Self::EXTENSION_LTX) => Ok(Self::Ltx),
-      XrayExtensionOf::Known(Self::EXTENSION_JSON) => Ok(Self::Json),
+    match XrayExtensionOf::of_path(path) {
+      XrayExtensionOf::Known(XrayExtension::Ltx) => Ok(Self::Ltx),
+      XrayExtensionOf::Known(XrayExtension::Json) => Ok(Self::Json),
       XrayExtensionOf::None => Err(XrfError::new_invalid_error(format!(
         "Cannot read '{}' as a {subject} configuration: it has no extension, and the format is taken from one. Name \
          it '.{}' or '.{}'.",
         format_path(path),
-        Self::EXTENSION_LTX,
-        Self::EXTENSION_JSON
+        XrayExtension::Ltx,
+        XrayExtension::Json
       ))),
       // Every other spelling, whether or not the workspace models it: this serializes two of them.
       other => Err(XrfError::new_invalid_error(format!(
         "Cannot read '{}' as a {subject} configuration: '.{}' is not a supported format. Name it '.{}' or '.{}'.",
         format_path(path),
-        other.as_str().unwrap_or_default(),
-        Self::EXTENSION_LTX,
-        Self::EXTENSION_JSON
+        other.as_str().unwrap_or_default().to_ascii_lowercase(),
+        XrayExtension::Ltx,
+        XrayExtension::Json
       ))),
     }
   }
@@ -122,6 +117,24 @@ mod tests {
       assert!(error.to_string().contains("'.ltx'"), "{error}");
       assert!(error.to_string().contains("'.json'"), "{error}");
     }
+  }
+
+  #[test]
+  fn names_a_refused_extension_in_one_case_whether_or_not_the_vocabulary_models_it() {
+    // `XrayExtensionOf::as_str` answers the declared spelling for a modelled extension and the authored text for an
+    // unmodelled one, so this used to report '.xml' for `pack.XML` and '.TXT' for `pack.TXT` - two cases in one
+    // message, from a comparison that ignores case.
+    let modelled: XrfError = ArchiveConfigFormat::of_pack_config("pack.XML").expect_err("xml is not a format");
+    let unmodelled: XrfError = ArchiveConfigFormat::of_pack_config("pack.TXT").expect_err("txt is not a format");
+
+    assert!(
+      modelled.to_string().contains("'.xml' is not a supported format"),
+      "{modelled}"
+    );
+    assert!(
+      unmodelled.to_string().contains("'.txt' is not a supported format"),
+      "{unmodelled}"
+    );
   }
 
   #[test]

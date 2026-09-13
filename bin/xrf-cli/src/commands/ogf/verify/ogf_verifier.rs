@@ -204,7 +204,7 @@ impl<'a> OgfVerifier<'a> {
       .filter_map(Result::ok)
       .filter(|entry| entry.file_type().is_file())
       .map(|entry| entry.into_path())
-      .filter(|path| path.to_str().is_some_and(|name| XrayExtension::Ogf.matches(name)))
+      .filter(|path| XrayExtension::Ogf.matches_path(path))
       .collect()
   }
 

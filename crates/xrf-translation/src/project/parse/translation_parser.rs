@@ -4,10 +4,10 @@ use std::time::Instant;
 
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
-use crate::json;
 use crate::json::read::parse_json;
 use crate::json::write::{CanonicalRender, render_canonical, write_canonical};
 use crate::project::parse::merge::{MergeOutcome, merge_entries};
@@ -15,7 +15,6 @@ use crate::project::parse::scope::{ResolvedParseScope, resolve};
 use crate::project::parse::translation_parse_options::TranslationParseOptions;
 use crate::project::parse::translation_parse_result::TranslationParseResult;
 use crate::types::TranslationJson;
-use crate::xml;
 use crate::xml::encoding::TranslationIdentity;
 use crate::xml::read::parse_required_string_table;
 
@@ -73,7 +72,7 @@ impl TranslationParser {
     let mut assets: Vec<XrayAsset> = scoped
       .list_entries()
       .into_iter()
-      .filter(|asset| asset.get_logical_path().has_extension(xml::FILE_EXTENSION))
+      .filter(|asset| asset.get_logical_path().has_extension(XrayExtension::Xml))
       .filter(|asset| Self::is_selected(asset, options.file.as_deref()))
       .collect();
 
@@ -259,7 +258,7 @@ impl TranslationParser {
       })?
       .to_owned();
 
-    target.set_file_name(format!("{stem}.{}", json::FILE_EXTENSION));
+    target.set_file_name(format!("{stem}.{}", XrayExtension::Json));
 
     Ok(target)
   }

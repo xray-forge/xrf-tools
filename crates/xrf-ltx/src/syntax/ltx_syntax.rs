@@ -1,12 +1,4 @@
-use xrf_extension::XrayExtension;
-
 pub const ROOT_SECTION: &str = "";
-
-/// The extension every config this crate reads and writes carries.
-pub const LTX_EXTENSION: XrayExtension = XrayExtension::Ltx;
-
-/// The source a generated config is built from, which sits beside an `.ltx` that has not been built yet.
-pub const LTX_GENERATED_SOURCE_EXTENSION: XrayExtension = XrayExtension::Ts;
 
 pub const LTX_SCHEME_FIELD: &str = "$scheme";
 

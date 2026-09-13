@@ -4,11 +4,12 @@ use std::io;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path_or;
 
 use crate::ltx::Ltx;
 use crate::source::{LtxFilesystemSource, LtxIncludeSource};
-use crate::syntax::{LTX_EXTENSION, LTX_GENERATED_SOURCE_EXTENSION, LTX_SYMBOL_INCLUDE_WILDCARD, VIRTUAL_LTX_PATH};
+use crate::syntax::{LTX_SYMBOL_INCLUDE_WILDCARD, VIRTUAL_LTX_PATH};
 
 /// Converter object to process and inject all child #include statements.
 #[derive(Default)]
@@ -206,9 +207,7 @@ impl LtxIncludeConvertor {
   fn is_raw_ts_variant_existing<P: AsRef<Path>>(&self, path: &P) -> bool {
     let path: &Path = path.as_ref();
 
-    path.to_str().is_some_and(|name| {
-      LTX_EXTENSION.matches(name) && path.with_extension(LTX_GENERATED_SOURCE_EXTENSION.as_str()).exists()
-    })
+    XrayExtension::Ltx.matches_path(path) && path.with_extension(XrayExtension::Ts.as_str()).exists()
   }
 
   /// Whether a file name matches a `*` mask, both as encoded bytes.

@@ -73,9 +73,6 @@ impl GenericCommand for InspectCommand {
     let project: LtxProject = open_ltx_project(path, matches, &output)?;
     let entry: XrayLogicalPath = Self::locate(&project, section, matches.get_one::<String>("entry"), &output)?;
 
-    // Resolved a second time, and deliberately: the search above went through the project's plain cache, and only this
-    // resolution is asked to record where each field came from. It costs one root, which the document cache has just
-    // served every file of.
     let resolution: LtxResolution = project.resolve_explained(&entry)?;
     let source = project.document_source();
 

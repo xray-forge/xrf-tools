@@ -508,7 +508,7 @@ name = hello
     Ok(())
   }
 
-  /// The crate declared `LTX_EXTENSION` and then compared a byte suffix against a hard-coded `".ltx"` here, so a
+  /// The crate compared a byte suffix against a hard-coded `".ltx"` here rather than asking the vocabulary, so a
   /// config the engine loads happily was refused for the case its name was written in.
   #[test]
   fn includes_ltx_whatever_case_the_name_was_written_in() -> XrfResult {

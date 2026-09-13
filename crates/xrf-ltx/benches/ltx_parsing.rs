@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use xrf_ltx::{LTX_EXTENSION, Ltx};
+use xrf_extension::XrayExtension;
+use xrf_ltx::Ltx;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 /// Environment variable naming a directory of real `.ltx` files to parse instead of generated ones.
@@ -53,7 +54,7 @@ fn corpus_files(root: &Path) -> Option<Vec<String>> {
 
       if path.is_dir() {
         pending.push(path);
-      } else if path.to_str().is_some_and(|name| LTX_EXTENSION.matches(name)) {
+      } else if path.to_str().is_some_and(|name| XrayExtension::Ltx.matches(name)) {
         // Lossy: a corpus carries Windows-1251 configs, and re-encoding them here would measure the encoder.
         if let Ok(bytes) = fs::read(&path) {
           files.push(String::from_utf8_lossy(&bytes).into_owned());

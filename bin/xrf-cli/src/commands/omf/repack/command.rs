@@ -163,7 +163,7 @@ impl RepackCommand {
       .into_iter()
       .filter_map(Result::ok)
       .map(|it| it.into_path())
-      .filter(|it| it.is_file() && it.to_str().is_some_and(|name| XrayExtension::Omf.matches(name)))
+      .filter(|it| it.is_file() && XrayExtension::Omf.matches_path(it))
       .collect()
   }
 

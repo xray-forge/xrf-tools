@@ -82,10 +82,6 @@ impl ArchivePacker {
   }
 
   /// Leave the destination as this run found it, where the run did not finish and had nothing to replace.
-  ///
-  /// The one place that decides what an unfinished publication leaves behind, so a pack and a patch cannot answer it
-  /// differently. A forced run is deliberately exempt: its volumes cannot be told from the ones it overwrote, and
-  /// deleting them would compound the loss rather than undo it.
   pub(crate) fn settle_publication(
     config: &ArchivePackConfig,
     published: &ArchivePublishedSet,

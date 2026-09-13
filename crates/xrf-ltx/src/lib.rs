@@ -37,6 +37,4 @@ pub use crate::project::{
 };
 pub use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionScheme};
 pub use crate::source::LtxDocumentSource;
-pub use crate::syntax::{
-  LTX_EXTENSION, LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME,
-};
+pub use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME};

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
 
 use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
@@ -11,7 +12,7 @@ use crate::ltx::{Ltx, LtxSectionSchemes};
 use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
 use crate::scheme::LtxSchemeParser;
 use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxVfsSource};
-use crate::syntax::{LTX_EXTENSION, LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
+use crate::syntax::{LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
 /// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
 #[derive(Debug)]
@@ -224,7 +225,7 @@ impl LtxProject {
 
     for location in vfs.scoped(scope).list_entries() {
       // Already an engine identity, so nothing is re-validated here.
-      if location.get_logical_path().has_extension(LTX_EXTENSION) {
+      if location.get_logical_path().has_extension(XrayExtension::Ltx) {
         paths.push(location.get_logical_path().clone());
       }
     }

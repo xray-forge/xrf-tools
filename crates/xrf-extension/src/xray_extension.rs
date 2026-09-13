@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::file_extension::has_extension;
+use crate::file_extension::{get_path_extension, has_extension};
 
 /// Declares the vocabulary once, so the spelling, the serialized name and the parser cannot drift apart.
 macro_rules! declare_xray_extensions {
@@ -62,7 +63,7 @@ macro_rules! declare_xray_extensions {
 
       /// The extension `value` spells, whatever case it was authored in, or `None` for one nothing here models.
       ///
-      /// `value` is the undotted token [`crate::get_file_extension`] answers with, not a file name.
+      /// `value` is the undotted token the splitter answers with, not a file name.
       ///
       /// Folds into a stack buffer rather than an allocation, and compares in one match rather than walking the
       /// table: this runs once per entry of a name table holding hundreds of thousands of them.
@@ -78,7 +79,9 @@ macro_rules! declare_xray_extensions {
         folded[..bytes.len()].copy_from_slice(bytes);
         folded[..bytes.len()].make_ascii_lowercase();
 
-        // ASCII folding rewrites only `A`-`Z`, so this re-borrows bytes that were already valid text.
+        // A conversion, not a check: `value` is already text and ASCII folding rewrites only `A`-`Z`, so the copy has
+        // the same bytes and the same character boundaries. `from_utf8` is simply the one safe way back to the `&str`
+        // the table matches on, and its error arm cannot be reached.
         match std::str::from_utf8(&folded[..bytes.len()]).ok()? {
           $($spelling => Some(Self::$variant),)+
           _ => None,
@@ -112,9 +115,9 @@ declare_xray_extensions! {
   /// The D3D11 shader sources IX-Ray ships loose in `shaders\d3d11\`, beside the older renderers' `.ps`/`.vs` pairs.
   Hlsl => "hlsl",
   Hom => "hom",
+  Hs => "hs",
   Htm => "htm",
   Html => "html",
-  Hs => "hs",
   Ini => "ini",
   /// Both spellings of one format, because both reach a reader: `image::open` picks its decoder off the path.
   Jpeg => "jpeg",
@@ -161,6 +164,11 @@ impl XrayExtension {
   pub fn matches(self, name: &str) -> bool {
     has_extension(name, self.as_str())
   }
+
+  /// Whether `path`'s file name carries this extension, compared the way [`Self::matches`] compares one.
+  pub fn matches_path(self, path: &Path) -> bool {
+    get_path_extension(path).is_some_and(|found| found.eq_ignore_ascii_case(self.as_str()))
+  }
 }
 
 impl Display for XrayExtension {
@@ -172,6 +180,9 @@ impl Display for XrayExtension {
 #[cfg(test)]
 mod tests {
   use std::collections::HashSet;
+  use std::path::{Path, PathBuf};
+
+  use xrf_test_utils::utils::build_non_unicode_file_name;
 
   use super::XrayExtension;
 
@@ -217,7 +228,8 @@ mod tests {
 
   #[test]
   fn survives_a_spelling_that_is_not_ascii() {
-    // Folding must not slice a multi-byte character in half, and a name table holds whatever bytes it was given.
+    // A name table holds whatever a tree was authored with, and every declared spelling is ASCII, so a token carrying
+    // anything else has to answer `None` rather than fold into a neighbour of it.
     assert_eq!(XrayExtension::parse("ltx\u{00e9}"), None);
     assert_eq!(XrayExtension::parse("\u{0424}"), None);
   }
@@ -247,6 +259,32 @@ mod tests {
     }
 
     assert_eq!(seen.len(), XrayExtension::ALL.len());
+  }
+
+  #[test]
+  fn the_vocabulary_holds_every_spelling_it_held_before() {
+    // Nothing else fails when a variant is deleted: `of` in `xrf-vfs` matches exhaustively and would simply stop
+    // naming the kind, and every policy list would quietly shrink. Adding one is a decision; losing one is not.
+    assert_eq!(XrayExtension::ALL.len(), 57);
+  }
+
+  #[test]
+  fn the_spellings_are_declared_in_alphabetical_order() {
+    // Declaration order is what `ALL` and the generated TypeScript enum are emitted in, so it is a wire property and
+    // not a matter of taste. `hs` sat after `htm`/`html` until 2026-09-13.
+    let spellings: Vec<&str> = XrayExtension::ALL.iter().map(|extension| extension.as_str()).collect();
+    let mut sorted: Vec<&str> = spellings.clone();
+
+    sorted.sort_unstable();
+
+    assert_eq!(spellings, sorted);
+  }
+
+  #[test]
+  fn an_archive_volume_spelling_is_not_a_member() {
+    for spelling in ["db", "db0", "db9", "xdb", "xdb0", "xdb9"] {
+      assert_eq!(XrayExtension::parse(spelling), None, "{spelling} is not vocabulary");
+    }
   }
 
   #[test]
@@ -293,6 +331,27 @@ mod tests {
     // The splitter's rule, reached through the variant: a name merely ending in the spelling is not that extension.
     assert!(!XrayExtension::Xml.matches("notes.myxml"));
     assert!(!XrayExtension::Ltx.matches("system"));
+  }
+
+  #[test]
+  fn answers_whether_a_path_carries_this_extension() {
+    assert!(XrayExtension::Ltx.matches_path(Path::new("configs/system.ltx")));
+    assert!(XrayExtension::Ltx.matches_path(Path::new("configs/SYSTEM.LTX")));
+    assert!(XrayExtension::S.matches_path(Path::new("shaders/r1/.s")));
+
+    assert!(!XrayExtension::Ltx.matches_path(Path::new("configs/system.xml")));
+    assert!(!XrayExtension::Json.matches_path(Path::new("out.json/pack")));
+  }
+
+  #[test]
+  fn matches_a_path_whose_parent_directory_is_not_valid_text() {
+    // A whole-path `to_str` answers `None` here and every caller took the `false` branch without saying so - which is
+    // how a cropped PNG came to be written as DDS bytes under a CP1251 mod directory.
+    let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("ak74.png");
+
+    assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
+    assert!(XrayExtension::Png.matches_path(&path));
+    assert!(!XrayExtension::Dds.matches_path(&path));
   }
 
   #[test]

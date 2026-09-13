@@ -15,6 +15,8 @@ describe("getSyntaxLanguage", () => {
   it("reads a shader script as lua, which is what it is", () => {
     // `.s` lives in shaders/ and is not a shader language: it scripts the pipeline through Lua bindings.
     expect(getSyntaxLanguage("shaders\\r1\\blur2.s")).toBe(ESyntaxLanguage.LUA);
+    // `.s_` is the same file under the other spelling the vocabulary declares, grouped with `.s` by the backend.
+    expect(getSyntaxLanguage("shaders\\r1\\blur2.s_")).toBe(ESyntaxLanguage.LUA);
   });
 
   it("ignores the case an archive happens to store", () => {

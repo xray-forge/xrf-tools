@@ -109,7 +109,7 @@ impl XrayAssetType {
   /// The kind an extension names, or `None` for one that names no asset this models.
   ///
   /// Where an extension stops being a spelling and becomes engine-tree knowledge. The vocabulary knows that `anm` and
-  /// `anm1` are two different files; only here is it known that the engine loads both as animations, that nine
+  /// `anm1` are two different files; only here is it known that the engine loads both as animations, that eleven
   /// spellings are all shader sources, and that `log` and `bat` are not assets so much as things found beside them.
   pub fn of(extension: XrayExtension) -> Option<Self> {
     Some(match extension {
@@ -138,8 +138,6 @@ impl XrayAssetType {
       XrayExtension::Ogm => Self::Ogm,
       XrayExtension::Omf => Self::Omf,
       XrayExtension::Ppe => Self::Ppe,
-      // Every renderer source spelling: the Lua script pair, the HLSL stages, and the headers they include. Which of
-      // them a given renderer compiles is `xrf-shaders`' question, not this one.
       XrayExtension::Ps
       | XrayExtension::S
       | XrayExtension::S_
@@ -149,18 +147,16 @@ impl XrayAssetType {
       | XrayExtension::Hs
       | XrayExtension::Ds
       | XrayExtension::Gs
-      | XrayExtension::Hlsl => Self::Shader,
+      | XrayExtension::Hlsl
+      | XrayExtension::Lua => Self::Shader,
       XrayExtension::PsStatic => Self::PsStatic,
-      XrayExtension::Script | XrayExtension::Lua => Self::Script,
+      XrayExtension::Script => Self::Script,
       XrayExtension::Seq | XrayExtension::Seq_ => Self::Seq,
       XrayExtension::SndStatic => Self::SndStatic,
       XrayExtension::Spawn => Self::Spawn,
       XrayExtension::Thm => Self::Thm,
       XrayExtension::Wallmarks => Self::Wallmarks,
       XrayExtension::Xr => Self::XrPack,
-      // Real files a tree holds that no mounted world resolves by kind: a texture's authoring sources, the formats
-      // XRF's own tooling reads and writes, and the notes a mod ships. Listed rather than swept up by a wildcard, so
-      // that adding a spelling to the vocabulary is a decision taken here instead of a silent `None`.
       XrayExtension::Bmp
       | XrayExtension::Tga
       | XrayExtension::Png
@@ -333,7 +329,8 @@ mod tests {
 
   #[test]
   fn treats_an_unknown_extension_as_part_of_the_name() {
-    // A reference is not a filename: `smoke.png` names an asset the engine loads as `smoke.png.dds`.
+    // Not a gap in the authoring list: a reference is a name rather than a filename, so an extension the row does not
+    // claim stays part of it and the loaded one is appended.
     assert_eq!(
       rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.png"),
       "pfx\\smoke.png.dds"
@@ -409,6 +406,8 @@ mod tests {
       XrayExtension::Hs,
       XrayExtension::Ds,
       XrayExtension::Gs,
+      XrayExtension::Hlsl,
+      XrayExtension::Lua,
     ] {
       assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Shader));
     }
@@ -425,6 +424,32 @@ mod tests {
     ] {
       assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Misc));
     }
+  }
+
+  #[test]
+  fn ix_rays_renderer_spellings_are_shader_sources_and_not_game_scripts() {
+    assert_eq!(XrayAssetType::of(XrayExtension::Lua), Some(XrayAssetType::Shader));
+    assert_eq!(XrayAssetType::of(XrayExtension::Hlsl), Some(XrayAssetType::Shader));
+    assert_eq!(XrayAssetType::of(XrayExtension::Script), Some(XrayAssetType::Script));
+
+    // The leading-dot renderer script, which IX-Ray ships as `.lua` where the older trees ship `.s`.
+    assert_eq!(
+      XrayAssetType::from_logical_path("shaders\\r1\\.lua"),
+      Some(XrayAssetType::Shader)
+    );
+    assert_eq!(
+      XrayAssetType::from_logical_path("shaders\\d3d11\\accum_base.ps.hlsl"),
+      Some(XrayAssetType::Shader)
+    );
+    // A script the engine's own loader registers keeps its own kind, extension and home.
+    assert_eq!(
+      XrayAssetType::from_logical_path("scripts\\xr_logic.script"),
+      Some(XrayAssetType::Script)
+    );
+    assert_eq!(
+      rules(XrayAssetType::Script).to_logical_path("xr_logic"),
+      "xr_logic.script"
+    );
   }
 
   #[test]

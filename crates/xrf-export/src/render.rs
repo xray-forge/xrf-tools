@@ -47,7 +47,7 @@ impl ExternFormat {
   ///
   /// Returns an error when the path has no supported extension.
   pub fn from_extension(path: &Path) -> XrfResult<Self> {
-    match path.to_str().map(XrayExtensionOf::of).and_then(XrayExtensionOf::known) {
+    match XrayExtensionOf::of_path(path).known() {
       Some(XrayExtension::Json) => Ok(Self::Json),
       Some(XrayExtension::Xml) => Ok(Self::Xml),
       Some(XrayExtension::Html | XrayExtension::Htm) => Ok(Self::Html),

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LTX_EXTENSION;
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayVfs};
 
@@ -61,7 +61,7 @@ impl LtxFormatSelection {
     visited: &mut HashSet<PathBuf>,
   ) -> XrfResult<()> {
     for location in vfs.list_entries() {
-      if !location.get_logical_path().has_extension(LTX_EXTENSION) {
+      if !location.get_logical_path().has_extension(XrayExtension::Ltx) {
         continue;
       }
 
@@ -96,10 +96,7 @@ impl LtxFormatSelection {
         })?;
         let entry_path: &Path = entry.path();
 
-        if entry_path.is_file()
-          && entry_path.to_str().is_some_and(|name| LTX_EXTENSION.matches(name))
-          && visited.insert(entry_path.into())
-        {
+        if entry_path.is_file() && XrayExtension::Ltx.matches_path(entry_path) && visited.insert(entry_path.into()) {
           files.push(entry_path.into());
         }
       }

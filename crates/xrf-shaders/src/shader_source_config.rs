@@ -1,9 +1,6 @@
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 /// File extensions the engine treats as renderer shader sources.
-///
-/// A policy of this crate rather than a property of the spellings: `XrayAssetType` calls nine spellings shaders, this
-/// compiles seven of them, and the two lists are allowed to differ because they answer different questions.
 pub const SHADER_SOURCE_FILE_EXTENSIONS: &[XrayExtension] = &[
   XrayExtension::H,
   XrayExtension::Vs,
@@ -14,14 +11,10 @@ pub const SHADER_SOURCE_FILE_EXTENSIONS: &[XrayExtension] = &[
   XrayExtension::Gs,
 ];
 
-/// Lua renderer-definition script extension.
-pub const SHADER_SCRIPT_FILE_EXTENSION: XrayExtension = XrayExtension::S;
-
 /// Whether a name has a shader source extension recognized by the engine.
 ///
-/// Takes the engine identity rather than a `Path`, because that is what every caller holds and what the rule is about:
-/// a shader tree is enumerated through the VFS, and `Path::extension` answers `None` for `shaders\r1\.s` — the one
-/// name in the tree whose whole spelling is its extension.
+/// Takes the engine identity rather than a `Path` because that is what every caller holds: a shader tree is enumerated
+/// through the VFS, whose listings are logical paths, and the one caller passes a listing's name straight in.
 pub fn is_shader_source_path(name: &str) -> bool {
   XrayExtensionOf::of(name)
     .known()
@@ -32,7 +25,7 @@ pub fn is_shader_source_path(name: &str) -> bool {
 mod tests {
   use xrf_extension::XrayExtension;
 
-  use super::{SHADER_SCRIPT_FILE_EXTENSION, SHADER_SOURCE_FILE_EXTENSIONS, is_shader_source_path};
+  use super::{SHADER_SOURCE_FILE_EXTENSIONS, is_shader_source_path};
 
   #[test]
   fn recognizes_every_compiled_source_spelling_without_case() {
@@ -62,8 +55,7 @@ mod tests {
 
   #[test]
   fn the_script_spelling_is_the_one_whose_whole_name_the_engine_ships() {
-    // `shaders\r1\.s` is a Lua script the engine loads; `Path::extension` calls it a hidden file.
-    assert_eq!(SHADER_SCRIPT_FILE_EXTENSION, XrayExtension::S);
-    assert!(SHADER_SCRIPT_FILE_EXTENSION.matches("shaders\\r1\\.s"));
+    assert!(XrayExtension::S.matches("shaders\\r1\\.s"));
+    assert!(!SHADER_SOURCE_FILE_EXTENSIONS.contains(&XrayExtension::S));
   }
 }

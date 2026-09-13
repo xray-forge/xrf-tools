@@ -6968,6 +6968,7 @@ name = "xrf-dltx"
 version = "0.1.0"
 dependencies = [
  "xrf-error",
+ "xrf-extension",
  "xrf-ltx",
  "xrf-test-utils",
  "xrf-vfs",
@@ -7019,6 +7020,7 @@ dependencies = [
  "serde",
  "serde_json",
  "specta",
+ "xrf-test-utils",
 ]
 
 [[package]]

@@ -10,8 +10,8 @@ use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 // The engine ships `shaders\r1\.s`, a Lua script whose whole name is its extension.
 assert_eq!(
-  XrayExtensionOf::of("shaders\\r1\\.s"),
-  XrayExtensionOf::Known(XrayExtension::S)
+    XrayExtensionOf::of("shaders\\r1\\.s"),
+    XrayExtensionOf::Known(XrayExtension::S)
 );
 
 // A spelling nothing here models keeps its text, so a viewer can still say what it refused.
@@ -27,22 +27,22 @@ holds hundreds of thousands of them.
 ## Compare one extension
 
 ```rust
-use xrf_extension::{XrayExtension, get_file_extension, has_extension};
+use std::path::Path;
 
-assert_eq!(get_file_extension("configs\\system.ltx"), Some("ltx"));
-assert!(has_extension("configs\\SYSTEM.LTX", "ltx"));
+use xrf_extension::{XrayExtension, get_path_extension};
 
-// The same comparison, reached from the variant, which is what a consumer holding a vocabulary member wants.
 assert!(XrayExtension::Ltx.matches("configs\\SYSTEM.LTX"));
 
-// The extension is the last dot segment of the last path segment, never a byte suffix.
-assert!(!has_extension("notes.myltx", "ltx"));
-assert_eq!(get_file_extension("configs\\weapons.old\\readme"), None);
-```
+// The door for a caller holding a host path, which never converts the whole path to text.
+assert!(XrayExtension::Ltx.matches_path(Path::new("configs/system.ltx")));
 
-`has_extension` takes the extension undotted, the same spelling `get_file_extension` answers with, and
-`XrayExtension::matches` is that same comparison for a caller holding the variant. Three rival rules existed before
-this one, and two of them disagreed with the splitter about the engine's own leading-dot names.
+// The extension is the last dot segment of the last path segment, never a byte suffix.
+assert!(!XrayExtension::Ltx.matches("notes.myltx"));
+assert!(!XrayExtension::Ltx.matches("configs\\weapons.old\\readme"));
+
+// The one raw split left exported, for the numbered `db0`/`xdb1` volume family no vocabulary can hold.
+assert_eq!(get_path_extension(Path::new("db\\game.db0")), Some("db0"));
+```
 
 ## What belongs in the vocabulary
 
@@ -54,5 +54,19 @@ and merging those two lists is how one of them becomes wrong.
 Build-tool detritus a packer's skip list names — `vcproj`, `sln`, `rc` — is not vocabulary. That list pattern-matches
 prefixes as well as spellings and stays string-based where it is.
 
+Neither are archive volumes. `db`, `db0`..`db9`, `xdb`, `xdb0`..`xdb9` are one numbered family whose extension carries
+an index, so `xrf-pack`'s `ArchiveVolumeExtension` owns the stem and `xrf-archive` recognizes a volume by prefix over
+the split extension. A closed vocabulary cannot hold a family; do not add `Db` to complete the list.
+
+Consumers name the variant directly — `XrayExtension::Ltx`, not a local `const LTX_EXTENSION` aliasing it. Eleven such
+aliases were deleted on 2026-09-13; each added a name, an import and a hop while hiding nothing. A named constant here
+earns its name only when it names a *decision*, which is what the policy sets do.
+
+## Checks
+
+Run `cargo test --locked -p xrf-extension` from the repository root. This crate splits and names extensions; it does not
+decide what any of them is for. Which extensions a consumer reads as text, compresses, or skips is that consumer's
+policy list, and `XrayAssetType` in [xrf-vfs](../xrf-vfs/README.md) owns the engine-tree knowledge on top.
+
 See the [vocabulary](src/xray_extension.rs), the [answer type](src/xray_extension_of.rs), and the
-[splitter](src/file_extension.rs). Run `cargo test --locked -p xrf-extension` from the repository root.
+[splitter](src/file_extension.rs).

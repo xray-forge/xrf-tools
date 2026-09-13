@@ -1,4 +1,5 @@
 use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayDirectoryListing, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
@@ -8,7 +9,6 @@ use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };
 use crate::types::{TranslationEntry, TranslationVariant};
-use crate::xml;
 use crate::xml::encoding::{TranslationIdentity, decode};
 use crate::xml::read::parse_string_table;
 
@@ -82,7 +82,7 @@ pub fn read_gamedata_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfRe
 
 /// Whether an asset in a language directory is a string table the engine would load.
 fn is_string_table(asset: &XrayAsset) -> bool {
-  asset.get_logical_path().has_extension(xml::FILE_EXTENSION)
+  asset.get_logical_path().has_extension(XrayExtension::Xml)
 }
 
 fn merge_file(

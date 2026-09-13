@@ -73,7 +73,7 @@ impl<'a> OgfFixer<'a> {
       .into_iter()
       .filter_map(Result::ok)
       .map(DirEntry::into_path)
-      .filter(|it| it.is_file() && it.to_str().is_some_and(|name| XrayExtension::Ogf.matches(name)))
+      .filter(|it| it.is_file() && XrayExtension::Ogf.matches_path(it))
       .collect();
 
     // A directory holding no visuals is refused rather than swept successfully: a mistyped path would otherwise report

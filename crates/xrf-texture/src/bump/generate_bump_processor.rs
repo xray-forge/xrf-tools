@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 use image::RgbaImage;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_job::{JobOutcome, JobScope};
 
 use crate::bump::bump_normal_map::{GreyPlane, derive_normal_map};
 use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
 use crate::bump::generate_bump_result::GenerateBumpResult;
-use crate::image_file::DDS_EXTENSION;
 use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
 
 /// Suffix of the half holding the normals and the gloss.
@@ -258,7 +258,7 @@ impl GenerateBumpProcessor {
       .file_name()
       .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
 
-    destination.with_file_name(format!("{name}{suffix}.{DDS_EXTENSION}"))
+    destination.with_file_name(format!("{name}{suffix}.{}", XrayExtension::Dds))
   }
 }
 

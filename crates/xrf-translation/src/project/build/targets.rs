@@ -3,13 +3,13 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::{format_path, to_absolute_path, to_portable_path_string};
 use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
 use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::source_file_name::parse_json_source_stem;
-use crate::xml;
 
 /// Open the file a source builds to, creating the directories above it.
 ///
@@ -54,7 +54,7 @@ pub(crate) fn target_path(source: &str, destination: &Path, language: &Translati
     })?
     .to_owned();
 
-  relative.set_file_name(format!("{stem}.{}", xml::FILE_EXTENSION));
+  relative.set_file_name(format!("{stem}.{}", XrayExtension::Xml));
 
   Ok(destination.join(language.to_string()).join(relative))
 }

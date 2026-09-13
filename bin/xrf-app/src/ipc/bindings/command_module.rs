@@ -12,7 +12,7 @@ use crate::ipc::bindings::constants::{
 use crate::ipc::bindings::enumerations::Enumerations;
 use crate::ipc::bindings::output::write_generated;
 use crate::ipc::bindings::ownership::TypeOwnership;
-use crate::ipc::bindings::references::rewrite_type_references;
+use crate::ipc::bindings::references::rewrite_parameter_type_references;
 
 /// Replaces the types Tauri Specta inlined into a command module with imports, and names its commands.
 ///
@@ -37,7 +37,7 @@ pub(super) fn finalize_command_module(
     // The wider spelling first: replacing the bare one first would leave its `, Channel` behind.
     .replace(SPECTA_INVOKE_IMPORT_WITH_CHANNEL, CHANNEL_IMPORT_AND_COUNTED_INVOKE)
     .replace(SPECTA_INVOKE_IMPORT, COUNTED_INVOKE_IMPORT);
-  let commands: String = rewrite_type_references(&commands, &enumerations.references());
+  let commands: String = rewrite_parameter_type_references(&commands, &enumerations.references());
 
   // A module still importing `invoke` from Tauri would be dispatched and never counted, and nothing downstream would
   // say so. Specta changing how it writes that import is the way this stops being true, so it is asserted here.
@@ -100,7 +100,7 @@ pub(super) fn export_raw_commands(
   }
 
   // The registry spells these argument types by hand, so they take the same retyping as a Specta signature.
-  let wrappers: String = rewrite_type_references(&wrappers, &enumerations.references());
+  let wrappers: String = rewrite_parameter_type_references(&wrappers, &enumerations.references());
 
   ownership.assert_no_foreign_references(&wrappers, plugin);
 

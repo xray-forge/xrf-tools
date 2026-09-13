@@ -17,6 +17,7 @@ pub use project_projection::{
 };
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_typescript::{TypeScriptSymbolResolver, parse_typescript_file};
 use xrf_utils::{format_path, to_portable_path_string};
 
@@ -100,7 +101,7 @@ impl ExternManifestParser {
 
   /// Return whether a TypeScript source can contribute an extern declaration.
   pub fn is_source_path(path: &Path) -> bool {
-    path.extension().is_some_and(|extension| extension == "ts")
+    XrayExtension::Ts.matches_path(path)
       && !path.file_name().is_some_and(|name| {
         name.to_string_lossy().ends_with(".test.ts") || name.to_string_lossy().ends_with(".spec.ts")
       })
@@ -471,6 +472,17 @@ mod tests {
     assert!(ExternManifestParser::is_source_path(Path::new(
       "declarations/example.ts"
     )));
+  }
+
+  #[test]
+  fn reads_the_extension_whatever_case_the_host_recorded_it_in() {
+    // The comparison used to be byte-exact against `Path::extension`, so a declaration a Windows tool wrote back as
+    // `Example.TS` contributed nothing and said nothing about it.
+    assert!(ExternManifestParser::is_source_path(Path::new(
+      "declarations/Example.TS"
+    )));
+    // Still not every name ending in the letters: the splitter takes the token after the final dot.
+    assert!(!ExternManifestParser::is_source_path(Path::new("declarations/myts")));
   }
 
   #[test]

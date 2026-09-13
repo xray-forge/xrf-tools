@@ -4,13 +4,10 @@
 //! here knows about project layouts; it works on one file at a time.
 
 pub(crate) mod compiled;
-pub(crate) mod constants;
 pub(crate) mod encoding;
 pub(crate) mod layout;
 pub(crate) mod read;
 pub(crate) mod write;
-
-pub(crate) use constants::FILE_EXTENSION;
 
 #[cfg(test)]
 mod tests;

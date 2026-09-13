@@ -3,9 +3,10 @@ use std::str::Chars;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
+use xrf_extension::XrayExtension;
+
 use crate::syntax::{
-  LTX_EXTENSION, LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE,
-  LTX_SYMBOL_SECTION_OPEN,
+  LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE, LTX_SYMBOL_SECTION_OPEN,
 };
 
 /// A section header as its line spells it: the name, the parents it declares, and any trailing comment.
@@ -444,9 +445,10 @@ impl LtxParser<'_> {
       ));
     }
 
-    if !LTX_EXTENSION.matches(&included_path) {
+    if !XrayExtension::Ltx.matches(&included_path) {
       return self.error(format!(
-        "Included file should have .{LTX_EXTENSION} extension, got '{included_path}'",
+        "Included file should have .{} extension, got '{included_path}'",
+        XrayExtension::Ltx
       ));
     }
 

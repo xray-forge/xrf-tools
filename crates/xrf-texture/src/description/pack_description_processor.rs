@@ -4,13 +4,14 @@ use std::path::PathBuf;
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::{assert_equal, format_path};
 
 use crate::description::TextureFileDescriptor;
 use crate::description::{PackDescriptionOptions, XmlDescriptionCollection};
 use crate::image_file::save_image_as_ui_dds;
 use crate::image_file::warn_on_reshaped_ui_dds;
-use crate::image_file::{DDS_EXTENSION, UI_MIPMAP_LEVELS, UI_MIPMAPS};
+use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS};
 
 pub struct PackDescriptionProcessor {}
 
@@ -44,7 +45,9 @@ impl PackDescriptionProcessor {
 
   pub fn pack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
     let relative_path: PathBuf = file.to_host_relative_path()?;
-    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION.as_str()));
+    let full_name: PathBuf = options
+      .base
+      .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
 
     let (width, height) = file.get_dimension_boundaries();
     let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::new(width, height);
@@ -67,10 +70,11 @@ impl PackDescriptionProcessor {
         texture.h
       );
 
-      let texture_path: PathBuf = options
-        .base
-        .join(&relative_path)
-        .join(format!("{}.{}", texture.id, DDS_EXTENSION));
+      let texture_path: PathBuf =
+        options
+          .base
+          .join(&relative_path)
+          .join(format!("{}.{}", texture.id, XrayExtension::Dds));
 
       match DdsFile::read_from_path(&texture_path).and_then(|dds| dds.decode_rgba(0)) {
         Ok(texture_dds) => {
@@ -114,7 +118,7 @@ impl PackDescriptionProcessor {
 
     let destination: PathBuf = options
       .output_path
-      .join(relative_path.with_extension(DDS_EXTENSION.as_str()));
+      .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
 
     xrf_output::verbose!(options.output, "Saving file: {}", format_path(&destination));
 

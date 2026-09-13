@@ -1,4 +1,4 @@
-use xrf_ltx::LTX_EXTENSION;
+use xrf_extension::XrayExtension;
 
 use crate::discovery::dltx_attachment::DltxAttachment;
 
@@ -10,6 +10,9 @@ pub const DLTX_BASE_DEPTH: i32 = 0;
 /// Two hundred slots each so a mod file's own include chain, which counts up one per level, cannot reach the next mod
 /// file's band. `Xr_ini.cpp`.
 pub const DLTX_MOD_DEPTH_STEP: i32 = -200;
+
+/// What a patch file's name opens with, the fixed half of the engine's `mod_<stem>_*.ltx` glob.
+const DLTX_MOD_PREFIX: &str = "mod_";
 
 /// Works out which files patch a base config, in the order the engine applies them.
 pub struct DltxDiscovery;
@@ -43,8 +46,10 @@ impl DltxDiscovery {
       })
       .collect();
 
-    // `FS_FileSet` is ordered by name, so the engine's load order is ascending and every run agrees on it.
-    matched.sort();
+    // `FS_FileSet` is ordered by name, so the engine's load order is ascending and every run agrees on it. Over folded
+    // names, because that set holds the lower-cased names `FS_Path::_update` registered; sorting as recorded would put
+    // `mod_System_b.ltx` before `mod_system_a.ltx` and hand the win to the wrong file.
+    matched.sort_by_cached_key(|name| name.to_ascii_lowercase());
 
     matched
       .into_iter()
@@ -61,11 +66,10 @@ impl DltxDiscovery {
   /// The trailing part may be empty, because the engine's glob lets `*` match nothing, so `mod_system_.ltx` is a mod
   /// file of `system.ltx` (`LocatorAPI_defs.cpp:117-140`).
   fn is_mod_of(name: &str, stem: &str) -> bool {
-    name
-      .strip_prefix("mod_")
-      .and_then(|rest| rest.strip_prefix(stem))
+    Self::strip_prefix_folded(name, DLTX_MOD_PREFIX)
+      .and_then(|rest| Self::strip_prefix_folded(rest, stem))
       .and_then(|rest| rest.strip_prefix('_'))
-      .is_some_and(|rest| LTX_EXTENSION.matches(rest))
+      .is_some_and(|rest| XrayExtension::Ltx.matches(rest))
   }
 
   /// Whether `name` is another base config whose stem extends `stem`, which makes mod names ambiguous between them.
@@ -74,7 +78,7 @@ impl DltxDiscovery {
   /// ambiguous and neither does the base file itself.
   fn is_longer_base_than(name: &str, stem: &str) -> bool {
     Self::config_stem(name)
-      .and_then(|other| other.strip_prefix(stem))
+      .and_then(|other| Self::strip_prefix_folded(other, stem))
       .and_then(|rest| rest.strip_prefix('_'))
       .is_some_and(|rest| !rest.is_empty())
   }
@@ -87,17 +91,25 @@ impl DltxDiscovery {
       return false;
     };
 
-    name
-      .strip_prefix("mod_")
-      .and_then(|rest| rest.strip_prefix(longer_stem))
+    Self::strip_prefix_folded(name, DLTX_MOD_PREFIX)
+      .and_then(|rest| Self::strip_prefix_folded(rest, longer_stem))
       .and_then(|rest| rest.strip_prefix('_'))
       .and_then(Self::config_stem)
       .is_some_and(|rest| !rest.is_empty())
   }
 
+  /// `value` without `prefix`, compared without case.
+  /// ASCII only, as the rest of the workspace's folding is; a Cyrillic config name compares as written.
+  fn strip_prefix_folded<'a>(value: &'a str, prefix: &str) -> Option<&'a str> {
+    value
+      .get(..prefix.len())
+      .filter(|start| start.eq_ignore_ascii_case(prefix))
+      .map(|_| &value[prefix.len()..])
+  }
+
   /// A config's name without its extension, or `None` when the name is not a config at all.
   fn config_stem(name: &str) -> Option<&str> {
-    if !LTX_EXTENSION.matches(name) {
+    if !XrayExtension::Ltx.matches(name) {
       return None;
     }
 
@@ -204,13 +216,49 @@ mod tests {
   }
 
   #[test]
-  fn reads_the_extension_whatever_case_the_host_recorded_it_in() {
-    // Every rule here used to compare a literal `".ltx"` suffix, so a directory listing that gave back the case a
-    // Windows filesystem holds made a base config and its own mod files invisible to each other.
+  fn attaches_a_mod_file_whose_case_does_not_match_the_base() {
+    // Every comparison here is folded, because the engine's are made against names it folded first. A listing hands
+    // back the case a mod author typed, so this pairs a base and patches that agree on nothing but the letters - which
+    // an earlier pass claimed to fix while hand-picking matching case, leaving the case that mattered still broken.
     assert_eq!(
-      names("System.LTX", &["System.LTX", "mod_System_a.LTX"]),
-      vec!["mod_System_a.LTX"]
+      names(
+        "System.LTX",
+        &["System.LTX", "mod_SYSTEM_a.ltx", "MOD_system_b.Ltx", "mod_other_c.ltx"]
+      ),
+      vec!["mod_SYSTEM_a.ltx", "MOD_system_b.Ltx"]
     );
+  }
+
+  #[test]
+  fn orders_folded_so_the_alphabetically_last_file_wins_whatever_case_it_is_in() {
+    // Byte order puts every upper-case name first, which would hand the win to `mod_System_A.ltx`. The engine's set
+    // holds folded names, so `b` outranks `A` there and has to here.
+    let attachments: Vec<DltxAttachment> = DltxDiscovery::attachments_of(
+      "system.ltx",
+      &["mod_system_b.ltx", "mod_System_A.ltx"]
+        .iter()
+        .map(|it| String::from(*it))
+        .collect::<Vec<String>>(),
+    );
+
+    assert_eq!(attachments[0].name, "mod_System_A.ltx");
+    assert_eq!(attachments[1].name, "mod_system_b.ltx");
+    assert!(attachments[1].depth < attachments[0].depth);
+  }
+
+  #[test]
+  fn resolves_ambiguity_whatever_case_the_longer_base_was_recorded_in() {
+    // The ambiguity rule folds too, or a longer base spelled differently stops claiming the files that belong to it
+    // and both configs load them.
+    let siblings: &[&str] = &[
+      "system.ltx",
+      "System_Foo.LTX",
+      "mod_system_bar.ltx",
+      "mod_SYSTEM_foo_bar.ltx",
+    ];
+
+    assert_eq!(names("system.ltx", siblings), vec!["mod_system_bar.ltx"]);
+    assert_eq!(names("System_Foo.LTX", siblings), vec!["mod_SYSTEM_foo_bar.ltx"]);
   }
 
   #[test]

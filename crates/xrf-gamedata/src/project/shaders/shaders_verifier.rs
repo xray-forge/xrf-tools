@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_shaders::{SHADER_SCRIPT_FILE_EXTENSION, ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
+use xrf_extension::XrayExtension;
+use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 use crate::GamedataFindingFactory;
@@ -178,7 +179,7 @@ impl<'a> ShadersVerifier<'a> {
         break;
       }
 
-      if !file.get_logical_path().has_extension(SHADER_SCRIPT_FILE_EXTENSION) {
+      if !file.get_logical_path().has_extension(XrayExtension::S) {
         continue;
       }
 

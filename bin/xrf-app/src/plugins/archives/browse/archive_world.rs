@@ -175,7 +175,6 @@ mod tests {
   fn a_world_counts_only_the_bytes_the_engine_would_load() {
     let world: ArchiveWorld = layered("size");
 
-    // The shadowed copy is deliberately longer than the winner standing in front of it, so counting it would show.
     assert_eq!(
       world.size_real,
       ("front".len() + "front".len() + "back".len()) as u64,

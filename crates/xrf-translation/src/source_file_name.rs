@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::json;
+use xrf_extension::XrayExtension;
 
 /// The stem of a JSON translation source filename, or nothing when the name is not one.
 ///
@@ -16,7 +16,7 @@ use crate::json;
 pub(crate) fn parse_json_source_stem<T: AsRef<OsStr> + ?Sized>(file_name: &T) -> Option<&str> {
   let file_name: &str = file_name.as_ref().to_str()?;
 
-  if !json::FILE_EXTENSION.matches(file_name) {
+  if !XrayExtension::Json.matches(file_name) {
     return None;
   }
 

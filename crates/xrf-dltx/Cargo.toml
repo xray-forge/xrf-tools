@@ -11,6 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-ltx = { workspace = true }
 
 [dev-dependencies]

@@ -5,11 +5,6 @@ use crate::shader_library::shader_blender_property_value::ShaderBlenderPropertyV
 use crate::shader_library::shader_blender_token::ShaderBlenderToken;
 
 /// One blender, built as the SDK writes it and then changed a knob at a time.
-///
-/// Each constructor lays out the whole property grid of one class, in the order and with the spellings that class's
-/// own `Save` uses, so a test reads as the difference from a shader the game ships rather than from an invented one.
-/// The alpha knobs are named per class deliberately - `B_MODEL` writes `Use alpha-channel` where `B_DEFAULT_AREF`
-/// writes `Alpha-blend` - because a reader that folds those spellings together cannot be caught doing it.
 #[derive(Clone, Debug)]
 pub struct ShaderBlenderFixture {
   pub blender: ShaderBlender,

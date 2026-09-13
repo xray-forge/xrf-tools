@@ -22,9 +22,6 @@ use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 /// extension alone would sweep files this reader does not model.
 const DIALOG_FILE_PREFIX: &str = "dialog";
 
-/// Extension the engine loads dialog data as.
-const XML_EXTENSION: XrayExtension = XrayExtension::Xml;
-
 /// One file the project holds, parsed, with where the engine found it.
 #[derive(Debug)]
 pub struct DialogProjectFile {
@@ -231,7 +228,7 @@ impl DialogProject {
   /// Takes the path type rather than a string so the last-component rule is the one `xrf-vfs` owns:
   /// a `\`-separated identity split with `std::path` answers the whole path on Linux.
   pub fn is_dialog_logical_path(logical_path: &XrayLogicalPath) -> bool {
-    logical_path.has_extension(XML_EXTENSION) && logical_path.file_name().starts_with(DIALOG_FILE_PREFIX)
+    logical_path.has_extension(XrayExtension::Xml) && logical_path.file_name().starts_with(DIALOG_FILE_PREFIX)
   }
 
   pub fn get_mode(&self) -> DialogProjectMode {

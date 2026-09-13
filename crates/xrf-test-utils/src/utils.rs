@@ -162,6 +162,31 @@ pub fn write_generated_test_resource<C: AsRef<[u8]>>(resource_path: &str, conten
   Ok(build_absolute_generated_test_resource_path(resource_path))
 }
 
+/// A path component the host accepts and `to_str` refuses.
+///
+/// A Linux filename is bytes, not text, and a mod tree named in CP1251 is exactly that - so `Path::to_str` answers
+/// `None` for the whole path and any rule read off that answer silently stops applying. The Windows form is an
+/// unpaired surrogate, which `PathBuf` holds as WTF-8 and `to_str` refuses the same way, so a rule stating that only a
+/// file name has to be text can be pinned on both platforms rather than only where such trees actually live.
+///
+/// Not a name every filesystem will create: NTFS refuses a lone surrogate, so a test that writes the file gates itself
+/// on `cfg(unix)`. A test about paths alone needs no filesystem.
+pub fn build_non_unicode_file_name() -> std::ffi::OsString {
+  #[cfg(unix)]
+  {
+    use std::os::unix::ffi::OsStringExt;
+
+    std::ffi::OsString::from_vec(vec![0xD0, 0x9C, 0xFF, 0xD4])
+  }
+
+  #[cfg(windows)]
+  {
+    use std::os::windows::ffi::OsStringExt;
+
+    std::ffi::OsString::from_wide(&[0x041C, 0xD83D, 0x043E])
+  }
+}
+
 /// Create and open file by path, overwrite existing one.
 pub fn overwrite_file<P: AsRef<Path>>(path: P) -> IoResult<File> {
   std::fs::create_dir_all(path.as_ref().parent().expect("Parent directory"))?;

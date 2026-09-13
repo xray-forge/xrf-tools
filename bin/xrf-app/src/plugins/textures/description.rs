@@ -184,10 +184,6 @@ fn to_loose_asset(path: &Path) -> Option<XrayAsset> {
 }
 
 /// Read a located `.thm`, or nothing when its bytes cannot be reached or are not a descriptor.
-///
-/// A second read of a file [`XrayMaterialResolver`] has already parsed, and deliberately so: the resolver answers what
-/// the renderer makes of a descriptor and hands back no file, while the editor needs the chunks themselves. Folding
-/// the two would put an editor's concern inside the crate that models the engine's reading of one.
 fn read_descriptor(probe: &XrayProbe, asset: &XrayAsset) -> Option<ThmFile> {
   ThmFile::read_from_bytes::<XRayByteOrder>(probe.read_asset_bytes(asset).ok()?).ok()
 }

@@ -4,14 +4,13 @@ use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_xml::{XmlDocument, XmlElement, XmlParseOptions};
 
 use crate::description::PackDescriptionOptions;
 use crate::description::{TextureFileDescriptor, TextureSpriteDescriptor};
-use crate::description::{
-  XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_EXTENSION, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW,
-};
+use crate::description::{XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW};
 
 pub struct XmlDescriptionCollection {
   pub files: HashMap<String, TextureFileDescriptor>,
@@ -99,7 +98,7 @@ impl XmlDescriptionCollection {
       for entry in entries.flatten() {
         let path: PathBuf = entry.path();
 
-        if path.to_str().is_some_and(|name| XML_EXTENSION.matches(name)) {
+        if XrayExtension::Xml.matches_path(&path) {
           let descriptions: HashMap<String, TextureFileDescriptor> = Self::get_description(options, &path)?;
 
           descriptions

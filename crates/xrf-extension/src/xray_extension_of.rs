@@ -1,4 +1,6 @@
-use crate::file_extension::get_file_extension;
+use std::path::Path;
+
+use crate::file_extension::{get_file_extension, get_path_extension};
 use crate::xray_extension::XrayExtension;
 
 /// What a file name's extension turned out to be: one this workspace models, one it does not, or none at all.
@@ -6,10 +8,6 @@ use crate::xray_extension::XrayExtension;
 /// The one door from a name to its extension, because both answers have a caller and asking twice is what let them
 /// diverge. Logic wants the variant; a person-facing message wants the text of a spelling the vocabulary does not
 /// cover, so that a viewer can say *why* it will not open a `.psd` instead of showing nothing.
-///
-/// Borrows rather than owning, and has no owned variant on purpose. The extension is derived per call from a name a
-/// name table holds as an `Arc<str>` precisely so that reading it costs no allocation, and a gate such as
-/// `ArchiveReadPolicy::supports_file` runs once per entry over hundreds of thousands of them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum XrayExtensionOf<'a> {
   Known(XrayExtension),
@@ -22,7 +20,17 @@ pub enum XrayExtensionOf<'a> {
 impl<'a> XrayExtensionOf<'a> {
   /// Reads the extension of `name`, which may be an engine identity or a host file name.
   pub fn of(name: &'a str) -> Self {
-    match get_file_extension(name) {
+    Self::of_split(get_file_extension(name))
+  }
+
+  /// Reads the extension of a host path, from its file name alone.
+  pub fn of_path(path: &'a Path) -> Self {
+    Self::of_split(get_path_extension(path))
+  }
+
+  /// What a splitter's answer turns into, shared so the two doors cannot classify differently.
+  fn of_split(extension: Option<&'a str>) -> Self {
+    match extension {
       Some(extension) => match XrayExtension::parse(extension) {
         Some(known) => Self::Known(known),
         None => Self::Unknown(extension),
@@ -54,6 +62,10 @@ impl<'a> XrayExtensionOf<'a> {
 
 #[cfg(test)]
 mod tests {
+  use std::path::{Path, PathBuf};
+
+  use xrf_test_utils::utils::build_non_unicode_file_name;
+
   use super::{XrayExtension, XrayExtensionOf};
 
   #[test]
@@ -106,6 +118,37 @@ mod tests {
       XrayExtensionOf::None
     );
     assert_eq!(XrayExtensionOf::of(""), XrayExtensionOf::None);
+  }
+
+  #[test]
+  fn reads_a_path_extension_off_the_file_name_alone() {
+    assert_eq!(
+      XrayExtensionOf::of_path(Path::new("configs/system.ltx")),
+      XrayExtensionOf::Known(XrayExtension::Ltx)
+    );
+    assert_eq!(
+      XrayExtensionOf::of_path(Path::new("preview.PSD")),
+      XrayExtensionOf::Unknown("PSD")
+    );
+    // The directory carries the dot, so the file has no extension - which is a different refusal from an unsupported
+    // one wherever a caller reports the two apart.
+    assert_eq!(
+      XrayExtensionOf::of_path(Path::new("out.json/pack")),
+      XrayExtensionOf::None
+    );
+  }
+
+  #[test]
+  fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
+    // Whole-path conversion answered `None` here, so a caller selecting a codec reported "it has no extension" for a
+    // configuration that plainly had one.
+    let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("pack.ltx");
+
+    assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
+    assert_eq!(
+      XrayExtensionOf::of_path(&path),
+      XrayExtensionOf::Known(XrayExtension::Ltx)
+    );
   }
 
   #[test]

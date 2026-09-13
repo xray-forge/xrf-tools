@@ -1,3 +1,5 @@
+use std::path::Path;
+
 /// The extension of an engine or host file name, without its dot.
 ///
 /// X-Ray's own rule rather than `Path::extension`'s, on one point that matters: a name beginning with a dot is an
@@ -6,13 +8,21 @@
 /// Nothing in game data is a Unix dotfile.
 ///
 /// Returned as authored. A name table records a name as it was written, so folding case is the caller's decision.
-pub fn get_file_extension(name: &str) -> Option<&str> {
+pub(crate) fn get_file_extension(name: &str) -> Option<&str> {
   let segment: &str = match name.rfind(['\\', '/']) {
     Some(separator) => &name[separator + 1..],
     None => name,
   };
 
   segment.rsplit_once('.').map(|(_, extension)| extension)
+}
+
+/// The extension of a host path, read from its file name alone.
+pub fn get_path_extension(path: &Path) -> Option<&str> {
+  path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .and_then(get_file_extension)
 }
 
 /// Whether `name` carries `extension`, compared without case.
@@ -23,13 +33,17 @@ pub fn get_file_extension(name: &str) -> Option<&str> {
 /// keep `notes.myxml` from passing as XML — which is the splitter's job anyway — and it disagreed with the splitter
 /// about the engine's own leading-dot names, refusing a name that *is* its extension because it required a character
 /// before the dot. One rule, and it is the splitter's.
-pub fn has_extension(name: &str, extension: &str) -> bool {
+pub(crate) fn has_extension(name: &str, extension: &str) -> bool {
   get_file_extension(name).is_some_and(|found| found.eq_ignore_ascii_case(extension))
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{get_file_extension, has_extension};
+  use std::path::{Path, PathBuf};
+
+  use xrf_test_utils::utils::build_non_unicode_file_name;
+
+  use super::{get_file_extension, get_path_extension, has_extension};
 
   #[test]
   fn an_extension_is_whatever_follows_the_last_dot_of_the_last_segment() {
@@ -78,9 +92,40 @@ mod tests {
   }
 
   #[test]
+  fn reads_a_path_extension_off_the_file_name_alone() {
+    assert_eq!(get_path_extension(Path::new("configs/system.ltx")), Some("ltx"));
+    assert_eq!(get_path_extension(Path::new("system.ltx")), Some("ltx"));
+    // The splitter's rule, reached through a path: a leading dot is an extension, not a hidden file.
+    assert_eq!(get_path_extension(Path::new("shaders/r1/.s")), Some("s"));
+    // A dot in a directory name belongs to the directory, which is what taking the file name first gets for free.
+    assert_eq!(get_path_extension(Path::new("out.json/pack")), None);
+    assert_eq!(get_path_extension(Path::new("")), None);
+  }
+
+  #[test]
+  fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
+    // The regression this door exists for. Converting the whole path with `to_str` answers `None` here, so every
+    // caller that did decided the file had no extension - silently, because each of them asked `is_some_and`.
+    // `Path::extension` never had that failure mode: it compared `OsStr` and never looked at a parent.
+    let directory: PathBuf = PathBuf::from(build_non_unicode_file_name());
+    let path: PathBuf = directory.join("ak74.dds");
+
+    assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
+    assert_eq!(get_path_extension(&path), Some("dds"));
+  }
+
+  #[test]
+  fn a_file_name_that_is_not_valid_text_carries_no_extension() {
+    // An extension is compared as text, so a name that is not text has none to name. A refusal, not a panic.
+    let mut name: std::ffi::OsString = build_non_unicode_file_name();
+
+    name.push(".dds");
+
+    assert_eq!(get_path_extension(Path::new(&name)), None);
+  }
+
+  #[test]
   fn a_name_that_is_its_own_extension_carries_it() {
-    // The reversal this unified rule makes deliberately: the retired suffix form answered `false` here, while the
-    // splitter beside it answered `Some("s")` for the same name. `shaders\r1\.s` is a file the engine loads.
     assert!(has_extension(".s", "s"));
     assert!(has_extension("shaders\\r1\\.s", "s"));
   }

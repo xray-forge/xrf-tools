@@ -11,12 +11,6 @@ pub const PATCH_PHASE_COMPARE: &str = "compare";
 pub const PATCH_PHASE_PACK: &str = "pack";
 
 /// How one patch run should behave, beyond the configuration describing what to compare.
-///
-/// Whether the run writes is deliberately absent. That is the difference between
-/// [`ArchivePatcher::compare`](crate::ArchivePatcher::compare) and
-/// [`ArchivePatcher::patch`](crate::ArchivePatcher::patch), and it belongs in the name a caller reads at the call
-/// site rather than in a flag they have to look up — the same reason `TranslationFormatter` splits `check_format` from
-/// `format` instead of carrying an `is_check` field.
 #[derive(Default)]
 pub struct ArchivePatchOptions {
   /// Where progress goes and where cancellation comes from.

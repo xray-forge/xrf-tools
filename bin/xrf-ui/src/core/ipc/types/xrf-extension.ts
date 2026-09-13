@@ -35,9 +35,9 @@ export enum EXrayExtension {
   /** The D3D11 shader sources IX-Ray ships loose in `shaders\d3d11\`, beside the older renderers' `.ps`/`.vs` pairs. */
   HLSL = "hlsl",
   HOM = "hom",
+  HS = "hs",
   HTM = "htm",
   HTML = "html",
-  HS = "hs",
   INI = "ini",
   /** Both spellings of one format, because both reach a reader: `image::open` picks its decoder off the path. */
   JPEG = "jpeg",

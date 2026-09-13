@@ -1,10 +1,10 @@
 use image::GenericImageView;
 use xrf_dds::DdsMipmaps;
 use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
 
 use crate::equipment::InventorySpriteDescriptor;
 use crate::equipment::UnpackEquipmentOptions;
-use crate::image_file::DDS_EXTENSION;
 use crate::image_file::save_image_as_ui_dds;
 
 pub struct UnpackEquipmentProcessor {}
@@ -62,7 +62,7 @@ impl UnpackEquipmentProcessor {
       save_image_as_ui_dds(
         &options
           .output_path
-          .join(format!("{}.{}", sprite.section, DDS_EXTENSION)),
+          .join(format!("{}.{}", sprite.section, XrayExtension::Dds)),
         &options.source.view(x, y, w, h).to_image(),
         options.dds_compression_format,
         DdsMipmaps::Disabled,

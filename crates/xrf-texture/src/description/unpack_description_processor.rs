@@ -6,13 +6,13 @@ use image::{GenericImageView, RgbaImage};
 use rayon::prelude::*;
 use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::format_path;
 
 use crate::description::PackDescriptionOptions;
 use crate::description::TextureFileDescriptor;
 use crate::description::XmlDescriptionCollection;
-use crate::image_file::DDS_EXTENSION;
 use crate::image_file::save_image_as_ui_dds;
 
 pub struct UnpackDescriptionProcessor {}
@@ -58,7 +58,9 @@ impl UnpackDescriptionProcessor {
     file: &TextureFileDescriptor,
   ) -> XrfResult<bool> {
     let relative_path: PathBuf = file.to_host_relative_path()?;
-    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION.as_str()));
+    let full_name: PathBuf = options
+      .base
+      .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
     let destination: PathBuf = options.output_path.join(relative_path);
 
     xrf_output::verbose!(output, "Unpacking {}", format_path(&full_name));
@@ -122,7 +124,7 @@ impl UnpackDescriptionProcessor {
       // Unpacked sprites are packing input read at their base level, so a mip chain would only
       // cost space.
       save_image_as_ui_dds(
-        &destination.join(format!("{}.{}", sprite.id, DDS_EXTENSION)),
+        &destination.join(format!("{}.{}", sprite.id, XrayExtension::Dds)),
         &dds.view(sprite.x, sprite.y, sprite.w, sprite.h).to_image(),
         options.dds_compression_format,
         DdsMipmaps::Disabled,

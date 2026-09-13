@@ -5,6 +5,7 @@ use std::time::Instant;
 use image::{DynamicImage, GenericImage, ImageBuffer, ImageReader, Rgba};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
@@ -15,7 +16,7 @@ use crate::equipment::{
 };
 use crate::equipment::{PackEquipmentOptions, PackEquipmentResult};
 use crate::image_file::save_image_as_ui_dds;
-use crate::image_file::{DDS_EXTENSION, PNG_EXTENSION, UI_MIPMAP_LEVELS, UI_MIPMAPS};
+use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS};
 use crate::image_file::{fit_image_into_bounds, warn_on_reshaped_ui_dds};
 
 pub struct PackEquipmentProcessor {}
@@ -201,7 +202,7 @@ impl PackEquipmentProcessor {
 
   /// Read rescaled png or dds icon to inject into one large equipment file.
   pub fn read_sprite_from_path(path: &Path, width: u32, height: u32) -> XrfResult<DynamicImage> {
-    let image: DynamicImage = if path.to_str().is_some_and(|name| PNG_EXTENSION.matches(name)) {
+    let image: DynamicImage = if XrayExtension::Png.matches_path(path) {
       ImageReader::open(path)?.decode()?
     } else {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
@@ -217,12 +218,18 @@ impl PackEquipmentProcessor {
   ) -> XrfResult<PathBuf> {
     match descriptor.custom_icon.as_deref() {
       None => {
-        let png_path: PathBuf = options.source.join(format!("{}.{}", descriptor.section, PNG_EXTENSION));
+        let png_path: PathBuf = options
+          .source
+          .join(format!("{}.{}", descriptor.section, XrayExtension::Png));
 
         if png_path.exists() {
           Ok(png_path)
         } else {
-          Ok(options.source.join(format!("{}.{}", descriptor.section, DDS_EXTENSION)))
+          Ok(
+            options
+              .source
+              .join(format!("{}.{}", descriptor.section, XrayExtension::Dds)),
+          )
         }
       }
       Some(custom_path) => {
