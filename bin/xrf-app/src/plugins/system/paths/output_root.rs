@@ -1,25 +1,26 @@
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use tauri::State;
-
 use crate::core::types::TauriResult;
-use crate::plugins::system::state::SystemPathsState;
 
 /// Directory name held beside the application, or in its data directory, for everything tools write.
 const OUTPUT_DIRECTORY: &str = "target";
 
 /// Where tools write when no output directory has been configured.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_default_output_root"))]
-#[tauri::command(rename = "get_default_output_root")]
-pub async fn system_get_default_output_root(state: State<'_, SystemPathsState>) -> TauriResult<String> {
+///
+/// Beside the executable when that directory accepts a file, and in the application's own data directory otherwise.
+/// The whole rule lives here rather than in the command, so the two candidates cannot be ordered differently by
+/// whoever asks next.
+pub fn default_output_root(local_data: Option<PathBuf>) -> TauriResult<String> {
   select_default_output_root(
     executable_directory().filter(|directory| is_writable(directory)),
-    state.local_data.clone(),
+    local_data,
   )
 }
 
 /// Selects the preferred output root that the JavaScript caller can address without changing it.
+///
+/// Takes both candidates already resolved, so the ordering rule can be tested without a filesystem.
 fn select_default_output_root(executable: Option<PathBuf>, local_data: Option<PathBuf>) -> TauriResult<String> {
   executable
     .and_then(to_wire_output_root)

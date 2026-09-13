@@ -22,5 +22,12 @@ describe("formatDuration", () => {
     expect(formatDuration(60_000)).toBe("1 m 0 s");
     expect(formatDuration(98_431)).toBe("1 m 38 s");
     expect(formatDuration(185_000)).toBe("3 m 5 s");
+    expect(formatDuration(3_599_000)).toBe("59 m 59 s");
+  });
+
+  it("drops the seconds once an hour is on the clock, which an uptime reaches and a run rarely does", () => {
+    expect(formatDuration(3_600_000)).toBe("1 h 0 m");
+    expect(formatDuration(9_000_000)).toBe("2 h 30 m");
+    expect(formatDuration(180_000_000)).toBe("50 h 0 m");
   });
 });

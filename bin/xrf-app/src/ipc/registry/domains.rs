@@ -103,10 +103,12 @@ macro_rules! for_each_tauri_command_domain {
         pack_sprite => crate::plugins::sprite_equipment::commands::pack_sprite::sprite_equipment_pack_sprite,
       }
       system => "system" {
-        describe_path => crate::plugins::system::commands::describe_path::system_describe_path,
-        get_build_info => crate::plugins::system::commands::get_build_info::system_get_build_info,
-        get_default_output_root => crate::plugins::system::commands::get_default_output_root::system_get_default_output_root,
-        reveal_path => crate::plugins::system::commands::reveal_path::system_reveal_path,
+        describe_path => crate::plugins::system::paths::commands::describe_path::system_describe_path,
+        get_build_info => crate::plugins::system::diagnostics::commands::get_build_info::system_get_build_info,
+        get_default_output_root => crate::plugins::system::paths::commands::get_default_output_root::system_get_default_output_root,
+        get_host_info => crate::plugins::system::diagnostics::commands::get_host_info::system_get_host_info,
+        get_runtime_snapshot => crate::plugins::system::diagnostics::commands::get_runtime_snapshot::system_get_runtime_snapshot,
+        reveal_path => crate::plugins::system::paths::commands::reveal_path::system_reveal_path,
       }
       textures => "textures" {
         build_from_source => crate::plugins::textures::commands::build_from_source::textures_build_from_source,

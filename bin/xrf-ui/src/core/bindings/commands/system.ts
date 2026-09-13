@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { PathDescription } from "@/core/bindings/types/xrf-app";
+import { HostInfo, PathDescription, RuntimeSnapshot } from "@/core/bindings/types/xrf-app";
 import { BuildInfo } from "@/core/bindings/types/xrf-build-info";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 
@@ -8,16 +8,18 @@ import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 export const systemCommands = {
   /** Describe what a path currently holds. */
   describePath: (path: string) => __TAURI_INVOKE<PathDescription>("plugin:system|describe_path", { path }),
-  /**
-   * Report which build of the application is running.
-   *
-   * Expanded here rather than in the shared crate because `env!` resolves in the crate being compiled,
-   * so this is the only place that can see what the application's own build script recorded. Cannot
-   * fail, so it answers with the description directly instead of a result the caller has to unwrap.
-   */
+  /** Report which build of the application is running. */
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
+  /**
+   * Report what the application is running on and with.
+   *
+   * Cannot fail: every reading it cannot get is reported as absent, so there is no result for a caller to unwrap.
+   */
+  getHostInfo: () => __TAURI_INVOKE<HostInfo>("plugin:system|get_host_info"),
+  /** Report what the application currently costs the machine, and how long it has been running. */
+  getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>("plugin:system|get_runtime_snapshot"),
   /**
    * Show a path in the desktop's own file manager.
    *

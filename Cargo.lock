@@ -6800,6 +6800,7 @@ dependencies = [
  "specta-serde",
  "specta-typescript",
  "specta-util",
+ "sysinfo",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

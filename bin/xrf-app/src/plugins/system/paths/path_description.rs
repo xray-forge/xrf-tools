@@ -3,8 +3,6 @@ use std::{fs, io};
 
 use serde::Serialize;
 
-use crate::core::types::TauriResult;
-
 /// What a path is right now, for a form field that has to say what it points at before a command runs.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
@@ -28,15 +26,10 @@ pub enum PathKind {
   Directory,
 }
 
-/// Describe what a path currently holds.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_path"))]
-#[tauri::command(rename = "describe_path")]
-pub async fn system_describe_path(path: &str) -> TauriResult<PathDescription> {
-  describe(Path::new(path)).map_err(|error| format!("Could not read {path}: {error}"))
-}
-
-/// Reads what a path is, separated from the command so it can be tested without a runtime.
-fn describe(target: &Path) -> io::Result<PathDescription> {
+/// Reads what a path currently is.
+///
+/// Separated from the command so it can be tested without a runtime.
+pub fn describe_path(target: &Path) -> io::Result<PathDescription> {
   let metadata: fs::Metadata = match fs::metadata(target) {
     Ok(metadata) => metadata,
     Err(error) if error.kind() == io::ErrorKind::NotFound => {
@@ -68,10 +61,10 @@ fn count_entries(directory: &Path) -> Option<u64> {
 
 #[cfg(test)]
 mod tests {
-  use std::fs::File;
+  use std::fs::{self, File};
   use std::path::PathBuf;
 
-  use super::*;
+  use super::{PathDescription, PathKind, describe_path};
 
   /// A directory of this test's own under `target`, emptied first so a re-run counts what this run created.
   fn root(name: &str) -> PathBuf {
@@ -90,7 +83,7 @@ mod tests {
 
   #[test]
   fn a_missing_path_is_described_rather_than_refused() {
-    let described: PathDescription = describe(&root("missing").join("nothing")).expect("a description");
+    let described: PathDescription = describe_path(&root("missing").join("nothing")).expect("a description");
 
     assert_eq!(described.kind, PathKind::Missing);
     assert_eq!(described.entry_count, None);
@@ -102,7 +95,7 @@ mod tests {
 
     File::create(&file).expect("a file");
 
-    let described: PathDescription = describe(&file).expect("a description");
+    let described: PathDescription = describe_path(&file).expect("a description");
 
     assert_eq!(described.kind, PathKind::File);
     assert_eq!(described.entry_count, None);
@@ -118,7 +111,7 @@ mod tests {
     fs::create_dir(&nested).expect("a directory");
     File::create(nested.join("c.ltx")).expect("a file");
 
-    let described: PathDescription = describe(&directory).expect("a description");
+    let described: PathDescription = describe_path(&directory).expect("a description");
 
     assert_eq!(described.kind, PathKind::Directory);
     assert_eq!(described.entry_count, Some(3));
@@ -126,7 +119,7 @@ mod tests {
 
   #[test]
   fn an_empty_directory_is_not_a_missing_one() {
-    let described: PathDescription = describe(&root("empty")).expect("a description");
+    let described: PathDescription = describe_path(&root("empty")).expect("a description");
 
     assert_eq!(described.kind, PathKind::Directory);
     assert_eq!(described.entry_count, Some(0));

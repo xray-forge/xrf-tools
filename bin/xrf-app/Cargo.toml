@@ -24,6 +24,7 @@ specta = { workspace = true, optional = true }
 specta-serde = { workspace = true, optional = true }
 specta-typescript = { workspace = true, optional = true }
 specta-util = { workspace = true, optional = true }
+sysinfo = { workspace = true }
 tauri = { version = "2.11.5", features = [] }
 tauri-specta = { workspace = true, optional = true }
 tauri-plugin-dialog = "2.7.3"

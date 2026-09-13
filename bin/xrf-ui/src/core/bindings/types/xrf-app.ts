@@ -282,6 +282,20 @@ export type ConfigsVerifyRequest = {
   isDltx: boolean;
 };
 
+/**
+ * What everything below one process costs, folded in a single walk of the table.
+ *
+ * A pair rather than one figure, because the total is unreadable without it: a webview runs a browser process, a GPU
+ * process and a renderer per frame tree, and "580 MB" means something different across two of those than across
+ * eight.
+ */
+export type DescendantUsage = {
+  /** Resident set of every process descended from the root, at any depth. */
+  residentMemory: number;
+  /** How many such processes there are. Zero on a platform that runs the webview in the host process. */
+  processes: number;
+};
+
 /** What opening a dialogs project was asked to do. */
 export type DialogsOpenRequest = {
   sessionId: SessionId;
@@ -347,6 +361,42 @@ export type GamedataVerifySummary = {
   status: string;
   checks: Array<GamedataCheckSummary>;
   duration: number;
+};
+
+/**
+ * What the application is running on and with, none of which changes while it runs.
+ *
+ * Split from [`RuntimeSnapshot`](super::RuntimeSnapshot) because that one is polled: re-reading the operating
+ * system's name every second to show the same string is work nobody asked for, and mixing a constant into a reading
+ * invites a surface to refresh the wrong half.
+ *
+ * Every field an operating system may decline to report is `Option`, the way `BuildInfo` treats what a build could
+ * not record - naming the absence beats substituting a plausible default.
+ */
+export type HostInfo = {
+  /** Tauri the application was linked against. */
+  tauriVersion: string;
+  /**
+   * Webview actually serving the window, which is the runtime installed on the machine rather than a compiled-in
+   * version. Absent where the platform cannot be asked, and on Windows where no WebView2 runtime answered.
+   */
+  webviewVersion: string | null;
+  /** Operating system's short name, such as `Windows` or `Ubuntu`. */
+  osName: string | null;
+  /** Operating system's own version, as it numbers itself. */
+  osVersion: string | null;
+  /** Kernel behind it, which on Windows is the build number a compatibility report is quoted by. */
+  kernelVersion: string | null;
+  /** Architecture the binary is executing on, as opposed to the target triple it was built for. */
+  arch: string;
+  /** Logical processors, which is what the execution pool's width is drawn from. */
+  cpuCount: number;
+  /** Physical cores, absent where the platform does not distinguish them. */
+  physicalCoreCount: number | null;
+  /** Total physical memory of the machine, the figure every usage reading is read against. */
+  totalMemory: number;
+  /** This process's own identifier, for pairing what is shown here with a task manager. */
+  pid: number;
 };
 
 /**
@@ -433,6 +483,17 @@ export type JobKind =
   | "translations.parse"
   | "translations.verify";
 
+/** What the machine as a whole is using. */
+export type MachineUsage = {
+  /** Physical memory in use across every process. */
+  usedMemory: number;
+  /**
+   * Physical memory the machine reports as free for a new allocation, which is not `total - used`: the difference is
+   * cache the operating system would hand back under pressure.
+   */
+  availableMemory: number;
+};
+
 /** What an equipment sprite pack was asked to do. */
 export type PackSpriteRequest = {
   /** Directory of loose icons to draw from. */
@@ -459,6 +520,36 @@ export type PathDescription = {
  * reaches the caller as an error, which is what lets a refused check read as unknown rather than as absent.
  */
 export type PathKind = "missing" | "file" | "directory";
+
+/** What one process holds. */
+export type ProcessUsage = {
+  /** Physical memory the process actually occupies. */
+  residentMemory: number;
+  /** Address space it has reserved, which is routinely several times the resident set and is not what it costs. */
+  virtualMemory: number;
+};
+
+/**
+ * One reading of what the application costs, and of how long it has been running.
+ *
+ * Every figure is a reading rather than a total: nothing here accumulates, so a caller polling this sees the current
+ * state and never a history it did not ask to keep.
+ *
+ * Grouped by subject rather than flattened, because the same word means three different things depending on whose
+ * memory is being reported, and a prefix on each field is a worse way of saying so than a name around each group.
+ */
+export type RuntimeSnapshot = {
+  /** Milliseconds since the epoch at which the process began, stamped in `main`. */
+  startedAt: number;
+  /** Milliseconds it has been running, measured monotonically rather than by subtracting two wall-clock readings. */
+  uptime: number;
+  /** What the backend process itself holds. */
+  process: ProcessUsage;
+  /** What the processes below it hold, which on this stack is the webview. */
+  descendants: DescendantUsage;
+  /** What the whole machine is using, for reading the two above against. */
+  machine: MachineUsage;
+};
 
 /**
  * What the viewer is showing, paired with where it came from.

@@ -20,5 +20,11 @@ export function formatDuration(durationMs: number): string {
 
   const minutes: number = Math.floor(seconds / 60);
 
-  return `${minutes} m ${Math.round(seconds - minutes * 60)} s`;
+  if (minutes < 60) {
+    return `${minutes} m ${Math.round(seconds - minutes * 60)} s`;
+  }
+
+  const hours: number = Math.floor(minutes / 60);
+
+  return `${hours} h ${minutes - hours * 60} m`;
 }
