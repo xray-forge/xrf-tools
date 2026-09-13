@@ -46,6 +46,7 @@ export function ChoiceFormRow<T extends string>({
           aria-labelledby={labelId}
           aria-describedby={describedBy}
           exclusive
+          color={"primary"}
           size={"small"}
           value={value}
           disabled={isDisabled}
@@ -56,7 +57,7 @@ export function ChoiceFormRow<T extends string>({
           }}
         >
           {options.map((option) => (
-            <ToggleButton key={option.value} value={option.value} aria-label={option["aria-label"]}>
+            <ToggleButton key={option.value} aria-label={option["aria-label"]} value={option.value}>
               {option.label}
             </ToggleButton>
           ))}

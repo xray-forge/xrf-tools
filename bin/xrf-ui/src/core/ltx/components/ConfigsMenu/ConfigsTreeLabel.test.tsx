@@ -18,7 +18,7 @@ function nodeOf(payload?: LtxInventoryFile): ITreeNode<LtxInventoryFile> {
 describe("ConfigsTreeLabel", () => {
   it("should render the config's name, which the tree shows nowhere else", () => {
     // `VirtualizedTree` renders this in place of the row's own text rather than beside it, so a label answering only
-    // badges leaves a tree of badges with no file names - which is what a first cut did.
+    // marks leaves a tree of marks with no file names - which is what a first cut did.
     const { getByText } = renderWithProviders(<ConfigsTreeLabel item={nodeOf(fileOf({ kind: "entryPoint" }))} />);
 
     expect(getByText("w_ak74.ltx")).toBeInTheDocument();
@@ -31,28 +31,20 @@ describe("ConfigsTreeLabel", () => {
       <ConfigsTreeLabel item={nodeOf(fileOf({ kind: "included", by: ["configs\\system.ltx"] }, false))} />
     );
 
-    expect(getByText("archived")).toBeInTheDocument();
+    expect(getByText("w_ak74.ltx")).toBeInTheDocument();
+    expect(getByText("db")).toBeInTheDocument();
   });
 
-  it("should mark what resolves on its own and what declares the rules", () => {
-    const entry = renderWithProviders(<ConfigsTreeLabel item={nodeOf(fileOf({ kind: "entryPoint" }))} />);
-    const scheme = renderWithProviders(<ConfigsTreeLabel item={nodeOf(fileOf({ kind: "schemeFile" }))} />);
-    const patch = renderWithProviders(<ConfigsTreeLabel item={nodeOf(fileOf({ kind: "attachment" }))} />);
-
-    expect(entry.getByText("entry")).toBeInTheDocument();
-    expect(scheme.getByText("scheme")).toBeInTheDocument();
-    expect(patch.getByText("patch")).toBeInTheDocument();
-  });
-
-  it("should leave an included config unmarked, since almost every config in a tree is one", () => {
-    // A badge on nearly every row is a badge nobody reads.
+  it("should leave a loose config's name alone, whatever it is to the project", () => {
+    // The role is the icon's tint, not a word beside the name: a row is a line of text and the name is what a person
+    // scans a tree with.
     const { queryByText, getByText } = renderWithProviders(
-      <ConfigsTreeLabel item={nodeOf(fileOf({ kind: "included", by: ["configs\\system.ltx"] }))} />
+      <ConfigsTreeLabel item={nodeOf(fileOf({ kind: "entryPoint" }))} />
     );
 
     expect(getByText("w_ak74.ltx")).toBeInTheDocument();
+    expect(queryByText("db")).not.toBeInTheDocument();
     expect(queryByText("entry")).not.toBeInTheDocument();
-    expect(queryByText("archived")).not.toBeInTheDocument();
   });
 
   it("should render a directory row, which stands for no config at all", () => {

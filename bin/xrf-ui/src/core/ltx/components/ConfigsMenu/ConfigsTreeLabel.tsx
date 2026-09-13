@@ -1,21 +1,20 @@
-import { Box } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
-import { ConfigsMenuBadges } from "@/core/ltx/components/ConfigsMenu/ConfigsMenuBadges";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IConfigsTreeLabelProps extends BaseComponentProps {
-  /** Node being labelled; only a leaf stands for a config and carries badges. */
+  /** Node being labelled; only a leaf stands for a config and can have come from a volume. */
   item: ITreeNode<LtxInventoryFile>;
 }
 
 /**
- * A row's name, with what the config is to the project beside it.
+ * A row's name, and whether the engine reads it out of an archive.
  */
 export function ConfigsTreeLabel({ item }: IConfigsTreeLabelProps): ReactElement {
-  if (!item.payload) {
+  if (!item.payload || item.payload.isPhysical) {
     return <>{item.label}</>;
   }
 
@@ -25,7 +24,15 @@ export function ConfigsTreeLabel({ item }: IConfigsTreeLabelProps): ReactElement
         {item.label}
       </Box>
 
-      <ConfigsMenuBadges file={item.payload} />
+      <Tooltip title={"Read from an archive volume; nothing can write to it in place"}>
+        <Typography
+          component={"span"}
+          variant={"caption"}
+          sx={{ color: "text.secondary", flexShrink: 0, opacity: 0.75 }}
+        >
+          db
+        </Typography>
+      </Tooltip>
     </Box>
   );
 }

@@ -1,7 +1,8 @@
 import { Box, Typography } from "@mui/material";
-import { ReactElement, useCallback, useMemo } from "react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
+import { CONFIG_TREE_ICONS, decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
 import { ConfigsTreeLabel } from "@/core/ltx/components/ConfigsMenu/ConfigsTreeLabel";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {
@@ -12,7 +13,7 @@ import {
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { useTreeState } from "@/core/ui/tree/use-tree-state";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
@@ -20,8 +21,9 @@ import { Nullable } from "@/lib/types/general";
 
 interface IConfigsMenuProps extends StyledComponentProps {
   files: ReadonlyArray<LtxInventoryFile>;
+  /** Config that is on screen, whoever opened it. */
   selected: Nullable<string>;
-  onSelect: (path: string) => void;
+  onOpen: (path: string) => void;
 }
 
 /**
@@ -34,9 +36,10 @@ export function ConfigsMenu({
   sx,
   files,
   selected,
-  onSelect,
+  onOpen,
 }: IConfigsMenuProps): ReactElement {
-  const { expandedIds, toggleExpanded } = useTreeState();
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   const items: Array<IPathTreeItem<LtxInventoryFile>> = useMemo(
     () =>
@@ -49,21 +52,28 @@ export function ConfigsMenu({
 
   const searchable: Array<LtxInventoryFile> = useMemo(() => [...files], [files]);
 
-  const onSelectNode = useCallback(
+  const onRenderConfigLabel = useCallback((item: ITreeNode<LtxInventoryFile>) => <ConfigsTreeLabel item={item} />, []);
+
+  const onSelectNode = useCallback((item: ITreeNode<LtxInventoryFile>) => tree.select(item.id), [tree]);
+
+  const onActivateNode = useCallback(
     (item: ITreeNode<LtxInventoryFile>) => {
       const path: Nullable<string> = getFileItemPath(item.id);
 
       if (path) {
-        onSelect(path);
+        onOpen(path);
       }
     },
-    [onSelect]
+    [onOpen]
   );
 
-  const onSelectFile = useCallback((file: LtxInventoryFile) => onSelect(file.path), [onSelect]);
+  const onOpenFile = useCallback((file: LtxInventoryFile) => onOpen(file.path), [onOpen]);
 
-  // The whole label, because `VirtualizedTree` renders this in place of the row's text rather than beside it.
-  const renderLabel = useCallback((item: ITreeNode<LtxInventoryFile>) => <ConfigsTreeLabel item={item} />, []);
+  useEffect(() => {
+    if (selected) {
+      reveal(toFileItemId(selected));
+    }
+  }, [reveal, selected]);
 
   return (
     <EditorSearchMenu<LtxInventoryFile>
@@ -81,18 +91,20 @@ export function ConfigsMenu({
 
         return { id: file.path, label: name, description: directory ?? undefined };
       }}
-      onSelect={onSelectFile}
+      onSelect={onOpenFile}
     >
       {items.length ? (
         <VirtualizedTree<LtxInventoryFile>
           ariaLabel={"Configs"}
+          icons={CONFIG_TREE_ICONS}
+          decorateIcon={decorateConfigIcon}
           items={items}
-          expandedIds={expandedIds}
-          selectedId={selected ? toFileItemId(selected) : null}
-          renderLabel={renderLabel}
-          onToggleExpanded={toggleExpanded}
+          expandedIds={tree.expandedIds}
+          selectedId={tree.selectedId}
+          renderLabel={onRenderConfigLabel}
+          onToggleExpanded={tree.toggleExpanded}
           onSelect={onSelectNode}
-          onActivate={onSelectNode}
+          onActivate={onActivateNode}
         />
       ) : (
         <Box sx={{ padding: 2, textAlign: "center" }}>
