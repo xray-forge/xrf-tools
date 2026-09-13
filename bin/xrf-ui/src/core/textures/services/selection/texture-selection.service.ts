@@ -9,8 +9,14 @@ import { TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
+
+/** A texture inspection and the search roots needed to repeat it. */
+interface ITextureSelectionRequest {
+  readonly source: TextureSource;
+  readonly roots: XrayRoots;
+}
 
 /**
  * The one texture on screen: what it is, what its descriptor declares, and the picture of it.
@@ -28,11 +34,10 @@ export class TextureSelectionService {
   public preview: AsyncState<ArrayBuffer> = AsyncState.idle();
 
   /**
-   * What the last inspection asked for, so a failed one can be asked for again.
-   *
+   * The complete request, retained even when describing the texture fails.
    * Not observable: what offers the retry is the failure already on screen, so nothing renders this.
    */
-  private attempt: Nullable<TextureSource> = null;
+  private attempt: Nullable<ITextureSelectionRequest> = null;
 
   /**
    * @returns The reference of the texture on screen, or null when none is.
@@ -51,17 +56,14 @@ export class TextureSelectionService {
   }
 
   /**
-   * The extra tree this surface was opened with.
-   *
-   * Held rather than passed on every call, because a file is resolved again by paths a form is no longer on screen
-   * for - picking a row, retrying a failed read - and all of them have to search what the open searched.
+   * The extra tree used when opening a loose file.
+   * Each inspection captures its roots so later retries keep the same search context.
    */
   private assetRoot: Nullable<string> = null;
 
   /**
    * Say which further tree a loose file is resolved against.
-   *
-   * Called by the surface as it opens, so a later read of a file reaches the same tree the open did.
+   * Applies to subsequent opens; an existing request retains its own roots for retries.
    *
    * @param path - The tree, or null to resolve a file in its own neighbourhood alone.
    */
@@ -76,9 +78,11 @@ export class TextureSelectionService {
   }
 
   /**
-   * Drop whatever texture was on screen.
+   * Abandons active loading and drops the selected texture, preview, and retry request.
    */
   public clear(): void {
+    cancelFlow(this, "selected");
+
     runInAction(() => {
       this.selected = this.selected.asIdle();
       this.preview = this.preview.asIdle();
@@ -123,21 +127,18 @@ export class TextureSelectionService {
   }
 
   /**
-   * Ask again for whatever the last inspection asked for, or do nothing when nothing has been asked for yet.
+   * Repeats the last inspection with its original source and roots.
+   * Does nothing before an inspection or after the selection is cleared.
    */
   @LatestFlow("selected")
   public *retry(): TFlow {
-    const attempt: Nullable<TextureSource> = this.attempt;
+    const attempt: Nullable<ITextureSelectionRequest> = this.attempt;
 
     if (!attempt) {
       return;
     }
 
-    const roots: Nullable<XrayRoots> = attempt.kind === "file" ? this.toFileRoots(attempt.path) : this.roots;
-
-    if (roots) {
-      yield* this.describe(attempt, roots);
-    }
+    yield* this.describe(attempt.source, attempt.roots);
   }
 
   /**
@@ -157,7 +158,7 @@ export class TextureSelectionService {
    * @param roots - Roots the source is resolved in.
    */
   private *describe(source: TextureSource, roots: XrayRoots): TFlow {
-    this.attempt = source;
+    this.attempt = { source, roots };
     this.selected = this.selected.asLoading();
 
     try {
