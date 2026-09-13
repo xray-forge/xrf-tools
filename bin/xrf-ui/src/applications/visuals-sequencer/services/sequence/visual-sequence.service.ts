@@ -1,34 +1,10 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
-import { transformError } from "@/core/error/lib";
-import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
-import { requireSessionId } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
+import { ISequenceMotion, SequenceMotionCache } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Logger } from "@/lib/logging";
 import { Nullable, Optional } from "@/lib/types/general";
-
-/** How far a motion got towards being playable, which is what a clip of it can report. */
-export enum ESequenceMotionState {
-  BAKING = "baking",
-  READY = "ready",
-  UNAVAILABLE = "unavailable",
-}
-
-/** One motion of the open visual as a sequence can use it: its baked frames, or why it has none. */
-export interface ISequenceMotion {
-  state: ESequenceMotionState;
-  /** Why the motion cannot play, when it cannot. */
-  reason: Nullable<string>;
-  /** What the backend said the bake is, once it is baked. */
-  bake: Nullable<VisualMotionBake>;
-  /** Every frame's bone transforms, once they are read. */
-  transforms: Nullable<Float32Array>;
-}
 
 /** One clip of the track: a motion, at the position its author put it. */
 export interface ISequenceClip {
@@ -50,32 +26,15 @@ export interface ISequenceClip {
  */
 @Injectable()
 export class VisualSequenceService {
-  public readonly log: Logger = new Logger(__MODULE_NAME__);
+  private readonly motionCache: SequenceMotionCache;
 
   private ticker: Nullable<ReturnType<typeof setInterval>> = null;
-
-  /**
-   * Bakes run one at a time, chained onto this.
-   */
-  private baking: Promise<void> = Promise.resolve();
-
-  /**
-   * Which track the bakes in flight belong to.
-   *
-   * A bake resolving after the track was cleared - or after another model was opened - belongs to a skeleton that is
-   * no longer on screen, so it is dropped rather than posed against whatever replaced it.
-   */
-  private generation: number = 0;
 
   /** Names clips, so a motion added twice is two addressable clips rather than one ambiguous name. */
   private lastClipId: number = 0;
 
   @Observable()
   public clips: ReadonlyArray<ISequenceClip> = [];
-
-  /** What became of each motion the track names, by motion name. */
-  @Observable()
-  public motions: ReadonlyMap<string, ISequenceMotion> = new Map();
 
   /** Which clip is playing, as an index into `clips`. */
   @Observable()
@@ -99,6 +58,14 @@ export class VisualSequenceService {
    */
   @Observable()
   public fps: number = MOTION_SAMPLE_FPS;
+
+  /**
+   * @returns Cached motion outcomes shared by the track's clips.
+   */
+  @Computed()
+  public get motions(): ReadonlyMap<string, ISequenceMotion> {
+    return this.motionCache.motions;
+  }
 
   /**
    * @returns The clip playback is on, or null when the track is empty.
@@ -165,7 +132,12 @@ export class VisualSequenceService {
     );
   }
 
-  public constructor(private readonly loadService: VisualLoadService = inject(VisualLoadService)) {}
+  /**
+   * @param loadService - Supplies the selected model for motion baking.
+   */
+  public constructor(loadService: VisualLoadService = inject(VisualLoadService)) {
+    this.motionCache = new SequenceMotionCache(loadService);
+  }
 
   /** Stops the ticker when the application goes away, so a hidden sequencer is not still animating. */
   @OnDeactivation()
@@ -187,7 +159,7 @@ export class VisualSequenceService {
 
     this.clips = [...this.clips, { id: `clip-${this.lastClipId}`, motion }];
 
-    void this.bake(motion);
+    void this.motionCache.bake(motion);
   }
 
   /**
@@ -317,7 +289,7 @@ export class VisualSequenceService {
    */
   @BoundAction()
   public clear(): void {
-    this.generation += 1;
+    this.motionCache.clear();
 
     this.stopTicker();
 
@@ -325,7 +297,6 @@ export class VisualSequenceService {
     this.clipIndex = 0;
     this.frame = 0;
     this.clips = [];
-    this.motions = new Map();
   }
 
   /**
@@ -336,85 +307,6 @@ export class VisualSequenceService {
     const motion: Optional<ISequenceMotion> = clip ? this.motions.get(clip.motion) : undefined;
 
     return Boolean(motion?.transforms && (motion.bake?.frameCount ?? 0) > 0);
-  }
-
-  /**
-   * Fetches one motion's frames, once per motion and one at a time.
-   *
-   * @param motion - Motion name to bake.
-   */
-  private async bake(motion: string): Promise<void> {
-    if (this.motions.has(motion)) {
-      return;
-    }
-
-    const generation: number = this.generation;
-
-    this.setMotion(motion, { bake: null, reason: null, state: ESequenceMotionState.BAKING, transforms: null });
-
-    this.baking = this.baking.then(async () => {
-      if (generation !== this.generation) {
-        return;
-      }
-
-      try {
-        const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
-
-        const snapshot: SessionSnapshot<VisualMotionBake> = await visualsCommands.openMotion(
-          sessionId,
-          crypto.randomUUID(),
-          motion
-        );
-
-        const bake: VisualMotionBake = snapshot.value;
-
-        const bytes: ArrayBuffer = await visualsRawCommands.readMotion(sessionId, snapshot.sessionId);
-        const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
-
-        if (bytes.byteLength !== expected) {
-          throw new Error(
-            `Motion '${motion}' returned ${bytes.byteLength} bytes for ${bake.frameCount} frames of ` +
-              `${bake.boneCount} bones, which needs ${expected}. The pose and its bytes came from different reads.`
-          );
-        }
-
-        if (generation === this.generation) {
-          this.setMotion(motion, {
-            bake,
-            reason: null,
-            state: ESequenceMotionState.READY,
-            transforms: new Float32Array(bytes),
-          });
-        }
-      } catch (error: unknown) {
-        const transformed: Error = transformError(error);
-
-        this.log.error(`Failed to bake motion '${motion}':`, transformed);
-
-        if (generation === this.generation) {
-          this.setMotion(motion, {
-            bake: null,
-            reason: transformed.message,
-            state: ESequenceMotionState.UNAVAILABLE,
-            transforms: null,
-          });
-        }
-      }
-    });
-
-    await this.baking;
-  }
-
-  /**
-   * Records what one motion became, replacing the map so whatever reads it sees the change.
-   *
-   * @param motion - Motion the outcome belongs to.
-   * @param state - What it became.
-   */
-  private setMotion(motion: string, state: ISequenceMotion): void {
-    runInAction(() => {
-      this.motions = new Map(this.motions).set(motion, state);
-    });
   }
 
   /**

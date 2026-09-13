@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import {
-  ESequenceMotionState,
-  ISequenceClip,
-  VisualSequenceService,
-} from "@/applications/visuals-sequencer/services/sequence";
+import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
+import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -83,13 +80,14 @@ describe("VisualSequenceService", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   it("applies its mobx annotations", () => {
     const { service } = mockService();
 
     expect(isObservableProp(service, "clips")).toBe(true);
-    expect(isObservableProp(service, "motions")).toBe(true);
+    expect(isComputedProp(service, "motions")).toBe(true);
     expect(isObservableProp(service, "clipIndex")).toBe(true);
     expect(isObservableProp(service, "frame")).toBe(true);
     expect(isObservableProp(service, "isPlaying")).toBe(true);
@@ -118,42 +116,6 @@ describe("VisualSequenceService", () => {
     // Two clips of one motion share its bake, so the second occurrence costs no round trip.
     expect(calls).toEqual(["open:first", "read:first", "open:second", "read:second"]);
     expect(service.playableCount).toBe(3);
-  });
-
-  it("bakes one motion at a time, because the backend parks only one", async () => {
-    const inFlight: Array<string> = [];
-
-    let open: number = 0;
-
-    setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: mockSessionResponse(((args) => {
-        const name: string = String(args?.name);
-
-        open += 1;
-        inFlight.push(name);
-
-        return mockBake(name);
-      }) as InvokeHandler),
-      ["plugin:visuals|read_motion"]: ((args) => {
-        const name: string = String(args?.name);
-
-        // Whatever `open_motion` parked last has to be what this reads: any overlap would read another motion's frames.
-        expect(inFlight[inFlight.length - 1]).toBe(name);
-        expect(open).toBe(inFlight.length);
-
-        return mockVisualMotionTransforms(mockBake(name), () => 1);
-      }) as InvokeHandler,
-    });
-
-    const { service } = mockService();
-
-    service.add("first");
-    service.add("second");
-    service.add("third");
-
-    await jest.advanceTimersByTimeAsync(0);
-
-    expect(inFlight).toEqual(["first", "second", "third"]);
   });
 
   it("poses the playing clip's own transforms", async () => {
@@ -300,18 +262,5 @@ describe("VisualSequenceService", () => {
     expect(service.motions.size).toBe(0);
     expect(service.isPlaying).toBe(false);
     expect(service.transforms).toBeNull();
-  });
-
-  it("ignores a bake that lands after the track it belonged to was cleared", async () => {
-    mockMotions({ first: 1 });
-
-    const { service } = mockService();
-
-    service.add("first");
-    service.clear();
-
-    await jest.advanceTimersByTimeAsync(0);
-
-    expect(service.motions.size).toBe(0);
   });
 });

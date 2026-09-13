@@ -5,12 +5,8 @@ import { Box, Chip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import {
-  ESequenceMotionState,
-  ISequenceClip,
-  ISequenceMotion,
-  VisualSequenceService,
-} from "@/applications/visuals-sequencer/services/sequence";
+import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
+import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
