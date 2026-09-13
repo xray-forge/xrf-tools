@@ -149,3 +149,71 @@ fn an_include_that_reached_nothing_is_a_finding_on_its_statement() -> XrfResult 
 
   Ok(())
 }
+
+#[test]
+fn keys_stranded_above_a_config_s_first_header_are_a_finding_on_the_first_of_them() -> XrfResult {
+  // What the engine does with `loose` here is nothing: Anomaly drops a key read before any header and vanilla passes
+  // the null section to `insert_item`, so the resolution this tool builds and the one the game loads differ. Every
+  // instance of this shape in either reference tree is a comment somebody wrote without a `;`.
+  let source: LtxMapSource = LtxMapSource::new(&[
+    ("system.ltx", "#include \"items.ltx\"\n[wpn_base]\ncost = 100\n"),
+    ("items.ltx", "; loose\nloose = 1\n\n[wpn_extra]\ncost = 200\n"),
+  ]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let structure: LtxFileStructure = reader.read_structure("items.ltx", &[String::from("system.ltx")])?;
+
+  let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
+
+  assert_eq!(findings.len(), 1);
+  assert_eq!(findings[0].kind, LtxFindingKind::RootKeys);
+  assert_eq!(findings[0].file.as_deref(), Some("items.ltx"));
+  assert_eq!(findings[0].line, Some(2), "the first key written before a header");
+  assert!(
+    findings[0].engine_behaviour.is_some(),
+    "the engine's own answer to be carried"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn an_entry_point_is_judged_for_stranding_keys_like_any_other_config() -> XrfResult {
+  // The shape decides it, not whether anything includes the file: a root loaded as an ini loses the keys above its
+  // first header exactly as an included config does.
+  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "Tronex\n\n[wpn_base]\ncost = 100\n")]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let structure: LtxFileStructure = reader.read_structure("system.ltx", &[String::from("system.ltx")])?;
+
+  let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
+
+  assert_eq!(findings.len(), 1);
+  assert_eq!(findings[0].kind, LtxFindingKind::RootKeys);
+  // The header the stranded keys sit above, which is what a reader needs to see where they went.
+  assert!(findings[0].message.contains("[wpn_base]"), "{}", findings[0].message);
+
+  Ok(())
+}
+
+#[test]
+fn a_list_config_is_not_judged_for_declaring_no_section() -> XrfResult {
+  // The shape root keys are written in on purpose: a roll of names read by the console or by a script rather than
+  // loaded as an ini. Judging it would warn about `default_controls.ltx` and every `rspec_*.ltx` in both trees.
+  let source: LtxMapSource = LtxMapSource::new(&[("valid_item_sections.ltx", "af_ear\nbandage\n")]);
+
+  let resolution: LtxResolution = source.resolve("valid_item_sections.ltx")?;
+  let reader: LtxRootReader = LtxRootReader::new("valid_item_sections.ltx", "ltx", &resolution, &source);
+  let structure: LtxFileStructure =
+    reader.read_structure("valid_item_sections.ltx", &[String::from("valid_item_sections.ltx")])?;
+
+  assert_eq!(structure.root_entries.len(), 2, "the keys to be read all the same");
+  assert!(
+    reader.read_file_findings(&structure).is_empty(),
+    "a config that declares no section to raise nothing"
+  );
+
+  Ok(())
+}

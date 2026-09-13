@@ -9,7 +9,10 @@ import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { Nullable } from "@/lib/types/general";
 
 /** The unnamed section a resolution carries whatever was written before the first header in. */
-const ROOT_SECTION: string = "";
+export const ROOT_SECTION: string = "";
+
+/** What to call that section where a name is expected. */
+export const ROOT_SECTION_LABEL: string = "(written before any section header)";
 
 /**
  * One section and where it sits in the assembled document, gap included.

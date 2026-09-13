@@ -7,8 +7,8 @@ use xrf_ltx::{
 };
 
 use crate::structure::{
-  LtxFileStructure, LtxStructureInclude, LtxStructureParent, LtxStructureParseError, LtxStructureScheme,
-  LtxStructureSection,
+  LtxFileStructure, LtxStructureEntry, LtxStructureInclude, LtxStructureParent, LtxStructureParseError,
+  LtxStructureScheme, LtxStructureSection,
 };
 
 /// Reads one config as written, judged against the resolution its entry point produced.
@@ -44,6 +44,7 @@ impl LtxStructureReader {
             message,
           }),
           path: String::from(path),
+          root_entries: Vec::new(),
           sections: Vec::new(),
         });
       }
@@ -55,6 +56,7 @@ impl LtxStructureReader {
       includes: Self::read_includes(source, path, &document)?,
       parse_error: None,
       path: String::from(path),
+      root_entries: Self::read_root_entries(&document),
       sections: Self::read_sections(resolution, declarations, &document),
     })
   }
@@ -94,6 +96,25 @@ impl LtxStructureReader {
     }
 
     sections
+  }
+
+  /// Every key one document writes before its first section header, in file order.
+  fn read_root_entries(document: &LtxDocument) -> Vec<LtxStructureEntry> {
+    let mut entries: Vec<LtxStructureEntry> = Vec::new();
+
+    for item in document.get_items() {
+      match &item.kind {
+        LtxItemKind::Section { .. } => break,
+        LtxItemKind::Key { name, value, .. } => entries.push(LtxStructureEntry {
+          has_value: value.is_some(),
+          line: item.span.line,
+          name: String::from(&**name),
+        }),
+        _ => {}
+      }
+    }
+
+    entries
   }
 
   /// The scheme one section is bound to, read off the resolution so an inherited binding counts.

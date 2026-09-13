@@ -205,3 +205,61 @@ fn a_named_include_naming_nothing_reports_nothing() -> XrfResult {
 
   Ok(())
 }
+
+#[test]
+fn a_list_config_reports_the_keys_it_declares_before_any_header() -> XrfResult {
+  let source: LtxMapSource = LtxMapSource::new(&[("valid_item_sections.ltx", "af_ear\nammo_9x18_ap_bad\nbandage\n")]);
+
+  let resolution: LtxResolution = source.resolve("valid_item_sections.ltx")?;
+  let structure: LtxFileStructure = LtxRootReader::new("valid_item_sections.ltx", "ltx", &resolution, &source)
+    .read_structure("valid_item_sections.ltx", &["valid_item_sections.ltx".into()])?;
+
+  assert!(structure.sections.is_empty(), "a list config to declare no section");
+  assert_eq!(structure.root_entries.len(), 3);
+  assert_eq!(structure.root_entries[0].name, "af_ear");
+  assert_eq!(structure.root_entries[0].line, 1);
+  assert_eq!(structure.root_entries[2].name, "bandage");
+  assert_eq!(structure.root_entries[2].line, 3);
+  assert!(
+    structure.root_entries.iter().all(|entry| !entry.has_value),
+    "a bare name to carry no value"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn keys_after_a_header_belong_to_that_section_rather_than_to_the_root() -> XrfResult {
+  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "; a list\nloose = 1\n\n[wpn_base]\ncost = 100\n")]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
+
+  assert_eq!(structure.root_entries.len(), 1);
+  assert_eq!(structure.root_entries[0].name, "loose");
+  assert_eq!(structure.root_entries[0].line, 2);
+  assert!(
+    structure.root_entries[0].has_value,
+    "`loose = 1` to have spelled a value"
+  );
+  assert_eq!(structure.sections.len(), 1, "the header to be read as a section");
+
+  Ok(())
+}
+
+#[test]
+fn a_config_that_opens_with_a_header_declares_no_root_keys() -> XrfResult {
+  let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "[wpn_base]\ncost = 100\n")]);
+
+  let resolution: LtxResolution = source.resolve("system.ltx")?;
+  let structure: LtxFileStructure =
+    LtxRootReader::new("system.ltx", "ltx", &resolution, &source).read_structure("system.ltx", &[])?;
+
+  assert!(
+    structure.root_entries.is_empty(),
+    "every ordinary config to carry no keys here, whatever it holds"
+  );
+
+  Ok(())
+}

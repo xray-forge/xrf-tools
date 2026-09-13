@@ -35,4 +35,7 @@ pub enum LtxFindingKind {
   Dialect,
   /// An `#include` reached no file.
   Include,
+  /// A config declares keys above its first section header, where no engine loads them. Not raised for a config
+  /// that declares no section at all: that is a list, read as data rather than loaded as an ini.
+  RootKeys,
 }

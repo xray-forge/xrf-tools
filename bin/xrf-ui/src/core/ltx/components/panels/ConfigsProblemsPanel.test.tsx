@@ -40,7 +40,7 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
   project.project = project.project.asReady({ sessionId: "session-1" } as never);
   documentService.document = documentService.document.asReady({
     findings: [],
-    structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, sections: [] },
+    structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, rootEntries: [], sections: [] },
     text: { isNormalized: true, lines: [], path: ENTRY },
   } as ConfigsDocument);
 
@@ -50,7 +50,7 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
     // What the jump reads: the config the finding names, which is not the one on screen.
     "plugin:configs|read_document": {
       findings: [],
-      structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: OTHER, sections: [] },
+      structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: OTHER, rootEntries: [], sections: [] },
       text: { isNormalized: true, lines: ["[wpn_bad]"], path: OTHER },
     },
   });

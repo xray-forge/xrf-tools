@@ -49,7 +49,7 @@ pub use crate::resolved::{
 };
 pub use crate::scheme::{LtxSchemeFieldDeclaration, LtxSchemeFieldReport, LtxSectionSchemeReport};
 pub use crate::structure::{
-  LtxFileStructure, LtxStructureInclude, LtxStructureParent, LtxStructureParseError, LtxStructureScheme,
-  LtxStructureSection,
+  LtxFileStructure, LtxStructureEntry, LtxStructureInclude, LtxStructureParent, LtxStructureParseError,
+  LtxStructureScheme, LtxStructureSection,
 };
 pub use crate::text::{LtxFileText, LtxTextReader};

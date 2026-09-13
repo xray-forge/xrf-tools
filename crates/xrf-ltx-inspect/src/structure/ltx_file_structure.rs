@@ -17,6 +17,8 @@ pub struct LtxFileStructure {
   /// attachment.
   pub entry_points: Vec<String>,
   pub sections: Vec<LtxStructureSection>,
+  /// Keys written before the first section header, in file order.
+  pub root_entries: Vec<LtxStructureEntry>,
   pub includes: Vec<LtxStructureInclude>,
   /// Why the file did not parse, when it did not.
   ///
@@ -40,9 +42,23 @@ impl LtxFileStructure {
       includes: Vec::new(),
       parse_error: None,
       path: String::from(path),
+      root_entries: Vec::new(),
       sections: Vec::new(),
     }
   }
+}
+
+/// One key written before the first section header, which is how a list config declares its members.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LtxStructureEntry {
+  /// One-based line the key was written on.
+  pub line: u32,
+  /// The key as written, which for a list is the whole line.
+  pub name: String,
+  /// Whether the line spelled a value at all: a list declares bare names, anything else writes `name = value`.
+  pub has_value: bool,
 }
 
 /// One section header, and what resolving the file it belongs to made of it.

@@ -18,7 +18,7 @@ const PATH: string = "configs\\items\\w_empty.ltx";
 function documentOf(lines: Array<string>): ConfigsDocument {
   return {
     findings: [],
-    structure: { entryPoints: [], includes: [], parseError: null, path: PATH, sections: [] },
+    structure: { entryPoints: [], includes: [], parseError: null, path: PATH, rootEntries: [], sections: [] },
     text: { isNormalized: true, lines, path: PATH },
   };
 }

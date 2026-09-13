@@ -39,6 +39,8 @@ export type LtxFileStructure = {
    */
   entryPoints: Array<string>;
   sections: Array<LtxStructureSection>;
+  /** Keys written before the first section header, in file order. */
+  rootEntries: Array<LtxStructureEntry>;
   includes: Array<LtxStructureInclude>;
   /**
    * Why the file did not parse, when it did not.
@@ -80,6 +82,11 @@ export enum ELtxFindingKind {
   DIALECT = "dialect",
   /** An `#include` reached no file. */
   INCLUDE = "include",
+  /**
+   * A config declares keys above its first section header, where no engine loads them. Not raised for a config
+   * that declares no section at all: that is a list, read as data rather than loaded as an ini.
+   */
+  ROOT_KEYS = "rootKeys",
 }
 
 /** Every `ELtxFindingKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -241,6 +248,16 @@ export type LtxSectionSchemeReport = {
   inheritedFrom: string | null;
   /** Every field the scheme declares and every field the section holds, merged. */
   fields: Array<LtxSchemeFieldReport>;
+};
+
+/** One key written before the first section header, which is how a list config declares its members. */
+export type LtxStructureEntry = {
+  /** One-based line the key was written on. */
+  line: number;
+  /** The key as written, which for a list is the whole line. */
+  name: string;
+  /** Whether the line spelled a value at all: a list declares bare names, anything else writes `name = value`. */
+  hasValue: boolean;
 };
 
 /** One `#include`, and the configs it actually reached. */

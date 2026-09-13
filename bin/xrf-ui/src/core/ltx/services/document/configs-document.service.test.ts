@@ -10,7 +10,7 @@ import { noop } from "@/lib/callbacks/noop";
 function mockDocumentOf(path: string): ConfigsDocument {
   return {
     findings: [],
-    structure: { entryPoints: [], includes: [], parseError: null, path, sections: [] },
+    structure: { entryPoints: [], includes: [], parseError: null, path, rootEntries: [], sections: [] },
     text: { isNormalized: true, lines: [], path },
   };
 }

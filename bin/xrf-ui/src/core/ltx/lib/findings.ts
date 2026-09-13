@@ -8,6 +8,7 @@ const FINDING_MARKS: Record<LtxFindingKind, ECodeLineMark> = {
   dialect: ECodeLineMark.WARNING,
   include: ECodeLineMark.ERROR,
   parse: ECodeLineMark.ERROR,
+  rootKeys: ECodeLineMark.ERROR,
   scheme: ECodeLineMark.ERROR,
 };
 

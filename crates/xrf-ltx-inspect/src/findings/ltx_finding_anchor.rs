@@ -58,6 +58,35 @@ impl LtxFindingAnchor {
       });
     }
 
+    // Keys above the first header of a config that has headers. Nothing loads them: Anomaly's ini loader drops a key
+    // it reads before any header, and vanilla hands the null section to `insert_item`. So what this tool resolves and
+    // what the game makes of the same file differ, silently.
+    //
+    // Judged on the shape rather than on whether anything includes the file. A config that declares no section at all
+    // is a list - a roll of names read by the console or by a script rather than loaded as an ini - and reporting that
+    // would warn about `default_controls.ltx` and every `rspec_*.ltx` in both reference trees. One that declares
+    // sections and then strands keys above them is the other thing entirely: in both trees, every instance of it is a
+    // comment somebody wrote without a `;`.
+    if !structure.root_entries.is_empty() && !structure.sections.is_empty() {
+      findings.push(LtxAnchoredFinding {
+        engine_behaviour: Some(String::from(
+          "Anomaly's ini loader drops keys read before the first section header; vanilla X-Ray dereferences a null section",
+        )),
+        entry: String::from(entry),
+        field: None,
+        file: Some(structure.path.clone()),
+        kind: LtxFindingKind::RootKeys,
+        // The first of them, because that is where the run starts and where a reader has to look.
+        line: structure.root_entries.first().map(|first| first.line),
+        message: format!(
+          "{} key(s) written above [{}], where no section holds them",
+          structure.root_entries.len(),
+          structure.sections.first().map_or("", |section| section.name.as_str())
+        ),
+        section: None,
+      });
+    }
+
     for include in &structure.includes {
       if !include.resolved.is_empty() {
         continue;

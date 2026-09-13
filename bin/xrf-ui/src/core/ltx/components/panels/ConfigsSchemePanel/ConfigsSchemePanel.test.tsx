@@ -32,7 +32,7 @@ function renderScheme(report: LtxSectionSchemeReport): RenderResult {
   project.project = project.project.asReady({ sessionId: "session-1" } as never);
   documentService.document = documentService.document.asReady({
     findings: [],
-    structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, sections: [] },
+    structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, rootEntries: [], sections: [] },
     text: { isNormalized: true, lines: [], path: ENTRY },
   } as ConfigsDocument);
   documentService.selectSection(report.section);

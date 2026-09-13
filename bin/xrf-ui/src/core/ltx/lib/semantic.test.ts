@@ -12,6 +12,7 @@ function structureOf(structure: Partial<LtxFileStructure>): LtxFileStructure {
     includes: [],
     parseError: null,
     path: "configs\\system.ltx",
+    rootEntries: [],
     sections: [],
     ...structure,
   };
