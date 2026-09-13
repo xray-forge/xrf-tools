@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
-import { TEquipmentCell } from "@/core/sprite-equipment";
+import { TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentGridMoveOver extends BaseComponentProps {

@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
-import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
+import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

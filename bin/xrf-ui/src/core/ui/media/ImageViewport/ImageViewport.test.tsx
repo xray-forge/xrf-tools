@@ -3,7 +3,7 @@ import { act, fireEvent, RenderResult } from "@testing-library/react";
 
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { IPanZoomTransform } from "@/lib/media/pan-zoom";
+import { IPanZoomPoint, IPanZoomTransform } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { Nullable } from "@/lib/types/general";
 
@@ -94,12 +94,18 @@ describe("ImageViewport", () => {
     Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => laidOut.width });
     Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => laidOut.height });
 
+    // jsdom lays nothing out and answers an empty rect, which would put every reported point at the content's centre.
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMRect {
+      return { x: 0, y: 0, left: 0, top: 0, right: laidOut.width, bottom: laidOut.height, ...laidOut } as DOMRect;
+    };
+
     global.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
   });
 
   afterEach(() => {
     Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
     Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+    Reflect.deleteProperty(HTMLElement.prototype, "getBoundingClientRect");
   });
 
   it("opens the picture fitted and centred", () => {
@@ -201,5 +207,114 @@ describe("ImageViewport", () => {
 
     // Inheriting the pan would open the next texture somewhere off screen, which reads as a preview that failed.
     expect(readTransform(render)).toEqual(FITTED);
+  });
+});
+
+describe("ImageViewport annotation", () => {
+  beforeEach(() => {
+    laidOut = { width: 800, height: 600 };
+    notify = null;
+
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => laidOut.width });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => laidOut.height });
+
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMRect {
+      return { x: 0, y: 0, left: 0, top: 0, right: laidOut.width, bottom: laidOut.height, ...laidOut } as DOMRect;
+    };
+
+    global.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
+    Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+    Reflect.deleteProperty(HTMLElement.prototype, "getBoundingClientRect");
+  });
+
+  it("draws an overlay over the picture without letting it take the gestures", () => {
+    const render: RenderResult = renderWithProviders(
+      <ImageViewport
+        src={"texture.png"}
+        alt={"texture"}
+        width={WIDTH}
+        height={HEIGHT}
+        renderOverlay={() => <div data-testid={"annotation"} />}
+      />
+    );
+
+    // An overlay that took pointer events would swallow the pan, which is the gesture it is drawn on top of.
+    expect(getComputedStyle(render.getByTestId("annotation").parentElement as HTMLElement).pointerEvents).toBe("none");
+  });
+
+  it("reports where the pointer is in the picture's own pixels", () => {
+    const seen: Array<Nullable<IPanZoomPoint>> = [];
+
+    const render: RenderResult = renderWithProviders(
+      <ImageViewport
+        src={"texture.png"}
+        alt={"texture"}
+        width={WIDTH}
+        height={HEIGHT}
+        onContentPointerMove={(point: Nullable<IPanZoomPoint>) => seen.push(point)}
+      />
+    );
+
+    const viewport: HTMLElement = render.getByAltText("texture").parentElement as HTMLElement;
+
+    // The middle of an 800x600 pane showing a fitted 1024x512 picture is the middle of the picture.
+    fireEvent.mouseMove(viewport, { clientX: 400, clientY: 300 });
+
+    expect(seen.at(-1)?.x).toBeCloseTo(WIDTH / 2);
+    expect(seen.at(-1)?.y).toBeCloseTo(HEIGHT / 2);
+
+    fireEvent.mouseLeave(viewport);
+
+    // Null rather than the last point, so whatever was being highlighted stops being highlighted.
+    expect(seen.at(-1)).toBeNull();
+  });
+
+  it("reports a click in the picture's own pixels", () => {
+    const clicked: Array<IPanZoomPoint> = [];
+
+    const render: RenderResult = renderWithProviders(
+      <ImageViewport
+        src={"texture.png"}
+        alt={"texture"}
+        width={WIDTH}
+        height={HEIGHT}
+        onContentClick={(point: IPanZoomPoint) => clicked.push(point)}
+      />
+    );
+
+    const viewport: HTMLElement = render.getByAltText("texture").parentElement as HTMLElement;
+
+    fireEvent.mouseDown(viewport, { clientX: 400, clientY: 300 });
+    fireEvent.mouseUp(viewport, { clientX: 400, clientY: 300 });
+
+    expect(clicked).toHaveLength(1);
+    expect(clicked[0].x).toBeCloseTo(WIDTH / 2);
+    expect(clicked[0].y).toBeCloseTo(HEIGHT / 2);
+  });
+
+  it("does not call a pan a click", () => {
+    const clicked: Array<IPanZoomPoint> = [];
+
+    const render: RenderResult = renderWithProviders(
+      <ImageViewport
+        src={"texture.png"}
+        alt={"texture"}
+        width={WIDTH}
+        height={HEIGHT}
+        onContentClick={(point: IPanZoomPoint) => clicked.push(point)}
+      />
+    );
+
+    const viewport: HTMLElement = render.getByAltText("texture").parentElement as HTMLElement;
+
+    // Every pan ends in a mouse up, so without a travel threshold dragging the picture also selects whatever the
+    // pointer happened to stop over.
+    drag(viewport, 120, 90);
+
+    expect(clicked).toHaveLength(0);
   });
 });

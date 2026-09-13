@@ -10,6 +10,12 @@ export interface IPanZoomSize {
   height: number;
 }
 
+/** A rectangle in whichever space the function taking it names. */
+export interface IPanZoomRect extends IPanZoomSize {
+  x: number;
+  y: number;
+}
+
 /**
  * Where a viewport is looking, and how magnified.
  *
@@ -157,6 +163,22 @@ export function toContentPoint(camera: IPanZoomCamera, viewport: IPanZoomSize, p
   return {
     x: camera.center.x + (point.x - viewport.width / 2) / camera.scale,
     y: camera.center.y + (point.y - viewport.height / 2) / camera.scale,
+  };
+}
+
+/**
+ * Where a content-space rectangle lands in the viewport.
+ *
+ * @param transform - Where the content sits, from `toPanZoomTransform`.
+ * @param rect - Rectangle in content pixels.
+ * @returns The same rectangle in viewport pixels.
+ */
+export function toViewportRect(transform: IPanZoomTransform, rect: IPanZoomRect): IPanZoomRect {
+  return {
+    x: transform.offsetX + rect.x * transform.scale,
+    y: transform.offsetY + rect.y * transform.scale,
+    width: rect.width * transform.scale,
+    height: rect.height * transform.scale,
   };
 }
 

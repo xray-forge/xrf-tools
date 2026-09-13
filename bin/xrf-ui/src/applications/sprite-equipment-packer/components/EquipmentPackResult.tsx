@@ -1,7 +1,7 @@
 import { Box, Chip, Grid } from "@mui/material";
 import { ReactElement } from "react";
 
-import { IPackEquipmentResult } from "@/core/sprite-equipment";
+import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";
 import { formatDuration } from "@/lib/format/duration";
 
 interface IEquipmentPackResultProps {

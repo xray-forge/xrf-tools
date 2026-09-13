@@ -2,6 +2,7 @@ import { Box } from "@mui/material";
 import {
   MouseEvent,
   ReactElement,
+  ReactNode,
   RefCallback,
   useCallback,
   useEffect,
@@ -41,6 +42,18 @@ const UNMEASURED: IPanZoomSize = { width: 0, height: 0 };
 const ZOOM_IN: number = -1;
 const ZOOM_OUT: number = 1;
 
+/** How far the pointer may travel between press and release and still be a click. */
+const CLICK_SLOP: number = 4;
+
+/** What an overlay needs to draw itself over the picture. */
+export interface IImageViewportView {
+  controller: PanZoomController;
+  /** Content size in its own pixels. */
+  content: IPanZoomSize;
+  /** Viewport size in viewport pixels; zero on both axes until the pane has been measured. */
+  viewport: IPanZoomSize;
+}
+
 interface IImageViewportProps {
   src: string;
   alt: string;
@@ -53,6 +66,12 @@ interface IImageViewportProps {
   controller?: PanZoomController;
   /** Whether this viewport draws the zoom controls. Off for the second of a pair, which the first one moves. */
   hasControls?: boolean;
+  /** Drawn over the picture and under the controls, taking no pointer events of its own. */
+  renderOverlay?: (view: IImageViewportView) => ReactNode;
+  /** Where the pointer is over the content, in content pixels, or null once it leaves. */
+  onContentPointerMove?: (point: Nullable<IPanZoomPoint>) => void;
+  /** A press and release that did not pan, in content pixels. */
+  onContentClick?: (point: IPanZoomPoint) => void;
 }
 
 /**
@@ -65,12 +84,17 @@ export function ImageViewport({
   height,
   controller: sharedController,
   hasControls = true,
+  renderOverlay,
+  onContentPointerMove,
+  onContentClick,
 }: IImageViewportProps): ReactElement {
   const [viewportRef, measured]: [RefCallback<HTMLDivElement>, Nullable<IElementSize>] =
     useElementSize<HTMLDivElement>();
 
   const imageRef = useRef<Nullable<HTMLImageElement>>(null);
   const dragOriginRef = useRef<Nullable<IPanZoomPoint>>(null);
+  /** How far the pointer has travelled since it went down, so a pan is not also a click. */
+  const dragDistanceRef = useRef<number>(0);
 
   const [ownController] = useState<PanZoomController>(() => new PanZoomController());
   const controller: PanZoomController = sharedController ?? ownController;
@@ -143,12 +167,26 @@ export function ImageViewport({
 
   const onFit = useCallback((): void => controller.set(PAN_ZOOM_FIT), [controller]);
 
+  /** The content-space point under a pointer event, which is what every caller outside this component wants. */
+  const toEventContentPoint = useCallback(
+    (event: MouseEvent<HTMLDivElement>): IPanZoomPoint => {
+      const bounds: DOMRect = event.currentTarget.getBoundingClientRect();
+      const camera: IPanZoomCamera = resolvePanZoomCamera(controller.get(), { width, height }, measured ?? UNMEASURED);
+
+      return toContentPoint(camera, bounds, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
+    },
+    [controller, height, measured, width]
+  );
+
   const onMouseDown = useCallback((event: MouseEvent<HTMLDivElement>): void => {
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
+    dragDistanceRef.current = 0;
   }, []);
 
   const onMouseMove = useCallback(
     (event: MouseEvent<HTMLDivElement>): void => {
+      onContentPointerMove?.(toEventContentPoint(event));
+
       const origin: Nullable<IPanZoomPoint> = dragOriginRef.current;
 
       if (!origin) {
@@ -159,15 +197,30 @@ export function ImageViewport({
       const deltaY: number = event.clientY - origin.y;
 
       dragOriginRef.current = { x: event.clientX, y: event.clientY };
+      dragDistanceRef.current += Math.abs(deltaX) + Math.abs(deltaY);
 
       moveCamera((camera: IPanZoomCamera) => panBy(camera, deltaX, deltaY));
     },
-    [moveCamera]
+    [moveCamera, onContentPointerMove, toEventContentPoint]
   );
 
-  const onRelease = useCallback((): void => {
+  const onMouseUp = useCallback(
+    (event: MouseEvent<HTMLDivElement>): void => {
+      const wasDragging: boolean = dragOriginRef.current !== null;
+
+      dragOriginRef.current = null;
+
+      if (wasDragging && dragDistanceRef.current <= CLICK_SLOP) {
+        onContentClick?.(toEventContentPoint(event));
+      }
+    },
+    [onContentClick, toEventContentPoint]
+  );
+
+  const onMouseLeave = useCallback((): void => {
     dragOriginRef.current = null;
-  }, []);
+    onContentPointerMove?.(null);
+  }, [onContentPointerMove]);
 
   useLayoutEffect(() => {
     place();
@@ -202,8 +255,8 @@ export function ImageViewport({
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
-        onMouseUp={onRelease}
-        onMouseLeave={onRelease}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
       >
         <Box
           ref={imageRef}
@@ -220,6 +273,12 @@ export function ImageViewport({
             userSelect: "none",
           }}
         />
+
+        {renderOverlay ? (
+          <Box sx={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {renderOverlay({ content: { width, height }, controller, viewport: measured ?? UNMEASURED })}
+          </Box>
+        ) : null}
 
         {hasControls ? (
           <ImageViewportControls

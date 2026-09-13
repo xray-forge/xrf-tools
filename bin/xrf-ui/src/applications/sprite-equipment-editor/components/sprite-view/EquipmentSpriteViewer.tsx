@@ -1,22 +1,25 @@
-import { Box, CircularProgress, Theme, Typography } from "@mui/material";
-import { SystemStyleObject } from "@mui/system";
-import { clamp } from "@mui/x-data-grid/internals";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { MouseEvent, ReactElement, useCallback, useMemo, useState, WheelEvent } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
-import { equipmentViewerConfig } from "@/applications/sprite-equipment-editor/configs/EquipmentViewerConfig";
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
-import { GridMapper } from "@/core/sprite-equipment";
-import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
+import {
+  IEquipmentPngDescriptor,
+  SpriteEquipmentEditorService,
+} from "@/applications/sprite-equipment-editor/services/editor";
+import { IEquipmentLayout, toEquipmentLayout } from "@/core/sprite-equipment/lib";
+import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
+import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
 import { EquipmentGridControls } from "./EquipmentGridControls";
 import { EquipmentGridDetails } from "./EquipmentGridDetails";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";
-import { EquipmentGridZoom } from "./EquipmentGridZoom";
-import { EquipmentSpriteGrid } from "./EquipmentSpriteGrid";
+import { IEquipmentGridSelection, useEquipmentGridSelection } from "./use-equipment-grid-selection";
 
+/**
+ * The open sheet, with the lattice drawn over it.
+ */
 export function EquipmentSpriteViewer({
   "data-testid": dataTestId = "equipment-sprite-viewer",
   id,
@@ -24,208 +27,80 @@ export function EquipmentSpriteViewer({
 }: BaseComponentProps): ReactElement {
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
-  const [holdingOrigin, setHoldingOrigin] = useState<Nullable<[number, number]>>(null);
-  const [zoomValue, setZoomValue] = useState(1);
-  const [zoomOriginX, setZoomOriginX] = useState(0);
-  const [zoomOriginY, setZoomOriginY] = useState(0);
+  const sprite: Nullable<IEquipmentPngDescriptor> = spriteEquipmentService.spriteImage.value;
+  const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
+  const isGridVisible: boolean = spriteEquipmentService.isGridVisible;
+  const gridSize: number = spriteEquipmentService.gridSize;
 
-  const [selectedCell, setSelectedCell] = useState<Nullable<[number, number]>>(null);
-  const [moveOverCell, setMoveOverCell] = useState<Nullable<[number, number]>>(null);
-
-  const gridMapper: Nullable<GridMapper> = useMemo(() => {
-    if (!spriteEquipmentService.spriteImage.value) {
-      return null;
-    }
-
-    return new GridMapper(
-      spriteEquipmentService.spriteImage.value.image.width,
-      spriteEquipmentService.spriteImage.value.image.height,
-      spriteEquipmentService.gridSize,
-      spriteEquipmentService.spriteImage.value.descriptors
-    );
-  }, [spriteEquipmentService.spriteImage.value, spriteEquipmentService.gridSize]);
-
-  const sx: SystemStyleObject<Theme> = useMemo(
-    () => ({
-      ...IMAGE_CHECKERBOARD,
-      backgroundColor: "#353535",
-      userSelect: "none",
-      transform: `scale(${zoomValue}) translate(${zoomOriginX}px, ${zoomOriginY}px)`,
-    }),
-    [zoomValue, zoomOriginX, zoomOriginY]
+  const layout: Nullable<IEquipmentLayout> = useMemo(
+    () => (sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.descriptors) : null),
+    [gridSize, sprite]
   );
 
-  const onSelectCell = useCallback((row: number, column: number) => {
-    setSelectedCell([row, column]);
-  }, []);
+  const selection: IEquipmentGridSelection = useEquipmentGridSelection(layout);
 
-  const onCloseDetails = useCallback(() => {
-    setSelectedCell(null);
-  }, []);
-
-  const onMoveOverCell = useCallback((row: number, column: number) => {
-    setMoveOverCell((it) => {
-      return it && it[0] === row && it[1] === column ? it : [row, column];
-    });
-  }, []);
-
-  const onZoomUp = useCallback(() => {
-    setZoomValue((it) => clamp(it + 0.1, equipmentViewerConfig.ZOOM_IN_MIN, equipmentViewerConfig.ZOOM_IN_MAX));
-  }, []);
-
-  const onZoomDown = useCallback(() => {
-    setZoomValue((it) => clamp(it - 0.1, equipmentViewerConfig.ZOOM_IN_MIN, equipmentViewerConfig.ZOOM_IN_MAX));
-  }, []);
-
-  const onWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
-    if (event.shiftKey) {
-      setZoomOriginY((it) =>
-        clamp(
-          event.deltaY > 0 ? it - 30 : it + 30,
-          equipmentViewerConfig.ZOOM_OFFSET_MIN,
-          equipmentViewerConfig.ZOOM_OFFSET_MAX
-        )
-      );
-    } else if (event.ctrlKey) {
-      setZoomOriginX((it) =>
-        clamp(
-          event.deltaY > 0 ? it - 30 : it + 30,
-          equipmentViewerConfig.ZOOM_OFFSET_MIN,
-          equipmentViewerConfig.ZOOM_OFFSET_MAX
-        )
-      );
-    } else {
-      setZoomValue((it) =>
-        clamp(
-          event.deltaY > 0 ? it - 0.1 : it + 0.1,
-          equipmentViewerConfig.ZOOM_IN_MIN,
-          equipmentViewerConfig.ZOOM_IN_MAX
-        )
-      );
-    }
-  }, []);
-
-  const onMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    setHoldingOrigin([event.pageX, event.pageY]);
-  }, []);
-
-  const onMouseUp = useCallback(() => {
-    setHoldingOrigin(null);
-  }, []);
-
-  const onMouseLeave = useCallback(() => {
-    setHoldingOrigin(null);
-  }, []);
-
-  const onContextMenu = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  }, []);
-
-  const onMouseMove = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (holdingOrigin) {
-        const [x, y] = holdingOrigin;
-
-        setZoomOriginX((it) =>
-          clamp(
-            it + (event.pageX - x) / 2,
-            equipmentViewerConfig.ZOOM_OFFSET_MIN,
-            equipmentViewerConfig.ZOOM_OFFSET_MAX
-          )
-        );
-        setZoomOriginY((it) =>
-          clamp(
-            it + (event.pageY - y) / 2,
-            equipmentViewerConfig.ZOOM_OFFSET_MIN,
-            equipmentViewerConfig.ZOOM_OFFSET_MAX
-          )
-        );
-        setHoldingOrigin([event.pageX, event.pageY]);
-      }
-    },
-    [holdingOrigin]
+  const renderOverlay = useCallback(
+    (view: IImageViewportView): Nullable<ReactElement> =>
+      layout ? (
+        <EquipmentGridCanvas
+          view={view}
+          layout={layout}
+          isGridVisible={isGridVisible}
+          hoveredCell={selection.hoveredCell}
+          selectedCell={selection.selectedCell}
+        />
+      ) : null,
+    [isGridVisible, layout, selection.hoveredCell, selection.selectedCell]
   );
 
-  return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}
-    >
+  if (!sprite || !layout) {
+    return (
       <Box
-        sx={{
-          position: "absolute",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100%",
-        }}
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}
       >
-        {spriteEquipmentService.spriteImage.value ? (
-          <Box
-            className={"sprite-preview"}
-            onWheel={onWheel}
-            onMouseDown={onMouseDown}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseLeave}
-            onContextMenu={onContextMenu}
-            onMouseMove={onMouseMove}
-            sx={[
-              {
-                position: "relative",
-                width: spriteEquipmentService.spriteImage.value.image.width,
-                minWidth: spriteEquipmentService.spriteImage.value.image.width,
-                height: "auto",
-                left: 0,
-                top: 0,
-              },
-              sx,
-            ]}
-          >
-            <img
-              src={spriteEquipmentService.spriteImage.value.image.src}
-              width={"100%"}
-              height={"100%"}
-              draggable={false}
-            />
-
-            {gridMapper ? (
-              <EquipmentSpriteGrid
-                selectedCell={selectedCell}
-                isGridVisible={spriteEquipmentService.isGridVisible}
-                gridMapper={gridMapper}
-                onCellSelected={onSelectCell}
-                onCellMovedOver={onMoveOverCell}
-              />
-            ) : null}
-          </Box>
-        ) : spriteEquipmentService.spriteImage.isLoading ? (
+        {isLoading ? (
           <CircularProgress size={28} />
         ) : (
           <Typography variant={"body2"} color={"text.secondary"}>
             No sprite open
           </Typography>
         )}
-
-        {selectedCell && gridMapper ? (
-          <EquipmentGridDetails cell={selectedCell} gridMapper={gridMapper} onClose={onCloseDetails} />
-        ) : null}
-
-        {moveOverCell ? <EquipmentGridMoveOver cell={moveOverCell} /> : null}
-
-        <EquipmentGridControls
-          gridSize={spriteEquipmentService.gridSize}
-          isGridVisible={spriteEquipmentService.isGridVisible}
-          onSetGridSize={spriteEquipmentService.setGridSize}
-          onSetGridVisibility={spriteEquipmentService.setGridVisibility}
-        />
-
-        <EquipmentGridZoom zoom={zoomValue} onZoomDown={onZoomDown} onZoomUp={onZoomUp} />
       </Box>
+    );
+  }
+
+  return (
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ position: "relative", display: "flex", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
+    >
+      <ImageViewport
+        src={sprite.image.src}
+        alt={sprite.name}
+        width={sprite.image.width}
+        height={sprite.image.height}
+        renderOverlay={renderOverlay}
+        onContentPointerMove={selection.onPointerMove}
+        onContentClick={selection.onClick}
+      />
+
+      {selection.selectedCell ? (
+        <EquipmentGridDetails cell={selection.selectedCell} layout={layout} onClose={selection.onClearSelection} />
+      ) : null}
+
+      {selection.hoveredCell ? <EquipmentGridMoveOver cell={selection.hoveredCell} /> : null}
+
+      <EquipmentGridControls
+        gridSize={gridSize}
+        isGridVisible={isGridVisible}
+        onSetGridSize={spriteEquipmentService.setGridSize}
+        onSetGridVisibility={spriteEquipmentService.setGridVisibility}
+      />
     </Box>
   );
 }

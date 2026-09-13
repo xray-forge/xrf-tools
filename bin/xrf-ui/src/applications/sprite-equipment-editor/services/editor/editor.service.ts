@@ -16,7 +16,7 @@ import {
   IEquipmentSectionDescriptor,
   IEquipmentSpriteMetadata,
   IPackEquipmentResult,
-} from "@/core/sprite-equipment/equipment";
+} from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";

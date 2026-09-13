@@ -3,14 +3,13 @@ import { Box, Card, Divider, Grid, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { GridMapper, IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment";
+import { IEquipmentLayout, IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { stopPropagation } from "@/lib/dom/event";
-import { Nullable } from "@/lib/types/general";
 
 interface IEquipmentGridDetailsProps extends BaseComponentProps {
   cell: TEquipmentCell;
-  gridMapper: GridMapper;
+  layout: IEquipmentLayout;
   onClose: () => void;
 }
 
@@ -18,14 +17,13 @@ export function EquipmentGridDetails({
   "data-testid": dataTestId = "equipment-grid-details",
   id,
   className,
-  gridMapper,
+  layout,
   cell,
   onClose,
 }: IEquipmentGridDetailsProps): ReactElement {
-  const [row, column] = cell;
-  const items: Nullable<Array<IEquipmentSectionDescriptor>> = gridMapper.grid[row][column] ?? null;
+  const items: ReadonlyArray<IEquipmentSectionDescriptor> = layout.at(cell);
 
-  const list = items?.map((it, index) => (
+  const list = items.map((it: IEquipmentSectionDescriptor, index: number) => (
     <Box key={index} sx={{ marginTop: "4px" }}>
       {it.section}
     </Box>
@@ -56,7 +54,7 @@ export function EquipmentGridDetails({
 
           <Divider />
 
-          {list?.length ? list : "No sprites"}
+          {list.length ? list : "No sprites"}
         </Box>
       </Card>
     </Box>

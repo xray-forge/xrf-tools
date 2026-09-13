@@ -67,9 +67,7 @@ describe("ConfigsMenu", () => {
       { isPhysical: false, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "db" },
     ];
 
-    const { getByText } = renderWithProviders(
-      <ConfigsMenu files={archived} selected={null} onOpen={jest.fn()} />
-    );
+    const { getByText } = renderWithProviders(<ConfigsMenu files={archived} selected={null} onOpen={jest.fn()} />);
 
     fireEvent.dblClick(getByText("configs"));
 

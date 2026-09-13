@@ -3,7 +3,7 @@ import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
-import { IPackEquipmentResult } from "@/core/sprite-equipment/equipment";
+import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
