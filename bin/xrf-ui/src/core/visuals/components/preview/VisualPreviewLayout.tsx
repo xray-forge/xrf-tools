@@ -5,6 +5,7 @@ import { Texture } from "three";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { ACCENT, TEXT } from "@/core/theme/tokens";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import {
   IVisualPreviewViewportProps,
@@ -184,6 +185,9 @@ export function VisualPreviewLayout({
               alignItems: "center",
               justifyContent: "center",
               pointerEvents: "none",
+              // The viewport stays dark in both application themes.
+              "& .MuiTypography-root": { color: TEXT.secondary.dark },
+              "& .MuiCircularProgress-root": { color: ACCENT.primary.main.dark },
             }}
           >
             <DelayedProgress label={"Loading visual…"} />
