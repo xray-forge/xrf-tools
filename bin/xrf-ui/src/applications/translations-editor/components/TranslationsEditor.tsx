@@ -4,9 +4,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { describeRoots } from "@/core/assets/lib";
 import { TranslationFinding, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
@@ -65,7 +67,15 @@ export function TranslationsEditor(): ReactElement {
   });
 
   return (
-    <EditorLayout toolbar={<EditorToolbar actions={<TranslationsEditorActions />} onBack={onClose} />}>
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          subtitle={project ? <EditorToolbarLocation location={{ path: describeRoots(project.roots) }} /> : null}
+          actions={<TranslationsEditorActions />}
+          onBack={onClose}
+        />
+      }
+    >
       <TranslationsEditorWorkspace />
     </EditorLayout>
   );

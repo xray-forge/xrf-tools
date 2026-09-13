@@ -9,6 +9,7 @@ import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { selectUnreadTexturesLtx } from "@/core/textures/lib/texture-catalog";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -24,6 +25,7 @@ export function TexturesExplorerWorkspace({
   className,
 }: BaseComponentProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
 
   const [isLtxNoticeDismissed, setLtxNoticeDismissed] = useState<boolean>(false);
 
@@ -40,6 +42,8 @@ export function TexturesExplorerWorkspace({
   // What the toolbar says while no one texture is chosen: the root set being browsed, which is the session itself.
   const sessionLocation: Nullable<IEditorLocation> = catalog ? { path: describeRoots(catalog.roots) } : null;
   const onBack = useCallback(() => void catalogService.close(), [catalogService]);
+
+  const onDeselect = useCallback(() => selectionService.clear(), [selectionService]);
 
   return (
     <TexturePreviewLayout
@@ -63,6 +67,7 @@ export function TexturesExplorerWorkspace({
           </Alert>
         ) : null
       }
+      onDeselect={onDeselect}
       onBack={onBack}
     />
   );

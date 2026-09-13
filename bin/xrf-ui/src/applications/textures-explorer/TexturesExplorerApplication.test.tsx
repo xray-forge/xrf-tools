@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
 
 import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer/application";
@@ -75,5 +76,41 @@ describe("TexturesExplorerApplication", () => {
     await waitFor(() => expect(selectionService.preview.isLoading).toBe(false));
 
     expect(selectionService.reference).toBe(MOCK_TEXTURE);
+  });
+
+  it("names the open texture above the viewport and closes it without closing the root", async () => {
+    resetMockInvoke();
+    setMockInvokeResponses({
+      ["plugin:textures|describe"]: mockTextureDescription(),
+      ["plugin:textures|describe_catalog"]: [mockBumpedTextureSummary()],
+      ["plugin:textures|get_roots"]: null,
+      ["plugin:textures|open"]: mockSessionResponse(mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)])),
+      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    const container: Container = await mockApplicationContainer();
+    const service: TextureCatalogService = container.get(TextureCatalogService);
+    const selectionService: TextureSelectionService = container.get(TextureSelectionService);
+
+    await service.onProvision();
+    await service.openRoot("C:\\gamedata");
+
+    const render: RenderResult = renderWithProviders(<TexturesExplorerApplication />, { container });
+
+    expect(render.queryByTestId("texture-file-header")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await service.select({ kind: "asset", reference: MOCK_TEXTURE });
+    });
+
+    await waitFor(() => expect(render.getByTestId("texture-file-header")).toBeInTheDocument());
+    expect(render.getByTestId("texture-file-header")).toHaveTextContent(MOCK_TEXTURE);
+
+    await userEvent.click(render.getByRole("button", { name: "Close texture" }));
+
+    // The selection ends, the session does not: closing a texture leaves the tree it was picked from open.
+    expect(render.queryByTestId("texture-file-header")).not.toBeInTheDocument();
+    expect(selectionService.reference).toBeNull();
+    expect(service.isBrowsing).toBe(true);
   });
 });

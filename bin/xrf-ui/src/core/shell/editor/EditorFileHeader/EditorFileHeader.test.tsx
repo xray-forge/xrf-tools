@@ -40,4 +40,13 @@ describe("EditorFileHeader", () => {
 
     expect(close).toHaveAccessibleDescription("Clear the selection and close this config");
   });
+
+  // A declaration is not a file, and the row says so rather than every surface drawing its own header to get an icon.
+  it("lets a surface mark what kind of thing is open", () => {
+    const { getByTestId } = renderWithProviders(
+      <EditorFileHeader name={"xr_effects.give_info"} icon={<span data-testid={"export-icon"} />} onClose={jest.fn()} />
+    );
+
+    expect(getByTestId("export-icon")).toBeInTheDocument();
+  });
 });

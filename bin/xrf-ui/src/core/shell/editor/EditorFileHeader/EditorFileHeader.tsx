@@ -12,6 +12,8 @@ interface IEditorFileHeaderProps extends BaseComponentProps {
   name: string;
   /** A short note the name does not carry - a size, a count - beside it. */
   caption?: ReactNode;
+  /** Marks what kind of thing is open, for a surface whose subject is not a file on disk. */
+  icon?: ReactNode;
   /** Actions belonging to what is open, drawn before the close action. */
   actions?: ReactNode;
   /** Names the close action for a surface whose subject is not called a file. */
@@ -33,6 +35,7 @@ export function EditorFileHeader({
   className,
   name,
   caption,
+  icon = <DescriptionOutlinedIcon fontSize={"small"} sx={{ color: "text.secondary" }} />,
   actions,
   closeLabel = "Close file",
   closeDescription = "Clear the selection and close this file",
@@ -54,7 +57,7 @@ export function EditorFileHeader({
         backgroundColor: "background.paper",
       }}
     >
-      <DescriptionOutlinedIcon fontSize={"small"} sx={{ color: "text.secondary" }} />
+      {icon}
 
       <Typography
         noWrap

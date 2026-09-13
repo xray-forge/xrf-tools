@@ -42,6 +42,13 @@ export function ApplicationLauncherSearchField({
     [inputRef, onKeyDown]
   );
 
+  const onChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onQueryChange(event.target.value);
+    },
+    [onQueryChange]
+  );
+
   return (
     <TextField
       data-testid={dataTestId}
@@ -92,7 +99,7 @@ export function ApplicationLauncherSearchField({
         },
       }}
       onKeyDown={onFieldKeyDown}
-      onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
+      onChange={onChange}
     />
   );
 }

@@ -5,9 +5,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
+import { describeRoots } from "@/core/assets/lib";
 import { DialogFinding, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { Logger, useLogger } from "@/lib/logging";
@@ -88,7 +90,15 @@ export function DialogsEditor(): ReactElement {
   ]);
 
   return (
-    <EditorLayout toolbar={<EditorToolbar actions={<DialogsEditorActions />} onBack={onClose} />}>
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          subtitle={project ? <EditorToolbarLocation location={{ path: describeRoots(project.roots) }} /> : null}
+          actions={<DialogsEditorActions />}
+          onBack={onClose}
+        />
+      }
+    >
       <DialogsEditorWorkspace />
     </EditorLayout>
   );

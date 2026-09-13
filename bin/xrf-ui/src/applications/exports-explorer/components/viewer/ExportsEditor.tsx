@@ -35,6 +35,8 @@ export function ExportsEditor(): ReactElement {
 
   const onSelect = useCallback((name: string): void => setSelectedName(name), []);
 
+  const onDeselect = useCallback((): void => setSelectedName(null), []);
+
   const onRefresh = useCallback((): void => {
     setCloseError(null);
     void exportsService.refreshExportsProject();
@@ -85,7 +87,9 @@ export function ExportsEditor(): ReactElement {
     <EditorLayout
       toolbar={
         <EditorToolbar
-          subtitle={project?.root ? <EditorToolbarLocation location={{ path: project.root }} /> : null}
+          subtitle={
+            project?.root ? <EditorToolbarLocation location={{ entry: selectedName, path: project.root }} /> : null
+          }
           actions={
             <>
               <ExportsSaveAction isDisabled={isBusy} />
@@ -116,7 +120,7 @@ export function ExportsEditor(): ReactElement {
         </>
       }
     >
-      <ExportsViewer declaration={selectedDeclaration} exportCount={declarations.length} />
+      <ExportsViewer declaration={selectedDeclaration} exportCount={declarations.length} onDeselect={onDeselect} />
     </EditorLayout>
   );
 }

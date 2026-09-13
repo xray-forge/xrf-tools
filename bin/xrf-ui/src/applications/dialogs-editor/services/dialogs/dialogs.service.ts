@@ -199,6 +199,18 @@ ${transformError(error).message}`,
     }
   }
 
+  /**
+   * Close the open dialog without closing the project.
+   */
+  @BoundAction()
+  public clearSelection(): void {
+    cancelFlow(this, "dialog");
+
+    this.dialog = this.dialog.asIdle();
+    this.selection = null;
+    this.inspectedNodeId = null;
+  }
+
   /** Point the inspector at one node of the open dialog, or at nothing. */
   @BoundAction()
   public inspectNode(nodeId: Nullable<string>): void {

@@ -8,6 +8,7 @@ import {
 } from "@/applications/translations-editor/lib/use-translation-validation";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationFile, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
+import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
 
@@ -45,6 +46,13 @@ export function TranslationsEditorWorkspace(): ReactElement {
           error: getErrorOf(id),
         }))
       : [];
+
+  // Ends the selection only, leaving the project, its edits and the language pair alone. The row cursor goes with it:
+  // it names an entry of the file being closed.
+  const onDeselect = useCallback((): void => {
+    setSelectedFile(null);
+    setSelectedId(null);
+  }, []);
 
   const onCommit = useCallback(
     (id: string, value: string) => {
@@ -84,38 +92,51 @@ export function TranslationsEditorWorkspace(): ReactElement {
         />
       </Box>
 
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
-          minWidth: 0,
-          minHeight: 0,
-          gap: 1,
-          padding: 1.5,
-        }}
-      >
-        <TranslationsLanguageBar
-          languages={languages}
-          encodings={project.encodings}
-          reference={reference}
-          target={target}
-          onReferenceChange={setReference}
-          onTargetChange={setTarget}
-        />
-
-        {file ? (
-          <TranslationsTable
-            rows={rows}
-            targetLanguage={target}
-            isDisabled={translationsService.savingFile !== null}
-            selectedId={selectedId}
-            onCommit={onCommit}
-            onSelect={setSelectedId}
+      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+        {selectedFile ? (
+          <EditorFileHeader
+            data-testid={"translations-file-header"}
+            name={selectedFile}
+            caption={file ? `${Object.keys(file.entries).length} entries` : undefined}
+            closeLabel={"Close file"}
+            closeDescription={"Clear the selection and close this translation file"}
+            onClose={onDeselect}
           />
-        ) : (
-          <EmptyState title={"Select a file"} description={"Pick a translation file to see its entries."} />
-        )}
+        ) : null}
+
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            minWidth: 0,
+            minHeight: 0,
+            gap: 1,
+            padding: 1.5,
+          }}
+        >
+          <TranslationsLanguageBar
+            languages={languages}
+            encodings={project.encodings}
+            reference={reference}
+            target={target}
+            onReferenceChange={setReference}
+            onTargetChange={setTarget}
+          />
+
+          {selectedFile && file ? (
+            <TranslationsTable
+              rows={rows}
+              targetLanguage={target}
+              isDisabled={translationsService.savingFile !== null}
+              selectedId={selectedId}
+              onCommit={onCommit}
+              onSelect={setSelectedId}
+            />
+          ) : (
+            <EmptyState title={"Select a file"} description={"Pick a translation file to see its entries."} />
+          )}
+        </Box>
       </Box>
     </Box>
   );

@@ -10,9 +10,11 @@ import { ExportsViewerState } from "./ExportsViewerState";
 export interface IExportsViewerProps extends BaseComponentProps {
   declaration: Nullable<ExportDescriptor>;
   exportCount: number;
+  /** Ends the selection without closing the project, which the header offers. */
+  onDeselect: () => void;
 }
 
-export function ExportsViewer({ declaration, exportCount }: IExportsViewerProps): ReactElement {
+export function ExportsViewer({ declaration, exportCount, onDeselect }: IExportsViewerProps): ReactElement {
   if (!exportCount) {
     return (
       <ExportsViewerState
@@ -31,5 +33,5 @@ export function ExportsViewer({ declaration, exportCount }: IExportsViewerProps)
     );
   }
 
-  return <ExportDeclarationView declaration={declaration} />;
+  return <ExportDeclarationView declaration={declaration} onDeselect={onDeselect} />;
 }

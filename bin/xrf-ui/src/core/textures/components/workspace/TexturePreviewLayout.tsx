@@ -1,12 +1,15 @@
+import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
 import { toAssetLocation } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
+import { describeTextureCaption } from "@/core/textures/lib/texture-caption";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ITexturePreviewComparison,
@@ -34,6 +37,8 @@ interface ITexturePreviewLayoutProps extends BaseComponentProps {
    * Where the session is, for the toolbar to fall back to while no one texture is open.
    */
   sessionLocation?: Nullable<IEditorLocation>;
+  /** Ends the selection without ending the session, which is what puts the file header above the viewport. */
+  onDeselect?: Nullable<() => void>;
 }
 
 /**
@@ -48,6 +53,7 @@ export function TexturePreviewLayout({
   banner,
   comparison = null,
   sessionLocation = null,
+  onDeselect = null,
   onBack,
 }: ITexturePreviewLayoutProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
@@ -93,7 +99,22 @@ export function TexturePreviewLayout({
       }
       banner={banner}
     >
-      <TexturePreview options={previewOptions} resetToken={cameraResetToken} comparison={comparison} />
+      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+        {onDeselect && description ? (
+          <EditorFileHeader
+            data-testid={"texture-file-header"}
+            name={description.reference}
+            caption={describeTextureCaption(description.base)}
+            closeLabel={"Close texture"}
+            closeDescription={"Clear the selection and close this texture"}
+            onClose={onDeselect}
+          />
+        ) : null}
+
+        <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+          <TexturePreview options={previewOptions} resetToken={cameraResetToken} comparison={comparison} />
+        </Box>
+      </Box>
     </EditorLayout>
   );
 }

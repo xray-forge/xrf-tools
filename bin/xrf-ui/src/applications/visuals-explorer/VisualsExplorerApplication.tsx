@@ -46,6 +46,8 @@ export function VisualsExplorerApplication({
 
   const onBack = useCallback(() => setPickerOpen(true), []);
 
+  const onDeselect = useCallback(() => void visualsService.close(), [visualsService]);
+
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
   /** Promotes a single-model session to a browsed one, rooted where the model sits. */
@@ -72,6 +74,7 @@ export function VisualsExplorerApplication({
       className={className}
       model={visual?.views ?? null}
       subtitle={location ? <EditorToolbarLocation location={location} /> : (visualsService.sourceLabel ?? undefined)}
+      name={visualsService.sourceLabel}
       panels={VISUALS_EXPLORER_PANELS}
       textures={visualsService.textures}
       bumps={visualsService.bumps}
@@ -83,6 +86,7 @@ export function VisualsExplorerApplication({
       onRetry={visualsService.retryOpen}
       onBack={onBack}
       onBrowse={isBrowsing ? undefined : onBrowse}
+      onDeselect={isBrowsing ? onDeselect : null}
     />
   );
 }

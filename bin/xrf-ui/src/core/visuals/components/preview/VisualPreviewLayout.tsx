@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 import { Texture } from "three";
 
+import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ACCENT, TEXT } from "@/core/theme/tokens";
@@ -25,6 +26,8 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   model?: Nullable<IVisualModelViews>;
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */
   subtitle?: ReactNode;
+  /** What the open visual is called, for the file header. Drawn only alongside `onDeselect`. */
+  name?: Nullable<string>;
   /** Published as a left panel when given. Opening a single visual has nothing to browse. */
   tree?: ReactNode;
   /** Data panels the owning application contributes to the right stripe. */
@@ -56,6 +59,8 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   onBack?: () => void;
   /** Promotes a single-model session to a browsed one. Absent while already browsing. */
   onBrowse?: () => void;
+  /** Ends the selection without ending the session, which is what puts the file header above the viewport. */
+  onDeselect?: Nullable<() => void>;
 }
 
 /**
@@ -71,6 +76,7 @@ export function VisualPreviewLayout({
   className,
   model = null,
   subtitle,
+  name = null,
   tree,
   panels,
   textures,
@@ -84,6 +90,7 @@ export function VisualPreviewLayout({
   onRetry,
   onBack,
   onBrowse,
+  onDeselect = null,
 }: IVisualPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<IVisualPreviewViewOptions>(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS);
   const [cameraResetToken, setCameraResetToken] = useState(0);
@@ -153,46 +160,58 @@ export function VisualPreviewLayout({
       }
       footer={footer}
     >
-      <Box
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
-      >
-        {renderViewport ? (
-          renderViewport({ bumps, cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
-        ) : (
-          <VisualPreviewMotionViewport
-            model={model}
-            options={options}
-            cameraResetToken={cameraResetToken}
-            detail={detail}
-            highlightedJoint={highlightedJoint}
-            hiddenBones={hiddenBones}
-            textures={textures}
-            bumps={bumps}
+      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+        {onDeselect && name ? (
+          <EditorFileHeader
+            data-testid={"visual-file-header"}
+            name={name}
+            closeLabel={"Close visual"}
+            closeDescription={"Clear the selection and close this visual"}
+            onClose={onDeselect}
           />
-        )}
-
-        {!model && !isLoading ? <VisualPreviewEmpty error={error} onRetry={onRetry} /> : null}
-
-        {isLoading ? (
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none",
-              // The viewport stays dark in both application themes.
-              "& .MuiTypography-root": { color: TEXT.secondary.dark },
-              "& .MuiCircularProgress-root": { color: ACCENT.primary.main.dark },
-            }}
-          >
-            <DelayedProgress label={"Loading visual…"} />
-          </Box>
         ) : null}
+
+        <Box
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
+        >
+          {renderViewport ? (
+            renderViewport({ bumps, cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
+          ) : (
+            <VisualPreviewMotionViewport
+              model={model}
+              options={options}
+              cameraResetToken={cameraResetToken}
+              detail={detail}
+              highlightedJoint={highlightedJoint}
+              hiddenBones={hiddenBones}
+              textures={textures}
+              bumps={bumps}
+            />
+          )}
+
+          {!model && !isLoading ? <VisualPreviewEmpty error={error} onRetry={onRetry} /> : null}
+
+          {isLoading ? (
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                // The viewport stays dark in both application themes.
+                "& .MuiTypography-root": { color: TEXT.secondary.dark },
+                "& .MuiCircularProgress-root": { color: ACCENT.primary.main.dark },
+              }}
+            >
+              <DelayedProgress label={"Loading visual…"} />
+            </Box>
+          ) : null}
+        </Box>
       </Box>
     </EditorLayout>
   );

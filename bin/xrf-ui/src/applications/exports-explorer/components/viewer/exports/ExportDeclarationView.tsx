@@ -3,6 +3,7 @@ import { Box, Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
+import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { CallableExportDetails } from "./CallableExportDetails";
@@ -12,29 +13,24 @@ import { formatExportSignature } from "./format-export-signature";
 
 export interface IExportDeclarationViewProps extends BaseComponentProps {
   declaration: ExportDescriptor;
+  /** Ends the selection without closing the project, which the header offers. */
+  onDeselect: () => void;
 }
 
-export function ExportDeclarationView({ declaration }: IExportDeclarationViewProps): ReactElement {
+export function ExportDeclarationView({ declaration, onDeselect }: IExportDeclarationViewProps): ReactElement {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          minHeight: 40,
-          paddingX: 1.5,
-          borderBottom: 1,
-          borderColor: "divider",
-          backgroundColor: "background.paper",
-        }}
-      >
-        <DataObjectIcon fontSize={"small"} sx={{ color: "text.secondary" }} />
-        <Typography noWrap variant={"body2"} className={"monospace"} sx={{ flexGrow: 1, minWidth: 0 }}>
-          {declaration.name}
-        </Typography>
-        <Chip size={"small"} variant={"outlined"} label={declaration.kind === "callable" ? "Callable" : "Value"} />
-      </Box>
+      <EditorFileHeader
+        data-testid={"export-declaration-header"}
+        name={declaration.name}
+        icon={<DataObjectIcon fontSize={"small"} sx={{ color: "text.secondary" }} />}
+        actions={
+          <Chip size={"small"} variant={"outlined"} label={declaration.kind === "callable" ? "Callable" : "Value"} />
+        }
+        closeLabel={"Close declaration"}
+        closeDescription={"Clear the selection and close this declaration"}
+        onClose={onDeselect}
+      />
 
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", padding: 3 }}>
         <Box sx={{ width: "100%", maxWidth: 1440 }}>
