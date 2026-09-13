@@ -8,7 +8,7 @@ import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /** The two ways one config can be read. */
@@ -129,9 +129,11 @@ export class ConfigsDocumentService {
   }
 
   /**
-   * Forget whatever is on screen, when the project behind it closes.
+   * Cancel the pending read and forget the document when its project closes.
    */
   public clear(): void {
+    cancelFlow(this, "document");
+
     runInAction(() => {
       this.selected = null;
       this.selectedSection = null;

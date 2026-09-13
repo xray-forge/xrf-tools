@@ -8,7 +8,7 @@ import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -67,9 +67,11 @@ export class ConfigsFindingsService {
   }
 
   /**
-   * Forget what was found, when the project behind it closes.
+   * Cancel pending verification and forget the findings when their project closes.
    */
   public clear(): void {
+    cancelFlow(this, "findings");
+
     runInAction(() => {
       this.entry = null;
       this.findings = this.findings.asIdle([]);

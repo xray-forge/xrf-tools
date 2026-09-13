@@ -7,15 +7,11 @@ import { LtxResolvedIndex, LtxResolvedIndexEntry, LtxResolvedSection } from "@/c
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * What one entry point resolves to, indexed once and paged on demand.
- *
- * The index is the whole document's shape - every section, named and counted - and it is what lets the view know its
- * own height before a single body arrives. Bodies come a page at a time as they scroll into view, because a vanilla
- * `system.ltx` resolves to 23,500 sections holding 293,000 fields and no screen shows more than forty lines of it.
  */
 @Injectable()
 export class ConfigsResolvedService {
@@ -29,13 +25,7 @@ export class ConfigsResolvedService {
   @Observable()
   public index: AsyncState<LtxResolvedIndex> = AsyncState.idle();
 
-  /**
-   * How many pages have landed, which is what a consumer re-reads `sections` on.
-   *
-   * A counter beside a mutable map rather than a new map per page: a full scroll of a resolved `system.ltx` lands
-   * hundreds of pages, and copying a map that grows to 23,500 entries for each of them costs more than every fetch put
-   * together. The map is only ever added to, so a revision says everything a consumer needs to know about it.
-   */
+  /** How many pages have landed, which is what a consumer re-reads `sections` on. */
   @Observable()
   public revision: number = 0;
 
@@ -44,16 +34,18 @@ export class ConfigsResolvedService {
 
   /**
    * The config the view is narrowed to, or null for the whole root.
-   *
-   * An included config resolves through its entry point, so its sections live in a document of tens of thousands. What
-   * a person opening `items\w_ak74.ltx` wants is what *that* file's sections came to, not where they sit in
-   * `system.ltx` - so the view narrows to the sections that config declared, and says which entry point resolved them.
    */
   @Observable()
   public narrowedTo: Nullable<string> = null;
 
   /** Sections asked for and not yet answered, so a second viewport does not ask again. */
   private readonly pending: Set<string> = new Set();
+
+  /**
+   * Identifies each opening, including reopening the same entry after clear.
+   * Page completion must belong to this generation before publishing or releasing pending names.
+   */
+  private generation: number = 0;
 
   /**
    * @returns Whether an index is on screen, which is what makes the resolved view showable.
@@ -136,6 +128,7 @@ export class ConfigsResolvedService {
   public async request(names: ReadonlyArray<string>): Promise<void> {
     const sessionId: Nullable<string> = this.projectService.sessionId;
     const entry: Nullable<string> = this.entry;
+    const generation: number = this.generation;
 
     if (!sessionId || !entry) {
       return;
@@ -159,9 +152,8 @@ export class ConfigsResolvedService {
       });
 
       runInAction(() => {
-        // Checked on the way back, not only on the way out: a reopen between the ask and the answer would otherwise
-        // fill this document with another one's sections.
-        if (this.entry !== entry) {
+        // An entry path can be reopened while an earlier read is still in flight.
+        if (this.generation !== generation) {
           return;
         }
 
@@ -174,21 +166,24 @@ export class ConfigsResolvedService {
     } catch (error) {
       this.log.error("Failed to read resolved sections of:", entry, error);
     } finally {
-      for (const name of wanted) {
-        this.pending.delete(name);
+      if (this.generation === generation) {
+        for (const name of wanted) {
+          this.pending.delete(name);
+        }
       }
     }
   }
 
   /**
-   * Forget the resolution, when the project behind it closes.
+   * Cancel the index read, abandon pending pages, and forget the resolution when its project closes.
    */
   public clear(): void {
+    cancelFlow(this, "index");
     runInAction(() => this.reset(null));
   }
 
   /**
-   * Drop everything held for the previous entry point.
+   * Abandon previous page requests and drop everything held for the previous entry point.
    *
    * Narrowing survives, because it is a decision about the config someone selected rather than about the root that
    * resolves it: clearing it here made opening a root undo the narrowing the selection had just asked for.
@@ -196,6 +191,7 @@ export class ConfigsResolvedService {
    * @param entry - Entry point taking its place, or null when none is.
    */
   private reset(entry: Nullable<string>): void {
+    this.generation += 1;
     this.entry = entry;
     this.index = this.index.asIdle(null);
     this.sections.clear();

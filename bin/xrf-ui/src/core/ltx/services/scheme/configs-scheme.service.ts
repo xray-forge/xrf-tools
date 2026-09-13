@@ -7,7 +7,7 @@ import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
+import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -75,9 +75,11 @@ export class ConfigsSchemeService {
   }
 
   /**
-   * Forget the held report, when the selection or the project behind it goes.
+   * Cancel the pending read and forget the report when its selection or project goes.
    */
   public clear(): void {
+    cancelFlow(this, "report");
+
     runInAction(() => {
       this.entry = null;
       this.section = null;
