@@ -10,7 +10,7 @@ use serde_json::Value;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobProgress, ProgressSink};
-use xrf_utils::format_duration;
+use xrf_utils::{format_duration, wall_clock_millis};
 
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
@@ -39,6 +39,8 @@ struct LiveJob {
   kind: JobKind,
   lease_keys: Vec<String>,
   started_at: Instant,
+  /// The same moment on the wall clock, for a listing that has to say when rather than how long.
+  started_at_epoch: u64,
   /// Kept so the registry can both stop the job and read its progress.
   ///
   /// Reading it here rather than storing snapshots as they are emitted is what keeps the reporting path free of the
@@ -74,6 +76,7 @@ impl LiveJob {
       error,
       result,
       duration: self.started_at.elapsed(),
+      started_at: self.started_at_epoch,
     }
   }
 }
@@ -217,6 +220,7 @@ impl JobRegistry {
         kind,
         lease_keys,
         started_at: Instant::now(),
+        started_at_epoch: wall_clock_millis(),
         handle: handle.clone(),
         sink,
         request,

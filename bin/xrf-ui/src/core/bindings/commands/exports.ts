@@ -8,12 +8,6 @@ import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 export const exportsCommands = {
   /** Releases only the committed and pending openings owned by the closing frontend. */
   closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:exports|close_project", { sessionIds }),
-  /**
-   * Write the open project's externs out as one of the manifests `xrf-cli externs export` publishes.
-   *
-   * Rendered from the manifest the open parsed rather than from a fresh read of the tree, so the artifact describes
-   * exactly the declarations on screen; refreshing is how a person asks for a later read of the sources.
-   */
   exportManifest: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<null>("plugin:exports|export_manifest", { sessionId, path }),
   openProject: (sessionId: SessionId, projectPath: string) =>

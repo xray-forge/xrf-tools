@@ -1,4 +1,4 @@
-import { JobProgress, ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/bindings/types/xrf-job";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
@@ -8,21 +8,42 @@ import { Nullable } from "@/lib/types/general";
 export const RENDERED_PROGRESS_LEVELS: number = 2;
 
 /**
- * A level's counts as a person reads them.
+ * A count as a person reads it, in the unit the work was counted in.
  *
  * Bytes go through the shared size formatting and items through a grouped count. The unit travels with the level for
  * exactly this reason: `45000 / 100000` and `45 KB / 100 KB` are the same numbers and different readings, and a surface
- * that had to guess would have to know which operation it was drawing.
+ * that had to guess would have to know which operation it was drawing. One definition, because two surfaces disagreeing
+ * about what a byte count looks like is worse than either spelling of it.
+ *
+ * @param value - Count to read.
+ * @param unit - What it counts.
+ * @returns The count, formatted for its unit.
+ */
+export function formatProgressUnits(value: number, unit: ProgressUnit): string {
+  return unit === "bytes" ? formatBytes(value) : value.toLocaleString();
+}
+
+/**
+ * A rate in the unit the work was counted in.
+ *
+ * @param rate - Units per second.
+ * @param unit - What those units are.
+ * @returns The rate, per second.
+ */
+export function formatProgressRate(rate: number, unit: ProgressUnit): string {
+  return unit === "bytes" ? `${formatBytes(rate)}/s` : `${formatProgressUnits(Math.round(rate), unit)} items/s`;
+}
+
+/**
+ * A level's counts as a person reads them.
  *
  * @param level - Level to read.
  * @returns Completed against total, or the bare count where there is no total.
  */
 export function formatProgressCounts(level: ProgressLevel): string {
-  function format(value: number): string {
-    return level.unit === "bytes" ? formatBytes(value) : value.toLocaleString();
-  }
+  const completed: string = formatProgressUnits(level.completed, level.unit);
 
-  return level.total === null ? format(level.completed) : `${format(level.completed)} / ${format(level.total)}`;
+  return level.total === null ? completed : `${completed} / ${formatProgressUnits(level.total, level.unit)}`;
 }
 
 /**

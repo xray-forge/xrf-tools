@@ -405,6 +405,8 @@ export type JobDescription = {
   result: unknown | null;
   /** How long the job ran, measured by the registry rather than by the operation. */
   duration: number;
+  /** When the registry took it on, as milliseconds since the epoch. */
+  startedAt: number;
 };
 
 /** The application operations that can be registered, cancelled and rediscovered. */

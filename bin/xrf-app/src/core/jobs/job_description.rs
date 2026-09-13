@@ -51,6 +51,8 @@ pub struct JobDescription {
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
+  /// When the registry took it on, as milliseconds since the epoch.
+  pub started_at: u64,
 }
 
 /// The Typescript face of a value this application does not describe: `unknown`.

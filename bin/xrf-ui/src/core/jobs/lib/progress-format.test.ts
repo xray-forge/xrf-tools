@@ -1,7 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/bindings/types/xrf-job";
-import { describeActiveProgress, formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
+import {
+  describeActiveProgress,
+  formatProgressCounts,
+  formatProgressRate,
+  formatProgressUnits,
+  toProgressPercent,
+} from "@/core/jobs/lib/progress-format";
 import { Nullable } from "@/lib/types/general";
 
 function level(
@@ -17,6 +23,22 @@ function level(
 function progress(levels: Array<ProgressLevel>, detail: Nullable<string> = null): JobProgress {
   return { levels, duration: 1000, detail };
 }
+
+describe("formatProgressUnits", () => {
+  it("reads bytes as a size and items as a grouped count", () => {
+    // One definition of the rule: two surfaces disagreeing about what a byte count looks like is the thing this
+    // prevents, and the settings jobs panel reads the same counts these bars do.
+    expect(formatProgressUnits(45_000, "bytes")).toBe("43.9 KB");
+    expect(formatProgressUnits(45_000, "items")).toBe((45_000).toLocaleString());
+  });
+});
+
+describe("formatProgressRate", () => {
+  it("reads a rate in the unit the work was counted in", () => {
+    expect(formatProgressRate(2_048, "bytes")).toBe("2 KB/s");
+    expect(formatProgressRate(25_356.4, "items")).toBe(`${(25_356).toLocaleString()} items/s`);
+  });
+});
 
 describe("formatProgressCounts", () => {
   it("groups a count of things", () => {

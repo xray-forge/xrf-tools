@@ -8,6 +8,7 @@ import { inline } from "@/lib/callbacks/inline";
 import { SettingsAboutSection } from "./SettingsAboutSection";
 import { SettingsGeneralSection } from "./SettingsGeneralSection";
 import { SettingsIpcSection } from "./SettingsIpcSection";
+import { SettingsJobsSection } from "./SettingsJobsSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
@@ -15,6 +16,7 @@ const enum ESettingsSection {
   GENERAL = "general",
   STORAGE = "storage",
   IPC = "ipc",
+  JOBS = "jobs",
   ABOUT = "about",
 }
 
@@ -22,6 +24,7 @@ const SECTION_LABELS: Record<ESettingsSection, string> = {
   [ESettingsSection.GENERAL]: "General",
   [ESettingsSection.STORAGE]: "Storage",
   [ESettingsSection.IPC]: "IPC",
+  [ESettingsSection.JOBS]: "Jobs",
   [ESettingsSection.ABOUT]: "About",
 };
 
@@ -29,6 +32,7 @@ const SECTIONS: ReadonlyArray<ESettingsSection> = [
   ESettingsSection.GENERAL,
   ESettingsSection.STORAGE,
   ESettingsSection.IPC,
+  ESettingsSection.JOBS,
   ESettingsSection.ABOUT,
 ];
 
@@ -86,6 +90,8 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
                 return <SettingsStorageSection />;
               case ESettingsSection.IPC:
                 return <SettingsIpcSection />;
+              case ESettingsSection.JOBS:
+                return <SettingsJobsSection />;
               case ESettingsSection.ABOUT:
                 return <SettingsAboutSection />;
             }

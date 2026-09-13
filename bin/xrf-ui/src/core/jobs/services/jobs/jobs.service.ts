@@ -17,6 +17,7 @@ import {
   IJobState,
   JOB_SETTLED_EVENT,
 } from "@/core/jobs/lib/jobs-types";
+import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { emitNotification } from "@/core/notifications/lib";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -148,6 +149,8 @@ export class JobsService {
   private onStarted(id: string, kind: string): void {
     // No request: the tool that started this has its own arguments, and echoing them back through the backend would
     // be a second copy of the truth for the one case that does not need it.
+    JOB_PROFILES.begin(id, kind);
+
     this.jobs = [...this.jobs, { id, kind, progress: null, request: null, isCancelRequested: false, isAdopted: false }];
   }
 
@@ -300,6 +303,14 @@ export class JobsService {
     // is the same run, and a second entry for it would draw two bars and offer two cancels for one pack.
     const known: Set<string> = new Set(this.jobs.map((job: IJobState) => job.id));
 
+    // Profiled as partial: the run is re-attached to a channel of this window's own, so it reports from here on, but
+    // everything before the reload went to a page that no longer exists.
+    for (const job of running) {
+      if (!known.has(job.id)) {
+        JOB_PROFILES.begin(job.id, job.kind, true);
+      }
+    }
+
     this.jobs = [
       ...this.jobs,
       ...running
@@ -337,6 +348,12 @@ export class JobsService {
 
   @BoundAction()
   private onProgress(id: string, progress: Nullable<JobProgress>): void {
+    // Sampled before the entry is replaced, and whether or not the job is still listed: the profile is what the run
+    // did, which stays true of a snapshot that arrives a moment late.
+    if (progress) {
+      JOB_PROFILES.sample(id, progress);
+    }
+
     // A snapshot for a job no longer listed is one that raced its own settling. Dropping it is right: the entry it
     // would update is gone, and re-adding it would resurrect a finished job.
     this.jobs = this.jobs.map((job: IJobState) => (job.id === id ? { ...job, progress } : job));
@@ -380,6 +397,8 @@ export class JobsService {
    */
   @BoundAction()
   private publishSettlement(settled: IJobSettledPayload, notice: IJobNotice): void {
+    JOB_PROFILES.finish(settled.id);
+
     this.jobs = this.jobs.filter((job: IJobState) => job.id !== settled.id);
     this.attached.delete(settled.id);
 
