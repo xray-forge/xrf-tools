@@ -6,8 +6,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::Ltx;
 use xrf_utils::{format_path, write_file_staged};
 
+use crate::archive_config_format::ArchiveConfigFormat;
 use crate::pack::config::ArchivePackHeaderEntry;
-use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigFormat};
+use crate::patch::config::ArchivePatchConfig;
 
 /// A patching configuration as a file carries it: the file-owned fields, and nothing else.
 ///
@@ -118,9 +119,9 @@ impl ArchivePatchConfig {
   pub fn with_config_file<P: AsRef<Path>>(self, path: P) -> XrfResult<Self> {
     let path: &Path = path.as_ref();
 
-    match ArchivePatchConfigFormat::from_path(path)? {
-      ArchivePatchConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_standard(path)?),
-      ArchivePatchConfigFormat::Json => {
+    match ArchiveConfigFormat::of_patch_config(path)? {
+      ArchiveConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_standard(path)?),
+      ArchiveConfigFormat::Json => {
         let json: ArchivePatchConfigJson = ArchivePatchConfigJson::parse(&fs::read(path)?).map_err(|error| {
           XrfError::new_parsing_error(format!(
             "Failed to parse patching configuration '{}': {error}",
@@ -141,9 +142,9 @@ impl ArchivePatchConfig {
   pub fn write_config_to_path<P: AsRef<Path>>(&self, path: P) -> XrfResult {
     let path: &Path = path.as_ref();
 
-    let rendered: Vec<u8> = match ArchivePatchConfigFormat::from_path(path)? {
-      ArchivePatchConfigFormat::Ltx => self.to_ltx_bytes()?,
-      ArchivePatchConfigFormat::Json => self.to_json().render()?.into_bytes(),
+    let rendered: Vec<u8> = match ArchiveConfigFormat::of_patch_config(path)? {
+      ArchiveConfigFormat::Ltx => self.to_ltx_bytes()?,
+      ArchiveConfigFormat::Json => self.to_json().render()?.into_bytes(),
     };
 
     write_file_staged(path, &rendered).map_err(|error| {

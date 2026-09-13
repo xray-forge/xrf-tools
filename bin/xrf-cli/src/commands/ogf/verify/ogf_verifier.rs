@@ -10,13 +10,12 @@ use std::time::{Duration, Instant};
 
 use walkdir::WalkDir;
 use xrf_db::{OgfFile, XRayByteOrder};
+use xrf_extension::XrayExtension;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::{format_path, to_portable_path_string};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 
 use crate::commands::ogf::verify::ogf_texture_resolver::{OgfTextureResolver, TextureResolution};
-
-const OGF_EXTENSION: &str = "ogf";
 
 /// Fraction of a declared bounding box's diagonal that geometry may exceed it by before it is worth
 /// reporting. Exporters pad declared bounds, and float error is unavoidable, so only a gross
@@ -205,11 +204,7 @@ impl<'a> OgfVerifier<'a> {
       .filter_map(Result::ok)
       .filter(|entry| entry.file_type().is_file())
       .map(|entry| entry.into_path())
-      .filter(|path| {
-        path
-          .extension()
-          .is_some_and(|it| it.eq_ignore_ascii_case(OGF_EXTENSION))
-      })
+      .filter(|path| path.to_str().is_some_and(|name| XrayExtension::Ogf.matches(name)))
       .collect()
   }
 

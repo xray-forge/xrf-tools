@@ -2,6 +2,7 @@
 //!
 //! Both operations own no state and borrow the project, so neither is a method on it.
 
+mod archive_config_format;
 #[cfg(test)]
 mod asset_source_tests;
 pub(crate) mod pack;
@@ -9,15 +10,16 @@ pub(crate) mod patch;
 pub(crate) mod path;
 pub(crate) mod unpack;
 
+pub use crate::archive_config_format::ArchiveConfigFormat;
 pub use crate::pack::config::{
-  ArchivePackConfig, ArchivePackConfigFormat, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeaderEntry,
-  ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
+  ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeaderEntry, ArchivePackMode,
+  ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
 };
 pub use crate::pack::{
   ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
 };
 pub use crate::patch::compare::{ArchivePatchChange, ArchivePatchClass, ArchivePatchOrigin, ArchivePatchSide};
-pub use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigFormat, ArchivePatchConfigJson};
+pub use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
 pub use crate::patch::{
   ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher, PATCH_PHASE_COMPARE,
   PATCH_PHASE_PACK,

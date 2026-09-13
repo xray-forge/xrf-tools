@@ -47,8 +47,8 @@ impl CropTextureProcessor {
 
     if options
       .output_path
-      .extension()
-      .is_some_and(|extension| extension.eq(PNG_EXTENSION))
+      .to_str()
+      .is_some_and(|name| PNG_EXTENSION.matches(name))
     {
       save_image_as_ui_png(&options.output_path, &result)?;
     } else {
@@ -114,6 +114,25 @@ mod tests {
 
     assert_eq!((result.width, result.height), (4, 3));
     assert_eq!((output.metadata().width, output.metadata().height), (4, 3));
+  }
+
+  /// The writer was chosen by a byte-exact `Path::extension` comparison, so an output named in the case a person
+  /// actually types took the DDS branch and wrote a DDS carrying a `.PNG` name.
+  #[test]
+  fn writes_a_png_for_an_output_named_in_upper_case() {
+    let mut options: CropTextureOptions = options_for("upper-case-png");
+
+    options.output_path = options.output_path.with_file_name("upper-case-png-output.PNG");
+
+    CropTextureProcessor::crop(&options).expect("expect crop to succeed");
+
+    let written: Vec<u8> = std::fs::read(&options.output_path).expect("expect an output file");
+
+    assert_eq!(
+      &written[..4],
+      b"\x89PNG",
+      "the output has to be a PNG, not a DDS wearing the name of one"
+    );
   }
 
   #[test]

@@ -54,9 +54,9 @@ pub struct XrayAssetRules {
   /// Logical directory the engine resolves this kind under.
   pub directory: &'static str,
   /// Extension the engine loads.
-  pub extension: &'static str,
+  pub extension: XrayExtension,
   /// Extensions a reference may be authored with, which resolve to [`Self::extension`].
-  pub authoring_extensions: &'static [&'static str],
+  pub authoring_extensions: &'static [XrayExtension],
 }
 
 impl XrayAssetType {
@@ -82,16 +82,20 @@ impl XrayAssetType {
   /// home is not one directory — `Level` names a directory per level, `Shader` loads a dozen extensions — and a kind no
   /// caller resolves by reference yet. Add a row when a consumer needs one, with evidence from a real tree.
   pub fn get_rules(self) -> Option<XrayAssetRules> {
-    let (directory, extension, authoring_extensions): (&str, &str, &[&str]) = match self {
-      Self::Ogf => ("meshes", ".ogf", &[]),
-      Self::Omf => ("meshes", ".omf", &[]),
+    let (directory, extension, authoring_extensions): (&str, XrayExtension, &[XrayExtension]) = match self {
+      Self::Ogf => ("meshes", XrayExtension::Ogf, &[]),
+      Self::Omf => ("meshes", XrayExtension::Omf, &[]),
       // A renderer reference may name the authored source; the engine loads the compiled `.dds` beside it.
-      Self::Dds => ("textures", ".dds", &["tga", "bmp", "ogm"]),
-      Self::Thm => ("textures", ".thm", &[]),
-      Self::Ogg => ("sounds", ".ogg", &[]),
-      Self::Ltx => ("configs", ".ltx", &[]),
-      Self::Script => ("scripts", ".script", &[]),
-      Self::Ppe => ("anims", ".ppe", &[]),
+      Self::Dds => (
+        "textures",
+        XrayExtension::Dds,
+        &[XrayExtension::Tga, XrayExtension::Bmp, XrayExtension::Ogm],
+      ),
+      Self::Thm => ("textures", XrayExtension::Thm, &[]),
+      Self::Ogg => ("sounds", XrayExtension::Ogg, &[]),
+      Self::Ltx => ("configs", XrayExtension::Ltx, &[]),
+      Self::Script => ("scripts", XrayExtension::Script, &[]),
+      Self::Ppe => ("anims", XrayExtension::Ppe, &[]),
       _ => return None,
     };
 
@@ -186,26 +190,29 @@ impl XrayAssetRules {
   /// left alone. Both comparisons ignore case, because a reference authored as `wpn\wpn_ak74.OGF` names the same asset.
   pub fn to_logical_path(&self, reference: &str) -> String {
     if let Some((stem, extension)) = reference.rsplit_once('.') {
-      if self
-        .authoring_extensions
-        .iter()
-        .any(|known| extension.eq_ignore_ascii_case(known))
-      {
-        return format!("{stem}{}", self.extension);
+      if XrayExtension::parse(extension).is_some_and(|authored| self.authoring_extensions.contains(&authored)) {
+        return format!("{stem}.{}", self.extension);
       }
 
-      if extension.eq_ignore_ascii_case(self.extension.trim_start_matches('.')) {
+      if self.extension.matches(reference) {
         return reference.to_string();
       }
     }
 
-    format!("{reference}{}", self.extension)
+    format!("{reference}.{}", self.extension)
   }
 
   /// Converts a logical path below this kind's directory back into the reference the engine names it by.
   pub fn to_reference(&self, logical_path: &XrayLogicalPath) -> Option<String> {
     let below: &str = logical_path.strip_prefix(self.directory).ok()??;
-    let reference: &str = below.strip_suffix(self.extension)?;
+
+    if !self.extension.matches(below) {
+      return None;
+    }
+
+    // The extension matched, so the final dot is inside the final segment and this splits the name rather than a
+    // directory holding one.
+    let (reference, _) = below.rsplit_once('.')?;
 
     (!reference.is_empty()).then(|| reference.to_owned())
   }
@@ -335,6 +342,18 @@ mod tests {
     // `Level` names a directory per level and `Shader` loads a dozen extensions; neither is a directory-plus-extension pair.
     assert!(XrayAssetType::Level.get_rules().is_none());
     assert!(XrayAssetType::Shader.get_rules().is_none());
+  }
+
+  #[test]
+  fn names_the_loaded_extension_undotted_so_no_caller_has_to_trim_one() {
+    // The dot used to be part of the stored spelling, which made every consumer strip it back off before joining it
+    // to a host path - and `Path::with_extension` refuses a dotted one outright.
+    assert_eq!(rules(XrayAssetType::Dds).extension, XrayExtension::Dds);
+    assert_eq!(rules(XrayAssetType::Dds).extension.as_str(), "dds");
+    assert_eq!(
+      rules(XrayAssetType::Dds).authoring_extensions,
+      &[XrayExtension::Tga, XrayExtension::Bmp, XrayExtension::Ogm]
+    );
   }
 
   #[test]

@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfError;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::pack::config::ArchivePackConfigFormat;
 use crate::pack::config::ArchivePackConfigJson;
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 
@@ -53,39 +52,6 @@ fn round_trip(directory: &Path, config: &ArchivePackConfig, name: &str) -> Archi
   config.write_config_to_path(&path).expect("configuration is written");
 
   blank().with_config_file(&path).expect("configuration is read back")
-}
-
-#[test]
-fn selects_the_codec_from_the_extension_without_case() {
-  for name in ["pack.ltx", "pack.LTX", "PACK.Ltx"] {
-    assert_eq!(
-      ArchivePackConfigFormat::from_path(name).expect("ltx is recognized"),
-      ArchivePackConfigFormat::Ltx,
-      "{name}"
-    );
-  }
-
-  for name in ["pack.json", "pack.JSON", "PACK.Json"] {
-    assert_eq!(
-      ArchivePackConfigFormat::from_path(name).expect("json is recognized"),
-      ArchivePackConfigFormat::Json,
-      "{name}"
-    );
-  }
-}
-
-#[test]
-fn refuses_a_path_whose_extension_names_no_format() {
-  // Never guessed from contents: a configuration is a file a person named, so the wrong name is worth reporting.
-  let unsupported: XrfError = ArchivePackConfigFormat::from_path("pack.txt").expect_err("txt is not a format");
-  let missing: XrfError = ArchivePackConfigFormat::from_path("pack").expect_err("an extension is required");
-
-  for error in [&unsupported, &missing] {
-    let message: String = error.to_string();
-
-    assert!(message.contains(".ltx"), "both formats are named: {message}");
-    assert!(message.contains(".json"), "both formats are named: {message}");
-  }
 }
 
 #[test]

@@ -508,6 +508,42 @@ name = hello
     Ok(())
   }
 
+  /// The crate declared `LTX_EXTENSION` and then compared a byte suffix against a hard-coded `".ltx"` here, so a
+  /// config the engine loads happily was refused for the case its name was written in.
+  #[test]
+  fn includes_ltx_whatever_case_the_name_was_written_in() -> XrfResult {
+    let input = "
+#include \"file1.LTX\"
+
+[section_name]
+name = hello
+";
+
+    let ltx: Ltx = Ltx::read_from_str(input)?;
+
+    assert_eq!(ltx.includes, vec![String::from("file1.LTX")]);
+
+    Ok(())
+  }
+
+  /// And a name that merely ends with the spelling is still not an LTX, which is what the dot used to be there for.
+  #[test]
+  fn refuses_an_include_whose_name_merely_ends_with_the_extension() -> XrfResult {
+    let input = "
+#include \"file1ltx\"
+
+[section_name]
+name = hello
+";
+
+    assert_eq!(
+      Ltx::read_from_str(input).expect_err("not an ltx name").to_string(),
+      "Ltx parse error: 3:1 Included file should have .ltx extension, got 'file1ltx'"
+    );
+
+    Ok(())
+  }
+
   #[test]
   fn includes_empty() -> XrfResult {
     let input = "

@@ -27,18 +27,22 @@ holds hundreds of thousands of them.
 ## Compare one extension
 
 ```rust
-use xrf_extension::{get_file_extension, has_extension};
+use xrf_extension::{XrayExtension, get_file_extension, has_extension};
 
 assert_eq!(get_file_extension("configs\\system.ltx"), Some("ltx"));
 assert!(has_extension("configs\\SYSTEM.LTX", "ltx"));
+
+// The same comparison, reached from the variant, which is what a consumer holding a vocabulary member wants.
+assert!(XrayExtension::Ltx.matches("configs\\SYSTEM.LTX"));
 
 // The extension is the last dot segment of the last path segment, never a byte suffix.
 assert!(!has_extension("notes.myltx", "ltx"));
 assert_eq!(get_file_extension("configs\\weapons.old\\readme"), None);
 ```
 
-`has_extension` takes the extension undotted, the same spelling `get_file_extension` answers with. Three rival rules
-existed before this one, and two of them disagreed with the splitter about the engine's own leading-dot names.
+`has_extension` takes the extension undotted, the same spelling `get_file_extension` answers with, and
+`XrayExtension::matches` is that same comparison for a caller holding the variant. Three rival rules existed before
+this one, and two of them disagreed with the splitter about the engine's own leading-dot names.
 
 ## What belongs in the vocabulary
 

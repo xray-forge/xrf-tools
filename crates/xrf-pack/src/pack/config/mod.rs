@@ -5,7 +5,6 @@
 
 mod archive_pack_config;
 mod archive_pack_config_codec;
-mod archive_pack_config_format;
 mod archive_pack_config_json;
 mod archive_pack_config_ltx;
 mod archive_pack_config_rules;
@@ -19,6 +18,5 @@ pub use archive_pack_config::{
   ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX,
   VOLUME_SIZE_MAX, VOLUME_SIZE_MIN, default_header,
 };
-pub use archive_pack_config_format::ArchivePackConfigFormat;
 pub use archive_pack_config_json::ArchivePackConfigJson;
 pub use archive_pack_header_entry::ArchivePackHeaderEntry;

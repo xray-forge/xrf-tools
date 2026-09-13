@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
-use xrf_extension::has_extension;
+use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
 /// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
@@ -77,8 +77,8 @@ impl XrayLogicalPath {
   }
 
   /// Whether the path carries `extension`, which is compared without case.
-  pub fn has_extension(&self, extension: &str) -> bool {
-    has_extension(&self.0, extension)
+  pub fn has_extension(&self, extension: XrayExtension) -> bool {
+    extension.matches(&self.0)
   }
 
   /// Whether this path sits under `prefix`, matching on component boundaries.
@@ -260,7 +260,7 @@ pub(crate) fn join(prefix: &str, path: &str) -> XrfResult<String> {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{XrayLogicalPath, join, normalize, normalize_host_relative, to_host_relative};
+  use super::{XrayExtension, XrayLogicalPath, join, normalize, normalize_host_relative, to_host_relative};
 
   #[test]
   fn normalizes_case_and_separators() {
@@ -342,7 +342,7 @@ mod tests {
   fn matches_an_extension_without_case_and_a_prefix_by_component() {
     let path: XrayLogicalPath = XrayLogicalPath::new("configs\\system.ltx").expect("valid");
 
-    assert!(path.has_extension("LTX"));
+    assert!(path.has_extension(XrayExtension::Ltx));
     assert!(path.is_under("configs").expect("valid prefix"));
     assert!(!path.is_under("configs_backup").expect("valid prefix"));
   }

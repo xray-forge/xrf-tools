@@ -4,7 +4,8 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 use crate::syntax::{
-  LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE, LTX_SYMBOL_SECTION_OPEN,
+  LTX_EXTENSION, LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE,
+  LTX_SYMBOL_SECTION_OPEN,
 };
 
 /// A section header as its line spells it: the name, the parents it declares, and any trailing comment.
@@ -443,9 +444,9 @@ impl LtxParser<'_> {
       ));
     }
 
-    if !included_path.ends_with(".ltx") {
+    if !LTX_EXTENSION.matches(&included_path) {
       return self.error(format!(
-        "Included file should have .ltx extension, got '{included_path}'",
+        "Included file should have .{LTX_EXTENSION} extension, got '{included_path}'",
       ));
     }
 

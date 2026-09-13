@@ -8,7 +8,7 @@ use xrf_utils::format_path_or;
 
 use crate::ltx::Ltx;
 use crate::source::{LtxFilesystemSource, LtxIncludeSource};
-use crate::syntax::{LTX_SYMBOL_INCLUDE_WILDCARD, VIRTUAL_LTX_PATH};
+use crate::syntax::{LTX_EXTENSION, LTX_GENERATED_SOURCE_EXTENSION, LTX_SYMBOL_INCLUDE_WILDCARD, VIRTUAL_LTX_PATH};
 
 /// Converter object to process and inject all child #include statements.
 #[derive(Default)]
@@ -204,11 +204,11 @@ impl LtxIncludeConvertor {
 
   /// Check if similar TS counterpart exists for provided ltx path.
   fn is_raw_ts_variant_existing<P: AsRef<Path>>(&self, path: &P) -> bool {
-    if path.as_ref().extension().is_some_and(|extension| extension == "ltx") {
-      path.as_ref().with_extension("ts").exists()
-    } else {
-      false
-    }
+    let path: &Path = path.as_ref();
+
+    path.to_str().is_some_and(|name| {
+      LTX_EXTENSION.matches(name) && path.with_extension(LTX_GENERATED_SOURCE_EXTENSION.as_str()).exists()
+    })
   }
 
   /// Whether a file name matches a `*` mask, both as encoded bytes.

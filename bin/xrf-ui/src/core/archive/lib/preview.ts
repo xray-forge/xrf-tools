@@ -1,5 +1,6 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
+import { XrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getFileExtension } from "@/lib/path/extension";
 
 export type ArchivePreviewSupport =
@@ -17,7 +18,7 @@ export type ArchivePreviewSupport =
  * @returns Whether the descriptor names a model.
  */
 export function isArchiveModel(descriptor: IArchiveEntry): boolean {
-  return getFileExtension(descriptor.name) === "ogf";
+  return getFileExtension(descriptor.name) === ("ogf" satisfies XrayExtension);
 }
 
 /**
@@ -30,14 +31,15 @@ export function isArchiveModel(descriptor: IArchiveEntry): boolean {
 export function isArchiveAudio(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
   const extension: string = getFileExtension(descriptor.name);
 
-  return policy.audioExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
+  return policy.audioExtensions.some((candidate: XrayExtension) => candidate === extension);
 }
 
 /**
  * Checks whether the backend decodes an archive file as an image rather than reads it as text.
  *
  * Both lists come from the project's own read policy, so the frontend never has to keep its own copy of
- * what the backend is willing to do.
+ * what the backend is willing to do. Each entry is a declared spelling, always lower case, which is what
+ * `getFileExtension` folds a name's own extension to - so the comparison needs no folding of its own.
  *
  * @param descriptor - Browsed entry whose extension is checked.
  * @param policy - Backend-provided archive read policy.
@@ -46,7 +48,7 @@ export function isArchiveAudio(descriptor: IArchiveEntry, policy: ArchiveReadPol
 export function isArchiveImage(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
   const extension: string = getFileExtension(descriptor.name);
 
-  return policy.imageExtensions.some((candidate: string) => candidate.toLowerCase() === extension);
+  return policy.imageExtensions.some((candidate: XrayExtension) => candidate === extension);
 }
 
 /**
@@ -78,7 +80,7 @@ export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: Arch
 
   const extension: string = getFileExtension(descriptor.name);
 
-  if (!policy.extensions.some((candidate: string) => candidate === extension)) {
+  if (!policy.extensions.some((candidate: XrayExtension) => candidate === extension)) {
     return { kind: "unsupported-extension", extension };
   }
 

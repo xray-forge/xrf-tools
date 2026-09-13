@@ -11,12 +11,11 @@ use rayon::prelude::*;
 use walkdir::{DirEntry, WalkDir};
 use xrf_db::{OgfNormalization, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::{format_path, write_file_staged};
 
 use crate::commands::ogf::fix::report::{OgfFixFileReport, OgfFixFindingReport, OgfFixOutcome, OgfFixReport};
-
-const OGF_EXTENSION: &str = "ogf";
 
 pub struct OgfFixer<'a> {
   output: &'a OutputOptions,
@@ -74,12 +73,7 @@ impl<'a> OgfFixer<'a> {
       .into_iter()
       .filter_map(Result::ok)
       .map(DirEntry::into_path)
-      .filter(|it| {
-        it.is_file()
-          && it
-            .extension()
-            .is_some_and(|extension| extension.eq_ignore_ascii_case(OGF_EXTENSION))
-      })
+      .filter(|it| it.is_file() && it.to_str().is_some_and(|name| XrayExtension::Ogf.matches(name)))
       .collect();
 
     // A directory holding no visuals is refused rather than swept successfully: a mistyped path would otherwise report

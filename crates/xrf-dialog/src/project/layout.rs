@@ -1,9 +1,11 @@
 use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayLookupScope, XrayRoots, XrayVfs};
 
 use crate::project::mode::DialogProjectMode;
 
-const JSON_SUFFIX: &str = ".json";
+/// Extension the XRF sources author translations in, which is the only thing that tells the two layouts apart.
+const JSON_EXTENSION: XrayExtension = XrayExtension::Json;
 
 /// Where inside roots this domain's data sits.
 ///
@@ -61,7 +63,7 @@ pub fn detect_mode_in(vfs: &XrayVfs) -> DialogProjectMode {
     .scoped(&scope)
     .list_entries()
     .iter()
-    .any(|asset| asset.get_logical_path().as_str().ends_with(JSON_SUFFIX));
+    .any(|asset| asset.get_logical_path().has_extension(JSON_EXTENSION));
 
   if has_json {
     DialogProjectMode::Source

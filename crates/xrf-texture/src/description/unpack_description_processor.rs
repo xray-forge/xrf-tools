@@ -58,7 +58,7 @@ impl UnpackDescriptionProcessor {
     file: &TextureFileDescriptor,
   ) -> XrfResult<bool> {
     let relative_path: PathBuf = file.to_host_relative_path()?;
-    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION));
+    let full_name: PathBuf = options.base.join(relative_path.with_extension(DDS_EXTENSION.as_str()));
     let destination: PathBuf = options.output_path.join(relative_path);
 
     xrf_output::verbose!(output, "Unpacking {}", format_path(&full_name));

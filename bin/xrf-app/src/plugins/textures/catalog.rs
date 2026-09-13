@@ -201,7 +201,10 @@ impl TextureCatalog {
 /// What a loose row is keyed and labelled by: its path below the root, without the extension.
 fn to_loose_key(asset: &XrayAsset) -> Option<String> {
   let path: &str = asset.get_logical_path().as_str();
-  let extension: &str = asset.get_asset_type()?.get_rules()?.extension;
 
-  path.strip_suffix(extension).map(str::to_owned)
+  if !asset.get_asset_type()?.get_rules()?.extension.matches(path) {
+    return None;
+  }
+
+  path.rsplit_once('.').map(|(stem, _)| stem.to_owned())
 }

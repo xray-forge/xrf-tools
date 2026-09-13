@@ -116,7 +116,7 @@ impl<'a> ShadersVerifier<'a> {
 
     // Scripts and sources are different sets: a `.s` script is Lua the renderer runs, so a renderer holding only scripts is
     // still checked rather than reported absent.
-    for source in entries.iter().filter(|path| is_shader_source_path(Path::new(path))) {
+    for source in entries.iter().filter(|name| is_shader_source_path(name)) {
       if self.options.job.is_cancelled() {
         break;
       }
@@ -239,13 +239,6 @@ impl<'a> ShadersVerifier<'a> {
         ));
       }
     }
-  }
-
-  fn has_extension(path: &Path, extension: &str) -> bool {
-    path
-      .extension()
-      .and_then(|value| value.to_str())
-      .is_some_and(|value| value.eq_ignore_ascii_case(extension))
   }
 
   fn shader_error_rule_id(error: &XrfError) -> GamedataVerificationRule {

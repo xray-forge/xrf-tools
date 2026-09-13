@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtensionOf;
 use xrf_utils::{XRayEncoding, format_path};
 use xrf_vfs::XrayAsset;
 use xrf_xml::encoding_from_label;
@@ -22,7 +23,7 @@ use crate::xml;
 /// represent, an IO error when the file cannot be replaced, and an invalid error for a file this does
 /// not know how to write.
 pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> XrfResult {
-  match path.extension().and_then(|extension| extension.to_str()) {
+  match path.to_str().map(XrayExtensionOf::of).and_then(XrayExtensionOf::known) {
     Some(json::FILE_EXTENSION) => json::write::apply_edits(path, language, edits),
     Some(xml::FILE_EXTENSION) => xml::write::apply_edits(path, edits),
     _ => Err(XrfError::new_invalid_error(format!(

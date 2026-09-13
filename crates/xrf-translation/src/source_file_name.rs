@@ -15,9 +15,12 @@ use crate::json;
 /// Non-Unicode names are not translation sources, because their extension cannot be interpreted.
 pub(crate) fn parse_json_source_stem<T: AsRef<OsStr> + ?Sized>(file_name: &T) -> Option<&str> {
   let file_name: &str = file_name.as_ref().to_str()?;
-  let (stem, extension): (&str, &str) = file_name.rsplit_once('.')?;
 
-  extension.eq_ignore_ascii_case(json::FILE_EXTENSION).then_some(stem)
+  if !json::FILE_EXTENSION.matches(file_name) {
+    return None;
+  }
+
+  file_name.rsplit_once('.').map(|(stem, _)| stem)
 }
 
 /// Whether a name — a logical path's last component — is a multi-language JSON source.

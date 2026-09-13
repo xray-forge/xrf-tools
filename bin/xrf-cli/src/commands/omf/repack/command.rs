@@ -6,6 +6,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use walkdir::WalkDir;
 use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
@@ -162,7 +163,7 @@ impl RepackCommand {
       .into_iter()
       .filter_map(Result::ok)
       .map(|it| it.into_path())
-      .filter(|it| it.is_file() && it.extension().and_then(|it| it.to_str()) == Some("omf"))
+      .filter(|it| it.is_file() && it.to_str().is_some_and(|name| XrayExtension::Omf.matches(name)))
       .collect()
   }
 

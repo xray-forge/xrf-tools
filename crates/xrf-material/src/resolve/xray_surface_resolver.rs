@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_chunk::ChunkReader;
 use xrf_db::{ShaderBlender, ShaderLibraryFile};
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayAsset, XrayProbe};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe};
 
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
@@ -32,7 +32,7 @@ pub struct XraySurfaceResolver {
 impl XraySurfaceResolver {
   /// Where the engine loads the blender library from: the game data root, beside `gamemtl.xr`
   /// (`Layers/xrRender/ResourceManager_Loader.cpp`).
-  pub const SHADER_LIBRARY_LOGICAL_PATH: &'static str = "shaders.xr";
+  pub const SHADER_LIBRARY_LOGICAL_PATH: &'static str = XrayAssetType::SHADER_LIBRARY_PATH;
 
   /// Locates and reads the shader library once, recording why it could not rather than failing.
   ///

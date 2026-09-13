@@ -38,7 +38,7 @@ impl GenericCommand for ExportCommand {
         Arg::new("format")
           .help("Output format; required with --output and inferred from --check when omitted")
           .long("format")
-          .value_parser(["json", "xml", "html"]),
+          .value_parser(ExternFormat::NAMES),
       )
       .arg(
         Arg::new("output")

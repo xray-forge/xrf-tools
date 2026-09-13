@@ -1,3 +1,5 @@
+use xrf_ltx::LTX_EXTENSION;
+
 use crate::discovery::dltx_attachment::DltxAttachment;
 
 /// Depth assigned to the base root. Its includes count up from here.
@@ -22,7 +24,7 @@ impl DltxDiscovery {
   /// The alphabetically last file wins a conflict, because depth decreases as the list advances and lower depth beats
   /// higher (`Xr_ini.cpp`).
   pub fn attachments_of(base_name: &str, siblings: &[String]) -> Vec<DltxAttachment> {
-    let Some(stem) = base_name.strip_suffix(".ltx") else {
+    let Some(stem) = Self::config_stem(base_name) else {
       return Vec::new();
     };
 
@@ -63,7 +65,7 @@ impl DltxDiscovery {
       .strip_prefix("mod_")
       .and_then(|rest| rest.strip_prefix(stem))
       .and_then(|rest| rest.strip_prefix('_'))
-      .is_some_and(|rest| rest.ends_with(".ltx"))
+      .is_some_and(|rest| LTX_EXTENSION.matches(rest))
   }
 
   /// Whether `name` is another base config whose stem extends `stem`, which makes mod names ambiguous between them.
@@ -71,8 +73,7 @@ impl DltxDiscovery {
   /// Requires at least one character after the separator, which is why `system_.ltx` would not make `system.ltx`
   /// ambiguous and neither does the base file itself.
   fn is_longer_base_than(name: &str, stem: &str) -> bool {
-    name
-      .strip_suffix(".ltx")
+    Self::config_stem(name)
       .and_then(|other| other.strip_prefix(stem))
       .and_then(|rest| rest.strip_prefix('_'))
       .is_some_and(|rest| !rest.is_empty())
@@ -82,7 +83,7 @@ impl DltxDiscovery {
   ///
   /// The engine tests `mod_<longer stem>_.+\.ltx` and needs at least one character where the `.+` sits.
   fn belongs_to_longer_base(name: &str, longer_base: &str) -> bool {
-    let Some(longer_stem) = longer_base.strip_suffix(".ltx") else {
+    let Some(longer_stem) = Self::config_stem(longer_base) else {
       return false;
     };
 
@@ -90,8 +91,17 @@ impl DltxDiscovery {
       .strip_prefix("mod_")
       .and_then(|rest| rest.strip_prefix(longer_stem))
       .and_then(|rest| rest.strip_prefix('_'))
-      .and_then(|rest| rest.strip_suffix(".ltx"))
+      .and_then(Self::config_stem)
       .is_some_and(|rest| !rest.is_empty())
+  }
+
+  /// A config's name without its extension, or `None` when the name is not a config at all.
+  fn config_stem(name: &str) -> Option<&str> {
+    if !LTX_EXTENSION.matches(name) {
+      return None;
+    }
+
+    name.rsplit_once('.').map(|(stem, _)| stem)
   }
 }
 
@@ -191,5 +201,22 @@ mod tests {
   #[test]
   fn a_base_without_the_ltx_extension_has_no_attachments() {
     assert_eq!(names("system", &["mod_system_a.ltx"]), Vec::<String>::new());
+  }
+
+  #[test]
+  fn reads_the_extension_whatever_case_the_host_recorded_it_in() {
+    // Every rule here used to compare a literal `".ltx"` suffix, so a directory listing that gave back the case a
+    // Windows filesystem holds made a base config and its own mod files invisible to each other.
+    assert_eq!(
+      names("System.LTX", &["System.LTX", "mod_System_a.LTX"]),
+      vec!["mod_System_a.LTX"]
+    );
+  }
+
+  #[test]
+  fn a_name_merely_ending_in_the_letters_is_not_a_config() {
+    // What the dot in the suffix form was doing, now the splitter's job: `systemxltx` is one name, not a config.
+    assert_eq!(names("systemxltx", &["mod_systemxltx_a.ltx"]), Vec::<String>::new());
+    assert_eq!(names("system.ltx", &["mod_system_altx"]), Vec::<String>::new());
   }
 }

@@ -36,12 +36,12 @@ impl TextureFiles {
 
 /// The path of the sibling of this kind: the same stem, carrying this kind's extension.
 ///
-/// `Path::with_extension` refuses the leading dot the rules carry it with, hence the trim. A kind that names no
-/// extension answers the path unchanged rather than inventing one, so the worst case is a caller reading the file it
-/// was handed - never a path with the extension stripped off, which is what one of the four spellings produced.
+/// A kind that names no extension answers the path unchanged rather than inventing one, so the worst case is a caller
+/// reading the file it was handed - never a path with the extension stripped off, which is what one of the four
+/// spellings this replaced produced.
 fn to_sibling(path: &Path, asset_type: XrayAssetType) -> PathBuf {
   asset_type.get_rules().map_or_else(
     || path.to_path_buf(),
-    |rules| path.with_extension(rules.extension.trim_start_matches('.')),
+    |rules| path.with_extension(rules.extension.as_str()),
   )
 }

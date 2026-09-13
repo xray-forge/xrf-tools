@@ -61,6 +61,42 @@ fn routes_an_xml_source_to_the_splice_writer() -> XrfResult {
   Ok(())
 }
 
+/// The dispatch compared `Path::extension` against a lower-case spelling, so a source the author named in upper case
+/// was reported as a file this cannot write - while every reader in the crate opened it without complaint.
+#[test]
+fn routes_a_source_whatever_case_its_name_was_typed_in() -> XrfResult {
+  let path: PathBuf = write_generated_test_resource("project_edit/AUTHORED_CASE.JSON", r#"{"st_a":{"eng":"A"}}"#)?;
+
+  apply_edits(&path, "eng", &[set("st_a", "B")])?;
+
+  assert_eq!(
+    read_json(&path)?["st_a"]["eng"],
+    Some(TranslationVariant::String(String::from("B")))
+  );
+
+  let path: PathBuf = write_generated_test_resource(
+    "project_edit/AUTHORED_CASE.XML",
+    "<string_table><string id=\"st_a\"><text>A</text></string></string_table>",
+  )?;
+
+  apply_edits(&path, "eng", &[set("st_a", "B")])?;
+
+  assert_eq!(
+    read_string_table(&path)?,
+    vec![(String::from("st_a"), String::from("B"))]
+  );
+
+  Ok(())
+}
+
+/// And a name that merely ends with the letters is still not a translation, which is the splitter's rule.
+#[test]
+fn refuses_a_name_that_merely_ends_with_a_supported_extension() {
+  let error = apply_edits(Path::new("translations/notesxml"), "eng", &[]).unwrap_err();
+
+  assert!(error.to_string().contains("not a file this can write"));
+}
+
 #[test]
 fn refuses_a_file_it_has_no_writer_for() {
   let error = apply_edits(Path::new("translations/notes.txt"), "eng", &[]).unwrap_err();

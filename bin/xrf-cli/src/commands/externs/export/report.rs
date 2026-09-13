@@ -29,7 +29,7 @@ impl ExternsExportReport {
     Self {
       destination: xrf_utils::to_portable_path_string(destination),
       externs,
-      format: String::from(format_name(format)),
+      format: String::from(format.as_str()),
       is_check: true,
       source: xrf_utils::to_portable_path_string(source),
       status: Status::from_is_valid(findings.is_empty()),
@@ -43,19 +43,10 @@ impl ExternsExportReport {
       destination: xrf_utils::to_portable_path_string(destination),
       externs,
       findings: Vec::new(),
-      format: String::from(format_name(format)),
+      format: String::from(format.as_str()),
       is_check: false,
       source: xrf_utils::to_portable_path_string(source),
       status: Status::Passed,
     }
-  }
-}
-
-/// The format under the name `--format` accepts, so a report round-trips into a repeat invocation.
-const fn format_name(format: ExternFormat) -> &'static str {
-  match format {
-    ExternFormat::Html => "html",
-    ExternFormat::Json => "json",
-    ExternFormat::Xml => "xml",
   }
 }

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use lzokay::compress::Dict;
 use xrf_archive::{CHUNK_ID_DATA, CHUNK_ID_METADATA};
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::to_format_size;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
@@ -19,7 +20,7 @@ use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResul
 ///
 /// `testVFS` in `xrCompress.cpp` inverts the intuitive rule: only text the engine parses is worth the
 /// LZO round trip, because meshes, textures, and sounds are already compressed in their own formats.
-const COMPRESSED_EXTENSIONS: [&str; 3] = ["xml", "ltx", "script"];
+const COMPRESSED_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Xml, XrayExtension::Ltx, XrayExtension::Script];
 
 /// Compression must save more than this to be worth keeping, matching xrCompress.
 const COMPRESSION_MARGIN: usize = 16;
@@ -298,10 +299,9 @@ impl<'a> ArchiveVolumeWriter<'a> {
     contents: &'contents [u8],
   ) -> XrfResult<(Cow<'contents, [u8]>, ArchivePackEntryOutcome<'static>)> {
     let is_expected_compressed: bool = self.config.mode == ArchivePackMode::Compress
-      && entry
-        .name
-        .rsplit_once('.')
-        .is_some_and(|(_, extension)| COMPRESSED_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str()));
+      && XrayExtensionOf::of(&entry.name)
+        .known()
+        .is_some_and(|extension| COMPRESSED_EXTENSIONS.contains(&extension));
 
     if !is_expected_compressed {
       return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Stored));

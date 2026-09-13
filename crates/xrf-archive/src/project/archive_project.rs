@@ -298,6 +298,15 @@ mod tests {
     assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("noextension")));
   }
 
+  #[test]
+  fn recognizes_a_volume_whose_whole_name_is_its_extension() {
+    assert!(ArchiveDescriptor::is_valid_db_path(Path::new("db/.db0")));
+    assert!(ArchiveDescriptor::is_valid_db_path(Path::new(".xdb1")));
+
+    // A dot in a directory name is still not the extension of an extensionless file.
+    assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("game.db0/header")));
+  }
+
   /// A walk failure used to be filtered away, so an unreadable descendant left the project quietly short of the volumes
   /// below it whenever a readable sibling kept the open succeeding.
   #[test]

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_translation::{TranslationProjectMode, read_gamedata_in, read_source_in};
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
@@ -20,7 +21,9 @@ use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 /// A gameplay directory holds `info_*.xml` and `npc_profile*.xml` beside the dialogs, so the
 /// extension alone would sweep files this reader does not model.
 const DIALOG_FILE_PREFIX: &str = "dialog";
-const XML_EXTENSION: &str = "xml";
+
+/// Extension the engine loads dialog data as.
+const XML_EXTENSION: XrayExtension = XrayExtension::Xml;
 
 /// One file the project holds, parsed, with where the engine found it.
 #[derive(Debug)]

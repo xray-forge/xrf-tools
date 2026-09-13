@@ -97,9 +97,7 @@ impl LtxFormatSelection {
         let entry_path: &Path = entry.path();
 
         if entry_path.is_file()
-          && entry_path
-            .extension()
-            .is_some_and(|extension| extension == LTX_EXTENSION)
+          && entry_path.to_str().is_some_and(|name| LTX_EXTENSION.matches(name))
           && visited.insert(entry_path.into())
         {
           files.push(entry_path.into());

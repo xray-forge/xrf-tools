@@ -201,7 +201,7 @@ impl PackEquipmentProcessor {
 
   /// Read rescaled png or dds icon to inject into one large equipment file.
   pub fn read_sprite_from_path(path: &Path, width: u32, height: u32) -> XrfResult<DynamicImage> {
-    let image: DynamicImage = if path.extension().is_some_and(|extension| extension.eq(PNG_EXTENSION)) {
+    let image: DynamicImage = if path.to_str().is_some_and(|name| PNG_EXTENSION.matches(name)) {
       ImageReader::open(path)?.decode()?
     } else {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
@@ -283,5 +283,33 @@ impl PackEquipmentProcessor {
   /// Resolves an X-Ray path below a trusted host root without letting engine separators leak into host I/O.
   fn resolve_logical_path(root: &Path, logical_path: &str) -> XrfResult<PathBuf> {
     Ok(root.join(XrayLogicalPath::new(logical_path)?.to_host_relative_path()))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::path::PathBuf;
+
+  use image::{DynamicImage, RgbaImage};
+  use xrf_test_utils::utils::write_generated_test_resource;
+
+  use super::PackEquipmentProcessor;
+
+  /// The reader picked its decoder with a byte-exact `Path::extension` comparison, so an icon the author saved as
+  /// `.PNG` went to the DDS reader, which fails on the first four bytes - and a failed icon is only a warning, so the
+  /// sprite sheet came out silently missing it.
+  #[test]
+  fn decodes_a_png_icon_named_in_upper_case() {
+    let path: PathBuf =
+      write_generated_test_resource("equipment/icon-case/WPN_AK74.PNG", []).expect("expect a scratch icon");
+
+    DynamicImage::from(RgbaImage::new(8, 8))
+      .save(&path)
+      .expect("expect the icon to be written as a PNG");
+
+    let icon: DynamicImage =
+      PackEquipmentProcessor::read_sprite_from_path(&path, 4, 4).expect("expect the icon to be decoded");
+
+    assert_eq!((icon.width(), icon.height()), (4, 4));
   }
 }

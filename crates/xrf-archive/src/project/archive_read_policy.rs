@@ -1,6 +1,6 @@
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
-use xrf_extension::get_file_extension;
+use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 use crate::project::constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS,
@@ -19,20 +19,22 @@ use crate::project::constants::{
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveReadPolicy {
-  pub extensions: &'static [&'static str],
+  pub extensions: &'static [XrayExtension],
   pub maximum_size: u32,
   /// Extensions decoded into a picture. Compression does not apply: it is undone before decoding.
-  pub image_extensions: &'static [&'static str],
+  pub image_extensions: &'static [XrayExtension],
   pub maximum_image_size: u32,
   /// Extensions played by the webview itself, so the backend only has to hand over the bytes.
-  pub audio_extensions: &'static [&'static str],
+  pub audio_extensions: &'static [XrayExtension],
   pub maximum_audio_size: u32,
 }
 
 impl ArchiveReadPolicy {
   /// Whether this file is one the policy reads as text.
   pub fn supports_file(&self, filename: &str) -> bool {
-    Self::has_extension(filename, self.extensions)
+    XrayExtensionOf::of(filename)
+      .known()
+      .is_some_and(|extension| self.extensions.contains(&extension))
   }
 
   /// Admits a text read of `size` bytes, or names why it is refused.
@@ -58,11 +60,6 @@ impl ArchiveReadPolicy {
 
     Ok(())
   }
-
-  fn has_extension(filename: &str, extensions: &[&str]) -> bool {
-    get_file_extension(filename)
-      .is_some_and(|extension| extensions.iter().any(|allowed| extension.eq_ignore_ascii_case(allowed)))
-  }
 }
 
 impl Default for ArchiveReadPolicy {
@@ -87,8 +84,8 @@ mod tests {
     let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
 
     for extension in policy.extensions {
-      assert!(policy.supports_file(&format!("preview.{}", extension)));
-      assert!(policy.supports_file(&format!("preview.{}", extension.to_uppercase())));
+      assert!(policy.supports_file(&format!("preview.{extension}")));
+      assert!(policy.supports_file(&format!("preview.{}", extension.as_str().to_uppercase())));
     }
 
     // Textures and sounds are routed to the viewer's own reads, never read as text, which is why they are listed

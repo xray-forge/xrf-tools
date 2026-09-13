@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use serde::{Deserialize, Serialize};
 
+use crate::file_extension::has_extension;
+
 /// Declares the vocabulary once, so the spelling, the serialized name and the parser cannot drift apart.
 macro_rules! declare_xray_extensions {
   ($($(#[$attribute:meta])* $variant:ident => $spelling:literal,)+) => {
@@ -148,6 +150,13 @@ declare_xray_extensions! {
   Xr => "xr",
 }
 
+impl XrayExtension {
+  /// Whether `name` carries this extension, compared the way [`has_extension`] compares one.
+  pub fn matches(self, name: &str) -> bool {
+    has_extension(name, self.as_str())
+  }
+}
+
 impl Display for XrayExtension {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
     formatter.write_str(self.as_str())
@@ -265,6 +274,32 @@ mod tests {
         serde_json::to_string(extension).expect("serializes"),
         format!("\"{}\"", extension.as_str())
       );
+    }
+  }
+
+  #[test]
+  fn answers_whether_a_name_carries_this_extension() {
+    assert!(XrayExtension::Ltx.matches("configs\\system.ltx"));
+    assert!(XrayExtension::Ltx.matches("configs\\SYSTEM.LTX"));
+    assert!(XrayExtension::S.matches("shaders\\r1\\.s"));
+
+    assert!(!XrayExtension::Ltx.matches("configs\\system.xml"));
+    // The splitter's rule, reached through the variant: a name merely ending in the spelling is not that extension.
+    assert!(!XrayExtension::Xml.matches("notes.myxml"));
+    assert!(!XrayExtension::Ltx.matches("system"));
+  }
+
+  #[test]
+  fn matching_a_name_agrees_with_reading_its_extension() {
+    // Two doors onto one comparison, which is the whole point of the crate; a test says so rather than a comment.
+    for name in ["configs\\system.ltx", "TEXTURES\\A.DDS", ".s", "notes.myxml", "level"] {
+      for extension in XrayExtension::ALL {
+        assert_eq!(
+          extension.matches(name),
+          crate::XrayExtensionOf::of(name).known() == Some(*extension),
+          "{extension} disagrees with itself about '{name}'"
+        );
+      }
     }
   }
 

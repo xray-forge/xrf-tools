@@ -3,6 +3,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::{LineEndings, apply_line_endings, format_path, write_new_file_staged};
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
@@ -17,6 +18,18 @@ pub enum ExternFormat {
 }
 
 impl ExternFormat {
+  /// Every name `--format` accepts, in the order the flag lists them.
+  pub const NAMES: [&'static str; 3] = [Self::Json.as_str(), Self::Xml.as_str(), Self::Html.as_str()];
+
+  /// The name this format is asked for and reported by, which is the extension it is normally written with.
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Json => XrayExtension::Json.as_str(),
+      Self::Xml => XrayExtension::Xml.as_str(),
+      Self::Html => XrayExtension::Html.as_str(),
+    }
+  }
+
   /// Returns the repository default line ending for this output format.
   pub fn default_line_endings(self) -> LineEndings {
     match self {
@@ -27,20 +40,17 @@ impl ExternFormat {
 
   /// Infers a format from a `.json`, `.xml`, `.html`, or `.htm` extension.
   ///
+  /// Two spellings answer HTML because both are what a person writes; which of them a file carries says nothing
+  /// about its contents.
+  ///
   /// # Errors
   ///
   /// Returns an error when the path has no supported extension.
-  pub fn from_extension(path: &std::path::Path) -> XrfResult<Self> {
-    let extension: String = path
-      .extension()
-      .and_then(|extension| extension.to_str())
-      .unwrap_or_default()
-      .to_ascii_lowercase();
-
-    match extension.as_str() {
-      "json" => Ok(Self::Json),
-      "xml" => Ok(Self::Xml),
-      "html" | "htm" => Ok(Self::Html),
+  pub fn from_extension(path: &Path) -> XrfResult<Self> {
+    match path.to_str().map(XrayExtensionOf::of).and_then(XrayExtensionOf::known) {
+      Some(XrayExtension::Json) => Ok(Self::Json),
+      Some(XrayExtension::Xml) => Ok(Self::Xml),
+      Some(XrayExtension::Html | XrayExtension::Htm) => Ok(Self::Html),
       _ => Err(XrfError::new_invalid_error(format!(
         "Cannot infer extern export format from '{}'; use --format.",
         format_path(path)
@@ -52,13 +62,17 @@ impl ExternFormat {
 impl FromStr for ExternFormat {
   type Err = XrfError;
 
+  /// Selects a format by the name `--format` was given.
   fn from_str(value: &str) -> XrfResult<Self> {
-    match value {
-      "json" => Ok(Self::Json),
-      "xml" => Ok(Self::Xml),
-      "html" => Ok(Self::Html),
+    match XrayExtension::parse(value) {
+      Some(XrayExtension::Json) => Ok(Self::Json),
+      Some(XrayExtension::Xml) => Ok(Self::Xml),
+      Some(XrayExtension::Html) => Ok(Self::Html),
       _ => Err(XrfError::new_invalid_error(format!(
-        "Unsupported extern export format '{value}'. Expected json, xml, or html."
+        "Unsupported extern export format '{value}'. Expected {}, {}, or {}.",
+        Self::Json.as_str(),
+        Self::Xml.as_str(),
+        Self::Html.as_str()
       ))),
     }
   }
@@ -190,7 +204,9 @@ fn append_xml_documentation(
   let Some(documentation) = documentation else {
     return;
   };
+
   result.push_str(&format!("\n{}<doc>", " ".repeat(indentation)));
+
   if let Some(description) = &documentation.description {
     result.push_str(&format!(
       "\n{}<description>{}</description>",
@@ -198,6 +214,7 @@ fn append_xml_documentation(
       escape_xml_text(description)
     ));
   }
+
   if let Some(returns) = &documentation.returns {
     result.push_str(&format!(
       "\n{}<returns>{}</returns>",
@@ -205,6 +222,7 @@ fn append_xml_documentation(
       escape_xml_text(returns)
     ));
   }
+
   result.push_str(&format!("\n{}</doc>", " ".repeat(indentation)));
 }
 
@@ -398,6 +416,13 @@ mod tests {
 
     assert!(ExternFormat::from_extension(Path::new("extern.txt")).is_err());
     assert!(ExternFormat::from_extension(Path::new("extern")).is_err());
+
+    // A name merely ending in a format's spelling is not that format, which `Path::extension` also refused but for
+    // the accidental reason that it splits on the dot rather than because anything said so.
+    assert!(ExternFormat::from_extension(Path::new("externjson")).is_err());
+
+    // And a directory carrying a dot does not lend its extension to the file inside it.
+    assert!(ExternFormat::from_extension(Path::new("out.json/extern")).is_err());
   }
 
   #[test]

@@ -19,6 +19,7 @@ specta = { workspace = true, optional = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-lzhuf = { workspace = true }

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
 use xrf_ltx::{Ltx, LtxProject};
 use xrf_utils::format_path;
 use xrf_vfs::XrayAssetType;
@@ -106,7 +107,7 @@ impl<'a> SoundReferencesVerifier<'a> {
 
       let logical_path: &XrayLogicalPath = location.get_logical_path();
 
-      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension("xml") {
+      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension(XrayExtension::Xml) {
         continue;
       }
 

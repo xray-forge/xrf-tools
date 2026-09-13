@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+use xrf_extension::get_file_extension;
 
 /// One volume of a set: where it is, where it mounts, and what it holds, counted at read time.
 ///
@@ -30,13 +31,17 @@ pub struct ArchiveDescriptor {
 impl ArchiveDescriptor {
   /// Whether a path names an archive volume by extension, matching `.db*` and `.xdb*` without case.
   ///
-  /// Case-insensitive to agree with the mount planner's volume detection; a non-UTF-8 extension is not a volume rather
-  /// than a panic.
+  /// The one family of extensions no vocabulary member can name: a volume's extension carries its index, so a set is
+  /// `db0`, `db1`, ... and the rule is a prefix rather than a spelling. It is read through
+  /// [`xrf_extension::get_file_extension`] all the same, so a volume and everything else in the tree are split the
+  /// same way. Case-insensitive to agree with the mount planner's volume detection; a non-UTF-8 name is not a volume
+  /// rather than a panic.
   pub fn is_valid_db_path(path: impl AsRef<Path>) -> bool {
     path
       .as_ref()
-      .extension()
-      .and_then(|extension| extension.to_str())
+      .file_name()
+      .and_then(|name| name.to_str())
+      .and_then(get_file_extension)
       .is_some_and(|extension| {
         let extension: String = extension.to_ascii_lowercase();
 

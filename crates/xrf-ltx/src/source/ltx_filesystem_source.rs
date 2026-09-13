@@ -8,6 +8,7 @@ use xrf_utils::format_path;
 use crate::document::LtxDocument;
 use crate::ltx::{Ltx, LtxIncludeConvertor};
 use crate::source::{LtxDocumentSource, LtxIncludeSource};
+use crate::syntax::{LTX_EXTENSION, LTX_GENERATED_SOURCE_EXTENSION};
 
 /// Resolves and reads includes from the filesystem, which is what an LTX file read by path uses.
 #[derive(Default)]
@@ -90,10 +91,8 @@ impl LtxDocumentSource for LtxFilesystemSource {
 impl LtxFilesystemSource {
   /// Whether a `.ts` counterpart of an absent `.ltx` exists, meaning the config is generated and not yet built.
   fn is_raw_ts_variant_existing(path: &Path) -> bool {
-    if path.extension().is_some_and(|extension| extension == "ltx") {
-      path.with_extension("ts").exists()
-    } else {
-      false
-    }
+    path.to_str().is_some_and(|name| {
+      LTX_EXTENSION.matches(name) && path.with_extension(LTX_GENERATED_SOURCE_EXTENSION.as_str()).exists()
+    })
   }
 }

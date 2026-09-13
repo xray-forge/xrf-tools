@@ -9,7 +9,9 @@ use xrf_xml::{XmlDocument, XmlElement, XmlParseOptions};
 
 use crate::description::PackDescriptionOptions;
 use crate::description::{TextureFileDescriptor, TextureSpriteDescriptor};
-use crate::description::{XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW};
+use crate::description::{
+  XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME, XML_EXTENSION, XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW,
+};
 
 pub struct XmlDescriptionCollection {
   pub files: HashMap<String, TextureFileDescriptor>,
@@ -97,9 +99,7 @@ impl XmlDescriptionCollection {
       for entry in entries.flatten() {
         let path: PathBuf = entry.path();
 
-        if let Some(extension) = path.extension()
-          && extension == "xml"
-        {
+        if path.to_str().is_some_and(|name| XML_EXTENSION.matches(name)) {
           let descriptions: HashMap<String, TextureFileDescriptor> = Self::get_description(options, &path)?;
 
           descriptions
@@ -253,6 +253,37 @@ mod tests {
     fs::remove_file(&path).unwrap();
 
     assert!(result.is_err());
+  }
+
+  /// A directory of descriptions was selected with a byte-exact `Path::extension` comparison, so a file the author
+  /// named `ui_icon_equipment.XML` contributed nothing and the pack produced a sprite sheet missing every icon it
+  /// declared, with no error to say why.
+  #[test]
+  fn reads_a_description_whose_name_was_typed_in_upper_case() {
+    let directory: PathBuf = write_generated_test_resource(
+      "xml_description/upper-case/UI_ICON_EQUIPMENT.XML",
+      "<w><file name=\"ui_icon_equipment\"><texture id=\"wpn_ak74\" x=\"0\" y=\"0\" width=\"4\" height=\"4\">ui_icon_equipment</texture></file></w>",
+    )
+    .expect("generated description to be written")
+    .parent()
+    .expect("the description sits in a directory")
+    .to_path_buf();
+
+    let options: PackDescriptionOptions = PackDescriptionOptions {
+      job: Default::default(),
+      description: directory,
+      base: PathBuf::new(),
+      output: Default::default(),
+      output_path: PathBuf::new(),
+      dds_compression_format: ImageFormat::BC3RgbaUnorm,
+      files: Vec::new(),
+      is_strict: true,
+    };
+
+    let collection: XmlDescriptionCollection =
+      XmlDescriptionCollection::get_descriptions(&options).expect("the directory to be read");
+
+    assert_eq!(collection.files.len(), 1, "the upper-case description has to be read");
   }
 }
 

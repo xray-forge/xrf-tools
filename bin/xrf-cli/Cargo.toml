@@ -34,6 +34,7 @@ xrf-output = { workspace = true }
 xrf-report = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-export = { workspace = true }
 xrf-texture = { workspace = true }

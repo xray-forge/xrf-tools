@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { XrayExtension } from "@/core/ipc/types/xrf-extension";
+
 /**
  * One volume of a set: where it is, where it mounts, and what it holds, counted at read time.
  *
@@ -103,13 +105,13 @@ export type ArchiveProject = {
  * both through the shared mounted assets and so answers to no limit of its own.
  */
 export type ArchiveReadPolicy = {
-  extensions: Array<string>;
+  extensions: Array<XrayExtension>;
   maximumSize: number;
   /** Extensions decoded into a picture. Compression does not apply: it is undone before decoding. */
-  imageExtensions: Array<string>;
+  imageExtensions: Array<XrayExtension>;
   maximumImageSize: number;
   /** Extensions played by the webview itself, so the backend only has to hand over the bytes. */
-  audioExtensions: Array<string>;
+  audioExtensions: Array<XrayExtension>;
   maximumAudioSize: number;
 };
 
