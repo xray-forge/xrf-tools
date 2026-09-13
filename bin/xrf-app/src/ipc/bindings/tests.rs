@@ -6,6 +6,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::ipc::bindings::command_module::{export_raw_commands, finalize_command_module};
 use crate::ipc::bindings::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
+use crate::ipc::bindings::enumerations::Enumerations;
 use crate::ipc::bindings::exporter::command_exporter;
 use crate::ipc::bindings::output::reset_directory;
 use crate::ipc::bindings::ownership::TypeOwnership;
@@ -160,13 +161,14 @@ fn export_bindings_to(output: &Path) {
     .unwrap_or_else(|_| panic!("Collected types are still borrowed"))
     .into_inner()
     .expect("Collected types lock is poisoned");
-  let ownership: TypeOwnership = export_type_modules(&types_output, &collected);
+  let (ownership, enumerations): (TypeOwnership, Enumerations) = export_type_modules(&types_output, &collected);
 
   for module in &modules {
     finalize_command_module(
       &commands_output.join(format!("{}.ts", module.name)),
       module.name,
       &ownership,
+      &enumerations,
     );
 
     if !module.raw.is_empty() {
@@ -175,6 +177,7 @@ fn export_bindings_to(output: &Path) {
         module.name,
         module.raw,
         &ownership,
+        &enumerations,
       );
     }
   }

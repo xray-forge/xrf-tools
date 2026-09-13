@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
@@ -23,7 +24,7 @@ export function SpawnEditorUnpackForm(): ReactElement {
     application: EApplicationId.SPAWN_UNPACKER,
     id: "source",
     title: "Select spawn file",
-    filters: [{ name: "spawn", extensions: ["spawn"] }],
+    filters: [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }],
     isDisabled: isLoading,
   });
 

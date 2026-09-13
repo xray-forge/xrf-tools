@@ -3,6 +3,7 @@ import { ReactElement, useCallback } from "react";
 
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -28,7 +29,7 @@ export function TexturesEditorOpenForm({
     application: EApplicationId.TEXTURES_EDITOR,
     id: "texture",
     title: "Select dds texture or thm descriptor",
-    filters: [{ name: "Texture or descriptor", extensions: ["dds", "thm"] }],
+    filters: [{ name: "Texture or descriptor", extensions: [EXrayExtension.DDS, EXrayExtension.THM] }],
     isDisabled: isLoading,
   });
 

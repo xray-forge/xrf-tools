@@ -1,7 +1,7 @@
 import { Nullable } from "@/lib/types/general";
 
 /** Lifecycle status, independent of whether a resource has a value. */
-export const enum EAsyncStatus {
+export enum EAsyncStatus {
   IDLE = "idle",
   LOADING = "loading",
   READY = "ready",

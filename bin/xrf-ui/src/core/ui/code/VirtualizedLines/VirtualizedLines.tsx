@@ -18,7 +18,7 @@ import { Nullable } from "@/lib/types/general";
  * stay where the eye already is. An address into the document is the opposite: a section is read downwards from its
  * header, and one revealed against the bottom edge shows its name with none of its body.
  */
-const enum ECodeLineReveal {
+enum ECodeLineReveal {
   NEAREST,
   START,
 }

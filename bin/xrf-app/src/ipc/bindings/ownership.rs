@@ -71,6 +71,19 @@ impl TypeOwnership {
     (ownership, modules)
   }
 
+  /// Records a further name a module declares, so a consumer of it imports from the right module.
+  ///
+  /// An enum rendered beside the union of a data-free type is not a collected type of its own, yet a command
+  /// module naming one still has to import it from wherever that union was written.
+  pub(super) fn declare(&mut self, name: String, module: &str) {
+    if let Some(previous) = self.owners.insert(name.clone(), module.to_string()) {
+      assert_eq!(
+        previous, module,
+        "`{name}` is declared by both `{previous}` and `{module}`"
+      );
+    }
+  }
+
   /// Names `source` references, excluding the ones `owner` declares itself.
   pub(super) fn references(&self, source: &str, owner: &str) -> BTreeSet<&str> {
     referenced_types(source, &self.owners, owner)

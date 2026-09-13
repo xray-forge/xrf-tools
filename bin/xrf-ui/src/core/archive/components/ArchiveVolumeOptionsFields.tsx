@@ -1,8 +1,8 @@
 import { MenuItem, Stack, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
-import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
+import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
+import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -53,8 +53,8 @@ export function ArchiveVolumeOptionsFields({
             onChange({ mode: event.target.value as ArchiveVolumeOptions["mode"] })
           }
         >
-          <MenuItem value={ARCHIVE_PACK_MODE.Compress}>Compressed</MenuItem>
-          <MenuItem value={ARCHIVE_PACK_MODE.Store}>Stored only</MenuItem>
+          <MenuItem value={EArchivePackMode.COMPRESS}>Compressed</MenuItem>
+          <MenuItem value={EArchivePackMode.STORE}>Stored only</MenuItem>
         </TextField>
       </FormRow>
 
@@ -94,8 +94,8 @@ export function ArchiveVolumeOptionsFields({
             onChange({ volumeExtension: event.target.value as ArchiveVolumeOptions["volumeExtension"] })
           }
         >
-          <MenuItem value={ARCHIVE_VOLUME_EXTENSION.Db}>{ARCHIVE_VOLUME_SUFFIX.Db}</MenuItem>
-          <MenuItem value={ARCHIVE_VOLUME_EXTENSION.Xdb}>{ARCHIVE_VOLUME_SUFFIX.Xdb}</MenuItem>
+          <MenuItem value={EArchiveVolumeExtension.DB}>{ARCHIVE_VOLUME_SUFFIX[EArchiveVolumeExtension.DB]}</MenuItem>
+          <MenuItem value={EArchiveVolumeExtension.XDB}>{ARCHIVE_VOLUME_SUFFIX[EArchiveVolumeExtension.XDB]}</MenuItem>
         </TextField>
       </FormRow>
     </Stack>

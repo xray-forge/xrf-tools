@@ -9,7 +9,7 @@ import { Nullable } from "@/lib/types/general";
 /**
  * Which of the two things the explorer has open.
  */
-export const enum EArchiveSubject {
+export enum EArchiveSubject {
   /** A set of `.db` volumes, read as one name table. */
   VOLUMES = "volumes",
   /** A game folder, read as the engine mounts it: its archives and the loose tree in front of them. */

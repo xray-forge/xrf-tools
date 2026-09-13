@@ -5,6 +5,7 @@ import { VisualsBrowseService } from "@/applications/visuals-explorer/services/b
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -52,7 +53,7 @@ export function VisualsExplorerOpenForm({
     application: EApplicationId.VISUALS_EXPLORER,
     id: "visual",
     title: "Select ogf visual",
-    filters: [{ name: "Ogf visual", extensions: ["ogf"] }],
+    filters: [{ name: "Ogf visual", extensions: [EXrayExtension.OGF] }],
     isDisabled: isLoading,
   });
 

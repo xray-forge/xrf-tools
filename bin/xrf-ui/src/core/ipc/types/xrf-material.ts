@@ -9,7 +9,13 @@ import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
  * Parallax changes the pixel shader only: `uber_deffer.cpp` compiles `_steep` for it in HQ mode and the same
  * `_bump` variant as [`Self::Use`] otherwise. The inputs bound are the same pair either way.
  */
-export type XrayBumpMode = "use" | "parallax";
+export enum EXrayBumpMode {
+  USE = "use",
+  PARALLAX = "parallax",
+}
+
+/** Every `EXrayBumpMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayBumpMode = `${EXrayBumpMode}`;
 
 /**
  * What the renderer ends up drawing for a material, mirroring `Texture.cpp`.
@@ -17,22 +23,26 @@ export type XrayBumpMode = "use" | "parallax";
  * Ordered from best to worst so the outcome of a pair is the worse of its two inputs: a real bump over a dummy
  * companion is `Dummy`, and a dummy bump beside a companion that fell to the not-existing texture is `Missing`.
  */
-export type XrayBumpOutcome =
+export enum EXrayBumpOutcome {
   /** No usable declaration, so the flat shader variant is selected and no bump input is bound. */
-  | "flat"
+  FLAT = "flat",
   /** Both inputs resolved to the files the declaration names. */
-  | "bumped"
+  BUMPED = "bumped",
   /**
    * The bump shader variant is selected and at least one input is the engine's flat dummy, because the declared name
    * contains `_bump` and its file is absent. The surface renders flat while paying the bump path, and the engine logs
    * `! Fallback to default bump map`.
    */
-  | "dummy"
+  DUMMY = "dummy",
   /**
    * At least one input is absent and has no dummy: its name lacks `_bump`, so `ed\ed_not_existing_texture` is bound
    * in its place, or nothing at all when even that is missing.
    */
-  | "missing";
+  MISSING = "missing",
+}
+
+/** Every `EXrayBumpOutcome` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayBumpOutcome = `${EXrayBumpOutcome}`;
 
 /**
  * How a detail texture is applied, from the two texture param flags (`TextureDescrManager.cpp`).
@@ -40,7 +50,14 @@ export type XrayBumpOutcome =
  * A bump detail brings its own bump and bump# pair, looked up through the detail texture's own descriptor
  * (`uber_deffer.cpp`); that pair is not resolved here.
  */
-export type XrayDetailUsage = "diffuse" | "bump" | "diffuseAndBump";
+export enum EXrayDetailUsage {
+  DIFFUSE = "diffuse",
+  BUMP = "bump",
+  DIFFUSE_AND_BUMP = "diffuseAndBump",
+}
+
+/** Every `EXrayDetailUsage` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayDetailUsage = `${EXrayDetailUsage}`;
 
 /**
  * A live bump declaration and both inputs it binds.

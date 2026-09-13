@@ -1,5 +1,5 @@
 /** Which rules resolve the tree: the two read the same files to different values. */
-export const enum EConfigsDialect {
+export enum EConfigsDialect {
   LTX = "ltx",
   DLTX = "dltx",
 }

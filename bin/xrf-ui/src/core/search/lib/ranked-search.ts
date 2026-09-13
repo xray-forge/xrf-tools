@@ -1,7 +1,7 @@
 /**
  * Rank buckets, best first. The numbers are only compared to each other.
  */
-export const enum ESearchRank {
+export enum ESearchRank {
   EXACT = 0,
   /** The file name without its extension is exactly the query - typing "dialogs" for dialogs.xml. */
   EXACT_LEAF = 1,

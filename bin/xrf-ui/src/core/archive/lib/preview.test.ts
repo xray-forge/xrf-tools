@@ -68,6 +68,20 @@ describe("archive preview support", () => {
     ).toEqual({ kind: "supported" });
   });
 
+  it("accepts a sound exactly at the backend's audio limit", () => {
+    const policy: ArchiveReadPolicy = mockArchiveReadPolicy({ maximumAudioSize: 4096 });
+    const sound = mockArchiveFileDescriptor({ name: "sounds\\wind.OGG", sizeReal: 4096 });
+
+    expect(getArchivePreviewSupport(sound, policy)).toEqual({ kind: "audio" });
+  });
+
+  it("reports the audio limit when a sound exceeds it", () => {
+    const policy: ArchiveReadPolicy = mockArchiveReadPolicy({ maximumAudioSize: 4096 });
+    const sound = mockArchiveFileDescriptor({ name: "sounds\\wind.ogg", sizeReal: 4097 });
+
+    expect(getArchivePreviewSupport(sound, policy)).toEqual({ kind: "too-large", maximumSize: 4096 });
+  });
+
   it("uses backend-provided policy values", () => {
     const policy: ArchiveReadPolicy = mockArchiveReadPolicy({
       extensions: ["xml"],

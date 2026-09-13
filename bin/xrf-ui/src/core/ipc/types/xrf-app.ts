@@ -406,7 +406,14 @@ export type HostInfo = {
  * operation that failed reports nothing at all — the failure travels as the command's error. The registry watches
  * from outside and has to describe that case too, or a job that blew up would sit in the listing looking finished.
  */
-export type JobConclusion = "completed" | "cancelled" | "failed";
+export enum EJobConclusion {
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
+  FAILED = "failed",
+}
+
+/** Every `EJobConclusion` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type JobConclusion = `${EJobConclusion}`;
 
 /**
  * One job as the listing describes it, running or recently finished.
@@ -460,28 +467,32 @@ export type JobDescription = {
 };
 
 /** The application operations that can be registered, cancelled and rediscovered. */
-export type JobKind =
-  | "archives.extract"
-  | "archives.compare"
-  | "archives.pack"
-  | "archives.patch"
-  | "archives.unpack"
-  | "configs.check-format"
-  | "configs.format"
-  | "configs.verify"
-  | "spawn.pack"
-  | "spawn.unpack"
-  | "sprite-equipment.pack"
-  | "gamedata.verify"
-  | "textures.build"
-  | "textures.compare-encodings"
-  | "textures.make-bump"
-  | "textures.save"
-  | "translations.build"
-  | "translations.check-format"
-  | "translations.format"
-  | "translations.parse"
-  | "translations.verify";
+export enum EJobKind {
+  ARCHIVES_EXTRACT = "archives.extract",
+  ARCHIVES_COMPARE = "archives.compare",
+  ARCHIVES_PACK = "archives.pack",
+  ARCHIVES_PATCH = "archives.patch",
+  ARCHIVES_UNPACK = "archives.unpack",
+  CONFIGS_CHECK_FORMAT = "configs.check-format",
+  CONFIGS_FORMAT = "configs.format",
+  CONFIGS_VERIFY = "configs.verify",
+  SPAWN_PACK = "spawn.pack",
+  SPAWN_UNPACK = "spawn.unpack",
+  SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
+  GAMEDATA_VERIFY = "gamedata.verify",
+  TEXTURES_BUILD = "textures.build",
+  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
+  TEXTURES_MAKE_BUMP = "textures.make-bump",
+  TEXTURES_SAVE = "textures.save",
+  TRANSLATIONS_BUILD = "translations.build",
+  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
+  TRANSLATIONS_FORMAT = "translations.format",
+  TRANSLATIONS_PARSE = "translations.parse",
+  TRANSLATIONS_VERIFY = "translations.verify",
+}
+
+/** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type JobKind = `${EJobKind}`;
 
 /** What the machine as a whole is using. */
 export type MachineUsage = {
@@ -519,7 +530,14 @@ export type PathDescription = {
  * Carried instead of a pair of booleans so the states cannot disagree. Failing to look is not a variant here: it
  * reaches the caller as an error, which is what lets a refused check read as unknown rather than as absent.
  */
-export type PathKind = "missing" | "file" | "directory";
+export enum EPathKind {
+  MISSING = "missing",
+  FILE = "file",
+  DIRECTORY = "directory",
+}
+
+/** Every `EPathKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type PathKind = `${EPathKind}`;
 
 /** What one process holds. */
 export type ProcessUsage = {
@@ -589,7 +607,13 @@ export type SessionSnapshot<T> = {
 };
 
 /** The conversion performed, retained with the result after a window reload. */
-export type SpawnConversion = "pack" | "unpack";
+export enum ESpawnConversion {
+  PACK = "pack",
+  UNPACK = "unpack",
+}
+
+/** Every `ESpawnConversion` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SpawnConversion = `${ESpawnConversion}`;
 
 /** Source and output paths of a standalone spawn conversion. */
 export type SpawnConversionRequest = {
@@ -699,11 +723,15 @@ export type TextureCatalog = {
  * engine reference are a level's lightmaps, and burying two thousand named textures in them is the bug; in a folder
  * somebody is authoring in, those files are the entire point and there are no references to be had at all.
  */
-export type TextureCatalogMode =
+export enum ETextureCatalogMode {
   /** The game tree: listed by engine reference, archives included, files outside `textures\` counted not listed. */
-  | "roots"
+  ROOTS = "roots",
   /** A plain directory: every `.dds` under it, addressed by its own path. */
-  | "looseDirectory";
+  LOOSE_DIRECTORY = "looseDirectory",
+}
+
+/** Every `ETextureCatalogMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureCatalogMode = `${ETextureCatalogMode}`;
 
 /** Everything the inspection panels say about one texture, resolved in one call. */
 export type TextureDescription = {
@@ -832,14 +860,27 @@ export type TextureEncodingCurrent = {
  * here is one: `xrf-dds` is a pure image crate and carries no bindings feature, and a surface naming a format wants
  * a name that cannot change under it.
  */
-export type TextureEncodingFormat = "bc1" | "bc2" | "bc3" | "rgba8" | "bc7";
+export enum ETextureEncodingFormat {
+  BC1 = "bc1",
+  BC2 = "bc2",
+  BC3 = "bc3",
+  RGBA8 = "rgba8",
+  BC7 = "bc7",
+}
+
+/** Every `ETextureEncodingFormat` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureEncodingFormat = `${ETextureEncodingFormat}`;
 
 /** How hard the encoder works, which trades seconds for fidelity. */
-export type TextureEncodingQuality =
-  | "fast"
-  | "normal"
+export enum ETextureEncodingQuality {
+  FAST = "fast",
+  NORMAL = "normal",
   /** The default, because everything but BC7 costs pennies at it. */
-  | "slow";
+  SLOW = "slow",
+}
+
+/** Every `ETextureEncodingQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureEncodingQuality = `${ETextureEncodingQuality}`;
 
 /** What one candidate cost and what it lost, weighed against the texture as it is now. */
 export type TextureEncodingReport = {
@@ -952,13 +993,17 @@ export type TextureRendererSupport = {
  * declared, and by whom, is what the sweep then says. The convention itself is `xrf-material`'s, shared with the
  * renderer's fallback rule and the companion derivation.
  */
-export type TextureRole =
+export enum ETextureRole {
   /** A texture a mesh or a level binds by name. */
-  | "texture"
+  TEXTURE = "texture",
   /** The first half of a bump pair: packed normal and gloss. */
-  | "bump"
+  BUMP = "bump",
   /** The second half of a bump pair: packed error and height. */
-  | "bumpCompanion";
+  BUMP_COMPANION = "bumpCompanion",
+}
+
+/** Every `ETextureRole` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureRole = `${ETextureRole}`;
 
 /** What a save left on disk. */
 export type TextureSaveOutcome = {
@@ -1256,28 +1301,3 @@ export type VisualSource =
   | { kind: "file"; path: string }
   /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
-
-/** Backend job identities. */
-export enum EJobKind {
-  ARCHIVES_EXTRACT = "archives.extract",
-  ARCHIVES_COMPARE = "archives.compare",
-  ARCHIVES_PACK = "archives.pack",
-  ARCHIVES_PATCH = "archives.patch",
-  ARCHIVES_UNPACK = "archives.unpack",
-  CONFIGS_CHECK_FORMAT = "configs.check-format",
-  CONFIGS_FORMAT = "configs.format",
-  CONFIGS_VERIFY = "configs.verify",
-  SPAWN_PACK = "spawn.pack",
-  SPAWN_UNPACK = "spawn.unpack",
-  SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
-  GAMEDATA_VERIFY = "gamedata.verify",
-  TEXTURES_BUILD = "textures.build",
-  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
-  TEXTURES_MAKE_BUMP = "textures.make-bump",
-  TEXTURES_SAVE = "textures.save",
-  TRANSLATIONS_BUILD = "translations.build",
-  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
-  TRANSLATIONS_FORMAT = "translations.format",
-  TRANSLATIONS_PARSE = "translations.parse",
-  TRANSLATIONS_VERIFY = "translations.verify",
-}

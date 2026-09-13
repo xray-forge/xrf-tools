@@ -45,33 +45,37 @@ export type DialogElementDescriptor = {
  * recognise still survives a round trip; mods add their own, and one shipped project uses a
  * `go_back` phrase element the engine never defined.
  */
-export type DialogElementKind =
+export enum EDialogElementKind {
   /** Translation key of the line, not the line itself. */
-  | "text"
+  TEXT = "text",
   /** Script call producing the line at runtime, in place of a translation key. */
-  | "scriptText"
+  SCRIPT_TEXT = "scriptText",
   /** Script call run when the phrase is selected. */
-  | "action"
+  ACTION = "action",
   /** Script predicate gating visibility. */
-  | "precondition"
+  PRECONDITION = "precondition",
   /** Id of a phrase that may follow this one. */
-  | "next"
+  NEXT = "next",
   /** Info portion granted. */
-  | "giveInfo"
+  GIVE_INFO = "giveInfo",
   /** Info portion revoked. */
-  | "disableInfo"
+  DISABLE_INFO = "disableInfo",
   /** Info portion required. */
-  | "hasInfo"
+  HAS_INFO = "hasInfo",
   /** Info portion that must be absent. */
-  | "dontHasInfo"
+  DONT_HAS_INFO = "dontHasInfo",
   /** Whether selecting the phrase ends the conversation. */
-  | "isFinal"
+  IS_FINAL = "isFinal",
   /** Script call run when the dialog is initialised. */
-  | "initFunc"
+  INIT_FUNC = "initFunc",
   /** Recognised container rather than a value: `phrase_list` or `phrase`. */
-  | "container"
+  CONTAINER = "container",
   /** Not part of the schema. Preserved and reported. */
-  | "unknown";
+  UNKNOWN = "unknown",
+}
+
+/** Every `EDialogElementKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type DialogElementKind = `${EDialogElementKind}`;
 
 /**
  * One dialog file the project holds.
@@ -164,11 +168,15 @@ export type DialogProjectDescriptor = {
  * same place, and both are logical prefixes rather than host paths, so an installation reads the
  * same way a loose tree does.
  */
-export type DialogProjectMode =
+export enum EDialogProjectMode {
   /** Shipped gamedata: dialog text sits in `configs\text\<language>`, one file per language. */
-  | "gamedata"
+  GAMEDATA = "gamedata",
   /** XRF sources: dialog text sits in `translations`, one JSON file carrying every language. */
-  | "source";
+  SOURCE = "source",
+}
+
+/** Every `EDialogProjectMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type DialogProjectMode = `${EDialogProjectMode}`;
 
 /**
  * One dialog, as the project index lists it.

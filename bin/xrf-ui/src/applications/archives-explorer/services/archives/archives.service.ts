@@ -3,13 +3,12 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
+  ArchivePreviewSupport,
   EArchiveSubject,
   getArchivePreviewSupport,
   getSubjectReadPolicy,
   getSubjectRoots,
   IArchiveEntry,
-  isArchiveAudio,
-  isArchiveImage,
   listSubjectEntries,
   TArchiveContent,
   TArchiveOperation,
@@ -522,13 +521,18 @@ export class ArchivesService {
       return;
     }
 
-    // todo: Switch case based on type?
-    if (isArchiveAudio(entry, policy)) {
-      return yield* this.readContent(entry, "audio", subject);
-    } else if (isArchiveImage(entry, policy)) {
-      return yield* this.readContent(entry, "image", subject);
-    } else if (getArchivePreviewSupport(entry, policy).kind === "supported") {
-      return yield* this.readContent(entry, "text", subject);
+    const support: ArchivePreviewSupport = getArchivePreviewSupport(entry, policy);
+
+    switch (support.kind) {
+      case "audio":
+      case "image":
+        return yield* this.readContent(entry, support.kind, subject);
+      case "supported":
+        return yield* this.readContent(entry, "text", subject);
+      case "model":
+      case "unsupported-extension":
+      case "too-large":
+        return;
     }
   }
 
@@ -546,13 +550,19 @@ export class ArchivesService {
     this.content = this.content.asLoading(null);
 
     try {
-      const content: TArchiveContent = yield* call(
-        kind === "audio"
-          ? this.readAudioContent(entry, subject)
-          : kind === "image"
-            ? this.readImageContent(entry, subject)
-            : this.readTextContent(entry)
-      );
+      let content: TArchiveContent;
+
+      switch (kind) {
+        case "audio":
+          content = yield* call(this.readAudioContent(entry, subject));
+          break;
+        case "image":
+          content = yield* call(this.readImageContent(entry, subject));
+          break;
+        case "text":
+          content = yield* call(this.readTextContent(entry));
+          break;
+      }
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 

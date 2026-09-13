@@ -8,6 +8,7 @@ import { DEFAULT_VIRTUAL_HEIGHT } from "@/applications/textures-editor/lib/textu
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import {
   EditorPanel,
@@ -23,7 +24,12 @@ import { Nullable } from "@/lib/types/general";
 import { TextureGlossField } from "./TextureGlossField";
 
 /** Images the generator can read a plane out of, which is whatever `image` decodes. */
-const IMAGE_FILTERS = [{ extensions: ["png", "tga", "bmp", "jpg", "jpeg"], name: "Image" }];
+const IMAGE_FILTERS = [
+  {
+    extensions: [EXrayExtension.PNG, EXrayExtension.TGA, EXrayExtension.BMP, EXrayExtension.JPG, EXrayExtension.JPEG],
+    name: "Image",
+  },
+];
 
 /**
  * Build the `_bump` and `_bump#` pair this texture binds, from a height map.

@@ -30,39 +30,43 @@ export type XrayAssetContainer =
  * Serialized so a consumer can name the kind it wants without the crate growing a command per kind, which is the same
  * reason [`XrayAssetType::get_rules`] is a table rather than a method each.
  */
-export type XrayAssetType =
-  | "ai"
-  | "anm"
-  | "cForm"
-  | "dds"
-  | "dm"
-  | "efd"
-  | "envMod"
-  | "fogVol"
-  | "game"
-  | "geom"
-  | "geomX"
-  | "hom"
-  | "ini"
-  | "level"
-  | "lights"
-  | "ltx"
-  | "misc"
-  | "ogf"
-  | "ogg"
-  | "ogm"
-  | "omf"
-  | "ppe"
-  | "psStatic"
-  | "sndStatic"
-  | "script"
-  | "seq"
-  | "shader"
-  | "spawn"
-  | "thm"
-  | "wallmarks"
-  | "details"
-  | "xrPack";
+export enum EXrayAssetType {
+  AI = "ai",
+  ANM = "anm",
+  C_FORM = "cForm",
+  DDS = "dds",
+  DM = "dm",
+  EFD = "efd",
+  ENV_MOD = "envMod",
+  FOG_VOL = "fogVol",
+  GAME = "game",
+  GEOM = "geom",
+  GEOM_X = "geomX",
+  HOM = "hom",
+  INI = "ini",
+  LEVEL = "level",
+  LIGHTS = "lights",
+  LTX = "ltx",
+  MISC = "misc",
+  OGF = "ogf",
+  OGG = "ogg",
+  OGM = "ogm",
+  OMF = "omf",
+  PPE = "ppe",
+  PS_STATIC = "psStatic",
+  SND_STATIC = "sndStatic",
+  SCRIPT = "script",
+  SEQ = "seq",
+  SHADER = "shader",
+  SPAWN = "spawn",
+  THM = "thm",
+  WALLMARKS = "wallmarks",
+  DETAILS = "details",
+  XR_PACK = "xrPack",
+}
+
+/** Every `EXrayAssetType` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayAssetType = `${EXrayAssetType}`;
 
 /**
  * An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
@@ -82,14 +86,14 @@ export type XrayLogicalPath = string;
  * [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name
  * the choice rather than each re-deriving it.
  */
-export type XrayMountMode =
+export enum EXrayMountMode {
   /**
    * Treat the path as an installation when it declares one, as one volume when it is one, as a volume set when it
    * holds volumes, and as a complete root otherwise.
    */
-  | "auto"
+  AUTO = "auto",
   /** Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it. */
-  | "directory"
+  DIRECTORY = "directory",
   /**
    * Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own.
    *
@@ -101,11 +105,15 @@ export type XrayMountMode =
    * Name it for a path a person picked rather than one `fsgame.ltx` declared, where a listing already read that path
    * recursively and every entry it lists must be readable back.
    */
-  | "volumes"
+  VOLUMES = "volumes",
   /** Require the path to declare an installation, and mount everything it declares. */
-  | "installation"
+  INSTALLATION = "installation",
   /** Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`. */
-  | "containingInstallation";
+  CONTAINING_INSTALLATION = "containingInstallation",
+}
+
+/** Every `EXrayMountMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayMountMode = `${EXrayMountMode}`;
 
 /**
  * Two files in one source claiming the same engine identity.
@@ -186,17 +194,21 @@ export type XrayRoot = {
 };
 
 /** The kind a probed path belongs to. */
-export type XrayRootKind =
+export enum EXrayRootKind {
   /** The path declares an installation with `fsgame.ltx`. */
-  | "installation"
+  INSTALLATION = "installation",
   /** The path is one archive volume, or a directory of them. */
-  | "volumes"
+  VOLUMES = "volumes",
   /** The path is a directory holding content an engine would load. */
-  | "root"
+  ROOT = "root",
   /** The path is a directory, but nothing beneath it looks like game data. */
-  | "unrecognized"
+  UNRECOGNIZED = "unrecognized",
   /** Nothing is there, or it cannot be read. */
-  | "missing";
+  MISSING = "missing",
+}
+
+/** Every `EXrayRootKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayRootKind = `${EXrayRootKind}`;
 
 /**
  * What a path turns out to be when planned, and why.

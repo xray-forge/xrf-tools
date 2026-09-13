@@ -71,15 +71,19 @@ export type LtxFileText = {
 };
 
 /** What kind of thing went wrong, which is also what decides how it was anchored. */
-export type LtxFindingKind =
+export enum ELtxFindingKind {
   /** The file would not parse. Carries its own line, from the parser. */
-  | "parse"
+  PARSE = "parse",
   /** A section broke the scheme it is bound to, or is bound to one nothing declares. */
-  | "scheme"
+  SCHEME = "scheme",
   /** The dialect had something to say about the root that is not a failure. */
-  | "dialect"
+  DIALECT = "dialect",
   /** An `#include` reached no file. */
-  | "include";
+  INCLUDE = "include",
+}
+
+/** Every `ELtxFindingKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LtxFindingKind = `${ELtxFindingKind}`;
 
 /**
  * Every config a project holds, and what each one is to the project.

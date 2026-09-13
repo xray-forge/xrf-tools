@@ -9,14 +9,21 @@ use crate::ipc::bindings::constants::{
   CHANNEL_IMPORT_AND_COUNTED_INVOKE, COUNTED_INVOKE_IMPORT, GENERATED_HEADER, SPECTA_INVOKE_IMPORT,
   SPECTA_INVOKE_IMPORT_WITH_CHANNEL, TYPES_MARKER,
 };
+use crate::ipc::bindings::enumerations::Enumerations;
 use crate::ipc::bindings::output::write_generated;
 use crate::ipc::bindings::ownership::TypeOwnership;
+use crate::ipc::bindings::references::rewrite_type_references;
 
 /// Replaces the types Tauri Specta inlined into a command module with imports, and names its commands.
 ///
 /// The generated symbol was `commands` in every module, which left nine identical names in the directory and
 /// made every call site alias it by hand.
-pub(super) fn finalize_command_module(path: &Path, plugin: &str, ownership: &TypeOwnership) {
+pub(super) fn finalize_command_module(
+  path: &Path,
+  plugin: &str,
+  ownership: &TypeOwnership,
+  enumerations: &Enumerations,
+) {
   let contents: String =
     fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
   let commands: String = contents
@@ -30,6 +37,7 @@ pub(super) fn finalize_command_module(path: &Path, plugin: &str, ownership: &Typ
     // The wider spelling first: replacing the bare one first would leave its `, Channel` behind.
     .replace(SPECTA_INVOKE_IMPORT_WITH_CHANNEL, CHANNEL_IMPORT_AND_COUNTED_INVOKE)
     .replace(SPECTA_INVOKE_IMPORT, COUNTED_INVOKE_IMPORT);
+  let commands: String = rewrite_type_references(&commands, &enumerations.references());
 
   // A module still importing `invoke` from Tauri would be dispatched and never counted, and nothing downstream would
   // say so. Specta changing how it writes that import is the way this stops being true, so it is asserted here.
@@ -65,6 +73,7 @@ pub(super) fn export_raw_commands(
   plugin: &str,
   commands: &[(&str, &[(&str, &str)])],
   ownership: &TypeOwnership,
+  enumerations: &Enumerations,
 ) {
   if commands.is_empty() {
     return;
@@ -89,6 +98,9 @@ pub(super) fn export_raw_commands(
       to_camel_case(wire_name)
     ));
   }
+
+  // The registry spells these argument types by hand, so they take the same retyping as a Specta signature.
+  let wrappers: String = rewrite_type_references(&wrappers, &enumerations.references());
 
   ownership.assert_no_foreign_references(&wrappers, plugin);
 

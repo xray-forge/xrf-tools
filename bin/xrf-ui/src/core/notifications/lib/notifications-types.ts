@@ -6,7 +6,7 @@ import { EventType } from "@wirestate/core";
 export const EMIT_NOTIFICATION_EVENT: EventType = Symbol("@/notification/emit");
 
 /** Notification urgency, ordered by `NOTIFICATION_SEVERITY_RANK` rather than declaration order. */
-export const enum ENotificationSeverity {
+export enum ENotificationSeverity {
   /** Diagnostic trace for application developers. */
   DEV = "dev",
   /** Successful outcome. */

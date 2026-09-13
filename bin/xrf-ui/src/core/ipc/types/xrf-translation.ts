@@ -151,11 +151,15 @@ export type TranslationProjectDescriptor = {
 };
 
 /** Which layout a translations root is read with. */
-export type TranslationProjectMode =
+export enum ETranslationProjectMode {
   /** XRF sources: multi-language JSON and language-suffixed XML side by side in one tree. */
-  | "source"
+  SOURCE = "source",
   /** Shipped gamedata: `text\<language>\*.xml`, where the directory carries the language. */
-  | "gamedata";
+  GAMEDATA = "gamedata",
+}
+
+/** Every `ETranslationProjectMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TranslationProjectMode = `${ETranslationProjectMode}`;
 
 /**
  * Where one language's copy of a file was actually found.

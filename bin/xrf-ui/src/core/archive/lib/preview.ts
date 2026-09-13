@@ -1,8 +1,9 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
-import { XrayExtension } from "@/core/ipc/types/xrf-extension";
-import { getFileExtension } from "@/lib/path/extension";
+import { EXrayExtension, XrayExtension } from "@/core/ipc/types/xrf-extension";
+import { getFoldedFileExtension } from "@/lib/path/extension";
 
+/** A preview representation, or the policy reason an entry cannot be previewed. */
 export type ArchivePreviewSupport =
   | { kind: "supported" }
   | { kind: "image" }
@@ -12,73 +13,33 @@ export type ArchivePreviewSupport =
   | { kind: "too-large"; maximumSize: number };
 
 /**
- * Checks whether a browsed entry is a model the viewer can render.
- *
- * @param descriptor - Browsed entry whose extension is checked.
- * @returns Whether the descriptor names a model.
- */
-export function isArchiveModel(descriptor: IArchiveEntry): boolean {
-  return getFileExtension(descriptor.name) === ("ogf" satisfies XrayExtension);
-}
-
-/**
- * Checks whether the policy permits audio preview for an archive file.
- *
- * @param descriptor - Browsed entry whose extension is checked.
- * @param policy - Backend-provided archive read policy.
- * @returns Whether the descriptor extension supports audio preview.
- */
-export function isArchiveAudio(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
-  const extension: string = getFileExtension(descriptor.name);
-
-  return policy.audioExtensions.some((candidate: XrayExtension) => candidate === extension);
-}
-
-/**
- * Checks whether the backend decodes an archive file as an image rather than reads it as text.
- *
- * Both lists come from the project's own read policy, so the frontend never has to keep its own copy of
- * what the backend is willing to do. Each entry is a declared spelling, always lower case, which is what
- * `getFileExtension` folds a name's own extension to - so the comparison needs no folding of its own.
- *
- * @param descriptor - Browsed entry whose extension is checked.
- * @param policy - Backend-provided archive read policy.
- * @returns Whether the descriptor extension supports image preview.
- */
-export function isArchiveImage(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): boolean {
-  const extension: string = getFileExtension(descriptor.name);
-
-  return policy.imageExtensions.some((candidate: XrayExtension) => candidate === extension);
-}
-
-/**
- * Determine whether the backend can provide a text preview for an archive file.
+ * Classifies an entry's preview using the backend-provided extensions and size limits.
  *
  * @param descriptor - Browsed entry used to validate type and size.
  * @param policy - Backend-provided archive read capabilities.
  * @returns A discriminated result describing preview support or the reason it is unavailable.
  */
 export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): ArchivePreviewSupport {
+  // Policy extensions are lower case; normalize the entry's spelling once for every preview kind.
+  const extension: string = getFoldedFileExtension(descriptor.name);
+
   // Models are read through the asset roots rather than through this project, so no policy limit applies to them.
-  if (isArchiveModel(descriptor)) {
+  if (extension === EXrayExtension.OGF) {
     return { kind: "model" };
   }
 
-  // Images are decoded rather than read as text, so they answer to their own limit and - unlike text -
-  // do not care whether the entry was stored compressed. Decompression happens on the way out anyway.
-  if (isArchiveAudio(descriptor, policy)) {
+  // Media reads have their own limits. Stored compression is handled by the native readers.
+  if (policy.audioExtensions.some((candidate: XrayExtension) => candidate === extension)) {
     return descriptor.sizeReal > policy.maximumAudioSize
       ? { kind: "too-large", maximumSize: policy.maximumAudioSize }
       : { kind: "audio" };
   }
 
-  if (isArchiveImage(descriptor, policy)) {
+  if (policy.imageExtensions.some((candidate: XrayExtension) => candidate === extension)) {
     return descriptor.sizeReal > policy.maximumImageSize
       ? { kind: "too-large", maximumSize: policy.maximumImageSize }
       : { kind: "image" };
   }
-
-  const extension: string = getFileExtension(descriptor.name);
 
   if (!policy.extensions.some((candidate: XrayExtension) => candidate === extension)) {
     return { kind: "unsupported-extension", extension };

@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnFileService } from "@/core/spawn/services";
@@ -23,7 +24,7 @@ export function SpawnEditorOpenForm({
     application: EApplicationId.SPAWN_EDITOR,
     id: "file",
     title: "Select spawn file",
-    filters: [{ name: "spawn", extensions: ["spawn"] }],
+    filters: [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }],
     isDisabled: isLoading,
   });
 

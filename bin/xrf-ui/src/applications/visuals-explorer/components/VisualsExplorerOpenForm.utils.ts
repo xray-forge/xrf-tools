@@ -1,7 +1,7 @@
 import { IChoiceFormRowOption } from "@/core/ui/form";
 
 /** Which of the two things the picker is opening. */
-export const enum EVisualOpenMode {
+export enum EVisualOpenMode {
   FOLDER = "folder",
   MODEL = "model",
 }

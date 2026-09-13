@@ -6,6 +6,7 @@ import {
   ArchiveReadPolicy,
   ArchiveSharedPayload,
 } from "@/core/ipc/types/xrf-archive";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 
 /**
@@ -16,11 +17,24 @@ import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs"
  */
 export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}): ArchiveReadPolicy {
   return {
-    extensions: ["cmd", "ds", "h", "hs", "json", "ltx", "md", "ps", "s", "script", "vs", "xml"],
+    extensions: [
+      EXrayExtension.CMD,
+      EXrayExtension.DS,
+      EXrayExtension.H,
+      EXrayExtension.HS,
+      EXrayExtension.JSON,
+      EXrayExtension.LTX,
+      EXrayExtension.MD,
+      EXrayExtension.PS,
+      EXrayExtension.S,
+      EXrayExtension.SCRIPT,
+      EXrayExtension.VS,
+      EXrayExtension.XML,
+    ],
     maximumSize: 10 * 1024 * 1024,
-    imageExtensions: ["dds"],
+    imageExtensions: [EXrayExtension.DDS],
     maximumImageSize: 32 * 1024 * 1024,
-    audioExtensions: ["ogg"],
+    audioExtensions: [EXrayExtension.OGG],
     maximumAudioSize: 64 * 1024 * 1024,
     ...overrides,
   };

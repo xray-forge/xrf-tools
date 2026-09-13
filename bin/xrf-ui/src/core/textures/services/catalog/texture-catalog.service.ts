@@ -4,11 +4,12 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
+import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session } from "@/core/ipc/session";
 import {
+  ETextureCatalogMode,
   SessionSnapshot,
   TextureCatalog,
-  TextureCatalogMode,
   TextureMaterialSummary,
   TextureSource,
 } from "@/core/ipc/types/xrf-app";
@@ -114,7 +115,7 @@ export class TextureCatalogService {
   public *openRoot(root: string, assetRoot: Nullable<string> = null): TFlow {
     // The named root joins the listing, not just the resolution: a mod tree carrying only what it changed folds with
     // the tree behind it, which is what makes one row per engine reference the right shape.
-    yield* this.list(createRoots([root, assetRoot]), "roots");
+    yield* this.list(createRoots([root, assetRoot]), ETextureCatalogMode.ROOTS);
   }
 
   /**
@@ -124,7 +125,7 @@ export class TextureCatalogService {
    */
   @LatestFlow("catalog")
   public *openLooseDirectory(directory: string): TFlow {
-    yield* this.list(createRoots([directory]), "looseDirectory");
+    yield* this.list(createRoots([directory]), ETextureCatalogMode.LOOSE_DIRECTORY);
   }
 
   /**
@@ -178,7 +179,7 @@ export class TextureCatalogService {
       this.session.adopt(session);
 
       if (session) {
-        yield* this.list(session.value.roots, session.value.mode);
+        yield* this.list(session.value.roots, toEnumMember(ETextureCatalogMode, session.value.mode));
       }
     } catch (error) {
       this.log.error("Failed to restore browsed texture roots:", error);
@@ -196,7 +197,7 @@ export class TextureCatalogService {
    * @param roots - Roots to list and sweep.
    * @param mode - How to address what is found, which also decides whether a sweep can say anything.
    */
-  private *list(roots: XrayRoots, mode: TextureCatalogMode): TFlow {
+  private *list(roots: XrayRoots, mode: ETextureCatalogMode): TFlow {
     this.catalogState = this.catalogState.asLoading();
     this.summaries = this.summaries.asIdle([]);
 
@@ -215,7 +216,7 @@ export class TextureCatalogService {
 
       // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run
       // and ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
-      if (mode === "roots") {
+      if (mode === ETextureCatalogMode.ROOTS) {
         yield* this.sweep(catalog.value.roots);
       }
     } catch (error: unknown) {

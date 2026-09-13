@@ -5,6 +5,7 @@ import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
@@ -29,7 +30,7 @@ export function SpawnEditorActions({
     // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
     const path: Nullable<string> = await dialog.save({
       title: "Save spawn file",
-      filters: [{ name: "spawn", extensions: ["spawn"] }],
+      filters: [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }],
     });
 
     if (path) {

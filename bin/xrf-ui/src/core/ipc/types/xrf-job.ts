@@ -9,11 +9,15 @@
  * from. The trade is that a `Cancelled` result carries the same fields as a completed one, so its counts describe what
  * happened before the stop and nothing downstream may read them as a finished total.
  */
-export type JobOutcome =
+export enum EJobOutcome {
   /** The operation ran to the end of its work. */
-  | "completed"
+  COMPLETED = "completed",
   /** The operation stopped at a safe boundary because it was asked to. */
-  | "cancelled";
+  CANCELLED = "cancelled",
+}
+
+/** Every `EJobOutcome` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type JobOutcome = `${EJobOutcome}`;
 
 /**
  * One snapshot of a running job, as it crosses to whoever is watching.
@@ -74,8 +78,12 @@ export type ProgressLevel = {
  * hundred entries are level meshes sits at ninety-nine per cent for a third of its run. A reader that cannot tell a
  * count of things from a count of bytes has to hardcode per-operation knowledge to render either one.
  */
-export type ProgressUnit =
+export enum EProgressUnit {
   /** Discrete things: files, entries, checks, volumes. */
-  | "items"
+  ITEMS = "items",
   /** Bytes, rendered through the reader's own size formatting. */
-  | "bytes";
+  BYTES = "bytes",
+}
+
+/** Every `EProgressUnit` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type ProgressUnit = `${EProgressUnit}`;

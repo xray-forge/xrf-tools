@@ -6,6 +6,7 @@
 
 mod command_module;
 mod constants;
+mod enumerations;
 mod exporter;
 mod normalization;
 mod output;

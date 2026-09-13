@@ -5,7 +5,7 @@ import { createRoot } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -26,10 +26,10 @@ const DESCRIPTOR: AssetTextureDescriptor = {
   shape: { width: 256, height: 256, mipmapLevels: 9, format: "DXT5" },
 };
 
-function mockService(): ArchivesService {
+function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([TEXTURE, TEXT])));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([texture, TEXT])));
 
   return service;
 }
@@ -40,6 +40,43 @@ describe("ArchivesService image preview", () => {
       ["plugin:archives|describe_image"]: DESCRIPTOR,
       ["plugin:archives|read_image"]: BYTES,
     });
+  });
+
+  it("does not describe or decode a texture above the image limit, including on retry", async () => {
+    const texture = mockArchiveFileDescriptor({
+      ...TEXTURE,
+      sizeReal: mockArchiveReadPolicy().maximumImageSize + 1,
+    });
+    const service: ArchivesService = mockService(texture);
+
+    await service.selectArchiveFile(texture);
+    await service.retrySelectedFile();
+
+    expect(service.selectedEntry).toEqual(texture);
+    expect(service.content.value).toBeNull();
+    expect(service.content.isLoading).toBe(false);
+    expect(service.content.error).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it("describes and decodes a texture exactly at the image limit", async () => {
+    const texture = mockArchiveFileDescriptor({
+      ...TEXTURE,
+      sizeReal: mockArchiveReadPolicy().maximumImageSize,
+    });
+    const service: ArchivesService = mockService(texture);
+
+    await service.selectArchiveFile(texture);
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", {
+      roots: ROOTS,
+      logicalPath: texture.name,
+    });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_image", {
+      roots: ROOTS,
+      logicalPath: texture.name,
+    });
+    expect(service.content.value?.kind).toBe("image");
   });
 
   it("decodes a texture instead of reading it as text", async () => {

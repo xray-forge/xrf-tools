@@ -148,9 +148,10 @@ impl XrayAssetType {
       | XrayExtension::Cs
       | XrayExtension::Hs
       | XrayExtension::Ds
-      | XrayExtension::Gs => Self::Shader,
+      | XrayExtension::Gs
+      | XrayExtension::Hlsl => Self::Shader,
       XrayExtension::PsStatic => Self::PsStatic,
-      XrayExtension::Script => Self::Script,
+      XrayExtension::Script | XrayExtension::Lua => Self::Script,
       XrayExtension::Seq | XrayExtension::Seq_ => Self::Seq,
       XrayExtension::SndStatic => Self::SndStatic,
       XrayExtension::Spawn => Self::Spawn,
@@ -163,6 +164,8 @@ impl XrayAssetType {
       XrayExtension::Bmp
       | XrayExtension::Tga
       | XrayExtension::Png
+      | XrayExtension::Jpg
+      | XrayExtension::Jpeg
       | XrayExtension::Htm
       | XrayExtension::Html
       | XrayExtension::Json

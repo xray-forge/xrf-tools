@@ -1,9 +1,10 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 
+import { ARCHIVE_VOLUME_FILE_EXTENSIONS } from "@/core/archive/lib";
 import { IChoiceFormRowOption } from "@/core/ui/form";
 
 /** Which of the three things the picker is opening. */
-export const enum EArchiveOpenMode {
+export enum EArchiveOpenMode {
   DIRECTORY = "directory",
   ARCHIVE = "archive",
   /**  A game folder, read as the engine mounts it. */
@@ -29,12 +30,6 @@ export const OPEN_MODE_DESCRIPTIONS: Readonly<Record<EArchiveOpenMode, string>> 
 
 /** Volume extensions offered by the dialog. */
 export const ARCHIVE_FILTERS: Array<DialogFilter> = [
-  {
-    name: "Archive volume",
-    extensions: ["db", "xdb"].flatMap((base: string) => [
-      base,
-      ...Array.from({ length: 10 }, (_, index: number) => `${base}${index}`),
-    ]),
-  },
+  { name: "Archive volume", extensions: [...ARCHIVE_VOLUME_FILE_EXTENSIONS] },
   { name: "All files", extensions: ["*"] },
 ];

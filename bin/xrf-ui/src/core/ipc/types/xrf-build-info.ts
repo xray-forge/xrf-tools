@@ -33,10 +33,14 @@ export type BuildInfo = {
 };
 
 /** Why a binary exists, which is the difference a downloaded artifact cannot show on its own. */
-export type BuildKind =
+export enum EBuildKind {
   /** Built on a developer machine. */
-  | "local"
+  LOCAL = "local",
   /** Continuous integration artifact, built for turnaround rather than size. */
-  | "development"
+  DEVELOPMENT = "development",
   /** Release build, carrying the full optimisation the release profile describes. */
-  | "optimized";
+  OPTIMIZED = "optimized",
+}
+
+/** Every `EBuildKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type BuildKind = `${EBuildKind}`;

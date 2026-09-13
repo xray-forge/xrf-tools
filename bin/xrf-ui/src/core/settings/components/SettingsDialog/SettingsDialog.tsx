@@ -12,7 +12,7 @@ import { SettingsJobsSection } from "./SettingsJobsSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
-const enum ESettingsSection {
+enum ESettingsSection {
   GENERAL = "general",
   STORAGE = "storage",
   IPC = "ipc",

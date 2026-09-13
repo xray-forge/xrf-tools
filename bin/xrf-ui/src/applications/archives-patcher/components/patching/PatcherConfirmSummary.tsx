@@ -3,8 +3,8 @@ import { ReactElement } from "react";
 
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
 import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
-import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
-import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { ArchivePatchConfig, EArchivePackMode } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
@@ -75,7 +75,7 @@ export function PatcherConfirmSummary({
 
           <ArchiveSummaryRow label={"Volumes"}>
             <Typography variant={"body2"}>
-              {config.mode === ARCHIVE_PACK_MODE.Store ? "Stored" : "Compressed"}, up to{" "}
+              {config.mode === EArchivePackMode.STORE ? "Stored" : "Compressed"}, up to{" "}
               {bytesToWholeMegabytes(config.maxVolumeSize)} MB each
             </Typography>
           </ArchiveSummaryRow>

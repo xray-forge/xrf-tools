@@ -4,13 +4,13 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ETextureCatalogMode,
   SessionId,
   SessionRestore,
   SessionSnapshot,
   TextureBrowseSession,
   TextureBuildOutcome,
   TextureCatalog,
-  TextureCatalogMode,
   TextureDescription,
   TextureEncodingComparison,
   TextureMakeBumpOutcome,
@@ -84,7 +84,7 @@ export const texturesCommands = {
    * on screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
    * person browses while it runs rather than waiting on it.
    */
-  open: (sessionId: SessionId, roots: XrayRoots, mode: TextureCatalogMode) =>
+  open: (sessionId: SessionId, roots: XrayRoots, mode: ETextureCatalogMode) =>
     __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>("plugin:textures|open", { sessionId, roots, mode }),
   /** Write one node's pending files: its descriptor, its base texture, or both. */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>

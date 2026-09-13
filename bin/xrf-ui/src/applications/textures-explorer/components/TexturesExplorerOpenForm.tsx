@@ -10,6 +10,7 @@ import {
 } from "@/applications/textures-explorer/lib/texture-open-mode";
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
@@ -79,7 +80,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     }),
     [ETextureOpenMode.TEXTURE]: usePathField({
       application: EApplicationId.TEXTURES_EXPLORER,
-      filters: [{ extensions: ["dds", "thm"], name: "Texture or descriptor" }],
+      filters: [{ extensions: [EXrayExtension.DDS, EXrayExtension.THM], name: "Texture or descriptor" }],
       id: "texture",
       isDisabled: isLoading,
       title: "Select dds texture or thm descriptor",

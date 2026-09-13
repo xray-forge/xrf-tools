@@ -212,14 +212,18 @@ export type VisualSkin = {
  * The distinction is what separates a gap in this crate's coverage from a file that contradicts
  * itself, which is the difference between a sweep noting something and a sweep failing.
  */
-export type VisualSkipCause =
+export enum EVisualSkipCause {
   /**
    * Geometry is stored in a form the packer does not handle, such as a shared vertex or index
    * container living outside the file.
    */
-  | "unsupported"
+  UNSUPPORTED = "unsupported",
   /** Geometry contradicts itself, such as a detail level reaching past the index buffer it indexes. */
-  | "malformed";
+  MALFORMED = "malformed",
+}
+
+/** Every `EVisualSkipCause` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type VisualSkipCause = `${EVisualSkipCause}`;
 
 /** Enclosing sphere in three.js space. */
 export type VisualSphere = {

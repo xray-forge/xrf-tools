@@ -5,9 +5,11 @@ import { describeTextureCompareOutcome } from "@/applications/textures-editor/li
 import { transformError } from "@/core/error/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session } from "@/core/ipc/session";
 import {
   EJobKind,
+  ETextureEncodingFormat,
   SessionId,
   TextureDescription,
   TextureEncodingComparison,
@@ -144,7 +146,9 @@ export class TextureEncodingService {
     this.preview = this.preview.asLoading(null);
 
     try {
-      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readCandidate(comparison.sessionId, chosen));
+      const bytes: ArrayBuffer = yield* call(
+        texturesRawCommands.readCandidate(comparison.sessionId, toEnumMember(ETextureEncodingFormat, chosen))
+      );
 
       if (this.comparison?.sessionId === comparison.sessionId) {
         this.preview = this.preview.asReady(bytes);

@@ -19,10 +19,10 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
+  ETranslationProjectMode,
   TranslationEdit,
   TranslationFormatResult,
   TranslationProjectDescriptor,
-  TranslationProjectMode,
 } from "@/core/ipc/types/xrf-translation";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
@@ -57,7 +57,7 @@ export const translationsCommands = {
    * it names one the same way the open does.
    */
   detectMode: (roots: XrayRoots) =>
-    __TAURI_INVOKE<TranslationProjectMode>("plugin:translations|detect_mode", { roots }),
+    __TAURI_INVOKE<ETranslationProjectMode>("plugin:translations|detect_mode", { roots }),
   /**
    * Normalize the JSON translation sources under a directory.
    *

@@ -5,14 +5,8 @@ import { PackerDirectoryChips } from "@/applications/archives-packer/components/
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
 import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
-import {
-  ARCHIVE_PACK_MODE,
-  ARCHIVE_VOLUME_EXTENSION,
-  ARCHIVE_VOLUME_SUFFIX,
-  HEADER_ENTRY_POINT,
-  readHeaderValue,
-} from "@/core/archive/lib";
-import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
+import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
@@ -91,7 +85,7 @@ export function PackerConfirmSummary({
 
       <ArchiveSummaryRow label={"Compression"}>
         <Typography variant={"body2"}>
-          {config.mode === ARCHIVE_PACK_MODE.Store
+          {config.mode === EArchivePackMode.STORE
             ? "Stored, nothing compressed"
             : "Compressed where the engine expects it"}
           {config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers"}
@@ -128,7 +122,7 @@ export function PackerConfirmSummary({
         </Alert>
       ) : null}
 
-      {entryPoint || config.volumeExtension === ARCHIVE_VOLUME_EXTENSION.Xdb ? null : (
+      {entryPoint || config.volumeExtension === EArchiveVolumeExtension.XDB ? null : (
         <Alert severity={"error"}>
           Without an entry point the engine reads these as encrypted Shadow of Chernobyl archives.
         </Alert>

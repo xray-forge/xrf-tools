@@ -1,13 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { getFileExtension } from "@/lib/path/extension";
+import { getFileExtension, getFoldedFileExtension } from "@/lib/path/extension";
 
 describe("getFileExtension", () => {
-  it("reads whatever follows the last dot of the last segment, folded", () => {
+  it("reads whatever follows the last dot of the last segment", () => {
     expect(getFileExtension("configs\\system.ltx")).toBe("ltx");
     expect(getFileExtension("configs/system.ltx")).toBe("ltx");
     expect(getFileExtension("system.ltx")).toBe("ltx");
-    expect(getFileExtension("TEXTURES\\A.DDS")).toBe("dds");
+  });
+
+  it("answers with the spelling as authored, because a name table records one that way", () => {
+    // The Rust splitter this mirrors leaves folding to whoever compares; `getFoldedFileExtension` is that half.
+    expect(getFileExtension("TEXTURES\\A.DDS")).toBe("DDS");
+    expect(getFoldedFileExtension("TEXTURES\\A.DDS")).toBe("dds");
   });
 
   it("treats a leading dot as an extension, because the engine ships one", () => {

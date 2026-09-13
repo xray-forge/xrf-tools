@@ -1,5 +1,7 @@
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { getXrayExtension } from "@/core/path/extension";
 import { ESyntaxLanguage } from "@/core/syntax/lib/syntax.types";
-import { getFileExtension } from "@/lib/path/extension";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * Extension to grammar, for the file kinds a game archive holds.
@@ -7,25 +9,26 @@ import { getFileExtension } from "@/lib/path/extension";
  * `.s` is Lua rather than a shader language despite living in `shaders/`: those files script the render
  * pipeline through Lua bindings. `.cmd` is a build batch file and is left plain - there are a handful of
  * them in the whole game, which does not pay for a grammar.
+ *
+ * Partial over the vocabulary rather than exhaustive: most declared spellings name binary formats that no
+ * highlighter reads, and listing each one as plain would say nothing.
  */
-const SYNTAX_LANGUAGE_BY_EXTENSION: Record<string, ESyntaxLanguage> = {
-  ltx: ESyntaxLanguage.LTX,
-  script: ESyntaxLanguage.LUA,
-  lua: ESyntaxLanguage.LUA,
-  s: ESyntaxLanguage.LUA,
-  ps: ESyntaxLanguage.SHADER,
-  vs: ESyntaxLanguage.SHADER,
-  gs: ESyntaxLanguage.SHADER,
-  hs: ESyntaxLanguage.SHADER,
-  ds: ESyntaxLanguage.SHADER,
-  cs: ESyntaxLanguage.SHADER,
-  h: ESyntaxLanguage.SHADER,
-  hlsl: ESyntaxLanguage.SHADER,
-  ts: ESyntaxLanguage.TYPESCRIPT,
-  tsx: ESyntaxLanguage.TYPESCRIPT,
-  js: ESyntaxLanguage.TYPESCRIPT,
-  json: ESyntaxLanguage.TYPESCRIPT,
-  xml: ESyntaxLanguage.XML,
+const SYNTAX_LANGUAGE_BY_EXTENSION: Readonly<Partial<Record<EXrayExtension, ESyntaxLanguage>>> = {
+  [EXrayExtension.LTX]: ESyntaxLanguage.LTX,
+  [EXrayExtension.SCRIPT]: ESyntaxLanguage.LUA,
+  [EXrayExtension.LUA]: ESyntaxLanguage.LUA,
+  [EXrayExtension.S]: ESyntaxLanguage.LUA,
+  [EXrayExtension.PS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.VS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.GS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.HS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.DS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.CS]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.H]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.HLSL]: ESyntaxLanguage.SHADER,
+  [EXrayExtension.TS]: ESyntaxLanguage.TYPESCRIPT,
+  [EXrayExtension.JSON]: ESyntaxLanguage.TYPESCRIPT,
+  [EXrayExtension.XML]: ESyntaxLanguage.XML,
 };
 
 /**
@@ -35,5 +38,7 @@ const SYNTAX_LANGUAGE_BY_EXTENSION: Record<string, ESyntaxLanguage> = {
  * @returns The grammar to colour it with, or `PLAIN` when its extension means nothing here.
  */
 export function getSyntaxLanguage(filename: string): ESyntaxLanguage {
-  return SYNTAX_LANGUAGE_BY_EXTENSION[getFileExtension(filename)] ?? ESyntaxLanguage.PLAIN;
+  const extension: Nullable<EXrayExtension> = getXrayExtension(filename);
+
+  return (extension === null ? undefined : SYNTAX_LANGUAGE_BY_EXTENSION[extension]) ?? ESyntaxLanguage.PLAIN;
 }

@@ -5,7 +5,7 @@ import { createRoot } from "@/core/assets/lib";
 import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -27,10 +27,10 @@ const DESCRIPTOR: AudioDescriptor = {
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
 };
 
-function mockService(): ArchivesService {
+function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([SOUND, TEXTURE])));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([sound, TEXTURE])));
 
   return service;
 }
@@ -41,6 +41,43 @@ describe("ArchivesService audio preview", () => {
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
       ["plugin:assets|read_asset"]: BYTES,
     });
+  });
+
+  it("does not describe or read a sound above the audio limit, including on retry", async () => {
+    const sound = mockArchiveFileDescriptor({
+      ...SOUND,
+      sizeReal: mockArchiveReadPolicy().maximumAudioSize + 1,
+    });
+    const service: ArchivesService = mockService(sound);
+
+    await service.selectArchiveFile(sound);
+    await service.retrySelectedFile();
+
+    expect(service.selectedEntry).toEqual(sound);
+    expect(service.content.value).toBeNull();
+    expect(service.content.isLoading).toBe(false);
+    expect(service.content.error).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it("describes and reads a sound exactly at the audio limit", async () => {
+    const sound = mockArchiveFileDescriptor({
+      ...SOUND,
+      sizeReal: mockArchiveReadPolicy().maximumAudioSize,
+    });
+    const service: ArchivesService = mockService(sound);
+
+    await service.selectArchiveFile(sound);
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
+      roots: ROOTS,
+      logicalPath: sound.name,
+    });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:assets|read_asset", {
+      roots: ROOTS,
+      logicalPath: sound.name,
+    });
+    expect(service.content.value?.kind).toBe("audio");
   });
 
   it("routes a sound to the audio commands rather than reading it as text", async () => {

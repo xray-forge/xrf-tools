@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
@@ -24,7 +25,7 @@ export function SpriteEquipmentOpenForm({
     application: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
     id: "sprite",
     title: "Select equipment sprite",
-    filters: [{ name: "dds", extensions: ["dds"] }],
+    filters: [{ name: "dds", extensions: [EXrayExtension.DDS] }],
     isDisabled: isLoading,
   });
 
@@ -32,7 +33,7 @@ export function SpriteEquipmentOpenForm({
     application: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
     id: "system-ltx",
     title: "Select system.ltx",
-    filters: [{ name: "ltx", extensions: ["ltx"] }],
+    filters: [{ name: "ltx", extensions: [EXrayExtension.LTX] }],
     isDisabled: isLoading,
   });
 

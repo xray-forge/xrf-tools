@@ -8,7 +8,7 @@ import {
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
-import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { DialogDescriptor, DialogProjectDescriptor, EDialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
@@ -22,7 +22,7 @@ export const dialogsCommands = {
    * write different files and a heuristic must not be what decides that. This mounts the roots to
    * answer, so it names one the same way the open does.
    */
-  detectMode: (roots: XrayRoots) => __TAURI_INVOKE<DialogProjectMode>("plugin:dialogs|detect_mode", { roots }),
+  detectMode: (roots: XrayRoots) => __TAURI_INVOKE<EDialogProjectMode>("plugin:dialogs|detect_mode", { roots }),
   /**
    * One dialog, with every phrase it declares.
    *

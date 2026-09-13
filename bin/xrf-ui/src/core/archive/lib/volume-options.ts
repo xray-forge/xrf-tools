@@ -1,22 +1,24 @@
-import { ArchivePackMode, ArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
-
-// todo: Improve tauri generator to expose enums instead of string types.
+import { EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 
 /**
- * Typed constants for the generated archive volume extensions.
+ * The extension a volume actually carries, mirroring `ArchiveVolumeExtension::as_str`.
+ *
+ * The vocabulary declares no member for either: a volume is `<name>.db0`, so what is stored here is an extension
+ * stem the writer completes with an index rather than a spelling a file ever carries whole.
  */
-export const ARCHIVE_VOLUME_EXTENSION: { [K in ArchiveVolumeExtension]: K } = {
-  Db: "Db",
-  Xdb: "Xdb",
+export const ARCHIVE_VOLUME_SUFFIX: Readonly<Record<EArchiveVolumeExtension, string>> = {
+  [EArchiveVolumeExtension.DB]: "db",
+  [EArchiveVolumeExtension.XDB]: "xdb",
 };
 
-/** The extension a volume actually carries, mirroring `ArchiveVolumeExtension::as_str`. */
-export const ARCHIVE_VOLUME_SUFFIX: { [K in ArchiveVolumeExtension]: string } = {
-  Db: "db",
-  Xdb: "xdb",
-};
+/** How many indexed volumes a dialog offers per stem, which is as many as a pack run can publish. */
+const VOLUME_INDEX_COUNT: number = 10;
 
-export const ARCHIVE_PACK_MODE: { [K in ArchivePackMode]: K } = {
-  Compress: "Compress",
-  Store: "Store",
-};
+/**
+ * Every file name suffix a published volume set can carry, for the dialog filters that browse one.
+ *
+ * The unindexed stem is offered too, because a set small enough to fit one volume is written without an index.
+ */
+export const ARCHIVE_VOLUME_FILE_EXTENSIONS: ReadonlyArray<string> = Object.values(ARCHIVE_VOLUME_SUFFIX).flatMap(
+  (suffix: string) => [suffix, ...Array.from({ length: VOLUME_INDEX_COUNT }, (_, index: number) => `${suffix}${index}`)]
+);

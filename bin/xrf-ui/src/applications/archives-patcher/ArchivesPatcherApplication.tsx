@@ -1,12 +1,13 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Box, Divider, Stack, Typography } from "@mui/material";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { PATCH_CONFIG_EXTENSIONS, withPatchConfigExtension } from "@/applications/archives-patcher/lib/patch-config";
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
+import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
 import { ArchivesPatchRequest } from "@/core/ipc/types/xrf-app";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -35,10 +36,15 @@ import {
 } from "./components/sections";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
-const IMPORT_CONFIG_FILTERS = [{ name: "Patching configuration", extensions: [...PATCH_CONFIG_EXTENSIONS] }];
+const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
+  { name: "Patching configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
+];
 
 /** Filters the save dialog offers, one entry per format. */
-const EXPORT_CONFIG_FILTERS = PATCH_CONFIG_EXTENSIONS.map((it) => ({ name: it, extensions: [it] }));
+const EXPORT_CONFIG_FILTERS: Array<DialogFilter> = ARCHIVE_CONFIG_EXTENSIONS.map((extension: EXrayExtension) => ({
+  name: extension,
+  extensions: [extension],
+}));
 
 export function ArchivesPatcherApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -125,7 +131,7 @@ export function ArchivesPatcherApplication(): ReactElement {
     });
 
     if (selected) {
-      await patcherService.exportConfig(withPatchConfigExtension(selected));
+      await patcherService.exportConfig(withArchiveConfigExtension(selected));
     }
   }, [patcherService]);
 

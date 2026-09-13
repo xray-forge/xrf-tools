@@ -7,7 +7,7 @@ import { assetsCommands } from "@/core/ipc/commands/assets";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -147,7 +147,7 @@ export class VisualsBrowseService {
     this.visuals = this.visuals.asLoading();
 
     try {
-      const visuals: Array<XrayAsset> = yield* call(assetsCommands.listAssets(roots, "ogf"));
+      const visuals: Array<XrayAsset> = yield* call(assetsCommands.listAssets(roots, EXrayAssetType.OGF));
 
       this.visuals = this.visuals.asReady(visuals);
 

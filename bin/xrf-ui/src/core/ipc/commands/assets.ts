@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { XrayAsset, XrayAssetType, XrayRootProbe, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetType, XrayAsset, XrayRootProbe, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const assetsCommands = {
@@ -14,7 +14,7 @@ export const assetsCommands = {
    *
    * Assets keep the roots's own logical paths, so an entry names the model a `visuals` open can then take verbatim.
    */
-  listAssets: (roots: XrayRoots, kind: XrayAssetType) =>
+  listAssets: (roots: XrayRoots, kind: EXrayAssetType) =>
     __TAURI_INVOKE<Array<XrayAsset>>("plugin:assets|list_assets", { roots, kind }),
   /**
    * Describe what a path is, without mounting it.

@@ -1,11 +1,12 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Box, Divider, Stack, Typography } from "@mui/material";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { PACK_CONFIG_EXTENSIONS, withPackConfigExtension } from "@/applications/archives-packer/lib/pack-config";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
+import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -31,10 +32,15 @@ import {
 } from "./components/sections";
 
 /** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
-const IMPORT_CONFIG_FILTERS = [{ name: "Packing configuration", extensions: [...PACK_CONFIG_EXTENSIONS] }];
+const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
+  { name: "Packing configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
+];
 
 /** Filters the save dialog offers, one entry per format. */
-const EXPORT_CONFIG_FILTERS = PACK_CONFIG_EXTENSIONS.map((it) => ({ name: it, extensions: [it] }));
+const EXPORT_CONFIG_FILTERS: Array<DialogFilter> = ARCHIVE_CONFIG_EXTENSIONS.map((extension: EXrayExtension) => ({
+  name: extension,
+  extensions: [extension],
+}));
 
 export function ArchivesPackerApplication(): ReactElement {
   const packerService: PackerService = useInjection(PackerService);
@@ -100,7 +106,7 @@ export function ArchivesPackerApplication(): ReactElement {
     });
 
     if (selected) {
-      await packerService.exportConfig(withPackConfigExtension(selected));
+      await packerService.exportConfig(withArchiveConfigExtension(selected));
     }
   }, [packerService]);
 

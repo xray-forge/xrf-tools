@@ -11,67 +11,77 @@
  * `psStatic` for a file that is spelled `ps_static` on disk, and a consumer comparing against a name table would
  * then match nothing.
  */
-export type XrayExtension =
-  | "ai"
-  | "anm"
-  | "anm1"
-  | "bat"
-  | "bmp"
-  | "cform"
-  | "cmd"
-  | "cs"
-  | "dds"
-  | "details"
-  | "dm"
-  | "ds"
-  | "efd"
-  | "env_mod"
-  | "fog_vol"
-  | "game"
-  | "geom"
-  | "geomx"
-  | "gs"
-  | "h"
-  | "hom"
-  | "htm"
-  | "html"
-  | "hs"
-  | "ini"
-  | "json"
-  | "lights"
-  | "log"
-  | "ltx"
-  | "md"
-  | "ogf"
-  | "ogg"
-  | "ogm"
-  | "omf"
-  | "png"
-  | "ppe"
-  | "ps"
-  | "ps_static"
-  | "py"
-  | "s"
+export enum EXrayExtension {
+  AI = "ai",
+  ANM = "anm",
+  ANM1 = "anm1",
+  BAT = "bat",
+  BMP = "bmp",
+  C_FORM = "cform",
+  CMD = "cmd",
+  CS = "cs",
+  DDS = "dds",
+  DETAILS = "details",
+  DM = "dm",
+  DS = "ds",
+  EFD = "efd",
+  ENV_MOD = "env_mod",
+  FOG_VOL = "fog_vol",
+  GAME = "game",
+  GEOM = "geom",
+  GEOM_X = "geomx",
+  GS = "gs",
+  H = "h",
+  /** The D3D11 shader sources IX-Ray ships loose in `shaders\d3d11\`, beside the older renderers' `.ps`/`.vs` pairs. */
+  HLSL = "hlsl",
+  HOM = "hom",
+  HTM = "htm",
+  HTML = "html",
+  HS = "hs",
+  INI = "ini",
+  /** Both spellings of one format, because both reach a reader: `image::open` picks its decoder off the path. */
+  JPEG = "jpeg",
+  JPG = "jpg",
+  JSON = "json",
+  LIGHTS = "lights",
+  LOG = "log",
+  LTX = "ltx",
+  LUA = "lua",
+  MD = "md",
+  OGF = "ogf",
+  OGG = "ogg",
+  OGM = "ogm",
+  OMF = "omf",
+  PNG = "png",
+  PPE = "ppe",
+  PS = "ps",
+  PS_STATIC = "ps_static",
+  PY = "py",
+  S = "s",
   /**
    * The trailing underscore is the spelling, not a typo the vocabulary should tidy: `s_` sits beside `s` in a
    * shaders tree and the engine's own readers treat it as another shader source.
    */
-  | "s_"
-  | "script"
-  | "seq"
+  S_ = "s_",
+  SCRIPT = "script",
+  SEQ = "seq",
   /** Named the way `s_` is, beside `seq` in the same trees. */
-  | "seq_"
-  | "snd_static"
-  | "spawn"
-  | "tga"
-  | "thm"
+  SEQ_ = "seq_",
+  SND_STATIC = "snd_static",
+  SPAWN = "spawn",
+  TGA = "tga",
+  THM = "thm",
   /**
    * XRF's own source spelling for a generated config, which `xrf-ltx` looks for beside an absent `.ltx` to tell a
    * config that has not been built yet from one that is missing.
    */
-  | "ts"
-  | "vs"
-  | "wallmarks"
-  | "xml"
+  TS = "ts",
+  VS = "vs",
+  WALLMARKS = "wallmarks",
+  XML = "xml",
   /** The shader library container, `shaders.xr`. Nothing else in a tree carries it. */
-  | "xr";
+  XR = "xr",
+}
+
+/** Every `EXrayExtension` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XrayExtension = `${EXrayExtension}`;

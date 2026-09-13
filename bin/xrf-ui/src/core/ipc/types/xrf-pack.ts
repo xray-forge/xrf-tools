@@ -81,11 +81,15 @@ export type ArchivePackDirectory = {
 };
 
 /** How file payloads are stored in the archive. */
-export type ArchivePackMode =
+export enum EArchivePackMode {
   /** Compress what the engine expects to be compressed and store the rest. */
-  | "Compress"
+  COMPRESS = "Compress",
   /** Store everything, the `-store` flag of xrCompress. */
-  | "Store";
+  STORE = "Store",
+}
+
+/** Every `EArchivePackMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type ArchivePackMode = `${EArchivePackMode}`;
 
 /** What one packing run produced. */
 export type ArchivePackResult = {
@@ -153,11 +157,15 @@ export type ArchivePatchChange = {
 };
 
 /** What a comparison decided about one engine identity. */
-export type ArchivePatchClass =
+export enum EArchivePatchClass {
   /** Only the target has it, so the patch carries it. */
-  | "added"
+  ADDED = "added",
   /** Both have it and their payloads differ, so the patch carries the target's. */
-  | "modified";
+  MODIFIED = "modified",
+}
+
+/** Every `EArchivePatchClass` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type ArchivePatchClass = `${EArchivePatchClass}`;
 
 /** Comparison roots, entry filters, and patch volume settings. */
 export type ArchivePatchConfig = {
@@ -297,4 +305,10 @@ export type ArchiveUnpackResult = {
 };
 
 /** Extension the produced volumes carry, which also decides how the engine treats a missing header. */
-export type ArchiveVolumeExtension = "Db" | "Xdb";
+export enum EArchiveVolumeExtension {
+  DB = "Db",
+  XDB = "Xdb",
+}
+
+/** Every `EArchiveVolumeExtension` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type ArchiveVolumeExtension = `${EArchiveVolumeExtension}`;

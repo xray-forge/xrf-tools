@@ -12,7 +12,7 @@ import { call, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /** The two ways one config can be read. */
-export const enum EConfigsDocumentMode {
+export enum EConfigsDocumentMode {
   /** The file as written, which is what an editor will later change. */
   AUTHORED = "authored",
   /** What its entry point resolves to, which is what the engine loads. */

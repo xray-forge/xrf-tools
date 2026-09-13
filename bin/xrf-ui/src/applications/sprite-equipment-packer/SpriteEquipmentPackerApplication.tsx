@@ -2,6 +2,7 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
@@ -39,7 +40,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     application: EApplicationId.SPRITE_EQUIPMENT_PACKER,
     id: "output",
     title: "Select output sprite",
-    filters: [{ name: "dds", extensions: ["dds"] }],
+    filters: [{ name: "dds", extensions: [EXrayExtension.DDS] }],
     isSave: true,
     isDisabled: isRunning,
   });
@@ -48,7 +49,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     application: EApplicationId.SPRITE_EQUIPMENT_PACKER,
     id: "system-ltx",
     title: "Select system.ltx",
-    filters: [{ name: "ltx", extensions: ["ltx"] }],
+    filters: [{ name: "ltx", extensions: [EXrayExtension.LTX] }],
     isDisabled: isRunning,
   });
 
