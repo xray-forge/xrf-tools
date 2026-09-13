@@ -3,7 +3,7 @@ import { exists } from "@tauri-apps/plugin-fs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { getFieldRecentsStorageKey, getFieldValueStorageKey } from "@/core/ui/form/field-storage";
+import { getFieldRecentsStorageKey, getFieldValueStorageKey } from "@/core/storage";
 import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
 import { IPathFieldRecents } from "@/core/ui/form/path-recents";

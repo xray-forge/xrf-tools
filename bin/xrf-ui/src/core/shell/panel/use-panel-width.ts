@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { clampPanelWidth } from "@/core/shell/panel/panel-width";
+import { getPanelWidthStorageKey } from "@/core/storage";
 import { PANEL } from "@/core/theme/tokens";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { useWindowWidth } from "@/lib/react";
@@ -17,7 +18,7 @@ export interface IPanelWidth {
  * a property of the current window, not of what the user asked for.
  */
 function readPreferredWidth(side: TEditorPanelSide): number {
-  const stored: Nullable<string> = getLocalStorageValue(`xrf.panels.${side}.width`);
+  const stored: Nullable<string> = getLocalStorageValue(getPanelWidthStorageKey(side));
   const parsed: number = stored === null ? NaN : Number(stored);
 
   return Number.isFinite(parsed) ? Math.min(PANEL.maxWidth, Math.max(PANEL.minWidth, parsed)) : PANEL.defaultWidth;
@@ -40,7 +41,7 @@ export function usePanelWidth(side: TEditorPanelSide, openCount: number): IPanel
       const clamped: number = clampPanelWidth(next, windowWidth, openCount);
 
       setPreferred(clamped);
-      setLocalStorageValue(`xrf.panels.${side}.width`, String(clamped));
+      setLocalStorageValue(getPanelWidthStorageKey(side), String(clamped));
     },
     [openCount, side, windowWidth]
   );

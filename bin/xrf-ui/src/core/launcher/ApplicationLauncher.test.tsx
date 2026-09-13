@@ -209,7 +209,7 @@ describe("ApplicationLauncher", () => {
   });
 
   it("takes the view it was left in", () => {
-    window.localStorage.setItem("xrf-catalog-view", "grid");
+    window.localStorage.setItem("xrf.preference.catalog-view", "grid");
 
     const { queryByRole } = renderLauncher();
 
@@ -217,7 +217,7 @@ describe("ApplicationLauncher", () => {
   });
 
   it("falls back to the dense rows for a view it does not recognise", () => {
-    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
+    window.localStorage.setItem("xrf.preference.catalog-view", "spreadsheet");
 
     const { getByRole } = renderLauncher();
 
@@ -260,7 +260,7 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Grid view" }));
 
     expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
-    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
+    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("grid");
     // The same tools in the same catalog order: only their drawing changed.
     expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual([
       "Archives editor",
@@ -276,6 +276,6 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Row view" }));
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("rows");
+    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("rows");
   });
 });

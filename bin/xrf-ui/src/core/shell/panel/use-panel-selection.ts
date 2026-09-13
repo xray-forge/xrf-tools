@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
+import { getPanelSelectionStorageKey } from "@/core/storage";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
 
@@ -23,7 +24,7 @@ export function usePanelSelection(
   panels: Array<IEditorPanel>,
   selectionScope: string
 ): IPanelSelection {
-  const storageKey: string = `xrf.panels.${side}.${selectionScope}`;
+  const storageKey: string = getPanelSelectionStorageKey(side, selectionScope);
 
   const [activeId, setActiveId] = useState<Nullable<string>>(null);
 

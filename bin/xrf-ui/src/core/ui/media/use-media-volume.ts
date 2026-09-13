@@ -1,10 +1,8 @@
 import { useCallback, useState } from "react";
 
+import { MEDIA_VOLUME_STORAGE_KEY } from "@/core/storage";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
-
-/** One level for every media surface: setting playback quiet is a statement about the application, not about a file. */
-const VOLUME_STORAGE_KEY: string = "xrf.media.volume";
 
 const DEFAULT_VOLUME: number = 1;
 
@@ -29,7 +27,7 @@ export function useMediaVolume(): IMediaVolume {
     const clamped: number = clampVolume(next);
 
     setValue(clamped);
-    setLocalStorageValue(VOLUME_STORAGE_KEY, String(clamped));
+    setLocalStorageValue(MEDIA_VOLUME_STORAGE_KEY, String(clamped));
   }, []);
 
   return { value, set };
@@ -44,7 +42,7 @@ export function useMediaVolume(): IMediaVolume {
  * @returns The stored level, or the default when there is nothing usable to read.
  */
 function readStoredVolume(): number {
-  const raw: Nullable<string> = getLocalStorageValue(VOLUME_STORAGE_KEY);
+  const raw: Nullable<string> = getLocalStorageValue(MEDIA_VOLUME_STORAGE_KEY);
   const parsed: number = raw === null ? Number.NaN : Number.parseFloat(raw);
 
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : DEFAULT_VOLUME;

@@ -9,6 +9,7 @@ import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } fr
 import { BrowserRouter } from "react-router-dom";
 
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
+import { THEME_STORAGE_KEY } from "@/core/storage";
 import { createApplicationStyleCache, createApplicationTheme } from "@/core/theme";
 import { isDevelopmentBuild } from "@/lib/env";
 import { Nullable } from "@/lib/types/general";
@@ -39,7 +40,7 @@ export function ApplicationProvider({
         <ThemeProvider
           defaultMode={"dark"}
           disableTransitionOnChange={true}
-          modeStorageKey={"theme"}
+          modeStorageKey={THEME_STORAGE_KEY}
           noSsr={true}
           theme={theme}
         >

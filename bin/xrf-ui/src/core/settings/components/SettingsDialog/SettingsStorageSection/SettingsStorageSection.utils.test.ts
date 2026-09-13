@@ -52,10 +52,10 @@ describe("measureLocalStorage", () => {
   it("puts every key in exactly one group, so the parts sum to the whole", () => {
     window.localStorage.setItem("xrf.form-recents.configs-verifier.directory", "[]");
     window.localStorage.setItem("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
-    window.localStorage.setItem("xrf-gamedata-path", "C:\\gamedata");
+    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
     window.localStorage.setItem("xrf.panels.left.width", "320");
-    window.localStorage.setItem("xrf-dev-mode", "true");
-    window.localStorage.setItem("theme", "dark");
+    window.localStorage.setItem("xrf.preference.dev-mode", "true");
+    window.localStorage.setItem("xrf.preference.theme", "dark");
     window.localStorage.setItem("something-nobody-grouped", "1");
 
     const usage: IStorageUsage = measureLocalStorage();
@@ -69,9 +69,9 @@ describe("measureLocalStorage", () => {
   it("classifies each kind of key where it belongs", () => {
     window.localStorage.setItem("xrf.form-recents.configs-verifier.directory", "[]");
     window.localStorage.setItem("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
-    window.localStorage.setItem("xrf-gamedata-path", "C:\\gamedata");
+    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
     window.localStorage.setItem("xrf.panels.left.width", "320");
-    window.localStorage.setItem("theme", "dark");
+    window.localStorage.setItem("xrf.preference.theme", "dark");
 
     const usage: IStorageUsage = measureLocalStorage();
 
@@ -80,9 +80,9 @@ describe("measureLocalStorage", () => {
     ]);
     expect(keysOf(findGroup(usage, EStorageGroup.FORM_VALUES))).toEqual(["xrf.form.configs-verifier.directory"]);
     expect(keysOf(findGroup(usage, EStorageGroup.LAYOUT))).toEqual(["xrf.panels.left.width"]);
-    expect(keysOf(findGroup(usage, EStorageGroup.PREFERENCES))).toEqual(["theme"]);
+    expect(keysOf(findGroup(usage, EStorageGroup.PREFERENCES))).toEqual(["xrf.preference.theme"]);
     // A key from a retired feature has no group of its own any more, which is what the catch-all is for.
-    expect(keysOf(findGroup(usage, EStorageGroup.OTHER))).toEqual(["xrf-gamedata-path"]);
+    expect(keysOf(findGroup(usage, EStorageGroup.OTHER))).toEqual(["test-gamedata-path"]);
   });
 
   it("gives an unclaimed key to the catch-all rather than dropping it", () => {
@@ -109,9 +109,9 @@ describe("groupStorageEntries", () => {
     const entries: Array<IStorageEntry> = [
       { key: "xrf.form-recents.a.b", size: 10 },
       { key: "xrf.form.a.b", size: 20 },
-      { key: "xrf-gamedata-path", size: 40 },
+      { key: "test-gamedata-path", size: 40 },
       { key: "xrf.panels.left.width", size: 80 },
-      { key: "theme", size: 160 },
+      { key: "xrf.preference.theme", size: 160 },
       { key: "nothing-claims-this", size: 320 },
     ];
 
@@ -148,7 +148,7 @@ describe("clearStorageGroup", () => {
   it("empties its own keys and leaves every other group alone", () => {
     window.localStorage.setItem("xrf.form-recents.a.b", "[]");
     window.localStorage.setItem("xrf.form.a.b", "C:\\gamedata");
-    window.localStorage.setItem("xrf-gamedata-path", "C:\\gamedata");
+    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
 
     const usage: IStorageUsage = measureLocalStorage();
 
@@ -156,6 +156,6 @@ describe("clearStorageGroup", () => {
 
     expect(window.localStorage.getItem("xrf.form-recents.a.b")).toBeNull();
     expect(window.localStorage.getItem("xrf.form.a.b")).toBe("C:\\gamedata");
-    expect(window.localStorage.getItem("xrf-gamedata-path")).toBe("C:\\gamedata");
+    expect(window.localStorage.getItem("test-gamedata-path")).toBe("C:\\gamedata");
   });
 });

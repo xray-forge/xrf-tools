@@ -80,7 +80,7 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("hides the jobs listing outside dev mode, where it answers nothing a person needs", () => {
-    window.localStorage.setItem("xrf-dev-mode", "false");
+    window.localStorage.setItem("xrf.preference.dev-mode", "false");
 
     const { queryByLabelText } = renderFrame(<div>bare editor</div>);
 

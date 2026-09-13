@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import {
-  IPC_METRICS,
-  IPC_PROFILING_STORAGE_KEY,
-  isIpcProfilingEnabled,
-  setIpcProfilingEnabled,
-} from "@/core/ipc/metrics";
+import { IPC_METRICS, isIpcProfilingEnabled, setIpcProfilingEnabled } from "@/core/ipc/metrics";
 import { IpcMetricsService } from "@/core/ipc/services/metrics/metrics.service";
+import { IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("IpcMetricsService", () => {

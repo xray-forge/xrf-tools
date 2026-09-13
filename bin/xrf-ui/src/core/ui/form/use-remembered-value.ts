@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { getFieldValueStorageKey } from "@/core/ui/form/field-storage";
+import { getFieldValueStorageKey } from "@/core/storage";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Nullable } from "@/lib/types/general";
 

@@ -1,6 +1,6 @@
 ((): void => {
   function getStoredThemeMode(): string {
-    const mode = window.localStorage.getItem("theme");
+    const mode = window.localStorage.getItem("xrf.preference.theme");
 
     if (mode === "light" || mode === "dark") {
       return mode;

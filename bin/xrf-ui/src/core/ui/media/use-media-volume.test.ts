@@ -43,7 +43,7 @@ describe("useMediaVolume", () => {
   it("falls back to full volume rather than silence when the stored value is unusable", () => {
     // Silence recovered from a corrupt value looks like broken playback, and sends the user hunting for a mute button.
     for (const stored of ["", "loud", "2", "-0.5", "NaN"]) {
-      window.localStorage.setItem("xrf.media.volume", stored);
+      window.localStorage.setItem("xrf.preference.media-volume", stored);
 
       const volume: IMediaVolume = renderHook(() => useMediaVolume()).result.current;
 

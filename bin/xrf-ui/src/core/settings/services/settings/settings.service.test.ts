@@ -17,7 +17,7 @@ describe("SettingsService", () => {
   });
 
   it("lets a stored choice override the build default", () => {
-    window.localStorage.setItem("xrf-dev-mode", "false");
+    window.localStorage.setItem("xrf.preference.dev-mode", "false");
 
     const { service } = mockInjectedService(SettingsService);
 
@@ -30,7 +30,7 @@ describe("SettingsService", () => {
     service.setDevModeEnabled(false);
 
     expect(service.isDevModeEnabled).toBe(false);
-    expect(window.localStorage.getItem("xrf-dev-mode")).toBe("false");
+    expect(window.localStorage.getItem("xrf.preference.dev-mode")).toBe("false");
     expect(service.isDevModeEnabled).toBe(false);
   });
 
@@ -43,7 +43,7 @@ describe("SettingsService", () => {
   it("refuses a catalog view this build does not know, rather than handing it to the launcher", () => {
     // Written by an older build, a hand edit, or a half-finished rename. `JSON.parse` would have
     // thrown on it here, taking the whole service down while it was being constructed.
-    window.localStorage.setItem("xrf-catalog-view", "spreadsheet");
+    window.localStorage.setItem("xrf.preference.catalog-view", "spreadsheet");
 
     const { service } = mockInjectedService(SettingsService);
 
@@ -56,7 +56,7 @@ describe("SettingsService", () => {
     service.setCatalogView("grid");
 
     expect(service.catalogView).toBe("grid");
-    expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
+    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("grid");
     expect(mockInjectedService(SettingsService).service.catalogView).toBe("grid");
   });
 });

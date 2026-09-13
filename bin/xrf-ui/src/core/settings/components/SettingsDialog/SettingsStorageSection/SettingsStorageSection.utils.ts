@@ -1,4 +1,4 @@
-import { isFieldRecentsStorageKey, isFieldValueStorageKey } from "@/core/ui/form/field-storage";
+import { EStorageNamespace, isInStorageNamespace } from "@/core/storage";
 import { setLocalStorageValue } from "@/lib/local-storage";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 import { Optional } from "@/lib/types/general";
@@ -60,26 +60,12 @@ export interface IStorageUsage {
 }
 
 /**
- * Keys that are one switch each.
+ * Every group, in the order the section lists them.
  *
- * Named rather than matched by prefix because they are not spelled alike: three naming styles reached this list, and a
- * table is the honest way to say so.
- */
-const PREFERENCE_KEYS: ReadonlyArray<string> = [
-  // todo: Standardize naming approach, kebab vs dot split.
-  "theme",
-  "xrf-catalog-view",
-  "xrf-dev-mode",
-  "xrf-ipc-profiling",
-  "xrf.media.volume",
-];
-
-/**
- * Every group, most specific first.
- *
- * The last one matches everything, which is what makes it the catch-all: a key no earlier group claims still has to
- * appear, or the parts stop summing to the whole and the section lies by omission. Said as a predicate rather than
- * left to position, so reordering this table cannot silently move keys into it.
+ * One per namespace in `core/storage/keys.ts`, and the namespaces are disjoint, so every group but the last answers on
+ * its own and reordering this table cannot move a key. The last matches everything, which is what makes it the
+ * catch-all: a key no earlier group claims still has to appear, or the parts stop summing to the whole and the section
+ * lies by omission.
  */
 export const STORAGE_GROUPS: ReadonlyArray<IStorageGroupDescriptor> = [
   {
@@ -87,28 +73,28 @@ export const STORAGE_GROUPS: ReadonlyArray<IStorageGroupDescriptor> = [
     id: EStorageGroup.RECENT_PATHS,
     isClearable: true,
     label: "Recent paths",
-    matches: isFieldRecentsStorageKey,
+    matches: (key: string) => isInStorageNamespace(key, EStorageNamespace.FORM_RECENTS),
   },
   {
     description: "The value each form field is holding, restored the next time it opens.",
     id: EStorageGroup.FORM_VALUES,
     isClearable: true,
     label: "Remembered form values",
-    matches: isFieldValueStorageKey,
+    matches: (key: string) => isInStorageNamespace(key, EStorageNamespace.FORM),
   },
   {
     description: "Which side panels are open, and how wide they are.",
     id: EStorageGroup.LAYOUT,
     isClearable: true,
     label: "Layout",
-    matches: (key: string) => key.startsWith("xrf.panels."),
+    matches: (key: string) => isInStorageNamespace(key, EStorageNamespace.PANELS),
   },
   {
     description: "Theme, developer mode, catalog view, playback volume.",
     id: EStorageGroup.PREFERENCES,
     isClearable: false,
     label: "Preferences",
-    matches: (key: string) => PREFERENCE_KEYS.includes(key),
+    matches: (key: string) => isInStorageNamespace(key, EStorageNamespace.PREFERENCE),
   },
   {
     description: "Anything else the application has left here, including keys left by features that are gone.",
