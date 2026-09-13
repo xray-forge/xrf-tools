@@ -37,18 +37,13 @@ export function TranslationsEditorWorkspace(): ReactElement {
   // Not memoised: the values come from observables, so a cache on props would keep rows from before the last edit.
   const rows: Array<ITranslationRow> =
     selectedFile && file
-      ? Object.keys(file.entries).map((id: string): ITranslationRow => {
-          const pending: Record<string, Nullable<string>> | undefined =
-            translationsService.edits[selectedFile]?.[target];
-
-          return {
-            id,
-            reference: translationsService.resolveValue(selectedFile, reference, id),
-            target: translationsService.resolveValue(selectedFile, target, id),
-            isEdited: Boolean(pending && id in pending),
-            error: getErrorOf(id),
-          };
-        })
+      ? Object.keys(file.entries).map((id: string): ITranslationRow => ({
+          id,
+          reference: translationsService.resolveValue(selectedFile, reference, id),
+          target: translationsService.resolveValue(selectedFile, target, id),
+          isEdited: translationsService.hasEdit(selectedFile, target, id),
+          error: getErrorOf(id),
+        }))
       : [];
 
   const onCommit = useCallback(

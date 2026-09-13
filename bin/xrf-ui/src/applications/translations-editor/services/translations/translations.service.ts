@@ -1,39 +1,20 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
+import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
 import { describeRoots } from "@/core/assets/lib/roots";
 import { transformError } from "@/core/error/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { SessionSnapshot, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
-import {
-  TranslationEdit,
-  TranslationProjectDescriptor,
-  TranslationProjectMode,
-  TranslationVariant,
-} from "@/core/ipc/types/xrf-translation";
+import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable, Optional } from "@/lib/types/general";
-
-/**
- * How the engine spells a line break inside a string table, and therefore how a multi-line entry is
- * shown as one editable line and split back again.
- */
-const LINE_BREAK: string = "\\n";
-
-/** Pending edits for one logical file, grouped by the language each belongs to. */
-export type TTranslationFileEdits = Record<string, Array<TranslationEdit>>;
-
-/** `null` marks an entry the user removed, which is not the same as one they blanked. */
-export type TPendingValue = Nullable<string>;
-
-/** Uncommitted work, keyed file to language to id. */
-export type TPendingEdits = Record<string, Record<string, Record<string, TPendingValue>>>;
+import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class TranslationsService {
@@ -56,17 +37,17 @@ export class TranslationsService {
    * Edits made but not written.
    */
   @Observable()
-  public edits: TPendingEdits = {};
+  private draft: TranslationDraft = TranslationDraft.empty();
 
   @Observable()
   public savingFile: Nullable<string> = null;
 
-  /** Files holding edits that are not on disk. */
+  /**
+   * @returns Files with recorded edits, in the order used by Save all.
+   */
   @Computed()
   public get dirtyFiles(): Array<string> {
-    return Object.keys(this.edits).filter((file: string) =>
-      Object.values(this.edits[file]).some((byId: Record<string, TPendingValue>) => Object.keys(byId).length > 0)
-    );
+    return this.draft.dirtyFiles;
   }
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
@@ -112,47 +93,45 @@ export class TranslationsService {
     }
   }
 
-  /** The value to show for a cell: what is pending if anything is, otherwise what is on disk. */
-  public resolveValue(file: string, language: string, id: string): TPendingValue {
-    const pending: Optional<Record<string, TPendingValue>> = this.edits[file]?.[language];
+  /**
+   * @param file - Logical translation file name.
+   * @param language - Language containing the cell.
+   * @param id - Translation entry identifier.
+   * @returns The text to display, or `null` for an absent or removed cell.
+   */
+  public resolveValue(file: string, language: string, id: string): Nullable<string> {
+    const committed = this.projectState.value?.value.files[file]?.entries[id]?.[language] ?? null;
 
-    if (pending && id in pending) {
-      return pending[id];
-    }
-
-    const committed: Nullable<TranslationVariant> = this.committedValue(file, language, id);
-
-    return typeof committed === "string" ? committed : Array.isArray(committed) ? committed.join(LINE_BREAK) : null;
-  }
-
-  @BoundAction()
-  public setEdit(file: string, language: string, id: string, value: TPendingValue): void {
-    this.edits = {
-      ...this.edits,
-      [file]: {
-        ...this.edits[file],
-        [language]: { ...this.edits[file]?.[language], [id]: value },
-      },
-    };
-  }
-
-  @BoundAction()
-  public discardFile(file: string): void {
-    const { [file]: _discarded, ...rest } = this.edits;
-
-    this.edits = rest;
+    return this.draft.resolveValue(file, language, id, committed);
   }
 
   /**
-   * Send an edited value back in the shape the entry already had.
+   * @param file - Logical translation file name.
+   * @param language - Language containing the cell.
+   * @param id - Translation entry identifier.
+   * @returns Whether the current draft overrides the cell's committed value.
    */
-  private toVariant(file: string, language: string, id: string, value: string): TranslationVariant {
-    return Array.isArray(this.committedValue(file, language, id)) ? value.split(LINE_BREAK) : value;
+  public hasEdit(file: string, language: string, id: string): boolean {
+    return this.draft.hasEdit(file, language, id);
   }
 
-  /** What is on disk for a cell, before any pending edit is laid over it. */
-  private committedValue(file: string, language: string, id: string): Nullable<TranslationVariant> {
-    return this.projectState.value?.value.files[file]?.entries[id]?.[language] ?? null;
+  /**
+   * @param file - Logical translation file name.
+   * @param language - Language containing the cell.
+   * @param id - Translation entry identifier.
+   * @param value - Replacement text, or `null` to remove the entry; an empty string keeps it present.
+   */
+  @BoundAction()
+  public setEdit(file: string, language: string, id: string, value: Nullable<string>): void {
+    this.draft = this.draft.withEdit(file, language, id, value);
+  }
+
+  /**
+   * @param file - Logical translation file name to clear, whether or not it has edits.
+   */
+  @BoundAction()
+  public discardFile(file: string): void {
+    this.draft = this.draft.withoutFile(file);
   }
 
   /** Report the first character a language cannot hold, or `null` when the value is writable. */
@@ -180,7 +159,7 @@ export class TranslationsService {
       this.log.info("Translations project opened:", Object.keys(response.value.files).length, "files");
 
       this.projectState = this.projectState.asReady(response);
-      this.edits = {};
+      this.draft = TranslationDraft.empty();
     } catch (error) {
       this.log.error("Failed to open translations project:", error);
 
@@ -222,26 +201,16 @@ ${transformError(error).message}`,
 
   /** Shares the write implementation without re-entering the project's flow lane. */
   private *saveFileEdits(file: string): TFlow<boolean> {
-    const pending: Record<string, Record<string, TPendingValue>> | undefined = this.edits[file];
+    const edits: Nullable<TTranslationFileEdits> = this.draft.toFileEdits(
+      file,
+      this.projectState.value?.value.files[file] ?? null
+    );
 
-    if (!pending) {
+    if (!edits) {
       return true;
     }
 
     this.log.info("Saving translations file:", file);
-
-    const edits: TTranslationFileEdits = Object.fromEntries(
-      Object.entries(pending).map(([language, byId]: [string, Record<string, TPendingValue>]) => [
-        language,
-        Object.entries(byId).map(([id, value]: [string, TPendingValue]): TranslationEdit => {
-          if (value === null) {
-            return { kind: "remove", id };
-          }
-
-          return { kind: "set", id, value: this.toVariant(file, language, id, value) };
-        }),
-      ])
-    );
 
     this.savingFile = file;
 
@@ -301,7 +270,7 @@ ${transformError(error).message}`,
       yield* call(this.session.close());
 
       this.projectState = this.projectState.asIdle();
-      this.edits = {};
+      this.draft = TranslationDraft.empty();
 
       this.log.info("Translations project closed");
     } catch (error: unknown) {

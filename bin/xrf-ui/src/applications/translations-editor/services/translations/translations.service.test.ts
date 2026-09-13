@@ -53,6 +53,51 @@ describe("TranslationsService", () => {
     setMockInvokeResponses({ ["plugin:translations|get_project"]: mockSessionResponse(() => null) });
   });
 
+  it("resolves and saves draft values using the current committed variant shapes", async () => {
+    const { service } = mockInjectedService(TranslationsService);
+    const project: TranslationProjectDescriptor = {
+      ...PROJECT,
+      files: {
+        [FILE]: {
+          sources: PROJECT.files[FILE].sources,
+          entries: { lines: { eng: ["first", "second"] }, blank: { eng: "text" }, removed: { eng: "text" } },
+        },
+      },
+    };
+
+    setMockInvokeResponses({
+      ["plugin:translations|open_project"]: mockSessionResponse(project),
+      ["plugin:translations|save_file"]: () => ({ kind: "saved", project: mockSessionSnapshot(project) }),
+    });
+
+    await service.openProject(createRoots([FIRST_ROOT]), "source");
+
+    expect(service.resolveValue(FILE, LANGUAGE, "lines")).toBe("first\\nsecond");
+
+    service.setEdit(FILE, LANGUAGE, "lines", "new\\ntext");
+    service.setEdit(FILE, LANGUAGE, "blank", "");
+    service.setEdit(FILE, LANGUAGE, "removed", null);
+
+    expect(service.resolveValue(FILE, LANGUAGE, "lines")).toBe("new\\ntext");
+    expect(service.resolveValue(FILE, LANGUAGE, "blank")).toBe("");
+    expect(service.resolveValue(FILE, LANGUAGE, "removed")).toBeNull();
+    expect(service.hasEdit(FILE, LANGUAGE, "removed")).toBe(true);
+    expect(await flowResult(service.saveFile(FILE))).toBe(true);
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:translations|save_file", {
+      sessionId: expect.any(String),
+      file: FILE,
+      edits: {
+        eng: [
+          { kind: "set", id: "lines", value: ["new", "text"] },
+          { kind: "set", id: "blank", value: "" },
+          { kind: "remove", id: "removed" },
+        ],
+      },
+    });
+    expect(service.hasEdit(FILE, LANGUAGE, "removed")).toBe(false);
+    expect(service.resolveValue(FILE, LANGUAGE, "lines")).toBe("first\\nsecond");
+  });
+
   it("saves all dirty files sequentially and excludes another batch", async () => {
     const { service } = mockInjectedService(TranslationsService);
     let finish: (value: TranslationSaveOutcome) => void = noop;
@@ -240,7 +285,7 @@ describe("TranslationsService", () => {
     expect(service.project.isLoading).toBe(false);
     expect(service.project.error).toBeNull();
     expect(service.project.value).toBeNull();
-    expect(service.edits).toEqual({});
+    expect(service.hasEdit(FILE, LANGUAGE, ID)).toBe(false);
     expect(service.dirtyFiles).toEqual([]);
   });
 
@@ -270,7 +315,7 @@ describe("TranslationsService", () => {
     expect(service.project.isLoading).toBe(false);
     expect(service.project.error).toBeNull();
     expect(service.project.value).toBeNull();
-    expect(service.edits).toEqual({});
+    expect(service.hasEdit(FILE, LANGUAGE, ID)).toBe(false);
     expect(service.savingFile).toBeNull();
   });
 });
