@@ -1,44 +1,28 @@
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { useInjection } from "@wirestate/react";
+import { ReactElement, useEffect } from "react";
 
 import { ApplicationHelpButton } from "@/core/help/components/ApplicationHelp/ApplicationHelpButton";
 import { ApplicationHelpDialog } from "@/core/help/components/ApplicationHelp/ApplicationHelpDialog";
+import { HelpService } from "@/core/help/services/help";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * The current application's help: the caption-row button, the `F1` shortcut, and the dialog.
+ * The current application's help: the caption-row button and the dialog.
  *
- * Help always describes the tool that is open, so outside an application with authored help there is
- * no affordance at all rather than a disabled one.
+ * `F1` is no longer handled here - it is the `help/open` command, dispatched by `core/keybinds` against the same
+ * service this button calls, so the shortcut and the button cannot disagree about whether help exists.
  */
 export function ApplicationHelp(): Nullable<ReactElement> {
+  const helpService: HelpService = useInjection(HelpService);
   const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
   const help = application?.help;
 
-  const [isOpen, setIsOpen] = useState(false);
-
-  const close = useCallback(() => setIsOpen(false), []);
-
-  // Whatever was being read belonged to the application it was read in.
-  useEffect(() => close(), [application?.id, close]);
-
-  useEffect(() => {
-    if (!help) {
-      return;
-    }
-
-    function onKeyDown(event: KeyboardEvent): void {
-      if (event.key === "F1") {
-        event.preventDefault();
-        setIsOpen(true);
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [help]);
+  useEffect(
+    () => helpService.setApplication(application?.id ?? null, Boolean(help)),
+    [application?.id, help, helpService]
+  );
 
   if (!application || !help) {
     return null;
@@ -46,9 +30,14 @@ export function ApplicationHelp(): Nullable<ReactElement> {
 
   return (
     <>
-      <ApplicationHelpButton onClick={() => setIsOpen(true)} />
+      <ApplicationHelpButton onClick={helpService.open} />
 
-      <ApplicationHelpDialog application={application} help={help} isOpen={isOpen} onClose={close} />
+      <ApplicationHelpDialog
+        application={application}
+        help={help}
+        isOpen={helpService.isOpen}
+        onClose={helpService.close}
+      />
     </>
   );
 }

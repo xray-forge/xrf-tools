@@ -2,7 +2,7 @@ import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { Alert, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { format } from "date-fns";
-import { ReactElement, useCallback, useEffect } from "react";
+import { ReactElement, useCallback } from "react";
 
 import {
   IEquipmentPngDescriptor,
@@ -45,19 +45,6 @@ export function EquipmentSpriteEditor({
 
   // Closing does not navigate: the application shows its own picker again once nothing is open.
   const onClose = useCallback(() => spriteEquipmentService.closeEquipmentProject(), [spriteEquipmentService]);
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent): void {
-      if (event.key === "F5" && !isLoading) {
-        event.preventDefault();
-        void onReload();
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isLoading, onReload]);
 
   useEditorStatus(
     spriteImage

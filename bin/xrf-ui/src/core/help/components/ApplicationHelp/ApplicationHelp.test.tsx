@@ -1,8 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Container } from "@wirestate/core";
 
 import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";
+import { HelpService } from "@/core/help/services/help";
+import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("ApplicationHelp", () => {
@@ -30,10 +33,12 @@ describe("ApplicationHelp", () => {
     expect(getByText("Typical workflow")).toBeInTheDocument();
   });
 
-  it("opens on F1 like every desktop application", async () => {
-    const { getByText } = renderWithProviders(<ApplicationHelp />, { route: "/archives-explorer" });
+  it("opens when the help command runs", async () => {
+    const container: Container = mockContainer();
+    const { getByText } = renderWithProviders(<ApplicationHelp />, { container, route: "/archives-explorer" });
 
-    fireEvent.keyDown(window, { key: "F1" });
+    // `F1` reaching this is the dispatcher's, and is tested there against the command rather than the dialog.
+    act(() => container.get(HelpService).open());
 
     await waitFor(() => expect(getByText("Typical workflow")).toBeInTheDocument());
   });

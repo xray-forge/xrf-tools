@@ -4,6 +4,7 @@ import { IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBounda
 
 /**
  * Last-resort recovery UI that stays independent of the application provider stack.
+ * todo: Render header controls to close the app and move the window.
  */
 export function RootCrash({ error, onRetry }: IErrorBoundaryFallbackProps): ReactElement {
   return (

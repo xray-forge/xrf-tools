@@ -20,6 +20,8 @@ export const CATALOG_VIEW_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "ipc-profiling");
 /** How loud playback is. */
 export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "media-volume");
+/** Chords a person bound themselves, as one command id to chords map. */
+export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");
 
 /**
  * @param application - Application the field belongs to.

@@ -12,7 +12,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { ApplicationLauncherCatalog } from "./components/ApplicationLauncherCatalog";
 import { ApplicationLauncherHeader } from "./components/ApplicationLauncherHeader";
-import { ICatalogEntry, IUseApplicationCatalog, useApplicationCatalog, useSearchHotkey } from "./lib";
+import { ICatalogEntry, IUseApplicationCatalog, useApplicationCatalog, useLauncherSearchFocus } from "./lib";
 
 interface IApplicationLauncherProps extends BaseComponentProps {
   applications: ReadonlyArray<IApplicationDescriptor>;
@@ -46,7 +46,7 @@ export function ApplicationLauncher({
 
   const catalog: IUseApplicationCatalog = useApplicationCatalog({ applications, groups, onSelect: onSelectResult });
 
-  useSearchHotkey(searchInputRef);
+  useLauncherSearchFocus(searchInputRef);
 
   return (
     <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>

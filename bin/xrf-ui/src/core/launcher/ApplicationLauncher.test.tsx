@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { within } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Container } from "@wirestate/core";
 
+import { LauncherSearchService } from "@/core/launcher/services/launcher-search";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -9,6 +11,7 @@ import {
   IApplicationDescriptor,
   IApplicationGroup,
 } from "@/core/routing/application";
+import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ApplicationLauncher } from "./ApplicationLauncher";
@@ -194,10 +197,16 @@ describe("ApplicationLauncher", () => {
     expect(queryByText("Spawn editor")).not.toBeInTheDocument();
   });
 
-  it("focuses the search field from the keyboard, without a pointer", async () => {
-    const { getByLabelText } = renderLauncher();
+  it("takes the caret when the search command runs", () => {
+    const container: Container = mockContainer();
 
-    await userEvent.keyboard("{Control>}k{/Control}");
+    const { getByLabelText } = renderWithProviders(
+      <ApplicationLauncher applications={APPLICATIONS} groups={GROUPS} />,
+      { container }
+    );
+
+    // The chord, its suppression inside fields and its platform modifier are the dispatcher's, and are tested there.
+    act(() => container.get(LauncherSearchService).focusSearch());
 
     expect(getByLabelText("Search tools")).toHaveFocus();
   });

@@ -4,8 +4,10 @@ import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
+import { RELOAD_EQUIPMENT_SPRITE_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
+import { Command } from "@/core/commands";
 import { transformError } from "@/core/error/lib";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { requireSessionId, Session } from "@/core/ipc/session";
@@ -169,6 +171,13 @@ export class SpriteEquipmentEditorService {
     }
   }
 
+  /**
+   * Reads the open sprite again, from the toolbar or from `F5`.
+   */
+  @Command(RELOAD_EQUIPMENT_SPRITE_COMMAND, {
+    isEnabled: (service: SpriteEquipmentEditorService) =>
+      service.spriteImage.value !== null && !service.spriteImage.isLoading,
+  })
   @LatestFlow("spriteImage")
   public *reopenEquipmentProject(): TFlow {
     yield* this.reopen();

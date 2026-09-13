@@ -1,20 +1,23 @@
 import { ReactElement, ReactNode } from "react";
 
-import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
-import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
+import { KeybindsDispatcher } from "@/core/keybinds";
+
+import { ApplicationShellFrame } from "./ApplicationShellFrame";
+import { EditorLeaveDialog } from "./editor-lifecycle";
 
 interface IApplicationShellProps {
   children: ReactNode;
 }
 
 /**
- * Renders the shell frame and the root lifecycle service's leave prompt.
+ * Renders the shell frame, the root lifecycle service's leave prompt, and the keyboard dispatcher.
  */
 export function ApplicationShell({ children }: IApplicationShellProps): ReactElement {
   return (
     <>
       <ApplicationShellFrame>{children}</ApplicationShellFrame>
       <EditorLeaveDialog />
+      <KeybindsDispatcher />
     </>
   );
 }

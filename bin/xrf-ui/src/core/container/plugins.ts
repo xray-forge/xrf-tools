@@ -1,7 +1,8 @@
-import { EventsPlugin, WirestatePlugin } from "@wirestate/core";
+import { CommandsPlugin, EventsPlugin, QueriesPlugin, WirestatePlugin } from "@wirestate/core";
 import { DevToolsPlugin } from "@wirestate/core/devtools";
 import { ObservablePlugin } from "@wirestate/mobx";
 
+import { CommandBindingPlugin } from "@/core/commands";
 import { FlowCancellationPlugin } from "@/lib/mobx/flow/cancellation.plugin";
 
 /**
@@ -13,6 +14,9 @@ import { FlowCancellationPlugin } from "@/lib/mobx/flow/cancellation.plugin";
 export function createContainerPlugins(withDevtoolsPlugin: boolean = false): Array<WirestatePlugin> {
   return [
     new EventsPlugin(),
+    new CommandsPlugin(),
+    new QueriesPlugin(),
+    new CommandBindingPlugin(),
     new FlowCancellationPlugin(),
     new ObservablePlugin(),
     ...(withDevtoolsPlugin ? [new DevToolsPlugin()] : []),

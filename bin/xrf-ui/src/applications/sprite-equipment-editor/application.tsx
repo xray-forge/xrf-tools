@@ -8,10 +8,12 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 
+import { SPRITE_EQUIPMENT_EDITOR_COMMANDS } from "./commands";
 import { SPRITE_EQUIPMENT_EDITOR_HELP } from "./help";
 
 export const SPRITE_EQUIPMENT_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
+    commands: SPRITE_EQUIPMENT_EDITOR_COMMANDS,
     description: "Inspect and edit the icons of an equipment sprite",
     group: EApplicationGroupId.SPRITES,
     icon: <ImageIcon />,

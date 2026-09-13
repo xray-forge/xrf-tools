@@ -3,6 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { ApplicationHelpRelated } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpRelated";
 import { ApplicationHelpSection } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpSection";
+import { ApplicationHelpShortcuts } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpShortcuts";
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
 import { mergeSx } from "@/core/theme/merge-sx";
@@ -53,6 +54,8 @@ export function ApplicationHelpContent({
       </Typography>
 
       {sections}
+
+      <ApplicationHelpShortcuts />
 
       {help.relatedTools?.length ? (
         <ApplicationHelpRelated relatedTools={help.relatedTools} onNavigated={onNavigated} />
