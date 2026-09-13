@@ -1,9 +1,8 @@
-import { Box, useTheme } from "@mui/material";
+import { Box } from "@mui/material";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { getSyntaxColors } from "@/core/syntax/components/syntax.styles";
-import { ESyntaxToken } from "@/core/syntax/lib";
+import { getSyntaxSx } from "@/core/syntax/components/syntax.styles";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
@@ -84,7 +83,6 @@ export function VirtualizedLines({
   onSelectLine,
   onVisibleRangeChange,
 }: IVirtualizedLinesProps): ReactElement {
-  const theme = useTheme();
   const listId: string = useId();
 
   const scrollerRef = useRef<HTMLElement | null>(null);
@@ -98,7 +96,6 @@ export function VirtualizedLines({
     listLayoutRef.current = new LayoutList({ container: { current: null }, scroller: { current: null } });
   }
 
-  const colors: Record<ESyntaxToken, string> = useMemo(() => getSyntaxColors(theme), [theme]);
   const count: number = source.count;
 
   // Rows are identified by position rather than by the number they show: a resolved document is
@@ -152,7 +149,6 @@ export function VirtualizedLines({
           rowId={rowIdOf(index)}
           isSelected={index === selectedIndex}
           gutterWidth={gutterWidth}
-          colors={colors}
           onSelect={select}
         />
       );
@@ -324,6 +320,7 @@ export function VirtualizedLines({
       className={className}
       role={"listbox"}
       sx={mergeSx(
+        getSyntaxSx,
         {
           backgroundColor: "background.default",
           // A definite height, or the listing grows to its content instead of windowing it.

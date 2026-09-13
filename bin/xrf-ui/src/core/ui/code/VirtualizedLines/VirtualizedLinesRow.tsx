@@ -20,8 +20,6 @@ interface IVirtualizedLinesRowProps {
   isSelected: boolean;
   /** Measured once by the list, since every gutter in one document has to draw the same column. */
   gutterWidth: number;
-  /** Resolved once by the list rather than per row, which would read the theme thousands of times. */
-  colors: Record<ESyntaxToken, string>;
   onSelect: (line: ICodeLine) => void;
 }
 
@@ -33,7 +31,6 @@ export function VirtualizedLinesRow({
   rowId,
   isSelected,
   gutterWidth,
-  colors,
   onSelect,
 }: IVirtualizedLinesRowProps): ReactElement {
   return (
@@ -99,7 +96,7 @@ export function VirtualizedLinesRow({
           span.token === ESyntaxToken.PLAIN ? (
             <Fragment key={index}>{span.text}</Fragment>
           ) : (
-            <span key={index} style={{ color: colors[span.token] }}>
+            <span key={index} data-syntax-token={span.token}>
               {span.text}
             </span>
           )

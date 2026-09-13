@@ -1,47 +1,37 @@
 import { Theme } from "@mui/material";
+import { SystemStyleObject } from "@mui/system";
 
 import { ESyntaxToken } from "@/core/syntax/lib";
 
-/**
- * Token colours for a dark surface.
- *
- * Hues are picked for the roles rather than for a language: the name of a thing (`SECTION`, `KEY`) sits
- * in the blues, its value (`STRING`, `NUMBER`) in the warms, and the parts that are not the data at all
- * (`COMMENT`, `OPERATOR`) recede.
- */
-const DARK_SYNTAX_COLORS: Record<ESyntaxToken, string> = {
-  [ESyntaxToken.PLAIN]: "inherit",
-  [ESyntaxToken.COMMENT]: "#6a9955",
-  [ESyntaxToken.STRING]: "#ce9178",
-  [ESyntaxToken.NUMBER]: "#b5cea8",
-  [ESyntaxToken.KEYWORD]: "#569cd6",
-  [ESyntaxToken.TYPE]: "#4ec9b0",
-  [ESyntaxToken.DIRECTIVE]: "#c586c0",
-  [ESyntaxToken.SECTION]: "#dcdcaa",
-  [ESyntaxToken.KEY]: "#9cdcfe",
-  [ESyntaxToken.OPERATOR]: "#909090",
-};
-
-/** The same roles darkened to hold contrast against a light surface. */
-const LIGHT_SYNTAX_COLORS: Record<ESyntaxToken, string> = {
-  [ESyntaxToken.PLAIN]: "inherit",
-  [ESyntaxToken.COMMENT]: "#3f7d20",
-  [ESyntaxToken.STRING]: "#a31515",
-  [ESyntaxToken.NUMBER]: "#116644",
-  [ESyntaxToken.KEYWORD]: "#0000c0",
-  [ESyntaxToken.TYPE]: "#1d7a86",
-  [ESyntaxToken.DIRECTIVE]: "#8f0e9e",
-  [ESyntaxToken.SECTION]: "#7a5c00",
-  [ESyntaxToken.KEY]: "#04517a",
-  [ESyntaxToken.OPERATOR]: "#666666",
+/** Colours belong to the syntax feature; plain text inherits its surface's foreground. */
+const SYNTAX_COLORS: Record<Exclude<ESyntaxToken, ESyntaxToken.PLAIN>, { light: string; dark: string }> = {
+  comment: { light: "#376b28", dark: "#6a9955" },
+  string: { light: "#a31515", dark: "#ce9178" },
+  number: { light: "#116644", dark: "#b5cea8" },
+  keyword: { light: "#0000c0", dark: "#569cd6" },
+  type: { light: "#166775", dark: "#4ec9b0" },
+  directive: { light: "#8f0e9e", dark: "#c586c0" },
+  section: { light: "#7a5c00", dark: "#dcdcaa" },
+  key: { light: "#04517a", dark: "#9cdcfe" },
+  operator: { light: "#606060", dark: "#909090" },
 };
 
 /**
- * Token colours matching the surface the preview is drawn on.
+ * Scoped token styles that follow the active CSS scheme without rerendering the source.
  *
- * @param theme - Active theme, read for its light or dark mode.
- * @returns A colour per token, where `PLAIN` inherits so most of a file needs no colour applied at all.
+ * @param theme - Theme providing the active color scheme selector.
+ * @returns Descendant token styles for a syntax surface.
  */
-export function getSyntaxColors(theme: Theme): Record<ESyntaxToken, string> {
-  return theme.palette.mode === "light" ? LIGHT_SYNTAX_COLORS : DARK_SYNTAX_COLORS;
+export function getSyntaxSx(theme: Theme): SystemStyleObject<Theme> {
+  const light: Record<string, { color: string }> = {};
+  const dark: Record<string, { color: string }> = {};
+
+  for (const [token, colors] of Object.entries(SYNTAX_COLORS)) {
+    const selector: string = `& [data-syntax-token="${token}"]`;
+
+    light[selector] = { color: colors.light };
+    dark[selector] = { color: colors.dark };
+  }
+
+  return { ...light, ...theme.applyStyles("dark", dark) };
 }

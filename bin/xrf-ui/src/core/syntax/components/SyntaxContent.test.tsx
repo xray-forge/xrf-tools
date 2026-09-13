@@ -16,7 +16,7 @@ describe("SyntaxContent", () => {
 
   it("wraps only what it colours, leaving the rest as bare text", () => {
     const { container } = renderWithProviders(<SyntaxContent content={LTX} language={ESyntaxLanguage.LTX} />);
-    const colored: Array<string> = Array.from(container.querySelectorAll("span")).map(
+    const colored: Array<string> = Array.from(container.querySelectorAll<HTMLSpanElement>("[data-syntax-token]")).map(
       (span: HTMLSpanElement) => span.textContent as string
     );
 
@@ -27,10 +27,10 @@ describe("SyntaxContent", () => {
     expect(colored).not.toContain("\n");
   });
 
-  it("emits no elements at all for a language it does not colour", () => {
+  it("emits no token elements for a language it does not colour", () => {
     const { container } = renderWithProviders(<SyntaxContent content={LTX} language={ESyntaxLanguage.PLAIN} />);
 
-    expect(container.querySelectorAll("span")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-syntax-token]")).toHaveLength(0);
     expect(container.textContent).toBe(LTX);
   });
 });

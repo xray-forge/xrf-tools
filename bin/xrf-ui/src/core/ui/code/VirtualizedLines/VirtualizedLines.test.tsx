@@ -132,7 +132,7 @@ describe("VirtualizedLines", () => {
 
     expect(row).toHaveTextContent("1cost = 1000");
     // Two coloured runs and the plain one left to inherit, which is most of a real file.
-    expect(row.querySelectorAll("span[style*='color']")).toHaveLength(2);
+    expect(row.querySelectorAll("[data-syntax-token]")).toHaveLength(2);
   });
 
   it("reports the line a click chose, by the line itself and not its position", async () => {
