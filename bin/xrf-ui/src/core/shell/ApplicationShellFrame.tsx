@@ -17,10 +17,9 @@ import { EditorToolbarHostContext } from "@/core/shell/header/editor-toolbar-hos
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { ApplicationRail } from "@/core/shell/panel/ApplicationRail";
 import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
-import { PanelStripeButton } from "@/core/shell/panel/PanelStripeButton";
+import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
@@ -138,8 +137,6 @@ export function ApplicationShellFrame({
             activePanelId={rightSelection.activePanelId}
             footer={
               <>
-                {/* Beside the notification log rather than among the application's own panels: both are the shell's,
-                    and neither belongs to whichever tool happens to be open. */}
                 {settingsService.isDevModeEnabled ? (
                   <PanelStripeButton
                     panel={JOBS_PANEL}

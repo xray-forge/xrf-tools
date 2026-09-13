@@ -17,12 +17,12 @@ export const RADIUS = {
   lg: 8,
 } as const;
 
-/** Fixed color fields shared by launcher, picker, and planned screens. */
+/** Fixed color fields shared by launcher, picker, and other screens. */
 export const APPLICATION_BACKGROUND = {
   radiusX: 800,
   radiusY: 600,
-  primary: { x: 24, y: 640, opacity: { light: "8%", dark: "2%" } },
-  secondary: { x: 24, y: 16, opacity: { light: "7%", dark: "2%" } },
+  primary: { x: 24, y: 640, opacity: { light: "9%", dark: "3%" } },
+  secondary: { x: 24, y: 16, opacity: { light: "8%", dark: "5%" } },
 } as const;
 
 /**
@@ -167,12 +167,12 @@ export const MONOSPACE_CHARACTER_WIDTH: number = 7.25;
 
 export const ACCENT = {
   primary: {
-    main: { light: "#bf740b", dark: "#ffb51a" },
-    contrastText: { light: "#ffffff", dark: "#35290a" },
+    main: { light: "#9e5f1d", dark: "#f5aa4d" },
+    contrastText: { light: "#ffffff", dark: "#332414" },
   },
   secondary: {
-    main: { light: "#1b5e90", dark: "#60bcff" },
-    contrastText: { light: "#ffffff", dark: "#062138" },
+    main: { light: "#5c6aa3", dark: "#8e9ada" },
+    contrastText: { light: "#ffffff", dark: "#20253f" },
   },
 } as const;
 

@@ -10,9 +10,10 @@ import { REPOSITORY_URL } from "@/core/configs";
 import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { RailButton } from "@/core/shell/panel/RailButton";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
+
+import { RailButton } from "./RailButton";
 
 interface IApplicationRailProps {
   panels: Array<IEditorPanel>;
@@ -49,6 +50,7 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
           <RailButton
             label={isLightMode ? "Dark theme" : "Light theme"}
             icon={isLightMode ? <DarkModeIcon /> : <LightModeIcon />}
+            appearance={isLightMode ? "secondary" : "primary"}
             onClick={onToggleTheme}
           />
 

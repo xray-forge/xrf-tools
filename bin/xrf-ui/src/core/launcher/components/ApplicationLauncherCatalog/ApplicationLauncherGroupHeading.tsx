@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IApplicationGroup } from "@/core/routing/application";
@@ -26,7 +26,15 @@ export function ApplicationLauncherGroupHeading({
       className={className}
       sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}
     >
-      <Box aria-hidden={true} sx={{ display: "flex", color: "text.secondary", "& .MuiSvgIcon-root": { fontSize: 16 } }}>
+      <Box
+        aria-hidden={true}
+        sx={(theme: Theme) => ({
+          display: "flex",
+          color: group.accent.light,
+          "& .MuiSvgIcon-root": { fontSize: 16 },
+          ...theme.applyStyles("dark", { color: group.accent.dark }),
+        })}
+      >
         {group.icon}
       </Box>
 
