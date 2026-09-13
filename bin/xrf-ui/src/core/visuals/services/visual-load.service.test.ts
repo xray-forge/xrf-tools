@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { flowResult, isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
@@ -19,6 +19,7 @@ import {
 } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { noop } from "@/lib/callbacks/noop";
 import { Nullable } from "@/lib/types/general";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
@@ -425,6 +426,136 @@ describe("VisualLoadService texture decoding", () => {
 
     // jsdom has no image decoder, and what this asserts is which path was taken rather than what came out of it.
     (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = decoder;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("releases a late decoded texture after clearing without restoring the model", async () => {
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+    const dispose = jest.spyOn(Texture.prototype, "dispose");
+
+    let finishDecode: (bitmap: ImageBitmap) => void = noop;
+    let onDecoding: () => void = noop;
+
+    const decoding = new Promise<ImageBitmap>((resolve) => {
+      finishDecode = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      onDecoding = resolve;
+    });
+
+    decoder.mockImplementationOnce(() => {
+      onDecoding();
+
+      return decoding;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      }),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
+    });
+
+    const loading = flowResult(service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS));
+
+    await started;
+
+    service.clear();
+
+    await loading;
+
+    expect(dispose).not.toHaveBeenCalled();
+
+    finishDecode({ close: noop, height: 4, width: 4 } as ImageBitmap);
+    // The cancelled flow has settled already; let the late decode reach its own cleanup.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(service.visual.value).toBeNull();
+    expect(service.visual.isLoading).toBe(false);
+    expect(service.textures.size).toBe(0);
+    expect(service.textureStatuses.size).toBe(0);
+
+    service.clear();
+
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a late decoded texture without disposing the replacement model's texture", async () => {
+    const { selected, buffer } = mockLoadable();
+    const { service } = mockInjectedService(VisualLoadService);
+    const dispose = jest.spyOn(Texture.prototype, "dispose");
+
+    let finishDecode: (bitmap: ImageBitmap) => void = noop;
+    let onDecoding: () => void = noop;
+
+    const decoding = new Promise<ImageBitmap>((resolve) => {
+      finishDecode = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      onDecoding = resolve;
+    });
+
+    decoder.mockImplementationOnce(() => {
+      onDecoding();
+
+      return decoding;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      }),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
+    });
+
+    const loading = flowResult(service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS));
+
+    await started;
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse({
+        ...selected,
+        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
+      }),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    await loading;
+
+    const current = service.visual.value;
+    const currentTexture = service.textures.get(0);
+
+    expect(dispose).not.toHaveBeenCalled();
+
+    finishDecode({ close: noop, height: 4, width: 4 } as ImageBitmap);
+    // The cancelled flow has settled already; let the late decode reach its own cleanup.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(service.visual.value).toBe(current);
+    expect(service.visual.isLoading).toBe(false);
+    expect(service.textures.get(0)).toBe(currentTexture);
+    expect(service.textures.size).toBe(1);
+    expect(service.textureStatuses.size).toBe(1);
+    expect(dispose.mock.contexts).not.toContain(currentTexture);
+
+    service.clear();
+
+    expect(dispose).toHaveBeenCalledTimes(2);
   });
 
   it("asks the backend to decode a texture three.js declines", async () => {
