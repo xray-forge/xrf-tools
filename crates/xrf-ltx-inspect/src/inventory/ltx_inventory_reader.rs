@@ -39,8 +39,9 @@ impl<'a> LtxInventoryReader<'a> {
       let asset: Option<XrayAsset> = self.project.vfs().scoped(self.project.scope()).find(path.as_str())?;
 
       files.push(LtxInventoryFile {
+        included_by: includers.remove(path.as_str()).unwrap_or_default(),
         is_physical: asset.as_ref().is_some_and(|it| it.to_physical_path().is_some()),
-        role: Self::role_of(path, &entries, &scheme_files, &attachments, &mut includers),
+        role: Self::role_of(path, &entries, &scheme_files, &attachments),
         source: asset
           .as_ref()
           .map_or_else(|| self.project.root.display().to_string(), XrayAsset::format_container),
@@ -60,7 +61,6 @@ impl<'a> LtxInventoryReader<'a> {
     entries: &HashSet<&str>,
     scheme_files: &HashSet<&str>,
     attachments: &HashSet<String>,
-    includers: &mut Includers,
   ) -> LtxInventoryRole {
     if scheme_files.contains(path.as_str()) {
       return LtxInventoryRole::SchemeFile;
@@ -74,9 +74,7 @@ impl<'a> LtxInventoryReader<'a> {
       return LtxInventoryRole::EntryPoint;
     }
 
-    LtxInventoryRole::Included {
-      by: includers.remove(path.as_str()).unwrap_or_default(),
-    }
+    LtxInventoryRole::Included
   }
 
   /// Configs the dialect says patch another rather than standing on their own.

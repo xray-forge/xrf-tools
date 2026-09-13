@@ -9,11 +9,12 @@ import { Nullable } from "@/lib/types/general";
 
 /** The committed fixture's shape: an entry point and the config it includes, one directory deep. */
 const FILES: Array<LtxInventoryFile> = [
-  { isPhysical: true, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "gamedata" },
+  { includedBy: [], isPhysical: true, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "gamedata" },
   {
+    includedBy: ["configs\\system.ltx"],
     isPhysical: true,
     path: "configs\\items\\w_base.ltx",
-    role: { kind: "included", by: ["configs\\system.ltx"] },
+    role: { kind: "included" },
     source: "gamedata",
   },
 ];
@@ -64,7 +65,7 @@ describe("ConfigsMenu", () => {
     // The case that matters on a real install: 3,238 of an Anomaly tree's 3,240 configs are read out of `db\\configs`,
     // where they read like any other config and no editor can ever replace them.
     const archived: Array<LtxInventoryFile> = [
-      { isPhysical: false, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "db" },
+      { includedBy: [], isPhysical: false, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "db" },
     ];
 
     const { getByText } = renderWithProviders(<ConfigsMenu files={archived} selected={null} onOpen={jest.fn()} />);

@@ -5,7 +5,7 @@ import { decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMen
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 function mockFileOf(role: LtxInventoryRole): LtxInventoryFile {
-  return { isPhysical: true, path: "configs\\items\\w_ak74.ltx", role, source: "gamedata" };
+  return { includedBy: [], isPhysical: true, path: "configs\\items\\w_ak74.ltx", role, source: "gamedata" };
 }
 
 function mockNodeOf(payload?: LtxInventoryFile): ITreeNode<LtxInventoryFile> {
@@ -29,7 +29,7 @@ describe("decorateConfigIcon", () => {
 
   it("should leave an included config neutral, since almost every config in a tree is one", () => {
     // A mark on nearly every row is a mark nobody reads.
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "included", by: ["configs\\system.ltx"] })))).toBeNull();
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "included" })))).toBeNull();
   });
 
   it("should leave a directory row neutral, which stands for no config at all", () => {

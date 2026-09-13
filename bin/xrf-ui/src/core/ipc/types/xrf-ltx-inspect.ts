@@ -111,6 +111,8 @@ export type LtxInventoryFile = {
   source: string;
   /** Whether a loose file backs it, which is what decides if an editor could ever write to it. */
   isPhysical: boolean;
+  /** Configs whose `#include` names it, in project order. */
+  includedBy: Array<string>;
   role: LtxInventoryRole;
 };
 
@@ -118,12 +120,8 @@ export type LtxInventoryFile = {
 export type LtxInventoryRole =
   /** Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for. */
   | { kind: "entryPoint" }
-  /** Reached only through another config's `#include`. */
-  | {
-      kind: "included";
-      /** Configs whose `#include` names it, in project order. */
-      by: Array<string>;
-    }
+  /** Reached only through another config's `#include`; `included_by` names which. */
+  | { kind: "included" }
   /** A scheme declaration. Not verified against schemes itself, which is why it outranks every other role here. */
   | { kind: "schemeFile" }
   /** A file that patches another config rather than standing on its own, as the dialect identified it. */

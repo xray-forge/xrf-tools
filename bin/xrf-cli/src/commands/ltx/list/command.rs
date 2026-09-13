@@ -65,8 +65,17 @@ impl ListCommand {
       LtxInventoryRole::EntryPoint => String::from("entry point"),
       LtxInventoryRole::SchemeFile => String::from("scheme"),
       LtxInventoryRole::Attachment => String::from("attachment"),
-      LtxInventoryRole::Included { by } if by.is_empty() => String::from("included"),
-      LtxInventoryRole::Included { by } => format!("included by {}", by.join(", ")),
+      LtxInventoryRole::Included => String::from("included"),
+    };
+
+    // The includers, said whatever the role is: the include graph is what decides which resolution judges a config,
+    // and a scheme declaration that another scheme file includes - every one of them in `xrf-engine` - is the case
+    // where the role alone says nothing about that. An included config's role is that fact and nothing else, so it is
+    // not said twice.
+    let described: String = match (&file.role, file.included_by.as_slice()) {
+      (_, []) => role,
+      (LtxInventoryRole::Included, by) => format!("included by {}", by.join(", ")),
+      (_, by) => format!("{role}, included by {}", by.join(", ")),
     };
 
     // Said only where it is true, and said as a fact about writing rather than about storage: an archived config reads
@@ -74,9 +83,9 @@ impl ListCommand {
     let archived: &str = if file.is_physical { "" } else { " [archived]" };
 
     if is_verbose {
-      format!("{} - {role}{archived} ({})", file.path, file.source)
+      format!("{} - {described}{archived} ({})", file.path, file.source)
     } else {
-      format!("{} - {role}{archived}", file.path)
+      format!("{} - {described}{archived}", file.path)
     }
   }
 
@@ -91,7 +100,7 @@ impl ListCommand {
     for file in &inventory.files {
       match file.role {
         LtxInventoryRole::EntryPoint => entries += 1,
-        LtxInventoryRole::Included { .. } => included += 1,
+        LtxInventoryRole::Included => included += 1,
         LtxInventoryRole::SchemeFile => schemes += 1,
         LtxInventoryRole::Attachment => attachments += 1,
       }

@@ -33,18 +33,23 @@ impl LtxInventory {
         continue;
       };
 
-      match &file.role {
-        LtxInventoryRole::Included { by } => {
-          for includer in by {
-            if seen.iter().any(|held| held == includer) {
-              continue;
-            }
+      if matches!(file.role, LtxInventoryRole::Attachment) {
+        continue;
+      }
 
-            seen.push(includer.clone());
-            pending.push(includer.clone());
-          }
+      if file.included_by.is_empty() {
+        reached.push(current);
+
+        continue;
+      }
+
+      for includer in &file.included_by {
+        if seen.iter().any(|held| held == includer) {
+          continue;
         }
-        _ => reached.push(current),
+
+        seen.push(includer.clone());
+        pending.push(includer.clone());
       }
     }
 
@@ -66,6 +71,8 @@ pub struct LtxInventoryFile {
   pub source: String,
   /// Whether a loose file backs it, which is what decides if an editor could ever write to it.
   pub is_physical: bool,
+  /// Configs whose `#include` names it, in project order.
+  pub included_by: Vec<String>,
   pub role: LtxInventoryRole,
 }
 
@@ -76,11 +83,8 @@ pub struct LtxInventoryFile {
 pub enum LtxInventoryRole {
   /// Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for.
   EntryPoint,
-  /// Reached only through another config's `#include`.
-  Included {
-    /// Configs whose `#include` names it, in project order.
-    by: Vec<String>,
-  },
+  /// Reached only through another config's `#include`; `included_by` names which.
+  Included,
   /// A scheme declaration. Not verified against schemes itself, which is why it outranks every other role here.
   SchemeFile,
   /// A file that patches another config rather than standing on its own, as the dialect identified it.
