@@ -1,5 +1,5 @@
 import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, DEFAULT_ENTRY_POINT } from "@/core/archive/lib";
-import { ArchivePackConfig, ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig, ArchivePackDirectory } from "@/core/ipc/types/xrf-pack";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 /**

@@ -1,8 +1,8 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { systemCommands } from "@/core/bindings/commands/system";
-import { RuntimeSnapshot } from "@/core/bindings/types/xrf-app";
+import { systemCommands } from "@/core/ipc/commands/system";
+import { RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
 import { SettingsSection } from "@/core/settings/components/SettingsSection";
 import { SettingsStat } from "@/core/settings/components/SettingsStat";
 import { formatDuration } from "@/lib/format/duration";

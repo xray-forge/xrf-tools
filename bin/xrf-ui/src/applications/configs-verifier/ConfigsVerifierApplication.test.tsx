@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
 
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
-import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
+import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

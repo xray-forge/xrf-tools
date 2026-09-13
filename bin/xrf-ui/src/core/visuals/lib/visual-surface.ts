@@ -1,7 +1,7 @@
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/bindings/types/xrf-material";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
 
 /**

@@ -3,8 +3,8 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";

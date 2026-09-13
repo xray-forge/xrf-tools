@@ -3,7 +3,7 @@ import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { LtxResolvedIndex } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxResolvedIndex } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsProjectService } from "@/core/ltx/services/project";

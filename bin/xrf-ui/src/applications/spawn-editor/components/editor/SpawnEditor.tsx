@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
-import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
+import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-db";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
-import { ArchiveWorldEntry } from "@/core/bindings/types/xrf-app";
-import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

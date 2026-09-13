@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
-import { ArchivePackResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

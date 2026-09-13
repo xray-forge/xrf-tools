@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 
-import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsMenu } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu";
 import { ARCHIVED_CAPTION } from "@/core/ui/tree/TreeRowLabel";
 import { renderWithProviders } from "@/fixtures/utils/render";

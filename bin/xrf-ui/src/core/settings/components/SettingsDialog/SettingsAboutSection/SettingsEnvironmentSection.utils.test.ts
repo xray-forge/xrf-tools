@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { HostInfo } from "@/core/bindings/types/xrf-app";
+import { HostInfo } from "@/core/ipc/types/xrf-app";
 import { Nullable } from "@/lib/types/general";
 
 import { IAboutRow } from "./about-row";

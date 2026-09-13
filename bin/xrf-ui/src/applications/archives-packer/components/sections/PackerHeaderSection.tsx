@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
 import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

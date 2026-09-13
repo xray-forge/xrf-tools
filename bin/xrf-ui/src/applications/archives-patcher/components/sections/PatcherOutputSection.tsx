@@ -1,7 +1,7 @@
 import { Stack, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

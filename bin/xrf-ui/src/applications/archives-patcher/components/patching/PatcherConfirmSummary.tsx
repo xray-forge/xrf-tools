@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
 import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
 import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
-import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";

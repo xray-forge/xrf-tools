@@ -1,5 +1,5 @@
-import { XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/bindings/types/xrf-material";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 import { IMaterialStateDescriptor } from "./material-description";

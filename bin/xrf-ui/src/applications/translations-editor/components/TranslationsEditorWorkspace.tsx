@@ -7,7 +7,7 @@ import {
   useTranslationValidation,
 } from "@/applications/translations-editor/lib/use-translation-validation";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
-import { TranslationFile, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { TranslationFile, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { Nullable } from "@/lib/types/general";
 

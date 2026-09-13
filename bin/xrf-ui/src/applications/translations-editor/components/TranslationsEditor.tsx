@@ -4,7 +4,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
-import { TranslationFinding, TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { TranslationFinding, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";

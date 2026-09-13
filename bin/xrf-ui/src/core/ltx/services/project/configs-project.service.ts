@@ -2,11 +2,11 @@ import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
-import { configsCommands } from "@/core/bindings/commands/configs";
-import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
-import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
+import { configsCommands } from "@/core/ipc/commands/configs";
 import { Session } from "@/core/ipc/session";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";

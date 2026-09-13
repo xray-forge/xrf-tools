@@ -7,8 +7,8 @@ import {
   XrayMaterialDeclaration,
   XrayMaterialDescriptor,
   XrayMaterialDetail,
-} from "@/core/bindings/types/xrf-material";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+} from "@/core/ipc/types/xrf-material";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { formatNumber } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 

@@ -2,7 +2,7 @@ import { Box, Collapse, Divider, Typography } from "@mui/material";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progress-format";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
 import { MONOSPACE } from "@/core/theme/tokens";

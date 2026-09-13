@@ -3,7 +3,7 @@ import { act, fireEvent } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";

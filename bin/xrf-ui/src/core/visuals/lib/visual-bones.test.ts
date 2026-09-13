@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { mockVisualBone } from "@/fixtures/mocks/visual.mocks";
 

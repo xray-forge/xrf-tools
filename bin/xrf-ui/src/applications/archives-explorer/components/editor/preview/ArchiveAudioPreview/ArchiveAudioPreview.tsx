@@ -7,7 +7,7 @@ import { ArchivePreviewError } from "@/applications/archives-explorer/components
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
+import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

@@ -2,6 +2,7 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   SessionId,
   SessionRestore,
@@ -15,16 +16,15 @@ import {
   TranslationsOpenRequest,
   TranslationsVerifyRequest,
   TranslationVerifySummary,
-} from "@/core/bindings/types/xrf-app";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
+} from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   TranslationEdit,
   TranslationFormatResult,
   TranslationProjectDescriptor,
   TranslationProjectMode,
-} from "@/core/bindings/types/xrf-translation";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-translation";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const translationsCommands = {

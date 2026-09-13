@@ -12,7 +12,7 @@ import {
   HEADER_ENTRY_POINT,
   readHeaderValue,
 } from "@/core/archive/lib";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";

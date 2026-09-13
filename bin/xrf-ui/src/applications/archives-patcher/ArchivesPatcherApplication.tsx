@@ -6,8 +6,8 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PATCH_CONFIG_EXTENSIONS, withPatchConfigExtension } from "@/applications/archives-patcher/lib/patch-config";
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
-import { ArchivesPatchRequest } from "@/core/bindings/types/xrf-app";
-import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivesPatchRequest } from "@/core/ipc/types/xrf-app";
+import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
-import { DialogElementDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogElementDescriptor } from "@/core/ipc/types/xrf-dialog";
 
 function element(name: string, kind: DialogElementDescriptor["kind"], value: string = "x"): DialogElementDescriptor {
   return { kind, name, value };

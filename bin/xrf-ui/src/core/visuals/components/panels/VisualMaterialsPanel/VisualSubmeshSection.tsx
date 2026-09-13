@@ -1,9 +1,9 @@
 import { Box, Chip } from "@mui/material";
 import { ReactElement } from "react";
 
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
-import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";

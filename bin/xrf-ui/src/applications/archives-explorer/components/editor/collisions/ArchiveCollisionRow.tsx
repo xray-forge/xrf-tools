@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

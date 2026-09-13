@@ -1,5 +1,5 @@
 import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
-import { TextureMakeBumpOutcome } from "@/core/bindings/types/xrf-app";
+import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

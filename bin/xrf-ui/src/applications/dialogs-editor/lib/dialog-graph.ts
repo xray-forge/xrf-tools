@@ -1,5 +1,5 @@
-import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { layoutGraphNodes, TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { Nullable } from "@/lib/types/general";
 
 /** Node kinds the dialog canvas draws. */

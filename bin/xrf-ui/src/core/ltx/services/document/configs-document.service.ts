@@ -1,9 +1,9 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Computed, Observable, runInAction } from "@wirestate/mobx";
 
-import { configsCommands } from "@/core/bindings/commands/configs";
-import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
+import { configsCommands } from "@/core/ipc/commands/configs";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";

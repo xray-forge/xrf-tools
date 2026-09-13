@@ -2,12 +2,12 @@ import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { assetsCommands } from "@/core/bindings/commands/assets";
-import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { XrayAsset, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { assetsCommands } from "@/core/ipc/commands/assets";
+import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";

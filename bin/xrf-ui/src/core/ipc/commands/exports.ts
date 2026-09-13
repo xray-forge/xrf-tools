@@ -1,8 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { SessionId, SessionRestore, SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { ExportSourceContent, ExportsProject } from "@/core/bindings/types/xrf-export";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+import { SessionId, SessionRestore, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { ExportSourceContent, ExportsProject } from "@/core/ipc/types/xrf-export";
 
 /** Commands */
 export const exportsCommands = {

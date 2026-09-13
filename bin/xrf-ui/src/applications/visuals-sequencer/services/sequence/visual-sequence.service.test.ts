@@ -6,7 +6,7 @@ import {
   ISequenceClip,
   VisualSequenceService,
 } from "@/applications/visuals-sequencer/services/sequence";
-import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
+import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

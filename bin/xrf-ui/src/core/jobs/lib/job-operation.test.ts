@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { autorun, flow } from "@wirestate/mobx";
 
-import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

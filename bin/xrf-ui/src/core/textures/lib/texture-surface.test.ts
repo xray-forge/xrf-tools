@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { ITextureBumpAssets, selectTextureBumpAssets, toTextureAspect } from "@/core/textures/lib/texture-surface";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";

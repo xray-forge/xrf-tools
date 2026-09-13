@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { describeFormatOutcome } from "@/applications/translations-formatter/lib/describe-format-outcome";
-import { TranslationFormatResult } from "@/core/bindings/types/xrf-translation";
+import { TranslationFormatResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

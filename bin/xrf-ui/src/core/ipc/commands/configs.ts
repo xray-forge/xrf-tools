@@ -2,6 +2,7 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   ConfigsDocument,
   ConfigsFormatRequest,
@@ -13,18 +14,17 @@ import {
   ConfigsSectionRequest,
   ConfigsVerifyRequest,
   SessionId,
-} from "@/core/bindings/types/xrf-app";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
+} from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import {
   LtxAnchoredFinding,
   LtxInventory,
   LtxResolvedIndex,
   LtxResolvedSection,
   LtxSchemeFieldReport,
-} from "@/core/bindings/types/xrf-ltx-inspect";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-ltx-inspect";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const configsCommands = {

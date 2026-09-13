@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { JobsPanel } from "@/core/shell/panel/jobs/JobsPanel";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";

@@ -1,8 +1,8 @@
 import { Texture } from "three";
 
 import { getLocatedAsset } from "@/core/assets/lib";
-import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureTexels } from "@/core/visuals/lib/visual-texture";
 import { Maybe, Nullable } from "@/lib/types/general";

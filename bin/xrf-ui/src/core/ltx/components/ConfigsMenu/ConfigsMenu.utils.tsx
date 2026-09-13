@@ -2,7 +2,7 @@ import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 
-import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration, IVirtualizedTreeIcons } from "@/core/ui/tree/VirtualizedTree";
 import { Nullable } from "@/lib/types/general";

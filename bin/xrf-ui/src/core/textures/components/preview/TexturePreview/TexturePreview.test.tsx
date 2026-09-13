@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
 import { AssetService } from "@/core/assets/services";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";

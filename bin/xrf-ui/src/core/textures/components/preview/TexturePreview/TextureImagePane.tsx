@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { AssetTextureShape } from "@/core/bindings/types/xrf-app";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";

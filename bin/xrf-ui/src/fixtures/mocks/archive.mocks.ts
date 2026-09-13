@@ -1,12 +1,12 @@
-import { ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/bindings/types/xrf-app";
+import { ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveReadPolicy,
   ArchiveSharedPayload,
-} from "@/core/bindings/types/xrf-archive";
-import { XrayAssetContainer, XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+} from "@/core/ipc/types/xrf-archive";
+import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Creates an archive read policy fixture.

@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {
   getFileItemPath,

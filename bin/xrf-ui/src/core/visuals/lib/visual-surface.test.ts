@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
-import { VisualSubmesh, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import {
   createVisualSurfaces,
   isAlphaVisualSurface,

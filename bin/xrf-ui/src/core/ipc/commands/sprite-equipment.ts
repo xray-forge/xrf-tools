@@ -2,6 +2,7 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   EquipmentSpriteMetadata,
   PackSpriteRequest,
@@ -9,10 +10,9 @@ import {
   SessionRestore,
   SessionSnapshot,
   SpriteEquipmentOpenRequest,
-} from "@/core/bindings/types/xrf-app";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 
 /** Commands */
 export const spriteEquipmentCommands = {

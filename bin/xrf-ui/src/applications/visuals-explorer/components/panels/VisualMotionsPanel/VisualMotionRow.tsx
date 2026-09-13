@@ -2,8 +2,8 @@ import { Box, Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IVisualMotionRowProps extends BaseComponentProps {

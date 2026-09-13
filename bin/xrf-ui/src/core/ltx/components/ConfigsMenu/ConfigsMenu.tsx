@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {

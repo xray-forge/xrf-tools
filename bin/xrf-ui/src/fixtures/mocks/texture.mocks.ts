@@ -7,9 +7,9 @@ import {
   TextureMaterialSummary,
   TextureRole,
   TextureVocabulary,
-} from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
-import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+} from "@/core/ipc/types/xrf-app";
+import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
+import { XrayAsset, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** The engine reference of a texture, its bump, and that bump's companion, which most cases need together. */
 export const MOCK_TEXTURE: string = "ston\\ston_beton05";

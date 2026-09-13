@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { XrfError } from "@/core/bindings/types/xrf-error";
-import { JobOutcome } from "@/core/bindings/types/xrf-job";
+import { XrfError } from "@/core/ipc/types/xrf-error";
+import { JobOutcome } from "@/core/ipc/types/xrf-job";
 
 export type LtxProjectFormatResult = {
   /**

@@ -1,7 +1,7 @@
 import { Stack } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { CheckboxFormRow, IPathField, PathFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

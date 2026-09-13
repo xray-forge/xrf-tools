@@ -7,8 +7,8 @@ import { VisualMotionNames } from "@/applications/visuals-explorer/components/pa
 import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
 import { VisualMotionTransport } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionTransport";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";

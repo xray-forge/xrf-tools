@@ -1,4 +1,4 @@
-import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * One file the explorer browses, whichever subject it came from.

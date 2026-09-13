@@ -3,7 +3,7 @@ import { EventBus } from "@wirestate/core";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer/index";
-import { ArchivePackConfig, ArchivePackResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";

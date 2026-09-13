@@ -1,4 +1,4 @@
-import { ProgressUnit } from "@/core/bindings/types/xrf-job";
+import { ProgressUnit } from "@/core/ipc/types/xrf-job";
 import { Nullable } from "@/lib/types/general";
 
 /**

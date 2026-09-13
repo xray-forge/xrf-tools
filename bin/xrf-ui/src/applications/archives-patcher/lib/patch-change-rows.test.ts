@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IPatchChangeRow, toPatchChangeRows } from "@/applications/archives-patcher/lib/patch-change-rows";
-import { ArchivePatchChange, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchChange, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 
 /** The table every side indexes into: a volume set at 0, a loose tree at 1. */
 const ORIGINS: ArchivePatchResult["origins"] = [

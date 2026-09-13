@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { PackerConfirmSummary } from "@/applications/archives-packer/components/packing/PackerConfirmSummary";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 
 const CONFIG: ArchivePackConfig = {
   ...FALLBACK_PACK_CONFIG,

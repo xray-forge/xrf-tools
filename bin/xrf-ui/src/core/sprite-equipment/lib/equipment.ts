@@ -1,4 +1,4 @@
-import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 
 /** A rectangle in the packed equipment sprite, measured in grid cells. */
 export interface IEquipmentSectionDescriptor {

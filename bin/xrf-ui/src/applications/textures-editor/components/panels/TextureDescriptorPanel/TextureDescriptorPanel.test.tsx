@@ -4,7 +4,7 @@ import { Container } from "@wirestate/core";
 
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureVocabulary } from "@/core/bindings/types/xrf-app";
+import { TextureDescription, TextureVocabulary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

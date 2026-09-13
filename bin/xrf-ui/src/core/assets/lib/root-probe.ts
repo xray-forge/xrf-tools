@@ -1,4 +1,4 @@
-import { XrayRootProbe } from "@/core/bindings/types/xrf-vfs";
+import { XrayRootProbe } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * What a probed path is, in one line meant to be read beside the path itself.

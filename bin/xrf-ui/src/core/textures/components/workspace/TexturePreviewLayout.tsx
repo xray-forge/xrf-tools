@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
 import { toAssetLocation } from "@/core/assets/lib";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";

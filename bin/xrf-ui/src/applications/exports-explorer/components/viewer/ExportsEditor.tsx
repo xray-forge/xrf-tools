@@ -5,7 +5,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor, ExportsProject } from "@/core/ipc/types/xrf-export";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

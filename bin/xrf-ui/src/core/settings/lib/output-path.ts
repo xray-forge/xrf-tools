@@ -1,6 +1,6 @@
 import * as path from "@tauri-apps/api/path";
 
-import { systemCommands } from "@/core/bindings/commands/system";
+import { systemCommands } from "@/core/ipc/commands/system";
 import { EApplicationId } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 

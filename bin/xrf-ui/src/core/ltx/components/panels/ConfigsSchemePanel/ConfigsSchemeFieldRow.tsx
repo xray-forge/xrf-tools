@@ -1,7 +1,7 @@
 import { Box, Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { LtxSchemeFieldReport } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxSchemeFieldReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { describeResolvedFieldOrigin } from "@/core/ltx/lib/resolved";
 import { MONOSPACE } from "@/core/theme/tokens";
 

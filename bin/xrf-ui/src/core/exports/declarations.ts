@@ -1,4 +1,4 @@
-import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 
 /**
  * The two halves of the generated descriptor union, for call sites that have already narrowed.

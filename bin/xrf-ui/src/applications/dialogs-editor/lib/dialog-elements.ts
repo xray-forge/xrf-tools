@@ -1,4 +1,4 @@
-import { DialogElementDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogElementDescriptor } from "@/core/ipc/types/xrf-dialog";
 
 /** One group of elements, titled by what the elements in it do. */
 export interface IDialogElementGroup {

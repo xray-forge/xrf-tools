@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { VisualDescription, VisualSubmesh } from "@/core/bindings/types/xrf-visual";
+import { VisualDescription, VisualSubmesh } from "@/core/ipc/types/xrf-visual";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,

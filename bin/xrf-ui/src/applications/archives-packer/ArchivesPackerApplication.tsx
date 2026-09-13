@@ -6,7 +6,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PACK_CONFIG_EXTENSIONS, withPackConfigExtension } from "@/applications/archives-packer/lib/pack-config";
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";

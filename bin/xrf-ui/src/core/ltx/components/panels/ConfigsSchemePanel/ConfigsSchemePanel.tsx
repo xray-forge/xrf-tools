@@ -2,7 +2,7 @@ import { Box, Divider } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect } from "react";
 
-import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsSchemeBinding } from "@/core/ltx/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";
 import { ConfigsSchemeFieldRow } from "@/core/ltx/components/panels/ConfigsSchemePanel/ConfigsSchemeFieldRow";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";

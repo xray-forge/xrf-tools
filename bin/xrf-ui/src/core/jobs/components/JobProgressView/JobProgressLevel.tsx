@@ -1,7 +1,7 @@
 import { Box, LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
 import { Nullable } from "@/lib/types/general";
 

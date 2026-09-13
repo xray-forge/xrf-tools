@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/bindings/types/xrf-archive";
-import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
+import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

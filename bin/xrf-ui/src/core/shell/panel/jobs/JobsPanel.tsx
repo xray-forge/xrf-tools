@@ -2,7 +2,7 @@ import { Box, Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { JobRow } from "@/core/shell/panel/jobs/JobRow";

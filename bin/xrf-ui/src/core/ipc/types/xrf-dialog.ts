@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * One whole dialog: its own elements and every phrase it declares.

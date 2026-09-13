@@ -1,5 +1,5 @@
-import { BuildInfo } from "@/core/bindings/types/xrf-build-info";
 import { getCommitUrl, getWorkflowRunUrl } from "@/core/configs";
+import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 
 import { IAboutRow, statedRows } from "./about-row";
 

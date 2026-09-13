@@ -3,9 +3,9 @@ import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { mockAlphaSurfaceDescriptor, mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

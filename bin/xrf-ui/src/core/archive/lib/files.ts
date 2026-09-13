@@ -3,7 +3,7 @@ import {
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveSharedPayload,
-} from "@/core/bindings/types/xrf-archive";
+} from "@/core/ipc/types/xrf-archive";
 import { Nullable } from "@/lib/types/general";
 
 /**

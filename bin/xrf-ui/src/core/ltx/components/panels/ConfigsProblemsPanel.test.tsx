@@ -3,8 +3,8 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
-import { LtxAnchoredFinding } from "@/core/bindings/types/xrf-ltx-inspect";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProblemsPanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";

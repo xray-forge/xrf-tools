@@ -1,4 +1,4 @@
-//! Writing `core/bindings/commands/`, one module per Tauri plugin.
+//! Writing `core/ipc/commands/`, one module per Tauri plugin.
 
 use std::fs;
 use std::path::Path;

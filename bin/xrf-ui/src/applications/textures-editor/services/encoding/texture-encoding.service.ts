@@ -2,8 +2,10 @@ import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wiresta
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
-import { texturesCommands } from "@/core/bindings/commands/textures";
-import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
+import { transformError } from "@/core/error/lib";
+import { texturesCommands } from "@/core/ipc/commands/textures";
+import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { Session } from "@/core/ipc/session";
 import {
   EJobKind,
   SessionId,
@@ -11,9 +13,7 @@ import {
   TextureEncodingComparison,
   TextureEncodingFormat,
   TextureEncodingReport,
-} from "@/core/bindings/types/xrf-app";
-import { transformError } from "@/core/error/lib";
-import { Session } from "@/core/ipc/session";
+} from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

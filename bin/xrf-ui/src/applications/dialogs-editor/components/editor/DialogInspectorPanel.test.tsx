@@ -4,7 +4,7 @@ import { RenderResult } from "@testing-library/react";
 import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/editor/DialogInspectorPanel";
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

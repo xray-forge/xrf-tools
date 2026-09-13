@@ -3,7 +3,7 @@ import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";

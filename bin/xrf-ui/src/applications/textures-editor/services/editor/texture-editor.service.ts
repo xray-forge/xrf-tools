@@ -4,7 +4,7 @@ import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wir
 import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
 import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { texturesCommands } from "@/core/bindings/commands/textures";
+import { texturesCommands } from "@/core/ipc/commands/textures";
 import {
   EJobKind,
   TextureDescription,
@@ -13,7 +13,7 @@ import {
   TextureEncodingFormat,
   TextureSaveOutcome,
   TextureVocabulary,
-} from "@/core/bindings/types/xrf-app";
+} from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

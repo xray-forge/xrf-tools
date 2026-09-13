@@ -6,7 +6,7 @@ import { DialogInspectorSection } from "@/applications/dialogs-editor/components
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
 import {
   EditorPanel,
   EditorPanelEmpty,

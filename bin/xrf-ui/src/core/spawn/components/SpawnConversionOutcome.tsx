@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { SpawnConversionResult } from "@/core/bindings/types/xrf-app";
+import { SpawnConversionResult } from "@/core/ipc/types/xrf-app";
 import { CommandResult } from "@/core/ui/command-result/CommandResult";
 
 interface ISpawnConversionOutcomeProps {

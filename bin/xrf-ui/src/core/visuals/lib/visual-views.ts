@@ -1,4 +1,4 @@
-import { Vector3d } from "@/core/bindings/types/xrf-db";
+import { Vector3d } from "@/core/ipc/types/xrf-db";
 import {
   VisualBone,
   VisualBounds,
@@ -7,7 +7,7 @@ import {
   VisualSection,
   VisualSubmesh,
   VisualTransform,
-} from "@/core/bindings/types/xrf-visual";
+} from "@/core/ipc/types/xrf-visual";
 import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import { Nullable, Optional } from "@/lib/types/general";
 

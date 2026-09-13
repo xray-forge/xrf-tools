@@ -13,9 +13,9 @@ import {
   getSubjectSourceCount,
 } from "@/core/archive/lib";
 import { describeAssetContainer } from "@/core/assets/lib";
-import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
-import { ArchiveDescriptor } from "@/core/bindings/types/xrf-archive";
-import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescriptor } from "@/core/ipc/types/xrf-archive";
+import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";

@@ -2,7 +2,7 @@ import { GridColDef, GridRowId } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { ArtefactSpawnPoint } from "@/core/bindings/types/xrf-db";
+import { ArtefactSpawnPoint } from "@/core/ipc/types/xrf-db";
 import { decimalColumn, textColumn, vectorColumn } from "@/core/ui/table";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

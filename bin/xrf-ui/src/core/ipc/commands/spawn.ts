@@ -2,12 +2,13 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   SessionId,
   SpawnConversionRequest,
   SpawnConversionResult,
   SpawnSessionDescriptor,
-} from "@/core/bindings/types/xrf-app";
+} from "@/core/ipc/types/xrf-app";
 import {
   SpawnALifeSpawnsChunk,
   SpawnArtefactSpawnsChunk,
@@ -15,9 +16,8 @@ import {
   SpawnGraphsChunk,
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
-} from "@/core/bindings/types/xrf-db";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-db";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 
 /** Commands */
 export const spawnCommands = {

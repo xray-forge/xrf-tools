@@ -9,7 +9,7 @@ import {
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
-import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

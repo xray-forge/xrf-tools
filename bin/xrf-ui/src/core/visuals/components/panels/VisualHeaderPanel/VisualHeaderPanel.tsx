@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { VisualDescription } from "@/core/bindings/types/xrf-visual";
+import { VisualDescription } from "@/core/ipc/types/xrf-visual";
 import {
   EditorPanel,
   EditorPanelEmpty,

@@ -1,4 +1,4 @@
-import { VisualSource } from "@/core/bindings/types/xrf-app";
+import { VisualSource } from "@/core/ipc/types/xrf-app";
 
 /**
  * Human readable name of where a visual came from.

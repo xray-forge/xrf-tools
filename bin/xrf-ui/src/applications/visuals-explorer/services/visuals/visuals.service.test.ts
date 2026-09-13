@@ -4,8 +4,8 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";

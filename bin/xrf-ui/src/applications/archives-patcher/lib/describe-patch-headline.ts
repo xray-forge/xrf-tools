@@ -1,4 +1,4 @@
-import { ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 
 /**
  * Summarizes the comparison or publication result.

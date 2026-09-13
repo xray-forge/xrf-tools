@@ -1,15 +1,15 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   DialogsOpenRequest,
   DialogsReadRequest,
   SessionId,
   SessionRestore,
   SessionSnapshot,
-} from "@/core/bindings/types/xrf-app";
-import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-app";
+import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const dialogsCommands = {

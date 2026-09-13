@@ -1,4 +1,4 @@
-import { JobConclusion } from "@/core/bindings/types/xrf-app";
+import { JobConclusion } from "@/core/ipc/types/xrf-app";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
 import { IJobNotice, IJobState } from "@/core/jobs/lib/jobs-types";
 import { ENotificationSeverity } from "@/core/notifications/lib";

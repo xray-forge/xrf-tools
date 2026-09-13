@@ -1,6 +1,6 @@
 import { toAssetLocation } from "@/core/assets/lib";
-import { VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { VisualSource } from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { Nullable } from "@/lib/types/general";
 

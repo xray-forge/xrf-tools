@@ -1,4 +1,4 @@
-import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/bindings/types/xrf-app";
+import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

@@ -1,7 +1,7 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { AssetTextureDescriptor, AudioDescriptor } from "@/core/bindings/types/xrf-app";
-import { ArchiveReadResult } from "@/core/bindings/types/xrf-archive";
-import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
+import { AssetTextureDescriptor, AudioDescriptor } from "@/core/ipc/types/xrf-app";
+import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
+import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 
 /**

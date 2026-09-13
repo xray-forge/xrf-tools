@@ -2,7 +2,7 @@ import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
-import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/bindings/types/xrf-app";
+import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { BaseComponentProps } from "@/lib/dom/element-types";

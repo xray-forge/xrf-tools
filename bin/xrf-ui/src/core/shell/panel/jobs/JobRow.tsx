@@ -1,8 +1,8 @@
 import { Box, Button, Chip, LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
-import { ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
 import { formatDuration } from "@/lib/format/duration";

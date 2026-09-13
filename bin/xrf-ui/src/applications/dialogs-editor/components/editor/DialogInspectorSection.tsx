@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { DialogElementDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogElementDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

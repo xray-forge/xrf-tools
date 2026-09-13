@@ -2,10 +2,10 @@ import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
-import { archivesCommands } from "@/core/bindings/commands/archives";
-import { ArchivesPatchRequest, EJobKind } from "@/core/bindings/types/xrf-app";
-import { ArchivePatchConfig, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
 import { transformError } from "@/core/error/lib";
+import { archivesCommands } from "@/core/ipc/commands/archives";
+import { ArchivesPatchRequest, EJobKind } from "@/core/ipc/types/xrf-app";
+import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

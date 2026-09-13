@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { jobsCommands } from "@/core/bindings/commands/jobs";
-import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { jobsCommands } from "@/core/ipc/commands/jobs";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 
 /**
  * How often the listing asks the backend what it is doing.

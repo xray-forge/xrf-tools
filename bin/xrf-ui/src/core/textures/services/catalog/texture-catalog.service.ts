@@ -2,17 +2,17 @@ import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { texturesCommands } from "@/core/bindings/commands/textures";
+import { transformError } from "@/core/error/lib";
+import { texturesCommands } from "@/core/ipc/commands/textures";
+import { Session } from "@/core/ipc/session";
 import {
   SessionSnapshot,
   TextureCatalog,
   TextureCatalogMode,
   TextureMaterialSummary,
   TextureSource,
-} from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { transformError } from "@/core/error/lib";
-import { Session } from "@/core/ipc/session";
+} from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { AsyncState } from "@/lib/async-state";

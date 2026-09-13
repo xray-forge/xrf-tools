@@ -2,10 +2,10 @@ import { Channel } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
-import { jobsCommands } from "@/core/bindings/commands/jobs";
-import { EJobKind, JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { transformError } from "@/core/error/lib";
+import { jobsCommands } from "@/core/ipc/commands/jobs";
+import { EJobKind, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
 import {

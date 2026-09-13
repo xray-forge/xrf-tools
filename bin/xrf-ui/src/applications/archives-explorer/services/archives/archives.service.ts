@@ -15,15 +15,15 @@ import {
   TArchiveOperation,
   TArchiveSelection,
 } from "@/core/archive/lib";
-import { archivesCommands } from "@/core/bindings/commands/archives";
-import { archivesRawCommands } from "@/core/bindings/commands/archives-raw";
-import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
-import { ArchiveSubject, ArchiveWorldEntry, EJobKind, SessionId, SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
-import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
-import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { archivesCommands } from "@/core/ipc/commands/archives";
+import { archivesRawCommands } from "@/core/ipc/commands/archives-raw";
+import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { requireSessionId, Session } from "@/core/ipc/session";
+import { ArchiveSubject, ArchiveWorldEntry, EJobKind, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
+import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
+import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

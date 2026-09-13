@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { describeVerifyOutcome } from "@/applications/configs-verifier/lib/describe-verify-outcome";
-import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
+import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

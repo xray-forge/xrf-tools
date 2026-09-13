@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsEditorApplication";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

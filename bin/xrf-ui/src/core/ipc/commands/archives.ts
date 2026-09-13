@@ -2,6 +2,7 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
+import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   ArchivesExtractRequest,
   ArchivesPackRequest,
@@ -13,9 +14,9 @@ import {
   SessionId,
   SessionRestore,
   SessionSnapshot,
-} from "@/core/bindings/types/xrf-app";
-import { ArchiveReadResult, ArchiveSharedPayload } from "@/core/bindings/types/xrf-archive";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
+} from "@/core/ipc/types/xrf-app";
+import { ArchiveReadResult, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   ArchiveExtractDirectoryResult,
   ArchiveExtractResult,
@@ -24,9 +25,8 @@ import {
   ArchivePatchConfig,
   ArchivePatchResult,
   ArchiveUnpackResult,
-} from "@/core/bindings/types/xrf-pack";
-import { XrayPathCollision, XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+} from "@/core/ipc/types/xrf-pack";
+import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {

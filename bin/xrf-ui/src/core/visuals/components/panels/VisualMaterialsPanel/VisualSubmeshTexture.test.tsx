@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { mockTextureDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";

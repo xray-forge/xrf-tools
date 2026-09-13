@@ -1,12 +1,12 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
-import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
-import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { VisualMotionBake } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { visualsCommands } from "@/core/ipc/commands/visuals";
+import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { requireSessionId } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { Logger } from "@/lib/logging";

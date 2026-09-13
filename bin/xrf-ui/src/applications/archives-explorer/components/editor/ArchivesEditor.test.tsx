@@ -6,7 +6,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ArchivesExplorerApplication } from "@/applications/archives-explorer/ArchivesExplorerApplication";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
+import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import {

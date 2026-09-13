@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
-import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/bindings/types/xrf-ltx-inspect";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsSchemePanel } from "@/core/ltx/components/panels/ConfigsSchemePanel/ConfigsSchemePanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsProjectService } from "@/core/ltx/services/project";

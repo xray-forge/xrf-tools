@@ -111,7 +111,7 @@ fn command_modules<R: tauri::Runtime>() -> Vec<CommandModule<R>> {
 
 /// Path of the mirrors the frontend compiles against.
 fn committed_bindings() -> PathBuf {
-  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../xrf-ui/src/core/bindings")
+  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../xrf-ui/src/core/ipc")
 }
 
 /// Rewrite the committed mirrors in place.

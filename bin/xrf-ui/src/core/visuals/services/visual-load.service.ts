@@ -2,13 +2,13 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { Texture } from "three";
 
-import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
-import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { visualsRawCommands } from "@/core/bindings/commands/visuals-raw";
-import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
+import { visualsCommands } from "@/core/ipc/commands/visuals";
+import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { Session } from "@/core/ipc/session";
+import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { createVisualSurfaces, IVisualSurface, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";

@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ConfigsDocument } from "@/core/bindings/types/xrf-app";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { ConfigsAuthoredView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsAuthoredView";
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";

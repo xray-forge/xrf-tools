@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { JobOutcome } from "@/core/bindings/types/xrf-job";
+import { JobOutcome } from "@/core/ipc/types/xrf-job";
 
 /** What extracting one archived directory produced. */
 export type ArchiveExtractDirectoryResult = {

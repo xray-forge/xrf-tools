@@ -4,11 +4,11 @@ import { Texture } from "three";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
-import { visualsCommands } from "@/core/bindings/commands/visuals";
-import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { visualsCommands } from "@/core/ipc/commands/visuals";
+import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";

@@ -1,11 +1,11 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
-import { spawnCommands } from "@/core/bindings/commands/spawn";
-import { SessionId, SpawnSessionDescriptor } from "@/core/bindings/types/xrf-app";
-import { SpawnFile } from "@/core/bindings/types/xrf-db";
 import { transformError } from "@/core/error/lib";
+import { spawnCommands } from "@/core/ipc/commands/spawn";
 import { Session } from "@/core/ipc/session";
+import { SessionId, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
+import { SpawnFile } from "@/core/ipc/types/xrf-db";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";

@@ -3,7 +3,7 @@ import { act, fireEvent, waitFor } from "@testing-library/react";
 
 import { GamedataVerifierApplication } from "@/applications/gamedata-verifier/GamedataVerifierApplication";
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
-import { GamedataVerifySummary } from "@/core/bindings/types/xrf-app";
+import { GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

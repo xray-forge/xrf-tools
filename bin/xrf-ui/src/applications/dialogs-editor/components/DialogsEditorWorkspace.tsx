@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";

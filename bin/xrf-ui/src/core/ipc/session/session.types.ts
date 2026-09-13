@@ -1,4 +1,4 @@
-import { SessionId } from "@/core/bindings/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 
 /** Identifies the native opening that owns a value. */
 export interface ISessionIdentity {

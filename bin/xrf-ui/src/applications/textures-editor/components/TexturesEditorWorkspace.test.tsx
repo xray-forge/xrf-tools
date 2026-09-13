@@ -10,7 +10,7 @@ import {
   TextureDescriptorForm,
   TextureSaveOutcome,
   TexturesSaveRequest,
-} from "@/core/bindings/types/xrf-app";
+} from "@/core/ipc/types/xrf-app";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";

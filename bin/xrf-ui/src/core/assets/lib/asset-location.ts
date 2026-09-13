@@ -1,4 +1,4 @@
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";

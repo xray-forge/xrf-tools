@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { TextureCatalog, TextureMaterialSummary } from "@/core/bindings/types/xrf-app";
+import { TextureCatalog, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

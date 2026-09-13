@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
-import { ArchiveExtractDirectoryResult } from "@/core/bindings/types/xrf-pack";
+import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

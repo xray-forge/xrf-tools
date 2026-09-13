@@ -1,7 +1,7 @@
 import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
-import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
+import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { TLtxSchemeError, toLtxSchemeErrors } from "@/core/ltx";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

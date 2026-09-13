@@ -2,9 +2,9 @@
 
 import { Channel } from "@tauri-apps/api/core";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
-import { JobProgress } from "@/core/bindings/types/xrf-job";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 
 /** Commands */
 export const jobsCommands = {

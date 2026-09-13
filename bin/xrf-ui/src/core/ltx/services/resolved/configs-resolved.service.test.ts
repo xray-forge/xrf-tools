@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
-import { LtxResolvedIndex, LtxResolvedSection } from "@/core/bindings/types/xrf-ltx-inspect";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { LtxResolvedIndex, LtxResolvedSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

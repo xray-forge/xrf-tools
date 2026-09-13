@@ -1,4 +1,4 @@
-import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 /**

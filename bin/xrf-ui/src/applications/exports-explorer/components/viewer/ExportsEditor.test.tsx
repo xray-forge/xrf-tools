@@ -5,8 +5,8 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { ExportsProject } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor, TValueExportDescriptor } from "@/core/exports";
+import { ExportsProject } from "@/core/ipc/types/xrf-export";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

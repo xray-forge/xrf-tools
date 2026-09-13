@@ -1,4 +1,4 @@
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { Maybe } from "@/lib/types/general";
 

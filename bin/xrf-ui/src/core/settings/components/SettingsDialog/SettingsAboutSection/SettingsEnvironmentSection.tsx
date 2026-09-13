@@ -1,8 +1,8 @@
 import { Stack, Typography } from "@mui/material";
 import { ReactElement, useState } from "react";
 
-import { systemCommands } from "@/core/bindings/commands/system";
-import { HostInfo } from "@/core/bindings/types/xrf-app";
+import { systemCommands } from "@/core/ipc/commands/system";
+import { HostInfo } from "@/core/ipc/types/xrf-app";
 import { SettingsSection } from "@/core/settings/components/SettingsSection";
 import { Logger, useLogger } from "@/lib/logging";
 import { useMountEffect } from "@/lib/react";

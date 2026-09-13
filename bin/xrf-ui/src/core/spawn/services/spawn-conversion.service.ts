@@ -1,7 +1,7 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
-import { spawnCommands } from "@/core/bindings/commands/spawn";
-import { EJobKind, SpawnConversionResult } from "@/core/bindings/types/xrf-app";
+import { spawnCommands } from "@/core/ipc/commands/spawn";
+import { EJobKind, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

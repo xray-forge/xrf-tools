@@ -6,9 +6,9 @@ import {
   DialogPhraseGraphNode,
 } from "@/applications/dialogs-editor/components/editor/DialogGraphNode";
 import { buildDialogGraph, EDialogGraphNodeType, IDialogGraph } from "@/applications/dialogs-editor/lib";
-import { DialogDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { GraphCanvas } from "@/core/graph/components";
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

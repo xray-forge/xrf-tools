@@ -2,7 +2,7 @@ import { MenuItem, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import { toVocabularyOptions } from "@/applications/textures-editor/lib/texture-vocabulary";
-import { TextureVocabularyEntry } from "@/core/bindings/types/xrf-app";
+import { TextureVocabularyEntry } from "@/core/ipc/types/xrf-app";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureSelectFieldProps extends BaseComponentProps {

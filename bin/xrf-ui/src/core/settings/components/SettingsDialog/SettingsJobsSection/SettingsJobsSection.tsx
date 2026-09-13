@@ -1,7 +1,7 @@
 import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";

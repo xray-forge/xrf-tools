@@ -5,7 +5,7 @@ import {
   LtxResolvedFieldOrigin,
   LtxResolvedIndexEntry,
   LtxResolvedSection,
-} from "@/core/bindings/types/xrf-ltx-inspect";
+} from "@/core/ipc/types/xrf-ltx-inspect";
 import { describeResolvedFieldOrigin, IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLineSource } from "@/core/ui/code/code-line";

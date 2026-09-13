@@ -1,7 +1,7 @@
-import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/bindings/types/xrf-archive";
-import { ExportDescriptor, ExportsProject } from "@/core/bindings/types/xrf-export";
-import { TranslationProjectDescriptor, TranslationSource } from "@/core/bindings/types/xrf-translation";
 import { TCallableExportDescriptor } from "@/core/exports";
+import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/ipc/types/xrf-archive";
+import { ExportDescriptor, ExportsProject } from "@/core/ipc/types/xrf-export";
+import { TranslationProjectDescriptor, TranslationSource } from "@/core/ipc/types/xrf-translation";
 import { IEquipmentSectionDescriptor } from "@/core/sprite-equipment/lib";
 
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "./archive.mocks";

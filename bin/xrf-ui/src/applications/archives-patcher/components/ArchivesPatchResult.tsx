@@ -4,7 +4,7 @@ import { ReactElement, useMemo } from "react";
 
 import { describePatchHeadline } from "@/applications/archives-patcher/lib/describe-patch-headline";
 import { type IPatchChangeRow, toPatchChangeRows } from "@/applications/archives-patcher/lib/patch-change-rows";
-import { ArchivePatchClass, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchClass, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

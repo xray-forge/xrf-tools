@@ -34,4 +34,4 @@ pub(super) const CHANNEL_IMPORT_AND_COUNTED_INVOKE: &str =
   "import { Channel } from \"@tauri-apps/api/core\";\nimport { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
 
 /// Bindings import specifier root, matching the `@/*` path alias of the frontend.
-pub(super) const BINDINGS_ROOT: &str = "@/core/bindings";
+pub(super) const BINDINGS_ROOT: &str = "@/core/ipc";

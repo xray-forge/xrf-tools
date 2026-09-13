@@ -4,7 +4,7 @@ import { RenderResult } from "@testing-library/react";
 import { ArchiveAudioPreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { AudioDescriptor } from "@/core/bindings/types/xrf-app";
+import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";

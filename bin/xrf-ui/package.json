@@ -24,7 +24,7 @@
     "format": "prettier --write \"**/*.(js|ts|tsx|md)\" && pnpm run lint --fix",
     "lint:staged": "lint-staged --config cli/hooks/lint-staged.config.mjs --max-arg-length 7000",
     "generate:bindings": "cargo make --cwd ../.. generate-typescript",
-    "format:bindings": "eslint --config cli/lint/eslint.generated.config.mjs --no-cache --fix src/core/bindings && prettier --write --log-level warn \"src/core/bindings/**/*.ts\""
+    "format:bindings": "eslint --config cli/lint/eslint.generated.config.mjs --no-cache --fix src/core/ipc/commands src/core/ipc/types && prettier --write --log-level warn \"src/core/ipc/commands/**/*.ts\" \"src/core/ipc/types/**/*.ts\""
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

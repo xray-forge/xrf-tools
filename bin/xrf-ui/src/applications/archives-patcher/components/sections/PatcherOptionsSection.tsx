@@ -2,7 +2,7 @@ import { Stack, Switch } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
-import { ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

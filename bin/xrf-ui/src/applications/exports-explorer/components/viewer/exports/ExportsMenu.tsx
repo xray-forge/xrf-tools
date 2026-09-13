@@ -4,7 +4,7 @@ import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Box, Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { getFileItemPath, IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";

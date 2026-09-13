@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@/core/bindings/types/xrf-app";
+import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@/core/ipc/types/xrf-app";
 import {
   EditorPanel,
   EditorPanelEmpty,

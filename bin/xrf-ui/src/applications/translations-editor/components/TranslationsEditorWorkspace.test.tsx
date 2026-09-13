@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationsEditorApplication } from "@/applications/translations-editor/TranslationsEditorApplication";
-import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

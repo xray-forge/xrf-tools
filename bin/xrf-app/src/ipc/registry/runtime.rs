@@ -42,7 +42,7 @@ macro_rules! define_runtime_domains {
           // `tauri::ipc::Response` cannot be Specta typed at all: tauri blankets `IpcResponse` over
           // every `Serialize`, so a local newtype conflicts, and `#[specta(remote)]` on the foreign
           // type breaks the orphan rule. Declaring one in `raw { .. }` is therefore the only way to
-          // dispatch and permit it, and each one needs a hand written wrapper beside `core/bindings/`.
+          // dispatch and permit it, and each one needs a hand written wrapper beside `core/ipc/`.
           tauri_specta::Builder::new()
             .plugin_name(NAME)
             .error_handling(tauri_specta::ErrorHandlingMode::Throw)

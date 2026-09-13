@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { formatMipmapLevels } from "@/core/assets/lib/texture-shape";
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";

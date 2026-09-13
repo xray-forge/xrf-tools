@@ -5,7 +5,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogFinding, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogFinding, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";

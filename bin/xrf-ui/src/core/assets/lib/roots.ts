@@ -1,4 +1,4 @@
-import { XrayMountMode, XrayRoot, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayMountMode, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 /**

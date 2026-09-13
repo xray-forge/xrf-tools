@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { XrayAsset, XrayAssetType, XrayRootProbe, XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+import { XrayAsset, XrayAssetType, XrayRootProbe, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const assetsCommands = {

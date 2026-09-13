@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { XrayResolution } from "@/core/bindings/types/xrf-vfs";
+import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * One bone of a visual's skeleton, as a name and the name of its parent.

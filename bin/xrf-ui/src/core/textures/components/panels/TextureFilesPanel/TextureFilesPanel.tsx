@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
   EditorPanel,
   EditorPanelEmpty,

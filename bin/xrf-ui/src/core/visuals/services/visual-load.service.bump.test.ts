@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
-import { XrayAsset, XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
+import { XrayAsset, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockDdsFile, mockDx10DdsFile } from "@/fixtures/mocks/dds.mocks";

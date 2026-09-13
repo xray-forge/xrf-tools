@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { createRoot } from "@/core/assets/lib";
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

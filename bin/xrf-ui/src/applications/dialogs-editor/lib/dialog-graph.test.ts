@@ -7,8 +7,8 @@ import {
   IDialogGraph,
   IDialogGraphNodeData,
 } from "@/applications/dialogs-editor/lib/dialog-graph";
-import { DialogDescriptor, DialogPhraseDescriptor } from "@/core/bindings/types/xrf-dialog";
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { DialogDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
 
 function phrase(overrides: Partial<DialogPhraseDescriptor> = {}): DialogPhraseDescriptor {
   return {

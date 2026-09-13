@@ -5,8 +5,8 @@ import {
   TextureMaterialSummary,
   TextureRole,
   TextureSource,
-} from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+} from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /**

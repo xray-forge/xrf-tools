@@ -1,6 +1,6 @@
 import { getLocatedAsset } from "@/core/assets/lib";
-import { AssetTextureDescriptor, TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { AssetTextureDescriptor, TextureDescription } from "@/core/ipc/types/xrf-app";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 /** One of the three files a bumped surface is drawn from, as far as this root set holds it. */

@@ -11,7 +11,7 @@ import {
   TArchiveContent,
   TArchiveSelection,
 } from "@/core/archive/lib";
-import { ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
+import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

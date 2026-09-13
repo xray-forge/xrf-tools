@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";

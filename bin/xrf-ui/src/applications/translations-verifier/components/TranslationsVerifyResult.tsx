@@ -1,8 +1,8 @@
 import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationVerifySummary } from "@/core/bindings/types/xrf-app";
-import { TranslationVerifyLanguageSummary } from "@/core/bindings/types/xrf-translation";
+import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
+import { TranslationVerifyLanguageSummary } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { StyledComponentProps } from "@/lib/dom/element-types";

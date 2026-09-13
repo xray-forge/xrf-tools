@@ -1,4 +1,4 @@
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { findLastSeparator } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 

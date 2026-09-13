@@ -1,4 +1,4 @@
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { Optional } from "@/lib/types/general";
 
 /**

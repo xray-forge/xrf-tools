@@ -1,8 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { HostInfo, PathDescription, RuntimeSnapshot } from "@/core/bindings/types/xrf-app";
-import { BuildInfo } from "@/core/bindings/types/xrf-build-info";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+import { HostInfo, PathDescription, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 
 /** Commands */
 export const systemCommands = {

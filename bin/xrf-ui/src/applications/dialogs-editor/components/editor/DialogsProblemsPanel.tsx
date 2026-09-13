@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { DialogFinding } from "@/core/bindings/types/xrf-dialog";
+import { DialogFinding } from "@/core/ipc/types/xrf-dialog";
 import { EditorProblemsPanel } from "@/core/shell/editor/EditorProblemsPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

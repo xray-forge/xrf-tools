@@ -4,8 +4,8 @@ import { Container } from "@wirestate/core";
 
 import { VisualMotionsPanel } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionsPanel";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { VisualMotionBake, VisualMotionDependency } from "@/core/bindings/types/xrf-visual";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { VisualMotionBake, VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

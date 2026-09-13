@@ -3,8 +3,8 @@ import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EArchiveSubject, getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
-import { ArchiveSubject, ArchiveWorldEntry } from "@/core/bindings/types/xrf-app";
-import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { ArchiveSubject, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import {
   EditorPanel,
   EditorPanelEmpty,

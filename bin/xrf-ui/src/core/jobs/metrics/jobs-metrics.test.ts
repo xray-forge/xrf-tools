@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { JobProgress, ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { JobProgress, ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
 import { Nullable } from "@/lib/types/general";
 

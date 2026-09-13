@@ -9,7 +9,7 @@ import {
   TextureDescriptorForm,
   TextureFlagEntry,
   TextureVocabulary,
-} from "@/core/bindings/types/xrf-app";
+} from "@/core/ipc/types/xrf-app";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -1,4 +1,4 @@
-import { ExportDescriptor, ExportParameterDescriptor } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor, ExportParameterDescriptor } from "@/core/ipc/types/xrf-export";
 
 export function formatExportSignature(declaration: ExportDescriptor): string {
   switch (declaration.kind) {

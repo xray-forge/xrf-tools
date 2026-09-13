@@ -2,8 +2,8 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeTranslationBuildOutcome } from "@/applications/translations-builder/lib/describe-build-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { translationsCommands } from "@/core/bindings/commands/translations";
-import { EJobKind, TranslationBuildSummary } from "@/core/bindings/types/xrf-app";
+import { translationsCommands } from "@/core/ipc/commands/translations";
+import { EJobKind, TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

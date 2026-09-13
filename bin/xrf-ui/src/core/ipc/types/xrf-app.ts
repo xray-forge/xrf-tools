@@ -1,22 +1,22 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { ArchiveProject, ArchiveReadPolicy } from "@/core/bindings/types/xrf-archive";
-import { SpawnHeaderChunk } from "@/core/bindings/types/xrf-db";
-import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
-import { JobOutcome, JobProgress } from "@/core/bindings/types/xrf-job";
-import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/bindings/types/xrf-ltx-inspect";
-import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
-import { ArchivePackConfig, ArchivePatchConfig } from "@/core/bindings/types/xrf-pack";
-import { InventorySpriteDescriptor } from "@/core/bindings/types/xrf-texture";
+import { ArchiveProject, ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
+import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-db";
+import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
+import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { InventorySpriteDescriptor } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
   TranslationParseCensus,
   TranslationProjectDescriptor,
   TranslationProjectMode,
   TranslationVerifyLanguageSummary,
-} from "@/core/bindings/types/xrf-translation";
-import { XrayAsset, XrayAssetContainer, XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { VisualDependencies, VisualDescription } from "@/core/bindings/types/xrf-visual";
+} from "@/core/ipc/types/xrf-translation";
+import { XrayAsset, XrayAssetContainer, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
 /**
  * What the explorer has open: a set of `.db` volumes, or a whole mounted world.

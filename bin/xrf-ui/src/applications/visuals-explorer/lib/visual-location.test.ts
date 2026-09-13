@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 
 import { toVisualLocation } from "./visual-location";
 

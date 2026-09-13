@@ -1,4 +1,4 @@
-import { XrfError } from "@/core/bindings/types/xrf-error";
+import { XrfError } from "@/core/ipc/types/xrf-error";
 
 /**
  * One scheme problem, unwrapped from the error variant that carries it.

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { listArchiveFiles } from "@/core/archive/lib/files";
 import { IArchiveTreeItem, isUnderArchiveDirectory, parseTree } from "@/core/archive/lib/tree";
-import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
+import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 

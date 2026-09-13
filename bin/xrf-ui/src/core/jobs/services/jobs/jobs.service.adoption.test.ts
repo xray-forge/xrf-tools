@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
-import { EJobKind, JobDescription } from "@/core/bindings/types/xrf-app";
+import { EJobKind, JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";

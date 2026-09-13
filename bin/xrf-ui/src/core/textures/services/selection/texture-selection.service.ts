@@ -2,11 +2,11 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
-import { texturesCommands } from "@/core/bindings/commands/textures";
-import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
-import { TextureDescription, TextureSource } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { texturesCommands } from "@/core/ipc/commands/textures";
+import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";

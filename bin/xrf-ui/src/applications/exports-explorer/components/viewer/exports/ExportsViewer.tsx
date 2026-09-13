@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 

@@ -2,11 +2,11 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
 import { SRGBColorSpace, Texture } from "three";
 
-import { assetsRawCommands } from "@/core/bindings/commands/assets-raw";
-import { texturesRawCommands } from "@/core/bindings/commands/textures-raw";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
+import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,

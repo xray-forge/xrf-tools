@@ -1,7 +1,7 @@
 import { Box, Button, LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { JobProgressLevel } from "@/core/jobs/components/JobProgressView/JobProgressLevel";
 import { IJobState } from "@/core/jobs/lib";
 import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/lib/progress-format";

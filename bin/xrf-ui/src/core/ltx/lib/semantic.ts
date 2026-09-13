@@ -1,4 +1,4 @@
-import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toLexicalLines } from "@/core/ltx/lib/lexical";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";

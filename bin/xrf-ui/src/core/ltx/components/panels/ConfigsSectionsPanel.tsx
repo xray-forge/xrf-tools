@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { LtxResolvedIndexEntry } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxResolvedIndexEntry } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";

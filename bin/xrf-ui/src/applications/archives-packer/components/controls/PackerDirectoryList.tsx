@@ -2,7 +2,7 @@ import { FormControlLabel, Switch, TextField, Typography } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";
-import { ArchivePackDirectory } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackDirectory } from "@/core/ipc/types/xrf-pack";
 import { EditableList, EditableListItem } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { withoutAt } from "@/lib/types/array";

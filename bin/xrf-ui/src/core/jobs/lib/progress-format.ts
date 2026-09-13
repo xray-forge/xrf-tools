@@ -1,4 +1,4 @@
-import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/bindings/types/xrf-job";
+import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 

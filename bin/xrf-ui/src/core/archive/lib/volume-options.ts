@@ -1,4 +1,4 @@
-import { ArchivePackMode, ArchiveVolumeExtension } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackMode, ArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 
 // todo: Improve tauri generator to expose enums instead of string types.
 

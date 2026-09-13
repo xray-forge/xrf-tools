@@ -4,7 +4,7 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 import { MODE_DESCRIPTIONS, MODE_OPTIONS } from "@/applications/dialogs-editor/components/DialogsEditorOpenForm.utils";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { createRoots } from "@/core/assets/lib/roots";
-import { DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
+import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";

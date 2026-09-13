@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
-import { AssetTextureShape, TextureDescription } from "@/core/bindings/types/xrf-app";
+import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,

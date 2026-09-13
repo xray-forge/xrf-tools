@@ -1,7 +1,7 @@
 import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationFormatResult } from "@/core/bindings/types/xrf-translation";
+import { TranslationFormatResult } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { formatDuration } from "@/lib/format/duration";

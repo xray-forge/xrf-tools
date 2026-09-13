@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { LtxFileStructure } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toDocumentLines } from "@/core/ltx/lib/semantic";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";

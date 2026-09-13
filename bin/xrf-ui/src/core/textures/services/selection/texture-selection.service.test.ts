@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
 import { createRoots } from "@/core/assets/lib";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";

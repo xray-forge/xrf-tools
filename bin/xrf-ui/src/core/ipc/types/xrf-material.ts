@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Which bump shader family a declaration selects, `STextureParams::ETBumpMode` without the two values that mean no

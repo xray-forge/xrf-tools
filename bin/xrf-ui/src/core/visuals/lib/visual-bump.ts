@@ -1,9 +1,9 @@
 import { IUniform, Matrix3, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { Nullable } from "@/lib/types/general";
 

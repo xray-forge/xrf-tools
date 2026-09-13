@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { Texture } from "three";
 
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/bindings/types/xrf-material";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";

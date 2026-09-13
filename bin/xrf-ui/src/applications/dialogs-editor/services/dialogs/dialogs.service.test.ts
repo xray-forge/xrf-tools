@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs/dialogs.service";
 import { createRoots } from "@/core/assets/lib/roots";
-import { DialogDescriptor, DialogProjectDescriptor } from "@/core/bindings/types/xrf-dialog";
+import { DialogDescriptor, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

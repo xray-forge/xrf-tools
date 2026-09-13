@@ -4,7 +4,7 @@ import { RenderResult } from "@testing-library/react";
 import { ArchiveImagePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveImagePreview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";

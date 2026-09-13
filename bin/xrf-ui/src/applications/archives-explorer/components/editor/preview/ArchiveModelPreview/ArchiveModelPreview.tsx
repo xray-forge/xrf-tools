@@ -4,7 +4,7 @@ import { ReactElement, useEffect, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
-import { ArchiveSubject } from "@/core/bindings/types/xrf-app";
+import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";

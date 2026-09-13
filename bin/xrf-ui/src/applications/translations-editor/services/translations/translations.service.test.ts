@@ -4,8 +4,8 @@ import { flowResult } from "@wirestate/mobx";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
-import { TranslationSaveOutcome } from "@/core/bindings/types/xrf-app";
-import { TranslationProjectDescriptor } from "@/core/bindings/types/xrf-translation";
+import { TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
+import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

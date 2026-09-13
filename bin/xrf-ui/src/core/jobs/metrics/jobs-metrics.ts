@@ -1,4 +1,4 @@
-import { JobProgress, ProgressLevel } from "@/core/bindings/types/xrf-job";
+import { JobProgress, ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics/jobs-metrics.types";
 import { Maybe, Nullable, Optional } from "@/lib/types/general";
 

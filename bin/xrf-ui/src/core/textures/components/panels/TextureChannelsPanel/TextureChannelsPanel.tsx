@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
   EditorPanel,
   EditorPanelEmpty,

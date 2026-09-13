@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TextureDescriptorForm } from "@/core/bindings/types/xrf-app";
+import { TextureDescriptorForm } from "@/core/ipc/types/xrf-app";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 
 import { EMPTY_TEXTURE_DESCRIPTOR_FORM, isSameDescriptorForm, toEditableForm } from "./texture-descriptor-form";

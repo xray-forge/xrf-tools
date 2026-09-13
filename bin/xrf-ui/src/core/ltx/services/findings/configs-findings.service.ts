@@ -1,9 +1,9 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
 
-import { configsCommands } from "@/core/bindings/commands/configs";
-import { LtxAnchoredFinding } from "@/core/bindings/types/xrf-ltx-inspect";
 import { transformError } from "@/core/error/lib";
+import { configsCommands } from "@/core/ipc/commands/configs";
+import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";

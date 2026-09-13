@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { XrayPathCollision } from "@/core/bindings/types/xrf-vfs";
+import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

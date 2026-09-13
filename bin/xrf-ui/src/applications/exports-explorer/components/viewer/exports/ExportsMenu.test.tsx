@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 
 import { ExportsMenu } from "@/applications/exports-explorer/components/viewer/exports/ExportsMenu";
-import { ExportDescriptor } from "@/core/bindings/types/xrf-export";
+import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { mockExportsDeclarations } from "@/fixtures/mocks/project.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

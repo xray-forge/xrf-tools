@@ -1,8 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ExportParameterDescriptor } from "@/core/bindings/types/xrf-export";
 import { TCallableExportDescriptor } from "@/core/exports";
+import { ExportParameterDescriptor } from "@/core/ipc/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ExportSection } from "./ExportSection";

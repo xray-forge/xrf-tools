@@ -1,4 +1,4 @@
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 
 /**
  * Identifies a texture by its address and ordered roots, independently of its display label.

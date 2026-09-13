@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { PackerDirectoryList } from "@/applications/archives-packer/components/controls/PackerDirectoryList";
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { FormRow, StringListFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

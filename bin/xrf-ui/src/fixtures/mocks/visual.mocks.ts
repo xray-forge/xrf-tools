@@ -1,7 +1,7 @@
 import { createRoots } from "@/core/assets/lib";
-import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/bindings/types/xrf-app";
-import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/bindings/types/xrf-material";
+import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   VisualBone,
   VisualBounds,
@@ -12,7 +12,7 @@ import {
   VisualSubmesh,
   VisualTextureDependency,
   VisualTransform,
-} from "@/core/bindings/types/xrf-visual";
+} from "@/core/ipc/types/xrf-visual";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 

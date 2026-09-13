@@ -1,8 +1,4 @@
-import {
-  DialogFileDescriptor,
-  DialogProjectDescriptor,
-  DialogSummaryDescriptor,
-} from "@/core/bindings/types/xrf-dialog";
+import { DialogFileDescriptor, DialogProjectDescriptor, DialogSummaryDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 

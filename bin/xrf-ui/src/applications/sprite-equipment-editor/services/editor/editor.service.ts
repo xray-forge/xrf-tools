@@ -6,10 +6,10 @@ import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
-import { spriteEquipmentCommands } from "@/core/bindings/commands/sprite-equipment";
-import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { transformError } from "@/core/error/lib";
+import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { requireSessionId, Session } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import {

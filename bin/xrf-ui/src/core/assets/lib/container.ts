@@ -1,4 +1,4 @@
-import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
+import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 /**

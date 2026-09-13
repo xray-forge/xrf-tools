@@ -4,7 +4,7 @@ import {
   ArchivePatchOrigin,
   ArchivePatchResult,
   ArchivePatchSide,
-} from "@/core/bindings/types/xrf-pack";
+} from "@/core/ipc/types/xrf-pack";
 import { Nullable } from "@/lib/types/general";
 
 /** One classified entry, flattened into the columns a findings grid shows. */

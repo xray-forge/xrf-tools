@@ -6,7 +6,7 @@ import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/Vis
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { createRoots } from "@/core/assets/lib";
-import { XrayAsset } from "@/core/bindings/types/xrf-vfs";
+import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

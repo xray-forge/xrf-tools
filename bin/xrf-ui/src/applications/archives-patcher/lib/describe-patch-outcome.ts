@@ -1,4 +1,4 @@
-import { ArchivePatchConfig, ArchivePatchResult } from "@/core/bindings/types/xrf-pack";
+import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

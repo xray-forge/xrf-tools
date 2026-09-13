@@ -8,7 +8,7 @@ import {
   RGBA_S3TC_DXT5_Format,
 } from "three";
 
-import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import {
   createDdsTexture,
   EVisualTextureState,

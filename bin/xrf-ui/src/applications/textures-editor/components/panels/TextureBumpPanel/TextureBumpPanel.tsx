@@ -7,7 +7,7 @@ import { toBumpReference, toCompanionReference } from "@/applications/textures-e
 import { DEFAULT_VIRTUAL_HEIGHT } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 import {
   EditorPanel,

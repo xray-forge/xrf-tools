@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { describeRootProbe } from "@/core/assets/lib/root-probe";
-import { assetsCommands } from "@/core/bindings/commands/assets";
-import { XrayRootProbe } from "@/core/bindings/types/xrf-vfs";
+import { assetsCommands } from "@/core/ipc/commands/assets";
+import { XrayRootProbe } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
 /**

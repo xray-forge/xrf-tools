@@ -2,7 +2,7 @@ import { Alert, Box, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LtxResolvedIndexEntry } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxResolvedIndexEntry } from "@/core/ipc/types/xrf-ltx-inspect";
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";

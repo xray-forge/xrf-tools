@@ -3,11 +3,11 @@ import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wir
 import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription, VisualSource } from "@/core/bindings/types/xrf-app";
-import { Vector3d } from "@/core/bindings/types/xrf-db";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
-import { VisualBone } from "@/core/bindings/types/xrf-visual";
 import { transformError } from "@/core/error/lib";
+import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";

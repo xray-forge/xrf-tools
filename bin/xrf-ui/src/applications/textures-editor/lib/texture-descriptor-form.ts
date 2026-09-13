@@ -1,4 +1,4 @@
-import { TextureDescription, TextureDescriptorForm } from "@/core/bindings/types/xrf-app";
+import { TextureDescription, TextureDescriptorForm } from "@/core/ipc/types/xrf-app";
 import { Nullable } from "@/lib/types/general";
 
 /**

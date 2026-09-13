@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ExportSourceView } from "@/applications/exports-explorer/components/viewer/exports/ExportSourceView";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
+import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

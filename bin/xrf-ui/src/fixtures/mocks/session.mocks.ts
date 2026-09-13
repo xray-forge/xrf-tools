@@ -1,5 +1,5 @@
-import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
 import { ISessionIdentity, Session } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { InvokeHandler } from "@/fixtures/mocks/tauri.mocks";
 import { Optional } from "@/lib/types/general";
 

@@ -1,4 +1,4 @@
-import { PackEquipmentResult } from "@/core/bindings/types/xrf-texture";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

@@ -1,4 +1,4 @@
-import { LtxProjectFormatResult } from "@/core/bindings/types/xrf-ltx";
+import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

@@ -5,7 +5,7 @@ import { runInAction } from "@wirestate/mobx";
 
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveFileDescriptor } from "@/core/bindings/types/xrf-archive";
+import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

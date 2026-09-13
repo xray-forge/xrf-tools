@@ -1,4 +1,4 @@
-import { EJobKind } from "@/core/bindings/types/xrf-app";
+import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 

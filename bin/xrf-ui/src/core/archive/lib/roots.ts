@@ -1,6 +1,6 @@
 import { createRoot } from "@/core/assets/lib";
-import { ArchiveProject } from "@/core/bindings/types/xrf-archive";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
+import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * The roots an archived asset is read out of, which is the project's own tree.

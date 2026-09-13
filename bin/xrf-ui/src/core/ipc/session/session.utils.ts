@@ -1,5 +1,5 @@
-import { SessionId } from "@/core/bindings/types/xrf-app";
 import { ISessionIdentity } from "@/core/ipc/session/session.types";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Nullable } from "@/lib/types/general";
 
 /**

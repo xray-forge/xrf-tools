@@ -1,4 +1,4 @@
-//! Writing `core/bindings/types/`, one module per crate that declares an exported type.
+//! Writing `core/ipc/types/`, one module per crate that declares an exported type.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

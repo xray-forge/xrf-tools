@@ -1,5 +1,5 @@
 import { getLocatedAsset } from "@/core/assets/lib";
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { Nullable } from "@/lib/types/general";

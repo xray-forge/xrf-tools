@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports/exports.service";
-import { ExportSourceContent } from "@/core/bindings/types/xrf-export";
+import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

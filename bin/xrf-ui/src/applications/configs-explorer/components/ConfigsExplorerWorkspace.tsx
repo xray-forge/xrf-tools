@@ -2,7 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ConfigsProjectDescriptor } from "@/core/bindings/types/xrf-app";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";

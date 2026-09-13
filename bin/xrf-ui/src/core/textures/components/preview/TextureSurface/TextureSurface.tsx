@@ -2,7 +2,7 @@ import { Box, SxProps, Theme } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureSurfaceOptions,

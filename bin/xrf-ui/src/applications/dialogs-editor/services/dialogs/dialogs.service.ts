@@ -2,12 +2,12 @@ import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wire
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib/roots";
-import { dialogsCommands } from "@/core/bindings/commands/dialogs";
-import { SessionSnapshot } from "@/core/bindings/types/xrf-app";
-import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/bindings/types/xrf-dialog";
-import { XrayRoots } from "@/core/bindings/types/xrf-vfs";
 import { transformError } from "@/core/error/lib";
+import { dialogsCommands } from "@/core/ipc/commands/dialogs";
 import { requireSessionId, Session } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";

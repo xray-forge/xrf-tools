@@ -2,8 +2,8 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
-import { AssetTextureDescriptor } from "@/core/bindings/types/xrf-app";
-import { VisualDescription, VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { VisualDescription, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import {

@@ -2,7 +2,7 @@ import { MenuItem, Stack, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ARCHIVE_PACK_MODE, ARCHIVE_VOLUME_EXTENSION, ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
-import { ArchivePackConfig } from "@/core/bindings/types/xrf-pack";
+import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";

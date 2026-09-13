@@ -2,9 +2,9 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeVerifyOutcome } from "@/applications/configs-verifier/lib/describe-verify-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { configsCommands } from "@/core/bindings/commands/configs";
-import { EJobKind } from "@/core/bindings/types/xrf-app";
-import { LtxProjectVerifyResult } from "@/core/bindings/types/xrf-ltx";
+import { configsCommands } from "@/core/ipc/commands/configs";
+import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

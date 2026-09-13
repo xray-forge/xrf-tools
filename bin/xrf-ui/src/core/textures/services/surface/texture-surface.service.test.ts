@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
 import { Texture } from "three";
 
-import { TextureDescription } from "@/core/bindings/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";

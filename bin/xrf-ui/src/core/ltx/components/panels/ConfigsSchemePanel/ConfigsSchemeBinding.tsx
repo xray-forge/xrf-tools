@@ -1,7 +1,7 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { LtxSectionSchemeReport } from "@/core/bindings/types/xrf-ltx-inspect";
+import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { MONOSPACE } from "@/core/theme/tokens";
 
 interface IConfigsSchemeBindingProps {

@@ -12,8 +12,8 @@ import {
 import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XrayAsset, XrayResolution } from "@/core/bindings/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/bindings/types/xrf-visual";
+import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** Shared parser, since `DDSLoader.parse` keeps no state between calls and constructing one per texture is waste. */

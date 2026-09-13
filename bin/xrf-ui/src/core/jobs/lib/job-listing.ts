@@ -1,4 +1,4 @@
-import { JobConclusion, JobDescription } from "@/core/bindings/types/xrf-app";
+import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
 
 /** What every run of one kind came to. */
 export interface IJobKindSummary {

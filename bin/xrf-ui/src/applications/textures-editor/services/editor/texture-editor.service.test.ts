@@ -4,7 +4,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { EMPTY_TEXTURE_DESCRIPTOR_FORM } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/bindings/types/xrf-app";
+import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
