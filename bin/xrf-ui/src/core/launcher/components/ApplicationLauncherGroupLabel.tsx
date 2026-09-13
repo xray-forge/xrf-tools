@@ -2,17 +2,28 @@ import { Box, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IApplicationGroup } from "@/core/routing/application";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationLauncherGroupLabelProps {
+interface IApplicationLauncherGroupLabelProps extends BaseComponentProps {
   group: IApplicationGroup;
 }
 
 /**
  * The group a tool belongs to, wherever no section heading is there to say it.
  */
-export function ApplicationLauncherGroupLabel({ group }: IApplicationLauncherGroupLabelProps): ReactElement {
+export function ApplicationLauncherGroupLabel({
+  "data-testid": dataTestId = "application-launcher-group-label",
+  id,
+  className,
+  group,
+}: IApplicationLauncherGroupLabelProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}
+    >
       <Box
         aria-hidden={true}
         sx={(theme: Theme) => ({

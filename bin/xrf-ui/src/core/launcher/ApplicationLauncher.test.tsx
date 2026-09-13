@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { ApplicationLauncher } from "@/core/launcher/ApplicationLauncher";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -11,6 +10,8 @@ import {
   IApplicationGroup,
 } from "@/core/routing/application";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ApplicationLauncher } from "./ApplicationLauncher";
 
 const APPLICATIONS: ReadonlyArray<IApplicationDescriptor> = [
   {
@@ -82,7 +83,7 @@ describe("ApplicationLauncher", () => {
 
     expect(getByText("Archives editor")).toBeInTheDocument();
     expect(getByText("Spawn editor")).toBeInTheDocument();
-    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
+    expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual([
       "Archives editor",
       "Archives packer",
       "Spawn editor",
@@ -138,7 +139,7 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Grid view" }));
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
-    expect(within(getByTestId("launcher-catalog")).getByText("Spawns")).toBeInTheDocument();
+    expect(within(getByTestId("application-launcher-catalog")).getByText("Spawns")).toBeInTheDocument();
   });
 
   it("matches a group name that no label of its own mentions", async () => {
@@ -238,7 +239,7 @@ describe("ApplicationLauncher", () => {
 
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
-    const catalog = getByTestId("launcher-catalog");
+    const catalog = getByTestId("application-launcher-catalog");
 
     expect(within(catalog).queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
     expect(within(catalog).getByText("Spawns")).toBeInTheDocument();
@@ -250,7 +251,7 @@ describe("ApplicationLauncher", () => {
     await userEvent.type(getByLabelText("Search tools"), "spawn");
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
-    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual(["Spawn editor"]);
+    expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Spawn editor"]);
   });
 
   it("swaps the body for the card grid, and remembers being asked", async () => {
@@ -261,7 +262,7 @@ describe("ApplicationLauncher", () => {
     expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
     expect(window.localStorage.getItem("xrf-catalog-view")).toBe("grid");
     // The same tools in the same catalog order: only their drawing changed.
-    expect(getToolNames(getByTestId("launcher-catalog"))).toEqual([
+    expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual([
       "Archives editor",
       "Archives packer",
       "Spawn editor",

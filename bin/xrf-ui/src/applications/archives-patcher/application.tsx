@@ -12,7 +12,7 @@ import { ARCHIVES_PATCHER_HELP } from "./help";
 
 export const ARCHIVES_PATCHER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Pack what your gamedata changes about a game as an overriding patch",
+    description: "Pack gamedata changes as a patch",
     group: EApplicationGroupId.ARCHIVES,
     help: ARCHIVES_PATCHER_HELP,
     icon: <DifferenceIcon />,

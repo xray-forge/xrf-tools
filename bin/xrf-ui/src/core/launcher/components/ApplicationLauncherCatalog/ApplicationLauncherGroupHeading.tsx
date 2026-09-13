@@ -2,18 +2,30 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IApplicationGroup } from "@/core/routing/application";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IApplicationLauncherSectionProps {
+interface IApplicationLauncherGroupHeadingProps extends BaseComponentProps {
   group: IApplicationGroup;
   count: number;
 }
 
 /**
- * The heading that opens one group's run of cards.
+ * The heading that opens one group's tools, in either view.
  */
-export function ApplicationLauncherSection({ group, count }: IApplicationLauncherSectionProps): ReactElement {
+export function ApplicationLauncherGroupHeading({
+  "data-testid": dataTestId = "application-launcher-group-heading",
+  id,
+  className,
+  group,
+  count,
+}: IApplicationLauncherGroupHeadingProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+    <Box
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}
+    >
       <Box aria-hidden={true} sx={{ display: "flex", color: "text.secondary", "& .MuiSvgIcon-root": { fontSize: 16 } }}>
         {group.icon}
       </Box>

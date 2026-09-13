@@ -1,7 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ApplicationLauncherCard } from "@/core/launcher/ApplicationLauncherCard";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -11,6 +10,8 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ApplicationLauncherCard } from "./ApplicationLauncherCard";
 
 function mockApplication(overrides: Partial<IApplicationDescriptor> = {}): IApplicationDescriptor {
   return {
@@ -41,7 +42,7 @@ describe("ApplicationLauncherCard", () => {
     const application = createApplicationDescriptor(mockApplication(), { load });
     const onOpen = jest.fn();
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherCard application={application} group={GROUP} isEnabled onOpen={onOpen} />
+      <ApplicationLauncherCard application={application} group={GROUP} onOpen={onOpen} />
     );
 
     await userEvent.hover(getByRole("button"));
@@ -57,7 +58,7 @@ describe("ApplicationLauncherCard", () => {
     const preload = jest.fn(async () => {});
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherCard application={mockApplication({ preload })} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherCard application={mockApplication({ preload })} group={GROUP} onOpen={jest.fn()} />
     );
 
     await userEvent.hover(getByRole("button"));
@@ -70,7 +71,7 @@ describe("ApplicationLauncherCard", () => {
     const preload = jest.fn(async () => {});
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherCard application={mockApplication({ preload })} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherCard application={mockApplication({ preload })} group={GROUP} onOpen={jest.fn()} />
     );
 
     await userEvent.tab();
@@ -79,31 +80,27 @@ describe("ApplicationLauncherCard", () => {
     expect(preload).toHaveBeenCalled();
   });
 
-  it("keeps a planned application legible without presenting a disabled button", async () => {
-    const preload = jest.fn(async () => {});
+  it("opens a planned application like any other, badged rather than barred", async () => {
+    const onOpen = jest.fn();
 
-    const { findByRole, getByText, queryByRole } = renderWithProviders(
+    const { getByRole, getByText } = renderWithProviders(
       <ApplicationLauncherCard
-        application={mockApplication({ preload, status: EApplicationStatus.PLANNED })}
+        application={mockApplication({ status: EApplicationStatus.PLANNED })}
         group={GROUP}
-        isEnabled={false}
-        onOpen={jest.fn()}
+        onOpen={onOpen}
       />
     );
 
-    await userEvent.hover(getByText("Spawn editor"));
+    await userEvent.click(getByRole("button", { name: "Spawn editor" }));
 
+    // The badge says what the tool is; the screen it opens says the rest.
     expect(getByText("Planned")).toBeInTheDocument();
-    expect(queryByRole("button")).not.toBeInTheDocument();
-    expect(preload).not.toHaveBeenCalled();
-
-    // A card that does nothing has to say why: there is no disabled control here to infer it from.
-    expect(await findByRole("tooltip")).toHaveTextContent("Not implemented yet");
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("survives a statically imported application, which has nothing to warm", async () => {
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherCard application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherCard application={mockApplication()} group={GROUP} onOpen={jest.fn()} />
     );
 
     await userEvent.hover(getByRole("button"));
@@ -115,7 +112,7 @@ describe("ApplicationLauncherCard", () => {
     const onOpen = jest.fn();
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherCard application={mockApplication()} group={GROUP} isEnabled onOpen={onOpen} />
+      <ApplicationLauncherCard application={mockApplication()} group={GROUP} onOpen={onOpen} />
     );
 
     await userEvent.click(getByRole("button"));
@@ -125,7 +122,7 @@ describe("ApplicationLauncherCard", () => {
 
   it("says nothing about the group while a section heading above it does", () => {
     const { queryByText } = renderWithProviders(
-      <ApplicationLauncherCard application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherCard application={mockApplication()} group={GROUP} onOpen={jest.fn()} />
     );
 
     expect(queryByText("Spawns")).not.toBeInTheDocument();
@@ -133,13 +130,7 @@ describe("ApplicationLauncherCard", () => {
 
   it("names its group where the heading is gone, which is every search result", () => {
     const { getByText } = renderWithProviders(
-      <ApplicationLauncherCard
-        application={mockApplication()}
-        group={GROUP}
-        isEnabled
-        isGroupNamed
-        onOpen={jest.fn()}
-      />
+      <ApplicationLauncherCard application={mockApplication()} group={GROUP} isGroupNamed onOpen={jest.fn()} />
     );
 
     expect(getByText("Spawns")).toBeInTheDocument();

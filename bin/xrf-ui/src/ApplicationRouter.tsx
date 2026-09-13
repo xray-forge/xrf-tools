@@ -2,7 +2,7 @@ import { ReactElement } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
-import { ApplicationLauncher } from "@/core/launcher/ApplicationLauncher";
+import { ApplicationLauncher } from "@/core/launcher";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";

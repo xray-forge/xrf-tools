@@ -1,7 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ApplicationLauncherRow } from "@/core/launcher/ApplicationLauncherRow";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -11,6 +10,8 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ApplicationLauncherRow } from "./ApplicationLauncherRow";
 
 function mockApplication(overrides: Partial<IApplicationDescriptor> = {}): IApplicationDescriptor {
   return {
@@ -41,7 +42,7 @@ describe("ApplicationLauncherRow", () => {
     const application = createApplicationDescriptor(mockApplication(), { load });
     const onOpen = jest.fn();
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherRow application={application} group={GROUP} isEnabled onOpen={onOpen} />
+      <ApplicationLauncherRow application={application} group={GROUP} onOpen={onOpen} />
     );
 
     await userEvent.hover(getByRole("button"));
@@ -55,7 +56,7 @@ describe("ApplicationLauncherRow", () => {
 
   it("carries the tool and what it does", () => {
     const { getByText } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} onOpen={jest.fn()} />
     );
 
     expect(getByText("Spawn editor")).toBeInTheDocument();
@@ -64,7 +65,7 @@ describe("ApplicationLauncherRow", () => {
 
   it("says nothing about the group while a separator above the run does", () => {
     const { queryByText } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} onOpen={jest.fn()} />
     );
 
     expect(queryByText("Spawns")).not.toBeInTheDocument();
@@ -72,7 +73,7 @@ describe("ApplicationLauncherRow", () => {
 
   it("names its group where the run is gone, which is every search result", () => {
     const { getByText } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled isGroupNamed onOpen={jest.fn()} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isGroupNamed onOpen={jest.fn()} />
     );
 
     expect(getByText("Spawns")).toBeInTheDocument();
@@ -82,7 +83,7 @@ describe("ApplicationLauncherRow", () => {
     const onOpen = jest.fn();
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={onOpen} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} onOpen={onOpen} />
     );
 
     await userEvent.tab();
@@ -98,7 +99,7 @@ describe("ApplicationLauncherRow", () => {
     const onOpen = jest.fn();
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={onOpen} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} onOpen={onOpen} />
     );
 
     await userEvent.click(getByRole("button", { name: "Spawn editor" }));
@@ -110,7 +111,7 @@ describe("ApplicationLauncherRow", () => {
     const preload = jest.fn(async () => {});
 
     const { getByRole } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication({ preload })} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherRow application={mockApplication({ preload })} group={GROUP} onOpen={jest.fn()} />
     );
 
     await userEvent.hover(getByRole("button", { name: "Spawn editor" }));
@@ -118,45 +119,27 @@ describe("ApplicationLauncherRow", () => {
     expect(preload).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a planned tool legible without presenting a disabled control", async () => {
-    const preload = jest.fn(async () => {});
+  it("opens a planned tool like any other, badged rather than barred", async () => {
+    const onOpen = jest.fn();
 
-    const { findByRole, getByText, queryByRole } = renderWithProviders(
-      <ApplicationLauncherRow
-        application={mockApplication({ preload, status: EApplicationStatus.PLANNED })}
-        group={GROUP}
-        isEnabled={false}
-        onOpen={jest.fn()}
-      />
-    );
-
-    await userEvent.hover(getByText("Spawn editor"));
-
-    expect(getByText("Planned")).toBeInTheDocument();
-    expect(queryByRole("button")).not.toBeInTheDocument();
-    expect(preload).not.toHaveBeenCalled();
-
-    // A row that does nothing has to say why: there is no disabled control here to infer it from.
-    expect(await findByRole("tooltip")).toHaveTextContent("Not implemented yet");
-  });
-
-  it("still marks a planned tool that developer mode has opened up", () => {
     const { getByRole, getByText } = renderWithProviders(
       <ApplicationLauncherRow
         application={mockApplication({ status: EApplicationStatus.PLANNED })}
         group={GROUP}
-        isEnabled
-        onOpen={jest.fn()}
+        onOpen={onOpen}
       />
     );
 
-    expect(getByRole("button", { name: "Spawn editor" })).toBeInTheDocument();
+    await userEvent.click(getByRole("button", { name: "Spawn editor" }));
+
+    // The badge says what the tool is; the screen it opens says the rest.
     expect(getByText("Planned")).toBeInTheDocument();
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("says nothing about status for a tool that is simply ready", () => {
     const { queryByText } = renderWithProviders(
-      <ApplicationLauncherRow application={mockApplication()} group={GROUP} isEnabled onOpen={jest.fn()} />
+      <ApplicationLauncherRow application={mockApplication()} group={GROUP} onOpen={jest.fn()} />
     );
 
     expect(queryByText("Planned")).not.toBeInTheDocument();

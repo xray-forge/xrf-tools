@@ -1,12 +1,21 @@
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
 /**
  * Marks a tool the roster names but does not implement yet.
  */
-export function ApplicationLauncherPlannedBadge(): ReactElement {
+export function ApplicationLauncherPlannedBadge({
+  "data-testid": dataTestId = "application-launcher-planned-badge",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
   return (
     <Typography
+      data-testid={dataTestId}
+      id={id}
+      className={className}
       component={"span"}
       variant={"caption"}
       sx={{
