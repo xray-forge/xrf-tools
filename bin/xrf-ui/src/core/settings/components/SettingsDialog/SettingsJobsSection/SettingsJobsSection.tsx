@@ -5,9 +5,9 @@ import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
-import { SettingsStat } from "@/core/settings/components/SettingsStat";
 import { MONOSPACE } from "@/core/theme/tokens";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
+import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { useForceUpdate } from "@/lib/react";
@@ -46,16 +46,16 @@ export function SettingsJobsSection({
       className={className}
       sx={{ display: "flex", flexDirection: "column", gap: 3 }}
     >
-      <SettingsSection
+      <DetailSection
         title={"Runs"}
         description={"What the backend is running and the last it finished."}
         fact={listed.length === 1 ? "1 run" : `${listed.length} runs`}
       >
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
-          <SettingsStat label={"Running"} value={String(running)} />
-          <SettingsStat label={"Finished"} value={String(listed.length - running)} />
-          <SettingsStat label={"Kinds"} value={String(summaries.length)} />
-          <SettingsStat label={"Held leases"} value={String(leases.length)} />
+          <StatFigure label={"Running"} value={String(running)} />
+          <StatFigure label={"Finished"} value={String(listed.length - running)} />
+          <StatFigure label={"Kinds"} value={String(summaries.length)} />
+          <StatFigure label={"Held leases"} value={String(leases.length)} />
         </Box>
 
         {listed.length ? (
@@ -69,9 +69,9 @@ export function SettingsJobsSection({
             Nothing has run yet.
           </Typography>
         )}
-      </SettingsSection>
+      </DetailSection>
 
-      <SettingsSection title={"By kind"} description={"Every kind of work in the listing, and what its runs came to."}>
+      <DetailSection title={"By kind"} description={"Every kind of work in the listing, and what its runs came to."}>
         <Stack divider={<Divider flexItem />} sx={{ marginTop: 1 }}>
           {summaries.map((it: IJobKindSummary) => (
             <Box key={it.kind} sx={{ alignItems: "center", display: "flex", gap: 2, paddingY: 0.75 }}>
@@ -105,10 +105,10 @@ export function SettingsJobsSection({
             Nothing has run yet.
           </Typography>
         )}
-      </SettingsSection>
+      </DetailSection>
 
       {leases.length ? (
-        <SettingsSection
+        <DetailSection
           title={"Held exclusively"}
           description={"What the running jobs hold, which is what a refused start would be pointing at."}
         >
@@ -125,7 +125,7 @@ export function SettingsJobsSection({
               </Box>
             ))}
           </Stack>
-        </SettingsSection>
+        </DetailSection>
       ) : null}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>

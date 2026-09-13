@@ -6,6 +6,7 @@ import {
   ArchiveReadPolicy,
   ArchiveSharedPayload,
 } from "@/core/ipc/types/xrf-archive";
+import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
@@ -270,4 +271,81 @@ export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): Archi
  */
 export function mockArchivesWorldSubject(files?: Array<ArchiveWorldEntry>): ArchiveSubject {
   return { kind: "world", world: mockArchivesWorld(files) };
+}
+
+/**
+ * @param overrides - Field values to override.
+ * @returns A breakdown of a volume set.
+ */
+export function mockArchiveStatistics(overrides: Partial<ArchiveStatistics> = {}): ArchiveStatistics {
+  return {
+    compression: { sizeCompressed: 3072, sizeReal: 7168, storedUncompressed: 1 },
+    extensions: [
+      { extension: "dds", isDeclared: true, measure: { files: 1, sizeReal: 4096 }, sizeCompressed: 2048 },
+      { extension: "ltx", isDeclared: true, measure: { files: 4, sizeReal: 2048 }, sizeCompressed: 512 },
+      { extension: "som", isDeclared: false, measure: { files: 2, sizeReal: 1024 }, sizeCompressed: 512 },
+    ],
+    folders: [
+      { folder: "textures", measure: { files: 1, sizeReal: 4096 }, sizeCompressed: 2048 },
+      { folder: "configs", measure: { files: 4, sizeReal: 2048 }, sizeCompressed: 512 },
+      { folder: "meshes", measure: { files: 2, sizeReal: 1024 }, sizeCompressed: 512 },
+    ],
+    largest: [{ name: "textures\\wpn\\ak74.dds", sizeCompressed: 2048, sizeReal: 4096 }],
+    origins: null,
+    overview: {
+      directories: 1,
+      emptyFiles: 0,
+      largestFile: 4096,
+      meanFile: 1024,
+      medianFile: 512,
+      sources: 2,
+      total: { files: 7, sizeReal: 7168 },
+    },
+    sizes: [
+      { from: 1, measure: { files: 6, sizeReal: 3072 }, to: 1024 },
+      { from: 1024, measure: { files: 1, sizeReal: 4096 }, to: 4096 },
+    ],
+    volumes: [
+      {
+        entries: 5,
+        modifiedAt: null,
+        path: "C:\\game\\db\\textures.db0",
+        sizeCompressed: 2048,
+        sizeReal: 4096,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * @param overrides - Field values to override.
+ * @returns A breakdown of a world.
+ */
+export function mockArchiveWorldStatistics(overrides: Partial<ArchiveStatistics> = {}): ArchiveStatistics {
+  return mockArchiveStatistics({
+    compression: null,
+    extensions: [{ extension: "ltx", isDeclared: true, measure: { files: 2, sizeReal: 3072 }, sizeCompressed: null }],
+    origins: {
+      archived: { files: 1, sizeReal: 1024 },
+      hidden: { files: 1, sizeReal: 8192 },
+      loose: { files: 1, sizeReal: 2048 },
+      sources: [
+        {
+          hides: { files: 0, sizeReal: 0 },
+          isLoose: true,
+          source: "C:\\game\\gamedata",
+          wins: { files: 1, sizeReal: 2048 },
+        },
+        {
+          hides: { files: 1, sizeReal: 8192 },
+          isLoose: false,
+          source: "C:\\game\\db\\configs.db0",
+          wins: { files: 1, sizeReal: 1024 },
+        },
+      ],
+    },
+    volumes: null,
+    ...overrides,
+  });
 }

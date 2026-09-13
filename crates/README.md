@@ -8,6 +8,7 @@ Package names use hyphens (`xrf-ltx`); Rust imports use underscores (`xrf_ltx`).
 | Crate                                          | Purpose                                                                            |
 |------------------------------------------------|------------------------------------------------------------------------------------|
 | [xrf-archive](xrf-archive/README.md)           | Read `.db` / `.xdb` volume headers, entries, and payloads                          |
+| [xrf-archive-stats](xrf-archive-stats/README.md) | Break an archive subject down by extension, folder, size, volume, and origin       |
 | [xrf-build-info](xrf-build-info/README.md)     | Record and expose binary build provenance                                          |
 | [xrf-chunk](xrf-chunk/README.md)               | Read and write binary chunk framing and fields                                     |
 | [xrf-db](xrf-db/README.md)                     | Parse binary assets: OGF, OMF, spawn, THM, particles, levels, and shader libraries |

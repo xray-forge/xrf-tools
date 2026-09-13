@@ -3,7 +3,7 @@ import { ReactElement, useState } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { Logger, useLogger } from "@/lib/logging";
 import { useMountEffect } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
@@ -29,7 +29,7 @@ export function SettingsBuildSection(): ReactElement {
   });
 
   return (
-    <SettingsSection
+    <DetailSection
       data-testid={"settings-build-section"}
       title={"Build"}
       description={"Which build of the application is running, and where it came from."}
@@ -43,6 +43,6 @@ export function SettingsBuildSection(): ReactElement {
           <Typography variant={"caption"}>Reading build details...</Typography>
         )}
       </Stack>
-    </SettingsSection>
+    </DetailSection>
   );
 }

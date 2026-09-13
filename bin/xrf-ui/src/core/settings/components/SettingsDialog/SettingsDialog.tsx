@@ -12,7 +12,7 @@ import { SettingsJobsSection } from "./SettingsJobsSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
-enum ESettingsSection {
+enum EDetailSection {
   GENERAL = "general",
   STORAGE = "storage",
   IPC = "ipc",
@@ -20,20 +20,20 @@ enum ESettingsSection {
   ABOUT = "about",
 }
 
-const SECTION_LABELS: Record<ESettingsSection, string> = {
-  [ESettingsSection.GENERAL]: "General",
-  [ESettingsSection.STORAGE]: "Storage",
-  [ESettingsSection.IPC]: "IPC",
-  [ESettingsSection.JOBS]: "Jobs",
-  [ESettingsSection.ABOUT]: "About",
+const SECTION_LABELS: Record<EDetailSection, string> = {
+  [EDetailSection.GENERAL]: "General",
+  [EDetailSection.STORAGE]: "Storage",
+  [EDetailSection.IPC]: "IPC",
+  [EDetailSection.JOBS]: "Jobs",
+  [EDetailSection.ABOUT]: "About",
 };
 
-const SECTIONS: ReadonlyArray<ESettingsSection> = [
-  ESettingsSection.GENERAL,
-  ESettingsSection.STORAGE,
-  ESettingsSection.IPC,
-  ESettingsSection.JOBS,
-  ESettingsSection.ABOUT,
+const SECTIONS: ReadonlyArray<EDetailSection> = [
+  EDetailSection.GENERAL,
+  EDetailSection.STORAGE,
+  EDetailSection.IPC,
+  EDetailSection.JOBS,
+  EDetailSection.ABOUT,
 ];
 
 export interface ISettingsDialogProps {
@@ -46,7 +46,7 @@ export interface ISettingsDialogProps {
  */
 export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): ReactElement {
   const titleId: string = useId();
-  const [section, setSection] = useState<ESettingsSection>(ESettingsSection.GENERAL);
+  const [section, setSection] = useState<EDetailSection>(EDetailSection.GENERAL);
 
   return (
     <Dialog aria-labelledby={titleId} fullWidth maxWidth={"md"} open={isOpen} onClose={onClose}>
@@ -65,7 +65,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
             backgroundColor: "background.default",
           }}
         >
-          {SECTIONS.map((it: ESettingsSection) => (
+          {SECTIONS.map((it: EDetailSection) => (
             <ListItemButton key={it} selected={section === it} onClick={() => setSection(it)}>
               <ListItemText primary={SECTION_LABELS[it]} />
             </ListItemButton>
@@ -84,15 +84,15 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
         >
           {inline(() => {
             switch (section) {
-              case ESettingsSection.GENERAL:
+              case EDetailSection.GENERAL:
                 return <SettingsGeneralSection />;
-              case ESettingsSection.STORAGE:
+              case EDetailSection.STORAGE:
                 return <SettingsStorageSection />;
-              case ESettingsSection.IPC:
+              case EDetailSection.IPC:
                 return <SettingsIpcSection />;
-              case ESettingsSection.JOBS:
+              case EDetailSection.JOBS:
                 return <SettingsJobsSection />;
-              case ESettingsSection.ABOUT:
+              case EDetailSection.ABOUT:
                 return <SettingsAboutSection />;
             }
           })}

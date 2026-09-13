@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_archive_stats::{ArchiveStatisticsEntry, ArchiveWorldStatisticsEntry};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayShadowedCopy, XrayShadowingEntry};
 
 /// One copy of an engine path no lookup reaches, as the explorer lists it.
@@ -42,6 +43,30 @@ pub struct ArchiveWorldEntry {
   pub size_real: u64,
   /// Copies of this engine path no lookup reaches, in mount priority order behind the winner.
   pub shadowed: Vec<ArchiveShadowedCopy>,
+}
+
+/// Measured as it already sits, rather than converted into a shape a breakdown owns.
+///
+/// The listing split in `xrf-vfs` exists to stop retaining what nothing reads; building a second copy of tens of
+/// thousands of entries to hand to `xrf-archive-stats` would give that straight back.
+impl ArchiveStatisticsEntry for ArchiveWorldEntry {
+  fn get_name(&self) -> &str {
+    &self.name
+  }
+
+  fn get_size_real(&self) -> u64 {
+    self.size_real
+  }
+}
+
+impl ArchiveWorldStatisticsEntry for ArchiveWorldEntry {
+  fn get_container(&self) -> &XrayAssetContainer {
+    &self.container
+  }
+
+  fn list_shadowed(&self) -> impl Iterator<Item = (&XrayAssetContainer, u64)> {
+    self.shadowed.iter().map(|copy| (&copy.container, copy.size_real))
+  }
 }
 
 impl From<XrayShadowingEntry> for ArchiveWorldEntry {

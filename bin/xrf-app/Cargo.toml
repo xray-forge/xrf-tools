@@ -32,6 +32,7 @@ tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-archive = { workspace = true }
+xrf-archive-stats = { workspace = true }
 xrf-build-info = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-vfs = { workspace = true }
@@ -84,6 +85,7 @@ typescript-bindings = [
     "xrf-translation/typescript-bindings",
     "xrf-visual/typescript-bindings",
     "xrf-pack/typescript-bindings",
+    "xrf-archive-stats/typescript-bindings",
 ]
 
 [lints]

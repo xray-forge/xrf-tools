@@ -1,4 +1,5 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
@@ -18,6 +19,7 @@ import { ArchiveDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
+import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
@@ -28,6 +30,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { ARCHIVE_EDITOR_PANELS } from "./archive-panels";
 import { ArchivesFilePreview } from "./preview";
+import { ArchiveStatisticsDialog } from "./statistics";
 import { ArchivesMenu } from "./tree";
 
 export function ArchivesEditor(): ReactElement {
@@ -36,6 +39,7 @@ export function ArchivesEditor(): ReactElement {
   const [isClosing, setClosing] = useState<boolean>(false);
   const [closeError, setCloseError] = useState<Nullable<string>>(null);
   const [isCollisionNoticeDismissed, setCollisionNoticeDismissed] = useState<boolean>(false);
+  const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
   const [isShadowNoticeDismissed, setShadowNoticeDismissed] = useState<boolean>(false);
 
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
@@ -116,6 +120,16 @@ export function ArchivesEditor(): ReactElement {
       toolbar={
         <EditorToolbar
           subtitle={location ? <EditorToolbarLocation location={location} /> : null}
+          actions={
+            <EditorIconAction
+              aria-haspopup={"dialog"}
+              aria-expanded={isStatisticsOpen}
+              label={"Statistics"}
+              description={"What this archive holds, broken down"}
+              icon={<QueryStatsIcon />}
+              onClick={() => setStatisticsOpen(true)}
+            />
+          }
           onBack={() => void onClose()}
         />
       }
@@ -160,6 +174,8 @@ export function ArchivesEditor(): ReactElement {
       }
     >
       <ArchivesFilePreview />
+
+      <ArchiveStatisticsDialog isOpen={isStatisticsOpen} onClose={() => setStatisticsOpen(false)} />
     </EditorLayout>
   );
 }

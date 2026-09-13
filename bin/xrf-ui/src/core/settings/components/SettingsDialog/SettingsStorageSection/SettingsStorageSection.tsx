@@ -2,9 +2,9 @@ import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useLocalStorageRevision } from "@/lib/local-storage";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -53,7 +53,7 @@ export function SettingsStorageSection(): ReactElement {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <SettingsSection
+      <DetailSection
         title={"Local storage"}
         description={
           "Everything the application remembers between sessions lives in the webview's own storage. Nothing here " +
@@ -90,7 +90,7 @@ export function SettingsStorageSection(): ReactElement {
             </Box>
           ))}
         </Stack>
-      </SettingsSection>
+      </DetailSection>
 
       {settingsService.isDevModeEnabled ? <SettingsStorageKeys entries={everyEntry(usage)} /> : null}
 

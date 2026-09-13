@@ -6809,6 +6809,7 @@ dependencies = [
  "tauri-specta",
  "uuid",
  "xrf-archive",
+ "xrf-archive-stats",
  "xrf-build-info",
  "xrf-db",
  "xrf-dds",
@@ -6851,6 +6852,17 @@ dependencies = [
  "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-archive-stats"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "xrf-archive",
+ "xrf-extension",
+ "xrf-vfs",
 ]
 
 [[package]]

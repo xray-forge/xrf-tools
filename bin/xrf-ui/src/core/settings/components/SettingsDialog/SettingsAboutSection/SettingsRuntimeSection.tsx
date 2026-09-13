@@ -3,8 +3,8 @@ import { ReactElement } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
-import { SettingsStat } from "@/core/settings/components/SettingsStat";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
+import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
 import { formatInstant } from "@/lib/format/instant";
 import { Logger, useLogger } from "@/lib/logging";
@@ -29,7 +29,7 @@ export function SettingsRuntimeSection(): ReactElement {
   );
 
   return (
-    <SettingsSection
+    <DetailSection
       data-testid={"settings-runtime-section"}
       title={"Runtime"}
       description={"When this session started, and what it is costing the machine right now."}
@@ -37,16 +37,16 @@ export function SettingsRuntimeSection(): ReactElement {
     >
       {snapshot ? (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
-          <SettingsStat label={"Started"} value={formatInstant(snapshot.startedAt)} />
-          <SettingsStat label={"Uptime"} value={formatDuration(snapshot.uptime)} />
-          <SettingsStat label={"Backend"} value={formatBytes(snapshot.process.residentMemory)} hint={"resident"} />
-          <SettingsStat
+          <StatFigure label={"Started"} value={formatInstant(snapshot.startedAt)} />
+          <StatFigure label={"Uptime"} value={formatDuration(snapshot.uptime)} />
+          <StatFigure label={"Backend"} value={formatBytes(snapshot.process.residentMemory)} hint={"resident"} />
+          <StatFigure
             label={"Webview"}
             value={formatBytes(snapshot.descendants.residentMemory)}
             hint={snapshot.descendants.processes === 1 ? "1 process" : `${snapshot.descendants.processes} processes`}
           />
-          <SettingsStat label={"Address space"} value={formatBytes(snapshot.process.virtualMemory)} hint={"reserved"} />
-          <SettingsStat
+          <StatFigure label={"Address space"} value={formatBytes(snapshot.process.virtualMemory)} hint={"reserved"} />
+          <StatFigure
             label={"Machine"}
             value={formatBytes(snapshot.machine.usedMemory)}
             hint={`${formatBytes(snapshot.machine.availableMemory)} free`}
@@ -55,6 +55,6 @@ export function SettingsRuntimeSection(): ReactElement {
       ) : (
         <Typography variant={"caption"}>Reading runtime details...</Typography>
       )}
-    </SettingsSection>
+    </DetailSection>
   );
 }

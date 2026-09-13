@@ -4,11 +4,11 @@ import { ReactElement, useEffect, useState } from "react";
 
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@/core/ipc/metrics";
 import { IpcMetricsService } from "@/core/ipc/services/metrics";
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
-import { SettingsStat } from "@/core/settings/components/SettingsStat";
 import { MONOSPACE } from "@/core/theme/tokens";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
+import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -57,20 +57,20 @@ export function SettingsIpcSection(): ReactElement {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <SettingsSection
+      <DetailSection
         title={"Backend calls"}
         description={"What this window has asked of the backend since it loaded."}
         fact={formatDuration(snapshot.elapsed)}
       >
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
-          <SettingsStat label={"Calls"} value={String(snapshot.calls)} />
-          <SettingsStat label={"Failed"} value={String(snapshot.failures)} />
-          <SettingsStat label={"Received"} value={formatBytes(snapshot.received)} />
-          <SettingsStat label={"Sent"} value={snapshot.sent ? formatBytes(snapshot.sent) : "not weighed"} />
-          <SettingsStat label={"Time in flight"} value={formatDuration(snapshot.duration)} />
-          <SettingsStat label={"Peak at once"} value={String(snapshot.peakInFlight)} />
+          <StatFigure label={"Calls"} value={String(snapshot.calls)} />
+          <StatFigure label={"Failed"} value={String(snapshot.failures)} />
+          <StatFigure label={"Received"} value={formatBytes(snapshot.received)} />
+          <StatFigure label={"Sent"} value={snapshot.sent ? formatBytes(snapshot.sent) : "not weighed"} />
+          <StatFigure label={"Time in flight"} value={formatDuration(snapshot.duration)} />
+          <StatFigure label={"Peak at once"} value={String(snapshot.peakInFlight)} />
         </Box>
-      </SettingsSection>
+      </DetailSection>
 
       <CheckboxFormRow
         label={"Weigh payloads"}
@@ -82,7 +82,7 @@ export function SettingsIpcSection(): ReactElement {
         onChange={ipcMetricsService.setProfilingEnabled}
       />
 
-      <SettingsSection
+      <DetailSection
         title={"Commands"}
         description={"Every command called at least once, ordered by what it cost."}
         fact={snapshot.commands.length === 1 ? "1 command" : `${snapshot.commands.length} commands`}
@@ -155,7 +155,7 @@ export function SettingsIpcSection(): ReactElement {
             Reset
           </Button>
         </Box>
-      </SettingsSection>
+      </DetailSection>
     </Box>
   );
 }

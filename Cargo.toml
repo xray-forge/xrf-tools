@@ -26,6 +26,7 @@ members = [
   "crates/xrf-report",
   "crates/xrf-shaders",
   "crates/xrf-sound",
+  "crates/xrf-archive-stats",
   "crates/xrf-test-utils",
   "crates/xrf-texture",
   "crates/xrf-typescript",
@@ -87,6 +88,7 @@ xrf-pack = { path = "crates/xrf-pack" }
 xrf-report = { path = "crates/xrf-report" }
 xrf-shaders = { path = "crates/xrf-shaders" }
 xrf-sound = { path = "crates/xrf-sound" }
+xrf-archive-stats = { path = "crates/xrf-archive-stats" }
 xrf-test-utils = { path = "crates/xrf-test-utils" }
 xrf-texture = { path = "crates/xrf-texture" }
 xrf-translation = { path = "crates/xrf-translation" }

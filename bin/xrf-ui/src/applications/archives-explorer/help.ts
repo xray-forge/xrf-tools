@@ -11,6 +11,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Browse or filter the file tree. Select an entry, then double-click it or press `Enter` to open it.",
     "Use `Extract file` for one file. Select a directory to extract its contents, or select the tree root to " +
       "extract everything.",
+    "Open `Statistics` in the toolbar for a breakdown of what is open: by extension, by folder, by size, and where " +
+      "its files come from.",
   ],
   nuances: [
     "Directory mode follows the engine's mount order: later volumes replace earlier copies. Volumes in a folder named " +
@@ -27,6 +29,17 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "When that hides an entry, the `Unreachable files` panel shows it.",
     "An entry another mount overrides is not the same problem: that file is exactly where it should be, and the " +
       "`Unreachable files` panel deliberately does not list it.",
+    "`Statistics` reports both a file count and a byte total for every breakdown, because the two rank differently: " +
+      "`ogg` is usually the largest group by count and a small one by size. The `Bytes` / `Count` toggle chooses " +
+      "which one orders the rows and draws the bars, so the list never contradicts what it shows.",
+    "`Origins` and `Overrides` keep their own order whichever measurement is chosen, because sources read by " +
+      "priority: the row above is the one that wins.",
+    "The `Extensions` section lists spellings exactly as they appear on disk and marks any the tools do not " +
+      "recognise. That is a finding worth reporting rather than a fault - it usually means a real format the tooling " +
+      "has not been taught yet.",
+    "`Statistics` offers only the sections the open subject can answer. A volume set gets `Compression` and " +
+      "`Volumes`; a game folder gets `Origins` and `Overrides` instead, because a merged name table cannot say what " +
+      "it folded away and a loose file has no stored size.",
     "Text is read as Windows-1251, so Cyrillic configs remain readable.",
     "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Other files still have a " +
       "Details entry.",

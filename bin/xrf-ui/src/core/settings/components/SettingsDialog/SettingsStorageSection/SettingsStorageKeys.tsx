@@ -1,8 +1,8 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
 import { MONOSPACE } from "@/core/theme/tokens";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { formatBytes } from "@/lib/memory/format";
 
 import { describeKeyCount, IStorageEntry } from "./SettingsStorageSection.utils";
@@ -21,7 +21,7 @@ export function SettingsStorageKeys({ entries }: ISettingsStorageKeysProps): Rea
   const listed: ReadonlyArray<IStorageEntry> = entries.slice(0, KEY_LIMIT);
 
   return (
-    <SettingsSection
+    <DetailSection
       title={"Keys"}
       description={"Every key and what it occupies, largest first."}
       fact={describeKeyCount(entries.length)}
@@ -43,6 +43,6 @@ export function SettingsStorageKeys({ entries }: ISettingsStorageKeysProps): Rea
           </Typography>
         ) : null}
       </Stack>
-    </SettingsSection>
+    </DetailSection>
   );
 }

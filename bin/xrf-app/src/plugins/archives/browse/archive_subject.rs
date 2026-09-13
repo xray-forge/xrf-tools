@@ -2,6 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 use xrf_archive::{ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
+use xrf_archive_stats::ArchiveStatistics;
 use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
 };
@@ -53,6 +54,18 @@ impl ArchiveSubject {
       Self::World { .. } => Err(String::from(
         "This command needs an archive volume set open, not a game folder",
       )),
+    }
+  }
+
+  /// What this subject holds, broken down the ways a person asks about it.
+  ///
+  /// Read off the listing the session already published rather than by probing again, so the figures cannot disagree
+  /// with the tree on screen — and so a subject opened against an installation that has since changed on disk still
+  /// describes what is being browsed.
+  pub fn describe_statistics(&self) -> ArchiveStatistics {
+    match self {
+      Self::Volumes { project } => ArchiveStatistics::of_volumes(project),
+      Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts),
     }
   }
 

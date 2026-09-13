@@ -3,7 +3,7 @@ import { ReactElement, useState } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { HostInfo } from "@/core/ipc/types/xrf-app";
-import { SettingsSection } from "@/core/settings/components/SettingsSection";
+import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { Logger, useLogger } from "@/lib/logging";
 import { useMountEffect } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
@@ -29,7 +29,7 @@ export function SettingsEnvironmentSection(): ReactElement {
   });
 
   return (
-    <SettingsSection
+    <DetailSection
       data-testid={"settings-environment-section"}
       title={"Environment"}
       description={"The machine and the runtime the application found when it started."}
@@ -43,6 +43,6 @@ export function SettingsEnvironmentSection(): ReactElement {
           <Typography variant={"caption"}>Reading environment details...</Typography>
         )}
       </Stack>
-    </SettingsSection>
+    </DetailSection>
   );
 }

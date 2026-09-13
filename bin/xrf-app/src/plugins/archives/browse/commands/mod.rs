@@ -1,4 +1,5 @@
 pub mod close_subject;
+pub mod describe_statistics;
 pub mod extract_directory;
 pub mod extract_file;
 pub mod get_subject;

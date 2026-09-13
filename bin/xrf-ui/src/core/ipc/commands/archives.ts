@@ -16,6 +16,7 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
+import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   ArchiveExtractDirectoryResult,
@@ -32,6 +33,9 @@ import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 export const archivesCommands = {
   /** Releases only the committed and pending openings owned by the closing frontend. */
   closeSubject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:archives|close_subject", { sessionIds }),
+  /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
+  describeStatistics: (sessionId: SessionId) =>
+    __TAURI_INVOKE<ArchiveStatistics>("plugin:archives|describe_statistics", { sessionId }),
   /**
    * Write every file the open subject holds under one directory into a destination root.
    *

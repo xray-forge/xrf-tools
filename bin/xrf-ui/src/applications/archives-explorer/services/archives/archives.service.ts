@@ -21,6 +21,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import { ArchiveSubject, ArchiveWorldEntry, EJobKind, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
+import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
@@ -78,6 +79,10 @@ export class ArchivesService {
   /** The last write to disk, so whichever surface started it can report the outcome. */
   @Observable()
   public operation: AsyncState<TArchiveOperation> = AsyncState.idle();
+
+  /** What the open subject holds, broken down. Loaded when a surface first asks, and kept while the subject is open. */
+  @Observable()
+  public statistics: AsyncState<Nullable<ArchiveStatistics>> = AsyncState.idle(null);
 
   /**
    * @returns The files the open subject holds, empty when nothing is open.
@@ -274,6 +279,7 @@ export class ArchivesService {
     this.subjectState = this.subjectState.asReady(null);
     this.collisions = this.collisions.asIdle([]);
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
+    this.statistics = this.statistics.asIdle(null);
   }
 
   /**
@@ -469,6 +475,32 @@ export class ArchivesService {
     // see rather than answer it with an empty list.
     if (this.subject.value?.kind === EArchiveSubject.VOLUMES) {
       yield* this.loadSharedPayloads();
+    }
+  }
+
+  /**
+   * Loads the breakdown of the open subject, once.
+   */
+  @LatestFlow("statistics")
+  public *loadStatistics(): TFlow {
+    if (this.statistics.value || this.statistics.isLoading) {
+      return;
+    }
+
+    try {
+      this.statistics = this.statistics.asLoading(null);
+
+      const statistics: ArchiveStatistics = yield* call(
+        archivesCommands.describeStatistics(this.requireSubjectSession())
+      );
+
+      this.log.info("Archives statistics:", statistics.overview.total.files, "files");
+
+      this.statistics = this.statistics.asReady(statistics);
+    } catch (error: unknown) {
+      this.log.error("Failed to describe archives statistics:", error);
+
+      this.statistics = this.statistics.asFailed(transformError(error), null);
     }
   }
 

@@ -2211,10 +2211,10 @@
       "description": "Permission identifier",
       "oneOf": [
         {
-          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`",
+          "description": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-describe-statistics`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`",
           "type": "string",
           "const": "archives:default",
-          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`"
+          "markdownDescription": "Default plugin permissions.\n#### This default permission set includes:\n\n- `allow-close-subject`\n- `allow-describe-statistics`\n- `allow-extract-directory`\n- `allow-extract-file`\n- `allow-get-subject`\n- `allow-list-collisions`\n- `allow-list-shared-payloads`\n- `allow-open-volumes`\n- `allow-open-world`\n- `allow-read-file`\n- `allow-describe-audio`\n- `allow-describe-image`\n- `allow-default-pack-config`\n- `allow-export-pack-config`\n- `allow-import-pack-config`\n- `allow-list-pack-volumes`\n- `allow-pack-directory`\n- `allow-compare-archives`\n- `allow-default-patch-config`\n- `allow-export-patch-config`\n- `allow-import-patch-config`\n- `allow-list-patch-volumes`\n- `allow-patch-archives`\n- `allow-unpack-directory`\n- `allow-read-image`"
         },
         {
           "description": "Enables the close_subject command without any pre-configured scope.",
@@ -2251,6 +2251,12 @@
           "type": "string",
           "const": "archives:allow-describe-image",
           "markdownDescription": "Enables the describe_image command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the describe_statistics command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:allow-describe-statistics",
+          "markdownDescription": "Enables the describe_statistics command without any pre-configured scope."
         },
         {
           "description": "Enables the export_pack_config command without any pre-configured scope.",
@@ -2395,6 +2401,12 @@
           "type": "string",
           "const": "archives:deny-describe-image",
           "markdownDescription": "Denies the describe_image command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the describe_statistics command without any pre-configured scope.",
+          "type": "string",
+          "const": "archives:deny-describe-statistics",
+          "markdownDescription": "Denies the describe_statistics command without any pre-configured scope."
         },
         {
           "description": "Denies the export_pack_config command without any pre-configured scope.",
