@@ -1,4 +1,4 @@
-import { ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { ArchiveShadowedCopy, ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
@@ -208,6 +208,20 @@ export function mockArchivedContainer(path: string = "C:\\game\\db\\configs.db0"
 }
 
 /**
+ * Creates a hidden-copy fixture: where a shadowed copy sits, and how large that copy is.
+ *
+ * @param container - Where the hidden copy sits, defaulting to an archived entry.
+ * @param sizeReal - Unpacked bytes of the hidden copy.
+ * @returns A copy no lookup reaches.
+ */
+export function mockArchiveShadowedCopy(
+  container: XrayAssetContainer = mockArchivedContainer(),
+  sizeReal: number = 4096
+): ArchiveShadowedCopy {
+  return { container, sizeReal };
+}
+
+/**
  * Creates a mounted-world fixture: a game folder listed as the engine would resolve it.
  *
  * @param files - Entries to include, or one shadowing entry when omitted.
@@ -215,7 +229,7 @@ export function mockArchivedContainer(path: string = "C:\\game\\db\\configs.db0"
  */
 export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorld {
   const entries: Array<ArchiveWorldEntry> = files ?? [
-    mockArchiveWorldEntry({ shadowed: [mockArchivedContainer()] }),
+    mockArchiveWorldEntry({ shadowed: [mockArchiveShadowedCopy()] }),
     mockArchiveWorldEntry({
       container: mockArchivedContainer(),
       name: "scripts\\actor.script",
@@ -229,6 +243,11 @@ export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorl
     readPolicy: mockArchiveReadPolicy(),
     roots: { asset: null, roots: [{ mode: "auto", path: "C:\\game" }] },
     shadowedCount: entries.filter((entry: ArchiveWorldEntry) => entry.shadowed.length).length,
+    shadowedSizeReal: entries.reduce(
+      (total: number, entry: ArchiveWorldEntry) =>
+        total + entry.shadowed.reduce((hidden: number, copy: ArchiveShadowedCopy) => hidden + copy.sizeReal, 0),
+      0
+    ),
     sizeReal: entries.reduce((total: number, entry: ArchiveWorldEntry) => total + entry.sizeReal, 0),
   };
 }

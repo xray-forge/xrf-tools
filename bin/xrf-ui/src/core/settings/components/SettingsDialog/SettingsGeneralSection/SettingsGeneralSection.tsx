@@ -37,10 +37,7 @@ export function SettingsGeneralSection(): ReactElement {
 
       <CheckboxFormRow
         label={"Developer mode"}
-        description={
-          "Show tracing and captured runtime errors in the notifications panel. Recorded either way, so turning this " +
-          "on also reveals what happened before it was switched."
-        }
+        description={"Show tracing and captured runtime errors, advanced debug tools."}
         isChecked={settingsService.isDevModeEnabled}
         onChange={settingsService.setDevModeEnabled}
       />

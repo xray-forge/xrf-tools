@@ -1,5 +1,25 @@
 use serde::Serialize;
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayMountedEntry};
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayShadowedCopy, XrayShadowingEntry};
+
+/// One copy of an engine path no lookup reaches, as the explorer lists it.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveShadowedCopy {
+  /// Where this copy physically sits — a file on disk, or an entry of a volume.
+  pub container: XrayAssetContainer,
+  /// Payload bytes once unpacked, as the mount holding this copy records or measures them.
+  pub size_real: u64,
+}
+
+impl From<XrayShadowedCopy> for ArchiveShadowedCopy {
+  fn from(copy: XrayShadowedCopy) -> Self {
+    Self {
+      container: copy.asset.into_container(),
+      size_real: copy.size,
+    }
+  }
+}
 
 /// One file of a mounted world, as the explorer lists it.
 ///
@@ -21,16 +41,18 @@ pub struct ArchiveWorldEntry {
   /// Payload bytes once unpacked.
   pub size_real: u64,
   /// Copies of this engine path no lookup reaches, in mount priority order behind the winner.
-  pub shadowed: Vec<XrayAssetContainer>,
+  pub shadowed: Vec<ArchiveShadowedCopy>,
 }
 
-impl From<XrayMountedEntry> for ArchiveWorldEntry {
-  fn from(entry: XrayMountedEntry) -> Self {
+impl From<XrayShadowingEntry> for ArchiveWorldEntry {
+  fn from(entry: XrayShadowingEntry) -> Self {
+    let XrayShadowingEntry { entry, shadowed } = entry;
+
     Self {
       name: entry.asset.get_logical_path().as_str().to_string(),
       size_real: entry.size,
-      container: entry.asset.into_container(),
-      shadowed: entry.shadowed.into_iter().map(XrayAsset::into_container).collect(),
+      container: XrayAsset::into_container(entry.asset),
+      shadowed: shadowed.into_iter().map(ArchiveShadowedCopy::from).collect(),
     }
   }
 }

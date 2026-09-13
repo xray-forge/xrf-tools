@@ -6,7 +6,7 @@ import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
-  mockArchivedContainer,
+  mockArchiveShadowedCopy,
   mockArchivesVolumes,
   mockArchivesWorldSubject,
   mockArchiveWorldEntry,
@@ -79,7 +79,7 @@ describe("ArchivesService world subject", () => {
   });
 
   it("publishes where the selected file came from and what it hides", async () => {
-    const entry: ArchiveWorldEntry = mockArchiveWorldEntry({ shadowed: [mockArchivedContainer()] });
+    const entry: ArchiveWorldEntry = mockArchiveWorldEntry({ shadowed: [mockArchiveShadowedCopy()] });
 
     setMockInvokeResponses({ ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject([entry])) });
 

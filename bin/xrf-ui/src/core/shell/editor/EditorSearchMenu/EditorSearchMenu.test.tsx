@@ -12,6 +12,21 @@ const ITEMS = [
   { id: "third", name: "file gamma", detail: "third source" },
 ];
 
+function createMenu(onSelect: (item: (typeof ITEMS)[number]) => void, isActivationDisabled: boolean): ReactElement {
+  return (
+    <EditorSearchMenu
+      title={"Files"}
+      searchLabel={"Filter files"}
+      resultsLabel={"File results"}
+      items={ITEMS}
+      toSearchText={(item) => item.name}
+      toRow={(item) => ({ id: item.id, label: item.name })}
+      isActivationDisabled={isActivationDisabled}
+      onSelect={onSelect}
+    />
+  );
+}
+
 describe("EditorSearchMenu", () => {
   it("opens the original item through both keyboard and pointer activation", () => {
     const onSelect = jest.fn();
@@ -111,5 +126,53 @@ describe("EditorSearchMenu", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onSelect.mock.calls[0][0]).toBe(ITEMS[0]);
+  });
+
+  it("keeps filtering and arrow navigation available while Enter activation is disabled", () => {
+    const onSelect = jest.fn();
+
+    const view = renderWithProviders(createMenu(onSelect, false));
+    const input = view.getByRole("textbox", { name: "Filter files" });
+
+    fireEvent.change(input, { target: { value: "file" } });
+    view.rerender(<>{createMenu(onSelect, true)}</>);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(view.getByRole("button", { name: "file beta" })).toHaveClass("Mui-selected");
+    expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: "gamma" } });
+
+    expect(view.queryByText("file beta")).not.toBeInTheDocument();
+    expect(view.getByText("file gamma")).toBeInTheDocument();
+
+    view.rerender(<>{createMenu(onSelect, false)}</>);
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(ITEMS[2]);
+  });
+
+  it("disables pointer activation until the result lock is released", () => {
+    const onSelect = jest.fn();
+
+    const view = renderWithProviders(createMenu(onSelect, true));
+
+    fireEvent.change(view.getByRole("textbox", { name: "Filter files" }), { target: { value: "alpha" } });
+
+    const result = view.getByRole("button", { name: "file alpha" });
+
+    expect(result).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.click(result);
+
+    expect(onSelect).not.toHaveBeenCalled();
+
+    view.rerender(<>{createMenu(onSelect, false)}</>);
+    fireEvent.click(view.getByRole("button", { name: "file alpha" }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(ITEMS[0]);
   });
 });

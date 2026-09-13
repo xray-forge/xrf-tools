@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_archive::{ArchiveReadPolicy, ArchiveReadResult};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayMountedEntry, XrayPathCollision, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayAsset, XrayPathCollision, XrayProbe, XrayRoots, XrayShadowingEntry};
 
 use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 
@@ -34,6 +34,8 @@ pub struct ArchiveWorld {
   pub size_real: u64,
   /// Engine paths this world answers with more than one copy for.
   pub shadowed_count: usize,
+  /// Unpacked bytes held by the copies no lookup reaches.
+  pub shadowed_size_real: u64,
 }
 
 impl ArchiveWorld {
@@ -41,7 +43,7 @@ impl ArchiveWorld {
   ///
   /// Bounded by the installation rather than by any gesture, so callers run it off the executor.
   pub fn list(probe: &XrayProbe, roots: XrayRoots) -> Self {
-    let entries: Vec<XrayMountedEntry> = probe.list_mounted_entries();
+    let entries: Vec<XrayShadowingEntry> = probe.list_shadowing_entries();
 
     Self {
       collisions: probe.list_collisions(),
@@ -49,7 +51,8 @@ impl ArchiveWorld {
       read_policy: ArchiveReadPolicy::default(),
       roots,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),
-      size_real: entries.iter().map(|entry| entry.size).sum(),
+      shadowed_size_real: entries.iter().map(XrayShadowingEntry::get_shadowed_size).sum(),
+      size_real: entries.iter().map(XrayShadowingEntry::get_size).sum(),
       files: entries.into_iter().map(ArchiveWorldEntry::from).collect(),
     }
   }
@@ -165,7 +168,18 @@ mod tests {
 
     assert_eq!(shared.size_real, "front".len() as u64, "the winner is what is measured");
     assert_eq!(shared.shadowed.len(), 1);
-    assert!(matches!(shared.shadowed[0], XrayAssetContainer::Directory { .. }));
+    assert!(matches!(
+      shared.shadowed[0].container,
+      XrayAssetContainer::Directory { .. }
+    ));
+
+    // The fixture gives the two copies different lengths, so a hidden copy reporting the winner's size would be
+    // indistinguishable from one reporting its own.
+    assert_eq!(
+      shared.shadowed[0].size_real,
+      "backish".len() as u64,
+      "a hidden copy is measured by the mount holding it"
+    );
 
     assert_eq!(world.shadowed_count, 1, "one path is answered twice");
     assert_eq!(world.mounts.len(), 2, "and both trees are named as searched");
@@ -179,6 +193,12 @@ mod tests {
       world.size_real,
       ("front".len() + "front".len() + "back".len()) as u64,
       "the three winners, and not the copy one of them hides"
+    );
+
+    assert_eq!(
+      world.shadowed_size_real,
+      "backish".len() as u64,
+      "what the arrangement costs is counted apart from what the engine would load"
     );
   }
 

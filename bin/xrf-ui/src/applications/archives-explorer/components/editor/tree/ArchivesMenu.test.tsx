@@ -18,7 +18,6 @@ interface IRenderedMenu {
   service: ArchivesService;
 }
 
-/** Renders the menu after the service restores its open project. */
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
     ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
@@ -86,7 +85,7 @@ describe("ArchivesMenu", () => {
 
     fireEvent.dblClick(render.getByText("configs"));
 
-    act(() => runInAction(() => (service.content = service.content.asLoading(null))));
+    await act(() => runInAction(() => (service.content = service.content.asLoading(null))));
 
     fireEvent.click(await render.findByText("game.ltx"));
 
@@ -110,10 +109,65 @@ describe("ArchivesMenu", () => {
     fireEvent.dblClick(render.getByText("configs"));
 
     // A write leaves the archive and cannot be abandoned the way a read can, so it still holds an open back.
-    act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
 
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+  });
+
+  it("blocks Enter on search results during extraction and opens them after it finishes", async () => {
+    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const input = render.getByRole("textbox", { name: "Filter archive files" });
+
+    fireEvent.change(input, { target: { value: "system" } });
+    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+
+    fireEvent.change(input, { target: { value: "missing" } });
+
+    expect(render.getByText("No files match missing.")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "system" } });
+    await act(() => runInAction(() => (service.operation = service.operation.asIdle())));
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+        sessionId: expect.any(String),
+        path: "configs\\system.ltx",
+      })
+    );
+
+    fireEvent.change(input, { target: { value: "" } });
+
+    expect(fileRow(render, "system.ltx")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("blocks clicks on search results during extraction and opens them after it finishes", async () => {
+    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+
+    fireEvent.change(render.getByRole("textbox", { name: "Filter archive files" }), { target: { value: "system" } });
+    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+
+    const result = render.getByRole("button", { name: "system.ltx configs" });
+
+    expect(result).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.click(result);
+
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+
+    await act(() => runInAction(() => (service.operation = service.operation.asIdle())));
+    fireEvent.click(render.getByRole("button", { name: "system.ltx configs" }));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+        sessionId: expect.any(String),
+        path: "configs\\system.ltx",
+      })
+    );
   });
 });

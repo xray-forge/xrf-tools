@@ -18,6 +18,14 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
+/** One copy of an engine path no lookup reaches, as the explorer lists it. */
+export type ArchiveShadowedCopy = {
+  /** Where this copy physically sits — a file on disk, or an entry of a volume. */
+  container: XrayAssetContainer;
+  /** Payload bytes once unpacked, as the mount holding this copy records or measures them. */
+  sizeReal: number;
+};
+
 /**
  * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
  *
@@ -59,6 +67,8 @@ export type ArchiveWorld = {
   sizeReal: number;
   /** Engine paths this world answers with more than one copy for. */
   shadowedCount: number;
+  /** Unpacked bytes held by the copies no lookup reaches. */
+  shadowedSizeReal: number;
 };
 
 /**
@@ -80,7 +90,7 @@ export type ArchiveWorldEntry = {
   /** Payload bytes once unpacked. */
   sizeReal: number;
   /** Copies of this engine path no lookup reaches, in mount priority order behind the winner. */
-  shadowed: Array<XrayAssetContainer>;
+  shadowed: Array<ArchiveShadowedCopy>;
 };
 
 /**

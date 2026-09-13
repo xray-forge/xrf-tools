@@ -36,5 +36,5 @@ pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourc
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{
   XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayProbe, XrayProbeStep, XrayResolution, XrayScopedVfs,
-  XrayVfs,
+  XrayShadowedCopy, XrayShadowingEntry, XrayVfs,
 };

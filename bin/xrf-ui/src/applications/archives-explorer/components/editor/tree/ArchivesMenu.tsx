@@ -10,11 +10,8 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
-import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
-import { getDirectoryItemPath, getFileItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
+import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { getDirectoryItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -23,6 +20,9 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
 
+/**
+ * Browses archive files and selects extraction directories through a searchable tree.
+ */
 export function ArchivesMenu({
   "data-testid": dataTestId = "archives-menu",
   id,
@@ -36,13 +36,6 @@ export function ArchivesMenu({
   const files: Array<IArchiveEntry> = archivesService.entries;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
-
-  // Indexed once per listing rather than searched per activation: a filter hit and a tree row both address a file by
-  // its engine path, and a world answers with a list where a volume set answers with a map.
-  const byName: Map<string, IArchiveEntry> = useMemo(
-    () => new Map(files.map((entry: IArchiveEntry) => [entry.name, entry])),
-    [files]
-  );
 
   // Only a write holds an open back: an extraction runs outside the archive and cannot be abandoned, while a read
   // is simply superseded by the next open. Selecting is inert and never waits for anything.
@@ -61,33 +54,6 @@ export function ArchivesMenu({
       void archivesService.selectArchiveFile(entry);
     },
     [archivesService, isWriting, reveal]
-  );
-
-  const search: IUseRankedSearch<IArchiveEntry> = useRankedSearch({
-    items: files,
-    toSearchText,
-    onSelect: onOpenEntry,
-  });
-
-  const rows: Array<IEditorSearchResultRow> = useMemo(
-    () =>
-      search.results.map((result: ISearchResult<IArchiveEntry>) => {
-        const { name, directory } = splitLogicalPath(result.item.name);
-
-        return { id: result.item.name, label: name, description: directory ?? undefined };
-      }),
-    [search.results]
-  );
-
-  const onOpenPath = useCallback(
-    (path: string) => {
-      const entry: Optional<IArchiveEntry> = byName.get(path);
-
-      if (entry) {
-        onOpenEntry(entry);
-      }
-    },
-    [byName, onOpenEntry]
   );
 
   // Only a world knows where a file is read from: inside a volume set no entry carries a container, every entry is
@@ -113,16 +79,13 @@ export function ArchivesMenu({
         return;
       }
 
-      const itemId: string = item.id;
-      const filePath: Nullable<string> = getFileItemPath(itemId);
-
-      if (filePath) {
-        onOpenPath(filePath);
+      if (item.payload) {
+        onOpenEntry(item.payload);
 
         return;
       }
 
-      const directoryPath: Nullable<string> = getDirectoryItemPath(itemId);
+      const directoryPath: Nullable<string> = getDirectoryItemPath(item.id);
 
       // The synthetic root node stands for the whole tree, which the backend spells as an empty prefix rather than a
       // literal path - which is what `getDirectoryItemPath` answers for it.
@@ -130,40 +93,29 @@ export function ArchivesMenu({
         archivesService.selectArchiveDirectory(directoryPath);
       }
     },
-    [archivesService, isWriting, onOpenPath]
+    [archivesService, isWriting, onOpenEntry]
   );
 
   return (
-    <EditorSideMenu
+    <EditorSearchMenu
       data-testid={dataTestId}
       id={id}
       className={className}
-      header={
-        <EditorSearchHeader
-          title={"Files"}
-          count={files.length}
-          query={search.query}
-          placeholder={"Filter files"}
-          ariaLabel={"Filter archive files"}
-          onClear={search.clear}
-          onKeyDown={search.onInputKeyDown}
-          onQueryChange={search.setQuery}
-        />
-      }
+      title={"Files"}
+      searchLabel={"Filter archive files"}
+      placeholder={"Filter files"}
+      resultsLabel={"Archive search results"}
+      items={files}
+      toSearchText={toSearchText}
+      toRow={(entry) => {
+        const { name, directory } = splitLogicalPath(entry.name);
+
+        return { id: entry.name, label: name, description: directory ?? undefined };
+      }}
+      isActivationDisabled={isWriting}
+      onSelect={onOpenEntry}
     >
-      {search.isSearching ? (
-        <EditorSearchResults
-          ariaLabel={"Archive search results"}
-          isDisabled={isWriting}
-          isStale={search.isStale}
-          emptyLabel={`No files match ${search.query.trim()}.`}
-          rows={rows}
-          total={search.total}
-          activeIndex={search.activeIndex}
-          onHoverIndex={search.setActiveIndex}
-          onSelect={(row) => onOpenPath(row.id)}
-        />
-      ) : items.length ? (
+      {items.length ? (
         <VirtualizedTree<IArchiveEntry>
           ariaLabel={"Archive files"}
           icons={ARCHIVE_TREE_ICONS}
@@ -182,6 +134,6 @@ export function ArchivesMenu({
           </Typography>
         </Box>
       )}
-    </EditorSideMenu>
+    </EditorSearchMenu>
   );
 }

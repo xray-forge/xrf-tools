@@ -9,6 +9,7 @@ mod xray_mounted_entry;
 mod xray_probe;
 mod xray_resolution;
 mod xray_scoped_vfs;
+mod xray_shadowing_entry;
 mod xray_vfs;
 
 pub use directory_listing::XrayDirectoryListing;
@@ -17,4 +18,5 @@ pub use xray_mounted_entry::XrayMountedEntry;
 pub use xray_probe::{XrayProbe, XrayProbeStep};
 pub use xray_resolution::XrayResolution;
 pub use xray_scoped_vfs::XrayScopedVfs;
+pub use xray_shadowing_entry::{XrayShadowedCopy, XrayShadowingEntry};
 pub use xray_vfs::XrayVfs;

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use xrf_error::XrfResult;
 
-use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs};
+use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry};
 use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMountId, XrayPathCollision, XrayVfs};
 
 /// One place a probe looks, and the name a report calls it by.
@@ -237,24 +237,44 @@ impl<'a> XrayProbe<'a> {
     assets
   }
 
-  /// Every entry this probe can reach, once per engine identity, with the copies each one hides.
+  /// Every entry this probe can reach, once per engine identity, with the size of the copy that wins.
   ///
-  /// Folded across steps the way a lookup resolves: a path an earlier step holds wins, and the later step's copy joins
-  /// what it shadows rather than being dropped. Reporting only the winner here would hide exactly the arrangement this
-  /// listing exists to show — a loose tree standing in front of an installation's volumes.
+  /// Folded across steps the way a lookup resolves: a path an earlier step holds wins, and a later step's copy of it is
+  /// dropped. [`Self::list_shadowing_entries`] answers the same winners while keeping those copies, for the one caller
+  /// whose subject they are.
   ///
   /// Sorted by engine identity, because the per-step listings are each sorted and concatenating them is not.
   pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
     let mut entries: Vec<XrayMountedEntry> = Vec::new();
-    let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut seen: HashSet<String> = HashSet::new();
 
     for step in &self.steps {
       for entry in self.vfs.scoped(step.get_scope()).list_mounted_entries() {
+        if seen.insert(entry.get_logical_path().to_string()) {
+          entries.push(entry);
+        }
+      }
+    }
+
+    entries.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
+
+    entries
+  }
+
+  /// Every entry this probe can reach, once per engine identity, with the sized copies each one hides.
+  pub fn list_shadowing_entries(&self) -> Vec<XrayShadowingEntry> {
+    let mut entries: Vec<XrayShadowingEntry> = Vec::new();
+    let mut seen: HashMap<String, usize> = HashMap::new();
+
+    for step in &self.steps {
+      for entry in self.vfs.scoped(step.get_scope()).list_shadowing_entries() {
         match seen.get(entry.get_logical_path()) {
           Some(&index) => {
-            let XrayMountedEntry { asset, shadowed, .. } = entry;
+            let XrayShadowingEntry { entry, shadowed } = entry;
 
-            entries[index].shadowed.push(asset);
+            entries[index]
+              .shadowed
+              .push(XrayShadowedCopy::new(entry.asset, entry.size));
             entries[index].shadowed.extend(shadowed);
           }
           None => {

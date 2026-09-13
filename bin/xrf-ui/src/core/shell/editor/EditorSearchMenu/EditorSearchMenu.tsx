@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode, useMemo } from "react";
+import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { IUseRankedSearchOptions, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
@@ -11,6 +11,8 @@ export interface IEditorSearchMenuProps<T> extends StyledComponentProps, IUseRan
   searchLabel: string;
   resultsLabel: string;
   placeholder?: string;
+  /** Blocks keyboard and pointer activation of search results while keeping filtering and navigation available. */
+  isActivationDisabled?: boolean;
   /** Describes a result without discarding the item that activation opens. */
   toRow: (item: T) => IEditorSearchResultRow;
   onSelect: (item: T) => void;
@@ -31,6 +33,7 @@ export function EditorSearchMenu<T>({
   searchLabel,
   resultsLabel,
   placeholder = searchLabel,
+  isActivationDisabled = false,
   items,
   toSearchText,
   toSecondaryText,
@@ -41,7 +44,16 @@ export function EditorSearchMenu<T>({
   sections,
   children,
 }: IEditorSearchMenuProps<T>): ReactElement {
-  const search = useRankedSearch({ items, toSearchText, toSecondaryText, limit, onSelect });
+  const onSelectResult = useCallback(
+    (item: T) => {
+      if (!isActivationDisabled) {
+        onSelect(item);
+      }
+    },
+    [isActivationDisabled, onSelect]
+  );
+
+  const search = useRankedSearch({ items, toSearchText, toSecondaryText, limit, onSelect: onSelectResult });
   const rows = useMemo(() => search.results.map(({ item }) => ({ ...toRow(item), item })), [search.results, toRow]);
 
   return (
@@ -75,8 +87,9 @@ export function EditorSearchMenu<T>({
           total={search.total}
           activeIndex={search.activeIndex}
           isStale={search.isStale}
+          isDisabled={isActivationDisabled}
           onHoverIndex={search.setActiveIndex}
-          onSelect={(row) => onSelect(row.item)}
+          onSelect={(row) => onSelectResult(row.item)}
         />
       ) : (
         children

@@ -8,14 +8,19 @@ import { AssetService } from "@/core/assets/services";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { mockArchivedContainer, mockArchivesWorldSubject, mockArchiveWorldEntry } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchivedContainer,
+  mockArchiveShadowedCopy,
+  mockArchivesWorldSubject,
+  mockArchiveWorldEntry,
+} from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const OVERRIDDEN = mockArchiveWorldEntry({
   name: "configs\\system.ltx",
-  shadowed: [mockArchivedContainer("C:\\game\\db\\configs.db0")],
+  shadowed: [mockArchiveShadowedCopy(mockArchivedContainer("C:\\game\\db\\configs.db0"))],
 });
 
 const ARCHIVED = mockArchiveWorldEntry({
@@ -82,7 +87,7 @@ describe("opened archives world", () => {
     // behind it is exactly where a person would look for the file and not find what the game reads.
     expect(await findByText("Loose file")).toBeInTheDocument();
     expect(await findByText("C:\\game\\gamedata\\configs\\system.ltx")).toBeInTheDocument();
-    expect(await findByText("C:\\game\\db\\configs.db0")).toBeInTheDocument();
+    expect(await findByText("C:\\game\\db\\configs.db0 (4 KB)")).toBeInTheDocument();
   });
 
   it("has no name-table details to show for a world", async () => {

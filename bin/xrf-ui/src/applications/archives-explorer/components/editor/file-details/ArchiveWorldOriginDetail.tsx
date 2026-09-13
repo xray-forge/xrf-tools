@@ -1,10 +1,10 @@
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
-import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
-import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
+import { ArchiveShadowedCopy, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatBytes } from "@/lib/memory/format";
 
 interface IArchiveWorldOriginDetailProps extends BaseComponentProps {
   entry: ArchiveWorldEntry;
@@ -34,11 +34,11 @@ export function ArchiveWorldOriginDetail({
         }
       />
 
-      {entry.shadowed.map((container: XrayAssetContainer) => (
+      {entry.shadowed.map((copy: ArchiveShadowedCopy) => (
         <EditorPanelProperty
-          key={describeAssetContainer(container)}
-          label={isLooseContainer(container) ? "Hidden loose file" : "Hidden archive entry"}
-          value={describeAssetContainer(container)}
+          key={describeAssetContainer(copy.container)}
+          label={isLooseContainer(copy.container) ? "Hidden loose file" : "Hidden archive entry"}
+          value={`${describeAssetContainer(copy.container)} (${formatBytes(copy.sizeReal)})`}
           isMonospace
         />
       ))}
