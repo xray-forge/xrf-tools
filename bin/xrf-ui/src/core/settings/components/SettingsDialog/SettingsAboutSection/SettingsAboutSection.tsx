@@ -48,7 +48,6 @@ export function SettingsAboutSection({
 
   const [build, setBuild] = useState<Nullable<BuildInfo>>(null);
 
-
   useEffect(() => {
     systemCommands
       .getBuildInfo()

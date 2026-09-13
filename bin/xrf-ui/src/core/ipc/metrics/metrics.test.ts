@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import {
-  IIpcCommandMetrics,
-  IIpcMetricsSnapshot,
-  IPC_METRICS,
-  setIpcProfilingEnabled,
-} from "@/core/ipc/metrics";
+import { IIpcCommandMetrics, IIpcMetricsSnapshot, IPC_METRICS, setIpcProfilingEnabled } from "@/core/ipc/metrics";
 import { Optional } from "@/lib/types/general";
 
 function getEntryOf(command: string): IIpcCommandMetrics {
@@ -127,5 +122,4 @@ describe("ipc metrics", () => {
     expect(snapshot.calls).toBe(0);
     expect(snapshot.received).toBe(0);
   });
-
 });

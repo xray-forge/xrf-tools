@@ -106,8 +106,8 @@ describe("opened archives world", () => {
     expect(queryByText("Shared payload")).not.toBeInTheDocument();
   });
 
-  it("tints a row by the source the engine would read it from", async () => {
-    const { findByText, findByTitle } = await act(async () =>
+  it("marks a row the engine reads out of a volume, and leaves the loose copy plain", async () => {
+    const { findByText, queryByText } = await act(async () =>
       renderWithProviders(
         <ApplicationShellFrame>
           <ArchivesExplorerApplication />
@@ -119,7 +119,10 @@ describe("opened archives world", () => {
     await userEvent.dblClick(await findByText("configs"));
     await userEvent.dblClick(await findByText("scripts"));
 
-    expect(await findByTitle("Loose file")).toBeInTheDocument();
-    expect(await findByTitle("Archived entry")).toBeInTheDocument();
+    expect(await findByText("actor.script")).toBeInTheDocument();
+    expect(await findByText("db")).toBeInTheDocument();
+
+    expect(await findByText("system.ltx")).toBeInTheDocument();
+    expect(queryByText("Loose file")).not.toBeInTheDocument();
   });
 });

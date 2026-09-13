@@ -3,6 +3,7 @@ import { fireEvent, RenderResult } from "@testing-library/react";
 
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { ConfigsMenu } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu";
+import { ARCHIVED_CAPTION } from "@/core/ui/tree/TreeRowLabel";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -57,6 +58,32 @@ describe("ConfigsMenu", () => {
 
     expect(onOpen).not.toHaveBeenCalled();
     expect(render.getByText("items")).toBeInTheDocument();
+  });
+
+  it("marks a config nothing can write to in place", () => {
+    // The case that matters on a real install: 3,238 of an Anomaly tree's 3,240 configs are read out of `db\\configs`,
+    // where they read like any other config and no editor can ever replace them.
+    const archived: Array<LtxInventoryFile> = [
+      { isPhysical: false, path: "configs\\system.ltx", role: { kind: "entryPoint" }, source: "db" },
+    ];
+
+    const { getByText } = renderWithProviders(
+      <ConfigsMenu files={archived} selected={null} onOpen={jest.fn()} />
+    );
+
+    fireEvent.dblClick(getByText("configs"));
+
+    expect(getByText("system.ltx")).toBeInTheDocument();
+    expect(getByText(ARCHIVED_CAPTION)).toBeInTheDocument();
+  });
+
+  it("leaves a loose config's name alone", () => {
+    const render = renderMenu(jest.fn());
+
+    fireEvent.dblClick(render.getByText("configs"));
+
+    expect(render.getByText("system.ltx")).toBeInTheDocument();
+    expect(render.queryByText(ARCHIVED_CAPTION)).not.toBeInTheDocument();
   });
 
   it("reveals whatever is on screen, whoever opened it", () => {

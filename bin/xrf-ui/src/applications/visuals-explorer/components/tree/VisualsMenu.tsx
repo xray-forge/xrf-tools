@@ -1,9 +1,9 @@
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, ReactNode, useCallback, useMemo } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -17,6 +17,7 @@ import {
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
@@ -29,39 +30,6 @@ const VISUAL_TREE_ICONS: IVirtualizedTreeIcons = {
   expanded: <FolderOpenIcon />,
   leaf: <ViewInArIcon />,
 };
-
-/**
- * Marks a visual that was read out of an archive, which is all a row says beyond its name.
- *
- * Replaces the former `VisualTreeItem` slot: with a flat tree the payload is in hand at render time, so
- * the marker no longer needs a component that looks the item back up by id.
- *
- * @param item - Node being labelled; only a leaf carries the asset that could have come from a volume.
- * @returns The decorated label, or the plain name for a directory or a loose file.
- */
-function renderVisualLabel(item: ITreeNode<XrayAsset>): ReactNode {
-  if (item.payload?.container.kind !== "archive") {
-    return item.label;
-  }
-
-  return (
-    <Box sx={{ alignItems: "center", display: "flex", gap: 0.75, minWidth: 0 }}>
-      <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-        {item.label}
-      </Box>
-
-      <Tooltip title={"Read from an archive volume"}>
-        <Typography
-          component={"span"}
-          variant={"caption"}
-          sx={{ color: "text.secondary", flexShrink: 0, opacity: 0.75 }}
-        >
-          db
-        </Typography>
-      </Tooltip>
-    </Box>
-  );
-}
 
 /**
  * Every visual of the browsed roots, as a tree.
@@ -99,6 +67,18 @@ export function VisualsMenu({
       void visualsService.openAsset(logicalPath, browseService.rootPaths);
     },
     [browseService.rootPaths, reveal, visualsService]
+  );
+
+  // Marks a visual that was read out of an archive, which is all a row says beyond its name.
+  const onRenderVisualLabel = useCallback(
+    (item: ITreeNode<XrayAsset>) => (
+      <TreeRowLabel
+        label={item.label}
+        caption={item.payload?.container.kind === "archive" ? ARCHIVED_CAPTION : null}
+        captionTitle={"Read from an archive volume"}
+      />
+    ),
+    []
   );
 
   const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
@@ -139,7 +119,7 @@ export function VisualsMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
-          renderLabel={renderVisualLabel}
+          renderLabel={onRenderVisualLabel}
           onSelect={onSelectAsset}
           onActivate={onActivateAsset}
           onToggleExpanded={tree.toggleExpanded}

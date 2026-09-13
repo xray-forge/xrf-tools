@@ -4,17 +4,19 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import {
   ARCHIVE_TREE_ICONS,
-  decorateArchiveIcon,
   toSearchText,
 } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive/lib";
+import { isLooseContainer } from "@/core/assets/lib";
+import { XrayAssetContainer } from "@/core/bindings/types/xrf-vfs";
 import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import { getDirectoryItemPath, getFileItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -88,6 +90,21 @@ export function ArchivesMenu({
     [byName, onOpenEntry]
   );
 
+  // Only a world knows where a file is read from: inside a volume set no entry carries a container, every entry is
+  // archived anyway, and a caption on every row would say nothing. A loose file is then the row without the caption,
+  // which in a world is the copy a mod installed.
+  const onRenderArchiveLabel = useCallback((item: ITreeNode<IArchiveEntry>) => {
+    const container: Optional<XrayAssetContainer> = item.payload?.container;
+
+    return (
+      <TreeRowLabel
+        label={item.label}
+        caption={container && !isLooseContainer(container) ? ARCHIVED_CAPTION : null}
+        captionTitle={"Read from an archive volume"}
+      />
+    );
+  }, []);
+
   const onSelectItem = useCallback((item: ITreeNode<IArchiveEntry>) => tree.select(item.id), [tree]);
 
   const onActivateItem = useCallback(
@@ -150,7 +167,7 @@ export function ArchivesMenu({
         <VirtualizedTree<IArchiveEntry>
           ariaLabel={"Archive files"}
           icons={ARCHIVE_TREE_ICONS}
-          decorateIcon={decorateArchiveIcon}
+          renderLabel={onRenderArchiveLabel}
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}

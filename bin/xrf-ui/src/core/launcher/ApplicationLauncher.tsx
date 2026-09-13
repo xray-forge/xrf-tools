@@ -35,7 +35,6 @@ export function ApplicationLauncher({
 
   const searchInputRef = useRef<Nullable<HTMLInputElement>>(null);
 
-
   const onOpen = useCallback(
     (application: IApplicationDescriptor) => {
       navigate(application.path, { replace: true });

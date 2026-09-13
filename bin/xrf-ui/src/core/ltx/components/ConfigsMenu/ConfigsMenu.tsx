@@ -3,7 +3,6 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/bindings/types/xrf-ltx-inspect";
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
-import { ConfigsTreeLabel } from "@/core/ltx/components/ConfigsMenu/ConfigsTreeLabel";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {
   getFileItemPath,
@@ -13,6 +12,7 @@ import {
   toFileItemId,
 } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
@@ -52,7 +52,18 @@ export function ConfigsMenu({
 
   const searchable: Array<LtxInventoryFile> = useMemo(() => [...files], [files]);
 
-  const onRenderConfigLabel = useCallback((item: ITreeNode<LtxInventoryFile>) => <ConfigsTreeLabel item={item} />, []);
+  // Whether the engine reads it out of an archive. What the config is to the project - entry point, scheme, patch -
+  // is the icon's tint instead, because it is the dimension that varies.
+  const onRenderConfigLabel = useCallback(
+    (item: ITreeNode<LtxInventoryFile>) => (
+      <TreeRowLabel
+        label={item.label}
+        caption={item.payload && !item.payload.isPhysical ? ARCHIVED_CAPTION : null}
+        captionTitle={"Read from an archive volume; nothing can write to it in place"}
+      />
+    ),
+    []
+  );
 
   const onSelectNode = useCallback((item: ITreeNode<LtxInventoryFile>) => tree.select(item.id), [tree]);
 

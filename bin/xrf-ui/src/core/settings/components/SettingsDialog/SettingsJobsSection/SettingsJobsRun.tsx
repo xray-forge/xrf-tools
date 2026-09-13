@@ -102,7 +102,9 @@ export function SettingsJobsRun({
           <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 1 }}>
             {[
               `${profile?.samples ?? 0} reports`,
-              profile?.peakRate && profile.peakUnit ? `peak ${formatProgressRate(profile.peakRate, profile.peakUnit)}` : null,
+              profile?.peakRate && profile.peakUnit
+                ? `peak ${formatProgressRate(profile.peakRate, profile.peakUnit)}`
+                : null,
               profile?.longestStall ? `longest stall ${formatDuration(profile.longestStall)}` : null,
               profile?.isPartial ? "joined after this window reloaded, so earlier phases are missing" : null,
             ]
