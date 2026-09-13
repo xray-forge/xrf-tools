@@ -198,6 +198,29 @@ describe("VirtualizedTree", () => {
     expect(onToggleExpanded).toHaveBeenCalledWith(toDirectoryItemId("meshes"));
   });
 
+  it("steps to the next row with the right arrow once there is nothing left to open", async () => {
+    const onToggleExpanded = jest.fn();
+    const onSelect = jest.fn();
+    const render_: RenderResult = render({ expanded: [toDirectoryItemId("meshes")], onToggleExpanded, onSelect });
+
+    render_.getByRole("tree").focus();
+    // From the open directory into its first child, then past that leaf to its sibling.
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowRight}");
+
+    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ label: "pm.ogf" }));
+    expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
+  it("holds the selection on the last row when the right arrow has nowhere to step", async () => {
+    const onSelect = jest.fn();
+    const render_: RenderResult = render({ onSelect });
+
+    render_.getByRole("tree").focus();
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowRight}");
+
+    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ label: "readme.txt" }));
+  });
+
   // Windowing itself is not asserted here on purpose: jsdom lays nothing out, and the virtualizer's
   // measurement runs through a throttled ResizeObserver, so every row renders no matter what the
   // element is told its size is. Row count, the focus ring, and the chevron column are verified

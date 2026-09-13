@@ -233,16 +233,13 @@ export function VirtualizedTree<T>({
             return;
           }
 
-          // Open what is closed, and step into what is already open, which is what a tree does here.
+          // Open what is closed; everything else steps to the next visible row - into the first child of a
+          // directory already open, and past a leaf, which has nothing of its own to open.
           if (row.hasChildren && !row.isExpanded) {
             return onToggleExpanded(row.item.id);
           }
 
-          if (row.isExpanded) {
-            return moveTo(selectedIndex + 1);
-          }
-
-          return;
+          return moveTo(selectedIndex + 1);
         }
 
         case "ArrowLeft": {
