@@ -1,0 +1,72 @@
+/* Token markers scope the rules. Dark is the app's first-paint fallback. */
+[data-syntax-token="comment"] {
+  color: #6a9955;
+}
+
+[data-syntax-token="string"] {
+  color: #ce9178;
+}
+
+[data-syntax-token="number"] {
+  color: #b5cea8;
+}
+
+[data-syntax-token="keyword"] {
+  color: #569cd6;
+}
+
+[data-syntax-token="type"] {
+  color: #4ec9b0;
+}
+
+[data-syntax-token="directive"] {
+  color: #c586c0;
+}
+
+[data-syntax-token="section"] {
+  color: #dcdcaa;
+}
+
+[data-syntax-token="key"] {
+  color: #9cdcfe;
+}
+
+[data-syntax-token="operator"] {
+  color: #909090;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="comment"] {
+  color: #376b28;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="string"] {
+  color: #a31515;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="number"] {
+  color: #116644;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="keyword"] {
+  color: #0000c0;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="type"] {
+  color: #166775;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="directive"] {
+  color: #8f0e9e;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="section"] {
+  color: #7a5c00;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="key"] {
+  color: #04517a;
+}
+
+html[data-color-scheme="light"] [data-syntax-token="operator"] {
+  color: #606060;
+}

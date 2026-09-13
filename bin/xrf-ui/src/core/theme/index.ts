@@ -1,3 +1,5 @@
+import "./syntax.css";
+
 export * from "./application-background";
 export * from "./control-background";
 export * from "./cache";

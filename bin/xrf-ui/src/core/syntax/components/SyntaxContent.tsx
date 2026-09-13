@@ -1,7 +1,5 @@
-import { Box } from "@mui/material";
 import { Fragment, ReactElement, useMemo } from "react";
 
-import { getSyntaxSx } from "@/core/syntax/components/syntax.styles";
 import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, ISyntaxSpan } from "@/core/syntax/lib";
 
 interface ISyntaxContentProps {
@@ -12,20 +10,16 @@ interface ISyntaxContentProps {
 /**
  * Source text, coloured by its grammar.
  */
-export function SyntaxContent({ content, language }: ISyntaxContentProps): ReactElement {
+export function SyntaxContent({ content, language }: ISyntaxContentProps): Array<ReactElement> {
   const spans: Array<ISyntaxSpan> = useMemo(() => highlightSyntax(content, language), [content, language]);
 
-  return (
-    <Box component={"span"} sx={getSyntaxSx}>
-      {spans.map((span: ISyntaxSpan, index: number) =>
-        span.token === ESyntaxToken.PLAIN ? (
-          <Fragment key={index}>{span.text}</Fragment>
-        ) : (
-          <span key={index} data-syntax-token={span.token}>
-            {span.text}
-          </span>
-        )
-      )}
-    </Box>
+  return spans.map((span: ISyntaxSpan, index: number) =>
+    span.token === ESyntaxToken.PLAIN ? (
+      <Fragment key={index}>{span.text}</Fragment>
+    ) : (
+      <span key={index} data-syntax-token={span.token}>
+        {span.text}
+      </span>
+    )
   );
 }

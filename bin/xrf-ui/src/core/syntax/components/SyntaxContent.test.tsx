@@ -27,10 +27,10 @@ describe("SyntaxContent", () => {
     expect(colored).not.toContain("\n");
   });
 
-  it("emits no token elements for a language it does not colour", () => {
+  it("emits no elements for a language it does not colour", () => {
     const { container } = renderWithProviders(<SyntaxContent content={LTX} language={ESyntaxLanguage.PLAIN} />);
 
-    expect(container.querySelectorAll("[data-syntax-token]")).toHaveLength(0);
+    expect(container.childElementCount).toBe(0);
     expect(container.textContent).toBe(LTX);
   });
 });

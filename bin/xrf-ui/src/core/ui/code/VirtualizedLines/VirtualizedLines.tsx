@@ -2,7 +2,6 @@ import { Box } from "@mui/material";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { getSyntaxSx } from "@/core/syntax/components/syntax.styles";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
@@ -320,7 +319,6 @@ export function VirtualizedLines({
       className={className}
       role={"listbox"}
       sx={mergeSx(
-        getSyntaxSx,
         {
           backgroundColor: "background.default",
           // A definite height, or the listing grows to its content instead of windowing it.
