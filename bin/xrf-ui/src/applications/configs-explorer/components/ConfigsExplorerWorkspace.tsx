@@ -39,14 +39,20 @@ export function ConfigsExplorerWorkspace({
   const entry: Nullable<string> = documentService.entry;
   const isResolved: boolean = documentService.mode === EConfigsDocumentMode.RESOLVED;
 
-  const onBack = useCallback(() => {
+  // Everything held about one config: the document, what its root resolved to, and the two panels reading that root.
+  // Leaving any of it behind would leave a panel explaining a config nobody has open.
+  const onDeselect = useCallback(() => {
     documentService.clear();
     resolvedService.clear();
     findingsService.clear();
     schemeService.clear();
+  }, [documentService, findingsService, resolvedService, schemeService]);
+
+  const onBack = useCallback(() => {
+    onDeselect();
 
     void projectService.close();
-  }, [documentService, findingsService, projectService, resolvedService, schemeService]);
+  }, [onDeselect, projectService]);
 
   const onToggleMode = useCallback(
     () => documentService.setMode(isResolved ? EConfigsDocumentMode.AUTHORED : EConfigsDocumentMode.RESOLVED),
@@ -90,7 +96,7 @@ export function ConfigsExplorerWorkspace({
       className={className}
       toolbar={
         <EditorToolbar
-          subtitle={selected ? <EditorToolbarLocation location={{ path: selected }} /> : undefined}
+          subtitle={project ? <EditorToolbarLocation location={{ entry: selected, path: project.root }} /> : undefined}
           actions={
             <EditorViewToggle
               label={"Resolved"}
@@ -111,7 +117,7 @@ export function ConfigsExplorerWorkspace({
         />
       }
     >
-      <ConfigsDocumentView />
+      <ConfigsDocumentView onDeselect={onDeselect} />
     </EditorLayout>
   );
 }
