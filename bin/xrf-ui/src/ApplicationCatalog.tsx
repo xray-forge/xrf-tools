@@ -6,6 +6,7 @@ import { default as MapIcon } from "@mui/icons-material/Map";
 import { default as SettingsApplicationsIcon } from "@mui/icons-material/SettingsApplications";
 import { default as SportsEsportsIcon } from "@mui/icons-material/SportsEsports";
 import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
+import { default as TerrainIcon } from "@mui/icons-material/Terrain";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
@@ -22,6 +23,9 @@ import { DIALOGS_EDITOR_APPLICATION } from "@/applications/dialogs-editor";
 import { EXPORTS_EXPLORER_APPLICATION } from "@/applications/exports-explorer";
 import { GAMEDATA_VERIFIER_APPLICATION } from "@/applications/gamedata-verifier";
 import { INFO_PORTIONS_EXPLORER_APPLICATION } from "@/applications/info-portions-explorer";
+import { LEVEL_COMPILER_APPLICATION } from "@/applications/level-compiler";
+import { LEVEL_DECOMPILER_APPLICATION } from "@/applications/level-decompiler";
+import { LEVEL_EDITOR_APPLICATION } from "@/applications/level-editor";
 import { SPAWN_EDITOR_APPLICATION } from "@/applications/spawn-editor";
 import { SPAWN_PACKER_APPLICATION } from "@/applications/spawn-packer";
 import { SPAWN_UNPACKER_APPLICATION } from "@/applications/spawn-unpacker";
@@ -67,6 +71,9 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     CHARACTERS_EXPLORER_APPLICATION,
     INFO_PORTIONS_EXPLORER_APPLICATION,
     TASKS_EXPLORER_APPLICATION,
+    LEVEL_EDITOR_APPLICATION,
+    LEVEL_COMPILER_APPLICATION,
+    LEVEL_DECOMPILER_APPLICATION,
     SPAWN_EDITOR_APPLICATION,
     SPAWN_PACKER_APPLICATION,
     SPAWN_UNPACKER_APPLICATION,
@@ -122,6 +129,12 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.GAMEPLAY,
       label: "Gameplay",
       icon: <SportsEsportsIcon />,
+    },
+    {
+      accent: { light: "#8a5a3b", dark: "#d8a77d" },
+      id: EApplicationGroupId.LEVEL,
+      label: "Level",
+      icon: <TerrainIcon />,
     },
     {
       accent: { light: "#59730c", dark: "#a4d83b" },
