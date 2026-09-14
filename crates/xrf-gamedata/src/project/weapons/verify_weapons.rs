@@ -394,6 +394,11 @@ impl GamedataProject {
         continue;
       }
 
+      // Anomaly based scripts use snd_on_take as a pickup-sound category, not an asset reference.
+      if field_name == "snd_on_take" {
+        continue;
+      }
+
       let value: WeaponSoundValue<'_> = WeaponSoundValue::parse(field_value);
       let source: WeaponSoundSource<'_, '_> = WeaponSoundSource::classify(ltx, value);
 
