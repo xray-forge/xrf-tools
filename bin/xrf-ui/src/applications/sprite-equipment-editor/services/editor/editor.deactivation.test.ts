@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockRestoredSession } from "@/fixtures/mocks/session.mocks";
+import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -16,11 +17,7 @@ function showSprite(service: SpriteEquipmentEditorService): void {
   service.spriteImage = service.spriteImage.asReady(
     mockRestoredSession(service, {
       sessionId: "fixture-session",
-      isDltx: false,
-      ltxPath: "system.ltx",
-      occupants: [],
-      path: "equipment.dds",
-      name: "equipment.png",
+      metadata: mockEquipmentSpriteMetadata(),
       blob: new Blob(),
       image: new Image(),
     })

@@ -382,14 +382,60 @@ export type DialogsReadRequest = {
   language: string | null;
 };
 
+/**
+ * Where the configuration that annotates a sheet is read from.
+ *
+ * Parallel to [`EquipmentSheetSource`] and for the same reason, with one difference that matters: reading a
+ * configuration out of the roots resolves a whole include tree through the VFS, which is what reaches an
+ * installation's `db\configs` volumes. A file named directly is resolved from its own directory, which is what
+ * carries `mod_*.ltx` attachments sitting beside it.
+ */
+export type EquipmentConfigSource =
+  /** A `system.ltx` on disk, named by its filesystem path. */
+  | { kind: "file"; path: string }
+  /** An entry point of the roots, named by its logical path such as `configs\system.ltx`. */
+  | { kind: "asset"; logicalPath: string };
+
+/** Where an opened sheet turned out to be, and whether anything can write there. */
+export type EquipmentSheetLocation = {
+  /** The sheet as the roots located it, or nothing for a file opened by path outside any tree. */
+  asset: XrayAsset | null;
+  /** Absolute path of the sheet, or nothing when it lives inside an archive volume. */
+  path: string | null;
+  /** Where a write to the sheet would land. */
+  writeTarget: string | null;
+};
+
+/** Where an equipment sheet is read from. */
+export type EquipmentSheetSource =
+  /** A loose `.dds` on disk, named by its filesystem path. */
+  | { kind: "file"; path: string }
+  /** A sheet of the roots, named by its engine reference such as `ui\ui_icon_equipment`. */
+  | { kind: "asset"; reference: string };
+
+/** Everything the editor is told about one opened sheet. */
 export type EquipmentSpriteMetadata = {
-  path: string;
+  /** Name the sheet is streamed to the webview under. */
   name: string;
-  systemLtxPath: string;
-  /** Whether these occupants came out of a DLTX-resolved config tree. */
-  isDltx: boolean;
+  /** What this open was asked to read, so a reload repeats the request rather than a reconstruction of it. */
+  open: EquipmentSpriteOpen;
+  /** Which copy of the sheet this is, and whether anything can write to it. */
+  location: EquipmentSheetLocation;
+  /** Why the configuration was not read, when it was asked for and could not be. */
+  configError: string | null;
   /** Every section occupying a slot on the sheet, in the order the configuration declares them. */
   occupants: Array<EquipmentSlotOccupant>;
+};
+
+/** Everything one opening of a sheet was asked to read. */
+export type EquipmentSpriteOpen = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  sheet: EquipmentSheetSource;
+  /** The configuration naming what sits on the sheet, or nothing to open it unannotated. */
+  config: EquipmentConfigSource | null;
+  /** Whether to resolve that configuration with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
 };
 
 /** One check's verdict, as the desktop surface shows it. */
@@ -704,10 +750,7 @@ export type SpawnSessionDescriptor = {
 /** The complete identity and inputs of one sprite opening. */
 export type SpriteEquipmentOpenRequest = {
   sessionId: SessionId;
-  equipmentDdsPath: string;
-  systemLtxPath: string;
-  isDltx: boolean;
-};
+} & EquipmentSpriteOpen;
 
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {

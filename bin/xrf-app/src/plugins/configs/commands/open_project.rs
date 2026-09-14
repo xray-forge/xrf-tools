@@ -9,9 +9,9 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::execution::ExecutionState;
+use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
-use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsOpenRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 

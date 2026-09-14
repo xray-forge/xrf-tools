@@ -33,7 +33,8 @@ export function EquipmentSpriteViewer({
   const gridSize: number = spriteEquipmentService.gridSize;
 
   const layout: Nullable<IEquipmentLayout> = useMemo(
-    () => (sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.occupants) : null),
+    () =>
+      sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.metadata.occupants) : null,
     [gridSize, sprite]
   );
 
@@ -81,7 +82,7 @@ export function EquipmentSpriteViewer({
     >
       <ImageViewport
         src={sprite.image.src}
-        alt={sprite.name}
+        alt={sprite.metadata.name}
         width={sprite.image.width}
         height={sprite.image.height}
         renderOverlay={renderOverlay}

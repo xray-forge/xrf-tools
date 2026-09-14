@@ -6,6 +6,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -27,11 +28,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
-      isDltx: false,
-      ltxPath: "system.ltx",
-      occupants: [],
-      path: "equipment.dds",
-      name: "equipment.png",
+      metadata: mockEquipmentSpriteMetadata(),
       blob: new Blob(),
       image: new Image(),
     });
@@ -48,11 +45,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
-      isDltx: false,
-      ltxPath: "C:\\game\\system.ltx",
-      occupants: [],
-      path: "C:\\game\\equipment.dds",
-      name: "equipment.dds",
+      metadata: mockEquipmentSpriteMetadata(),
       blob: new Blob(),
       image: new Image(),
     });
@@ -69,11 +62,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
-      isDltx: false,
-      ltxPath: "C:\\game\\system.ltx",
-      occupants: [],
-      path: "C:\\game\\equipment.dds",
-      name: "equipment.dds",
+      metadata: mockEquipmentSpriteMetadata(),
       blob: new Blob(),
       image: new Image(),
     });
@@ -129,11 +118,7 @@ describe("SpriteEquipmentEditorService", () => {
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
-      isDltx: false,
-      ltxPath: "system.ltx",
-      occupants: [],
-      path: "equipment.dds",
-      name: "equipment.dds",
+      metadata: mockEquipmentSpriteMetadata(),
       blob: new Blob(),
       image: new Image(),
     });

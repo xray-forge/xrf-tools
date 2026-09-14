@@ -7,19 +7,19 @@ import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { Nullable } from "@/lib/types/general";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
 
-const RESPONSE: EquipmentSpriteMetadata = {
-  isDltx: true,
-  name: "equipment.dds",
-  path: "C:\\game\\equipment.dds",
-  systemLtxPath: "C:\\game\\system.ltx",
-  occupants: [],
-};
+/** Built from the fixture, so it cannot keep claiming a shape the backend has stopped sending. */
+const RESPONSE: EquipmentSpriteMetadata = mockEquipmentSpriteMetadata();
+
+/** The two loose files that fixture opens, which the repack assertions name. */
+const SHEET_PATH: string = RESPONSE.location.path as string;
+const CONFIG_PATH: string = (RESPONSE.open.config as { kind: "file"; path: string }).path;
 
 /**
  * The sprite is fetched through `convertFileSrc` and `fetch`, neither of which jsdom provides, so the
@@ -61,7 +61,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   it("repacks through the shared service before replacing the editor image", async () => {
     const packed: PackEquipmentResult = {
       outcome: "completed",
-      savedAt: RESPONSE.path,
+      savedAt: SHEET_PATH,
       savedWidth: 1024,
       savedHeight: 512,
       packedCount: 12,
@@ -77,7 +77,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets, container } = createService();
 
-    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    await service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     const previousImage = service.spriteImage.value?.image;
 
@@ -90,9 +90,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
       expect.objectContaining({
         request: {
           sourcePath: "C:\\game\\equipment",
-          outputPath: RESPONSE.path,
-          systemLtxPath: RESPONSE.systemLtxPath,
-          isDltx: true,
+          outputPath: SHEET_PATH,
+          systemLtxPath: CONFIG_PATH,
+          isDltx: false,
         },
       })
     );
@@ -120,7 +120,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets } = createService();
 
-    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    await service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     await service.reopenEquipmentProject();
     await service.reopenEquipmentProject();
@@ -138,7 +138,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets } = createService();
 
-    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    await service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     const revoked: Array<string> = [];
 
@@ -167,7 +167,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets, container } = createService();
 
-    await service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    await service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     await service.reopenEquipmentProject();
     expect(assets.heldCount).toBe(1);
@@ -193,11 +193,11 @@ describe("SpriteEquipmentEditorService object urls", () => {
       }
     } as unknown as typeof Image;
 
-    const first = service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    const first = service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     await waitFor(() => expect(decoding).toHaveLength(1));
 
-    const second = service.openEquipmentProject(RESPONSE.path, RESPONSE.systemLtxPath, true);
+    const second = service.openEquipmentProject(mockEquipmentSpriteOpen());
 
     await waitFor(() => expect(decoding).toHaveLength(2));
     decoding[1].onload?.();

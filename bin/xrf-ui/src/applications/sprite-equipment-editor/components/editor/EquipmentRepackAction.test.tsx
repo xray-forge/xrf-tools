@@ -4,27 +4,19 @@ import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
 
 import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/editor/EquipmentRepackAction";
-import {
-  IOpenEquipmentSprite,
-  SpriteEquipmentEditorService,
-} from "@/applications/sprite-equipment-editor/services/editor";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
+import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
-const SPRITE: IOpenEquipmentSprite = {
-  sessionId: "fixture-session",
-  isDltx: false,
-  ltxPath: "C:\\game\\system.ltx",
-  occupants: [],
-  path: "C:\\game\\equipment.dds",
-  name: "equipment.dds",
-  blob: new Blob(),
-  image: new Image(),
+/** What the service under test starts holding, which each case varies before rendering. */
+const seed: { repackSourcePath: Nullable<string>; metadata: EquipmentSpriteMetadata } = {
+  repackSourcePath: null,
+  metadata: mockEquipmentSpriteMetadata(),
 };
-
-const seed: { repackSourcePath: Nullable<string> } = { repackSourcePath: null };
 
 /** The instance the container built for the current render, so a test can watch what it is asked to do. */
 let rendered: Nullable<SpriteEquipmentEditorService> = null;
@@ -47,15 +39,24 @@ class TestSpriteEquipmentEditorService extends SpriteEquipmentEditorService {
   public constructor() {
     super();
 
-    this.spriteImage = this.spriteImage.asReady(SPRITE);
+    this.spriteImage = this.spriteImage.asReady({
+      sessionId: "fixture-session",
+      metadata: seed.metadata,
+      blob: new Blob(),
+      image: new Image(),
+    });
     this.repackSourcePath = seed.repackSourcePath;
 
     captureRendered(this);
   }
 }
 
-function renderAction(repackSourcePath: Nullable<string>): RenderResult {
+function renderAction(
+  repackSourcePath: Nullable<string>,
+  metadata: Partial<EquipmentSpriteMetadata> = {}
+): RenderResult {
   seed.repackSourcePath = repackSourcePath;
+  seed.metadata = mockEquipmentSpriteMetadata(metadata);
 
   return renderWithProviders(<EquipmentRepackAction />, {
     bindings: [
@@ -75,6 +76,20 @@ describe("EquipmentRepackAction", () => {
     // The reason moved into the tooltip when the command became a toolbar button, so it still has to
     // be reachable rather than leaving a dead control with no explanation.
     expect(getByTitle("No unpacked icons beside the sprite")).toBeInTheDocument();
+  });
+
+  it("withholds repacking a sheet that was not opened from files", () => {
+    // A tree open resolves its configuration to an entry point rather than a file, and an archived sheet has no path
+    // at all. Neither can be handed to the packer, and saying so is a different fix from unpacking the icons first.
+    const { getByRole, getByTitle } = renderAction("C:\\game\\equipment", {
+      open: mockEquipmentSpriteOpen({
+        sheet: { kind: "asset", reference: "ui\\ui_icon_equipment" },
+        config: { kind: "asset", logicalPath: "configs\\system.ltx" },
+      }),
+    });
+
+    expect(getByRole("button", { name: /Repack/ })).toBeDisabled();
+    expect(getByTitle("This sheet was not opened from files a repack can write")).toBeInTheDocument();
   });
 
   it("names both paths before overwriting anything", async () => {

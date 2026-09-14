@@ -5,6 +5,7 @@ pub mod error;
 pub mod execution;
 pub mod jobs;
 pub mod logging;
+pub mod ltx;
 pub mod process;
 pub mod session;
 pub mod types;

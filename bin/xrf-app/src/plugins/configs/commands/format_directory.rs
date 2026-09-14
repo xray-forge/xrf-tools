@@ -8,8 +8,8 @@ use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
+use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
-use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
 /// Rewrite the LTX configs roots exposes.

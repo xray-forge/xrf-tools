@@ -1,17 +1,37 @@
 use tauri::http::{Request, StatusCode};
 
+use xrf_vfs::XrayRoots;
+
+use crate::core::assets::AssetMountState;
 use crate::core::session::SessionId;
-use crate::plugins::sprite_equipment::document::read_sprite;
-use crate::plugins::sprite_equipment::state::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSpriteState};
+use crate::plugins::sprite_equipment::document::EquipmentSpriteDocument;
+use crate::plugins::sprite_equipment::location::EquipmentSheetLocation;
+use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;
+use crate::plugins::sprite_equipment::source::{EquipmentSheetSource, EquipmentSpriteOpen};
+use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
 use crate::plugins::sprite_equipment::stream::sprite_response;
+
+/// An open naming one loose sheet and no configuration.
+fn open_of(path: &str) -> EquipmentSpriteOpen {
+  EquipmentSpriteOpen {
+    roots: XrayRoots::default(),
+    sheet: EquipmentSheetSource::File { path: path.into() },
+    config: None,
+    is_dltx: false,
+  }
+}
 
 fn document(bytes: Vec<u8>) -> EquipmentSpriteDocument {
   EquipmentSpriteDocument {
     metadata: EquipmentSpriteMetadata {
-      path: String::from("equipment.dds"),
       name: String::from("equipment.png"),
-      system_ltx_path: String::from("system.ltx"),
-      is_dltx: false,
+      open: open_of("equipment.dds"),
+      location: EquipmentSheetLocation {
+        asset: None,
+        path: Some(String::from("equipment.dds")),
+        write_target: Some(String::from("equipment.dds")),
+      },
+      config_error: None,
       occupants: Vec::new(),
     },
     preview: bytes,
@@ -67,10 +87,12 @@ fn a_failed_reload_preserves_the_previous_metadata_and_preview() {
   state.commit_open(first, document(vec![1, 2, 3])).unwrap();
   state.begin_reload(SessionId::new(), first).unwrap();
 
-  assert!(read_sprite("", "", false).is_err());
+  // A sheet that cannot be decoded is the ordinary way a reload fails, and it must leave the open one alone rather
+  // than half-replacing it.
+  assert!(EquipmentSpriteDocument::read(&AssetMountState::new(), open_of("nothing-here.dds")).is_err());
 
   let opened = state.require(first).unwrap();
 
   assert_eq!(opened.preview, [1, 2, 3]);
-  assert_eq!(opened.metadata.system_ltx_path, "system.ltx");
+  assert_eq!(opened.metadata.location.path.as_deref(), Some("equipment.dds"));
 }

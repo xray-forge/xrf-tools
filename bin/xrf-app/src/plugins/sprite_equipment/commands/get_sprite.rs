@@ -2,7 +2,8 @@ use tauri::State;
 
 use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
-use crate::plugins::sprite_equipment::state::{EquipmentSpriteMetadata, EquipmentSpriteState};
+use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;
+use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_sprite"))]
 #[tauri::command(rename = "get_sprite")]

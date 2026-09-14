@@ -9,8 +9,8 @@ use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOp
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JOB_PHASE_PREPARE, JobKind, JobRegistration, JobRegistry, JobStart, run_job};
+use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
-use crate::plugins::configs::ltx_roots::open_ltx_project;
 use crate::plugins::configs::request::ConfigsVerifyRequest;
 
 /// Verifies LTX configs through the VFS, including archived files.

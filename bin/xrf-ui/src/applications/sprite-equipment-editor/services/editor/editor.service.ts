@@ -2,7 +2,7 @@ import { path } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { RELOAD_EQUIPMENT_SPRITE_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { urlToImage } from "@/core/assets/lib/image";
@@ -11,26 +11,38 @@ import { Command } from "@/core/commands";
 import { transformError } from "@/core/error/lib";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { requireSessionId, Session } from "@/core/ipc/session";
-import { EquipmentSpriteMetadata, SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { EquipmentSlotOccupant, PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
+import {
+  EquipmentConfigSource,
+  EquipmentSpriteMetadata,
+  EquipmentSpriteOpen,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
+import { describeEquipmentSheet } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
+/**
+ * The sheet on screen: what the backend answered, and the image decoded from it.
+ */
 export interface IOpenEquipmentSprite {
   sessionId: string;
-  ltxPath: string;
-  /** Whether the open project's occupants came out of a DLTX-resolved config tree. */
-  isDltx: boolean;
-  occupants: Array<EquipmentSlotOccupant>;
-  path: string;
-  name: string;
+  metadata: EquipmentSpriteMetadata;
   blob: Blob;
   image: HTMLImageElement;
+}
+
+/** The two filesystem paths a repack needs, which only an open over loose files can supply. */
+export interface IEquipmentRepackTargets {
+  /** The sheet to overwrite. */
+  sheet: string;
+  /** The configuration declaring what goes on it. */
+  config: string;
 }
 
 /** The open sprite, its image lifetime, and editor actions. */
@@ -67,6 +79,23 @@ export class SpriteEquipmentEditorService {
     private readonly eventBus: EventBus = inject(EventBus),
     private readonly packerService: SpriteEquipmentPackerService = inject(SpriteEquipmentPackerService)
   ) {}
+
+  /**
+   * The paths a repack would write from and to, or null when this open cannot be repacked.
+   */
+  @Computed()
+  public get repackTargets(): Nullable<IEquipmentRepackTargets> {
+    const metadata: Nullable<EquipmentSpriteMetadata> = this.spriteImage.value?.metadata ?? null;
+
+    if (!metadata) {
+      return null;
+    }
+
+    const config: Nullable<EquipmentConfigSource> = metadata.open.config;
+    const sheet: Nullable<string> = metadata.location.path;
+
+    return sheet && config?.kind === "file" ? { sheet, config: config.path } : null;
+  }
 
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -132,22 +161,18 @@ export class SpriteEquipmentEditorService {
   /**
    * Reads a sprite sheet and the configuration naming its icons.
    *
-   * @param equipmentDdsPath - The packed `*.dds` holding the inventory icons.
-   * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
-   * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. Remembered for the
-   *   session, so reopening resolves the same occupants.
+   * @param open - What to read: the trees to search, the sheet, and the configuration that annotates it. Kept by the
+   *   backend so a reload repeats the request rather than the paths it happened to resolve to.
    */
   @LatestFlow("spriteImage")
-  public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string, isDltx: boolean): TFlow {
-    this.log.info("Opening equipment project:", equipmentDdsPath, systemLtxPath);
+  public *openEquipmentProject(open: EquipmentSpriteOpen): TFlow {
+    this.log.info("Opening equipment project:", open);
 
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
       const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
-        this.session.open((sessionId) =>
-          spriteEquipmentCommands.openSprite({ sessionId, equipmentDdsPath, systemLtxPath, isDltx })
-        )
+        this.session.open((sessionId) => spriteEquipmentCommands.openSprite({ sessionId, ...open }))
       );
 
       this.log.info("Equipment project opened:", response);
@@ -159,7 +184,7 @@ export class SpriteEquipmentEditorService {
       this.spriteImage = this.spriteImage.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
-        details: `${equipmentDdsPath}\n${transformError(error).message}`,
+        details: `${describeEquipmentSheet(open.sheet)}\n${transformError(error).message}`,
         severity: ENotificationSeverity.ERROR,
         source: EApplicationGroupId.SPRITES,
         title: "Could not open equipment sprite",
@@ -219,8 +244,16 @@ export class SpriteEquipmentEditorService {
       throw new Error("Invalid attempt to reopen project that is loading or not open.");
     }
 
+    const targets: Nullable<IEquipmentRepackTargets> = this.repackTargets;
+
+    // Two different refusals, kept apart because they have two different fixes: unpack the sheet first, or reopen it
+    // from files a repack can actually write.
+    if (!targets) {
+      throw new Error("Invalid attempt to repack a sheet that was not opened from files on disk.");
+    }
+
     if (!repackSourcePath) {
-      throw new Error(`Invalid attempt to repack DDS without base icons for '${spriteImage.value.path}'.`);
+      throw new Error(`Invalid attempt to repack DDS without base icons for '${targets.sheet}'.`);
     }
 
     this.log.info("Repack and reopen equipment editor project");
@@ -232,9 +265,9 @@ export class SpriteEquipmentEditorService {
         flowResult(
           this.packerService.packEquipmentSprite(
             repackSourcePath,
-            spriteImage.value.path,
-            spriteImage.value.ltxPath,
-            spriteImage.value.isDltx
+            targets.sheet,
+            targets.config,
+            spriteImage.value.metadata.open.isDltx
           )
         )
       );
@@ -248,7 +281,7 @@ export class SpriteEquipmentEditorService {
       this.repackedAt = Date.now();
 
       emitNotification(this.eventBus, {
-        details: `${repackSourcePath}\n${spriteImage.value.path}`,
+        details: `${repackSourcePath}\n${targets.sheet}`,
         severity: ENotificationSeverity.SUCCESS,
         source: EApplicationGroupId.SPRITES,
         title: "Repacked equipment sprite",
@@ -263,7 +296,7 @@ export class SpriteEquipmentEditorService {
       this.spriteImage = this.spriteImage.asFailed(error as Error);
 
       emitNotification(this.eventBus, {
-        details: `${spriteImage.value.path}\n${transformError(error).message}`,
+        details: `${targets.sheet}\n${transformError(error).message}`,
         severity: ENotificationSeverity.ERROR,
         source: EApplicationGroupId.SPRITES,
         title: "Could not repack equipment sprite",
@@ -283,7 +316,14 @@ export class SpriteEquipmentEditorService {
    * @returns Resolves whether an unpacked sibling directory is available.
    */
   @BoundAction()
-  private *resolveRepackSource(spritePath: string): TFlow {
+  private *resolveRepackSource(spritePath: Nullable<string>): TFlow {
+    if (!spritePath) {
+      // An archived sheet has no directory to look beside, which is not a failure - it is a sheet nothing can repack.
+      this.repackSourcePath = null;
+
+      return;
+    }
+
     try {
       // The directory does not depend on the extension, so both go out together rather than one after the other.
       const [directory, extension] = yield* all([path.dirname(spritePath), path.extname(spritePath)] as const);
@@ -345,7 +385,7 @@ export class SpriteEquipmentEditorService {
       this.assetService.release(this.spriteImage.value?.image.src ?? null);
       this.spriteImage = this.spriteImage.asReady(spriteImage);
       published = true;
-      yield* this.resolveRepackSource(spriteImage.path);
+      yield* this.resolveRepackSource(spriteImage.metadata.location.path);
     } finally {
       if (!published) {
         void pending.then(
@@ -365,16 +405,7 @@ export class SpriteEquipmentEditorService {
     const url: string = this.assetService.create(blob);
 
     try {
-      return {
-        sessionId,
-        blob,
-        isDltx: metadata.isDltx,
-        ltxPath: metadata.systemLtxPath,
-        occupants: metadata.occupants,
-        image: await urlToImage(url),
-        name: metadata.name,
-        path: metadata.path,
-      };
+      return { sessionId, metadata, blob, image: await urlToImage(url) };
     } catch (error) {
       this.assetService.release(url);
       throw error;

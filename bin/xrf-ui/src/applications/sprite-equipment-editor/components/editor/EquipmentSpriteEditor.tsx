@@ -8,10 +8,11 @@ import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
+import { toAssetLocation } from "@/core/assets/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
+import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/editor-shell";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -30,6 +31,10 @@ export function EquipmentSpriteEditor({
 
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
   const spriteImage: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
+  const location: Nullable<IEditorLocation> = spriteImage
+    ? (toAssetLocation(spriteImage.metadata.location.asset) ??
+      (spriteImage.metadata.location.path ? { path: spriteImage.metadata.location.path } : null))
+    : null;
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const repackedAt: Nullable<number> = spriteEquipmentService.repackedAt;
@@ -51,7 +56,7 @@ export function EquipmentSpriteEditor({
     spriteImage
       ? [
           `${spriteImage.image.width} x ${spriteImage.image.height}`,
-          `${spriteImage.occupants.length} occupants`,
+          `${spriteImage.metadata.occupants.length} occupants`,
           ...(repackedAt ? [`Repacked ${format(repackedAt, "HH:mm")}`] : []),
         ]
       : []
@@ -66,7 +71,7 @@ export function EquipmentSpriteEditor({
       className={className}
       toolbar={
         <EditorToolbar
-          subtitle={spriteImage ? <EditorToolbarLocation location={{ path: spriteImage.path }} /> : undefined}
+          subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
           actions={
             <>
               <EquipmentRepackAction />

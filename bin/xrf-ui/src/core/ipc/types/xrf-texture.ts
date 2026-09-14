@@ -19,7 +19,7 @@ export type EquipmentSlotOccupant = {
   claim: EquipmentSlotClaim;
   /** Where the section reads its icon from, when it overrides the default of `<section>.dds` beside the source. */
   customIcon: string | null;
-  /** Engine identity of the config whose header declared the section, where the reader knew one. */
+  /** Engine identity of the config whose header declared the section, where the resolution stamped one. */
   origin: string | null;
   x: number;
   y: number;

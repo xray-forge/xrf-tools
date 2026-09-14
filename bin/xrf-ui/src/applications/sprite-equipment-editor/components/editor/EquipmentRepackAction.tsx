@@ -3,7 +3,10 @@ import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import {
+  IEquipmentRepackTargets,
+  SpriteEquipmentEditorService,
+} from "@/applications/sprite-equipment-editor/services/editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -26,7 +29,7 @@ export function EquipmentRepackAction({
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const repackSourcePath: Nullable<string> = spriteEquipmentService.repackSourcePath;
-  const spritePath: Nullable<string> = spriteEquipmentService.spriteImage.value?.path ?? null;
+  const targets: Nullable<IEquipmentRepackTargets> = spriteEquipmentService.repackTargets;
 
   const onRepack = useCallback(async () => {
     setConfirmOpen(false);
@@ -51,10 +54,14 @@ export function EquipmentRepackAction({
         className={className}
         label={"Repack sprite"}
         description={
-          repackSourcePath ? "Rebuild the sprite from its unpacked icons" : "No unpacked icons beside the sprite"
+          !targets
+            ? "This sheet was not opened from files a repack can write"
+            : repackSourcePath
+              ? "Rebuild the sprite from its unpacked icons"
+              : "No unpacked icons beside the sprite"
         }
         icon={<Inventory2Icon />}
-        isDisabled={isLoading || !repackSourcePath}
+        isDisabled={isLoading || !repackSourcePath || !targets}
         onClick={onOpenConfirmation}
       />
 
@@ -71,7 +78,7 @@ export function EquipmentRepackAction({
             </Typography>
             overwriting
             <Typography component={"div"} variant={"caption"} className={"monospace"} sx={{ paddingY: 0.5 }}>
-              {spritePath}
+              {targets?.sheet}
             </Typography>
             This cannot be undone.
           </>
