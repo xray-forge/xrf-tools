@@ -3,7 +3,7 @@ import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
-import { IPathTreeItem, parsePathTree, toDirectoryItemId } from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
@@ -12,15 +12,15 @@ import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 const ICONS = { collapsed: <span>+</span>, expanded: <span>-</span>, leaf: <span>.</span> };
 
-function at(...segments: Array<string>): string {
+function getAt(...segments: Array<string>): string {
   return segments.join(LOGICAL_PATH_SEPARATOR);
 }
 
-function tree(): Array<IPathTreeItem<string>> {
+function mockTree(): Array<IPathTreeItem<string>> {
   return parsePathTree(
     [
-      { path: at("meshes", "ak74.ogf"), payload: "a" },
-      { path: at("meshes", "pm.ogf"), payload: "b" },
+      { path: getAt("meshes", "ak74.ogf"), payload: "a" },
+      { path: getAt("meshes", "pm.ogf"), payload: "b" },
       { path: "readme.txt", payload: "c" },
     ],
     LOGICAL_PATH_SEPARATOR
@@ -29,24 +29,23 @@ function tree(): Array<IPathTreeItem<string>> {
 
 interface IRenderOptions {
   expanded?: Array<string>;
+  activeId?: string;
   onToggleExpanded?: (id: string) => void;
   onSelect?: (node: ITreeNode<string>) => void;
   onActivate?: (node: ITreeNode<string>) => void;
 }
 
-/**
- * Stands in for a consumer, so selection is controlled the way one really drives it.
- */
-function Harness({ expanded = [], onToggleExpanded, onSelect, onActivate }: IRenderOptions): ReactElement {
+function Component({ expanded = [], activeId, onToggleExpanded, onSelect, onActivate }: IRenderOptions): ReactElement {
   const state: IUseTreeState = useTreeState({ initialExpandedIds: expanded });
 
   return (
     <VirtualizedTree<string>
       ariaLabel={"Visuals"}
       icons={ICONS}
-      items={tree()}
+      items={mockTree()}
       expandedIds={state.expandedIds}
       selectedId={state.selectedId}
+      activeId={activeId}
       onSelect={(node: ITreeNode<string>) => {
         state.select(node.id);
         onSelect?.(node);
@@ -61,7 +60,7 @@ function Harness({ expanded = [], onToggleExpanded, onSelect, onActivate }: IRen
 }
 
 function render(options: IRenderOptions = {}): RenderResult {
-  return renderWithProviders(<Harness {...options} />);
+  return renderWithProviders(<Component {...options} />);
 }
 
 describe("VirtualizedTree", () => {
@@ -95,6 +94,32 @@ describe("VirtualizedTree", () => {
     expect(onToggleExpanded).not.toHaveBeenCalled();
     expect(onActivate).not.toHaveBeenCalled();
     expect(render_.getAllByRole("treeitem")[0]).toHaveAttribute("aria-selected", "true");
+  });
+
+  // The two states answer different questions, and they part company the moment somebody arrows past what is open.
+  it("marks the open row apart from where the keyboard stands", async () => {
+    const render_: RenderResult = render({
+      activeId: toFileItemId("readme.txt"),
+      expanded: [toDirectoryItemId("meshes")],
+    });
+
+    await userEvent.click(render_.getByText("ak74.ogf"));
+
+    const rows: Array<HTMLElement> = render_.getAllByRole("treeitem");
+    const open: HTMLElement = rows[3];
+    const cursor: HTMLElement = rows[1];
+
+    expect(open).toHaveAttribute("aria-current", "true");
+    expect(open).toHaveAttribute("aria-selected", "false");
+
+    expect(cursor).toHaveAttribute("aria-selected", "true");
+    expect(cursor).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks nothing as open for a tree whose rows open nothing", () => {
+    const render_: RenderResult = render();
+
+    expect(render_.getAllByRole("treeitem").every((it: HTMLElement) => !it.hasAttribute("aria-current"))).toBe(true);
   });
 
   it("selects a leaf on one click without opening it", async () => {

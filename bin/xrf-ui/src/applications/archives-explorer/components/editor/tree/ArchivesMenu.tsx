@@ -7,7 +7,7 @@ import {
   toSearchText,
 } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveEntry, IArchiveTreeItem, parseTree } from "@/core/archive/lib";
+import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
@@ -30,10 +30,14 @@ export function ArchivesMenu({
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  // Read from the service rather than remembered from the click, so an entry opened out of the filter is marked the
+  // same way. A directory is a selection here as much as a file is, which is what the conversion knows.
+  const openItemId: Nullable<string> = toArchiveSelectionItemId(archivesService.selection);
 
   const files: Array<IArchiveEntry> = archivesService.entries;
+
+  const tree: IUseTreeState = useTreeState();
+  const { reveal } = tree;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
 
@@ -123,6 +127,7 @@ export function ArchivesMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
+          activeId={openItemId}
           onSelect={onSelectItem}
           onActivate={onActivateItem}
           onToggleExpanded={tree.toggleExpanded}

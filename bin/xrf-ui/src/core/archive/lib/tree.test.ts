@@ -1,9 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { listArchiveFiles } from "@/core/archive/lib/files";
-import { IArchiveTreeItem, isUnderArchiveDirectory, parseTree } from "@/core/archive/lib/tree";
+import {
+  IArchiveTreeItem,
+  isUnderArchiveDirectory,
+  parseTree,
+  toArchiveSelectionItemId,
+} from "@/core/archive/lib/tree";
 import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
+import { toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
 
 const CONFIGS_DIALOGS: string = ["configs", "gameplay", "dialogs.xml"].join("\\");
@@ -84,5 +90,32 @@ describe("isUnderArchiveDirectory", () => {
     // Counting these would promise more files than extraction delivers.
     expect(under(CONFIGS_DIALOGS, "configs", 0)).toBe(false);
     expect(under(CONFIGS_DIRECTORY, "configs")).toBe(false);
+  });
+});
+
+describe("toArchiveSelectionItemId", () => {
+  it("addresses a selected file by the name its leaf was keyed on", () => {
+    expect(
+      toArchiveSelectionItemId({
+        kind: EPathEntryKind.FILE,
+        entry: mockArchiveFileDescriptor({ name: CONFIGS_DIALOGS }),
+      })
+    ).toBe(toFileItemId(CONFIGS_DIALOGS));
+  });
+
+  // A directory is a selection here as much as a file is, and answers a different kind of id.
+  it("addresses a selected directory as a directory", () => {
+    expect(toArchiveSelectionItemId({ kind: EPathEntryKind.DIRECTORY, path: "configs" })).toBe(
+      toDirectoryItemId("configs")
+    );
+  });
+
+  // The root is spelled as an empty prefix by the backend, and `toDirectoryItemId` turns that into the synthetic root.
+  it("addresses the whole tree when the root directory is selected", () => {
+    expect(toArchiveSelectionItemId({ kind: EPathEntryKind.DIRECTORY, path: "" })).toBe(toDirectoryItemId(""));
+  });
+
+  it("addresses nothing while nothing is selected", () => {
+    expect(toArchiveSelectionItemId({ kind: "none" })).toBeNull();
   });
 });

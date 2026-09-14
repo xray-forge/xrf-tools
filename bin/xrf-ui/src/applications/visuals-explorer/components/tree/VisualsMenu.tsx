@@ -7,6 +7,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import {
@@ -81,6 +82,9 @@ export function VisualsMenu({
     []
   );
 
+  const source: Nullable<VisualSource> = visualsService.selected?.source ?? null;
+  const openItemId: Nullable<string> = source?.kind === "asset" ? toFileItemId(source.logicalPath) : null;
+
   const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
 
   const onActivateAsset = useCallback(
@@ -119,6 +123,7 @@ export function VisualsMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
+          activeId={openItemId}
           renderLabel={onRenderVisualLabel}
           onSelect={onSelectAsset}
           onActivate={onActivateAsset}

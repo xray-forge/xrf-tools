@@ -173,4 +173,46 @@ describe("DialogsService", () => {
     // Nothing to resolve in, which is what stops the bar offering a language the project cannot show.
     expect(service.resolvedLanguage).toBeNull();
   });
+  it("places the open dialog in the listing, which is how a tree addresses it", async () => {
+    const { service } = mockInjectedService(DialogsService);
+
+    setMockInvokeResponses({
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
+      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    });
+
+    await service.openProject(createRoots(["C:\\game"]), "gamedata");
+
+    expect(service.entries).toEqual([
+      {
+        path: "dialogs.xml\\trader",
+        payload: { logicalPath: "configs\\gameplay\\dialogs.xml", id: "trader" },
+      },
+    ]);
+    // Nothing is open yet, so there is no row to place.
+    expect(service.selectedPath).toBeNull();
+
+    await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
+
+    expect(service.selectedPath).toBe("dialogs.xml\\trader");
+
+    service.clearSelection();
+
+    expect(service.selectedPath).toBeNull();
+  });
+
+  // The pair addresses a dialog; a project that no longer holds it can only answer that it is not there.
+  it("places no row for a selection the open project does not hold", async () => {
+    const { service } = mockInjectedService(DialogsService);
+
+    setMockInvokeResponses({
+      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
+      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    });
+
+    await service.openProject(createRoots(["C:\\game"]), "gamedata");
+    await service.selectDialog("configs\\gameplay\\absent.xml", "trader");
+
+    expect(service.selectedPath).toBeNull();
+  });
 });

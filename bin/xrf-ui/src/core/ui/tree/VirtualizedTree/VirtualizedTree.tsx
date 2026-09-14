@@ -33,7 +33,10 @@ export interface IVirtualizedTreeIcons {
 interface IVirtualizedTreeProps<T> extends StyledComponentProps {
   items: ReadonlyArray<ITreeNode<T>>;
   expandedIds: ReadonlySet<string>;
+  /** Where the keyboard stands. Moving it opens nothing, so it is safe to move on every arrow key. */
   selectedId: Nullable<string>;
+  /** The row whose subject the editor has open, marked apart from the cursor. */
+  activeId?: Nullable<string>;
   ariaLabel: string;
   /** Omitted by a tree whose rows are all one kind of thing, which then draws the chevron alone. */
   icons?: IVirtualizedTreeIcons;
@@ -64,6 +67,7 @@ export function VirtualizedTree<T>({
   items,
   expandedIds,
   selectedId,
+  activeId = null,
   ariaLabel,
   icons,
   renderLabel,
@@ -136,6 +140,7 @@ export function VirtualizedTree<T>({
           icon={icon}
           iconDecoration={decorateIcon?.(row.item) ?? null}
           isSelected={row.item.id === selectedId}
+          isActive={row.item.id === activeId}
           label={renderLabel?.(row.item)}
           onSelect={(it: IFlatTreeRow<T>) => onSelect(it.item)}
           onActivate={activate}

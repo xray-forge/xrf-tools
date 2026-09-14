@@ -14,12 +14,14 @@ import {
   ITextureNode,
 } from "@/core/textures/lib/texture-catalog";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
+import { Nullable } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";
@@ -52,6 +54,8 @@ export function TexturesMenu({
   sx,
 }: StyledComponentProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+  const openItemId: Nullable<string> = selectionService.reference ? toFileItemId(selectionService.reference) : null;
 
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
@@ -121,6 +125,7 @@ export function TexturesMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
+          activeId={openItemId}
           renderLabel={renderTextureLabel}
           onSelect={onSelectNode}
           onActivate={onActivateNode}

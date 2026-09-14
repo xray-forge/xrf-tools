@@ -103,6 +103,7 @@ export function ExportsMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
+          activeId={openItemId}
           onSelect={onSelectItem}
           onActivate={onActivateItem}
           onToggleExpanded={tree.toggleExpanded}

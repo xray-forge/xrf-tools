@@ -13,7 +13,10 @@ interface IVirtualizedTreeRowProps<T> {
   row: IFlatTreeRow<T>;
   /** Element id, so the tree can point `aria-activedescendant` at the selected row. */
   rowId: string;
+  /** Whether the keyboard stands here, which is where a selection moves and what a focus ring surrounds. */
   isSelected: boolean;
+  /** Whether the editor has this row's subject open, which outlasts wherever the keyboard wandered since. */
+  isActive: boolean;
   /** Drawn beside the chevron: open, closed, or leaf, chosen by the tree. Null for a tree that types nothing. */
   icon: Nullable<ReactNode>;
   /** How to tint that icon and what the tint says. Null leaves it in the neutral colour every other row uses. */
@@ -37,6 +40,7 @@ export function VirtualizedTreeRow<T>({
   row,
   rowId,
   isSelected,
+  isActive,
   icon,
   iconDecoration,
   label,
@@ -48,6 +52,7 @@ export function VirtualizedTreeRow<T>({
 
   return (
     <Box
+      aria-current={isActive ? true : undefined}
       aria-expanded={row.hasChildren ? row.isExpanded : undefined}
       aria-level={row.depth + 1}
       aria-posinset={row.posInSet}
@@ -58,7 +63,7 @@ export function VirtualizedTreeRow<T>({
       role={"treeitem"}
       sx={{
         alignItems: "center",
-        backgroundColor: isSelected ? "action.selected" : "transparent",
+        backgroundColor: isSelected ? "action.selected" : isActive ? "action.hover" : "transparent",
         borderRadius: 1,
         boxSizing: "border-box",
         cursor: "pointer",
@@ -124,6 +129,8 @@ export function VirtualizedTreeRow<T>({
           textOverflow: "ellipsis",
           typography: "body2",
           whiteSpace: "nowrap",
+          // After the variant, which carries a weight of its own and would otherwise win.
+          ...(isActive ? { fontWeight: 500 } : null),
         }}
       >
         {label ?? item.label}

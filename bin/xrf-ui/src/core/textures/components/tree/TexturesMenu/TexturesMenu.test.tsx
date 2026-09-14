@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { fireEvent, RenderResult } from "@testing-library/react";
+import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { TextureCatalog, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
@@ -20,6 +20,7 @@ import {
 } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Nullable } from "@/lib/types/general";
 
 import { TexturesMenu } from "./TexturesMenu";
 
@@ -79,6 +80,33 @@ describe("TexturesMenu", () => {
     fireEvent.dblClick(render.getByText("ston"));
 
     expect(await render.findByText("ston_orphan_bump")).toBeInTheDocument();
+  });
+
+  // Opening writes the mark; walking the tree afterwards moves only the cursor, so the row a person came back from
+  // still says which texture the viewport is holding.
+  it("marks the open texture apart from the row the keyboard moved to", async () => {
+    const { render, container } = await renderMenu(mockPairCatalog(), [mockBumpedTextureSummary()]);
+
+    fireEvent.dblClick(render.getByText("ston"));
+
+    const texture: HTMLElement = await render.findByText("ston_beton05");
+
+    fireEvent.dblClick(texture);
+
+    await waitFor(() => expect(container.get(TextureSelectionService).reference).toBe(MOCK_TEXTURE));
+
+    const openRow: Nullable<HTMLElement> = texture.closest("[role=treeitem]");
+    const directoryRow: Nullable<HTMLElement> = render.getByText("ston").closest("[role=treeitem]");
+
+    expect(openRow).toHaveAttribute("aria-current", "true");
+
+    // The cursor leaves; the mark does not.
+    fireEvent.click(render.getByText("ston"));
+
+    expect(openRow).toHaveAttribute("aria-current", "true");
+    expect(openRow).toHaveAttribute("aria-selected", "false");
+    expect(directoryRow).toHaveAttribute("aria-selected", "true");
+    expect(directoryRow).not.toHaveAttribute("aria-current");
   });
 
   it("counts what each filter would show and narrows the tree to it", async () => {

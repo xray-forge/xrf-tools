@@ -1,5 +1,15 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { IPathDirectoryTreeItem, IPathFileTreeItem, IPathTreeItem, parsePathTree } from "@/core/ui/tree/path-tree";
+import { TArchiveSelection } from "@/core/archive/lib/selection";
+import { EPathEntryKind } from "@/core/path/entry-kind";
+import {
+  IPathDirectoryTreeItem,
+  IPathFileTreeItem,
+  IPathTreeItem,
+  parsePathTree,
+  toDirectoryItemId,
+  toFileItemId,
+} from "@/core/ui/tree/path-tree";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * Whether a browsed file would be written when its directory is extracted.
@@ -52,4 +62,23 @@ export function parseTree(files: Array<IArchiveEntry>, separator: string): Array
     files.map((entry: IArchiveEntry) => ({ path: entry.name, payload: entry })),
     separator
   );
+}
+
+/**
+ * The tree node the explorer's selection stands on.
+ *
+ * @param selection - What the explorer currently points at.
+ * @returns The node id of the selected row, or null while nothing is selected.
+ */
+export function toArchiveSelectionItemId(selection: TArchiveSelection): Nullable<string> {
+  switch (selection.kind) {
+    case EPathEntryKind.FILE:
+      return toFileItemId(selection.entry.name);
+
+    case EPathEntryKind.DIRECTORY:
+      return toDirectoryItemId(selection.path);
+
+    default:
+      return null;
+  }
 }

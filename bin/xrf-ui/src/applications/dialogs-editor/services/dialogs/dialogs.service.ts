@@ -1,6 +1,7 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
+import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { describeRoots } from "@/core/assets/lib/roots";
 import { transformError } from "@/core/error/lib";
 import { dialogsCommands } from "@/core/ipc/commands/dialogs";
@@ -65,6 +66,28 @@ export class DialogsService {
   @Computed()
   public get resolvedLanguage(): Nullable<string> {
     return this.dialog.value?.language ?? this.language ?? this.languages[0] ?? null;
+  }
+
+  /** Every dialog the open project holds, as a `<file>\<dialog id>` path apiece. */
+  @Computed()
+  public get entries(): Array<IDialogTreeEntry> {
+    return toDialogTreeEntries(this.project.value);
+  }
+
+  /** @returns The path, or null while nothing is open or the selection names no dialog this project holds. */
+  @Computed()
+  public get selectedPath(): Nullable<string> {
+    const selection: Nullable<IDialogSelection> = this.selection;
+
+    if (!selection) {
+      return null;
+    }
+
+    return (
+      this.entries.find(
+        (it: IDialogTreeEntry) => it.payload.id === selection.id && it.payload.logicalPath === selection.logicalPath
+      )?.path ?? null
+    );
   }
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}

@@ -39,6 +39,7 @@ export function ConfigsMenu({
   onOpen,
 }: IConfigsMenuProps): ReactElement {
   const tree: IUseTreeState = useTreeState();
+  const openItemId: Nullable<string> = selected ? toFileItemId(selected) : null;
   const { reveal } = tree;
 
   const items: Array<IPathTreeItem<LtxInventoryFile>> = useMemo(
@@ -81,10 +82,10 @@ export function ConfigsMenu({
   const onOpenFile = useCallback((file: LtxInventoryFile) => onOpen(file.path), [onOpen]);
 
   useEffect(() => {
-    if (selected) {
-      reveal(toFileItemId(selected));
+    if (openItemId) {
+      reveal(openItemId);
     }
-  }, [reveal, selected]);
+  }, [openItemId, reveal]);
 
   return (
     <EditorSearchMenu<LtxInventoryFile>
@@ -112,6 +113,7 @@ export function ConfigsMenu({
           items={items}
           expandedIds={tree.expandedIds}
           selectedId={tree.selectedId}
+          activeId={openItemId}
           renderLabel={onRenderConfigLabel}
           onToggleExpanded={tree.toggleExpanded}
           onSelect={onSelectNode}

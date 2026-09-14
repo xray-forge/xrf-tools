@@ -4,8 +4,8 @@ import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { IDialogTreeEntry, IDialogTreeLeaf, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
-import { DialogsService, IDialogSelection } from "@/applications/dialogs-editor/services/dialogs";
+import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor/lib/dialog-tree";
+import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
@@ -34,13 +34,13 @@ export function DialogsTreeMenu({
 }: BaseComponentProps): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
+  const entries: Array<IDialogTreeEntry> = dialogsService.entries;
+  const selectedItemId: Nullable<string> = dialogsService.selectedPath
+    ? toFileItemId(dialogsService.selectedPath)
+    : null;
+
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
-
-  const entries: Array<IDialogTreeEntry> = useMemo(
-    () => toDialogTreeEntries(dialogsService.project.value),
-    [dialogsService.project.value]
-  );
 
   const items: Array<IPathTreeItem<IDialogTreeLeaf>> = useMemo(
     () => parsePathTree(entries, LOGICAL_PATH_SEPARATOR),
@@ -51,18 +51,6 @@ export function DialogsTreeMenu({
     (leaf: IDialogTreeLeaf) => void dialogsService.selectDialog(leaf.logicalPath, leaf.id),
     [dialogsService]
   );
-
-  const selection: Nullable<IDialogSelection> = dialogsService.selection;
-
-  /** The tree path of the selected dialog, which is what both the highlight and the reveal need. */
-  const selectedPath: Nullable<string> = useMemo(
-    () =>
-      entries.find((it) => it.payload.id === selection?.id && it.payload.logicalPath === selection?.logicalPath)
-        ?.path ?? null,
-    [entries, selection]
-  );
-
-  const selectedItemId: Nullable<string> = selectedPath ? toFileItemId(selectedPath) : null;
 
   const onSelectItem = useCallback((item: ITreeNode<IDialogTreeLeaf>) => tree.select(item.id), [tree]);
 
@@ -105,6 +93,7 @@ export function DialogsTreeMenu({
         items={items}
         expandedIds={tree.expandedIds}
         selectedId={tree.selectedId}
+        activeId={selectedItemId}
         ariaLabel={"Dialogs"}
         icons={DIALOG_TREE_ICONS}
         onToggleExpanded={tree.toggleExpanded}
