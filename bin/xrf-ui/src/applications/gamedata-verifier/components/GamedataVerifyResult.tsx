@@ -1,4 +1,5 @@
-import { GridColDef } from "@mui/x-data-grid";
+import { Box } from "@mui/material";
+import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
@@ -31,7 +32,16 @@ export function GamedataVerifyResult({
   const columns: Array<GridColDef> = useMemo(
     () => [
       { field: "check", headerName: "Check", width: 160, cellClassName: "monospace" },
-      { field: "status", headerName: "Verdict", width: 120 },
+      {
+        field: "status",
+        headerName: "Verdict",
+        width: 120,
+        renderCell: ({ row }: GridRenderCellParams<GamedataCheckSummary>) => (
+          <Box component={"span"} sx={{ color: `${STATUS_TONES[row.status] ?? "info"}.main` }}>
+            {row.status}
+          </Box>
+        ),
+      },
       { field: "findings", headerName: "Findings", width: 110 },
       { field: "summary", headerName: "Summary", flex: 1, minWidth: 260 },
       { field: "duration", headerName: "Elapsed", width: 110 },
