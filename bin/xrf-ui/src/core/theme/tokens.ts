@@ -41,6 +41,11 @@ export const LAYOUT = {
   railButtonSize: 28,
   /** The glyph inside one, sized to fill the button rather than to sit in padding. */
   railButtonIconSize: 20,
+  /** Unread count contained within a rail button, including the capped `99+` label. */
+  railBadgeHeight: 14,
+  railBadgeMinWidth: 14,
+  railBadgeFontSize: "0.625rem",
+  railBadgePaddingX: 3,
   /** Dense `MuiToolbar` and `MuiTab` still measure themselves against this; the window caption does not. */
   toolbarHeight: 40,
   statusBarHeight: 24,

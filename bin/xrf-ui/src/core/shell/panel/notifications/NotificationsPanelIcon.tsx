@@ -5,6 +5,7 @@ import { ReactElement } from "react";
 
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
+import { LAYOUT } from "@/core/theme/tokens";
 import { Nullable } from "@/lib/types/general";
 
 const BADGE_COLORS: Record<ENotificationSeverity, "default" | "success" | "info" | "warning" | "error"> = {
@@ -29,6 +30,24 @@ export function NotificationsPanelIcon(): ReactElement {
       color={severity ? BADGE_COLORS[severity] : "default"}
       max={99}
       overlap={"circular"}
+      sx={{
+        width: LAYOUT.railButtonSize,
+        height: LAYOUT.railButtonSize,
+        alignItems: "center",
+        justifyContent: "center",
+        "& .MuiBadge-badge": {
+          top: 0,
+          right: 0,
+          transform: "scale(1)",
+          transformOrigin: "top right",
+          height: LAYOUT.railBadgeHeight,
+          minWidth: LAYOUT.railBadgeMinWidth,
+          maxWidth: LAYOUT.railButtonSize,
+          padding: `0 ${LAYOUT.railBadgePaddingX}px`,
+          fontSize: LAYOUT.railBadgeFontSize,
+          "&.MuiBadge-invisible": { transform: "scale(0)" },
+        },
+      }}
     >
       <NotificationsIcon />
     </Badge>
