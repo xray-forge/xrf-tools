@@ -13,11 +13,11 @@ import { EXPORTS_EXPLORER_HELP } from "./help";
 export const EXPORTS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
     description: "Browse TypeScript extern declarations in an XRF project",
-    group: EApplicationGroupId.EXPORTS,
+    group: EApplicationGroupId.SCRIPTS,
     icon: <SwapHorizIcon />,
     help: EXPORTS_EXPLORER_HELP,
     id: EApplicationId.EXPORTS_EXPLORER,
-    label: "Exports explorer",
+    label: "TypeScript exports explorer",
     path: "/exports-explorer",
     status: EApplicationStatus.READY,
   },

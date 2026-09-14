@@ -1,5 +1,6 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 import { default as BlurOnIcon } from "@mui/icons-material/BlurOn";
+import { default as CodeIcon } from "@mui/icons-material/Code";
 import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
 import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { default as GradientIcon } from "@mui/icons-material/Gradient";
@@ -9,7 +10,6 @@ import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as MapIcon } from "@mui/icons-material/Map";
 import { default as SettingsApplicationsIcon } from "@mui/icons-material/SettingsApplications";
 import { default as SportsEsportsIcon } from "@mui/icons-material/SportsEsports";
-import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
 import { default as TerrainIcon } from "@mui/icons-material/Terrain";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
@@ -37,6 +37,9 @@ import { LEVEL_DETAILS_COMPILER_APPLICATION } from "@/applications/level-details
 import { LEVEL_EDITOR_APPLICATION } from "@/applications/level-editor";
 import { LEVEL_VIEWER_APPLICATION } from "@/applications/level-viewer";
 import { LIGHT_ANIMATIONS_EDITOR_APPLICATION } from "@/applications/light-animations-editor";
+import { LUA_EXPORTS_EXPLORER_APPLICATION } from "@/applications/lua-exports-explorer";
+import { LUA_FORMATTER_APPLICATION } from "@/applications/lua-formatter";
+import { LUA_VERIFIER_APPLICATION } from "@/applications/lua-verifier";
 import { MINIMAP_EDITOR_APPLICATION } from "@/applications/minimap-editor";
 import { OBJECT_LIBRARY_EDITOR_APPLICATION } from "@/applications/object-library-editor";
 import { PARTICLES_EDITOR_APPLICATION } from "@/applications/particles-editor";
@@ -94,7 +97,6 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     WEATHER_EDITOR_APPLICATION,
     LIGHT_ANIMATIONS_EDITOR_APPLICATION,
     POSTPROCESS_EDITOR_APPLICATION,
-    EXPORTS_EXPLORER_APPLICATION,
     GAMEDATA_VERIFIER_APPLICATION,
     GAMEDATA_COMPARER_APPLICATION,
     CHARACTERS_EXPLORER_APPLICATION,
@@ -110,6 +112,10 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
     GAME_MATERIALS_EDITOR_APPLICATION,
     PARTICLES_EXPLORER_APPLICATION,
     PARTICLES_EDITOR_APPLICATION,
+    EXPORTS_EXPLORER_APPLICATION,
+    LUA_EXPORTS_EXPLORER_APPLICATION,
+    LUA_VERIFIER_APPLICATION,
+    LUA_FORMATTER_APPLICATION,
     SHADERS_EXPLORER_APPLICATION,
     SHADERS_EDITOR_APPLICATION,
     SOUNDS_EXPLORER_APPLICATION,
@@ -140,7 +146,7 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
   ],
   groups: [
     {
-      accent: { light: "#24c63a", dark: "#6faf5c" },
+      accent: { light: "#1c982d", dark: "#5d9f4b" },
       id: EApplicationGroupId.ARCHIVES,
       label: "Archives",
       icon: <ArchiveIcon />,
@@ -162,12 +168,6 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.ENVIRONMENT,
       label: "Environment",
       icon: <WbSunnyIcon />,
-    },
-    {
-      accent: { light: "#08778a", dark: "#2bd0df" },
-      id: EApplicationGroupId.EXPORTS,
-      label: "Exports",
-      icon: <SwapHorizIcon />,
     },
     {
       accent: { light: "#20733d", dark: "#43d37a" },
@@ -198,6 +198,12 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
       id: EApplicationGroupId.PARTICLES,
       label: "Particles",
       icon: <BlurOnIcon />,
+    },
+    {
+      accent: { light: "#08778a", dark: "#2bd0df" },
+      id: EApplicationGroupId.SCRIPTS,
+      label: "Scripts",
+      icon: <CodeIcon />,
     },
     {
       accent: { light: "#6548a3", dark: "#b99aea" },

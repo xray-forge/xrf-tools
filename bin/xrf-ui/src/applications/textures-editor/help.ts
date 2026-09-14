@@ -2,16 +2,17 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const TEXTURES_EDITOR_HELP: IApplicationHelp = {
   summary:
-    "Editor for the `thm` descriptor beside a texture: what type it is, which bump pair and detail texture it " +
-    "declares, and the authoring parameters the converter reads. Opens the same tree the explorer does, and writes " +
-    "only when you save.",
+    "Edit a texture and its `thm` descriptor, compare encoding formats, preview a chosen conversion and generate " +
+    "its bump pair. Descriptor changes and a chosen encoding are written on Save; bump generation writes its " +
+    "output files immediately.",
   workflow: [
-    "Pick a mode: `Folder` opens a root to work through, `Texture` opens one loose `.dds` or the `.thm` beside it.",
-    "Choose a texture in the tree. The `Descriptor` panel binds to its `.thm`, or offers a new one where the texture " +
-      "has none.",
+    "Open one `.dds` texture or its `.thm` descriptor. Use `Also search in` when referenced assets live elsewhere.",
+    "Edit the `Descriptor` panel, which offers a new descriptor when the texture has none.",
     "Change what you came to change. `Primary` holds what the engine reads at load time; `Authoring metadata` holds " +
       "everything only the converter reads, which is most of a descriptor.",
-    "`Save` writes the file. `Discard` puts the form back to what is on disk.",
+    "In `Formats`, use `Weigh formats` to compare candidates, then choose an encoding to preview it beside the original.",
+    "Use `Bump` to generate a bump pair from a height map and optional normal and gloss inputs.",
+    "`Save` writes the descriptor and any chosen encoding. `Discard` resets the draft and clears the encoding choice.",
   ],
   nuances: [
     "A texture with no `.thm` is the normal case, not an error: most textures have none. Saving one authors it, " +
@@ -28,13 +29,16 @@ export const TEXTURES_EDITOR_HELP: IApplicationHelp = {
     "The save refuses a file that changed on disk since it was read, naming it and asking for a reload. Each file is " +
       "written beside its target and renamed over it, so a failure leaves the previous file rather than a partial one.",
     "Saving is a job: it survives a reload of the window, and the notification centre records what was written.",
+    "Comparing formats and choosing a preview do not replace the texture. A chosen encoding is held until Save.",
+    "Bump generation writes the `_bump` and `_bump#` files beside the texture, then updates the descriptor draft. " +
+      "Save the draft to persist that reference; Discard does not undo the generated files.",
   ],
   limitations: [
     "A texture served out of an archive can be read here but not written; its rows say so. Extract it first.",
-    "The descriptor only. Re-encoding a texture, generating a bump pair and building one from a source image are " +
-      "backed by the tools already but not yet on this screen.",
+    // todo: Add source-image import, batch conversion, cubemap authoring and texture synchronization to this editor.
+    "Source-image import for the base texture, batch conversion, cubemap authoring and texture synchronization are " +
+      "planned extensions of this editor.",
     "No undo beyond `Discard`, which returns the whole form to what the file says. Field-level undo is not built.",
-    "Switching to another texture with unsaved changes discards them without asking. The prompt is not built yet.",
     "The `bump` and `detail` names are not checked against the roots yet, so a name that resolves to nothing is " +
       "written as typed.",
   ],

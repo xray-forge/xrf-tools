@@ -12,7 +12,7 @@ import { TEXTURES_EDITOR_HELP } from "./help";
 
 export const TEXTURES_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Author and edit the thm descriptor beside a texture",
+    description: "Edit texture descriptors, compare encodings and generate bump maps",
     group: EApplicationGroupId.TEXTURES,
     help: TEXTURES_EDITOR_HELP,
     icon: <EditNoteIcon />,
