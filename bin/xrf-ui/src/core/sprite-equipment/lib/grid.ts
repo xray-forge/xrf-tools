@@ -1,4 +1,5 @@
-import { IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
+import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
 import { Nullable } from "@/lib/types/general";
 
 /** A rectangle in sheet pixels. */
@@ -29,14 +30,14 @@ export interface IEquipmentGrid {
  * @param width - Sheet width in pixels.
  * @param height - Sheet height in pixels.
  * @param size - Cell side in pixels.
- * @param descriptors - Rectangles the configuration declares, measured in cells.
+ * @param occupants - Rectangles the configuration declares, measured in cells.
  * @returns The lattice, spanning the image and every claimed rectangle.
  */
 export function toEquipmentGrid(
   width: number,
   height: number,
   size: number,
-  descriptors: ReadonlyArray<IEquipmentSectionDescriptor>
+  occupants: ReadonlyArray<EquipmentSlotOccupant>
 ): IEquipmentGrid {
   // A partly covered cell is still a cell someone can point at, so the image rounds up rather than down. Flooring is
   // what dropped Anomaly's last row, where eighty-two cells of fifty pixels overrun a 4096 pixel sheet by four.
@@ -46,9 +47,9 @@ export function toEquipmentGrid(
   let columns: number = sheetColumns;
   let rows: number = sheetRows;
 
-  for (const descriptor of descriptors) {
-    columns = Math.max(columns, descriptor.x + descriptor.w);
-    rows = Math.max(rows, descriptor.y + descriptor.h);
+  for (const occupant of occupants) {
+    columns = Math.max(columns, occupant.x + occupant.w);
+    rows = Math.max(rows, occupant.y + occupant.h);
   }
 
   return { columns, rows, sheetColumns, sheetRows, size };
@@ -71,15 +72,15 @@ export function toCellRect(grid: IEquipmentGrid, cell: TEquipmentCell): IEquipme
  * Where a declared rectangle sits on the sheet.
  *
  * @param grid - Lattice the rectangle is measured against.
- * @param descriptor - Rectangle in cells.
+ * @param occupant - Rectangle in cells.
  * @returns Its rectangle in sheet pixels.
  */
-export function toDescriptorRect(grid: IEquipmentGrid, descriptor: IEquipmentSectionDescriptor): IEquipmentRect {
+export function toOccupantRect(grid: IEquipmentGrid, occupant: EquipmentSlotOccupant): IEquipmentRect {
   return {
-    x: descriptor.x * grid.size,
-    y: descriptor.y * grid.size,
-    width: descriptor.w * grid.size,
-    height: descriptor.h * grid.size,
+    x: occupant.x * grid.size,
+    y: occupant.y * grid.size,
+    width: occupant.w * grid.size,
+    height: occupant.h * grid.size,
   };
 }
 
@@ -144,11 +145,11 @@ export function isCellOutsideSheet(grid: IEquipmentGrid, cell: TEquipmentCell): 
  * Whether a declared rectangle leaves the image.
  *
  * @param grid - Lattice the rectangle is measured against.
- * @param descriptor - Rectangle in cells.
+ * @param occupant - Rectangle in cells.
  * @returns Whether any part of it falls outside the sheet.
  */
-export function isDescriptorOutsideSheet(grid: IEquipmentGrid, descriptor: IEquipmentSectionDescriptor): boolean {
-  return descriptor.x + descriptor.w > grid.sheetColumns || descriptor.y + descriptor.h > grid.sheetRows;
+export function isOccupantOutsideSheet(grid: IEquipmentGrid, occupant: EquipmentSlotOccupant): boolean {
+  return occupant.x + occupant.w > grid.sheetColumns || occupant.y + occupant.h > grid.sheetRows;
 }
 
 /**

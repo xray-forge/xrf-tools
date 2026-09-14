@@ -7,7 +7,7 @@ import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
-import { InventorySpriteDescriptor } from "@/core/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
   TranslationParseCensus,
@@ -386,9 +386,10 @@ export type EquipmentSpriteMetadata = {
   path: string;
   name: string;
   systemLtxPath: string;
-  /** Whether these descriptors came out of a DLTX-resolved config tree. */
+  /** Whether these occupants came out of a DLTX-resolved config tree. */
   isDltx: boolean;
-  equipmentDescriptors: Array<InventorySpriteDescriptor>;
+  /** Every section occupying a slot on the sheet, in the order the configuration declares them. */
+  occupants: Array<EquipmentSlotOccupant>;
 };
 
 /** One check's verdict, as the desktop surface shows it. */

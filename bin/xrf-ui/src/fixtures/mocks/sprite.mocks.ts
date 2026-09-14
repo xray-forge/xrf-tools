@@ -1,15 +1,28 @@
-import { IEquipmentSectionDescriptor } from "@/core/sprite-equipment/lib";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 
 /**
- * One inventory icon rectangle, measured in grid cells.
+ * One section occupying a slot, measured in grid cells.
  *
- * @param section - Section owning the rectangle.
- * @param overrides - Position and size to place it at; a one-cell slot at the origin by default.
- * @returns The rectangle as the configuration would declare it.
+ * Probable by default, because that is what every shipped tree answers: no gamedata in the workspace declares
+ * `$inventory_icon` at all, so a fixture defaulting to declared would be the unrepresentative case.
+ *
+ * @param section - Section owning the slot.
+ * @param overrides - What this case varies; a one-cell slot at the origin otherwise.
+ * @returns The occupant as the backend would report it.
  */
-export function mockEquipmentDescriptor(
+export function mockEquipmentOccupant(
   section: string,
-  overrides: Partial<Omit<IEquipmentSectionDescriptor, "section">> = {}
-): IEquipmentSectionDescriptor {
-  return { section, x: 0, y: 0, w: 1, h: 1, ...overrides };
+  overrides: Partial<Omit<EquipmentSlotOccupant, "section">> = {}
+): EquipmentSlotOccupant {
+  return {
+    section,
+    claim: EEquipmentSlotClaim.PROBABLE,
+    customIcon: null,
+    origin: null,
+    x: 0,
+    y: 0,
+    w: 1,
+    h: 1,
+    ...overrides,
+  };
 }

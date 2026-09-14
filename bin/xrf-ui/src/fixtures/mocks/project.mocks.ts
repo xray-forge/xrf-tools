@@ -1,10 +1,11 @@
 import { TCallableExportDescriptor } from "@/core/exports";
 import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/ipc/types/xrf-archive";
 import { ExportDescriptor, ExportsProject } from "@/core/ipc/types/xrf-export";
+import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { TranslationProjectDescriptor, TranslationSource } from "@/core/ipc/types/xrf-translation";
-import { IEquipmentSectionDescriptor } from "@/core/sprite-equipment/lib";
 
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "./archive.mocks";
+import { mockEquipmentOccupant } from "./sprite.mocks";
 
 /**
  * Creates an archive file fixture.
@@ -165,13 +166,10 @@ export function mockTranslationsProject(
 }
 
 /**
- * Creates equipment descriptor fixtures.
+ * Creates equipment slot occupant fixtures.
  *
- * @returns Equipment descriptor fixtures.
+ * @returns Equipment slot occupant fixtures.
  */
-export function mockEquipmentDescriptors(): Array<IEquipmentSectionDescriptor> {
-  return [
-    { section: "wpn_ak74", w: 2, h: 1, x: 0, y: 0 },
-    { section: "wpn_pm", w: 1, h: 1, x: 2, y: 0 },
-  ];
+export function mockEquipmentOccupants(): Array<EquipmentSlotOccupant> {
+  return [mockEquipmentOccupant("wpn_ak74", { w: 2 }), mockEquipmentOccupant("wpn_pm", { x: 2 })];
 }

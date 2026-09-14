@@ -5,30 +5,40 @@ import {
   IEquipmentGridFrame,
   paintEquipmentGrid,
 } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridCanvas/EquipmentGridPainter";
+import { EEquipmentSlotClaim } from "@/core/ipc/types/xrf-texture";
 import { toEquipmentLayout } from "@/core/sprite-equipment/lib";
-import { mockEquipmentDescriptor } from "@/fixtures/mocks/sprite.mocks";
+import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 
 /** Named rather than themed, so an assertion says which mark it is looking at. */
 const PALETTE: IEquipmentGridPalette = {
   hover: "hover",
   line: "line",
-  occupied: "occupied",
+  declared: "declared",
+  probable: "probable",
   outside: "outside",
   outsideEdge: "outside-edge",
   selected: "selected",
   selectedEdge: "selected-edge",
 };
 
-/** A context that records what it was asked to do, since jsdom draws nothing. */
-function mockContext(): CanvasRenderingContext2D {
-  return {
+/**
+ * A context that records what it was asked to do, since jsdom draws nothing.
+ *
+ * @param fills - Collects the fill in force at each `fillRect`, which a plain recorder cannot answer because
+ *   `fillStyle` is assigned immediately before every call and only the last one survives.
+ * @returns The recorder.
+ */
+function mockContext(fills: Array<string> = []): CanvasRenderingContext2D {
+  const context = {
     beginPath: jest.fn(),
-    fillRect: jest.fn(),
+    fillRect: jest.fn(() => fills.push(String(context.fillStyle))),
     lineTo: jest.fn(),
     moveTo: jest.fn(),
     stroke: jest.fn(),
     strokeRect: jest.fn(),
   } as unknown as CanvasRenderingContext2D;
+
+  return context;
 }
 
 /**
@@ -51,21 +61,23 @@ function mockFrame(overrides: Partial<IEquipmentGridFrame> = {}): IEquipmentGrid
 }
 
 describe("paintEquipmentGrid", () => {
-  it("shades one rectangle per claim, in sheet position", () => {
-    const context: CanvasRenderingContext2D = mockContext();
+  it("shades a declared slot apart from an inferred one, so neither reads as the other", () => {
+    const fills: Array<string> = [];
+    const context: CanvasRenderingContext2D = mockContext(fills);
 
     paintEquipmentGrid(
       context,
       mockFrame({
         layout: toEquipmentLayout(1000, 500, 50, [
-          mockEquipmentDescriptor("wpn_ak74", { x: 2, y: 1, w: 3, h: 2 }),
-          mockEquipmentDescriptor("wpn_pm", { x: 6, y: 0 }),
+          mockEquipmentOccupant("wpn_ak74", { x: 2, y: 1, w: 3, h: 2 }),
+          mockEquipmentOccupant("wpn_pm", { x: 6, y: 0, claim: EEquipmentSlotClaim.DECLARED }),
         ]),
       })
     );
 
     expect(context.fillRect).toHaveBeenCalledWith(100, 50, 150, 100);
     expect(context.fillRect).toHaveBeenCalledWith(300, 0, 50, 50);
+    expect(fills).toEqual(["probable", "declared"]);
   });
 
   it("outlines a claim that leaves the picture, and shades the region it reaches into", () => {
@@ -74,7 +86,7 @@ describe("paintEquipmentGrid", () => {
     paintEquipmentGrid(
       context,
       mockFrame({
-        layout: toEquipmentLayout(1000, 500, 50, [mockEquipmentDescriptor("over_the_edge", { x: 21 })]),
+        layout: toEquipmentLayout(1000, 500, 50, [mockEquipmentOccupant("over_the_edge", { x: 21 })]),
       })
     );
 

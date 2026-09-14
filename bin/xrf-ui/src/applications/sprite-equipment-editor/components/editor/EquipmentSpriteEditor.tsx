@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
 import {
-  IEquipmentPngDescriptor,
+  IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
@@ -29,7 +29,7 @@ export function EquipmentSpriteEditor({
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
-  const spriteImage: Nullable<IEquipmentPngDescriptor> = spriteEquipmentService.spriteImage.value;
+  const spriteImage: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
 
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const repackedAt: Nullable<number> = spriteEquipmentService.repackedAt;
@@ -51,7 +51,7 @@ export function EquipmentSpriteEditor({
     spriteImage
       ? [
           `${spriteImage.image.width} x ${spriteImage.image.height}`,
-          `${spriteImage.descriptors.length} descriptors`,
+          `${spriteImage.occupants.length} occupants`,
           ...(repackedAt ? [`Repacked ${format(repackedAt, "HH:mm")}`] : []),
         ]
       : []

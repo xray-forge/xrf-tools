@@ -6,8 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
 
 use crate::equipment::{
-  INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INV_GRID_HEIGHT, LTX_FIELD_INV_GRID_WIDTH, LTX_FIELD_INV_GRID_X,
-  LTX_FIELD_INV_GRID_Y, LTX_FIELD_INVENTORY_ICON, LTX_FIELD_INVENTORY_ICON_PATH,
+  EquipmentGridRect, EquipmentSlotClaim, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INVENTORY_ICON_PATH,
 };
 use xrf_dds::DDS_BLOCK_SIZE;
 
@@ -39,44 +38,27 @@ impl InventorySpriteDescriptor {
 
   /// Describe the inventory icon of a section, if it declares one.
   ///
-  /// A section opts in with `$inventory_icon = true`. The grid fields alone are not enough: they are
-  /// also declared by abstract base sections purely so children can inherit them, and section lookups
-  /// see inherited fields, so keying off them would pack sections that have no icon of their own.
+  /// A section opts in with `$inventory_icon = true`. Placement alone is not enough here, because this decides what
+  /// gets written: the grid fields are also inherited by variants that own no icon file of their own, and packing
+  /// those would write art nobody authored. [`crate::EquipmentSlotOccupant`] asks the weaker question, for reading.
   pub fn new_optional_from_section<T>(section_name: T, section: &Section) -> Option<Self>
   where
     T: Into<String>,
   {
-    if !section
-      .get(LTX_FIELD_INVENTORY_ICON)
-      .and_then(|value| value.trim().parse::<bool>().ok())
-      .unwrap_or(false)
-    {
+    if EquipmentSlotClaim::of_section(section) != Some(EquipmentSlotClaim::Declared) {
       return None;
     }
 
-    let x: u32 = section.get(LTX_FIELD_INV_GRID_X)?.parse::<u32>().unwrap_or(u32::MAX);
-    let y: u32 = section.get(LTX_FIELD_INV_GRID_Y)?.parse::<u32>().unwrap_or(u32::MAX);
-    let w: u32 = section
-      .get(LTX_FIELD_INV_GRID_WIDTH)?
-      .parse::<u32>()
-      .unwrap_or(u32::MAX);
-    let h: u32 = section
-      .get(LTX_FIELD_INV_GRID_HEIGHT)?
-      .parse::<u32>()
-      .unwrap_or(u32::MAX);
+    let rect: EquipmentGridRect = EquipmentGridRect::new_optional_from_section(section)?;
 
-    if x == u32::MAX || y == u32::MAX || w == u32::MAX || w == 0 || h == u32::MAX || h == 0 {
-      None
-    } else {
-      Some(Self {
-        section: section_name.into(),
-        custom_icon: section.get(LTX_FIELD_INVENTORY_ICON_PATH).map(|value| value.into()),
-        x,
-        y,
-        w,
-        h,
-      })
-    }
+    Some(Self {
+      section: section_name.into(),
+      custom_icon: section.get(LTX_FIELD_INVENTORY_ICON_PATH).map(Into::into),
+      x: rect.x,
+      y: rect.y,
+      w: rect.w,
+      h: rect.h,
+    })
   }
 }
 
@@ -125,117 +107,5 @@ impl InventorySpriteDescriptor {
       max_width.next_multiple_of(DDS_BLOCK_SIZE),
       max_height.next_multiple_of(DDS_BLOCK_SIZE),
     )
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use xrf_ltx::Ltx;
-
-  use super::InventorySpriteDescriptor;
-
-  fn descriptor_for(ltx: &str, section: &str) -> Option<InventorySpriteDescriptor> {
-    let ltx: Ltx = Ltx::read_from_str(ltx).expect("test LTX is valid");
-
-    InventorySpriteDescriptor::new_optional_from_section(section, &ltx[section])
-  }
-
-  #[test]
-  fn describes_sections_that_opt_in() {
-    let descriptor: InventorySpriteDescriptor = descriptor_for(
-      "[wpn_ak74]\n\
-       $inventory_icon = true\n\
-       inv_grid_x = 25\n\
-       inv_grid_y = 4\n\
-       inv_grid_width = 5\n\
-       inv_grid_height = 2\n",
-      "wpn_ak74",
-    )
-    .expect("expect an opted in section to describe an icon");
-
-    assert_eq!(descriptor.x, 25);
-    assert_eq!(descriptor.y, 4);
-    assert_eq!(descriptor.w, 5);
-    assert_eq!(descriptor.h, 2);
-  }
-
-  #[test]
-  fn ignores_grid_fields_without_opt_in() {
-    assert!(
-      descriptor_for(
-        "[some_section]\n\
-         inv_grid_x = 25\n\
-         inv_grid_y = 4\n\
-         inv_grid_width = 5\n\
-         inv_grid_height = 2\n",
-        "some_section",
-      )
-      .is_none(),
-      "Expect grid fields alone not to declare an icon, so adding them cannot pack an asset"
-    );
-  }
-
-  #[test]
-  fn ignores_sections_that_opt_out() {
-    assert!(
-      descriptor_for(
-        "[af_base]\n\
-         $inventory_icon = false\n\
-         inv_grid_x = 0\n\
-         inv_grid_y = 0\n\
-         inv_grid_width = 1\n\
-         inv_grid_height = 1\n",
-        "af_base",
-      )
-      .is_none(),
-      "Expect an explicit opt out to be honoured even when the section is grid complete"
-    );
-  }
-
-  fn boundaries_of(slots: &[(u32, u32, u32, u32)]) -> (u32, u32) {
-    let mut source: String = String::new();
-
-    for (index, (x, y, w, h)) in slots.iter().enumerate() {
-      source.push_str(&format!(
-        "[section_{index}]\n\
-         $inventory_icon = true\n\
-         inv_grid_x = {x}\n\
-         inv_grid_y = {y}\n\
-         inv_grid_width = {w}\n\
-         inv_grid_height = {h}\n\n"
-      ));
-    }
-
-    InventorySpriteDescriptor::get_equipment_sprite_boundaries_from_ltx(
-      &Ltx::read_from_str(&source).expect("test LTX is valid"),
-    )
-  }
-
-  #[test]
-  fn bounds_the_sheet_by_its_furthest_grid_slots() {
-    // Slots reach 30 columns by 20 rows of 50 pixels, which is aligned already.
-    assert_eq!(boundaries_of(&[(25, 4, 5, 2), (0, 17, 1, 3)]), (1500, 1000));
-  }
-
-  #[test]
-  fn rounds_an_odd_column_up_to_a_whole_block() {
-    // An odd column or row ends on a 50 pixel boundary, which is two pixels into a block.
-    assert_eq!(boundaries_of(&[(0, 0, 1, 1)]), (52, 52));
-    assert_eq!(boundaries_of(&[(0, 0, 2, 2)]), (100, 100));
-  }
-
-  #[test]
-  fn requires_grid_fields_even_when_opted_in() {
-    assert!(
-      descriptor_for(
-        "[af_base]\n\
-         $inventory_icon = true\n\
-         inv_grid_width = 1\n\
-         inv_grid_height = 1\n",
-        "af_base",
-      )
-      .is_none(),
-      "Expect a section without grid position not to describe an icon"
-    );
   }
 }

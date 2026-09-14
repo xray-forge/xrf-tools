@@ -2,10 +2,11 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { describePackSpriteOutcome, IPackEquipmentResult } from "@/core/sprite-equipment/lib";
+import { describePackSpriteOutcome } from "@/core/sprite-equipment/lib";
 import { Logger } from "@/lib/logging";
 import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
@@ -16,7 +17,7 @@ export class SpriteEquipmentPackerService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The sheet is written once at the end; a cancelled pack leaves the output unchanged. */
-  public readonly operation: JobOperation<IPackEquipmentResult>;
+  public readonly operation: JobOperation<PackEquipmentResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
     this.operation = new JobOperation(jobsService, [EJobKind.SPRITE_EQUIPMENT_PACK]);
@@ -40,18 +41,18 @@ export class SpriteEquipmentPackerService {
     outputPath: string,
     systemLtxPath: string,
     isDltx: boolean
-  ): TFlow<Nullable<IPackEquipmentResult>> {
+  ): TFlow<Nullable<PackEquipmentResult>> {
     if (this.operation.isRunning) {
       return null;
     }
 
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
-    const completion: JobCompletion<IPackEquipmentResult> = yield* this.operation.run({
+    const completion: JobCompletion<PackEquipmentResult> = yield* this.operation.run({
       kind: EJobKind.SPRITE_EQUIPMENT_PACK,
       invoke: (id: string, progress) =>
         spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
-      describe: (outcome: IJobOutcome<IPackEquipmentResult>): IJobNotice =>
+      describe: (outcome: IJobOutcome<PackEquipmentResult>): IJobNotice =>
         describePackSpriteOutcome(outputPath, outcome),
     });
 

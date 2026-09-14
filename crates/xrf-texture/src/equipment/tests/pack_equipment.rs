@@ -10,7 +10,7 @@ use xrf_ltx::Ltx;
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use super::{PackEquipmentOptions, PackEquipmentProcessor};
+use crate::equipment::{PackEquipmentOptions, PackEquipmentProcessor};
 use crate::image_file::{UI_MIPMAPS, save_image_as_ui_dds};
 
 struct CancelOnOutput {

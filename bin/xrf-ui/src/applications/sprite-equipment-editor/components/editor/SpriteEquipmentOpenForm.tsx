@@ -38,7 +38,7 @@ export function SpriteEquipmentOpenForm({
   });
 
   // Opt-in rather than detected: a patched Anomaly tree and a vanilla one look alike, and resolving one under the
-  // other's rules answers wrong icon descriptors rather than failing. Remembered for the session, because reopening
+  // other's rules answers the wrong slot occupants rather than failing. Remembered for the session, because reopening
   // takes no arguments and has to answer the same values.
   const [isDltx, setDltx] = useState<boolean>(false);
 

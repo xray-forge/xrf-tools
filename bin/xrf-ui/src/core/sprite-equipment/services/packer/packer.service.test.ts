@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
-import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
-const RESULT: IPackEquipmentResult = {
+const RESULT: PackEquipmentResult = {
   outcome: "completed",
   duration: 1000,
   savedAt: "C:\\out\\equipment.dds",
@@ -64,8 +64,8 @@ describe("SpriteEquipmentPackerService", () => {
   });
 
   it("abandons publication on deactivation while the backend finishes and notifies", async () => {
-    let finish: (result: IPackEquipmentResult) => void = noop;
-    const response = new Promise<IPackEquipmentResult>((resolve) => {
+    let finish: (result: PackEquipmentResult) => void = noop;
+    const response = new Promise<PackEquipmentResult>((resolve) => {
       finish = resolve;
     });
 

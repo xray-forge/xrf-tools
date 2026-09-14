@@ -1,16 +1,16 @@
+import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import {
   IEquipmentGrid,
   IEquipmentLayout,
-  IEquipmentSectionDescriptor,
   TEquipmentCell,
   toCellRect,
-  toDescriptorRect,
+  toOccupantRect,
   toOutsideSheetRects,
 } from "@/core/sprite-equipment/lib";
 import { IPanZoomRect, IPanZoomSize, IPanZoomTransform, toViewportRect } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
-import { IEquipmentGridPalette } from "./equipment-grid-palette";
+import { IEquipmentGridPalette, toClaimFill } from "./equipment-grid-palette";
 import { fillRect, strokeRect, toHairline } from "./EquipmentGridCanvas.utils";
 
 /** Below this many viewport pixels a cell is narrower than the lines around it, so the lattice stops being drawn. */
@@ -60,6 +60,8 @@ function paintOutsideSheet(context: CanvasRenderingContext2D, frame: IEquipmentG
 /**
  * Shades what the configuration claims, then outlines whatever claims more than the picture holds.
  *
+ * A declared slot is shaded more strongly than a probable one, so an inference never reads as something authored.
+ *
  * Per rectangle rather than per cell: walking the lattice is thirteen thousand lookups a frame on an Anomaly sheet to
  * shade two thousand rectangles. Overlapping claims stack their alpha, which is how a shared slot shows.
  *
@@ -69,12 +71,12 @@ function paintOutsideSheet(context: CanvasRenderingContext2D, frame: IEquipmentG
 function paintOccupancy(context: CanvasRenderingContext2D, frame: IEquipmentGridFrame): void {
   const { layout, palette } = frame;
 
-  for (const descriptor of layout.descriptors) {
-    fillRect(context, toDescriptorViewportRect(frame, descriptor), palette.occupied);
+  for (const occupant of layout.occupants) {
+    fillRect(context, toOccupantViewportRect(frame, occupant), toClaimFill(palette, occupant));
   }
 
-  for (const descriptor of layout.outside) {
-    strokeRect(context, toDescriptorViewportRect(frame, descriptor), palette.outsideEdge, 1);
+  for (const occupant of layout.outside) {
+    strokeRect(context, toOccupantViewportRect(frame, occupant), palette.outsideEdge, 1);
   }
 }
 
@@ -168,9 +170,9 @@ function toCellViewportRect(frame: IEquipmentGridFrame, cell: TEquipmentCell): I
 
 /**
  * @param frame - Frame being drawn.
- * @param descriptor - Rectangle in cells.
+ * @param occupant - Rectangle in cells.
  * @returns Where that rectangle lands in the viewport.
  */
-function toDescriptorViewportRect(frame: IEquipmentGridFrame, descriptor: IEquipmentSectionDescriptor): IPanZoomRect {
-  return toViewportRect(frame.transform, toDescriptorRect(frame.layout.grid, descriptor));
+function toOccupantViewportRect(frame: IEquipmentGridFrame, occupant: EquipmentSlotOccupant): IPanZoomRect {
+  return toViewportRect(frame.transform, toOccupantRect(frame.layout.grid, occupant));
 }

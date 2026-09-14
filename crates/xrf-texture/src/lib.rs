@@ -20,7 +20,8 @@ pub use crate::description::{
   UnpackDescriptionProcessor,
 };
 pub use crate::equipment::{
-  EquipmentGridOverlap, InventorySpriteDescriptor, PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult,
-  UnpackEquipmentOptions, UnpackEquipmentProcessor, VerifyEquipmentGridProcessor,
+  EquipmentGridOverlap, EquipmentSlotClaim, EquipmentSlotOccupant, InventorySpriteDescriptor, PackEquipmentOptions,
+  PackEquipmentProcessor, PackEquipmentResult, UnpackEquipmentOptions, UnpackEquipmentProcessor,
+  VerifyEquipmentGridProcessor,
 };
 pub use crate::image_file::read_image_as_rgba;

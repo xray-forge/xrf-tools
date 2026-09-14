@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_texture::InventorySpriteDescriptor;
+use xrf_texture::EquipmentSlotOccupant;
 
 use crate::core::session::Session;
 
@@ -18,7 +18,8 @@ pub struct EquipmentSpriteMetadata {
   pub path: String,
   pub name: String,
   pub system_ltx_path: String,
-  /// Whether these descriptors came out of a DLTX-resolved config tree.
+  /// Whether these occupants came out of a DLTX-resolved config tree.
   pub is_dltx: bool,
-  pub equipment_descriptors: Vec<InventorySpriteDescriptor>,
+  /// Every section occupying a slot on the sheet, in the order the configuration declares them.
+  pub occupants: Vec<EquipmentSlotOccupant>,
 }

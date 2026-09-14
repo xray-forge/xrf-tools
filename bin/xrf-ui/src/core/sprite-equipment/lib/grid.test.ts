@@ -3,19 +3,19 @@ import { describe, expect, it } from "@jest/globals";
 import {
   IEquipmentGrid,
   isCellOutsideSheet,
-  isDescriptorOutsideSheet,
+  isOccupantOutsideSheet,
   isSameCell,
   toCellAt,
   toCellRect,
-  toDescriptorRect,
   toEquipmentGrid,
+  toOccupantRect,
   toOutsideSheetRects,
 } from "@/core/sprite-equipment/lib";
-import { mockEquipmentDescriptor } from "@/fixtures/mocks/sprite.mocks";
+import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 
 describe("toEquipmentGrid", () => {
   it("spans the sheet when nothing is claimed beyond it", () => {
-    expect(toEquipmentGrid(1024, 2048, 50, [mockEquipmentDescriptor("wpn_ak74")])).toEqual({
+    expect(toEquipmentGrid(1024, 2048, 50, [mockEquipmentOccupant("wpn_ak74")])).toEqual({
       columns: 21,
       rows: 41,
       sheetColumns: 21,
@@ -37,7 +37,7 @@ describe("toEquipmentGrid", () => {
     // CoC declares rectangles reaching 51 cells against a sheet only 21 wide. The lattice has to hold them, because a
     // rectangle nobody draws is a rectangle nobody can be told about.
     const grid: IEquipmentGrid = toEquipmentGrid(1024, 2048, 50, [
-      mockEquipmentDescriptor("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
+      mockEquipmentOccupant("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
     ]);
 
     expect(grid).toEqual({ columns: 51, rows: 51, sheetColumns: 21, sheetRows: 41, size: 50 });
@@ -76,7 +76,7 @@ describe("toCellAt", () => {
   });
 });
 
-describe("toCellRect and toDescriptorRect", () => {
+describe("toCellRect and toOccupantRect", () => {
   const grid: IEquipmentGrid = toEquipmentGrid(1000, 500, 50, []);
 
   it("places a cell on the sheet", () => {
@@ -84,7 +84,7 @@ describe("toCellRect and toDescriptorRect", () => {
   });
 
   it("places a declared rectangle on the sheet", () => {
-    expect(toDescriptorRect(grid, mockEquipmentDescriptor("wpn_ak74", { x: 25, y: 4, w: 5, h: 2 }))).toEqual({
+    expect(toOccupantRect(grid, mockEquipmentOccupant("wpn_ak74", { x: 25, y: 4, w: 5, h: 2 }))).toEqual({
       x: 1250,
       y: 200,
       width: 250,
@@ -100,14 +100,14 @@ describe("toOutsideSheetRects", () => {
 
   it("answers one strip when a single axis overruns", () => {
     const grid: IEquipmentGrid = toEquipmentGrid(1000, 500, 50, [
-      mockEquipmentDescriptor("over_the_right_edge", { x: 24, y: 0 }),
+      mockEquipmentOccupant("over_the_right_edge", { x: 24, y: 0 }),
     ]);
 
     expect(toOutsideSheetRects(grid)).toEqual([{ x: 1000, y: 0, width: 250, height: 500 }]);
   });
 
   it("answers disjoint strips when both axes overrun", () => {
-    const grid: IEquipmentGrid = toEquipmentGrid(1000, 500, 50, [mockEquipmentDescriptor("far", { x: 24, y: 12 })]);
+    const grid: IEquipmentGrid = toEquipmentGrid(1000, 500, 50, [mockEquipmentOccupant("far", { x: 24, y: 12 })]);
 
     // Disjoint on purpose: the overlay paints these over the picture, so a bounding box would tint the very image they
     // are meant to lie outside of.
@@ -121,7 +121,7 @@ describe("toOutsideSheetRects", () => {
 describe("outside the sheet", () => {
   // Twenty-one columns and forty-one rows of image, with a rectangle claiming three cells past the right edge.
   const grid: IEquipmentGrid = toEquipmentGrid(1024, 2048, 50, [
-    mockEquipmentDescriptor("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
+    mockEquipmentOccupant("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
   ]);
 
   it("knows which cells the image cannot cover", () => {
@@ -132,10 +132,10 @@ describe("outside the sheet", () => {
   });
 
   it("knows which rectangles leave the image", () => {
-    expect(isDescriptorOutsideSheet(grid, mockEquipmentDescriptor("inside"))).toBe(false);
-    expect(isDescriptorOutsideSheet(grid, mockEquipmentDescriptor("last", { x: 20, y: 40 }))).toBe(false);
+    expect(isOccupantOutsideSheet(grid, mockEquipmentOccupant("inside"))).toBe(false);
+    expect(isOccupantOutsideSheet(grid, mockEquipmentOccupant("last", { x: 20, y: 40 }))).toBe(false);
     // Starting inside and ending outside still leaves it, which is the case a bounds check on the origin misses.
-    expect(isDescriptorOutsideSheet(grid, mockEquipmentDescriptor("straddling", { x: 20, y: 40, w: 2 }))).toBe(true);
+    expect(isOccupantOutsideSheet(grid, mockEquipmentOccupant("straddling", { x: 20, y: 40, w: 2 }))).toBe(true);
   });
 });
 

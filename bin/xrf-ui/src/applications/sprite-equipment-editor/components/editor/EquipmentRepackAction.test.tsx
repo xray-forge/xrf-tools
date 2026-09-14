@@ -5,7 +5,7 @@ import { Injectable } from "@wirestate/core";
 
 import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/editor/EquipmentRepackAction";
 import {
-  IEquipmentPngDescriptor,
+  IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
@@ -13,11 +13,11 @@ import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/p
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
-const SPRITE: IEquipmentPngDescriptor = {
+const SPRITE: IOpenEquipmentSprite = {
   sessionId: "fixture-session",
   isDltx: false,
   ltxPath: "C:\\game\\system.ltx",
-  descriptors: [],
+  occupants: [],
   path: "C:\\game\\equipment.dds",
   name: "equipment.dds",
   blob: new Blob(),

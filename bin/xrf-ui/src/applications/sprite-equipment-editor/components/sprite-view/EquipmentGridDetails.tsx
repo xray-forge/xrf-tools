@@ -1,9 +1,10 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
-import { Box, Card, Divider, Grid, Typography } from "@mui/material";
+import { Box, Card, Chip, Divider, Grid, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { IEquipmentLayout, IEquipmentSectionDescriptor, TEquipmentCell } from "@/core/sprite-equipment/lib";
+import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { stopPropagation } from "@/lib/dom/event";
 
@@ -21,11 +22,23 @@ export function EquipmentGridDetails({
   cell,
   onClose,
 }: IEquipmentGridDetailsProps): ReactElement {
-  const items: ReadonlyArray<IEquipmentSectionDescriptor> = layout.at(cell);
+  const items: ReadonlyArray<EquipmentSlotOccupant> = layout.at(cell);
 
-  const list = items.map((it: IEquipmentSectionDescriptor, index: number) => (
-    <Box key={index} sx={{ marginTop: "4px" }}>
-      {it.section}
+  const list = items.map((it: EquipmentSlotOccupant) => (
+    <Box key={it.section} sx={{ display: "flex", alignItems: "center", gap: 0.5, marginTop: "4px" }}>
+      <Typography variant={"body2"} sx={{ wordBreak: "break-all" }}>
+        {it.section}
+      </Typography>
+
+      {it.claim === EEquipmentSlotClaim.DECLARED ? (
+        <Chip
+          size={"small"}
+          variant={"outlined"}
+          color={"primary"}
+          label={"icon"}
+          title={"Declares $inventory_icon, so the packing tools act on it"}
+        />
+      ) : null}
     </Box>
   ));
 
@@ -54,7 +67,7 @@ export function EquipmentGridDetails({
 
           <Divider />
 
-          {list.length ? list : "No sprites"}
+          {list.length ? list : "Nothing occupies this cell"}
         </Box>
       </Card>
     </Box>

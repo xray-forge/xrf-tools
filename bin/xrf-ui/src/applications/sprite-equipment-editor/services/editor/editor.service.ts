@@ -11,26 +11,22 @@ import { Command } from "@/core/commands";
 import { transformError } from "@/core/error/lib";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { requireSessionId, Session } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { EquipmentSpriteMetadata, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { EquipmentSlotOccupant, PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import {
-  IEquipmentSectionDescriptor,
-  IEquipmentSpriteMetadata,
-  IPackEquipmentResult,
-} from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
-export interface IEquipmentPngDescriptor {
+export interface IOpenEquipmentSprite {
   sessionId: string;
   ltxPath: string;
-  /** Whether the open project's descriptors came out of a DLTX-resolved config tree. */
+  /** Whether the open project's occupants came out of a DLTX-resolved config tree. */
   isDltx: boolean;
-  descriptors: Array<IEquipmentSectionDescriptor>;
+  occupants: Array<EquipmentSlotOccupant>;
   path: string;
   name: string;
   blob: Blob;
@@ -54,7 +50,7 @@ export class SpriteEquipmentEditorService {
   public gridSize: number = 50;
 
   @Observable()
-  public spriteImage: AsyncState<IEquipmentPngDescriptor> = AsyncState.idle();
+  public spriteImage: AsyncState<IOpenEquipmentSprite> = AsyncState.idle();
 
   /**
    * Directory the sprite can be rebuilt from, or null when there is nothing to rebuild from.
@@ -94,7 +90,7 @@ export class SpriteEquipmentEditorService {
    */
   @ExclusiveFlow("spriteImage")
   private *restore(): TFlow {
-    const response: Nullable<SessionSnapshot<IEquipmentSpriteMetadata>> = yield* call(
+    const response: Nullable<SessionSnapshot<EquipmentSpriteMetadata>> = yield* call(
       spriteEquipmentCommands.getSprite()
     );
 
@@ -139,7 +135,7 @@ export class SpriteEquipmentEditorService {
    * @param equipmentDdsPath - The packed `*.dds` holding the inventory icons.
    * @param systemLtxPath - `system.ltx` declaring which icons exist and where they sit.
    * @param isDltx - Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. Remembered for the
-   *   session, so reopening resolves the same descriptors.
+   *   session, so reopening resolves the same occupants.
    */
   @LatestFlow("spriteImage")
   public *openEquipmentProject(equipmentDdsPath: string, systemLtxPath: string, isDltx: boolean): TFlow {
@@ -148,7 +144,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: SessionSnapshot<IEquipmentSpriteMetadata> = yield* call(
+      const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
         this.session.open((sessionId) =>
           spriteEquipmentCommands.openSprite({ sessionId, equipmentDdsPath, systemLtxPath, isDltx })
         )
@@ -195,7 +191,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const response: SessionSnapshot<IEquipmentSpriteMetadata> = yield* call(
+      const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
         this.session.open((openingId) =>
           spriteEquipmentCommands.reopenSprite(requireSessionId(this.spriteImage.value), openingId)
         )
@@ -232,7 +228,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const result: Nullable<IPackEquipmentResult> = yield* call(
+      const result: Nullable<PackEquipmentResult> = yield* call(
         flowResult(
           this.packerService.packEquipmentSprite(
             repackSourcePath,
@@ -338,13 +334,13 @@ export class SpriteEquipmentEditorService {
    *
    * @param response - Native snapshot whose preview should be displayed.
    */
-  private *viewSprite(response: SessionSnapshot<IEquipmentSpriteMetadata>): TFlow {
-    const pending: Promise<IEquipmentPngDescriptor> = this.spriteFromResponse(response);
+  private *viewSprite(response: SessionSnapshot<EquipmentSpriteMetadata>): TFlow {
+    const pending: Promise<IOpenEquipmentSprite> = this.spriteFromResponse(response);
 
     let published: boolean = false;
 
     try {
-      const spriteImage: IEquipmentPngDescriptor = yield* call(pending);
+      const spriteImage: IOpenEquipmentSprite = yield* call(pending);
 
       this.assetService.release(this.spriteImage.value?.image.src ?? null);
       this.spriteImage = this.spriteImage.asReady(spriteImage);
@@ -360,9 +356,7 @@ export class SpriteEquipmentEditorService {
     }
   }
 
-  private async spriteFromResponse(
-    response: SessionSnapshot<IEquipmentSpriteMetadata>
-  ): Promise<IEquipmentPngDescriptor> {
+  private async spriteFromResponse(response: SessionSnapshot<EquipmentSpriteMetadata>): Promise<IOpenEquipmentSprite> {
     const { sessionId, value: metadata } = response;
 
     const preview: Response = await fetch(convertFileSrc(sessionId + "/" + metadata.name, "stream"));
@@ -376,7 +370,7 @@ export class SpriteEquipmentEditorService {
         blob,
         isDltx: metadata.isDltx,
         ltxPath: metadata.systemLtxPath,
-        descriptors: metadata.equipmentDescriptors,
+        occupants: metadata.occupants,
         image: await urlToImage(url),
         name: metadata.name,
         path: metadata.path,

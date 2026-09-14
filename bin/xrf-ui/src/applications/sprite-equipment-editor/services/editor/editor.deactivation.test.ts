@@ -18,7 +18,7 @@ function showSprite(service: SpriteEquipmentEditorService): void {
       sessionId: "fixture-session",
       isDltx: false,
       ltxPath: "system.ltx",
-      descriptors: [],
+      occupants: [],
       path: "equipment.dds",
       name: "equipment.png",
       blob: new Blob(),

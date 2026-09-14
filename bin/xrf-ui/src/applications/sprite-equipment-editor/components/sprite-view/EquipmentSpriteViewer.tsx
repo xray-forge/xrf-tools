@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import {
-  IEquipmentPngDescriptor,
+  IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
 import { IEquipmentLayout, toEquipmentLayout } from "@/core/sprite-equipment/lib";
@@ -27,13 +27,13 @@ export function EquipmentSpriteViewer({
 }: BaseComponentProps): ReactElement {
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
-  const sprite: Nullable<IEquipmentPngDescriptor> = spriteEquipmentService.spriteImage.value;
+  const sprite: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const isGridVisible: boolean = spriteEquipmentService.isGridVisible;
   const gridSize: number = spriteEquipmentService.gridSize;
 
   const layout: Nullable<IEquipmentLayout> = useMemo(
-    () => (sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.descriptors) : null),
+    () => (sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.occupants) : null),
     [gridSize, sprite]
   );
 

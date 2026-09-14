@@ -12,7 +12,7 @@ fn document(bytes: Vec<u8>) -> EquipmentSpriteDocument {
       name: String::from("equipment.png"),
       system_ltx_path: String::from("system.ltx"),
       is_dltx: false,
-      equipment_descriptors: Vec::new(),
+      occupants: Vec::new(),
     },
     preview: bytes,
   }

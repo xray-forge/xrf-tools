@@ -3,7 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
-import { IPackEquipmentResult } from "@/core/sprite-equipment/lib";
+import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
+import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -12,12 +13,12 @@ import { Nullable } from "@/lib/types/general";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
 
-const RESPONSE = {
+const RESPONSE: EquipmentSpriteMetadata = {
   isDltx: true,
   name: "equipment.dds",
   path: "C:\\game\\equipment.dds",
   systemLtxPath: "C:\\game\\system.ltx",
-  equipmentDescriptors: [],
+  occupants: [],
 };
 
 /**
@@ -58,7 +59,7 @@ function createService(): { service: SpriteEquipmentEditorService; assets: Asset
 
 describe("SpriteEquipmentEditorService object urls", () => {
   it("repacks through the shared service before replacing the editor image", async () => {
-    const packed: IPackEquipmentResult = {
+    const packed: PackEquipmentResult = {
       outcome: "completed",
       savedAt: RESPONSE.path,
       savedWidth: 1024,
