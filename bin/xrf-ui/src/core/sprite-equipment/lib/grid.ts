@@ -2,6 +2,9 @@ import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
 import { Nullable } from "@/lib/types/general";
 
+/** Side of one inventory grid square, in sheet pixels. */
+export const ENGINE_GRID_SQUARE: number = 50;
+
 /** A rectangle in sheet pixels. */
 export interface IEquipmentRect {
   x: number;
@@ -18,10 +21,14 @@ export interface IEquipmentGrid {
   columns: number;
   /** Rows the lattice spans. */
   rows: number;
-  /** Columns the image itself covers. A cell at or past this is outside the sheet. */
+  /** Columns the image reaches into. A cell at or past this is outside the sheet. */
   sheetColumns: number;
-  /** Rows the image itself covers. */
+  /** Rows the image reaches into. */
   sheetRows: number;
+  /** Width of the image itself, in sheet pixels. */
+  sheetWidth: number;
+  /** Height of the image itself, in sheet pixels. */
+  sheetHeight: number;
 }
 
 /**
@@ -52,7 +59,7 @@ export function toEquipmentGrid(
     rows = Math.max(rows, occupant.y + occupant.h);
   }
 
-  return { columns, rows, sheetColumns, sheetRows, size };
+  return { columns, rows, sheetColumns, sheetHeight: height, sheetRows, sheetWidth: width, size };
 }
 
 /**
@@ -91,8 +98,9 @@ export function toOccupantRect(grid: IEquipmentGrid, occupant: EquipmentSlotOccu
  * @returns Rectangles in sheet pixels, in no particular order.
  */
 export function toOutsideSheetRects(grid: IEquipmentGrid): Array<IEquipmentRect> {
-  const sheetWidth: number = grid.sheetColumns * grid.size;
-  const sheetHeight: number = grid.sheetRows * grid.size;
+  // The picture's own edge, not the last cell boundary. A sheet whose width is not a whole number of cells ends part
+  // way through one, and the remainder of that cell is as uncovered as the columns past it.
+  const { sheetWidth, sheetHeight } = grid;
   const width: number = grid.columns * grid.size;
   const height: number = grid.rows * grid.size;
 

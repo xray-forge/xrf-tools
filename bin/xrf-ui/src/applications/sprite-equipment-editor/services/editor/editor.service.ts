@@ -20,7 +20,7 @@ import {
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { describeEquipmentSheet } from "@/core/sprite-equipment/lib";
+import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
@@ -58,7 +58,7 @@ export class SpriteEquipmentEditorService {
   public isGridVisible: boolean = true;
 
   @Observable()
-  public gridSize: number = 50;
+  public gridSize: number = ENGINE_GRID_SQUARE;
 
   @Observable()
   public spriteImage: AsyncState<IOpenEquipmentSprite> = AsyncState.idle();

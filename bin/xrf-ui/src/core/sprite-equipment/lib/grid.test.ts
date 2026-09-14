@@ -19,7 +19,9 @@ describe("toEquipmentGrid", () => {
       columns: 21,
       rows: 41,
       sheetColumns: 21,
+      sheetHeight: 2048,
       sheetRows: 41,
+      sheetWidth: 1024,
       size: 50,
     });
   });
@@ -40,7 +42,15 @@ describe("toEquipmentGrid", () => {
       mockEquipmentOccupant("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
     ]);
 
-    expect(grid).toEqual({ columns: 51, rows: 51, sheetColumns: 21, sheetRows: 41, size: 50 });
+    expect(grid).toEqual({
+      columns: 51,
+      rows: 51,
+      sheetColumns: 21,
+      sheetHeight: 2048,
+      sheetRows: 41,
+      sheetWidth: 1024,
+      size: 50,
+    });
   });
 
   it("survives a sheet with no size yet", () => {
@@ -48,7 +58,9 @@ describe("toEquipmentGrid", () => {
       columns: 0,
       rows: 0,
       sheetColumns: 0,
+      sheetHeight: 0,
       sheetRows: 0,
+      sheetWidth: 0,
       size: 50,
     });
   });
@@ -72,7 +84,9 @@ describe("toCellAt", () => {
   });
 
   it("answers nothing rather than dividing by a cell size of zero", () => {
-    expect(toCellAt({ columns: 0, rows: 0, sheetColumns: 0, sheetRows: 0, size: 0 }, 10, 10)).toBeNull();
+    expect(
+      toCellAt({ columns: 0, rows: 0, sheetColumns: 0, sheetHeight: 0, sheetRows: 0, sheetWidth: 0, size: 0 }, 10, 10)
+    ).toBeNull();
   });
 });
 
@@ -104,6 +118,14 @@ describe("toOutsideSheetRects", () => {
     ]);
 
     expect(toOutsideSheetRects(grid)).toEqual([{ x: 1000, y: 0, width: 250, height: 500 }]);
+  });
+
+  it("claims the part of a cell the picture stops part way through", () => {
+    // A 1024 pixel sheet reaches into 21 columns of 50, which end at 1050. The 26 pixels between the picture's edge
+    // and that boundary are covered by nothing, and were left untinted while this measured in whole cells.
+    const grid: IEquipmentGrid = toEquipmentGrid(1024, 500, 50, [mockEquipmentOccupant("over", { x: 24 })]);
+
+    expect(toOutsideSheetRects(grid)[0].x).toBe(1024);
   });
 
   it("answers disjoint strips when both axes overrun", () => {

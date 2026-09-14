@@ -13,7 +13,7 @@ import {
   WheelEvent,
 } from "react";
 
-import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
+import { IMAGE_CHECKERBOARD, toCheckerboardSizing } from "@/core/ui/media/media.styles";
 import {
   IPanZoomCamera,
   IPanZoomPoint,
@@ -113,7 +113,11 @@ export function ImageViewport({
       measured ?? UNMEASURED
     );
 
+    const checkerboard = toCheckerboardSizing(transform.scale);
+
     element.style.transform = `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`;
+    element.style.backgroundSize = checkerboard.backgroundSize;
+    element.style.backgroundPosition = checkerboard.backgroundPosition;
     // Nearest neighbour only above one to one, where the texels themselves are what is being looked at.
     element.style.imageRendering = transform.scale > 1 ? "pixelated" : "auto";
   }, [controller, height, measured, width]);
@@ -250,7 +254,6 @@ export function ImageViewport({
             "&:active": { cursor: "grabbing" },
             backgroundColor: "#353535",
           },
-          IMAGE_CHECKERBOARD,
         ]}
         onWheel={onWheel}
         onMouseDown={onMouseDown}
@@ -264,14 +267,17 @@ export function ImageViewport({
           alt={alt}
           src={src}
           draggable={false}
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            transformOrigin: "0 0",
-            willChange: "transform",
-            userSelect: "none",
-          }}
+          sx={[
+            {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transformOrigin: "0 0",
+              willChange: "transform",
+              userSelect: "none",
+            },
+            IMAGE_CHECKERBOARD,
+          ]}
         />
 
         {renderOverlay ? (

@@ -15,7 +15,7 @@ export interface IEquipmentGridPalette {
   declared: string;
   /** A slot inferred from grid fields alone, drawn weaker because nothing authored says an icon is there. */
   probable: string;
-  /** The region past the edge of the picture. */
+  /** The region past the edge of the picture, which nothing can ever be drawn in. */
   outside: string;
   /** Outline of a rectangle reaching into that region. */
   outsideEdge: string;
@@ -41,8 +41,8 @@ export function toEquipmentGridPalette(theme: Theme): IEquipmentGridPalette {
     // Half the weight of a declared slot, and no more: on Anomaly every one of the 2,096 occupants is probable, so a
     // treatment faint enough to read as absent would wash out the whole sheet.
     probable: alpha(theme.palette.primary.main, 0.15),
-    outside: alpha(theme.palette.warning.main, 0.2),
-    outsideEdge: alpha(theme.palette.warning.light, 0.85),
+    outside: alpha(theme.palette.error.main, 0.2),
+    outsideEdge: alpha(theme.palette.error.light, 0.9),
     selected: alpha(theme.palette.primary.main, 0.55),
     selectedEdge: alpha(theme.palette.primary.light, 0.95),
   };

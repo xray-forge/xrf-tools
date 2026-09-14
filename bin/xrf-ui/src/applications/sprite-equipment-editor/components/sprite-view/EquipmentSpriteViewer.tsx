@@ -14,7 +14,6 @@ import { IPanZoomPoint } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
-import { EquipmentGridControls } from "./EquipmentGridControls";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";
 import { IEquipmentGridHover, useEquipmentGridHover } from "./use-equipment-grid-hover";
 
@@ -32,7 +31,6 @@ export function EquipmentSpriteViewer({
   const sprite: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const isGridVisible: boolean = spriteEquipmentService.isGridVisible;
-  const gridSize: number = spriteEquipmentService.gridSize;
 
   const layout: Nullable<IEquipmentLayout> = gridService.layout;
   const hover: IEquipmentGridHover = useEquipmentGridHover(layout);
@@ -93,13 +91,6 @@ export function EquipmentSpriteViewer({
       />
 
       {hover.hoveredCell ? <EquipmentGridMoveOver cell={hover.hoveredCell} /> : null}
-
-      <EquipmentGridControls
-        gridSize={gridSize}
-        isGridVisible={isGridVisible}
-        onSetGridSize={spriteEquipmentService.setGridSize}
-        onSetGridVisibility={spriteEquipmentService.setGridVisibility}
-      />
     </Box>
   );
 }

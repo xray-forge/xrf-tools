@@ -21,6 +21,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
+import { EquipmentGridOptions } from "./EquipmentGridOptions";
 import { EquipmentRepackAction } from "./EquipmentRepackAction";
 import { EquipmentSpriteEditorWorkspace } from "./EquipmentSpriteEditorWorkspace";
 
@@ -85,6 +86,8 @@ export function EquipmentSpriteEditor({
           subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
           actions={
             <>
+              <EquipmentGridOptions />
+
               <EquipmentRepackAction />
 
               <EditorIconAction

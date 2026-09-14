@@ -1,10 +1,11 @@
 import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { IEquipmentLayout } from "@/core/sprite-equipment/lib";
 import { Nullable } from "@/lib/types/general";
 
 /** What kind of thing is wrong, which is also what can be done about it. */
-export enum EEquipmentProblemKind {
+export enum EEquipmentProblemRule {
   /** The configuration could not be read, so nothing is annotated. */
   CONFIG = "config",
   /** A rectangle claims part of the grid the sheet does not cover. */
@@ -13,58 +14,50 @@ export enum EEquipmentProblemKind {
   ARCHIVED = "archived",
 }
 
-/** One thing worth saying about the open sheet. */
-export interface IEquipmentProblem {
-  kind: EEquipmentProblemKind;
-  title: string;
-  /** What to do about it, or the detail that makes it actionable. */
-  detail: string;
-}
-
 /**
- * Everything wrong with the open sheet, worst first.
+ * Everything worth saying about the open sheet, worst first.
  *
  * @param metadata - The open sheet as the backend described it, or null while nothing is open.
  * @param layout - The lattice and its occupants, or null while nothing is open.
- * @returns What to list, or nothing when there is nothing to say.
+ * @returns The findings to list, in the order they should be read.
  */
 export function toEquipmentProblems(
   metadata: Nullable<EquipmentSpriteMetadata>,
   layout: Nullable<IEquipmentLayout>
-): Array<IEquipmentProblem> {
+): Array<IEditorProblem> {
   if (!metadata) {
     return [];
   }
 
-  const problems: Array<IEquipmentProblem> = [];
+  const problems: Array<IEditorProblem> = [];
 
   if (metadata.configError) {
     problems.push({
-      kind: EEquipmentProblemKind.CONFIG,
-      title: "The configuration was not read",
-      detail: metadata.configError,
+      rule: EEquipmentProblemRule.CONFIG,
+      subject: metadata.open.config?.kind === "file" ? metadata.open.config.path : null,
+      message: metadata.configError,
     });
   }
 
   const outside: ReadonlyArray<EquipmentSlotOccupant> = layout?.outside ?? [];
 
-  if (outside.length) {
+  if (outside.length && layout) {
     problems.push({
-      kind: EEquipmentProblemKind.OUTSIDE,
-      title: `${outside.length} rectangle(s) fall outside the sheet`,
-      detail: `The sheet is ${layout?.grid.sheetColumns} by ${layout?.grid.sheetRows} cells and these reach past it: ${outside
-        .map((occupant: EquipmentSlotOccupant) => occupant.section)
-        .join(", ")}`,
+      rule: EEquipmentProblemRule.OUTSIDE,
+      subject: `${outside.length} of ${layout.occupants.length}`,
+      message:
+        `The sheet covers ${layout.grid.sheetColumns} by ${layout.grid.sheetRows} cells and these reach past it: ` +
+        outside.map((occupant: EquipmentSlotOccupant) => occupant.section).join(", "),
     });
   }
 
   if (!metadata.location.path) {
     problems.push({
-      kind: EEquipmentProblemKind.ARCHIVED,
-      title: "The sheet is served out of an archive",
-      detail: metadata.location.writeTarget
-        ? `A save would create ${metadata.location.writeTarget}, which shadows it`
-        : "No mounted root can take a write, so nothing here can be saved",
+      rule: EEquipmentProblemRule.ARCHIVED,
+      subject: metadata.location.asset?.container.kind === "archive" ? metadata.location.asset.container.path : null,
+      message: metadata.location.writeTarget
+        ? `The sheet is served out of an archive. A save would create ${metadata.location.writeTarget}, which shadows it.`
+        : "The sheet is served out of an archive and no mounted root can take a write, so nothing here can be saved.",
     });
   }
 
