@@ -1,4 +1,10 @@
-import { ArchiveShadowedCopy, ArchiveSubject, ArchiveWorld, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveResolution,
+  ArchiveShadowedCopy,
+  ArchiveSubject,
+  ArchiveWorld,
+  ArchiveWorldEntry,
+} from "@/core/ipc/types/xrf-app";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
@@ -9,7 +15,7 @@ import {
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+import { EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Creates the complete result of a packing run.
@@ -348,4 +354,60 @@ export function mockArchiveWorldStatistics(overrides: Partial<ArchiveStatistics>
     volumes: null,
     ...overrides,
   });
+}
+
+/**
+ * Creates the search a mounted world resolves through: a loose tree in front of the volumes it overrides.
+ *
+ * @param overrides - Field values to override.
+ * @returns Where the open subject looks for an engine path, in the order it looks.
+ */
+export function mockArchiveResolution(overrides: Partial<ArchiveResolution> = {}): ArchiveResolution {
+  return {
+    sources: [
+      {
+        base: "",
+        entries: 12,
+        kind: EXraySourceKind.DIRECTORY,
+        label: "gamedata",
+        origin: "$game_data$",
+        path: "C:\\game\\gamedata",
+        step: "C:\\game",
+        volumes: [],
+      },
+      {
+        base: "",
+        entries: 480,
+        kind: EXraySourceKind.ARCHIVE,
+        label: "db",
+        origin: "$arch_dir$",
+        path: "C:\\game\\db",
+        step: "C:\\game",
+        volumes: [
+          {
+            entries: 300,
+            outputRootPath: "gamedata",
+            path: "C:\\game\\db\\patch.db1",
+            sizeCompressed: 1024,
+            sizeReal: 4096,
+          },
+          {
+            entries: 180,
+            outputRootPath: "gamedata",
+            path: "C:\\game\\db\\textures.db0",
+            sizeCompressed: 2048,
+            sizeReal: 8192,
+          },
+        ],
+      },
+    ],
+    unread: [
+      {
+        origin: "$arch_dir_levels$",
+        path: "C:\\game\\db\\levels",
+        reason: "failed to read archive header",
+      },
+    ],
+    ...overrides,
+  };
 }

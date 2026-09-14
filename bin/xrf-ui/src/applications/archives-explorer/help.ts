@@ -13,6 +13,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "extract everything.",
     "Open `Statistics` in the toolbar for a breakdown of what is open: by extension, by folder, by size, and where " +
       "its files come from.",
+    "Open `Resolution` in the toolbar to see which sources are searched for a file and in what order, before opening " +
+      "any file at all.",
   ],
   nuances: [
     "Directory mode follows the engine's mount order: later volumes replace earlier copies. Volumes in a folder named " +
@@ -25,6 +27,15 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "than once.",
     "Installation mode reads `fsgame.ltx` when the folder declares one, and otherwise treats the folder as a game " +
       "data tree. Previews and extraction resolve the same copy the tree shows.",
+    "`Resolution` lists the sources top to bottom in the order they are searched: the first one holding an engine " +
+      "path is the copy the engine loads. A game folder is its `fsgame.ltx` declarations reversed, because the engine " +
+      "registers roots as declared and a later registration overwrites an earlier one - which is exactly why a loose " +
+      "`gamedata` tree ends up in front of the volumes it overrides. Each row names the alias that declared it.",
+    "A `Resolution` row for a volume set lists the volumes inside it, also in the order a lookup reaches them: a " +
+      "set merges with the later volume winning, so a patch volume is asked before the one it patches.",
+    "`Resolution` also lists sources that were declared and could not be opened. A source missing from the search " +
+      "looks exactly like content that was never there, so a corrupt or unreadable volume is stated rather than " +
+      "silently dropped.",
     "Archive paths are case-insensitive. `Textures\\A.DDS` and `textures\\a.dds` name the same file to the engine. " +
       "When that hides an entry, the `Unreachable files` panel shows it.",
     "An entry another mount overrides is not the same problem: that file is exactly where it should be, and the " +

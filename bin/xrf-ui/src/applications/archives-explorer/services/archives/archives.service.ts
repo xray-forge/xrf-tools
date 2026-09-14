@@ -19,7 +19,14 @@ import { archivesCommands } from "@/core/ipc/commands/archives";
 import { archivesRawCommands } from "@/core/ipc/commands/archives-raw";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { requireSessionId, Session } from "@/core/ipc/session";
-import { ArchiveSubject, ArchiveWorldEntry, EJobKind, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveResolution,
+  ArchiveSubject,
+  ArchiveWorldEntry,
+  EJobKind,
+  SessionId,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
@@ -83,6 +90,10 @@ export class ArchivesService {
   /** What the open subject holds, broken down. Loaded when a surface first asks, and kept while the subject is open. */
   @Observable()
   public statistics: AsyncState<Nullable<ArchiveStatistics>> = AsyncState.idle(null);
+
+  /** Where the open subject looks for an engine path, in the order it looks. Loaded and kept the same way. */
+  @Observable()
+  public resolution: AsyncState<Nullable<ArchiveResolution>> = AsyncState.idle(null);
 
   /**
    * @returns The files the open subject holds, empty when nothing is open.
@@ -280,6 +291,7 @@ export class ArchivesService {
     this.collisions = this.collisions.asIdle([]);
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
     this.statistics = this.statistics.asIdle(null);
+    this.resolution = this.resolution.asIdle(null);
   }
 
   /**
@@ -442,6 +454,9 @@ export class ArchivesService {
       this.subjectState = this.subjectState.asLoading();
       this.collisions = this.collisions.asIdle([]);
       this.sharedPayloads = this.sharedPayloads.asIdle([]);
+      // Both are loaded once and kept, so a new subject has to discard them or the dialogs describe the previous one.
+      this.statistics = this.statistics.asIdle(null);
+      this.resolution = this.resolution.asIdle(null);
 
       this.subjectState = this.subjectState.asReady(yield* call(dispatch()));
 
@@ -501,6 +516,32 @@ export class ArchivesService {
       this.log.error("Failed to describe archives statistics:", error);
 
       this.statistics = this.statistics.asFailed(transformError(error), null);
+    }
+  }
+
+  /**
+   * Loads where the open subject looks for an engine path, once.
+   */
+  @LatestFlow("resolution")
+  public *loadResolution(): TFlow {
+    if (this.resolution.value || this.resolution.isLoading) {
+      return;
+    }
+
+    try {
+      this.resolution = this.resolution.asLoading(null);
+
+      const resolution: ArchiveResolution = yield* call(
+        archivesCommands.describeResolution(this.requireSubjectSession())
+      );
+
+      this.log.info("Archives resolution:", resolution.sources.length, "sources");
+
+      this.resolution = this.resolution.asReady(resolution);
+    } catch (error: unknown) {
+      this.log.error("Failed to describe archives resolution:", error);
+
+      this.resolution = this.resolution.asFailed(transformError(error), null);
     }
   }
 

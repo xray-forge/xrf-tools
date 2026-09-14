@@ -30,20 +30,14 @@ export function ArchivesMenu({
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  // Read from the service rather than remembered from the click, so an entry opened out of the filter is marked the
-  // same way. A directory is a selection here as much as a file is, which is what the conversion knows.
-  const openItemId: Nullable<string> = toArchiveSelectionItemId(archivesService.selection);
-
+  const isWriting: boolean = archivesService.isWriting;
   const files: Array<IArchiveEntry> = archivesService.entries;
+  const openItemId: Nullable<string> = toArchiveSelectionItemId(archivesService.selection);
 
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
-
-  // Only a write holds an open back: an extraction runs outside the archive and cannot be abandoned, while a read
-  // is simply superseded by the next open. Selecting is inert and never waits for anything.
-  const isWriting: boolean = archivesService.isWriting;
 
   const onOpenEntry = useCallback(
     (entry: IArchiveEntry) => {

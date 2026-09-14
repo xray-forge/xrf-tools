@@ -1,4 +1,5 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { Alert, Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
@@ -30,6 +31,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { ARCHIVE_EDITOR_PANELS } from "./archive-panels";
 import { ArchivesFilePreview } from "./preview";
+import { ArchiveResolutionDialog } from "./resolution";
 import { ArchiveStatisticsDialog } from "./statistics";
 import { ArchivesMenu } from "./tree";
 
@@ -40,41 +42,40 @@ export function ArchivesEditor(): ReactElement {
   const [closeError, setCloseError] = useState<Nullable<string>>(null);
   const [isCollisionNoticeDismissed, setCollisionNoticeDismissed] = useState<boolean>(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
+  const [isResolutionOpen, setResolutionOpen] = useState<boolean>(false);
   const [isShadowNoticeDismissed, setShadowNoticeDismissed] = useState<boolean>(false);
-
-  const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
-  const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
-
-  const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
-  const shadowedCount: number = getSubjectShadowedCount(subject);
-
-  // A volume set names the volume its name table points into; a world names where the winning copy actually sits.
-  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
-    subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
-    archivesService.selectedDescriptor
-  );
-  const container: Nullable<string> = archivesService.selectedWorldEntry
-    ? describeAssetContainer(archivesService.selectedWorldEntry.container)
-    : null;
-  const source: Nullable<string> = container ?? volume?.path ?? null;
-
-  const root: string = getSubjectRoot(subject);
-  const location: Nullable<IEditorLocation> = source
-    ? { entry: archivesService.selectedEntry?.name, path: source }
-    : root
-      ? { path: root }
-      : null;
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
   // finds it again instead of showing an idle tree over files it is still writing.
   const job: Nullable<IJobState> = archivesService.job;
 
-  // Extraction writes to disk outside the archive. Walking away mid-write left it running against a
-  // screen nobody could see, and the only signal it was happening was one button in the content area.
+  const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
+  const root: string = getSubjectRoot(subject);
+  const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
+  const shadowedCount: number = getSubjectShadowedCount(subject);
+
+  const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
   const isExtracting: boolean = archivesService.operation.isLoading;
   const isBusy: boolean = isClosing || isExtracting;
   const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
   const isShadowNoticeShown: boolean = shadowedCount > 0 && !isShadowNoticeDismissed;
+
+  const container: Nullable<string> = archivesService.selectedWorldEntry
+    ? describeAssetContainer(archivesService.selectedWorldEntry.container)
+    : null;
+  // A volume set names the volume its name table points into; a world names where the winning copy actually sits.
+  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
+    subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
+    archivesService.selectedDescriptor
+  );
+
+  const source: Nullable<string> = container ?? volume?.path ?? null;
+
+  const location: Nullable<IEditorLocation> = source
+    ? { entry: archivesService.selectedEntry?.name, path: source }
+    : root
+      ? { path: root }
+      : null;
 
   const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
 
@@ -121,14 +122,25 @@ export function ArchivesEditor(): ReactElement {
         <EditorToolbar
           subtitle={location ? <EditorToolbarLocation location={location} /> : null}
           actions={
-            <EditorIconAction
-              aria-haspopup={"dialog"}
-              aria-expanded={isStatisticsOpen}
-              label={"Statistics"}
-              description={"What this archive holds, broken down"}
-              icon={<QueryStatsIcon />}
-              onClick={() => setStatisticsOpen(true)}
-            />
+            <>
+              <EditorIconAction
+                aria-haspopup={"dialog"}
+                aria-expanded={isResolutionOpen}
+                label={"Resolution"}
+                description={"Which sources are searched, and in what order"}
+                icon={<LayersIcon />}
+                onClick={() => setResolutionOpen(true)}
+              />
+
+              <EditorIconAction
+                aria-haspopup={"dialog"}
+                aria-expanded={isStatisticsOpen}
+                label={"Statistics"}
+                description={"What this archive holds, broken down"}
+                icon={<QueryStatsIcon />}
+                onClick={() => setStatisticsOpen(true)}
+              />
+            </>
           }
           onBack={() => void onClose()}
         />
@@ -174,6 +186,8 @@ export function ArchivesEditor(): ReactElement {
       }
     >
       <ArchivesFilePreview />
+
+      <ArchiveResolutionDialog isOpen={isResolutionOpen} onClose={() => setResolutionOpen(false)} />
 
       <ArchiveStatisticsDialog isOpen={isStatisticsOpen} onClose={() => setStatisticsOpen(false)} />
     </EditorLayout>
