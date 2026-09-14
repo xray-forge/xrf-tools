@@ -51,6 +51,7 @@ function mockFrame(overrides: Partial<IEquipmentGridFrame> = {}): IEquipmentGrid
   return {
     hoveredCell: null,
     isGridVisible: true,
+    isOccupancyVisible: true,
     layout: toEquipmentLayout(1000, 500, 50, []),
     palette: PALETTE,
     selectedCell: null,
@@ -136,5 +137,34 @@ describe("paintEquipmentGrid", () => {
     expect(context.fillRect).toHaveBeenCalledWith(200, 150, 50, 50);
     // The open cell is outlined as well as shaded, so it stays distinct from the one merely under the pointer.
     expect(context.strokeRect).toHaveBeenCalledWith(200.5, 150.5, 49, 49);
+  });
+
+  it("shades nothing while the occupancy is hidden, so the icons can be looked at", () => {
+    const context: CanvasRenderingContext2D = mockContext();
+
+    paintEquipmentGrid(
+      context,
+      mockFrame({
+        isOccupancyVisible: false,
+        layout: toEquipmentLayout(1000, 500, 50, [mockEquipmentOccupant("wpn_ak74", { x: 2, y: 1, w: 3, h: 2 })]),
+      })
+    );
+
+    expect(context.fillRect).not.toHaveBeenCalled();
+  });
+
+  it("marks the region past the picture even while the occupancy is hidden", () => {
+    const context: CanvasRenderingContext2D = mockContext();
+
+    // Absence of picture rather than an annotation over it, so hiding the shading does not hide this.
+    paintEquipmentGrid(
+      context,
+      mockFrame({
+        isOccupancyVisible: false,
+        layout: toEquipmentLayout(1000, 500, 50, [mockEquipmentOccupant("over_the_edge", { x: 21 })]),
+      })
+    );
+
+    expect(context.fillRect).toHaveBeenCalledWith(1000, 0, 100, 500);
   });
 });

@@ -31,6 +31,7 @@ export function EquipmentSpriteViewer({
   const sprite: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const isGridVisible: boolean = spriteEquipmentService.isGridVisible;
+  const isOccupancyVisible: boolean = spriteEquipmentService.isOccupancyVisible;
 
   const layout: Nullable<IEquipmentLayout> = gridService.layout;
   const hover: IEquipmentGridHover = useEquipmentGridHover(layout);
@@ -47,11 +48,12 @@ export function EquipmentSpriteViewer({
           view={view}
           layout={layout}
           isGridVisible={isGridVisible}
+          isOccupancyVisible={isOccupancyVisible}
           hoveredCell={hover.hoveredCell}
           selectedCell={gridService.selectedCell}
         />
       ) : null,
-    [gridService.selectedCell, hover.hoveredCell, isGridVisible, layout]
+    [gridService.selectedCell, hover.hoveredCell, isGridVisible, isOccupancyVisible, layout]
   );
 
   if (!sprite || !layout) {

@@ -15,6 +15,7 @@ interface IEquipmentGridCanvasProps extends BaseComponentProps {
   view: IImageViewportView;
   layout: IEquipmentLayout;
   isGridVisible: boolean;
+  isOccupancyVisible: boolean;
   hoveredCell: Nullable<TEquipmentCell>;
   selectedCell: Nullable<TEquipmentCell>;
 }
@@ -29,6 +30,7 @@ export function EquipmentGridCanvas({
   view,
   layout,
   isGridVisible,
+  isOccupancyVisible,
   hoveredCell,
   selectedCell,
 }: IEquipmentGridCanvasProps): ReactElement {
@@ -47,13 +49,14 @@ export function EquipmentGridCanvas({
     paintEquipmentGrid(context, {
       hoveredCell,
       isGridVisible,
+      isOccupancyVisible,
       layout,
       palette,
       selectedCell,
       transform: toPanZoomTransform(view.controller.get(), view.content, view.viewport),
       viewport: view.viewport,
     });
-  }, [hoveredCell, isGridVisible, layout, palette, selectedCell, view]);
+  }, [hoveredCell, isGridVisible, isOccupancyVisible, layout, palette, selectedCell, view]);
 
   // Layout rather than passive, so the overlay is painted in the same frame that placed the picture under it and the
   // two never disagree for a frame after a resize or a reopen.

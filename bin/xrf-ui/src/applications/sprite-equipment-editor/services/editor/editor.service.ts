@@ -57,6 +57,12 @@ export class SpriteEquipmentEditorService {
   @Observable()
   public isGridVisible: boolean = true;
 
+  /**
+   * Whether the slots the configuration claims are shaded over the picture.
+   */
+  @Observable()
+  public isOccupancyVisible: boolean = true;
+
   @Observable()
   public gridSize: number = ENGINE_GRID_SQUARE;
 
@@ -140,6 +146,11 @@ export class SpriteEquipmentEditorService {
   @BoundAction()
   public setGridVisibility(isVisible: boolean): void {
     this.isGridVisible = isVisible;
+  }
+
+  @BoundAction()
+  public setOccupancyVisibility(isVisible: boolean): void {
+    this.isOccupancyVisible = isVisible;
   }
 
   /**

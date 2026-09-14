@@ -25,8 +25,10 @@ export interface IEquipmentGridFrame {
   /** Viewport size in css pixels. */
   viewport: IPanZoomSize;
   palette: IEquipmentGridPalette;
-  /** Whether the lattice lines are drawn at all. Occupancy and selection are shown either way. */
+  /** Whether the lattice lines are drawn at all. Selection is shown either way. */
   isGridVisible: boolean;
+  /** Whether the claimed slots are shaded. The region past the picture is marked either way. */
+  isOccupancyVisible: boolean;
   hoveredCell: Nullable<TEquipmentCell>;
   selectedCell: Nullable<TEquipmentCell>;
 }
@@ -70,6 +72,10 @@ function paintOutsideSheet(context: CanvasRenderingContext2D, frame: IEquipmentG
  */
 function paintOccupancy(context: CanvasRenderingContext2D, frame: IEquipmentGridFrame): void {
   const { layout, palette } = frame;
+
+  if (!frame.isOccupancyVisible) {
+    return;
+  }
 
   for (const occupant of layout.occupants) {
     fillRect(context, toOccupantViewportRect(frame, occupant), toClaimFill(palette, occupant));

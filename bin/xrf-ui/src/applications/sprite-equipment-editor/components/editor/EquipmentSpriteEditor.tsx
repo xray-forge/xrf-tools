@@ -22,6 +22,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 import { EquipmentGridOptions } from "./EquipmentGridOptions";
+import { EquipmentOccupancyToggle } from "./EquipmentOccupancyToggle";
 import { EquipmentRepackAction } from "./EquipmentRepackAction";
 import { EquipmentSpriteEditorWorkspace } from "./EquipmentSpriteEditorWorkspace";
 
@@ -86,6 +87,8 @@ export function EquipmentSpriteEditor({
           subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
           actions={
             <>
+              <EquipmentOccupancyToggle />
+
               <EquipmentGridOptions />
 
               <EquipmentRepackAction />
