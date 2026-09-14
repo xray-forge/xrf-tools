@@ -5,6 +5,7 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
+import { TextureSource } from "@/core/ipc/types/xrf-app";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { TextureBadgeFilters } from "@/core/textures/components/tree/TextureBadgeFilters";
 import {
@@ -12,7 +13,9 @@ import {
   ETextureBadge,
   filterTextureNodes,
   ITextureNode,
+  toTextureNodePath,
 } from "@/core/textures/lib/texture-catalog";
+import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
@@ -21,7 +24,7 @@ import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";
@@ -55,7 +58,6 @@ export function TexturesMenu({
 }: StyledComponentProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
-  const openItemId: Nullable<string> = selectionService.reference ? toFileItemId(selectionService.reference) : null;
 
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
@@ -71,17 +73,33 @@ export function TexturesMenu({
   const items: Array<IPathTreeItem<ITextureNode>> = useMemo(
     () =>
       parsePathTree(
-        filtered.map((node: ITextureNode) => ({ path: node.reference, payload: node })),
+        filtered.map((node: ITextureNode) => ({ path: toTextureNodePath(node), payload: node })),
         LOGICAL_PATH_SEPARATOR
       ),
     [filtered]
   );
 
+  // Which row the open texture is, matched by the address the listing opened it with rather than by the name the
+  // backend labelled it with: a loose file is described by the engine reference its own tree implies for it, which is
+  // not what a listing addressed by path calls it.
+  const openItemId: Nullable<string> = useMemo(() => {
+    const source: Optional<TextureSource> = selectionService.selected.value?.source;
+
+    if (!source) {
+      return null;
+    }
+
+    const key: string = getTextureSourceKey(source);
+    const open: Optional<ITextureNode> = nodes.find((node: ITextureNode) => getTextureSourceKey(node.source) === key);
+
+    return open ? toFileItemId(toTextureNodePath(open)) : null;
+  }, [nodes, selectionService.selected.value?.source]);
+
   const onOpenNode = useCallback(
     (node: ITextureNode) => {
       // Selection is written from what was asked for, never derived from what the panels ended up holding: a texture
       // that fails to describe leaves its row selected, beside the failure's own retry.
-      reveal(toFileItemId(node.reference));
+      reveal(toFileItemId(toTextureNodePath(node)));
 
       void catalogService.select(node.source);
     },
@@ -109,11 +127,12 @@ export function TexturesMenu({
       searchLabel={"Filter textures"}
       resultsLabel={"Texture search results"}
       items={filtered}
-      toSearchText={(node: ITextureNode) => node.reference}
+      toSearchText={toTextureNodePath}
       toRow={(node) => {
-        const { name, directory } = splitLogicalPath(node.reference);
+        const path: string = toTextureNodePath(node);
+        const { name, directory } = splitLogicalPath(path);
 
-        return { id: node.reference, label: name, description: directory ?? undefined };
+        return { id: path, label: name, description: directory ?? undefined };
       }}
       onSelect={onOpenNode}
       header={<TextureBadgeFilters counts={counts} selected={badges} onChange={setBadges} />}

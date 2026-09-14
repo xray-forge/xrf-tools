@@ -8,7 +8,7 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
-import { describeTextureCaption } from "@/core/textures/lib/texture-caption";
+import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ITexturePreviewComparison,
@@ -102,7 +102,7 @@ export function TexturePreviewLayout({
         {onDeselect && description ? (
           <EditorFileHeader
             data-testid={"texture-file-header"}
-            name={description.reference}
+            name={describeTextureName(description)}
             caption={describeTextureCaption(description.base)}
             closeLabel={"Close texture"}
             closeDescription={"Clear the selection and close this texture"}

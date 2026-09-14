@@ -10,6 +10,7 @@ import {
 } from "@/applications/textures-explorer/lib/texture-open-mode";
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
+import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
@@ -25,6 +26,7 @@ import {
 } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
+import { Nullable } from "@/lib/types/general";
 
 const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
   (mode: ITextureOpenModeDescriptor) => ({
@@ -42,7 +44,8 @@ interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
 }
 
 /**
- * The way into the explorer: browse a game tree, browse a folder of loose textures, or inspect one texture.
+ * The way into the explorer: browse a gamedata tree or a whole installation, browse a folder of loose textures, or
+ * inspect one texture.
  */
 export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -71,6 +74,13 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       isDisabled: isLoading,
       title: "Select gamedata or textures directory",
     }),
+    [ETextureOpenMode.INSTALLATION]: usePathField({
+      application: EApplicationId.TEXTURES_EXPLORER,
+      id: "installation",
+      isDirectory: true,
+      isDisabled: isLoading,
+      title: "Select game folder",
+    }),
     [ETextureOpenMode.LOOSE_FOLDER]: usePathField({
       application: EApplicationId.TEXTURES_EXPLORER,
       id: "loose-folder",
@@ -91,6 +101,8 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
 
   const mode: ITextureOpenModeDescriptor = getTextureOpenMode(modeId);
   const field: IPathField = fields[modeId];
+
+  const rootFact: Nullable<string> = useRootProbe(mode.isRootProbed && !field.error ? field.value : null);
 
   const onOpen = useCallback(async () => {
     if (!field.value) {
@@ -116,7 +128,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     >
       <ChoiceFormRow
         label={"Open"}
-        description={"A game tree, a folder of loose textures, or one texture on its own"}
+        description={"A gamedata tree, the game as the engine mounts it, a folder of loose textures, or one texture"}
         options={OPEN_MODE_OPTIONS}
         value={modeId}
         isRequired={false}
@@ -124,7 +136,13 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
         onChange={setModeId}
       />
 
-      <PathFormRow label={mode.field.label} description={mode.field.description} isDisabled={isLoading} field={field} />
+      <PathFormRow
+        label={mode.field.label}
+        description={mode.field.description}
+        fact={rootFact}
+        isDisabled={isLoading}
+        field={field}
+      />
 
       <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
     </PickerForm>

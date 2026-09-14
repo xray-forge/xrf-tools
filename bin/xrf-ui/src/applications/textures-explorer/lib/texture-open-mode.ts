@@ -2,10 +2,12 @@ import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Nullable } from "@/lib/types/general";
 
-/** Which of the three things the picker is opening. */
+/** Which of the four things the picker is opening. */
 export enum ETextureOpenMode {
-  /** The game tree, listed by engine reference the way the engine would find it. */
+  /** A gamedata tree, listed by engine reference the way the engine would find it. */
   FOLDER = "folder",
+  /** A game folder, read as the engine mounts it: its archives, and the gamedata tree standing in front of them. */
+  INSTALLATION = "installation",
   /** A plain directory, listed by path, for textures that are in no game tree. */
   LOOSE_FOLDER = "looseFolder",
   /** One texture and the descriptor beside it. */
@@ -32,6 +34,8 @@ export interface ITextureOpenModeDescriptor {
   submitLabel: string;
   /** How the path row beneath the toggle reads. */
   field: { label: string; description: string };
+  /** Whether the path is worth describing back, which only a mode taking a root is. */
+  isRootProbed: boolean;
   /**
    * Start the session this mode means.
    *
@@ -45,25 +49,48 @@ export interface ITextureOpenModeDescriptor {
 }
 
 /**
+ * Browses a root set, which is what both root modes do.
+ *
+ * @param path - Directory to browse.
+ * @param session - What the mode starts its session with.
+ */
+async function openRoots(path: string, session: ITextureOpenSession): Promise<void> {
+  const { assetRoot, catalogService, selectionService } = session;
+
+  selectionService.setAssetRoot(assetRoot);
+
+  await catalogService.openRoot(path, assetRoot);
+}
+
+/**
  * Every way into the explorer, in the order the toggle offers them.
  *
- * A table rather than a branch per surface, because a mode is six facts - its label, its description, its button, its
- * row, and what it does - and they were spelled in eight places that had to agree. What the toggle offers, what the
- * form says, and what the submit runs all read from here, so a fourth way in is a row rather than an audit.
+ * A table rather than a branch per surface, because a mode is a handful of facts - its label, its description, its
+ * button, its row, whether its path is probed, and what it does - and they were spelled in eight places that had to
+ * agree. What the toggle offers, what the form says, and what the submit runs all read from here, so a further way in
+ * is a row rather than an audit.
  */
 export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
   {
     description:
       "Lists every texture under the root, archives included, and reads what each descriptor declares. Files " +
       "outside the textures directory are counted rather than listed. Nothing is written.",
-    field: { description: "Gamedata directory to browse", label: "Textures root" },
+    field: { description: "Gamedata tree, or the textures directory inside one", label: "Gamedata directory" },
     id: ETextureOpenMode.FOLDER,
-    label: "Folder",
-    open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
-      selectionService.setAssetRoot(assetRoot);
-
-      await catalogService.openRoot(path, assetRoot);
-    },
+    isRootProbed: true,
+    label: "Gamedata",
+    open: openRoots,
+    submitLabel: "Browse",
+  },
+  {
+    description:
+      "Lists every texture the game mounts: its archive volumes, and the loose gamedata tree standing in front of " +
+      "them. Files outside the textures directory are counted rather than listed. Nothing is written.",
+    field: { description: "Folder holding fsgame.ltx", label: "Game folder" },
+    id: ETextureOpenMode.INSTALLATION,
+    isRootProbed: true,
+    label: "Installation",
+    open: openRoots,
     submitLabel: "Browse",
   },
   {
@@ -73,7 +100,8 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
       "written.",
     field: { description: "Any directory holding dds files, in a game tree or not", label: "Textures folder" },
     id: ETextureOpenMode.LOOSE_FOLDER,
-    label: "Loose folder",
+    isRootProbed: false,
+    label: "Folder",
     open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
       selectionService.setAssetRoot(assetRoot);
 
@@ -85,6 +113,7 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
     description: "Reads one texture and the descriptor beside it. Nothing is written.",
     field: { description: "Dds texture, or the thm descriptor beside it", label: "Texture file" },
     id: ETextureOpenMode.TEXTURE,
+    isRootProbed: false,
     label: "Texture",
     open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
       await catalogService.close();

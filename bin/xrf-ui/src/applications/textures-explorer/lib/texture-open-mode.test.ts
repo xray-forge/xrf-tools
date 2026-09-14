@@ -35,6 +35,7 @@ describe("TEXTURE_OPEN_MODES", () => {
   it("offers every way in exactly once, in toggle order", () => {
     expect(TEXTURE_OPEN_MODES.map((it: ITextureOpenModeDescriptor) => it.id)).toEqual([
       ETextureOpenMode.FOLDER,
+      ETextureOpenMode.INSTALLATION,
       ETextureOpenMode.LOOSE_FOLDER,
       ETextureOpenMode.TEXTURE,
     ]);
@@ -60,6 +61,24 @@ describe("TEXTURE_OPEN_MODES", () => {
     // The named root joins the listing here, which is what folds a mod tree with the tree behind it.
     expect(session.calls).toEqual(["setAssetRoot", "openRoot"]);
     expect(session.catalogService.openRoot).toHaveBeenCalledWith(PATH, ASSET_ROOT);
+  });
+
+  it("browses an installation the same way, because the mount is what tells the two apart", async () => {
+    const session = mockSession();
+
+    await getTextureOpenMode(ETextureOpenMode.INSTALLATION).open(PATH, session);
+
+    expect(session.calls).toEqual(["setAssetRoot", "openRoot"]);
+    expect(session.catalogService.openRoot).toHaveBeenCalledWith(PATH, ASSET_ROOT);
+  });
+
+  it("offers a probe on the modes taking a root and on no other", () => {
+    // A loose folder is not claimed to be game data, so being told it does not look like any would answer nobody.
+    expect(
+      TEXTURE_OPEN_MODES.filter((it: ITextureOpenModeDescriptor) => it.isRootProbed).map(
+        (it: ITextureOpenModeDescriptor) => it.id
+      )
+    ).toEqual([ETextureOpenMode.FOLDER, ETextureOpenMode.INSTALLATION]);
   });
 
   it("browses a loose folder by its path", async () => {

@@ -170,6 +170,16 @@ export function buildTextureNodes(
 }
 
 /**
+ * Where a node's file actually is, which is what a tree places it under.
+ *
+ * @param node - Node to place.
+ * @returns The logical path of the file behind it.
+ */
+export function toTextureNodePath(node: ITextureNode): string {
+  return node.texture?.logicalPath ?? node.descriptor?.logicalPath ?? node.reference;
+}
+
+/**
  * Narrows nodes to the badges a person asked for.
  *
  * A node matching any selected badge passes, rather than every one: the badges are conditions a texture is in, and

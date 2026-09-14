@@ -1,6 +1,16 @@
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
+
+/**
+ * What an open texture is called above the view showing it: where its file is.
+ *
+ * @param description - The open texture.
+ * @returns The path to head the view with.
+ */
+export function describeTextureName(description: TextureDescription): string {
+  return description.texture?.logicalPath ?? description.material?.descriptor?.logicalPath ?? description.reference;
+}
 
 /**
  * The short note beside an open texture's name: what the file is, in the terms a header has room for.

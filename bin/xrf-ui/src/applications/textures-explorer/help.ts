@@ -3,11 +3,12 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
   summary:
     "Read-only browser for game textures and the `thm` descriptors beside them: what each declares, which bump pair " +
-    "the engine binds for it, and what the files behind that pair actually are. Browse a whole root - archive " +
-    "volumes included - or open one texture. Nothing is ever written.",
+    "the engine binds for it, and what the files behind that pair actually are. Browse a whole game, a gamedata " +
+    "tree, or a folder of loose files - archive volumes included - or open one texture. Nothing is ever written.",
   workflow: [
-    "Pick a mode: `Folder` lists every texture under a root (such as `gamedata`), `Texture` opens one loose `.dds` " +
-      "or the `.thm` beside it.",
+    "Pick a mode: `Gamedata` lists every texture under a gamedata tree, `Installation` lists the game the way the " +
+      "engine mounts it - its archive volumes and the loose tree in front of them - `Folder` lists the `.dds` " +
+      "files of any folder by their own paths, and `Texture` opens one loose `.dds` or the `.thm` beside it.",
     "Narrow the tree with the filter chips above it - `Degraded`, `Unreadable`, `Skipped type` and the rest - or " +
       "type into the filter field to search every name.",
     "Open a texture with a double click in the tree, `Enter`, or the filter. One click only selects, as in every " +
@@ -20,9 +21,10 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "`Bump` off to compare the same body flat.",
   ],
   nuances: [
-    "A texture is named by its engine reference - the path below `textures\\` without the extension - because that " +
-      "is what a mesh declares and what the engine looks a descriptor up by. The `.dds` and the `.thm` of one " +
-      "texture are therefore one row, not two.",
+    "A row is placed where its file is, at the logical path the engine holds it under, so the tree starts at " +
+      "`textures\\` the way every other tree here starts at its own directory. The `.dds` and the `.thm` of one " +
+      "texture are still one row rather than two, because the engine binds both by one reference - the path below " +
+      "`textures\\` without the extension, which is what a mesh declares and what the `Material` panel names.",
     "A declared bump pair is folded under the texture declaring it rather than listed beside it: `wall_bump` and " +
       "`wall_bump#` are packed planes belonging to `wall`, not pictures of their own.",
     "A file named like a bump half that no descriptor declares stays a row of its own and is marked `Unreferenced`. " +
@@ -68,7 +70,8 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
     "A `.dds` layout the backend cannot decode shows no picture; its descriptor and its files are still reported.",
     "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
       "detail associations too, and is not read; a notice names it when the browsed roots hold one.",
-    "`Texture` mode accepts only loose files on disk. A texture inside an archive is reached through `Folder` mode.",
+    "`Texture` mode accepts only loose files on disk. A texture inside an archive is reached by browsing, through " +
+      "`Gamedata` or `Installation` mode.",
     "A single file is opened by its engine reference, which is its path below a `textures` directory. The file " +
       "therefore has to sit under one; a `.dds` on a desktop belongs to no tree and names no texture. A tree holding " +
       "only textures is enough, and whatever `Also search in` names is still searched behind it for the bump pair.",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { TextureCatalog, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
+import { TextureCatalog, TextureDescription, TextureEntry, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -12,6 +12,7 @@ import {
   MOCK_COMPANION,
   MOCK_TEXTURE,
   mockBumpedTextureSummary,
+  mockTextureAsset,
   mockTextureBadges,
   mockTextureCatalog,
   mockTextureDescription,
@@ -24,14 +25,28 @@ import { Nullable } from "@/lib/types/general";
 
 import { TexturesMenu } from "./TexturesMenu";
 
+async function expand(render: RenderResult, directory: string): Promise<void> {
+  fireEvent.dblClick(render.getByText("textures"));
+  fireEvent.dblClick(await render.findByText(directory));
+}
+
+function mockPairCatalog(): TextureCatalog {
+  return mockTextureCatalog([
+    mockTextureEntry(MOCK_TEXTURE),
+    mockTextureEntry(MOCK_BUMP),
+    mockTextureEntry(MOCK_COMPANION),
+  ]);
+}
+
 async function renderMenu(
   catalog: TextureCatalog,
-  summaries: Array<TextureMaterialSummary>
+  summaries: Array<TextureMaterialSummary>,
+  description: TextureDescription = mockTextureDescription()
 ): Promise<{ render: RenderResult; container: Container }> {
   resetMockInvoke();
 
   setMockInvokeResponses({
-    ["plugin:textures|describe"]: mockTextureDescription(),
+    ["plugin:textures|describe"]: description,
     ["plugin:textures|describe_catalog"]: summaries,
     ["plugin:textures|get_roots"]: null,
     ["plugin:textures|open"]: mockSessionResponse(catalog),
@@ -45,30 +60,28 @@ async function renderMenu(
   return { container, render: renderWithProviders(<TexturesMenu />, { container }) };
 }
 
-function mockPairCatalog(): TextureCatalog {
-  return mockTextureCatalog([
-    mockTextureEntry(MOCK_TEXTURE),
-    mockTextureEntry(MOCK_BUMP),
-    mockTextureEntry(MOCK_COMPANION),
-  ]);
-}
-
 describe("TexturesMenu", () => {
-  it("renders the listing as a tree of engine references", async () => {
+  it("renders the listing as a tree of logical paths, top directory included", async () => {
     const { render } = await renderMenu(mockPairCatalog(), [mockBumpedTextureSummary()]);
 
     expect(render.getByRole("heading", { name: "Textures" })).toBeInTheDocument();
-    expect(render.getByText("ston")).toBeInTheDocument();
+
+    // The directory the engine holds these under, which a tree of bare references never named.
+    expect(render.getByText("textures")).toBeInTheDocument();
+
+    fireEvent.dblClick(render.getByText("textures"));
+
+    expect(await render.findByText("ston")).toBeInTheDocument();
   });
 
   it("draws no row for a bump half its texture declares", async () => {
     const { render } = await renderMenu(mockPairCatalog(), [mockBumpedTextureSummary()]);
 
-    fireEvent.dblClick(render.getByText("ston"));
+    await expand(render, "ston");
 
-    expect(await render.findByText("ston_beton05")).toBeInTheDocument();
-    expect(render.queryByText("ston_beton05_bump")).not.toBeInTheDocument();
-    expect(render.queryByText("ston_beton05_bump#")).not.toBeInTheDocument();
+    expect(await render.findByText("ston_beton05.dds")).toBeInTheDocument();
+    expect(render.queryByText("ston_beton05_bump.dds")).not.toBeInTheDocument();
+    expect(render.queryByText("ston_beton05_bump#.dds")).not.toBeInTheDocument();
   });
 
   it("draws a row for a bump half nothing declares", async () => {
@@ -77,9 +90,9 @@ describe("TexturesMenu", () => {
       [mockTextureSummary(MOCK_TEXTURE)]
     );
 
-    fireEvent.dblClick(render.getByText("ston"));
+    await expand(render, "ston");
 
-    expect(await render.findByText("ston_orphan_bump")).toBeInTheDocument();
+    expect(await render.findByText("ston_orphan_bump.dds")).toBeInTheDocument();
   });
 
   // Opening writes the mark; walking the tree afterwards moves only the cursor, so the row a person came back from
@@ -87,9 +100,9 @@ describe("TexturesMenu", () => {
   it("marks the open texture apart from the row the keyboard moved to", async () => {
     const { render, container } = await renderMenu(mockPairCatalog(), [mockBumpedTextureSummary()]);
 
-    fireEvent.dblClick(render.getByText("ston"));
+    await expand(render, "ston");
 
-    const texture: HTMLElement = await render.findByText("ston_beton05");
+    const texture: HTMLElement = await render.findByText("ston_beton05.dds");
 
     fireEvent.dblClick(texture);
 
@@ -109,6 +122,34 @@ describe("TexturesMenu", () => {
     expect(directoryRow).not.toHaveAttribute("aria-current");
   });
 
+  // A loose listing keys its rows by the path below the folder, while the backend describes the file by the engine
+  // reference its own tree implies for it. The two disagree by design, so the mark follows the address the row was
+  // opened with rather than the name that came back.
+  it("marks the open row of a loose listing, whose backend name is not what the row is keyed by", async () => {
+    const path: string = "C:\\loose\\sub\\wall01.dds";
+    const entry: TextureEntry = {
+      descriptor: null,
+      reference: "sub\\wall01",
+      role: "texture",
+      source: { kind: "file", path },
+      texture: mockTextureAsset("sub\\wall01.dds", "C:\\loose"),
+    };
+
+    const { render } = await renderMenu(
+      mockTextureCatalog([entry], { mode: "looseDirectory" }),
+      [],
+      mockTextureDescription(MOCK_TEXTURE, { source: { kind: "file", path } })
+    );
+
+    fireEvent.dblClick(render.getByText("sub"));
+
+    const row: HTMLElement = await render.findByText("wall01.dds");
+
+    fireEvent.dblClick(row);
+
+    await waitFor(() => expect(row.closest("[role=treeitem]")).toHaveAttribute("aria-current", "true"));
+  });
+
   it("counts what each filter would show and narrows the tree to it", async () => {
     const { render } = await renderMenu(
       mockTextureCatalog([mockTextureEntry("ston\\healthy"), mockTextureEntry("ston\\broken")]),
@@ -121,10 +162,10 @@ describe("TexturesMenu", () => {
     const filter: HTMLElement = await render.findByText("Degraded 1");
 
     fireEvent.click(filter);
-    fireEvent.dblClick(render.getByText("ston"));
+    await expand(render, "ston");
 
-    expect(await render.findByText("broken")).toBeInTheDocument();
-    expect(render.queryByText("healthy")).not.toBeInTheDocument();
+    expect(await render.findByText("broken.dds")).toBeInTheDocument();
+    expect(render.queryByText("healthy.dds")).not.toBeInTheDocument();
   });
 
   it("says why the tree is empty when a filter matches nothing", async () => {
@@ -136,6 +177,6 @@ describe("TexturesMenu", () => {
     fireEvent.click(render.getByText("Bumped 1"));
 
     // Unselected again, so the tree is back rather than reporting an empty filter.
-    expect(render.getByText("ston")).toBeInTheDocument();
+    expect(render.getByText("textures")).toBeInTheDocument();
   });
 });
