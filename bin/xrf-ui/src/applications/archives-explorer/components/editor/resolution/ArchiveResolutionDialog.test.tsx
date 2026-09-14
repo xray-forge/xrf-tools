@@ -11,7 +11,6 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-/** Awaited, so the restore flow has settled and the editor's own toolbar exists before anything looks for it. */
 async function renderExplorer() {
   return act(async () =>
     renderWithProviders(
@@ -56,8 +55,8 @@ describe("archive resolution dialog", () => {
       expect.stringContaining("$arch_dir$"),
     ]);
 
-    expect(getAllByTestId("archive-resolution-source-row")[0]?.textContent).toContain("Loose files");
-    expect(getAllByTestId("archive-resolution-source-row")[1]?.textContent).toContain("Archive volumes");
+    expect(getAllByTestId("archive-resolution-source-row")[0]?.textContent).toContain("Files");
+    expect(getAllByTestId("archive-resolution-source-row")[1]?.textContent).toContain("Archives");
   });
 
   it("lists the volumes of a set in the order a lookup reaches them", async () => {
