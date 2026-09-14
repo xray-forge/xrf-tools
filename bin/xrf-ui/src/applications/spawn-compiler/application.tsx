@@ -1,6 +1,6 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 
-import { LEVEL_DECOMPILER_HELP } from "@/applications/level-decompiler/help";
+import { SPAWN_COMPILER_HELP } from "@/applications/spawn-compiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -9,15 +9,15 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 
-export const LEVEL_DECOMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
+export const SPAWN_COMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Reconstruct editable scenes from compiled game levels",
-    group: EApplicationGroupId.LEVEL,
-    help: LEVEL_DECOMPILER_HELP,
+    description: "Build game spawn data from level sources and graphs",
+    group: EApplicationGroupId.SPAWNS,
+    help: SPAWN_COMPILER_HELP,
     icon: <AccountTreeIcon />,
-    id: EApplicationId.LEVEL_DECOMPILER,
-    label: "Level decompiler",
-    path: "/level-decompiler",
+    id: EApplicationId.SPAWN_COMPILER,
+    label: "Spawn compiler",
+    path: "/spawn-compiler",
     status: EApplicationStatus.PLANNED,
   },
   {

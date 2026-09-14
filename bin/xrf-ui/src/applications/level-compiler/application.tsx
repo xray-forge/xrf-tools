@@ -1,5 +1,6 @@
 import { default as BuildIcon } from "@mui/icons-material/Build";
 
+import { LEVEL_COMPILER_HELP } from "@/applications/level-compiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -12,6 +13,7 @@ export const LEVEL_COMPILER_APPLICATION: IApplicationDescriptor = createApplicat
   {
     description: "Compile editable level scenes into game-ready locations",
     group: EApplicationGroupId.LEVEL,
+    help: LEVEL_COMPILER_HELP,
     icon: <BuildIcon />,
     id: EApplicationId.LEVEL_COMPILER,
     label: "Level compiler",

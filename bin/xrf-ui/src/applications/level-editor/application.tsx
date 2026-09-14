@@ -1,5 +1,6 @@
 import { default as EditLocationAltIcon } from "@mui/icons-material/EditLocationAlt";
 
+import { LEVEL_EDITOR_HELP } from "@/applications/level-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -12,6 +13,7 @@ export const LEVEL_EDITOR_APPLICATION: IApplicationDescriptor = createApplicatio
   {
     description: "Edit level geometry and scene objects",
     group: EApplicationGroupId.LEVEL,
+    help: LEVEL_EDITOR_HELP,
     icon: <EditLocationAltIcon />,
     id: EApplicationId.LEVEL_EDITOR,
     label: "Level editor",
