@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { listItemButtonClasses } from "@mui/material";
 import { userEvent } from "@testing-library/user-event";
 
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
@@ -39,8 +40,8 @@ describe("EditorSideMenu", () => {
       <EditorSideMenu sections={[{ label: "Header", isSelected: true }, { label: "Alife" }]} />
     );
 
-    expect(getByText("Header").closest("[role='button']")).toHaveClass("Mui-selected");
-    expect(getByText("Alife").closest("[role='button']")).not.toHaveClass("Mui-selected");
+    expect(getByText("Header").closest("[role='button']")).toHaveClass(listItemButtonClasses.selected);
+    expect(getByText("Alife").closest("[role='button']")).not.toHaveClass(listItemButtonClasses.selected);
   });
 
   it("makes a disabled action unclickable rather than merely ignoring the click", () => {
@@ -52,7 +53,7 @@ describe("EditorSideMenu", () => {
 
     // Asserted rather than clicked on purpose: the element carries `pointer-events: none`, so
     // `userEvent` refuses to click it at all - which is the behaviour being checked.
-    expect(action).toHaveClass("Mui-disabled");
+    expect(action).toHaveClass(listItemButtonClasses.disabled);
     expect(action).toHaveAttribute("aria-disabled", "true");
   });
 

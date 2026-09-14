@@ -1,4 +1,4 @@
-import { Box, IconButton, Tooltip } from "@mui/material";
+import { Box, IconButton, svgIconClasses, Tooltip } from "@mui/material";
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
 import { mergeSx } from "@/core/theme/merge-sx";
@@ -51,7 +51,7 @@ export function EditorIconAction({
               width: CONTROL.editorActionSize,
               height: CONTROL.editorActionSize,
               padding: 0,
-              "& .MuiSvgIcon-root": { fontSize: CONTROL.editorActionIconSize },
+              [`& .${svgIconClasses.root}`]: { fontSize: CONTROL.editorActionIconSize },
             },
             sx
           )}

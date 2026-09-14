@@ -1,4 +1,4 @@
-import { Box, Card, CardActionArea, Theme, Typography } from "@mui/material";
+import { Box, Card, CardActionArea, cardActionAreaClasses, svgIconClasses, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
@@ -36,7 +36,7 @@ export function ApplicationLauncherCard({
         sx={{
           display: "block",
           height: "100%",
-          "&.Mui-focusVisible": {
+          [`&.${cardActionAreaClasses.focusVisible}`]: {
             outline: "2px solid",
             outlineColor: "primary.main",
             outlineOffset: -2,
@@ -62,7 +62,7 @@ export function ApplicationLauncherCard({
                 display: "flex",
                 flexShrink: 0,
                 color: group.accent.light,
-                "& .MuiSvgIcon-root": { fontSize: 18 },
+                [`& .${svgIconClasses.root}`]: { fontSize: 18 },
                 ...theme.applyStyles("dark", { color: group.accent.dark }),
               })}
             >

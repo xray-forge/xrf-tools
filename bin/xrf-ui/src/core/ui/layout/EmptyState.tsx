@@ -1,5 +1,5 @@
 import { default as DescriptionOutlinedIcon } from "@mui/icons-material/DescriptionOutlined";
-import { Box, Typography } from "@mui/material";
+import { Box, svgIconClasses, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { CONTENT_STATE } from "@/core/theme/tokens";
@@ -34,7 +34,10 @@ export function EmptyState({
       className={className}
       sx={{ padding: CONTENT_STATE.padding, gap: CONTENT_STATE.gap, minWidth: 0, textAlign: "center" }}
     >
-      <Box aria-hidden={true} sx={{ display: "flex", "& .MuiSvgIcon-root": { fontSize: CONTENT_STATE.iconSize } }}>
+      <Box
+        aria-hidden={true}
+        sx={{ display: "flex", [`& .${svgIconClasses.root}`]: { fontSize: CONTENT_STATE.iconSize } }}
+      >
         {icon ?? <DescriptionOutlinedIcon sx={{ color: "text.secondary", opacity: 0.55 }} />}
       </Box>
 

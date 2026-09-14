@@ -1,7 +1,7 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as HistoryIcon } from "@mui/icons-material/History";
-import { Box, IconButton, TextField, Tooltip } from "@mui/material";
+import { Box, IconButton, inputBaseClasses, TextField, Tooltip } from "@mui/material";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { MONOSPACE } from "@/core/theme/tokens";
@@ -68,7 +68,7 @@ export function FilePickerInput({
       disabled={isDisabled}
       error={isInvalid}
       value={value ?? ""}
-      sx={{ "& .MuiInputBase-input": MONOSPACE }}
+      sx={{ [`& .${inputBaseClasses.input}`]: MONOSPACE }}
       slotProps={{
         htmlInput: {
           "aria-describedby": describedBy,

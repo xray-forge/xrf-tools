@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { listItemButtonClasses } from "@mui/material";
 import { fireEvent } from "@testing-library/react";
 
 import { TranslationFile } from "@/core/ipc/types/xrf-translation";
@@ -27,8 +28,8 @@ describe("TranslationsFilesMenu", () => {
     fireEvent.change(input, { target: { value: "file" } });
     fireEvent.keyDown(input, { key: "ArrowDown" });
 
-    expect(view.getByText("file_beta.xml").closest("[role='button']")).toHaveClass("Mui-selected");
-    expect(view.getByText("file_alpha.xml").closest("[role='button']")).not.toHaveClass("Mui-selected");
+    expect(view.getByText("file_beta.xml").closest("[role='button']")).toHaveClass(listItemButtonClasses.selected);
+    expect(view.getByText("file_alpha.xml").closest("[role='button']")).not.toHaveClass(listItemButtonClasses.selected);
     expect(view.getByLabelText("Unsaved changes")).toBeInTheDocument();
     expect(view.getByText("2 entries")).toBeInTheDocument();
 
@@ -38,6 +39,6 @@ describe("TranslationsFilesMenu", () => {
 
     fireEvent.change(input, { target: { value: "" } });
 
-    expect(view.getByText("file_alpha.xml").closest("[role='button']")).toHaveClass("Mui-selected");
+    expect(view.getByText("file_alpha.xml").closest("[role='button']")).toHaveClass(listItemButtonClasses.selected);
   });
 });

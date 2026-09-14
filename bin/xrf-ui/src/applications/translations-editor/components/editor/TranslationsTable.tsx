@@ -40,7 +40,9 @@ function renderValue(value: Nullable<string>): ReactElement {
   );
 }
 
-// todo: Splite the file.
+const EDITED_ROW_CLASS: string = "xrf-translation-row-edited";
+
+// todo: Split the file.
 export function TranslationsTable({
   rows,
   targetLanguage,
@@ -123,11 +125,9 @@ export function TranslationsTable({
         sx={{
           flexGrow: 1,
           minHeight: 0,
-          "& .MuiDataGrid-row--edited": { backgroundColor: "action.hover" },
+          [`& .${EDITED_ROW_CLASS}`]: { backgroundColor: "action.hover" },
         }}
-        getRowClassName={(params: GridRowParams<ITranslationRow>) =>
-          params.row.isEdited ? "MuiDataGrid-row--edited" : ""
-        }
+        getRowClassName={(params: GridRowParams<ITranslationRow>) => (params.row.isEdited ? EDITED_ROW_CLASS : "")}
         processRowUpdate={(updated: ITranslationRow, original: ITranslationRow) => {
           if (updated.target !== original.target) {
             onCommit(updated.id, updated.target ?? "");

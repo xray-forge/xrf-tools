@@ -1,4 +1,4 @@
-import { Box, Theme, Typography } from "@mui/material";
+import { Box, svgIconClasses, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IApplicationGroup } from "@/core/routing/application";
@@ -31,7 +31,7 @@ export function ApplicationLauncherGroupHeading({
         sx={(theme: Theme) => ({
           display: "flex",
           color: group.accent.light,
-          "& .MuiSvgIcon-root": { fontSize: 16 },
+          [`& .${svgIconClasses.root}`]: { fontSize: 16 },
           ...theme.applyStyles("dark", { color: group.accent.dark }),
         })}
       >

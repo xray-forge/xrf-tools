@@ -1,4 +1,4 @@
-import { Theme } from "@mui/material";
+import { iconButtonClasses, svgIconClasses, Theme } from "@mui/material";
 import { SystemStyleObject } from "@mui/system";
 
 import { getControlBackgroundSx } from "@/core/theme/control-background";
@@ -12,7 +12,7 @@ export function getRailButtonSx(theme: Theme): SystemStyleObject<Theme> {
     height: LAYOUT.railButtonSize,
     padding: 0,
     borderRadius: 1,
-    "& .MuiSvgIcon-root": { fontSize: LAYOUT.railButtonIconSize },
-    "&:not(:hover), &.Mui-disabled": { backgroundImage: "none" },
+    [`& .${svgIconClasses.root}`]: { fontSize: LAYOUT.railButtonIconSize },
+    [`&:not(:hover), &.${iconButtonClasses.disabled}`]: { backgroundImage: "none" },
   };
 }

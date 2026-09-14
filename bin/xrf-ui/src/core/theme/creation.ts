@@ -1,3 +1,4 @@
+import { cardActionAreaClasses, inputBaseClasses, outlinedInputClasses } from "@mui/material";
 import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 // Type-only, side-effect import: it pulls in `@mui/x-data-grid`'s module augmentation,
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
@@ -174,7 +175,7 @@ export function createApplicationTheme(): Theme {
               "--xrf-card-shadow": "24%",
             }),
             transition: "background-color 140ms ease, border-color 140ms ease",
-            "&:has(> .MuiCardActionArea-root):hover": {
+            [`&:has(> .${cardActionAreaClasses.root}):hover`]: {
               "--xrf-card-opacity": "var(--xrf-card-hover-opacity)",
               borderColor: (theme.vars ?? theme).palette.primary.main,
             },
@@ -219,11 +220,11 @@ export function createApplicationTheme(): Theme {
           root: ({ theme }) => ({
             borderRadius: RADIUS.sm,
             backgroundColor: (theme.vars ?? theme).palette.action.hover,
-            "& .MuiOutlinedInput-notchedOutline": {
+            [`& .${outlinedInputClasses.notchedOutline}`]: {
               borderColor: (theme.vars ?? theme).palette.divider,
             },
             // One height for every small control, whatever type it renders.
-            "&.MuiInputBase-sizeSmall:not(.MuiInputBase-multiline) .MuiOutlinedInput-input": {
+            [`&.${inputBaseClasses.sizeSmall}:not(.${inputBaseClasses.multiline}) .${outlinedInputClasses.input}`]: {
               height: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
               minHeight: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
             },

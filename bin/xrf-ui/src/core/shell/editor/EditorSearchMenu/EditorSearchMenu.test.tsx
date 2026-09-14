@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { listItemButtonClasses } from "@mui/material";
 import { fireEvent } from "@testing-library/react";
 import { ReactElement } from "react";
 
@@ -48,7 +49,7 @@ describe("EditorSearchMenu", () => {
     fireEvent.change(input, { target: { value: "file" } });
     fireEvent.keyDown(input, { key: "ArrowDown" });
 
-    expect(view.getByRole("button", { name: "file beta second source" })).toHaveClass("Mui-selected");
+    expect(view.getByRole("button", { name: "file beta second source" })).toHaveClass(listItemButtonClasses.selected);
     expect(view.queryByText("Default tree")).not.toBeInTheDocument();
 
     fireEvent.keyDown(input, { key: "Enter" });
@@ -117,11 +118,11 @@ describe("EditorSearchMenu", () => {
     fireEvent.keyDown(input, { key: "ArrowDown" });
     view.rerender(<>{renderMenu([ITEMS[0], ITEMS[1]])}</>);
 
-    expect(view.getByRole("button", { name: "file beta" })).toHaveClass("Mui-selected");
+    expect(view.getByRole("button", { name: "file beta" })).toHaveClass(listItemButtonClasses.selected);
 
     fireEvent.keyDown(input, { key: "ArrowUp" });
 
-    expect(view.getByRole("button", { name: "file alpha" })).toHaveClass("Mui-selected");
+    expect(view.getByRole("button", { name: "file alpha" })).toHaveClass(listItemButtonClasses.selected);
 
     fireEvent.keyDown(input, { key: "Enter" });
 
@@ -139,7 +140,7 @@ describe("EditorSearchMenu", () => {
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(view.getByRole("button", { name: "file beta" })).toHaveClass("Mui-selected");
+    expect(view.getByRole("button", { name: "file beta" })).toHaveClass(listItemButtonClasses.selected);
     expect(onSelect).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { value: "gamma" } });

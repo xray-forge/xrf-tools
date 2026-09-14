@@ -1,4 +1,4 @@
-import { Box, Button, Tooltip } from "@mui/material";
+import { Box, Button, buttonClasses, Tooltip } from "@mui/material";
 import { MouseEventHandler, ReactElement, ReactNode } from "react";
 
 import { mergeSx } from "@/core/theme/merge-sx";
@@ -45,7 +45,7 @@ export function EditorTextAction({
               px: 1,
               fontSize: CONTROL.editorActionFontSize,
               lineHeight: 1,
-              "& .MuiButton-startIcon": { mr: 0.5 },
+              [`& .${buttonClasses.startIcon}`]: { mr: 0.5 },
             },
             sx
           )}

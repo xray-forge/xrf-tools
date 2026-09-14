@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { popoverClasses } from "@mui/material";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
@@ -176,7 +177,7 @@ describe("VisualPreviewToolbar detail control", () => {
     fireEvent.click(render.getByRole("button", { name: "Mesh detail" }));
 
     const slider: Nullable<HTMLInputElement> = await waitFor(() =>
-      document.querySelector<HTMLInputElement>('.MuiPopover-root input[type="range"]')
+      document.querySelector<HTMLInputElement>(`.${popoverClasses.root} input[type="range"]`)
     );
 
     expect(slider).not.toBeNull();
@@ -194,7 +195,7 @@ describe("VisualPreviewToolbar detail control", () => {
     fireEvent.click(render.getByRole("button", { name: "Mesh detail" }));
 
     const slider: Nullable<HTMLInputElement> = await waitFor(() =>
-      document.querySelector<HTMLInputElement>('.MuiPopover-root input[type="range"]')
+      document.querySelector<HTMLInputElement>(`.${popoverClasses.root} input[type="range"]`)
     );
 
     // Coarsest stored detail is zero quality, so the handle sits at the left.

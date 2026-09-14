@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { GridRowId } from "@mui/x-data-grid";
+import { gridClasses, GridRowId } from "@mui/x-data-grid";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
@@ -137,6 +137,6 @@ describe("DataTable", () => {
   it("renders a grid once there is something in it", () => {
     const { container } = renderTable();
 
-    expect(container.querySelector(".MuiDataGrid-root")).toBeInTheDocument();
+    expect(container.querySelector(`.${gridClasses.root}`)).toBeInTheDocument();
   });
 });

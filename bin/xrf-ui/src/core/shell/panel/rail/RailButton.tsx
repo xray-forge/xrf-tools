@@ -1,4 +1,4 @@
-import { IconButton, Tooltip, useTheme } from "@mui/material";
+import { IconButton, svgIconClasses, Tooltip, useTheme } from "@mui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { getRailButtonSx } from "./RailButton.styles";
@@ -39,7 +39,7 @@ export function RailButton({
           sx={[
             getRailButtonSx,
             {
-              "& .MuiSvgIcon-root": { fill: "inherit" },
+              [`& .${svgIconClasses.root}`]: { fill: "inherit" },
               color: isGradient ? (isSelected ? "primary.main" : "text.secondary") : `${appearance}.main`,
               backgroundColor: isSelected ? "action.selected" : "transparent",
               ...(isGradient ? {} : { backgroundImage: "none" }),

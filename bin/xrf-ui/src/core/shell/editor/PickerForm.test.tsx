@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { paperClasses } from "@mui/material";
 import { fireEvent } from "@testing-library/react";
 import { ReactElement } from "react";
 
@@ -6,6 +7,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Nullable } from "@/lib/types/general";
 
 describe("PickerForm", () => {
   it("carries the standard toolbar so the frame does not change between a form and a workspace", () => {
@@ -66,7 +68,7 @@ describe("PickerForm", () => {
 
     // Both buttons belong to the one panel, rather than the form floating at the top of a window whose
     // bottom edge holds the buttons.
-    const panel: HTMLElement | null = getByText("Open").closest(".MuiPaper-root");
+    const panel: Nullable<HTMLElement> = getByText("Open").closest(`.${paperClasses.root}`);
 
     expect(panel).toContainElement(getByText("Open file"));
     expect(panel).toContainElement(getByText("Back"));

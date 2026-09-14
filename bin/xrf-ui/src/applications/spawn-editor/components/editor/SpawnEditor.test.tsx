@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { listItemButtonClasses } from "@mui/material";
 import { act, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
@@ -171,7 +172,7 @@ describe("SpawnEditor", () => {
 
     const header: HTMLElement = await findByText("Header");
 
-    expect(header.closest("[role='button']")).toHaveClass("Mui-selected");
+    expect(header.closest("[role='button']")).toHaveClass(listItemButtonClasses.selected);
   });
 
   it("keeps the chunk section selected while a sub-table of it is showing", async () => {
@@ -181,7 +182,7 @@ describe("SpawnEditor", () => {
 
     // Selection used to be decided by the end of the path, so entering a sub-table deselected the
     // section it belongs to.
-    expect(graph.closest("[role='button']")).toHaveClass("Mui-selected");
+    expect(graph.closest("[role='button']")).toHaveClass(listItemButtonClasses.selected);
   });
 
   it("takes the visible sub-table from the route, so it can be linked to", async () => {

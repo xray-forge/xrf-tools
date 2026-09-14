@@ -1,4 +1,4 @@
-import { Box, ListItem, ListItemButton, Theme, Typography } from "@mui/material";
+import { Box, ListItem, ListItemButton, svgIconClasses, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
@@ -55,7 +55,7 @@ export function ApplicationLauncherRow({
             display: "flex",
             flexShrink: 0,
             color: group.accent.light,
-            "& .MuiSvgIcon-root": { fontSize: TREE.iconSize },
+            [`& .${svgIconClasses.root}`]: { fontSize: TREE.iconSize },
             ...theme.applyStyles("dark", { color: group.accent.dark }),
           })}
         >

@@ -1,4 +1,4 @@
-import { Slider } from "@mui/material";
+import { Slider, sliderClasses } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { mergeSx } from "@/core/theme/merge-sx";
@@ -7,7 +7,9 @@ import { StyledComponentProps } from "@/lib/dom/element-types";
 /**
  * Kills the easing MUI gives a slider's thumb and track.
  */
-const PLAYHEAD_TRANSITION = { "& .MuiSlider-thumb, & .MuiSlider-track": { transition: "none" } } as const;
+const PLAYHEAD_TRANSITION = {
+  [`& .${sliderClasses.thumb}, & .${sliderClasses.track}`]: { transition: "none" },
+} as const;
 
 interface IMotionFrameSliderProps extends StyledComponentProps {
   /** Frames the posed motion holds. Zero disables the control, because there is no frame to be on. */

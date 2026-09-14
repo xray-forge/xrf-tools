@@ -1,5 +1,5 @@
 import { default as NotificationsIcon } from "@mui/icons-material/Notifications";
-import { Badge } from "@mui/material";
+import { Badge, badgeClasses } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -35,7 +35,7 @@ export function NotificationsPanelIcon(): ReactElement {
         height: LAYOUT.railButtonSize,
         alignItems: "center",
         justifyContent: "center",
-        "& .MuiBadge-badge": {
+        [`& .${badgeClasses.badge}`]: {
           top: 0,
           right: 0,
           transform: "scale(1)",
@@ -45,7 +45,7 @@ export function NotificationsPanelIcon(): ReactElement {
           maxWidth: LAYOUT.railButtonSize,
           padding: `0 ${LAYOUT.railBadgePaddingX}px`,
           fontSize: LAYOUT.railBadgeFontSize,
-          "&.MuiBadge-invisible": { transform: "scale(0)" },
+          [`&.${badgeClasses.invisible}`]: { transform: "scale(0)" },
         },
       }}
     >

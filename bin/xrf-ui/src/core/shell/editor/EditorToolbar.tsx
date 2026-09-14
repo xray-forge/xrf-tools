@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, iconButtonClasses, svgIconClasses } from "@mui/material";
 import { ReactElement, ReactNode, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -104,12 +104,12 @@ export function EditorToolbar({
               display: "flex",
               alignItems: "center",
               flexShrink: 0,
-              "& .MuiIconButton-root": {
+              [`& .${iconButtonClasses.root}`]: {
                 width: CONTROL.editorActionSize,
                 height: CONTROL.editorActionSize,
                 padding: 0,
               },
-              "& .MuiSvgIcon-root": { fontSize: CONTROL.editorActionIconSize },
+              [`& .${svgIconClasses.root}`]: { fontSize: CONTROL.editorActionIconSize },
             }}
           >
             {actions}

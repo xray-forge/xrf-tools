@@ -1,5 +1,5 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { Box } from "@mui/material";
+import { Box, circularProgressClasses, typographyClasses } from "@mui/material";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 import { Texture } from "three";
 
@@ -204,8 +204,8 @@ export function VisualPreviewLayout({
                 justifyContent: "center",
                 pointerEvents: "none",
                 // The viewport stays dark in both application themes.
-                "& .MuiTypography-root": { color: TEXT.secondary.dark },
-                "& .MuiCircularProgress-root": { color: ACCENT.primary.main.dark },
+                [`& .${typographyClasses.root}`]: { color: TEXT.secondary.dark },
+                [`& .${circularProgressClasses.root}`]: { color: ACCENT.primary.main.dark },
               }}
             >
               <DelayedProgress label={"Loading visual…"} />
