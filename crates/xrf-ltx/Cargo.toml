@@ -12,6 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 fxhash = "0.2.1"
 indexmap = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }

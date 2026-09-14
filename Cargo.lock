@@ -7083,6 +7083,7 @@ dependencies = [
  "criterion",
  "fxhash",
  "indexmap 2.14.2",
+ "rayon",
  "serde",
  "specta",
  "xrf-error",

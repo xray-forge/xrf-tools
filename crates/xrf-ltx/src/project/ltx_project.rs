@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
@@ -107,36 +108,69 @@ impl LtxProject {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let source: LtxVfsSource = LtxVfsSource::new_counted(&vfs, &scope, &counters);
 
-    let mut ltx_files: Vec<XrayLogicalPath> = Vec::new();
-    let mut ltx_scheme_files: Vec<XrayLogicalPath> = Vec::new();
-    let mut included: Vec<XrayLogicalPath> = Vec::new();
-    let mut unreadable: Vec<XrayLogicalPath> = Vec::new();
+    let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&vfs, &scope)?;
 
-    for path in Self::collect_logical_paths(&vfs, &scope)? {
-      let directory: PathBuf = path
-        .parent()
-        .map(|parent| PathBuf::from(parent.as_str()))
-        .unwrap_or_default();
+    // A name test over the listing, which needs no reading at all and therefore no place in the walk below.
+    let ltx_scheme_files: Vec<XrayLogicalPath> = if options.is_with_schemes_check {
+      ltx_files
+        .iter()
+        .filter(|path| Self::is_ltx_scheme_path(path))
+        .cloned()
+        .collect()
+    } else {
+      Vec::new()
+    };
 
-      match source.read_included(path.as_str()) {
-        Ok(includes) => {
-          for include in &includes {
-            for resolved in source.resolve(&directory, include)? {
-              included.push(Self::included_path(&resolved)?);
-            }
+    // In parallel, because this reads and parses every config in the tree to learn what it includes, and on an Anomaly
+    // installation that is 3,129 files and the larger half of what opening a project costs. Each file is read on its
+    // own and decides nothing about any other; the retained-document cache folds two threads missing one path into a
+    // single load, so a config two others include is still read once.
+    let (included, unreadable): (Vec<XrayLogicalPath>, Vec<XrayLogicalPath>) = ltx_files
+      .par_iter()
+      .map(|path| {
+        let directory: PathBuf = path
+          .parent()
+          .map(|parent| PathBuf::from(parent.as_str()))
+          .unwrap_or_default();
+
+        match source.read_included(path.as_str()) {
+          Ok(includes) => includes
+            .iter()
+            .map(|include| source.resolve(&directory, include))
+            .collect::<XrfResult<Vec<Vec<PathBuf>>>>()
+            .and_then(|resolved| {
+              resolved
+                .iter()
+                .flatten()
+                .map(|reached| Self::included_path(reached))
+                .collect::<XrfResult<Vec<XrayLogicalPath>>>()
+            })
+            .map_err(|_| path),
+          // Unreadable is not a failure of the walk: such a config becomes an entry point whatever else says, because
+          // its own include list is unknown and the verifier has to reach it to report why.
+          Err(_) => Err(path),
+        }
+      })
+      .fold(
+        || (Vec::new(), Vec::new()),
+        |(mut included, mut unreadable), reached| {
+          match reached {
+            Ok(reached) => included.extend(reached),
+            Err(path) => unreadable.push(path.clone()),
           }
-        }
-        Err(_) => {
-          unreadable.push(path.clone());
-        }
-      }
 
-      if options.is_with_schemes_check && Self::is_ltx_scheme_path(&path) {
-        ltx_scheme_files.push(path.clone());
-      }
+          (included, unreadable)
+        },
+      )
+      .reduce(
+        || (Vec::new(), Vec::new()),
+        |(mut included, mut unreadable), (reached, unread)| {
+          included.extend(reached);
+          unreadable.extend(unread);
 
-      ltx_files.push(path);
-    }
+          (included, unreadable)
+        },
+      );
 
     // Files that patch another config rather than standing alone. Under standard LTX there are none; under DLTX a
     // `mod_system_a.ltx` belongs to `system.ltx`, and verifying it on its own would report every override in it as
