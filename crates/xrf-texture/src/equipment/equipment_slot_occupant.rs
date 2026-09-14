@@ -12,7 +12,7 @@ pub struct EquipmentSlotOccupant {
   pub claim: EquipmentSlotClaim,
   /// Where the section reads its icon from, when it overrides the default of `<section>.dds` beside the source.
   pub custom_icon: Option<String>,
-  /// Engine identity of the config whose header declared the section, where the reader knew one.
+  /// Engine identity of the config whose header declared the section, where the resolution stamped one.
   pub origin: Option<String>,
   pub x: u32,
   pub y: u32,
@@ -52,24 +52,11 @@ impl EquipmentSlotOccupant {
       section: section_name.into(),
       claim,
       custom_icon: section.get(LTX_FIELD_INVENTORY_ICON_PATH).map(Into::into),
-      origin: None,
+      origin: section.get_origin().map(Into::into),
       x: rect.x,
       y: rect.y,
       w: rect.w,
       h: rect.h,
     })
-  }
-
-  /// Records which config declared this section's header.
-  ///
-  /// Separate from reading the section because only a resolution knows it; a reader over a flat config has nobody to
-  /// ask, and `None` means exactly that rather than a file with no name.
-  pub fn with_origin<T>(mut self, origin: Option<T>) -> Self
-  where
-    T: Into<String>,
-  {
-    self.origin = origin.map(Into::into);
-
-    self
   }
 }

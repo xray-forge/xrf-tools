@@ -1,4 +1,8 @@
-use xrf_ltx::Ltx;
+use xrf_error::XrfResult;
+use xrf_ltx::{Ltx, LtxStandardDialect};
+use xrf_test_utils::utils::{
+  build_absolute_generated_test_resource_path, build_relative_test_sample_file_path, write_generated_test_resource,
+};
 
 use crate::equipment::{EquipmentSlotClaim, EquipmentSlotOccupant};
 
@@ -162,13 +166,37 @@ fn skips_sections_that_occupy_nothing() {
 }
 
 #[test]
-fn records_the_config_that_declared_a_section() {
-  let occupant: EquipmentSlotOccupant = occupant_for(
-    "[wpn_ak74]\ninv_grid_x = 0\ninv_grid_y = 0\ninv_grid_width = 1\ninv_grid_height = 1\n",
-    "wpn_ak74",
-  )
-  .expect("expect the section to be read")
-  .with_origin(Some("items\\weapons\\w_ak74.ltx"));
+fn records_the_config_a_section_was_declared_in() -> XrfResult {
+  // Read through a dialect rather than from a string or through `read_from_file_standard`: the origin is stamped as
+  // the dialect resolves each document, and neither of the other two doors goes through one. This is the door the
+  // sprite plugin uses.
+  let path: String = build_relative_test_sample_file_path(file!(), "declaring_config.ltx");
 
-  assert_eq!(occupant.origin.as_deref(), Some("items\\weapons\\w_ak74.ltx"));
+  write_generated_test_resource(
+    &path,
+    b"[wpn_ak74]
+inv_grid_x = 0
+inv_grid_y = 0
+inv_grid_width = 1
+inv_grid_height = 1
+",
+  )?;
+
+  let ltx: Ltx =
+    Ltx::read_from_file_with_dialect(build_absolute_generated_test_resource_path(&path), &LtxStandardDialect)?;
+  let occupants: Vec<EquipmentSlotOccupant> = EquipmentSlotOccupant::new_list_from_ltx(&ltx);
+
+  assert_eq!(occupants.len(), 1);
+  // The dialect stamps whatever it resolved the document by, which for a bare file is its path and for a mounted
+  // root is the logical path inside it. Both name the declaring config; only the spelling differs.
+  assert!(
+    occupants[0]
+      .origin
+      .as_deref()
+      .is_some_and(|origin| origin.ends_with("declaring_config.ltx")),
+    "Expect the occupant to name the config its section was declared in, got {:?}",
+    occupants[0].origin
+  );
+
+  Ok(())
 }

@@ -25,19 +25,27 @@ export function EquipmentGridDetails({
   const items: ReadonlyArray<EquipmentSlotOccupant> = layout.at(cell);
 
   const list = items.map((it: EquipmentSlotOccupant) => (
-    <Box key={it.section} sx={{ display: "flex", alignItems: "center", gap: 0.5, marginTop: "4px" }}>
-      <Typography variant={"body2"} sx={{ wordBreak: "break-all" }}>
-        {it.section}
-      </Typography>
+    <Box key={it.section} sx={{ display: "flex", flexDirection: "column", marginTop: "6px" }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <Typography variant={"body2"} sx={{ wordBreak: "break-all" }}>
+          {it.section}
+        </Typography>
 
-      {it.claim === EEquipmentSlotClaim.DECLARED ? (
-        <Chip
-          size={"small"}
-          variant={"outlined"}
-          color={"primary"}
-          label={"icon"}
-          title={"Declares $inventory_icon, so the packing tools act on it"}
-        />
+        {it.claim === EEquipmentSlotClaim.DECLARED ? (
+          <Chip
+            size={"small"}
+            variant={"outlined"}
+            color={"primary"}
+            label={"icon"}
+            title={"Declares $inventory_icon, so the packing tools act on it"}
+          />
+        ) : null}
+      </Box>
+
+      {it.origin ? (
+        <Typography variant={"caption"} color={"text.secondary"} sx={{ wordBreak: "break-all" }}>
+          {it.origin}
+        </Typography>
       ) : null}
     </Box>
   ));
