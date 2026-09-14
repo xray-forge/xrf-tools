@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxStandardDialect};
+use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayLogicalPath;
 
@@ -46,7 +46,7 @@ fn standard_mode_refuses_the_patch_file_and_names_the_flag() -> XrfResult {
   assert_eq!(project.ltx_file_entries.len(), 2);
 
   let error: String = project
-    .read_full(&XrayLogicalPath::new("mod_system_patch.ltx")?)
+    .read_resolution(&XrayLogicalPath::new("mod_system_patch.ltx")?)
     .expect_err("standard resolution to refuse a patch file")
     .to_string();
 
@@ -80,16 +80,20 @@ fn dltx_mode_treats_the_patch_file_as_an_attachment() -> XrfResult {
 fn dltx_mode_resolves_the_patched_values() -> XrfResult {
   let root: PathBuf = patched_tree("resolved")?;
   let project: LtxProject = open(&root, Arc::new(DltxDialect))?;
-  let resolved: Arc<Ltx> = project.read_full(&XrayLogicalPath::new("system.ltx")?)?;
+  let resolved: Arc<LtxResolution> = project.read_resolution(&XrayLogicalPath::new("system.ltx")?)?;
 
-  assert_eq!(resolved.get_from("wpn_ak74", "cost"), Some("9999"), "the patch wins");
   assert_eq!(
-    resolved.get_from("wpn_ak74", "ammo_class"),
+    resolved.ltx.get_from("wpn_ak74", "cost"),
+    Some("9999"),
+    "the patch wins"
+  );
+  assert_eq!(
+    resolved.ltx.get_from("wpn_ak74", "ammo_class"),
     Some("ammo_a,ammo_b,ammo_c"),
     "inherited from the base, then appended to by the patch"
   );
   assert_eq!(
-    resolved.get_from("wpn_base", "cost"),
+    resolved.ltx.get_from("wpn_base", "cost"),
     Some("100"),
     "the base is untouched"
   );
@@ -104,13 +108,13 @@ fn the_same_tree_resolves_differently_under_each_dialect() -> XrfResult {
   let root: PathBuf = patched_tree("comparison")?;
   let entry: XrayLogicalPath = XrayLogicalPath::new("system.ltx")?;
 
-  let standard: Arc<Ltx> = open(&root, Arc::new(LtxStandardDialect))?.read_full(&entry)?;
-  let dltx: Arc<Ltx> = open(&root, Arc::new(DltxDialect))?.read_full(&entry)?;
+  let standard: Arc<LtxResolution> = open(&root, Arc::new(LtxStandardDialect))?.read_resolution(&entry)?;
+  let dltx: Arc<LtxResolution> = open(&root, Arc::new(DltxDialect))?.read_resolution(&entry)?;
 
   // The whole point of the opt-in: the same files, and a value that differs by which rules were asked for. Standard
   // LTX cannot see the patch file at all, because nothing includes it.
-  assert_eq!(standard.get_from("wpn_ak74", "cost"), Some("4000"));
-  assert_eq!(dltx.get_from("wpn_ak74", "cost"), Some("9999"));
+  assert_eq!(standard.ltx.get_from("wpn_ak74", "cost"), Some("4000"));
+  assert_eq!(dltx.ltx.get_from("wpn_ak74", "cost"), Some("9999"));
 
   fs::remove_dir_all(root)?;
 

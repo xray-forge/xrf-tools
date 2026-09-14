@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::{FsgameFile, XrayMountPlan, XraySourceKind};
+use crate::{FsgameFile, XrayMountMode, XrayMountPlan, XrayProbe, XrayProbeStep, XrayRoots, XraySourceKind, XrayVfs};
 
 /// The alias order a real `fsgame.ltx` uses: archives declared before gamedata, which is what makes loose files win.
 const FSGAME: &str = "\
@@ -258,4 +258,43 @@ fn plans_from_an_already_parsed_fsgame() {
   let fsgame: FsgameFile = FsgameFile::read(&root).expect("fsgame reads");
 
   assert_eq!(XrayMountPlan::from_fsgame_file(&fsgame).expect("plans").len(), 1);
+}
+
+#[test]
+fn a_mounted_plan_names_each_source_by_the_alias_that_declared_it() {
+  let root: PathBuf = install(
+    "naming",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
+  );
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let steps: Vec<XrayProbeStep> = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan")
+    .mount_into(&mut vfs)
+    .expect("roots mount");
+
+  let probe: XrayProbe = vfs.probe().with_steps(steps);
+
+  assert_eq!(
+    probe
+      .list_sources()
+      .iter()
+      .map(|source| source.mount.get_origin())
+      .collect::<Vec<Option<&str>>>(),
+    [Some("$game_data$")],
+    "a searched source says which declaration put it there, not only where it is"
+  );
+
+  // The fixture writes a text file where a volume belongs, which is the one way a declared source is named by the plan
+  // and then cannot be opened.
+  assert_eq!(
+    probe
+      .list_skipped_sources()
+      .iter()
+      .map(|skipped| skipped.origin.as_str())
+      .collect::<Vec<&str>>(),
+    ["$arch_dir_textures$"],
+    "a source the plan named but could not open is reported rather than silently absent"
+  );
 }

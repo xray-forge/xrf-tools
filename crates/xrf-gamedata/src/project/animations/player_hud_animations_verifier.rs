@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxResolution, Section};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -30,7 +30,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
     xrf_output::verbose!(self.options.output, "Verify player hud animations");
 
-    let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
+    let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
+    let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
     let player_hud_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
@@ -55,7 +56,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
         xrf_output::verbose!(output, "Verify player hud config [{section_name}]");
 
         if self
-          .verify_player_hud_animation(output, &system_ltx, section_name, section)
+          .verify_player_hud_animation(output, system_ltx, section_name, section)
           .is_ok_and(|it| it)
         {
           return None;

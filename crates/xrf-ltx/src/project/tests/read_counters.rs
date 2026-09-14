@@ -8,11 +8,14 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::dialect::LtxResolution;
 use crate::ltx::Ltx;
-use crate::project::{LtxProject, LtxReadCountersSnapshot};
+use crate::project::{LtxProject, LtxProjectOptions, LtxReadCountersSnapshot};
 
 /// Writes a four-file tree: an entry point including two files, one of which includes a third.
-fn open_nested_project(name: &str) -> XrfResult<LtxProject> {
+///
+/// `is_caching_resolutions` is the property half of these cases are about, so it is what the caller chooses.
+fn open_nested_project(name: &str, is_caching_resolutions: bool) -> XrfResult<LtxProject> {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_read_counters/{name}"));
 
   if root.exists() {
@@ -29,12 +32,18 @@ fn open_nested_project(name: &str) -> XrfResult<LtxProject> {
   fs::write(root.join("second.ltx"), "[second]\nb = 2\n")?;
   fs::write(root.join("nested.ltx"), "[nested]\nc = 3\n")?;
 
-  LtxProject::open_at_path(&root)
+  LtxProject::open_at_path_opt(
+    &root,
+    LtxProjectOptions {
+      is_caching_resolutions,
+      ..Default::default()
+    },
+  )
 }
 
 #[test]
 fn opening_a_project_reads_and_parses_every_config_exactly_once() -> XrfResult {
-  let project: LtxProject = open_nested_project("open")?;
+  let project: LtxProject = open_nested_project("open", false)?;
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
   // Entry-point discovery needs every config's include list, which is now a read of the same document a resolution
@@ -50,10 +59,10 @@ fn opening_a_project_reads_and_parses_every_config_exactly_once() -> XrfResult {
 
 #[test]
 fn resolving_an_entry_reuses_the_configs_assembly_already_read() -> XrfResult {
-  let project: LtxProject = open_nested_project("resolve_once")?;
+  let project: LtxProject = open_nested_project("resolve_once", true)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new("system.ltx")?;
 
-  project.read_full(&entry)?;
+  project.read_resolution(&entry)?;
 
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
@@ -67,11 +76,11 @@ fn resolving_an_entry_reuses_the_configs_assembly_already_read() -> XrfResult {
 
 #[test]
 fn resolving_the_same_entry_again_answers_the_first_resolution() -> XrfResult {
-  let project: LtxProject = open_nested_project("resolve_twice")?;
+  let project: LtxProject = open_nested_project("resolve_twice", true)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new("system.ltx")?;
 
-  let first: Arc<Ltx> = project.read_full(&entry)?;
-  let second: Arc<Ltx> = project.read_full(&entry)?;
+  let first: Arc<LtxResolution> = project.read_resolution(&entry)?;
+  let second: Arc<LtxResolution> = project.read_resolution(&entry)?;
 
   let counters: LtxReadCountersSnapshot = project.get_read_counters();
 
@@ -90,11 +99,11 @@ fn resolving_the_same_entry_again_answers_the_first_resolution() -> XrfResult {
 
 #[test]
 fn every_caller_that_wants_the_root_config_shares_one_resolution() -> XrfResult {
-  let project: LtxProject = open_nested_project("shared_root")?;
+  let project: LtxProject = open_nested_project("shared_root", true)?;
 
-  let first: Arc<Ltx> = project.system_ltx()?;
-  let second: Arc<Ltx> = project.system_ltx()?;
-  let third: Arc<Ltx> = project.read_full(&project.system_ltx_path()?)?;
+  let first: Arc<LtxResolution> = project.system_ltx()?;
+  let second: Arc<LtxResolution> = project.system_ltx()?;
+  let third: Arc<LtxResolution> = project.read_resolution(&project.system_ltx_path()?)?;
 
   // What a gamedata sweep depends on: four checks each ask for `system.ltx` and one resolution serves them all.
   assert_eq!(project.get_read_counters().resolutions, 1);
@@ -106,7 +115,7 @@ fn every_caller_that_wants_the_root_config_shares_one_resolution() -> XrfResult 
 
 #[test]
 fn verifying_the_project_adds_one_resolution_per_entry_point() -> XrfResult {
-  let project: LtxProject = open_nested_project("verify")?;
+  let project: LtxProject = open_nested_project("verify", false)?;
 
   project.verify_entries()?;
 
@@ -120,8 +129,8 @@ fn verifying_the_project_adds_one_resolution_per_entry_point() -> XrfResult {
 }
 
 #[test]
-fn verifying_twice_repeats_no_work_at_all() -> XrfResult {
-  let project: LtxProject = open_nested_project("verify_twice")?;
+fn verifying_twice_repeats_no_work_at_all_when_the_project_keeps_what_it_resolved() -> XrfResult {
+  let project: LtxProject = open_nested_project("verify_twice", true)?;
 
   project.verify_entries()?;
   project.verify_entries()?;
@@ -137,8 +146,27 @@ fn verifying_twice_repeats_no_work_at_all() -> XrfResult {
 }
 
 #[test]
+fn verifying_twice_resolves_twice_when_the_project_keeps_nothing() -> XrfResult {
+  let project: LtxProject = open_nested_project("verify_twice_uncached", false)?;
+
+  project.verify_entries()?;
+  project.verify_entries()?;
+
+  let counters: LtxReadCountersSnapshot = project.get_read_counters();
+
+  // The other half of the trade, said out loud: without `is_caching_resolutions` a second pass pays for the
+  // resolution again and the first one is not held anywhere. A sweep does one pass and wants exactly that; the
+  // documents behind it are still cached, so the second resolution re-reads nothing.
+  assert_eq!(counters.resolutions, 2);
+  assert_eq!(counters.reads, 4);
+  assert_eq!(counters.parses, 4);
+
+  Ok(())
+}
+
+#[test]
 fn a_read_outside_the_project_is_not_counted() -> XrfResult {
-  let project: LtxProject = open_nested_project("outside")?;
+  let project: LtxProject = open_nested_project("outside", false)?;
   let before: LtxReadCountersSnapshot = project.get_read_counters();
 
   // The counters describe what the project did, so a caller reaching past it for a plain VFS read stays invisible.

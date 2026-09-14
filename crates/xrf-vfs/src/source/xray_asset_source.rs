@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::path::Path;
 
 use serde::Serialize;
+use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
 use crate::source::XrayDeclaredRoot;
@@ -20,11 +21,11 @@ pub enum XraySourceKind {
   Archive,
 }
 
-/// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::label`].
+/// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::get_label`].
 ///
 /// The crate's answer for both of its own sources, so a diagnostic reads `textures` rather than a whole install path.
 /// Falls back to the path itself for a root with no final component, the one case `file_name` declines.
-pub(crate) fn label_from_path(path: &Path) -> String {
+pub fn label_from_path(path: &Path) -> String {
   path
     .file_name()
     .map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().to_string())
@@ -80,6 +81,16 @@ pub trait XrayAssetSource: Debug + Send + Sync {
 
   /// Enumerates source-relative logical paths, optionally restricted to a component prefix.
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a>;
+
+  /// How many engine identities this source answers for, before anything mounted in front of it shadows one.
+  fn count_entries(&self) -> usize {
+    self.list_entries(None).count()
+  }
+
+  /// The volumes this source merged into one name table, in merge order — a later one wins.
+  fn list_volumes(&self) -> &[ArchiveDescriptor] {
+    &[]
+  }
 
   /// Size in bytes of an entry this source holds, without reading it.
   ///

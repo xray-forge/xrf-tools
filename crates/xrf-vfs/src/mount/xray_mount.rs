@@ -21,6 +21,8 @@ pub struct XrayMountId(pub(crate) usize);
 pub struct XrayMount {
   id: XrayMountId,
   base: String,
+  /// How the plan that produced this mount described it, absent for a source mounted by hand.
+  origin: Option<String>,
   source: Box<dyn XrayAssetSource>,
 }
 
@@ -34,6 +36,7 @@ impl XrayMount {
     Ok(Self {
       base: normalize_base(base)?,
       id,
+      origin: None,
       source,
     })
   }
@@ -41,6 +44,20 @@ impl XrayMount {
   /// Stable identity of this mount within its VFS, for scoping and remounting.
   pub fn get_id(&self) -> XrayMountId {
     self.id
+  }
+
+  /// How the plan that produced this mount described it: an `fsgame.ltx` alias such as `$game_data$`, or the
+  /// constructor that planned it, as `root` or `volumes` for a path a person named directly.
+  ///
+  /// `None` for a source mounted by hand. A planned path an earlier plan already opened keeps that plan's name for it,
+  /// because reuse does not re-decide why the mount exists.
+  pub fn get_origin(&self) -> Option<&str> {
+    self.origin.as_deref()
+  }
+
+  /// Records how a plan described this mount, keeping whatever an earlier plan already named it.
+  pub(crate) fn set_origin(&mut self, origin: &str) {
+    self.origin.get_or_insert_with(|| origin.to_string());
   }
 
   /// Returns the normalized logical base assigned to this mount.

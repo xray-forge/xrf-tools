@@ -19,7 +19,10 @@ impl XrayVfs {
 
     for planned in plan.get_mounts() {
       match mount_one(self, planned) {
-        Ok(id) => mounted.push(id),
+        Ok(id) => {
+          self.record_origin(id, &planned.origin);
+          mounted.push(id);
+        }
         Err(error) => {
           log::warn!(
             "Skipping planned mount {} at {}: {error}",

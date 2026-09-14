@@ -63,6 +63,8 @@ fn a_resolution_that_was_not_asked_records_nothing() -> XrfResult {
   let resolved: LtxResolution = resolve(LtxResolveRequest::plain())?;
 
   // The guard `ltx verify` and `gamedata verify` rest on: they resolve every root of an install and read none of this.
+  // Nothing is recorded rather than recorded and dropped: the walk itself skips it, which is one entry per resolved
+  // field on a tree that has half a million of them.
   assert!(resolved.provenance.is_empty(), "a plain resolution to record nothing");
 
   assert_eq!(

@@ -121,6 +121,13 @@ impl XrayVfs {
     self.planned.insert(path, id);
   }
 
+  /// Records how a plan described one of its mounts, for a report explaining why the mount is searched.
+  pub(crate) fn record_origin(&mut self, id: XrayMountId, origin: &str) {
+    if let Some(mount) = self.mounts.get_mut(id.0) {
+      mount.set_origin(origin);
+    }
+  }
+
   /// Appends a source at a logical base with lower priority than existing mounts.
   ///
   /// # Errors
@@ -724,9 +731,15 @@ impl XrayVfs {
     }
 
     let base: String = mount.get_base().to_string();
+    let origin: Option<String> = mount.get_origin().map(str::to_string);
     let root: PathBuf = mount.get_source().get_root_path().to_path_buf();
 
     self.mounts[id.0] = XrayMount::new(id, &base, Box::new(XrayDirectorySource::read(&root)?))?;
+
+    // Reindexing changes what the mount holds and nothing about why it is there, so the plan's name for it survives.
+    if let Some(origin) = origin {
+      self.record_origin(id, &origin);
+    }
 
     Ok(())
   }

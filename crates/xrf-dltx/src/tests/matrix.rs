@@ -10,7 +10,11 @@ use crate::tests::dltx_map_source::DltxMapSource;
 fn resolve(root: &str, files: &[(&str, &str)]) -> XrfResult<DltxResolveResult> {
   let source: DltxMapSource = DltxMapSource::new(files)?;
 
-  DltxResolver::new(&DltxLoader::new(&source).load(root)?).resolve_all()
+  // Asked for, because the matrix has rows about where a value came from. The dialect asks only when its caller
+  // does, which `tests/provenance.rs` pins from the other side.
+  DltxResolver::new(&DltxLoader::new(&source).load(root)?)
+    .with_provenance(true)
+    .resolve_all()
 }
 
 /// Every warning message, so a test can assert what was said without depending on order.
@@ -540,11 +544,11 @@ fn provenance_names_the_file_that_won_each_field() -> XrfResult {
   let base_origin = resolved.provenance.get("s", "from_base").expect("base field origin");
   let patched_origin = resolved.provenance.get("s", "patched").expect("patched field origin");
 
-  assert_eq!(base_origin.file, "system.ltx");
+  assert_eq!(&*base_origin.file, "system.ltx");
   assert_eq!(base_origin.depth, 0);
   assert!(!base_origin.is_from_mod_file());
 
-  assert_eq!(patched_origin.file, "mod_system_a.ltx");
+  assert_eq!(&*patched_origin.file, "mod_system_a.ltx");
   assert_eq!(patched_origin.depth, -200);
   assert!(patched_origin.is_from_mod_file());
 

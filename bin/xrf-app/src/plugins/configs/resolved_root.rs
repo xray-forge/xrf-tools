@@ -7,10 +7,6 @@ use xrf_vfs::XrayLogicalPath;
 use crate::core::types::TauriResult;
 
 /// Something read out of a root once and kept beside it.
-///
-/// Every answer about a resolved root is derived from the same resolution and costs a walk of it, so the second ask
-/// should be a lookup. Two callers racing build it twice and the later one wins: both describe the same resolution, so
-/// there is nothing to reconcile and nothing worth holding a lock across the work for.
 struct ConfigsHeldAnswer<T> {
   /// What this holds, for the message a caller gets when the lock is poisoned.
   subject: &'static str,
@@ -52,6 +48,8 @@ impl<T> ConfigsHeldAnswer<T> {
 pub struct ConfigsResolvedRoot {
   pub entry: XrayLogicalPath,
   pub resolution: Arc<LtxResolution>,
+  /// Whether this one can account for a value, which is what a surface reading origins has to ask for.
+  pub is_explained: bool,
   /// Every section of the root, named and counted, once something has asked.
   index: ConfigsHeldAnswer<LtxResolvedIndex>,
   /// Everything wrong with the root, once something has asked. Verifying it walks every section it holds.
@@ -59,12 +57,23 @@ pub struct ConfigsResolvedRoot {
 }
 
 impl ConfigsResolvedRoot {
-  pub fn new(entry: XrayLogicalPath, resolution: LtxResolution) -> Self {
+  /// One resolved with every origin recorded, for a surface that has to explain a value.
+  pub fn explained(entry: XrayLogicalPath, resolution: LtxResolution) -> Self {
+    Self::held(entry, Arc::new(resolution), true)
+  }
+
+  /// One resolved without origins, sharing the handle the project holds rather than a copy of it.
+  pub fn plain(entry: XrayLogicalPath, resolution: Arc<LtxResolution>) -> Self {
+    Self::held(entry, resolution, false)
+  }
+
+  fn held(entry: XrayLogicalPath, resolution: Arc<LtxResolution>, is_explained: bool) -> Self {
     Self {
       entry,
       findings: ConfigsHeldAnswer::new("findings"),
       index: ConfigsHeldAnswer::new("index"),
-      resolution: Arc::new(resolution),
+      is_explained,
+      resolution,
     }
   }
 

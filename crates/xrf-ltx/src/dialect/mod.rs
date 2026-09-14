@@ -13,4 +13,4 @@ pub(crate) use crate::dialect::ltx_open_section::LtxOpenSection;
 pub use crate::dialect::ltx_resolution::{LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic};
 pub use crate::dialect::ltx_resolve_request::LtxResolveRequest;
 pub use crate::dialect::ltx_standard_dialect::LtxStandardDialect;
-pub(crate) use crate::dialect::ltx_text_interner::LtxTextInterner;
+pub use crate::dialect::ltx_text_interner::LtxTextInterner;

@@ -10,6 +10,7 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::dialect::LtxResolution;
 use crate::ltx::Ltx;
 use crate::project::{LTX_PHASE_VERIFY, LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
@@ -63,8 +64,10 @@ impl LtxProject {
       let reported: String = format_path(&self.path_of(entry)).to_string();
 
       // One unreadable config must not end the run.
-      let ltx: Arc<Ltx> = match self.read_full(entry) {
-        Ok(ltx) => ltx,
+      // Not retained: a sweep reads every root once, and holding them all is what `is_caching_resolutions` exists to
+      // let a session opt into rather than something every verify pays for.
+      let resolved: Arc<LtxResolution> = match self.read_resolution(entry) {
+        Ok(resolved) => resolved,
         Err(error) => {
           result
             .errors
@@ -74,7 +77,7 @@ impl LtxProject {
         }
       };
 
-      result.absorb(self.verify_resolved_opt(&ltx, &reported, &mut declaring_paths, Some(&options.output))?);
+      result.absorb(self.verify_resolved_opt(&resolved.ltx, &reported, &mut declaring_paths, Some(&options.output))?);
     }
 
     result.duration = options.job.elapsed();

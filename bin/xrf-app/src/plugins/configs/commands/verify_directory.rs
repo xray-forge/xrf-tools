@@ -49,6 +49,8 @@ pub async fn configs_verify_directory(
           &roots,
           prefix.as_deref(),
           LtxProjectOptions {
+            // One sweep over a directory, then the project is dropped; nothing asks twice.
+            is_caching_resolutions: false,
             dialect: select_ltx_dialect(is_dltx),
             is_with_schemes_check: true,
             // todo: Probably should be provided as parameter.

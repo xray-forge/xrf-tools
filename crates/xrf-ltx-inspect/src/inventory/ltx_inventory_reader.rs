@@ -28,7 +28,7 @@ impl<'a> LtxInventoryReader<'a> {
   /// Returns an error when the dialect cannot list what patches what, when an include cannot be resolved, or when the
   /// mounted world cannot be searched.
   pub fn read(&self) -> XrfResult<LtxInventory> {
-    let attachments: HashSet<String> = self.list_attachments()?;
+    let attachments: HashSet<String> = self.list_attachments();
     let entries: HashSet<&str> = self.project.ltx_file_entries.iter().map(|it| it.as_str()).collect();
     let scheme_files: HashSet<&str> = self.project.ltx_scheme_files.iter().map(|it| it.as_str()).collect();
     let mut includers: Includers = self.list_includers()?;
@@ -79,24 +79,10 @@ impl<'a> LtxInventoryReader<'a> {
 
   /// Configs the dialect says patch another rather than standing on their own.
   ///
-  /// Standard LTX answers nothing here, so this is the whole cost of supporting a patch dialect from a crate that does
-  /// not know one exists.
-  fn list_attachments(&self) -> XrfResult<HashSet<String>> {
-    let roots: Vec<String> = self
-      .project
-      .ltx_files
-      .iter()
-      .map(|path| String::from(path.as_str()))
-      .collect();
-
-    Ok(
-      self
-        .project
-        .get_dialect()
-        .plan_attachments(&roots, self.source)?
-        .into_iter()
-        .collect(),
-    )
+  /// Read off the project rather than planned again: assembling one already asked the dialect, and asking twice lists
+  /// a directory per config a second time - 446 ms of an Anomaly open, to reach the answer already in hand.
+  fn list_attachments(&self) -> HashSet<String> {
+    self.project.ltx_attachments.iter().cloned().collect()
   }
 
   /// The include graph, reversed: for each config, the configs whose `#include` reaches it.

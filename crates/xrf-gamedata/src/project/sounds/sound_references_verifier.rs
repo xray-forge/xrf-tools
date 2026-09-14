@@ -80,8 +80,8 @@ impl<'a> SoundReferencesVerifier<'a> {
       // Read through the project: its entries are logical paths, which a filesystem read cannot resolve.
       let reported: PathBuf = self.project.ltx_project.path_of(path);
 
-      match self.project.ltx_project.read_full(path) {
-        Ok(ltx) => self.verify_references_in_ltx(sound_names, sound_roots, &ltx, &reported, result),
+      match self.project.ltx_project.read_resolution(path) {
+        Ok(resolved) => self.verify_references_in_ltx(sound_names, sound_roots, &resolved.ltx, &reported, result),
         Err(error) => xrf_output::verbose!(
           self.options.output,
           "Skipping ltx entry in sound reference check: {} - {}",

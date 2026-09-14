@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::LtxKeyOperation;
@@ -8,9 +9,10 @@ use crate::load::dltx_load_result::DltxLoadResult;
 use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 use crate::resolve::dltx_provenance::{DltxFieldOrigin, DltxProvenance};
 use crate::resolve::dltx_resolve_result::DltxResolveResult;
+use xrf_ltx::LtxTextInterner;
 
 /// One section resolved to its fields, in the order the engine emits them.
-type ResolvedSection = BTreeMap<String, DltxItem>;
+type ResolvedSection = BTreeMap<Arc<str>, DltxItem>;
 
 /// Turns a load pass into resolved sections.
 ///
@@ -19,15 +21,21 @@ type ResolvedSection = BTreeMap<String, DltxItem>;
 pub struct DltxResolver<'a> {
   /// What the load pass recorded, which this walk decides but never changes.
   loaded: &'a DltxLoadResult,
-  resolved: HashMap<String, ResolvedSection>,
+  resolved: HashMap<Arc<str>, ResolvedSection>,
   /// Sections currently being resolved, which is how a cycle is caught.
   visiting: Vec<String>,
   /// Keys a `!key` removed while merging a base with its overrides, which stops a later list operation reviving them.
-  deleted_fields: HashMap<String, HashSet<String>>,
+  deleted_fields: HashMap<String, HashSet<Arc<str>>>,
   /// Parents left as declared, after override edits, per section.
   effective_parents: HashMap<String, Vec<String>>,
   diagnostics: Vec<DltxDiagnostic>,
   provenance: DltxProvenance,
+  /// Whether to record where each field came from, which only a caller that will read it should pay for.
+  is_recording_provenance: bool,
+  /// The value a bare key resolves to, held once rather than allocated per field that has none.
+  empty: Arc<str>,
+  /// Section names, and the list values this pass rewrites, as one allocation each.
+  text: LtxTextInterner,
 }
 
 impl<'a> DltxResolver<'a> {
@@ -36,11 +44,24 @@ impl<'a> DltxResolver<'a> {
       deleted_fields: HashMap::new(),
       diagnostics: Vec::new(),
       effective_parents: HashMap::new(),
+      empty: Arc::from(""),
+      is_recording_provenance: false,
+      text: LtxTextInterner::default(),
       provenance: DltxProvenance::default(),
       resolved: HashMap::new(),
       loaded,
       visiting: Vec::new(),
     }
+  }
+
+  /// The same walk, recording where each resolved field came from.
+  ///
+  /// Off by default because it is not free: an origin is one entry per resolved field, which on an Anomaly
+  /// `system.ltx` is 527,000 of them, and a sweep that only wants values reads none of it.
+  pub fn with_provenance(mut self, is_recording: bool) -> Self {
+    self.is_recording_provenance = is_recording;
+
+    self
   }
 
   /// Resolves every section the load pass recorded a base for.
@@ -58,20 +79,20 @@ impl<'a> DltxResolver<'a> {
 
     self.report_orphan_overrides();
 
-    let mut sections: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut sections: BTreeMap<Arc<str>, BTreeMap<Arc<str>, Arc<str>>> = BTreeMap::new();
 
     // Sorted by section name and by key, which is the order the engine's own container ends up in. Not the authored
     // order: a resolved DLTX document is a lookup table, and reproducing its order is part of matching it.
     for (section, fields) in &self.resolved {
-      if self.loaded.deleted_sections.contains(section) {
+      if self.loaded.deleted_sections.contains(&**section) {
         continue;
       }
 
       sections.insert(
-        section.clone(),
+        Arc::clone(section),
         fields
           .iter()
-          .map(|(key, item)| (key.clone(), item.to_resolved_value()))
+          .map(|(key, item)| (Arc::clone(key), item.to_resolved_value(&self.empty)))
           .collect(),
       );
     }
@@ -110,6 +131,7 @@ impl<'a> DltxResolver<'a> {
 
     self.visiting.push(String::from(section));
 
+    let handle: Arc<str> = self.text.intern(section);
     let parents: Vec<String> = self.resolve_parent_list(section);
     let mut inherited: ResolvedSection = ResolvedSection::new();
 
@@ -117,10 +139,11 @@ impl<'a> DltxResolver<'a> {
       self.prepare_parent(section, parent);
       self.resolve_section(parent)?;
 
-      // Folded left, so a later parent overrides an earlier one.
-      if let Some(resolved) = self.resolved.get(parent) {
-        for (key, item) in resolved.clone() {
-          inherited.insert(key, item);
+      // Folded left, so a later parent overrides an earlier one. By reference: cloning the parent's whole map built a
+      // second copy of every field it holds before a single one was folded in, on every edge of the tree.
+      if let Some(resolved) = self.resolved.get(parent.as_str()) {
+        for (key, item) in resolved {
+          inherited.insert(Arc::clone(key), item.clone());
         }
       }
     }
@@ -135,24 +158,26 @@ impl<'a> DltxResolver<'a> {
     // A `!key` in an override removes the inherited value too, which is why deletions apply after the parents fold in.
     if let Some(deleted) = self.deleted_fields.get(section) {
       for key in deleted {
-        result.remove(key);
+        result.remove(&**key);
       }
     }
 
     // The list pass rewrites the item it stores back, so it reports the authored statements separately: a merged list
     // holds a plain value, and reading the operation off it would say every append was an assignment.
-    let appended: BTreeMap<String, DltxFieldOrigin> = self.apply_list_operations(section, &mut result);
+    let appended: BTreeMap<Arc<str>, DltxFieldOrigin> = self.apply_list_operations(section, &mut result);
 
-    for (key, item) in &result {
-      self.provenance.record(
-        section,
-        key,
-        appended.get(key).cloned().unwrap_or_else(|| DltxFieldOrigin::of(item)),
-      );
+    if self.is_recording_provenance {
+      for (key, item) in &result {
+        self.provenance.record(
+          &handle,
+          key,
+          appended.get(key).cloned().unwrap_or_else(|| DltxFieldOrigin::of(item)),
+        );
+      }
     }
 
     self.visiting.pop();
-    self.resolved.insert(String::from(section), result);
+    self.resolved.insert(handle, result);
 
     Ok(())
   }
@@ -212,7 +237,9 @@ impl<'a> DltxResolver<'a> {
       .with_engine_behaviour("an empty section is created under that name and appears in the loaded configs"),
     );
 
-    self.resolved.insert(String::from(parent), ResolvedSection::new());
+    let handle: Arc<str> = self.text.intern(parent);
+
+    self.resolved.insert(handle, ResolvedSection::new());
   }
 
   /// One section's own fields: its base contents with its overrides applied.
@@ -245,7 +272,7 @@ impl<'a> DltxResolver<'a> {
             .deleted_fields
             .entry(String::from(section))
             .or_default()
-            .insert(item.key.clone());
+            .insert(Arc::clone(&item.key));
         }
         _ => {
           merged.insert(item.key.clone(), item);
@@ -262,7 +289,7 @@ impl<'a> DltxResolver<'a> {
   /// group (`Xr_ini.cpp`). The consequence worth knowing: a root file beats a file it includes for the same
   /// key regardless of which line came first.
   fn rank(items: Option<&Vec<DltxItem>>) -> Vec<DltxItem> {
-    let mut winners: BTreeMap<String, DltxItem> = BTreeMap::new();
+    let mut winners: BTreeMap<Arc<str>, DltxItem> = BTreeMap::new();
 
     for item in items.into_iter().flatten() {
       let is_better: bool = match winners.get(&item.key) {
@@ -274,7 +301,7 @@ impl<'a> DltxResolver<'a> {
       };
 
       if is_better {
-        winners.insert(item.key.clone(), item.clone());
+        winners.insert(Arc::clone(&item.key), item.clone());
       }
     }
 
@@ -294,8 +321,8 @@ impl<'a> DltxResolver<'a> {
     &mut self,
     section: &str,
     result: &mut ResolvedSection,
-  ) -> BTreeMap<String, DltxFieldOrigin> {
-    let mut authored: BTreeMap<String, DltxFieldOrigin> = BTreeMap::new();
+  ) -> BTreeMap<Arc<str>, DltxFieldOrigin> {
+    let mut authored: BTreeMap<Arc<str>, DltxFieldOrigin> = BTreeMap::new();
 
     let Some(operations) = self.loaded.list_operations.get(section) else {
       return authored;
@@ -303,7 +330,7 @@ impl<'a> DltxResolver<'a> {
 
     let mut ordered: Vec<&DltxItem> = operations.iter().collect();
 
-    ordered.sort_by_key(|item| (item.key.clone(), item.insertion_index));
+    ordered.sort_by_key(|item| (Arc::clone(&item.key), item.insertion_index));
 
     for operation in ordered {
       let Some(value) = &operation.value else {
@@ -322,7 +349,7 @@ impl<'a> DltxResolver<'a> {
 
       let mut elements: Vec<String> = result
         .get(&operation.key)
-        .map(|item| Self::split_list(&item.to_resolved_value()))
+        .map(|item| Self::split_list(&item.to_resolved_value(&self.empty)))
         .unwrap_or_default();
 
       match operation.operation {
@@ -347,12 +374,12 @@ impl<'a> DltxResolver<'a> {
       let mut item: DltxItem = operation.clone();
 
       item.operation = LtxKeyOperation::Set;
-      item.value = Some(elements.join(","));
+      item.value = Some(self.text.intern(&elements.join(",")));
 
-      result.insert(operation.key.clone(), item);
+      result.insert(Arc::clone(&operation.key), item);
       // The statement as written, not the merged item stored beside it: `>ammo_class = ammo_c` is what a person has to
       // find and edit, and the last operation to touch a key is the one that shaped the value it ends with.
-      authored.insert(operation.key.clone(), DltxFieldOrigin::of(operation));
+      authored.insert(Arc::clone(&operation.key), DltxFieldOrigin::of(operation));
     }
 
     authored

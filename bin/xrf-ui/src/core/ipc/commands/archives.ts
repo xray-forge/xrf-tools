@@ -4,6 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ArchiveResolution,
   ArchivesExtractRequest,
   ArchivesPackRequest,
   ArchivesPatchRequest,
@@ -33,6 +34,9 @@ import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 export const archivesCommands = {
   /** Releases only the committed and pending openings owned by the closing frontend. */
   closeSubject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:archives|close_subject", { sessionIds }),
+  /** Where the open subject looks for an engine path, in the order it looks. */
+  describeResolution: (sessionId: SessionId) =>
+    __TAURI_INVOKE<ArchiveResolution>("plugin:archives|describe_resolution", { sessionId }),
   /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
   describeStatistics: (sessionId: SessionId) =>
     __TAURI_INVOKE<ArchiveStatistics>("plugin:archives|describe_statistics", { sessionId }),

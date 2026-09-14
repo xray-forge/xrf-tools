@@ -29,6 +29,11 @@ pub struct LtxProject {
   pub ltx_scheme_file_entries: Vec<XrayLogicalPath>,
   /// Section schemes declared by scheme entry points.
   pub ltx_scheme_declarations: LtxSectionSchemes,
+  /// Configs the dialect says patch another rather than standing alone, planned once while assembling.
+  ///
+  /// Kept rather than recomputed: planning them lists a directory per config, and every consumer wanting the answer
+  /// would otherwise pay that walk again. Standard LTX plans none, so this is empty for every tree it reads.
+  pub ltx_attachments: Vec<String>,
   /// Mounted sources that resolve project files.
   vfs: XrayVfs,
   scope: XrayLookupScope,
@@ -36,6 +41,8 @@ pub struct LtxProject {
   counters: Arc<LtxReadCounters>,
   /// Which rules resolve this project's configs.
   dialect: Arc<dyn LtxDialect>,
+  /// Whether a resolved root is kept for the life of the project, which only a caller that reopens roots wants.
+  is_caching_resolutions: bool,
   /// Roots resolved so far, one cell per root so two threads asking at once produce one resolution between them.
   resolved: Mutex<HashMap<XrayLogicalPath, Arc<LtxResolvedRoot>>>,
 }
@@ -81,9 +88,11 @@ impl LtxProject {
     Self {
       counters: LtxReadCounters::new_shared(),
       dialect: Arc::new(LtxStandardDialect),
+      is_caching_resolutions: false,
       resolved: Mutex::default(),
       ltx_file_entries: Vec::new(),
       ltx_files: Vec::new(),
+      ltx_attachments: Vec::new(),
       ltx_scheme_declarations: Default::default(),
       ltx_scheme_file_entries: Vec::new(),
       ltx_scheme_files: Vec::new(),
@@ -207,7 +216,9 @@ impl LtxProject {
     Ok(Self {
       counters,
       dialect: options.dialect.clone(),
+      is_caching_resolutions: options.is_caching_resolutions,
       resolved: Mutex::default(),
+      ltx_attachments: attachments,
       ltx_file_entries,
       ltx_files,
       ltx_scheme_declarations,
@@ -282,14 +293,28 @@ impl LtxProject {
       .and_then(|location| location.to_physical_path())
   }
 
-  /// Resolves and caches a project config using this project's dialect, including includes and inheritance.
+  /// Resolves one project config under this project's dialect, including includes and inheritance.
+  ///
+  /// Retained for the life of the project only when the caller asked for that
+  /// ([`LtxProjectOptions::is_caching_resolutions`]). A resolved Anomaly `system.ltx` is tens of megabytes, so a sweep
+  /// that reads every root once would hold the whole tree resolved for nothing, while a session that reopens the same
+  /// root all day wants exactly that. The caller knows which it is; this cannot.
+  ///
+  /// Plain, with no provenance: use [`Self::resolve_explained`] where a value has to be accounted for.
   ///
   /// # Errors
   ///
   /// Returns an error if the config is outside the scope or cannot be read or resolved.
-  pub fn read_full(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<Ltx>> {
+  pub fn read_resolution(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<LtxResolution>> {
+    if !self.is_caching_resolutions {
+      // Produced here rather than through the cell, so nothing is stored and nothing is kept.
+      self.counters.record_resolution();
+
+      return Ok(Arc::new(self.resolve(logical_path)?));
+    }
+
     self.resolved_cell(logical_path).get_or_try_init(|| {
-      let resolved: Arc<Ltx> = Arc::new(self.resolve(logical_path)?);
+      let resolved: Arc<LtxResolution> = Arc::new(self.resolve(logical_path)?);
 
       // Produced once per root now that the cell admits one producer, so counting here counts what actually ran.
       self.counters.record_resolution();
@@ -333,15 +358,12 @@ impl LtxProject {
   }
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
-  fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<Ltx> {
+  fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
     let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
 
-    Ok(
-      self
-        .dialect
-        .resolve(logical_path.as_str(), &source, LtxResolveRequest::plain())?
-        .ltx,
-    )
+    self
+      .dialect
+      .resolve(logical_path.as_str(), &source, LtxResolveRequest::plain())
   }
 
   /// Resolves one root and keeps everything the dialect can say about it, for a caller that has to explain a value.
@@ -451,7 +473,7 @@ impl LtxProject {
   /// # Errors
   ///
   /// Returns an error when the config is not in scope or cannot be read or parsed.
-  pub fn system_ltx(&self) -> XrfResult<Arc<Ltx>> {
-    self.read_full(&self.system_ltx_path()?)
+  pub fn system_ltx(&self) -> XrfResult<Arc<LtxResolution>> {
+    self.read_resolution(&self.system_ltx_path()?)
   }
 }

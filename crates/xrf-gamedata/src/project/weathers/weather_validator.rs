@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxResolution, Section};
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
@@ -42,7 +42,7 @@ pub fn verify_weather_findings_with_definitions(
 
   // The logical path reads the config; findings need the path a person can act on.
   let reported: PathBuf = project.ltx_project.path_of(config_path);
-  let ltx: Arc<Ltx> = match project.ltx_project.read_full(config_path) {
+  let resolved: Arc<LtxResolution> = match project.ltx_project.read_resolution(config_path) {
     Ok(ltx) => ltx,
     Err(error) => {
       xrf_output::error!(options.output, "Could not open weather LTX: {}", error);
@@ -54,7 +54,8 @@ pub fn verify_weather_findings_with_definitions(
       )]);
     }
   };
-  let weather_sections: Vec<&str> = ltx
+  let weather_sections: Vec<&str> = resolved
+    .ltx
     .iter()
     .map(|(section_name, _)| section_name)
     .filter(|section_name| !section_name.is_empty())
@@ -75,7 +76,8 @@ pub fn verify_weather_findings_with_definitions(
   for section_name in weather_sections {
     options.job.check_cancelled()?;
 
-    let section: &Section = ltx
+    let section: &Section = resolved
+      .ltx
       .section(section_name)
       .expect("Expected discovered weather section to exist");
 

@@ -10,6 +10,7 @@ use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
+use crate::plugins::archives::browse::archive_resolution::ArchiveResolution;
 use crate::plugins::archives::browse::archive_world::ArchiveWorld;
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
@@ -66,6 +67,18 @@ impl ArchiveSubject {
     match self {
       Self::Volumes { project } => ArchiveStatistics::of_volumes(project),
       Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts),
+    }
+  }
+
+  /// Every source this subject searches, in the order it searches them.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the world's roots can no longer be planned or mounted.
+  pub fn describe_resolution(&self, assets: &AssetMountState) -> TauriResult<ArchiveResolution> {
+    match self {
+      Self::Volumes { project } => Ok(ArchiveResolution::of_volumes(project)),
+      Self::World { world } => assets.with_probe(&world.roots, ArchiveResolution::of_probe),
     }
   }
 

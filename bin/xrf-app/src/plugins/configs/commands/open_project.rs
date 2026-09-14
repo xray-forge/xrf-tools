@@ -88,6 +88,7 @@ fn open_and_list(roots: XrayRoots, prefix: Option<String>, is_dltx: bool) -> Xrf
     prefix.as_deref(),
     LtxProjectOptions {
       dialect: select_ltx_dialect(is_dltx),
+      is_caching_resolutions: true,
       is_with_schemes_check: true,
       is_strict_check: false,
     },

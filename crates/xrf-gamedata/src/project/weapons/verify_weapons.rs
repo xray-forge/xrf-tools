@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, Section};
+use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, LtxResolution, Section};
 use xrf_output::{OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType;
 use xrf_vfs::XrayAssetType as AssetType;
@@ -25,7 +25,8 @@ impl GamedataProject {
     xrf_output::heading!(options.output, "Verify weapons:");
 
     let started_at: Instant = Instant::now();
-    let system_ltx: Arc<Ltx> = self.ltx_project.system_ltx()?;
+    let resolved: Arc<LtxResolution> = self.ltx_project.system_ltx()?;
+    let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path = self.ltx_project.system_ltx_report_path()?;
 
     // Selected before the sweep rather than filtered inside it, because a parallel run needs to know how many positions
@@ -50,7 +51,7 @@ impl GamedataProject {
         let slot: OutputSlot = sequence.new_slot(index);
         let scoped: GamedataProjectVerifyOptions = options.with_output(slot.get_output().clone());
 
-        match self.verify_ltx_weapon(&scoped, &system_ltx, section_name, section) {
+        match self.verify_ltx_weapon(&scoped, system_ltx, section_name, section) {
           Ok(true) => None,
           Ok(false) => {
             xrf_output::error!(scoped.output, "Invalid weapon section: [{section_name}]");

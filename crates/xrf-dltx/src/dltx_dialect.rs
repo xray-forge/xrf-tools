@@ -33,16 +33,29 @@ impl LtxDialect for DltxDialect {
   fn plan_attachments(&self, roots: &[String], source: &dyn LtxDocumentSource) -> XrfResult<Vec<String>> {
     let mut attachments: Vec<String> = Vec::new();
 
+    // Grouped, because a listing is not cheap: it walks every entry the scope holds, so asking once per config asked
+    // 3,126 times for the 137 answers an Anomaly tree has. What a config's mod files are named depends only on the
+    // directory it sits in.
+    let mut by_directory: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+
     for root in roots {
-      let directory: &str = Ltx::directory_of(root);
+      by_directory
+        .entry(Ltx::directory_of(root))
+        .or_default()
+        .push(Self::file_name_of(root));
+    }
+
+    for (directory, bases) in by_directory {
       let siblings: Vec<String> = source.list_file_names(directory)?;
 
-      for attachment in DltxDiscovery::attachments_of(Self::file_name_of(root), &siblings) {
-        attachments.push(if directory.is_empty() {
-          attachment.name
-        } else {
-          format!("{directory}\\{}", attachment.name)
-        });
+      for base in bases {
+        for attachment in DltxDiscovery::attachments_of(base, &siblings) {
+          attachments.push(if directory.is_empty() {
+            attachment.name
+          } else {
+            format!("{directory}\\{}", attachment.name)
+          });
+        }
       }
     }
 
@@ -61,7 +74,9 @@ impl LtxDialect for DltxDialect {
     // The load result outlives the resolve by one call now, because it is what knows which file declared each
     // section. It is still dropped here rather than retained.
     let loaded: DltxLoadResult = DltxLoader::new(source).load(root)?;
-    let resolved: DltxResolveResult = DltxResolver::new(&loaded).resolve_all()?;
+    let resolved: DltxResolveResult = DltxResolver::new(&loaded)
+      .with_provenance(request.is_with_provenance())
+      .resolve_all()?;
 
     Ok(LtxResolution {
       diagnostics: Self::to_diagnostics(&resolved),
@@ -99,15 +114,17 @@ impl DltxDialect {
     for (section, fields) in &resolved.sections {
       // Entered once and filled in place. Going through `set_to` per field re-looked-up the section and cloned its
       // name for every value it held.
-      let target: &mut Section = ltx.entry(section.clone()).or_insert_with(Default::default);
+      let target: &mut Section = ltx.entry(String::from(&**section)).or_insert_with(Default::default);
 
+      // Shared rather than inserted as text: the loader interned every key and value once, and `insert` would
+      // allocate a second copy of each - two per field, over half a million of them on an Anomaly root.
       for (key, value) in fields {
-        target.insert(key, value);
+        target.insert_shared(Arc::clone(key), Arc::clone(value));
       }
 
       // A section an override created without a base declaration has no declaring file, and says so rather than
       // naming the root that resolved it.
-      if let Some(declared_in) = loaded.section_files.get(section) {
+      if let Some(declared_in) = loaded.section_files.get(&**section) {
         target.set_origin(Arc::clone(
           origins
             .entry(declared_in.as_str())
@@ -129,23 +146,18 @@ impl DltxDialect {
   /// shared by name, because one file commonly wins hundreds of fields.
   fn to_provenance(resolved: &DltxResolveResult) -> LtxProvenance {
     let mut provenance: LtxProvenance = LtxProvenance::default();
-    let mut files: BTreeMap<&str, Arc<str>> = BTreeMap::new();
 
+    // Every name here is already a handle the loader interned - the section, the key, and the winning file - so this
+    // fold copies nothing and only decides what belongs where.
     for (section, fields) in &resolved.sections {
-      let name: Arc<str> = Arc::from(section.as_str());
-
       for key in fields.keys() {
         if let Some(origin) = resolved.provenance.get(section, key) {
           provenance.insert(
-            Arc::clone(&name),
-            Arc::from(key.as_str()),
+            Arc::clone(section),
+            Arc::clone(key),
             LtxFieldOrigin::Loaded {
               depth: origin.depth,
-              file: Arc::clone(
-                files
-                  .entry(origin.file.as_str())
-                  .or_insert_with(|| Arc::from(origin.file.as_str())),
-              ),
+              file: Arc::clone(&origin.file),
               operation: Box::from(origin.operation.as_prefix()),
             },
           );

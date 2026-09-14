@@ -93,7 +93,7 @@ fn renders_a_loose_path_for_a_person_and_reads_it_through_the_project() -> XrfRe
   assert_eq!(project.path_of(entry), root.join("root.ltx"));
   assert_eq!(project.physical_path_of(entry), Some(root.join("root.ltx")));
   assert_eq!(
-    project.read_full(entry)?.get_from("section", "value"),
+    project.read_resolution(entry)?.ltx.get_from("section", "value"),
     Some("1"),
     "the project reads its own files"
   );
@@ -141,7 +141,7 @@ fn places_config_names_in_whichever_scope_the_project_has() -> XrfResult {
     XrayLogicalPath::new("configs\\environment\\suns.ltx")?
   );
   assert_eq!(
-    at_game_root.system_ltx()?.get_from("section", "value"),
+    at_game_root.system_ltx()?.ltx.get_from("section", "value"),
     Some("1"),
     "the scoped path is the one that reads"
   );

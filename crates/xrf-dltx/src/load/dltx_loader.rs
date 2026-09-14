@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation};
+use xrf_ltx::{LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxTextInterner};
 
 use crate::discovery::dltx_attachment::DltxAttachment;
 use crate::discovery::dltx_discovery::{DLTX_BASE_DEPTH, DltxDiscovery};
@@ -18,6 +19,8 @@ use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 pub struct DltxLoader<'a> {
   source: &'a dyn LtxDocumentSource,
   records: DltxLoadResult,
+  /// One allocation per distinct key, value and file name across the whole tree.
+  text: LtxTextInterner,
 }
 
 impl<'a> DltxLoader<'a> {
@@ -25,6 +28,7 @@ impl<'a> DltxLoader<'a> {
     Self {
       records: DltxLoadResult::default(),
       source,
+      text: LtxTextInterner::default(),
     }
   }
 
@@ -67,7 +71,8 @@ impl<'a> DltxLoader<'a> {
       return Ok(());
     };
 
-    let filename: String = file_name_of(logical_path).to_lowercase();
+    // One handle per file, shared by every item it declares: a config commonly writes hundreds of them.
+    let filename: Arc<str> = self.text.intern(&file_name_of(logical_path).to_lowercase());
     let directory: String = String::from(directory_of(logical_path));
 
     // Carried across the walk so a field lands in whichever header last opened, exactly as written.
@@ -97,7 +102,7 @@ impl<'a> DltxLoader<'a> {
           // Outside any section the engine drops the line without a word.
           None => self.records.diagnostics.push(
             DltxDiagnostic::new("", format!("Field '{name}' sits before any section and is ignored"))
-              .with_file(filename.clone())
+              .with_file(&*filename)
               .with_engine_behaviour("silently dropped"),
           ),
         },
@@ -192,7 +197,7 @@ impl<'a> DltxLoader<'a> {
     key: &str,
     value: Option<&str>,
     operation: LtxKeyOperation,
-    filename: &str,
+    filename: &Arc<str>,
     depth: i32,
   ) {
     // The header decides, not the section name: one section may be declared in one file and overridden in another, and
@@ -209,6 +214,17 @@ impl<'a> DltxLoader<'a> {
       DltxTarget::Discarded => return,
     };
 
+    // Interned before the store is borrowed, because both want `&mut self`.
+    let key: Arc<str> = self.text.intern(key);
+
+    // A deletion's value is discarded rather than kept, which is what stops it reaching a merged result.
+    let value: Option<Arc<str>> = match operation {
+      LtxKeyOperation::Delete => None,
+      _ => value.map(|value| self.text.intern(value)),
+    };
+
+    let filename: Arc<str> = Arc::clone(filename);
+
     let store: &mut BTreeMap<String, Vec<DltxItem>> = match operation {
       // A list operation is routed out of its section whether the header was plain or an override, and keyed by the
       // section name alone.
@@ -218,18 +234,15 @@ impl<'a> DltxLoader<'a> {
     };
 
     let items: &mut Vec<DltxItem> = store.entry(section).or_default();
+    let index: u32 = items.len() as u32;
 
     items.push(DltxItem {
       depth,
-      filename: String::from(filename),
-      insertion_index: items.len() as u32,
-      key: String::from(key),
+      filename,
+      insertion_index: index,
+      key,
       operation,
-      // A deletion's value is discarded rather than kept, which is what stops it reaching a merged result.
-      value: match operation {
-        LtxKeyOperation::Delete => None,
-        _ => value.map(String::from),
-      },
+      value,
     });
   }
 }

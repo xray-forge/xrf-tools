@@ -15,8 +15,53 @@ import {
   TranslationProjectMode,
   TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
-import { XrayAsset, XrayAssetContainer, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
+
+/** How the open subject answers an engine path: every source it searches, in the order it searches them. */
+export type ArchiveResolution = {
+  /** Sources searched, highest priority first: the first one holding an engine path is the one that answers for it. */
+  sources: Array<ArchiveResolutionSource>;
+  /** Sources named but never opened, which are absent from the search rather than empty within it. */
+  unread: Array<ArchiveUnreadSource>;
+};
+
+/** One source the open subject searches, and everything that says why it is searched where it is. */
+export type ArchiveResolutionSource = {
+  /** Where the source lives: a loose tree's root, or the directory holding a volume set. */
+  path: string;
+  /** Short name for the source — the directory or volume-set name. */
+  label: string;
+  /** Whether the source is a loose tree or a set of volumes. */
+  kind: XraySourceKind;
+  /**
+   * How the mount plan described it: an `fsgame.ltx` alias such as `$game_data$`, or `root` or `volumes` for a path
+   * named directly. Absent for a source no plan named.
+   */
+  origin: string | null;
+  /** The root whose declaration reached this source, as the open named it. */
+  step: string;
+  /** Logical base the source mounts at; empty for a complete root. */
+  base: string;
+  /** Engine identities the source answers for, before anything searched ahead of it shadows one. */
+  entries: number;
+  /** Volumes merged behind this source, in the order a lookup reaches them. Empty for a loose tree. */
+  volumes: Array<ArchiveResolutionVolume>;
+};
+
+/** One volume of a set, in the order a lookup reaches it. */
+export type ArchiveResolutionVolume = {
+  /** The volume file itself. */
+  path: string;
+  /** Entries its name table holds, before the merge shadows one of them. */
+  entries: number;
+  /** Bytes its entries occupy as stored. */
+  sizeCompressed: number;
+  /** Bytes its entries occupy once unpacked. */
+  sizeReal: number;
+  /** Root the volume unpacks under, from `[header] entry_point` with its alias stripped. */
+  outputRootPath: string;
+};
 
 /** One copy of an engine path no lookup reaches, as the explorer lists it. */
 export type ArchiveShadowedCopy = {
@@ -42,6 +87,16 @@ export type ArchiveSubject =
   | { kind: "volumes"; project: ArchiveProject }
   /** A game folder read as the engine mounts it, archives and loose tree together. */
   | { kind: "world"; world: ArchiveWorld };
+
+/** A source the plan named that could not be opened, so the search reaches nothing it holds. */
+export type ArchiveUnreadSource = {
+  /** Where the source that failed to open lives. */
+  path: string;
+  /** How the plan described it, such as an `fsgame.ltx` alias. */
+  origin: string;
+  /** Why it could not be opened. */
+  reason: string;
+};
 
 /**
  * One mounted world the explorer browses: an installation, or any tree read as the engine would read it.

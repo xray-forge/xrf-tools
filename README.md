@@ -30,7 +30,7 @@ The Windows application provides focused workspaces for:
 - parsing, editing, building, and checking translations;
 - validating assembled `gamedata` trees.
 
-<img width="600" src="https://xray-forge.github.io/xrf-book/images/xrf-app-main-window.png" alt="XRF Tools desktop application">
+<img src="https://xray-forge.github.io/xrf-book/images/xrf-app-main-window.png" alt="XRF Tools desktop application">
 
 ### Command-line interface
 

@@ -55,6 +55,8 @@ impl GenericCommand for VerifyCommand {
     log::info!("Verifying ltx folder: {}", format_path(path));
 
     let options: LtxProjectOptions = LtxProjectOptions {
+      // A sweep reads every root once; retaining them would hold the whole tree resolved to no end.
+      is_caching_resolutions: false,
       dialect: requested_ltx_dialect(matches),
       is_with_schemes_check: true,
       is_strict_check: true,

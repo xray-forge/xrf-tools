@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use xrf_ltx::{Ltx, LtxProject};
+use xrf_ltx::{Ltx, LtxProject, LtxResolution};
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
@@ -19,7 +19,7 @@ pub struct WeatherDefinitions {
   /// An empty member list means that every member of the collection has a definition.
   pub thunderbolt_collections: Result<HashMap<String, Vec<String>>, String>,
   /// Parsed legacy definitions from `system.ltx`.
-  legacy_system: Result<Arc<Ltx>, String>,
+  legacy_system: Result<Arc<LtxResolution>, String>,
 }
 
 impl WeatherDefinitions {
@@ -50,7 +50,7 @@ impl WeatherDefinitions {
     self
       .legacy_system
       .as_ref()
-      .map(|system| system.has_section(sun))
+      .map(|system| system.ltx.has_section(sun))
       .map_err(Clone::clone)
   }
 
@@ -65,7 +65,7 @@ impl WeatherDefinitions {
       return Ok(Some(missing_definitions.clone()));
     }
 
-    let legacy_system: &Ltx = self.legacy_system.as_ref().map_err(Clone::clone)?;
+    let legacy_system: &Ltx = &self.legacy_system.as_ref().map_err(Clone::clone)?.ltx;
     let Some(collection) = legacy_system.section(collection_name) else {
       return Ok(None);
     };
@@ -79,8 +79,9 @@ impl WeatherDefinitions {
   }
 
   fn read_sections(project: &LtxProject, relative_path: &str) -> Result<HashSet<String>, String> {
-    Self::read_ltx(project, relative_path).map(|ltx| {
-      ltx
+    Self::read_ltx(project, relative_path).map(|resolved| {
+      resolved
+        .ltx
         .iter()
         .map(|(section_name, _)| section_name.to_string())
         .filter(|section_name| !section_name.is_empty())
@@ -92,12 +93,12 @@ impl WeatherDefinitions {
   ///
   /// Failures name the path a person can act on, which for a loose config is its file and for an archived one its engine
   /// identity.
-  fn read_ltx(project: &LtxProject, relative_path: &str) -> Result<Arc<Ltx>, String> {
+  fn read_ltx(project: &LtxProject, relative_path: &str) -> Result<Arc<LtxResolution>, String> {
     let logical_path: XrayLogicalPath = project
       .config_path(relative_path)
       .map_err(|error| format!("Could not address weather definitions at {relative_path}: {error}"))?;
 
-    project.read_full(&logical_path).map_err(|error| {
+    project.read_resolution(&logical_path).map_err(|error| {
       format!(
         "Could not read weather definitions from {}: {error}",
         format_path(&project.path_of(&logical_path))
@@ -106,8 +107,9 @@ impl WeatherDefinitions {
   }
 
   fn read_thunderbolt_collections(project: &LtxProject) -> Result<HashMap<String, Vec<String>>, String> {
-    let collections: Arc<Ltx> = Self::read_ltx(project, "environment\\thunderbolt_collections.ltx")?;
-    let thunderbolts: Arc<Ltx> = Self::read_ltx(project, "environment\\thunderbolts.ltx")?;
+    let collections: Arc<LtxResolution> = Self::read_ltx(project, "environment\\thunderbolt_collections.ltx")?;
+    let thunderbolts: Arc<LtxResolution> = Self::read_ltx(project, "environment\\thunderbolts.ltx")?;
+    let (collections, thunderbolts) = (&collections.ltx, &thunderbolts.ltx);
 
     let mut result: HashMap<String, Vec<String>> = HashMap::new();
 

@@ -146,6 +146,11 @@ impl XrayAssetSource for XrayDirectorySource {
     )
   }
 
+  /// Answers from the index, which already dropped the ignored prefixes and the files that fold onto one identity.
+  fn count_entries(&self) -> usize {
+    self.index.len()
+  }
+
   fn get_size(&self, path: &str) -> Option<u64> {
     self
       .index

@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
@@ -149,13 +148,13 @@ impl InspectCommand {
         continue;
       }
 
-      // An entry point that will not resolve is not an answer about this section, and refusing here would make one
-      // broken config hide a section declared in a different one.
-      let Ok(resolved) = project.read_full(entry) else {
+      // Not retained: this walks every entry point of the tree, and holding each resolution to answer one question
+      // about it would end the search holding the whole project resolved.
+      let Ok(resolved) = project.read_resolution(entry) else {
         continue;
       };
 
-      if Arc::as_ref(&resolved).section(section).is_some() {
+      if resolved.ltx.section(section).is_some() {
         declaring.push(entry);
       }
     }

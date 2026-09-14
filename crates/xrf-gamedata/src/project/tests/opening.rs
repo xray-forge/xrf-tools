@@ -49,6 +49,7 @@ fn opens_an_installation_whose_configs_are_declared_by_fsgame() {
       .ltx_project
       .system_ltx()
       .expect("system.ltx reads")
+      .ltx
       .get_from("section", "value"),
     Some("1"),
     "configs resolve through the declared mount"

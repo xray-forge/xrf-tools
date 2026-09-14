@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use xrf_chunk::ChunkReader;
 use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxResolution, Section};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -39,7 +39,8 @@ impl<'a> HudItemAnimationsVerifier<'a> {
 
     xrf_output::verbose!(self.options.output, "Verify hud item animations");
 
-    let system_ltx: Arc<Ltx> = self.project.ltx_project.system_ltx()?;
+    let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
+    let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
 
     let item_sections: Vec<(&str, &Section)> = system_ltx

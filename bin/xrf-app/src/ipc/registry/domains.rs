@@ -15,6 +15,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       archives => "archives" {
         close_subject => crate::plugins::archives::browse::commands::close_subject::archives_close_subject,
+        describe_resolution => crate::plugins::archives::browse::commands::describe_resolution::archives_describe_resolution,
         describe_statistics => crate::plugins::archives::browse::commands::describe_statistics::archives_describe_statistics,
         extract_directory => crate::plugins::archives::browse::commands::extract_directory::archives_extract_directory,
         extract_file => crate::plugins::archives::browse::commands::extract_file::archives_extract_file,

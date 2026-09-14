@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 
-use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XrayProbeStep, XrayVfs};
+use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XrayProbeStep, XraySkippedMount, XrayVfs};
 
 /// One declared place to search, before it has been mounted.
 #[derive(Clone, Debug)]
@@ -129,9 +129,17 @@ impl XrayProbePlan {
     let mut steps: Vec<XrayProbeStep> = Vec::with_capacity(self.steps.len());
 
     for step in &self.steps {
+      // The VFS records every failure of every plan it has ever mounted, so this step's own are the ones it appended:
+      // a caller reporting on this search must name the sources it is missing rather than an unrelated root's.
+      let already_skipped: usize = vfs.get_skipped_mounts().len();
       let mounts: Vec<XrayMountId> = vfs.mount_plan(&step.plan)?;
+      let skipped: Vec<XraySkippedMount> = vfs.get_skipped_mounts()[already_skipped..].to_vec();
 
-      steps.push(XrayProbeStep::new(&step.label, XrayLookupScope::only(mounts)));
+      steps.push(XrayProbeStep::planned(
+        &step.label,
+        XrayLookupScope::only(mounts),
+        skipped,
+      ));
     }
 
     Ok(steps)

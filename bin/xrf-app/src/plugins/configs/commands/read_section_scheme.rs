@@ -30,11 +30,10 @@ pub async fn configs_read_section_scheme(
   let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
 
-  // Off the async worker for the same reason a page read is: the root is normally resolved by the time a section can
-  // be selected, but a selection surviving a reopen would resolve a whole include tree on the IPC handler thread.
   execution
     .run_blocking("Configs section scheme", move || {
-      opened.with_reader(&entry, |reader, _| Ok(reader.read_section_scheme(&section)))
+      // A scheme row names the file a bound value is written in, which is a recorded origin.
+      opened.with_reader(&entry, true, |reader, _| Ok(reader.read_section_scheme(&section)))
     })
     .await?
 }

@@ -42,22 +42,41 @@ impl ConfigsProject {
   /// # Errors
   ///
   /// Returns an error when the entry point cannot be read or resolved.
-  pub fn resolve(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<ConfigsResolvedRoot>> {
+  pub fn resolve(&self, entry: &XrayLogicalPath, is_explaining: bool) -> TauriResult<Arc<ConfigsResolvedRoot>> {
+    // An explained root answers a plain ask too; the reverse is not true, which is the only reason this is not a
+    // straight equality on the entry.
     if let Some(held) = self.held_resolution()?.as_ref()
       && held.entry == *entry
+      && (held.is_explained || !is_explaining)
     {
       return Ok(Arc::clone(held));
     }
 
     // Resolved outside the lock: it reads and lowers a whole include tree, and holding the cache lock across that
     // would block a second surface asking about a config that is already held.
-    let resolved: Arc<ConfigsResolvedRoot> = Arc::new(ConfigsResolvedRoot::new(
-      entry.clone(),
-      self
-        .project
-        .resolve_explained(entry)
-        .map_err(|error| format!("Cannot resolve '{}': {error}", entry.as_str()))?,
-    ));
+    let resolved: Arc<ConfigsResolvedRoot> = Arc::new(if is_explaining {
+      // The plain one, if this root had it, is a second copy of the same document once this lands. The project holds
+      // that one; only the project can let it go.
+      self.project.forget_root(entry);
+
+      ConfigsResolvedRoot::explained(
+        entry.clone(),
+        self
+          .project
+          .resolve_explained(entry)
+          .map_err(|error| format!("Cannot resolve '{}': {error}", entry.as_str()))?,
+      )
+    } else {
+      // Through the project, which holds it for the session: a person moving between roots and back pays for this one
+      // once rather than on every return to it.
+      ConfigsResolvedRoot::plain(
+        entry.clone(),
+        self
+          .project
+          .read_resolution(entry)
+          .map_err(|error| format!("Cannot resolve '{}': {error}", entry.as_str()))?,
+      )
+    });
 
     *self.held_resolution()? = Some(Arc::clone(&resolved));
 
@@ -76,9 +95,10 @@ impl ConfigsProject {
   pub fn with_reader<T>(
     &self,
     entry: &XrayLogicalPath,
+    is_explaining: bool,
     consumer: impl FnOnce(&LtxRootReader, &ConfigsResolvedRoot) -> TauriResult<T>,
   ) -> TauriResult<T> {
-    let resolved: Arc<ConfigsResolvedRoot> = self.resolve(entry)?;
+    let resolved: Arc<ConfigsResolvedRoot> = self.resolve(entry, is_explaining)?;
     let source = self.project.document_source();
 
     let reader: LtxRootReader = LtxRootReader::new(
@@ -102,7 +122,8 @@ impl ConfigsProject {
   ///
   /// Returns an error when the entry point cannot be resolved, verified, or read back.
   pub fn find_problems(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<Vec<LtxAnchoredFinding>>> {
-    self.with_reader(entry, |reader, resolved| {
+    // Findings anchor a scheme error to the file that wrote the field, which only a recorded origin can name.
+    self.with_reader(entry, true, |reader, resolved| {
       if let Some(held) = resolved.get_findings()? {
         return Ok(held);
       }

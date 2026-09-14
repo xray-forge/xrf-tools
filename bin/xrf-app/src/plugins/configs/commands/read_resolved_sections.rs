@@ -55,7 +55,7 @@ pub async fn configs_read_resolved_sections(
     .run_blocking("Configs resolved page", move || {
       let names: Vec<&str> = names.iter().map(String::as_str).collect::<Vec<&str>>();
 
-      opened.with_reader(&entry, |reader, resolved| {
+      opened.with_reader(&entry, true, |reader, resolved| {
         reader
           .read_sections(&names)
           .map_err(|error| format!("Cannot read sections of '{}': {error}", resolved.entry.as_str()))

@@ -28,6 +28,8 @@ pub fn open_ltx_project(path: &Path, matches: &ArgMatches, output: &OutputOption
   }
 
   let options: LtxProjectOptions = LtxProjectOptions {
+    // A command reads each root once and exits, so nothing is worth holding for a second ask.
+    is_caching_resolutions: false,
     dialect: requested_ltx_dialect(matches),
     is_with_schemes_check: true,
     is_strict_check: true,

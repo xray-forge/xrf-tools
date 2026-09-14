@@ -102,9 +102,9 @@ impl GamedataProject {
       // Read through the project: its entries are logical paths, which a filesystem read cannot resolve.
       let reported: PathBuf = self.ltx_project.path_of(path);
 
-      match self.ltx_project.read_full(path) {
-        Ok(ltx) => {
-          self.verify_particles_usage_in_ltx(options, particle_names, &ltx, &reported, result);
+      match self.ltx_project.read_resolution(path) {
+        Ok(resolved) => {
+          self.verify_particles_usage_in_ltx(options, particle_names, &resolved.ltx, &reported, result);
         }
         Err(error) => {
           // Malformed ltx files are reported by the generic ltx check, not this one.

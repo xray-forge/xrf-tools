@@ -10,13 +10,13 @@ use fxhash::FxBuildHasher;
 /// root includes, arrives as two separate reads and would otherwise be stored twice. On a vanilla tree that is 293,441
 /// resolved fields carrying 10,583 distinct key names.
 #[derive(Debug, Default)]
-pub(crate) struct LtxTextInterner {
+pub struct LtxTextInterner {
   held: HashSet<Arc<str>, FxBuildHasher>,
 }
 
 impl LtxTextInterner {
   /// The shared handle for `text`, allocating only the first time it is seen.
-  pub(crate) fn intern(&mut self, text: &str) -> Arc<str> {
+  pub fn intern(&mut self, text: &str) -> Arc<str> {
     if let Some(held) = self.held.get(text) {
       return Arc::clone(held);
     }

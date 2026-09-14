@@ -26,7 +26,7 @@ pub(crate) mod syntax;
 
 pub use crate::dialect::{
   LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,
-  LtxStandardDialect,
+  LtxStandardDialect, LtxTextInterner,
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 pub use crate::ltx::{Ltx, LtxSectionFieldSchemes, LtxSectionSchemes, Section};

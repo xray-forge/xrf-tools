@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use xrf_error::XrfResult;
 
-use crate::ltx::Ltx;
+use crate::dialect::LtxResolution;
 
 /// One root's resolved value, and the right to produce it.
 ///
@@ -12,7 +12,7 @@ use crate::ltx::Ltx;
 /// workers against 1 - and it left the cache's own hit count depending on the schedule.
 #[derive(Debug, Default)]
 pub(crate) struct LtxResolvedRoot {
-  value: OnceLock<Arc<Ltx>>,
+  value: OnceLock<Arc<LtxResolution>>,
   /// Held only while a value is being produced, so racing threads wait for the first rather than repeating it.
   ///
   /// Guards no state of its own, so a panic inside a resolution leaves nothing inconsistent and the poison is stepped
@@ -27,9 +27,9 @@ impl LtxResolvedRoot {
   ///
   /// Whatever `produce` answers. A failure is not remembered: the next caller tries again, so a transient read error
   /// does not poison a root for the life of the project.
-  pub(crate) fn get_or_try_init<F>(&self, produce: F) -> XrfResult<Arc<Ltx>>
+  pub(crate) fn get_or_try_init<F>(&self, produce: F) -> XrfResult<Arc<LtxResolution>>
   where
-    F: FnOnce() -> XrfResult<Arc<Ltx>>,
+    F: FnOnce() -> XrfResult<Arc<LtxResolution>>,
   {
     if let Some(resolved) = self.value.get() {
       return Ok(Arc::clone(resolved));
@@ -44,7 +44,7 @@ impl LtxResolvedRoot {
     }
 
     // `?` before the cell is touched, so a failure stores nothing and the next caller is free to try again.
-    let resolved: Arc<Ltx> = produce()?;
+    let resolved: Arc<LtxResolution> = produce()?;
 
     Ok(Arc::clone(self.value.get_or_init(|| resolved)))
   }
@@ -58,6 +58,7 @@ mod test {
 
   use xrf_error::{XrfError, XrfResult};
 
+  use crate::dialect::LtxResolution;
   use crate::ltx::Ltx;
   use crate::project::LtxResolvedRoot;
 
@@ -80,14 +81,16 @@ mod test {
             .get_or_try_init(|| {
               produced.fetch_add(1, Ordering::SeqCst);
 
-              Ok(Arc::new(Ltx::read_from_str("[section]\nkey = value\n")?))
+              Ok(Arc::new(LtxResolution::new_plain(Ltx::read_from_str(
+                "[section]\nkey = value\n",
+              )?)))
             })
             .expect("the root to resolve")
         })
       })
       .collect();
 
-    let resolved: Vec<Arc<Ltx>> = workers.into_iter().map(|it| it.join().expect("no panic")).collect();
+    let resolved: Vec<Arc<LtxResolution>> = workers.into_iter().map(|it| it.join().expect("no panic")).collect();
 
     assert_eq!(
       produced.load(Ordering::SeqCst),
@@ -97,7 +100,7 @@ mod test {
 
     for value in &resolved {
       assert!(Arc::ptr_eq(value, &resolved[0]), "every reader to answer one value");
-      assert_eq!(value.get_from("section", "key"), Some("value"));
+      assert_eq!(value.ltx.get_from("section", "key"), Some("value"));
     }
   }
 
@@ -112,9 +115,13 @@ mod test {
     );
 
     // The retry is the point: a read that failed once must not leave the root unresolvable for the whole project.
-    let resolved: Arc<Ltx> = root.get_or_try_init(|| Ok(Arc::new(Ltx::read_from_str("[later]\nkey = ok\n")?)))?;
+    let resolved: Arc<LtxResolution> = root.get_or_try_init(|| {
+      Ok(Arc::new(LtxResolution::new_plain(Ltx::read_from_str(
+        "[later]\nkey = ok\n",
+      )?)))
+    })?;
 
-    assert_eq!(resolved.get_from("later", "key"), Some("ok"));
+    assert_eq!(resolved.ltx.get_from("later", "key"), Some("ok"));
 
     Ok(())
   }

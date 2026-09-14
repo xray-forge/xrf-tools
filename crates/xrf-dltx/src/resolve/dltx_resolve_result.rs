@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 use crate::resolve::dltx_provenance::DltxProvenance;
@@ -7,7 +8,7 @@ use crate::resolve::dltx_provenance::DltxProvenance;
 #[derive(Debug, Default)]
 pub struct DltxResolveResult {
   /// Sections by lowercased name, each field by key, in the engine's emitted order.
-  pub sections: BTreeMap<String, BTreeMap<String, String>>,
+  pub sections: BTreeMap<Arc<str>, BTreeMap<Arc<str>, Arc<str>>>,
   pub provenance: DltxProvenance,
   pub diagnostics: Vec<DltxDiagnostic>,
 }
@@ -19,11 +20,11 @@ impl DltxResolveResult {
       .sections
       .get(section)
       .and_then(|fields| fields.get(key))
-      .map(String::as_str)
+      .map(|value| &**value)
   }
 
   /// Section names, sorted.
   pub fn list_sections(&self) -> Vec<&str> {
-    self.sections.keys().map(String::as_str).collect()
+    self.sections.keys().map(|section| &**section).collect()
   }
 }

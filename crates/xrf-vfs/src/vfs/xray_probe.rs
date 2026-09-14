@@ -4,7 +4,9 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 
 use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry};
-use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMountId, XrayPathCollision, XrayVfs};
+use crate::{
+  XrayAsset, XrayAssetType, XrayLookupScope, XrayMount, XrayMountId, XrayPathCollision, XraySkippedMount, XrayVfs,
+};
 
 /// One place a probe looks, and the name a report calls it by.
 ///
@@ -15,13 +17,20 @@ use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMountId, XrayPathColl
 pub struct XrayProbeStep {
   label: String,
   scope: XrayLookupScope,
+  skipped: Vec<XraySkippedMount>,
 }
 
 impl XrayProbeStep {
   pub fn new(label: impl Into<String>, scope: XrayLookupScope) -> Self {
+    Self::planned(label, scope, Vec::new())
+  }
+
+  /// A step as [`crate::XrayProbePlan::mount_into`] produced it, carrying what its own plan could not open.
+  pub(crate) fn planned(label: impl Into<String>, scope: XrayLookupScope, skipped: Vec<XraySkippedMount>) -> Self {
     Self {
       label: label.into(),
       scope,
+      skipped,
     }
   }
 
@@ -32,6 +41,20 @@ impl XrayProbeStep {
   pub fn get_scope(&self) -> &XrayLookupScope {
     &self.scope
   }
+
+  /// Sources this step's plan named that could not be opened, so this step answers for none of their entries.
+  pub fn get_skipped(&self) -> &[XraySkippedMount] {
+    &self.skipped
+  }
+}
+
+/// One source a probe searches, and what put it there.
+#[derive(Clone, Copy, Debug)]
+pub struct XraySearchedSource<'a> {
+  /// Label of the probe step that reaches this source.
+  pub step: &'a str,
+  /// The mounted source itself, which answers for what it holds and how the plan described it.
+  pub mount: &'a XrayMount,
 }
 
 impl XrayVfs {
@@ -91,17 +114,39 @@ impl<'a> XrayProbe<'a> {
     !self.steps.iter().any(|step| self.has_mounts(step))
   }
 
-  /// Every source this probe would search, in probe order and without duplicates.
+  /// Every source this probe would search, in the order it searches them and without duplicates.
+  pub fn list_sources(&self) -> Vec<XraySearchedSource<'_>> {
+    let mut seen: HashSet<XrayMountId> = HashSet::new();
+    let mut sources: Vec<XraySearchedSource<'_>> = Vec::new();
+
+    for step in &self.steps {
+      for mount in self.vfs.mounts_in(step.get_scope()) {
+        if seen.insert(mount.get_id()) {
+          sources.push(XraySearchedSource {
+            mount,
+            step: step.get_label(),
+          });
+        }
+      }
+    }
+
+    sources
+  }
+
+  /// Sources this probe's own steps named but could not open, in step order.
+  pub fn list_skipped_sources(&self) -> Vec<&XraySkippedMount> {
+    self.steps.iter().flat_map(XrayProbeStep::get_skipped).collect()
+  }
+
+  /// Every source this probe would search, named by its root path, in probe order and without duplicates.
   pub fn list_roots(&self) -> Vec<String> {
     let mut roots: Vec<String> = Vec::new();
 
-    for step in &self.steps {
-      for mount in self.vfs.scoped(step.get_scope()).list_mounts() {
-        let root: String = mount.get_source().get_root_path().display().to_string();
+    for source in self.list_sources() {
+      let root: String = source.mount.get_source().get_root_path().display().to_string();
 
-        if !roots.contains(&root) {
-          roots.push(root);
-        }
+      if !roots.contains(&root) {
+        roots.push(root);
       }
     }
 
@@ -111,18 +156,11 @@ impl<'a> XrayProbe<'a> {
   /// Files any source this probe searches holds but cannot reach, because another file in that same source claims
   /// their identity.
   pub fn list_collisions(&self) -> Vec<XrayPathCollision> {
-    let mut seen: HashSet<XrayMountId> = HashSet::new();
-    let mut collisions: Vec<XrayPathCollision> = Vec::new();
-
-    for step in &self.steps {
-      for mount in self.vfs.mounts_in(step.get_scope()) {
-        if seen.insert(mount.get_id()) {
-          collisions.extend(mount.get_source().get_collisions().iter().cloned());
-        }
-      }
-    }
-
-    collisions
+    self
+      .list_sources()
+      .into_iter()
+      .flat_map(|source| source.mount.get_source().get_collisions().iter().cloned())
+      .collect()
   }
 
   /// Resolves an engine reference of one kind, step by step, first hit winning.

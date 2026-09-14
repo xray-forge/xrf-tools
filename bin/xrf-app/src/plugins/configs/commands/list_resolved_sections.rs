@@ -32,7 +32,7 @@ pub async fn configs_list_resolved_sections(
   // every config declaring one.
   execution
     .run_blocking("Configs resolved index", move || {
-      opened.with_reader(&entry, |reader, resolved| {
+      opened.with_reader(&entry, true, |reader, resolved| {
         if let Some(index) = resolved.get_index()? {
           return Ok(index);
         }

@@ -14,6 +14,6 @@ pub(crate) use directory_asset_index::DirectoryAssetIndex;
 pub(crate) use indexed_asset::IndexedAsset;
 pub use xray_archive_source::XrayArchiveSource;
 pub(crate) use xray_asset_index::XrayAssetIndex;
-pub use xray_asset_source::{XrayAssetSource, XraySourceKind};
+pub use xray_asset_source::{XrayAssetSource, XraySourceKind, label_from_path};
 pub use xray_declared_root::XrayDeclaredRoot;
 pub(crate) use xray_directory_source::XrayDirectorySource;

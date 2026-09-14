@@ -257,3 +257,18 @@ export type XrayRoots = {
   /** Roots searched after the asset's own, in the order given. */
   roots: Array<XrayRoot>;
 };
+
+/**
+ * The storage kind backing a mount.
+ *
+ * It distinguishes loose filesystem entries from entries inside archive volumes.
+ */
+export enum EXraySourceKind {
+  /** Loose files under a directory. */
+  DIRECTORY = "directory",
+  /** Entries inside a set of `.db` archive volumes. */
+  ARCHIVE = "archive",
+}
+
+/** Every `EXraySourceKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XraySourceKind = `${EXraySourceKind}`;

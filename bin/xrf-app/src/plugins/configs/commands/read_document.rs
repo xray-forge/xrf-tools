@@ -70,7 +70,9 @@ fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocu
   let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(|error| error.to_string())?;
 
   let (structure, findings): (LtxFileStructure, Vec<LtxAnchoredFinding>) =
-    opened.with_reader(&entry, |reader, _| {
+    // No origins: a structure read asks whether a parent resolves and what `$scheme` a section ends with, and a
+    // plain resolution answers both for half the time and half the memory of one that records every field's origin.
+    opened.with_reader(&entry, false, |reader, _| {
       let structure: LtxFileStructure = reader
         .read_structure(logical.as_str(), &entry_points)
         .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))?;

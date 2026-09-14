@@ -5,7 +5,7 @@ use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -233,6 +233,16 @@ impl XrayAssetSource for XrayArchiveSource {
       .get(path)
       .and_then(|name| self.project.files.get(name))
       .map(|descriptor| u64::from(descriptor.size_real))
+  }
+
+  /// Answers from the keyed name table, which already folded away directory records and unreachable duplicates.
+  fn count_entries(&self) -> usize {
+    self.entries.len()
+  }
+
+  /// The set's volumes as [`ArchiveProject`] merged them, so the last one is the one that won a shared name.
+  fn list_volumes(&self) -> &[ArchiveDescriptor] {
+    &self.project.archives
   }
 
   /// One per volume of the set, from each `[header] entry_point` the reader already stripped its alias from.

@@ -89,7 +89,7 @@ impl Section {
   }
 
   /// Insert a field whose text is already held, sharing that allocation rather than making another.
-  pub(crate) fn insert_shared(&mut self, key: Arc<str>, value: Arc<str>) {
+  pub fn insert_shared(&mut self, key: Arc<str>, value: Arc<str>) {
     self.data.insert(key, value);
   }
 

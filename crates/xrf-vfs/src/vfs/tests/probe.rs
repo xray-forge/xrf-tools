@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
-use crate::{XrayAssetType, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
+use crate::{XrayAssetType, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XraySearchedSource, XrayVfs};
 
 /// Two directory mounts, returned with the ids a scope selects them by.
 fn two_roots(case: &str, first: &[&str], second: &[&str]) -> (XrayVfs, XrayMountId, XrayMountId, PathBuf, PathBuf) {
@@ -278,5 +278,47 @@ fn lists_assets_of_a_kind_once_per_identity_with_the_earlier_step_winning() {
       ("meshes\\wpn\\wpn_ak74.ogf", Some(near.as_path())),
     ],
     "the shadowed copy is omitted and the texture is not a model"
+  );
+}
+
+#[test]
+fn lists_the_sources_it_searches_in_search_order_and_once_each() {
+  let (vfs, near_id, far_id, near, far) = two_roots(
+    "sources",
+    &["textures/wpn/wpn_ak74.dds"],
+    &["textures/wpn/wpn_ak74.dds", "textures/wpn/wpn_abakan.dds"],
+  );
+
+  // The far root is selected by two steps, which is what a roots spec produces when one root sits inside another.
+  let probe: XrayProbe = vfs
+    .probe()
+    .with_step("near", XrayLookupScope::only([near_id]))
+    .with_step("far", XrayLookupScope::only([far_id]))
+    .with_step("fallback", XrayLookupScope::only([far_id]));
+
+  let sources: Vec<XraySearchedSource<'_>> = probe.list_sources();
+
+  assert_eq!(
+    sources
+      .iter()
+      .map(|source| (source.step, source.mount.get_source().get_root_path()))
+      .collect::<Vec<(&str, &Path)>>(),
+    [("near", near.as_path()), ("far", far.as_path())],
+    "a mount two steps select is listed once, under the step that reaches it first"
+  );
+
+  assert_eq!(
+    sources[1].mount.get_source().count_entries(),
+    2,
+    "each source says how much it holds before anything in front of it shadows one"
+  );
+
+  assert_eq!(
+    sources
+      .iter()
+      .map(|source| source.mount.get_origin())
+      .collect::<Vec<Option<&str>>>(),
+    [None, None],
+    "a mount made by hand is named by no plan"
   );
 }

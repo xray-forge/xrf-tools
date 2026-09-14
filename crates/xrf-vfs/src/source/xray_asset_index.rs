@@ -79,6 +79,11 @@ impl XrayAssetIndex {
     self.directory.root()
   }
 
+  /// How many logical paths the index answers for, which is fewer than the files walked when two folded onto one.
+  pub(crate) fn len(&self) -> usize {
+    self.assets.len()
+  }
+
   /// Iterates over indexed assets in normalized logical-path order.
   pub(crate) fn assets(&self) -> impl Iterator<Item = IndexedAsset<'_>> {
     self.assets.iter().map(|(path, index)| self.asset(path, *index))
