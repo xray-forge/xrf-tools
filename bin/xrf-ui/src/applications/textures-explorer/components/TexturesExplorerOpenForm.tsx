@@ -44,8 +44,8 @@ interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
 }
 
 /**
- * The way into the explorer: browse a gamedata tree or a whole installation, browse a folder of loose textures, or
- * inspect one texture.
+ * The way into the explorer: browse the game as the engine mounts it, a gamedata tree or a directory of loose
+ * textures, or inspect one texture.
  */
 export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -74,9 +74,9 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       isDisabled: isLoading,
       title: "Select gamedata or textures directory",
     }),
-    [ETextureOpenMode.INSTALLATION]: usePathField({
+    [ETextureOpenMode.GAME]: usePathField({
       application: EApplicationId.TEXTURES_EXPLORER,
-      id: "installation",
+      id: "game",
       isDirectory: true,
       isDisabled: isLoading,
       title: "Select game folder",
@@ -86,7 +86,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
       id: "loose-folder",
       isDirectory: true,
       isDisabled: isLoading,
-      title: "Select a folder of textures",
+      title: "Select textures directory",
     }),
     [ETextureOpenMode.TEXTURE]: usePathField({
       application: EApplicationId.TEXTURES_EXPLORER,
@@ -128,7 +128,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     >
       <ChoiceFormRow
         label={"Open"}
-        description={"A gamedata tree, the game as the engine mounts it, a folder of loose textures, or one texture"}
+        description={"The game as the engine mounts it, a gamedata tree, a directory of textures, or one texture"}
         options={OPEN_MODE_OPTIONS}
         value={modeId}
         isRequired={false}

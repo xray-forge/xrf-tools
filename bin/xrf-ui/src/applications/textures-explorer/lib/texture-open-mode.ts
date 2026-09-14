@@ -4,10 +4,10 @@ import { Nullable } from "@/lib/types/general";
 
 /** Which of the four things the picker is opening. */
 export enum ETextureOpenMode {
+  /** A game folder, read as the engine mounts it: its archives, and the gamedata tree standing in front of them. */
+  GAME = "game",
   /** A gamedata tree, listed by engine reference the way the engine would find it. */
   FOLDER = "folder",
-  /** A game folder, read as the engine mounts it: its archives, and the gamedata tree standing in front of them. */
-  INSTALLATION = "installation",
   /** A plain directory, listed by path, for textures that are in no game tree. */
   LOOSE_FOLDER = "looseFolder",
   /** One texture and the descriptor beside it. */
@@ -63,7 +63,7 @@ async function openRoots(path: string, session: ITextureOpenSession): Promise<vo
 }
 
 /**
- * Every way into the explorer, in the order the toggle offers them.
+ * Every way into the explorer, in the order the toggle offers them: widest first, one texture last.
  *
  * A table rather than a branch per surface, because a mode is a handful of facts - its label, its description, its
  * button, its row, whether its path is probed, and what it does - and they were spelled in eight places that had to
@@ -71,6 +71,17 @@ async function openRoots(path: string, session: ITextureOpenSession): Promise<vo
  * is a row rather than an audit.
  */
 export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
+  {
+    description:
+      "Lists every texture the game mounts: its archive volumes, and the loose gamedata tree standing in front of " +
+      "them. Files outside the textures directory are counted rather than listed. Nothing is written.",
+    field: { description: "Folder holding fsgame.ltx", label: "Game folder" },
+    id: ETextureOpenMode.GAME,
+    isRootProbed: true,
+    label: "Game",
+    open: openRoots,
+    submitLabel: "Browse",
+  },
   {
     description:
       "Lists every texture under the root, archives included, and reads what each descriptor declares. Files " +
@@ -84,24 +95,13 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
   },
   {
     description:
-      "Lists every texture the game mounts: its archive volumes, and the loose gamedata tree standing in front of " +
-      "them. Files outside the textures directory are counted rather than listed. Nothing is written.",
-    field: { description: "Folder holding fsgame.ltx", label: "Game folder" },
-    id: ETextureOpenMode.INSTALLATION,
-    isRootProbed: true,
-    label: "Installation",
-    open: openRoots,
-    submitLabel: "Browse",
-  },
-  {
-    description:
       "Lists every dds under the folder by its own path, for textures that are not in a game tree and have no " +
       "engine reference. Descriptors are not swept, because there are no references to sweep them by. Nothing is " +
       "written.",
-    field: { description: "Any directory holding dds files, in a game tree or not", label: "Textures folder" },
+    field: { description: "Any directory holding dds files, in a game tree or not", label: "Textures directory" },
     id: ETextureOpenMode.LOOSE_FOLDER,
     isRootProbed: false,
-    label: "Folder",
+    label: "Directory",
     open: async (path: string, { assetRoot, catalogService, selectionService }: ITextureOpenSession): Promise<void> => {
       selectionService.setAssetRoot(assetRoot);
 

@@ -34,8 +34,8 @@ function mockSession(): ITextureOpenSession & {
 describe("TEXTURE_OPEN_MODES", () => {
   it("offers every way in exactly once, in toggle order", () => {
     expect(TEXTURE_OPEN_MODES.map((it: ITextureOpenModeDescriptor) => it.id)).toEqual([
+      ETextureOpenMode.GAME,
       ETextureOpenMode.FOLDER,
-      ETextureOpenMode.INSTALLATION,
       ETextureOpenMode.LOOSE_FOLDER,
       ETextureOpenMode.TEXTURE,
     ]);
@@ -63,10 +63,10 @@ describe("TEXTURE_OPEN_MODES", () => {
     expect(session.catalogService.openRoot).toHaveBeenCalledWith(PATH, ASSET_ROOT);
   });
 
-  it("browses an installation the same way, because the mount is what tells the two apart", async () => {
+  it("browses a game folder the same way, because the mount is what tells the two apart", async () => {
     const session = mockSession();
 
-    await getTextureOpenMode(ETextureOpenMode.INSTALLATION).open(PATH, session);
+    await getTextureOpenMode(ETextureOpenMode.GAME).open(PATH, session);
 
     expect(session.calls).toEqual(["setAssetRoot", "openRoot"]);
     expect(session.catalogService.openRoot).toHaveBeenCalledWith(PATH, ASSET_ROOT);
@@ -78,7 +78,7 @@ describe("TEXTURE_OPEN_MODES", () => {
       TEXTURE_OPEN_MODES.filter((it: ITextureOpenModeDescriptor) => it.isRootProbed).map(
         (it: ITextureOpenModeDescriptor) => it.id
       )
-    ).toEqual([ETextureOpenMode.FOLDER, ETextureOpenMode.INSTALLATION]);
+    ).toEqual([ETextureOpenMode.GAME, ETextureOpenMode.FOLDER]);
   });
 
   it("browses a loose folder by its path", async () => {

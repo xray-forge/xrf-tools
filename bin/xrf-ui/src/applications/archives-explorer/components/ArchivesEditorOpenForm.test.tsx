@@ -57,7 +57,7 @@ describe("ArchivesEditorOpenForm", () => {
     const { findByRole } = renderForm();
 
     expect(await findByRole("group", { name: "Open" })).toHaveAccessibleDescription(
-      "Browse a whole directory, one archive on its own, or the game as the engine mounts it"
+      "The game as the engine mounts it, a whole directory of volumes, or one archive on its own"
     );
   });
 
@@ -165,7 +165,7 @@ describe("ArchivesEditorOpenForm", () => {
 
     const { getByLabelText, getByRole, getByText } = renderForm();
 
-    await userEvent.click(getByLabelText("Open installation"));
+    await userEvent.click(getByLabelText("Open game"));
 
     expect(
       getByText(
@@ -193,7 +193,7 @@ describe("ArchivesEditorOpenForm", () => {
     mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
 
     await userEvent.click(getByLabelText("Browse"));
-    await userEvent.click(getByLabelText("Open installation"));
+    await userEvent.click(getByLabelText("Open game"));
 
     expect(queryByDisplayValue(ARCHIVES_DIRECTORY)).not.toBeInTheDocument();
 

@@ -2,12 +2,12 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
   summary:
-    "Browse game files without changing them. Open a folder of `.db*` / `.xdb*` volumes as one file tree, inspect " +
-    "one volume, or open a whole game folder and see the files the engine would actually load. Preview supported " +
+    "Browse game files without changing them. Open a whole game folder and see the files the engine would actually " +
+    "load, open a folder of `.db*` / `.xdb*` volumes as one file tree, or inspect one volume. Preview supported " +
     "files and extract only what you need.",
   workflow: [
-    "Choose `Directory` to load every archive below a folder, `Archive` to inspect one volume, or `Installation` to " +
-      "open a game folder as the engine mounts it.",
+    "Choose `Game` to open a game folder as the engine mounts it, `Directory` to load every archive below a folder, " +
+      "or `Archive` to inspect one volume.",
     "Browse or filter the file tree. Select an entry, then double-click it or press `Enter` to open it.",
     "Use `Extract file` for one file. Select a directory to extract its contents, or select the tree root to " +
       "extract everything.",
@@ -20,12 +20,12 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Directory mode follows the engine's mount order: later volumes replace earlier copies. Volumes in a folder named " +
       "`patches` are loaded last, so their files win.",
     "Directory and Archive modes show archives only. A loose `gamedata` tree beside them is not listed, even though " +
-      "the engine would load it instead - use `Installation` mode to see that arrangement.",
-    "Installation mode lists one row per engine path: the copy the engine would open. Its icon is tinted by where " +
+      "the engine would load it instead - use `Game` mode to see that arrangement.",
+    "Game mode lists one row per engine path: the copy the engine would open. Its icon is tinted by where " +
       "the bytes come from - loose on disk, or inside a volume - and hovering it says which. `File details` names " +
       "where that copy sits and which copies it hides, and the status bar counts how many paths are answered more " +
       "than once.",
-    "Installation mode reads `fsgame.ltx` when the folder declares one, and otherwise treats the folder as a game " +
+    "Game mode reads `fsgame.ltx` when the folder declares one, and otherwise treats the folder as a game " +
       "data tree. Previews and extraction resolve the same copy the tree shows.",
     "`Resolution` lists the sources top to bottom in the order they are searched: the first one holding an engine " +
       "path is the copy the engine loads. A game folder is its `fsgame.ltx` declarations reversed, because the engine " +
@@ -64,7 +64,7 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
   ],
   limitations: [
     "The explorer cannot edit or repack an archive.",
-    "Installation mode has no volume metadata: a loose file has no offset, stored size or recorded CRC, and shared " +
+    "Game mode has no volume metadata: a loose file has no offset, stored size or recorded CRC, and shared " +
       "payloads are a property of one volume set. Open the archives directly for those.",
     "Preview limits are 10 MB for text, 32 MB for `dds`, and 64 MB for `ogg`. Larger and unsupported files still " +
       "appear in Details.",

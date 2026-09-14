@@ -18,7 +18,7 @@ import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * The way into the explorer: index a directory of volumes, one volume on its own, or a whole game folder.
+ * The way into the explorer: index a whole game folder, a directory of volumes, or one volume on its own.
  */
 export function ArchivesEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -52,8 +52,8 @@ export function ArchivesEditorOpenForm(): ReactElement {
     isDisabled: isLoading,
   });
 
-  const installation: IPathField = usePathField({
-    id: "installation",
+  const game: IPathField = usePathField({
+    id: "game",
     application: EApplicationId.ARCHIVES_EXPLORER,
     title: "Select game folder",
     isDirectory: true,
@@ -62,12 +62,10 @@ export function ArchivesEditorOpenForm(): ReactElement {
 
   // A folder named by hand is a guess until something confirms it, and this is the mode where guessing wrong is
   // quiet: a game folder named one level too high mounts nothing and reads as an installation with no files.
-  const installationFact: Nullable<string> = useRootProbe(
-    mode === EArchiveOpenMode.INSTALLATION && !installation.error ? installation.value : null
-  );
+  const gameFact: Nullable<string> = useRootProbe(mode === EArchiveOpenMode.GAME && !game.error ? game.value : null);
 
   const field: IPathField =
-    mode === EArchiveOpenMode.DIRECTORY ? directory : mode === EArchiveOpenMode.ARCHIVE ? archive : installation;
+    mode === EArchiveOpenMode.DIRECTORY ? directory : mode === EArchiveOpenMode.ARCHIVE ? archive : game;
 
   const onOpen = useCallback(() => {
     if (!field.value) {
@@ -76,7 +74,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
       return;
     }
 
-    if (mode === EArchiveOpenMode.INSTALLATION) {
+    if (mode === EArchiveOpenMode.GAME) {
       archivesService.openWorld({ asset: null, roots: [createRoot(field.value)] });
     } else {
       archivesService.openVolumes(field.value);
@@ -95,7 +93,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
     >
       <ChoiceFormRow
         label={"Open"}
-        description={"Browse a whole directory, one archive on its own, or the game as the engine mounts it"}
+        description={"The game as the engine mounts it, a whole directory of volumes, or one archive on its own"}
         options={OPEN_MODE_OPTIONS}
         value={mode}
         isDisabled={isLoading}
@@ -121,8 +119,8 @@ export function ArchivesEditorOpenForm(): ReactElement {
           isDisabled={isLoading}
           label={"Game folder"}
           description={"Folder holding fsgame.ltx, or a game data tree on its own"}
-          fact={installationFact}
-          field={installation}
+          fact={gameFact}
+          field={game}
         />
       )}
     </PickerForm>

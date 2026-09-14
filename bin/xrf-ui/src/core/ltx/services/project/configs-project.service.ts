@@ -8,7 +8,8 @@ import { Session } from "@/core/ipc/session";
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -88,6 +89,8 @@ export class ConfigsProjectService {
    */
   @LatestFlow("project")
   public *open(root: string, isDltx: boolean, prefix: Nullable<string> = null): TFlow {
+    const timer: Timer = new Timer();
+
     this.project = this.project.asLoading();
 
     try {
@@ -102,7 +105,7 @@ export class ConfigsProjectService {
         )
       );
 
-      this.log.info("Opened configs project:", descriptor.root, descriptor.inventory.files.length, "configs");
+      this.log.info("Opened configs project:", descriptor.root, "in", formatDuration(timer.elapsed()));
 
       this.project = this.project.asReady(descriptor);
     } catch (error) {

@@ -4,11 +4,11 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
   summary:
     "Read-only browser for game textures and the `thm` descriptors beside them: what each declares, which bump pair " +
     "the engine binds for it, and what the files behind that pair actually are. Browse a whole game, a gamedata " +
-    "tree, or a folder of loose files - archive volumes included - or open one texture. Nothing is ever written.",
+    "tree, or a directory of loose files - archive volumes included - or open one texture. Nothing is ever written.",
   workflow: [
-    "Pick a mode: `Gamedata` lists every texture under a gamedata tree, `Installation` lists the game the way the " +
-      "engine mounts it - its archive volumes and the loose tree in front of them - `Folder` lists the `.dds` " +
-      "files of any folder by their own paths, and `Texture` opens one loose `.dds` or the `.thm` beside it.",
+    "Pick a mode: `Game` lists the game the way the engine mounts it - its archive volumes and the loose tree in " +
+      "front of them - `Gamedata` lists every texture under a gamedata tree, `Directory` lists the `.dds` files of " +
+      "any directory by their own paths, and `Texture` opens one loose `.dds` or the `.thm` beside it.",
     "Narrow the tree with the filter chips above it - `Degraded`, `Unreadable`, `Skipped type` and the rest - or " +
       "type into the filter field to search every name.",
     "Open a texture with a double click in the tree, `Enter`, or the filter. One click only selects, as in every " +
@@ -71,7 +71,7 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
     "Bump declarations are read from `.thm` files only. A `textures.ltx` beside the textures declares bumps and " +
       "detail associations too, and is not read; a notice names it when the browsed roots hold one.",
     "`Texture` mode accepts only loose files on disk. A texture inside an archive is reached by browsing, through " +
-      "`Gamedata` or `Installation` mode.",
+      "`Game` or `Gamedata` mode.",
     "A single file is opened by its engine reference, which is its path below a `textures` directory. The file " +
       "therefore has to sit under one; a `.dds` on a desktop belongs to no tree and names no texture. A tree holding " +
       "only textures is enough, and whatever `Also search in` names is still searched behind it for the bump pair.",

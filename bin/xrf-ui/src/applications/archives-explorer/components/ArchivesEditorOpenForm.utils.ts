@@ -7,14 +7,15 @@ import { IChoiceFormRowOption } from "@/core/ui/form";
 export enum EArchiveOpenMode {
   DIRECTORY = "directory",
   ARCHIVE = "archive",
-  /**  A game folder, read as the engine mounts it. */
-  INSTALLATION = "installation",
+  /** A game folder, read as the engine mounts it. */
+  GAME = "game",
 }
 
+/** Widest first: the whole game, then a directory of volumes, then one volume. */
 export const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EArchiveOpenMode>> = [
+  { value: EArchiveOpenMode.GAME, label: "Game", "aria-label": "Open game" },
   { value: EArchiveOpenMode.DIRECTORY, label: "Directory", "aria-label": "Open directory" },
   { value: EArchiveOpenMode.ARCHIVE, label: "Archive", "aria-label": "Open archive" },
-  { value: EArchiveOpenMode.INSTALLATION, label: "Installation", "aria-label": "Open installation" },
 ];
 
 export const OPEN_MODES: ReadonlyArray<EArchiveOpenMode> = OPEN_MODE_OPTIONS.map((option) => option.value);
@@ -23,7 +24,7 @@ export const OPEN_MODES: ReadonlyArray<EArchiveOpenMode> = OPEN_MODE_OPTIONS.map
 export const OPEN_MODE_DESCRIPTIONS: Readonly<Record<EArchiveOpenMode, string>> = {
   [EArchiveOpenMode.DIRECTORY]: "Indexes every archive in the directory for browsing.",
   [EArchiveOpenMode.ARCHIVE]: "Indexes one archive volume for browsing.",
-  [EArchiveOpenMode.INSTALLATION]:
+  [EArchiveOpenMode.GAME]:
     "Indexes the game the way the engine mounts it: its archives, and the loose gamedata tree standing in front of " +
     "them.",
 };
