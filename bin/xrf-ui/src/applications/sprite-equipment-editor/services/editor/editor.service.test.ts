@@ -29,7 +29,6 @@ describe("SpriteEquipmentEditorService", () => {
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
       metadata: mockEquipmentSpriteMetadata(),
-      blob: new Blob(),
       image: new Image(),
     });
     await expect(service.reopenEquipmentProject()).rejects.toThrow("backend refused");
@@ -46,7 +45,6 @@ describe("SpriteEquipmentEditorService", () => {
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
       metadata: mockEquipmentSpriteMetadata(),
-      blob: new Blob(),
       image: new Image(),
     });
     service.repackSourcePath = null;
@@ -63,7 +61,6 @@ describe("SpriteEquipmentEditorService", () => {
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
       metadata: mockEquipmentSpriteMetadata(),
-      blob: new Blob(),
       image: new Image(),
     });
     service.repackSourcePath = "C:\\game\\equipment";
@@ -119,7 +116,6 @@ describe("SpriteEquipmentEditorService", () => {
     service.spriteImage = service.spriteImage.asReady({
       sessionId: "fixture-session",
       metadata: mockEquipmentSpriteMetadata(),
-      blob: new Blob(),
       image: new Image(),
     });
     service.repackSourcePath = "icons";

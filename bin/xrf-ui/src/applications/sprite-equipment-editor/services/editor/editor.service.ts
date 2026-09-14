@@ -33,7 +33,6 @@ import { Nullable } from "@/lib/types/general";
 export interface IOpenEquipmentSprite {
   sessionId: string;
   metadata: EquipmentSpriteMetadata;
-  blob: Blob;
   image: HTMLImageElement;
 }
 
@@ -400,12 +399,10 @@ export class SpriteEquipmentEditorService {
     const { sessionId, value: metadata } = response;
 
     const preview: Response = await fetch(convertFileSrc(sessionId + "/" + metadata.name, "stream"));
-    const blob: Blob = await preview.blob();
-
-    const url: string = this.assetService.create(blob);
+    const url: string = this.assetService.create(await preview.blob());
 
     try {
-      return { sessionId, metadata, blob, image: await urlToImage(url) };
+      return { sessionId, metadata, image: await urlToImage(url) };
     } catch (error) {
       this.assetService.release(url);
       throw error;

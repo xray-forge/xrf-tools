@@ -1,21 +1,22 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useMemo } from "react";
+import { ReactElement, useCallback } from "react";
 
 import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
-import { IEquipmentLayout, toEquipmentLayout } from "@/core/sprite-equipment/lib";
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+import { IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { IPanZoomPoint } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
 import { EquipmentGridControls } from "./EquipmentGridControls";
-import { EquipmentGridDetails } from "./EquipmentGridDetails";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";
-import { IEquipmentGridSelection, useEquipmentGridSelection } from "./use-equipment-grid-selection";
+import { IEquipmentGridHover, useEquipmentGridHover } from "./use-equipment-grid-hover";
 
 /**
  * The open sheet, with the lattice drawn over it.
@@ -26,19 +27,20 @@ export function EquipmentSpriteViewer({
   className,
 }: BaseComponentProps): ReactElement {
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
+  const gridService: EquipmentGridService = useInjection(EquipmentGridService);
 
   const sprite: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const isGridVisible: boolean = spriteEquipmentService.isGridVisible;
   const gridSize: number = spriteEquipmentService.gridSize;
 
-  const layout: Nullable<IEquipmentLayout> = useMemo(
-    () =>
-      sprite ? toEquipmentLayout(sprite.image.width, sprite.image.height, gridSize, sprite.metadata.occupants) : null,
-    [gridSize, sprite]
-  );
+  const layout: Nullable<IEquipmentLayout> = gridService.layout;
+  const hover: IEquipmentGridHover = useEquipmentGridHover(layout);
 
-  const selection: IEquipmentGridSelection = useEquipmentGridSelection(layout);
+  const onClick = useCallback(
+    (point: IPanZoomPoint): void => gridService.selectCell(layout ? toCellAt(layout.grid, point.x, point.y) : null),
+    [gridService, layout]
+  );
 
   const renderOverlay = useCallback(
     (view: IImageViewportView): Nullable<ReactElement> =>
@@ -47,11 +49,11 @@ export function EquipmentSpriteViewer({
           view={view}
           layout={layout}
           isGridVisible={isGridVisible}
-          hoveredCell={selection.hoveredCell}
-          selectedCell={selection.selectedCell}
+          hoveredCell={hover.hoveredCell}
+          selectedCell={gridService.selectedCell}
         />
       ) : null,
-    [isGridVisible, layout, selection.hoveredCell, selection.selectedCell]
+    [gridService.selectedCell, hover.hoveredCell, isGridVisible, layout]
   );
 
   if (!sprite || !layout) {
@@ -86,15 +88,11 @@ export function EquipmentSpriteViewer({
         width={sprite.image.width}
         height={sprite.image.height}
         renderOverlay={renderOverlay}
-        onContentPointerMove={selection.onPointerMove}
-        onContentClick={selection.onClick}
+        onContentPointerMove={hover.onPointerMove}
+        onContentClick={onClick}
       />
 
-      {selection.selectedCell ? (
-        <EquipmentGridDetails cell={selection.selectedCell} layout={layout} onClose={selection.onClearSelection} />
-      ) : null}
-
-      {selection.hoveredCell ? <EquipmentGridMoveOver cell={selection.hoveredCell} /> : null}
+      {hover.hoveredCell ? <EquipmentGridMoveOver cell={hover.hoveredCell} /> : null}
 
       <EquipmentGridControls
         gridSize={gridSize}

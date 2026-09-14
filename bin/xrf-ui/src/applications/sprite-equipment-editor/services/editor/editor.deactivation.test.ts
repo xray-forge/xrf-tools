@@ -18,7 +18,6 @@ function showSprite(service: SpriteEquipmentEditorService): void {
     mockRestoredSession(service, {
       sessionId: "fixture-session",
       metadata: mockEquipmentSpriteMetadata(),
-      blob: new Blob(),
       image: new Image(),
     })
   );

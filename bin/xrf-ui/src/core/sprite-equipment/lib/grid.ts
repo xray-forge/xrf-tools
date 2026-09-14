@@ -129,6 +129,19 @@ export function toCellAt(grid: IEquipmentGrid, x: number, y: number): Nullable<T
 }
 
 /**
+ * Whether a cell is one this lattice has at all.
+ *
+ * @param grid - Lattice to check against.
+ * @param cell - Cell as `[row, column]`.
+ * @returns Whether the lattice spans it.
+ */
+export function isCellWithin(grid: IEquipmentGrid, cell: TEquipmentCell): boolean {
+  const [row, column] = cell;
+
+  return row >= 0 && column >= 0 && row < grid.rows && column < grid.columns;
+}
+
+/**
  * Whether a cell lies beyond the image the lattice was built over.
  *
  * @param grid - Lattice the cell belongs to.

@@ -42,7 +42,6 @@ class TestSpriteEquipmentEditorService extends SpriteEquipmentEditorService {
     this.spriteImage = this.spriteImage.asReady({
       sessionId: "fixture-session",
       metadata: seed.metadata,
-      blob: new Blob(),
       image: new Image(),
     });
     this.repackSourcePath = seed.repackSourcePath;
