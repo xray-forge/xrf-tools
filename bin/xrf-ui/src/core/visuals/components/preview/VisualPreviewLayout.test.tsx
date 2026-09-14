@@ -36,8 +36,8 @@ describe("VisualPreviewLayout footer", () => {
     expect(view.queryByRole("button", { name: "Open visual" })).not.toBeInTheDocument();
   });
 
-  it("renders the full source location through the shared title-bar component", () => {
-    const location = { path: "C:\\game\\database\\meshes.db", entry: "actors\\stalker.ogf" };
+  it("renders the session's location through the shared title-bar component", () => {
+    const location = { path: "C:\\game\\database\\meshes.db" };
     const view = renderWithProviders(
       <VisualPreviewLayout
         model={mockVisualModelViews()}
@@ -47,7 +47,6 @@ describe("VisualPreviewLayout footer", () => {
     );
 
     expect(view.getByTestId("editor-toolbar-location")).toHaveTextContent(location.path);
-    expect(view.getByTestId("editor-toolbar-location")).toHaveTextContent(location.entry);
   });
 
   it("draws nothing under the viewport unless the caller asks for it", () => {

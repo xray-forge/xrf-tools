@@ -14,11 +14,10 @@ describe("toAssetLocation", () => {
     });
   });
 
-  it("gives a packed asset both of its addresses, and keeps them apart", () => {
-    // The volume is the file that exists; the entry is a name inside it that nothing outside the tools can open.
-    // Joining them into one string would read as a directory that is not there.
+  it("gives a packed asset the volume that holds it, and not the name inside it", () => {
+    // The volume is the file that exists; the name inside it is what the editor's own header says, and joining the
+    // two into one string would read as a directory that is not there.
     expect(toAssetLocation(mockArchivedTextureAsset("textures\\ston\\ston_beton05.dds"))).toEqual({
-      entry: "textures\\ston\\ston_beton05.dds",
       path: "C:\\game\\db\\textures.db0",
     });
   });

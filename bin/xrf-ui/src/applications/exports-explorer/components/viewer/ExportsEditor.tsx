@@ -87,9 +87,7 @@ export function ExportsEditor(): ReactElement {
     <EditorLayout
       toolbar={
         <EditorToolbar
-          subtitle={
-            project?.root ? <EditorToolbarLocation location={{ entry: selectedName, path: project.root }} /> : null
-          }
+          subtitle={project?.root ? <EditorToolbarLocation location={{ path: project.root }} /> : null}
           actions={
             <>
               <ExportsSaveAction isDisabled={isBusy} />

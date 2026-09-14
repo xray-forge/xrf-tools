@@ -96,7 +96,7 @@ export function ConfigsExplorerWorkspace({
       className={className}
       toolbar={
         <EditorToolbar
-          subtitle={project ? <EditorToolbarLocation location={{ entry: selected, path: project.root }} /> : undefined}
+          subtitle={project ? <EditorToolbarLocation location={{ path: project.root }} /> : undefined}
           actions={
             <EditorViewToggle
               label={"Resolved"}

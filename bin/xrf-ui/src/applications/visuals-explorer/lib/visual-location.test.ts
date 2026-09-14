@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 
-import { toVisualLocation } from "./visual-location";
+import { toVisualLocation, toVisualSessionLocation } from "./visual-location";
 
 const ENTRY = "actors\\stalker.ogf";
 
@@ -18,15 +18,15 @@ describe("toVisualLocation", () => {
     });
   });
 
-  it("keeps an archive's full disk path separate from its entry", () => {
+  it("names the archive a packed visual was read from, and not the name inside it", () => {
     const asset: XrayAsset = {
       logicalPath: ENTRY,
       container: { kind: "archive", path: "D:\\game\\database\\meshes.db" },
     };
 
+    // The crumb answers where the session is; what is open in it is the preview's own header.
     expect(toVisualLocation({ kind: "asset", logicalPath: ENTRY }, [asset])).toEqual({
       path: "D:\\game\\database\\meshes.db",
-      entry: ENTRY,
     });
   });
 
@@ -39,5 +39,32 @@ describe("toVisualLocation", () => {
   it("does not invent a disk path when the source is absent from the listing", () => {
     expect(toVisualLocation({ kind: "asset", logicalPath: ENTRY }, [])).toBeNull();
     expect(toVisualLocation(null, [])).toBeNull();
+  });
+});
+
+describe("toVisualSessionLocation", () => {
+  const ASSET: XrayAsset = {
+    logicalPath: ENTRY,
+    container: { kind: "archive", path: "D:\\game\\database\\meshes.db" },
+  };
+
+  it("keeps naming the browsed roots while a visual is open under them", () => {
+    expect(toVisualSessionLocation("C:\\gamedata", { kind: "asset", logicalPath: ENTRY }, [ASSET])).toEqual({
+      path: "C:\\gamedata",
+    });
+  });
+
+  it("names every browsed root, not the first of them", () => {
+    expect(toVisualSessionLocation("C:\\mod, C:\\gamedata", null, [])).toEqual({ path: "C:\\mod, C:\\gamedata" });
+  });
+
+  it("falls through to the file a model opened on its own was read from", () => {
+    expect(toVisualSessionLocation(null, { kind: "file", path: "D:\\models\\stalker.ogf" }, [])).toEqual({
+      path: "D:\\models\\stalker.ogf",
+    });
+  });
+
+  it("has nothing to say for a session with neither roots nor a model", () => {
+    expect(toVisualSessionLocation(null, null, [])).toBeNull();
   });
 });

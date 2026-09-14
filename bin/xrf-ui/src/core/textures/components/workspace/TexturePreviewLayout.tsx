@@ -2,7 +2,6 @@ import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
 
-import { toAssetLocation } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -89,7 +88,7 @@ export function TexturePreviewLayout({
       className={className}
       toolbar={
         <TextureWorkspaceToolbar
-          location={toAssetLocation(description?.texture ?? null) ?? sessionLocation}
+          location={sessionLocation}
           options={previewOptions}
           hasBump={Boolean(description?.material?.bump)}
           onChangeOptions={setPreviewOptions}

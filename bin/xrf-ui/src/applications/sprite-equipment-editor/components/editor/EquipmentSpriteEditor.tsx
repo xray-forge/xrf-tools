@@ -11,6 +11,7 @@ import {
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorStatus } from "@/core/shell/editor-shell";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -65,7 +66,7 @@ export function EquipmentSpriteEditor({
       className={className}
       toolbar={
         <EditorToolbar
-          subtitle={spriteImage?.path}
+          subtitle={spriteImage ? <EditorToolbarLocation location={{ path: spriteImage.path }} /> : undefined}
           actions={
             <>
               <EquipmentRepackAction />

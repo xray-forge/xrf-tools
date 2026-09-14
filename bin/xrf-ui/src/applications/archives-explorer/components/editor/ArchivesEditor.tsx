@@ -8,15 +8,12 @@ import { ReactElement, useCallback, useState } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   EArchiveSubject,
-  getArchiveVolumeOf,
   getSubjectRoot,
   getSubjectShadowedCount,
   getSubjectSize,
   getSubjectSourceCount,
 } from "@/core/archive/lib";
-import { describeAssetContainer } from "@/core/assets/lib";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
-import { ArchiveDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -60,22 +57,7 @@ export function ArchivesEditor(): ReactElement {
   const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
   const isShadowNoticeShown: boolean = shadowedCount > 0 && !isShadowNoticeDismissed;
 
-  const container: Nullable<string> = archivesService.selectedWorldEntry
-    ? describeAssetContainer(archivesService.selectedWorldEntry.container)
-    : null;
-  // A volume set names the volume its name table points into; a world names where the winning copy actually sits.
-  const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
-    subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
-    archivesService.selectedDescriptor
-  );
-
-  const source: Nullable<string> = container ?? volume?.path ?? null;
-
-  const location: Nullable<IEditorLocation> = source
-    ? { entry: archivesService.selectedEntry?.name, path: source }
-    : root
-      ? { path: root }
-      : null;
+  const location: Nullable<IEditorLocation> = root ? { path: root } : null;
 
   const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
 

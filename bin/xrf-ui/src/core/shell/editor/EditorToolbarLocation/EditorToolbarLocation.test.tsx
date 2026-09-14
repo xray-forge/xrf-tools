@@ -15,17 +15,13 @@ describe("EditorToolbarLocation", () => {
     );
   });
 
-  it("shows both addresses of a packed file", () => {
-    // What a person needs from a file inside a volume is which volume, and what it is called in there.
+  it("names the archive a packed session was opened on, and nothing inside it", () => {
+    // What is open inside the volume is the editor's own header. The crumb stays on the volume, so it does not move as
+    // a person clicks through the tree.
     const render: RenderResult = renderWithProviders(
-      <EditorToolbarLocation
-        location={{ entry: "config\\gameplay\\character_criticals_1.xml", path: "D:\\game\\db\\gamedata.db0" }}
-      />
+      <EditorToolbarLocation location={{ path: "D:\\game\\db\\gamedata.db0" }} />
     );
 
-    const rendered: HTMLElement = render.getByTestId("editor-toolbar-location");
-
-    expect(rendered).toHaveTextContent("D:\\game\\db\\gamedata.db0");
-    expect(rendered).toHaveTextContent("config\\gameplay\\character_criticals_1.xml");
+    expect(render.getByTestId("editor-toolbar-location")).toHaveTextContent("D:\\game\\db\\gamedata.db0");
   });
 });

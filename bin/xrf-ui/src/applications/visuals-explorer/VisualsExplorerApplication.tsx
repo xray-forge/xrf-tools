@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { toVisualLocation } from "@/applications/visuals-explorer/lib/visual-location";
+import { toVisualSessionLocation } from "@/applications/visuals-explorer/lib/visual-location";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
@@ -36,13 +36,10 @@ export function VisualsExplorerApplication({
   const isBrowsing: boolean = browseService.isBrowsing;
 
   const source = visualsService.selected?.source ?? null;
-  const location = useMemo(() => {
-    if (!source && browseService.root) {
-      return { path: browseService.root };
-    }
-
-    return toVisualLocation(source, browseService.visuals.value ?? []);
-  }, [source, browseService.root, browseService.visuals.value]);
+  const location = useMemo(
+    () => toVisualSessionLocation(browseService.rootsLabel, source, browseService.visuals.value ?? []),
+    [browseService.rootsLabel, source, browseService.visuals.value]
+  );
 
   const onBack = useCallback(() => setPickerOpen(true), []);
 

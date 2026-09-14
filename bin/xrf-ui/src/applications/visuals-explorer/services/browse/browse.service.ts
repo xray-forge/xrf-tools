@@ -41,11 +41,11 @@ export class VisualsBrowseService {
   }
 
   /**
-   * @returns The root being browsed, for the surfaces that name it to the user.
+   * @returns Every root being browsed as one line, or null when a single model was opened with no root at all.
    */
   @Computed()
-  public get root(): Nullable<string> {
-    return this.browsed?.value.roots[0]?.path ?? null;
+  public get rootsLabel(): Nullable<string> {
+    return this.browsed ? describeRoots(this.browsed.value) : null;
   }
 
   /**

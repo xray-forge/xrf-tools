@@ -27,7 +27,7 @@ describe("VisualsBrowseService", () => {
     expect(isObservableProp(service, "browsed")).toBe(true);
     expect(isObservableProp(service, "visuals")).toBe(true);
     expect(isComputedProp(service, "isBrowsing")).toBe(true);
-    expect(isComputedProp(service, "root")).toBe(true);
+    expect(isComputedProp(service, "rootsLabel")).toBe(true);
     expect(isComputedProp(service, "rootPaths")).toBe(true);
   });
 
@@ -103,7 +103,7 @@ describe("VisualsBrowseService", () => {
 
     await service.onProvision();
 
-    expect(service.root).toBe("C:\\gamedata");
+    expect(service.rootsLabel).toBe("C:\\gamedata");
     expect(service.visuals.value ?? []).toHaveLength(1);
   });
 
@@ -128,7 +128,7 @@ describe("VisualsBrowseService", () => {
 
     service.onDeactivation();
 
-    expect(service.root).toBeNull();
+    expect(service.rootsLabel).toBeNull();
     expect(service.visuals.value ?? []).toEqual([]);
     expect(released).toEqual(["closed"]);
   });
@@ -153,7 +153,7 @@ describe("VisualsBrowseService", () => {
     await service.openRoot("C:\\gamedata");
     await service.close();
 
-    expect(service.root).toBeNull();
+    expect(service.rootsLabel).toBeNull();
     expect(service.isBrowsing).toBe(false);
     expect(service.rootPaths).toEqual([]);
     expect(closed).toEqual(["closed"]);
@@ -162,6 +162,6 @@ describe("VisualsBrowseService", () => {
 
     await next.service.onProvision();
 
-    expect(next.service.root).toBeNull();
+    expect(next.service.rootsLabel).toBeNull();
   });
 });
