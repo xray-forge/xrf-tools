@@ -104,6 +104,29 @@ mod tests {
   }
 
   #[test]
+  fn every_stage_of_a_shader_source_reads_as_text() {
+    // Written as the whole family on purpose. `.ps`, `.vs`, `.hs` and `.ds` were readable while `.gs`, `.cs` and the
+    // `.hlsl` IX-Ray ships loose - 501 of them - were not, which is an oversight no wording of the list prevents.
+    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+
+    for stage in ["vs", "hs", "ds", "gs", "ps", "cs", "hlsl"] {
+      assert!(
+        policy.supports_file(&format!("shaders\\r3\\shader.{stage}")),
+        "a '.{stage}' source is text like every other stage"
+      );
+    }
+  }
+
+  #[test]
+  fn the_scripting_the_engine_runs_reads_as_text() {
+    // Two spellings of one language: `.script` is what the game data uses and `.lua` is what an engine tree does.
+    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+
+    assert!(policy.supports_file("scripts\\bind_stalker.script"));
+    assert!(policy.supports_file("scripts\\bind_stalker.lua"));
+  }
+
+  #[test]
   fn the_shader_script_the_engine_ships_without_a_name_reads_as_text() {
     // `Path::extension` calls `shaders\r1\.s` a hidden file and refuses it; it is a Lua script the engine loads.
     assert!(ArchiveReadPolicy::default().supports_file("shaders\\r1\\.s"));

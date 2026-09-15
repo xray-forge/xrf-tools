@@ -1,20 +1,26 @@
 use xrf_extension::XrayExtension;
 
 /// Extensions a viewer reads as text rather than as binary.
-///
-/// Engine formats, the shader sources beside them, and the plain text a mod ships its notes and manifests in. `S` also
-/// covers `shaders\r1\.s`, whose whole name is its extension.
 pub const ALLOWED_TEXT_EXTENSIONS: &[XrayExtension] = &[
+  XrayExtension::Bat,
   XrayExtension::Cmd,
+  XrayExtension::Cs,
   XrayExtension::Ds,
+  XrayExtension::Gs,
   XrayExtension::H,
+  XrayExtension::Hlsl,
   XrayExtension::Hs,
+  XrayExtension::Ini,
   XrayExtension::Json,
+  XrayExtension::Log,
   XrayExtension::Ltx,
+  XrayExtension::Lua,
   XrayExtension::Md,
   XrayExtension::Ps,
+  XrayExtension::Py,
   XrayExtension::S,
   XrayExtension::Script,
+  XrayExtension::Seq,
   XrayExtension::Vs,
   XrayExtension::Xml,
 ];
