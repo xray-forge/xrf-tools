@@ -9,6 +9,7 @@ import { getApplicationBackgroundImage } from "./application-background-image";
 export function getApplicationBackgroundSx(theme: Theme): SystemStyleObject<Theme> {
   return {
     backgroundColor: "background.default",
+    backgroundAttachment: "fixed",
     "--xrf-background-primary-opacity": APPLICATION_BACKGROUND.primary.opacity.light,
     "--xrf-background-secondary-opacity": APPLICATION_BACKGROUND.secondary.opacity.light,
     backgroundImage: getApplicationBackgroundImage({

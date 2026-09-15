@@ -110,13 +110,18 @@ export function ApplicationShellFrame({
         data-testid={dataTestId}
         id={id}
         className={className}
-        sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" }}
+        sx={mergeSx(getApplicationBackgroundSx, {
+          backgroundColor: "background.paper",
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          flexWrap: "nowrap",
+        })}
       >
         <ApplicationTitleBar toolbarRef={setToolbarHost} isBusy={isBusy} />
 
-        <Box
-          sx={mergeSx(getApplicationBackgroundSx, { display: "flex", flexGrow: 1, minHeight: 0, flexWrap: "nowrap" })}
-        >
+        <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0, flexWrap: "nowrap" }}>
           <ApplicationRail
             panels={leftPanels}
             activePanelId={leftSelection.activePanelId}

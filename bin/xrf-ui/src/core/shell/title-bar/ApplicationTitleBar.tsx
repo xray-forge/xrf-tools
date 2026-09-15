@@ -40,7 +40,6 @@ export function ApplicationTitleBar({
         minHeight: LAYOUT.titleBarHeight,
         borderBottom: 1,
         borderColor: "divider",
-        backgroundColor: "background.paper",
         userSelect: "none",
       }}
     >

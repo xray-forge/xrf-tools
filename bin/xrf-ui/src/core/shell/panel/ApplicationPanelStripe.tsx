@@ -43,7 +43,6 @@ export function ApplicationPanelStripe({
         paddingY: 1,
         ...(side === "left" ? { borderRight: 1 } : { borderLeft: 1 }),
         borderColor: "divider",
-        backgroundColor: "background.paper",
       }}
     >
       {panels.map((panel: IEditorPanel) => (

@@ -21,8 +21,8 @@ export const RADIUS = {
 export const APPLICATION_BACKGROUND = {
   radiusX: 800,
   radiusY: 600,
-  primary: { x: 24, y: 640, opacity: { light: "9%", dark: "3%" } },
-  secondary: { x: 24, y: 16, opacity: { light: "8%", dark: "5%" } },
+  primary: { x: 24, y: 640, opacity: { light: "6%", dark: "3%" } },
+  secondary: { x: 24, y: 16, opacity: { light: "8%", dark: "6%" } },
 } as const;
 
 /**

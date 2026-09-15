@@ -30,7 +30,6 @@ export function ApplicationStatusBar({
         paddingX: 1,
         borderTop: 1,
         borderColor: "divider",
-        backgroundColor: "background.paper",
       }}
     >
       {segments.length ? (
