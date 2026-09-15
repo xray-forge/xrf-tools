@@ -4,6 +4,7 @@ use tauri::State;
 use xrf_ltx_inspect::LtxAnchoredFinding;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
@@ -24,7 +25,7 @@ pub async fn configs_list_findings(
   let ConfigsResolvedRequest { session_id, entry } = request;
 
   let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
-  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
+  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(error_to_string)?;
 
   // Bounded by the root: verifying it walks every section it holds, which on a game tree is tens of thousands.
   execution

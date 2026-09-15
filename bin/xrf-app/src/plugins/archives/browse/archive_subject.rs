@@ -9,6 +9,7 @@ use xrf_pack::{
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
 
 use crate::core::assets::AssetMountState;
+use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::archive_resolution::ArchiveResolution;
 use crate::plugins::archives::browse::archive_world::ArchiveWorld;
@@ -141,7 +142,7 @@ impl ArchiveSubject {
         XrayWorldExtractor::extract_file(probe, name, destination)
       })?,
     }
-    .map_err(|error| error.to_string())
+    .map_err(error_to_string)
   }
 
   /// Writes everything under one directory into a destination root, as `options` asks.
@@ -164,6 +165,6 @@ impl ArchiveSubject {
         XrayWorldExtractor::extract_directory_opt(probe, prefix, destination, options)
       })?,
     }
-    .map_err(|error| error.to_string())
+    .map_err(error_to_string)
   }
 }

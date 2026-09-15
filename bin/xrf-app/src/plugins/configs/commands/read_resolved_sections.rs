@@ -4,6 +4,7 @@ use tauri::State;
 use xrf_ltx_inspect::LtxResolvedSection;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
@@ -50,7 +51,7 @@ pub async fn configs_read_resolved_sections(
   }
 
   let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
-  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
+  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(error_to_string)?;
   execution
     .run_blocking("Configs resolved page", move || {
       let names: Vec<&str> = names.iter().map(String::as_str).collect::<Vec<&str>>();

@@ -8,6 +8,7 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_g
 use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
+use crate::core::error::error_to_string;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
@@ -29,7 +30,7 @@ fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
     &format!("{name}/{PREFIX}/{FILE}"),
     format!(r#"{{"{ID}":{{"{LANGUAGE}":"{value}"}}}}"#),
   )
-  .map_err(|error| error.to_string())?;
+  .map_err(error_to_string)?;
 
   Ok(XrayRoots::one(
     build_absolute_generated_test_resource_path(name),
@@ -38,7 +39,7 @@ fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
 }
 
 fn read_project(roots: &XrayRoots) -> TauriResult<TranslationProjectDescriptor> {
-  read_source(roots, PREFIX).map_err(|error| error.to_string())
+  read_source(roots, PREFIX).map_err(error_to_string)
 }
 
 /// The one entry a project holds, which is how every assertion here tells the projects apart.

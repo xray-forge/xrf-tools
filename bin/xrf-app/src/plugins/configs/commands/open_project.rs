@@ -8,6 +8,7 @@ use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
 use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
+use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
@@ -51,7 +52,7 @@ pub async fn configs_open_project(
   let opened: OpenedConfigsProject = execution
     .run_blocking("Configs project open", move || open_and_list(roots, prefix, is_dltx))
     .await?
-    .map_err(|error| error.to_string())?;
+    .map_err(error_to_string)?;
 
   let descriptor: Arc<ConfigsProjectDescriptor> = Arc::new(ConfigsProjectDescriptor {
     declared_schemes: opened

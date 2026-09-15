@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter, Result as FormatterResult};
+use std::fmt::{Debug, Display, Formatter, Result as FormatterResult};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use serde::Serialize;
@@ -41,7 +41,7 @@ impl JobRegistration {
   }
 
   /// Record the ending a `Result` describes, which is what a command has in hand.
-  pub(super) fn conclude_with<T: Serialize, E: ToString>(&self, outcome: &Result<T, E>, cancelled: bool) {
+  pub(super) fn conclude_with<T: Serialize, E: Display>(&self, outcome: &Result<T, E>, cancelled: bool) {
     let ending: JobEnding = match outcome {
       Ok(value) => JobEnding {
         conclusion: if cancelled {

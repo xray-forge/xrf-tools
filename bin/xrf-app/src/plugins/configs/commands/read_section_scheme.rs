@@ -4,6 +4,7 @@ use tauri::State;
 use xrf_ltx_inspect::LtxSectionSchemeReport;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
@@ -28,7 +29,7 @@ pub async fn configs_read_section_scheme(
   } = request;
 
   let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
-  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(|error| error.to_string())?;
+  let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(error_to_string)?;
 
   execution
     .run_blocking("Configs section scheme", move || {

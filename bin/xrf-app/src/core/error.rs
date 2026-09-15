@@ -1,6 +1,6 @@
-use std::error::Error;
+use std::fmt::Display;
 
 /// Stringify provided error to simplify tauri error casting.
-pub fn error_to_string<T: Error>(error: T) -> String {
+pub fn error_to_string<T: Display>(error: T) -> String {
   error.to_string()
 }

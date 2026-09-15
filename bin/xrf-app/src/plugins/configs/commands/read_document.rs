@@ -5,6 +5,7 @@ use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxText
 use xrf_utils::encode_w1251_bytes_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
@@ -37,7 +38,7 @@ pub async fn configs_read_document(
 
 /// The read itself: the text as authored, and the structure judged against its entry point's resolution.
 fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocument> {
-  let logical: XrayLogicalPath = XrayLogicalPath::new(path).map_err(|error| error.to_string())?;
+  let logical: XrayLogicalPath = XrayLogicalPath::new(path).map_err(error_to_string)?;
 
   let bytes: Vec<u8> = opened
     .project
@@ -67,7 +68,7 @@ fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocu
     });
   };
 
-  let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(|error| error.to_string())?;
+  let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(error_to_string)?;
 
   let (structure, findings): (LtxFileStructure, Vec<LtxAnchoredFinding>) =
     // No origins: a structure read asks whether a parent resolves and what `$scheme` a section ends with, and a
