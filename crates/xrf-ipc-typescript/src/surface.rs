@@ -7,14 +7,14 @@ use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
 use xrf_typescript::{parse_typescript_file, render_module_item};
 use xrf_utils::format_path;
 
-use crate::ipc::bindings::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
-use crate::ipc::bindings::normalization::normalize_module_item;
+use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
+use crate::normalization::normalize_module_item;
 
 /// Every exported declaration of a bindings tree, keyed by `<directory>/<file>::<exported name>`.
-pub(super) type Surface = BTreeMap<String, String>;
+pub(crate) type Surface = BTreeMap<String, String>;
 
 /// How a fresh generation differs from the committed mirrors.
-pub(super) struct SurfaceDrift {
+pub struct SurfaceDrift {
   pub removed: Vec<String>,
   pub changed: Vec<String>,
   pub added: Vec<String>,
@@ -58,7 +58,7 @@ impl SurfaceDrift {
 }
 
 /// Read every exported declaration of a bindings tree into its canonical form.
-pub(super) fn read_surface(root: &Path) -> Surface {
+pub fn read_surface(root: &Path) -> Surface {
   let mut surface: Surface = Surface::new();
 
   for directory in [TYPES_DIRECTORY, COMMANDS_DIRECTORY] {
@@ -69,7 +69,7 @@ pub(super) fn read_surface(root: &Path) -> Surface {
 }
 
 /// Classify a committed surface against a freshly generated one.
-pub(super) fn compare_surfaces(committed: &Surface, generated: &Surface) -> SurfaceDrift {
+pub fn compare_surfaces(committed: &Surface, generated: &Surface) -> SurfaceDrift {
   SurfaceDrift {
     removed: committed
       .keys()

@@ -1,19 +1,8 @@
-//! Generation of the frontend's TypeScript mirrors of the Rust types and Tauri commands.
+//! Which of this application's surfaces reach the frontend, and the check that its mirrors still describe them.
 //!
-//! Output lands in `bin/xrf-ui/src/core/ipc/`, split into `types/` and `commands/`. A type is written
-//! once, into the module of the crate declaring it, which is read off `module_path!()` rather than from any
-//! hand-written list. Run it with `cargo make generate-typescript`.
-
-mod command_module;
-mod constants;
-mod enumerations;
-mod exporter;
-mod normalization;
-mod output;
-mod ownership;
-mod references;
-mod surface;
-mod types_module;
+//! The generator itself is `xrf-ipc-typescript`, which knows nothing of this application: what lives here is the list
+//! of Specta builders to export and the output they are written to, in `bin/xrf-ui/src/core/ipc/`. Regenerate with
+//! `cargo make generate-typescript`.
 
 #[cfg(test)]
 mod tests;

@@ -6819,6 +6819,7 @@ dependencies = [
  "xrf-export",
  "xrf-extension",
  "xrf-gamedata",
+ "xrf-ipc-typescript",
  "xrf-job",
  "xrf-ltx",
  "xrf-ltx-inspect",
@@ -7061,6 +7062,20 @@ dependencies = [
  "xrf-utils",
  "xrf-vfs",
  "xrf-xml",
+]
+
+[[package]]
+name = "xrf-ipc-typescript"
+version = "0.1.0"
+dependencies = [
+ "specta",
+ "specta-serde",
+ "specta-typescript",
+ "specta-util",
+ "tauri",
+ "tauri-specta",
+ "xrf-typescript",
+ "xrf-utils",
 ]
 
 [[package]]

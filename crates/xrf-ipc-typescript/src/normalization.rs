@@ -6,7 +6,7 @@ use xrf_typescript::swc_ecma_ast::{
 };
 
 /// Rewrite a declaration so only a change of shape can change how it renders.
-pub(super) fn normalize_module_item(item: &mut ModuleItem) {
+pub(crate) fn normalize_module_item(item: &mut ModuleItem) {
   if let ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(export)) = item {
     normalize_declaration(&mut export.decl);
   }

@@ -10,7 +10,7 @@ rust-version.workspace = true
 [build-dependencies]
 xrf-build-info = { workspace = true }
 tauri-build = { version = "2.6.3", features = [
-    "codegen"
+  "codegen"
 ] }
 
 [dependencies]
@@ -43,6 +43,7 @@ xrf-error = { workspace = true }
 xrf-export = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-gamedata = { workspace = true }
+xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-dltx = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
@@ -65,28 +66,29 @@ xrf-test-utils = { workspace = true }
 custom-protocol = ["tauri/custom-protocol"]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
 typescript-bindings = [
-    "specta",
-    "xrf-typescript/codegen",
-    "specta-serde",
-    "specta-typescript",
-    "specta-util",
-    "tauri-specta",
-    "xrf-archive/typescript-bindings",
-    "xrf-build-info/typescript-bindings",
-    "xrf-job/typescript-bindings",
-    "xrf-vfs/typescript-bindings",
-    "xrf-db/typescript-bindings",
-    "xrf-dialog/typescript-bindings",
-    "xrf-error/typescript-bindings",
-    "xrf-export/typescript-bindings",
-    "xrf-ltx/typescript-bindings",
-    "xrf-ltx-inspect/typescript-bindings",
-    "xrf-material/typescript-bindings",
-    "xrf-texture/typescript-bindings",
-    "xrf-translation/typescript-bindings",
-    "xrf-visual/typescript-bindings",
-    "xrf-pack/typescript-bindings",
-    "xrf-archive-stats/typescript-bindings",
+  "specta",
+  "xrf-typescript/codegen",
+  "specta-serde",
+  "specta-typescript",
+  "specta-util",
+  "xrf-ipc-typescript",
+  "tauri-specta",
+  "xrf-archive/typescript-bindings",
+  "xrf-build-info/typescript-bindings",
+  "xrf-job/typescript-bindings",
+  "xrf-vfs/typescript-bindings",
+  "xrf-db/typescript-bindings",
+  "xrf-dialog/typescript-bindings",
+  "xrf-error/typescript-bindings",
+  "xrf-export/typescript-bindings",
+  "xrf-ltx/typescript-bindings",
+  "xrf-ltx-inspect/typescript-bindings",
+  "xrf-material/typescript-bindings",
+  "xrf-texture/typescript-bindings",
+  "xrf-translation/typescript-bindings",
+  "xrf-visual/typescript-bindings",
+  "xrf-pack/typescript-bindings",
+  "xrf-archive-stats/typescript-bindings",
 ]
 
 [lints]

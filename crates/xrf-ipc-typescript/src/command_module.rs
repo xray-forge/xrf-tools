@@ -5,25 +5,20 @@ use std::path::Path;
 
 use xrf_utils::{format_path, to_camel_case};
 
-use crate::ipc::bindings::constants::{
+use crate::constants::{
   CHANNEL_IMPORT_AND_COUNTED_INVOKE, COUNTED_INVOKE_IMPORT, GENERATED_HEADER, SPECTA_INVOKE_IMPORT,
   SPECTA_INVOKE_IMPORT_WITH_CHANNEL, TYPES_MARKER,
 };
-use crate::ipc::bindings::enumerations::Enumerations;
-use crate::ipc::bindings::output::write_generated;
-use crate::ipc::bindings::ownership::TypeOwnership;
-use crate::ipc::bindings::references::rewrite_parameter_type_references;
+use crate::enumerations::Enumerations;
+use crate::output::write_generated;
+use crate::ownership::TypeOwnership;
+use crate::references::rewrite_parameter_type_references;
 
 /// Replaces the types Tauri Specta inlined into a command module with imports, and names its commands.
 ///
 /// The generated symbol was `commands` in every module, which left nine identical names in the directory and
 /// made every call site alias it by hand.
-pub(super) fn finalize_command_module(
-  path: &Path,
-  plugin: &str,
-  ownership: &TypeOwnership,
-  enumerations: &Enumerations,
-) {
+pub fn finalize_command_module(path: &Path, plugin: &str, ownership: &TypeOwnership, enumerations: &Enumerations) {
   let contents: String =
     fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
   let commands: String = contents
@@ -68,7 +63,7 @@ pub(super) fn finalize_command_module(
 /// Specta cannot collect a command returning `tauri::ipc::Response`, so these are generated from the registry
 /// instead of written by hand. The registry carries each argument's TypeScript type for exactly this reason;
 /// the return is always `ArrayBuffer`, which is what the raw response arrives as.
-pub(super) fn export_raw_commands(
+pub fn export_raw_commands(
   path: &Path,
   plugin: &str,
   commands: &[(&str, &[(&str, &str)])],

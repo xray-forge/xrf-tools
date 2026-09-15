@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use specta::Types;
 use specta::datatype::NamedDataType;
 
-use crate::ipc::bindings::references::{referenced_types, render_imports};
+use crate::references::{referenced_types, render_imports};
 
 /// The bindings module owning a type, taken from the crate that declares it.
 ///
@@ -23,7 +23,7 @@ fn owning_module(named: &NamedDataType) -> Option<String> {
 }
 
 /// Where each collected type is declared, split by whether a workspace crate owns it.
-pub(super) struct TypeOwnership {
+pub struct TypeOwnership {
   /// Type name to the bindings module declaring it.
   owners: BTreeMap<String, String>,
   /// Type name to the foreign module path declaring it, for the ones no bindings module can hold.
@@ -37,7 +37,7 @@ impl TypeOwnership {
   /// Resolves every collected type to its module, grouping the declarations each module has to render.
   ///
   /// Fails when one name resolves to two modules, which would put the same declaration in two files again.
-  pub(super) fn resolve(types: &Types) -> (Self, BTreeMap<String, Vec<&NamedDataType>>) {
+  pub(crate) fn resolve(types: &Types) -> (Self, BTreeMap<String, Vec<&NamedDataType>>) {
     let mut ownership: Self = Self {
       owners: BTreeMap::new(),
       foreign: BTreeMap::new(),
@@ -75,7 +75,7 @@ impl TypeOwnership {
   ///
   /// An enum rendered beside the union of a data-free type is not a collected type of its own, yet a command
   /// module naming one still has to import it from wherever that union was written.
-  pub(super) fn declare(&mut self, name: String, module: &str) {
+  pub(crate) fn declare(&mut self, name: String, module: &str) {
     if let Some(previous) = self.owners.insert(name.clone(), module.to_string()) {
       assert_eq!(
         previous, module,
@@ -85,26 +85,26 @@ impl TypeOwnership {
   }
 
   /// Names `source` references, excluding the ones `owner` declares itself.
-  pub(super) fn references(&self, source: &str, owner: &str) -> BTreeSet<&str> {
+  pub(crate) fn references(&self, source: &str, owner: &str) -> BTreeSet<&str> {
     referenced_types(source, &self.owners, owner)
   }
 
   /// The modules that have to be imported to satisfy `referenced`.
-  pub(super) fn modules_of(&self, referenced: &BTreeSet<&str>) -> BTreeSet<String> {
+  pub(crate) fn modules_of(&self, referenced: &BTreeSet<&str>) -> BTreeSet<String> {
     referenced.iter().map(|name| self.owners[*name].clone()).collect()
   }
 
-  pub(super) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
+  pub(crate) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
     render_imports(referenced, &self.owners)
   }
 
   /// The import statements a module carrying `source` needs, where `owner` declares nothing of its own.
-  pub(super) fn imports_for(&self, source: &str) -> String {
+  pub(crate) fn imports_for(&self, source: &str) -> String {
     self.imports(&self.references(source, ""))
   }
 
   /// Fails when generated source names a type declared outside the workspace.
-  pub(super) fn assert_no_foreign_references(&self, source: &str, context: &str) {
+  pub(crate) fn assert_no_foreign_references(&self, source: &str, context: &str) {
     let referenced: BTreeSet<&str> = referenced_types(source, &self.foreign, "");
 
     assert!(
@@ -118,7 +118,7 @@ impl TypeOwnership {
 ///
 /// Crate dependencies are acyclic, so a cycle here means ownership resolved wrongly rather than that the
 /// sources are circular. TypeScript would not report it as an error, only as a partially initialised module.
-pub(super) fn assert_no_import_cycles(graph: &BTreeMap<String, BTreeSet<String>>) {
+pub(crate) fn assert_no_import_cycles(graph: &BTreeMap<String, BTreeSet<String>>) {
   fn walk(
     module: &str,
     graph: &BTreeMap<String, BTreeSet<String>>,

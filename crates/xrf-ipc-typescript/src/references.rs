@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::ipc::bindings::constants::{BINDINGS_ROOT, TYPES_DIRECTORY};
+use crate::constants::{BINDINGS_ROOT, TYPES_DIRECTORY};
 
 /// Generated source with doc comments and string literals blanked out, byte for byte.
 ///
@@ -108,7 +108,7 @@ fn for_each_identifier(blanked: &str, mut visit: impl FnMut(usize, usize, &str))
 }
 
 /// Names of generated types that `source` references and `owner` does not itself declare.
-pub(super) fn referenced_types<'a>(
+pub(crate) fn referenced_types<'a>(
   source: &str,
   owners: &'a BTreeMap<String, String>,
   owner: &str,
@@ -138,7 +138,7 @@ pub(super) fn referenced_types<'a>(
 /// channel, and spelling it as a nominal enum asserts that the backend sent a declared member rather than
 /// checking it. The two answers differ — `toEnumMember` throws on an undeclared spelling, an enum return throws
 /// nowhere — and the frontend cannot tell the difference by reading the type. The union says what it is.
-pub(super) fn rewrite_parameter_type_references(source: &str, renames: &BTreeMap<String, String>) -> String {
+pub(crate) fn rewrite_parameter_type_references(source: &str, renames: &BTreeMap<String, String>) -> String {
   let blanked: String = without_comments_and_strings(source);
   let returns: Vec<(usize, usize)> = invoke_return_ranges(&blanked);
   let mut rewritten: String = String::with_capacity(source.len());
@@ -203,7 +203,7 @@ fn invoke_return_ranges(blanked: &str) -> Vec<(usize, usize)> {
 }
 
 /// Import statements pulling every referenced type from the module that declares it.
-pub(super) fn render_imports(referenced: &BTreeSet<&str>, owners: &BTreeMap<String, String>) -> String {
+pub(crate) fn render_imports(referenced: &BTreeSet<&str>, owners: &BTreeMap<String, String>) -> String {
   let mut grouped: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
 
   for name in referenced {

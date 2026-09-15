@@ -8,15 +8,15 @@ use specta_typescript::{Exporter, Typescript};
 use specta_util::Remapper;
 use tauri_specta::{BuilderConfiguration, LanguageExt};
 
-use crate::ipc::bindings::constants::GENERATED_HEADER;
-use crate::ipc::bindings::output::normalize_generated_bindings;
+use crate::constants::GENERATED_HEADER;
+use crate::output::normalize_generated_bindings;
 
 /// Exports one plugin's commands while recording every type those commands referenced.
 ///
 /// Tauri Specta inlines the full transitive closure of a plugin's command signatures and cannot reference a
 /// declaration living in another file. Collecting the types here lets each one be written exactly once, into
 /// the module of the crate that declares it, and the inlined copies replaced by imports afterwards.
-pub(super) struct CommandTypescript {
+pub struct CommandTypescript {
   exporter: Typescript,
   collected: Arc<Mutex<Types>>,
 }
@@ -43,7 +43,7 @@ impl LanguageExt for CommandTypescript {
 /// The builders set `dangerously_cast_bigints_to_number`, so the wide integer rules here are what keep types
 /// rendered outside a command module identical to the ones rendered inside one.
 #[derive(Debug, Clone)]
-pub(super) struct TypeScriptFormat {
+pub(crate) struct TypeScriptFormat {
   remapper: Remapper,
 }
 
@@ -80,13 +80,13 @@ impl Format for TypeScriptFormat {
   }
 }
 
-pub(super) fn exporter() -> Typescript {
+pub(crate) fn exporter() -> Typescript {
   let exporter: Exporter = Typescript::default().into();
 
   exporter.header(GENERATED_HEADER).framework_prelude("").into()
 }
 
-pub(super) fn command_exporter(collected: Arc<Mutex<Types>>) -> CommandTypescript {
+pub fn command_exporter(collected: Arc<Mutex<Types>>) -> CommandTypescript {
   CommandTypescript {
     exporter: exporter(),
     collected,

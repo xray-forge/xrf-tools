@@ -2,16 +2,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use specta::Types;
+use xrf_ipc_typescript::{
+  COMMANDS_DIRECTORY, Enumerations, SurfaceDrift, TYPES_DIRECTORY, TypeOwnership, command_exporter, compare_surfaces,
+  export_raw_commands, export_type_modules, finalize_command_module, read_surface, reset_directory,
+};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::ipc::bindings::command_module::{export_raw_commands, finalize_command_module};
-use crate::ipc::bindings::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
-use crate::ipc::bindings::enumerations::Enumerations;
-use crate::ipc::bindings::exporter::command_exporter;
-use crate::ipc::bindings::output::reset_directory;
-use crate::ipc::bindings::ownership::TypeOwnership;
-use crate::ipc::bindings::surface::{SurfaceDrift, compare_surfaces, read_surface};
-use crate::ipc::bindings::types_module::export_type_modules;
 use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;

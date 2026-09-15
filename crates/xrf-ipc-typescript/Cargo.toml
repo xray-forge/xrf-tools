@@ -1,0 +1,21 @@
+[package]
+name = "xrf-ipc-typescript"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+specta = { workspace = true }
+specta-serde = { workspace = true }
+specta-typescript = { workspace = true }
+specta-util = { workspace = true }
+tauri-specta = { workspace = true, features = ["typescript"] }
+xrf-typescript = { workspace = true, features = ["codegen"] }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+tauri = { version = "2.11.5", features = [] }
+
+[lints]
+workspace = true
