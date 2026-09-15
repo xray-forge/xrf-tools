@@ -55,10 +55,13 @@ function samples(value: number): AudioBuffer {
 beforeEach(() => {
   contexts = [];
   width = 100;
+
   fillRect.mockClear();
   clearRect.mockClear();
   Object.defineProperty(global, "AudioContext", { configurable: true, writable: true, value: TestAudioContext });
+
   global.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+
   jest.spyOn(HTMLCanvasElement.prototype, "clientWidth", "get").mockImplementation(() => width);
   jest.spyOn(HTMLCanvasElement.prototype, "clientHeight", "get").mockReturnValue(96);
   jest

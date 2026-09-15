@@ -1,4 +1,5 @@
 import { Box, useTheme } from "@mui/material";
+import { useColorScheme } from "@mui/material/styles";
 import { KeyboardEvent, MouseEvent, ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
@@ -10,6 +11,7 @@ import { useAudioSamples } from "./use-audio-samples";
 /** One peak per two pixels preserves short transients without crowding the strip. */
 const PEAKS_PER_PIXEL: number = 0.5;
 const WAVEFORM_HEIGHT: number = 96;
+
 /** Arrow keys move by seconds, independent of the waveform's pixel width. */
 const SEEK_STEP: number = 5;
 
@@ -32,6 +34,9 @@ export function AudioWaveform({
   onTogglePlay,
 }: IAudioWaveformProps): ReactElement {
   const theme = useTheme();
+  const { colorScheme } = useColorScheme();
+  const palette = (colorScheme ? theme.colorSchemes?.[colorScheme]?.palette : null) ?? theme.palette;
+
   const canvasRef = useRef<Nullable<HTMLCanvasElement>>(null);
   const [measure, size] = useElementSize<HTMLCanvasElement>();
   const samples: Nullable<Float32Array> = useAudioSamples(src, bytes);
@@ -109,7 +114,7 @@ export function AudioWaveform({
     const middle: number = size.height / 2;
 
     if (!peaks?.length) {
-      context.fillStyle = theme.palette.divider;
+      context.fillStyle = palette.divider;
       context.fillRect(0, middle, size.width, 1);
 
       return;
@@ -121,10 +126,10 @@ export function AudioWaveform({
       const x: number = (index / peaks.length) * size.width;
       const magnitude: number = Math.max(1, peaks[index] * middle);
 
-      context.fillStyle = x <= played ? theme.palette.primary.main : theme.palette.text.disabled;
+      context.fillStyle = x <= played ? palette.primary.main : palette.text.disabled;
       context.fillRect(x, middle - magnitude, Math.max(1, size.width / peaks.length - 1), magnitude * 2);
     }
-  }, [size, peaks, current, length, theme]);
+  }, [size, peaks, current, length, palette]);
 
   return (
     <Box

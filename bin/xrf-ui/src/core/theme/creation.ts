@@ -1,7 +1,9 @@
 import { cardActionAreaClasses, inputBaseClasses, outlinedInputClasses } from "@mui/material";
 import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
+
 // Type-only, side-effect import: it pulls in `@mui/x-data-grid`'s module augmentation,
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
+import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
 import {
