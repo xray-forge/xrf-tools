@@ -4,18 +4,6 @@ use tauri::ipc::Channel;
 use xrf_job::{JobProgress, ProgressSink};
 
 /// Sends a job's progress to whichever webview is currently watching it.
-///
-/// Swappable rather than fixed, because a job outlives the page that started it: a reload drops the callback the
-/// channel resolves to, and a sink that could not be re-pointed would spend the rest of the run writing snapshots into
-/// a callback id that no longer exists — which the webview reports, once per emission, as a console warning nobody can
-/// act on. The job keeps its identity and the page attaches a new channel to it.
-///
-/// Last attach wins. Two windows watching one job is not a case this application has, and a fan-out would have to
-/// decide what to do about a webview that never detaches — the listing already answers "what is running" for anyone
-/// who did not attach.
-///
-/// A send that fails is dropped rather than reported. The watcher going away mid-run is ordinary, and it is not a
-/// reason to fail work that is writing files correctly.
 pub struct JobProgressSink {
   channel: RwLock<Option<Channel<JobProgress>>>,
 }

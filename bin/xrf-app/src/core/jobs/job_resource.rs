@@ -14,6 +14,7 @@ impl JobResource {
   pub fn file(path: impl Into<PathBuf>) -> Self {
     Self::File(path.into())
   }
+
   pub fn tree(path: impl Into<PathBuf>) -> Self {
     Self::Tree(path.into())
   }

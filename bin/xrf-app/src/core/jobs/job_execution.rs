@@ -7,9 +7,6 @@ use crate::core::types::TauriResult;
 
 /// Runs registered work and retains its answer before releasing the job's leases.
 ///
-/// The worker owns registration even if the awaiting command is dropped. `get_outcome` reads accepted cancellation
-/// from the result; a late cancellation request cannot relabel completed work. Errors remain failures.
-///
 /// # Errors
 ///
 /// Returns the work's error or a blocking execution failure.
@@ -28,6 +25,7 @@ where
   execution
     .run_blocking(what, move || {
       let result: TauriResult<T> = work().map_err(|error| error.to_string());
+
       let cancelled: bool = result
         .as_ref()
         .is_ok_and(|value| get_outcome(value) == JobOutcome::Cancelled);

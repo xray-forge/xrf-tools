@@ -7,11 +7,6 @@ use xrf_job::JobProgress;
 use crate::core::jobs::{JobKind, JobResource};
 
 /// What a command hands the registry to start a job.
-///
-/// A described start rather than a list of arguments: every field here is something only the calling command knows,
-/// and several are easy to swap for one another in a positional argument list.
-/// Named fields also mean the next thing a job has to carry is added without touching the commands that do not carry
-/// it.
 pub struct JobStart {
   /// Identity, minted by the frontend before the command is sent so a cancel can arrive before the job does.
   pub id: Uuid,
@@ -22,9 +17,6 @@ pub struct JobStart {
   /// Action group held independently of destination leases, including read-only jobs and paired modes.
   pub(super) exclusion_group: Option<String>,
   /// What the job was asked to do, serialized by the command that knows the type and never read by the registry.
-  ///
-  /// Kept so a window that did not start the run can still say what is running: after a reload the arguments live
-  /// nowhere else, and a bar with no subject is only marginally better than no bar.
   pub request: Option<Value>,
   /// The channel the calling page is watching on, and `None` where nothing is watching yet.
   pub progress: Option<Channel<JobProgress>>,
@@ -51,8 +43,6 @@ impl JobStart {
   }
 
   /// Hold one action group across all windows until the job settles.
-  ///
-  /// Paired modes share a group. Kept separately until registration so adding destination leases cannot replace it.
   pub fn with_exclusion_group(mut self, group: impl Into<String>) -> Self {
     self.exclusion_group = Some(group.into());
 
@@ -60,10 +50,6 @@ impl JobStart {
   }
 
   /// Describe what the job was asked to do.
-  ///
-  /// Serialized here rather than by the caller so a command hands over the arguments it already has. A request that
-  /// cannot be serialized is dropped: it is a diagnostic, and refusing to start work over one would trade a job the
-  /// user asked for against a label.
   pub fn with_request<T: Serialize>(mut self, request: &T) -> Self {
     self.request = serde_json::to_value(request)
       .inspect_err(|error| log::warn!("Job request was not retained: {error}"))

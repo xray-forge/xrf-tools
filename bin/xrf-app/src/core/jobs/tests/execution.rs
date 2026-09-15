@@ -19,7 +19,7 @@ struct ResultSummary {
   count: u32,
 }
 
-fn execution() -> ExecutionState {
+fn new_execution() -> ExecutionState {
   ExecutionState::new(ExecutionRequest::Workers(NonZeroUsize::new(1).expect("one worker"))).expect("pool starts")
 }
 
@@ -39,7 +39,8 @@ fn register(registry: &Arc<JobRegistry>) -> (JobHandle, JobRegistration) {
 fn result_classifies_completion_even_after_a_cancel_request() {
   for outcome in [JobOutcome::Completed, JobOutcome::Cancelled] {
     let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-    let execution: ExecutionState = execution();
+    let execution: ExecutionState = new_execution();
+
     let (job, registration): (JobHandle, JobRegistration) = register(&registry);
 
     let result = tauri::async_runtime::block_on(run_job(
@@ -56,6 +57,7 @@ fn result_classifies_completion_even_after_a_cancel_request() {
     .expect("reported result");
 
     assert_eq!(result.outcome, outcome);
+
     let listed = registry.list();
     let expected: JobConclusion = match outcome {
       JobOutcome::Completed => JobConclusion::Completed,
@@ -70,7 +72,8 @@ fn result_classifies_completion_even_after_a_cancel_request() {
 #[test]
 fn a_worker_error_is_retained_and_releases_the_leases() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-  let execution: ExecutionState = execution();
+  let execution: ExecutionState = new_execution();
+
   let (job, registration): (JobHandle, JobRegistration) = register(&registry);
 
   job.cancel();
@@ -86,17 +89,22 @@ fn a_worker_error_is_retained_and_releases_the_leases() {
   assert_eq!(result.unwrap_err(), "cannot write");
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Failed));
   assert_eq!(registry.list()[0].error.as_deref(), Some("cannot write"));
+
   register(&registry);
 }
 
 #[test]
 fn dropping_the_awaiting_future_keeps_running_work_registered() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-  let execution: ExecutionState = execution();
+  let execution: ExecutionState = new_execution();
+
   let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
+
   let id: Uuid = registration.id();
+
   let (started, wait_started) = mpsc::channel();
   let (finish, wait_finish) = mpsc::channel();
+
   let mut future = Box::pin(run_job(
     &execution,
     "test",
@@ -117,10 +125,13 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
     future.as_mut().poll(&mut Context::from_waker(Waker::noop())),
     Poll::Pending
   ));
+
   wait_started
     .recv_timeout(Duration::from_secs(5))
     .expect("worker started");
+
   drop(future);
+
   registry.cancel(id);
 
   let listed = registry.list();
@@ -143,6 +154,7 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
   );
 
   finish.send(()).expect("finish worker");
+
   // One worker: this cannot run until the blocked job has recorded its result and released registration.
   tauri::async_runtime::block_on(execution.run_blocking("drain", || ())).expect("pool drained");
 
@@ -150,15 +162,18 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
 
   assert_eq!(listed[0].conclusion, Some(JobConclusion::Completed));
   assert_eq!(listed[0].result, Some(json!({ "outcome": "completed", "count": 7 })));
+
   register(&registry);
 }
 
 #[test]
 fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-  let execution: ExecutionState = execution();
+  let execution: ExecutionState = new_execution();
+
   let (occupied, wait_occupied) = mpsc::channel();
   let (release, wait_release) = mpsc::channel();
+
   let mut blocker = Box::pin(execution.run_blocking("occupy the pool", move || {
     occupied.send(()).expect("pool occupied");
     wait_release.recv_timeout(Duration::from_secs(5)).expect("release pool");
@@ -168,12 +183,14 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
     blocker.as_mut().poll(&mut Context::from_waker(Waker::noop())),
     Poll::Pending
   ));
+
   wait_occupied
     .recv_timeout(Duration::from_secs(5))
     .expect("worker occupied");
 
   let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
   let (finished, wait_finished) = mpsc::channel();
+
   let mut queued = Box::pin(run_job(
     &execution,
     "queued job",
@@ -193,6 +210,7 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
     queued.as_mut().poll(&mut Context::from_waker(Waker::noop())),
     Poll::Pending
   ));
+
   drop(queued);
 
   assert!(wait_finished.try_recv().is_err());
@@ -204,21 +222,27 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
   );
 
   release.send(()).expect("release pool");
+
   tauri::async_runtime::block_on(blocker).expect("blocker ends");
+
   wait_finished
     .recv_timeout(Duration::from_secs(5))
     .expect("queued work finishes");
+
   tauri::async_runtime::block_on(execution.run_blocking("drain", || ())).expect("pool drained");
 
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Completed));
+
   register(&registry);
 }
 
 #[test]
 fn a_panicking_worker_releases_registration_as_failed() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-  let execution: ExecutionState = execution();
+  let execution: ExecutionState = new_execution();
+
   let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
+
   let result = tauri::async_runtime::block_on(run_job(
     &execution,
     "test",
@@ -229,5 +253,6 @@ fn a_panicking_worker_releases_registration_as_failed() {
 
   assert!(result.unwrap_err().contains("test did not finish"));
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Failed));
+
   register(&registry);
 }

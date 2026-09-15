@@ -9,21 +9,22 @@ use xrf_job::{JobHandle, JobProgress, JobScope};
 use crate::core::jobs::job_conclusion::JobConclusion;
 use crate::core::jobs::job_description::JobDescription;
 use crate::core::jobs::job_phases::JOB_PHASE_PREPARE;
-use crate::core::jobs::job_registry::{JobRegistration, JobRegistry};
+use crate::core::jobs::job_registration::JobRegistration;
+use crate::core::jobs::job_registry::JobRegistry;
 use crate::core::jobs::job_start::JobStart;
 use crate::core::jobs::{JobKind, JobResource};
 
-fn registry() -> Arc<JobRegistry> {
+fn new_registry() -> Arc<JobRegistry> {
   Arc::new(JobRegistry::new())
 }
 
 /// A registry whose jobs report at `interval`, so what a watcher was told is decided by the test rather than by a
 /// clock. Zero reports every time it is asked; an hour never does.
-fn registry_reporting_every(interval: Duration) -> Arc<JobRegistry> {
+fn new_registry_reporting_every(interval: Duration) -> Arc<JobRegistry> {
   Arc::new(JobRegistry::with_interval(interval))
 }
 
-fn resources(names: &[&str]) -> Vec<JobResource> {
+fn new_resources(names: &[&str]) -> Vec<JobResource> {
   names
     .iter()
     .map(|name| JobResource::file(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(name)))
@@ -31,9 +32,7 @@ fn resources(names: &[&str]) -> Vec<JobResource> {
 }
 
 /// A channel that keeps what was sent to it, standing in for the page a job reports to.
-///
-/// @returns The channel and what it has received so far.
-fn watching_channel() -> (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) {
+fn new_watching_channel() -> (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) {
   let received: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
   let sent: Arc<Mutex<Vec<String>>> = Arc::clone(&received);
 
@@ -50,11 +49,11 @@ fn watching_channel() -> (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) {
 
 #[test]
 fn a_registered_job_is_listed_as_running() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack).with_resources(resources(&["gamedata.db"])))
+    .register(JobStart::new(id, JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
     .expect("nothing else holds the destination");
 
   let listed: Vec<JobDescription> = registry.list();
@@ -69,14 +68,14 @@ fn a_registered_job_is_listed_as_running() {
 #[test]
 fn a_held_lease_key_refuses_the_second_job_and_names_the_first() {
   // The refusal has to say what refused it: a bare "busy" leaves the user with no way to find the run they forgot.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["gamedata.db"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
     .expect("the first job takes the destination");
 
   let refused: String = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["gamedata.db"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
     // The handle is dropped rather than named: what is under test is the refusal, and a `Result` carrying a job is
     // only asked for its error here.
     .map(|_| ())
@@ -89,14 +88,14 @@ fn a_held_lease_key_refuses_the_second_job_and_names_the_first() {
 #[test]
 fn an_unrelated_destination_runs_alongside() {
   // Exclusion is per key, not per kind. Two packs writing different sets have no reason to queue behind each other.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["a"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["a"])))
     .expect("first destination");
 
   let (_job, _second): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["b"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["b"])))
     .expect("a different destination is not held");
 
   assert_eq!(registry.list().len(), 2);
@@ -105,7 +104,7 @@ fn an_unrelated_destination_runs_alongside() {
 #[test]
 fn an_action_group_admits_one_job() {
   // No policy enum: one-at-a-time is what you get by keying on the kind itself.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::GamedataVerify).with_exclusion_group("gamedata.verify"))
@@ -123,41 +122,41 @@ fn an_action_group_admits_one_job() {
 fn a_refused_registration_takes_none_of_its_keys() {
   // All or nothing. A job that took the free keys and failed on the held one would leave them owned by nobody, which
   // is worse than the refusal it was reporting.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _holder): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["taken"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["taken"])))
     .expect("the holder");
 
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["free", "taken"])))
+      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["free", "taken"])))
       .is_err()
   );
 
   registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["free"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["free"])))
     .expect("the free key was never taken by the refused registration");
 }
 
 #[test]
 fn dropping_a_registration_releases_its_leases() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, _running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["out"])))
+      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
       .expect("the first job");
   }
 
   registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
     .expect("the destination was released with the job");
 }
 
 #[test]
 fn a_concluded_job_is_retained_with_its_outcome() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
 
   {
@@ -179,7 +178,7 @@ fn a_concluded_job_is_retained_with_its_outcome() {
 fn a_registration_dropped_without_a_conclusion_is_recorded_as_failed() {
   // The paths that reach a drop without concluding are the ones that went wrong: an early return, or a panic
   // unwinding through the command. Recording those as completed would be reporting a success nobody claimed.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   drop(
     registry
@@ -192,7 +191,7 @@ fn a_registration_dropped_without_a_conclusion_is_recorded_as_failed() {
 
 #[test]
 fn a_failed_conclusion_carries_why() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -212,7 +211,7 @@ fn a_failed_conclusion_carries_why() {
 fn a_result_that_succeeded_after_a_cancellation_concludes_as_cancelled() {
   // A cancelled operation answers `Ok` carrying what it managed to do, so the outcome cannot be read off the result
   // alone — the registry is told separately whether stopping was asked for.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -227,7 +226,7 @@ fn a_result_that_succeeded_after_a_cancellation_concludes_as_cancelled() {
 
 #[test]
 fn cancelling_a_running_job_reaches_its_handle() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
   let (handle, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(id, JobKind::ArchivesUnpack))
@@ -242,7 +241,7 @@ fn cancelling_a_running_job_reaches_its_handle() {
 fn a_cancel_that_arrives_before_its_job_still_lands() {
   // The frontend knows a job's identity before the command carrying it is sent, so a cancel can legitimately arrive
   // first. Without the tombstone the control would have to be withheld until the backend acknowledged the job.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
   assert!(!registry.cancel(id), "nothing is running under that identity yet");
 
@@ -258,7 +257,7 @@ fn a_cancel_that_arrives_before_its_job_still_lands() {
 fn a_tombstone_is_spent_by_the_job_it_named() {
   // Otherwise a stale cancel would keep killing later jobs that happened to reuse the identity, which is the stale-run
   // hazard the fresh-id rule exists to avoid.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
 
   registry.cancel(id);
@@ -281,7 +280,7 @@ fn a_tombstone_is_spent_by_the_job_it_named() {
 
 #[test]
 fn cancelling_a_finished_job_answers_no_and_leaves_nothing_waiting() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
 
   {
@@ -306,7 +305,7 @@ fn cancelling_a_finished_job_answers_no_and_leaves_nothing_waiting() {
 fn the_retained_listing_is_bounded_and_keeps_the_newest() {
   // A debugging surface, not a history. What matters is that it does not grow without limit and that the last thing
   // that happened is still in it.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   for index in 0..40 {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -327,20 +326,20 @@ fn the_retained_listing_is_bounded_and_keeps_the_newest() {
 fn a_finished_job_never_releases_a_lease_a_later_job_holds() {
   // Releasing by key alone would let one job's teardown hand away a destination somebody else had already taken, which
   // is worse than never having held a lease at all. Contrived only in its timing: it is what an out-of-order drop does.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let (_job, first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
     .expect("the first job");
 
   drop(first);
 
   let (_job, _second): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
     .expect("released with the first job");
 
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(resources(&["out"])))
+      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
       .is_err(),
     "the second job still holds it"
   );
@@ -349,7 +348,7 @@ fn a_finished_job_never_releases_a_lease_a_later_job_holds() {
 #[test]
 fn a_running_job_reports_the_progress_of_its_own_handle() {
   // Read on demand rather than pushed: nothing has to reach the registry for a listing to be current.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let (handle, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack))
     .expect("nothing is held");
@@ -371,9 +370,9 @@ fn a_running_job_reports_the_progress_of_its_own_handle() {
 fn attaching_points_a_running_job_at_the_channel_that_asked() {
   // The reload case from the backend's side: the run never stopped, but the channel it was reporting to belonged to a
   // page that is gone. Nothing about the job changes except where its snapshots land.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
-  let (channel, received) = watching_channel();
+  let (channel, received) = new_watching_channel();
 
   let (handle, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(id, JobKind::ArchivesPack))
@@ -405,8 +404,8 @@ fn attaching_points_a_running_job_at_the_channel_that_asked() {
 #[test]
 fn attaching_to_a_job_that_is_not_running_answers_no() {
   // A page that loaded just as the run ended. The listing still describes it, and there is nothing to report to.
-  let registry: Arc<JobRegistry> = registry();
-  let (channel, _received) = watching_channel();
+  let registry: Arc<JobRegistry> = new_registry();
+  let (channel, _received) = new_watching_channel();
 
   assert!(!registry.attach(Uuid::new_v4(), channel));
 }
@@ -415,7 +414,7 @@ fn attaching_to_a_job_that_is_not_running_answers_no() {
 fn a_completed_job_retains_the_answer_it_gave() {
   // What makes a reload recoverable rather than merely observable: the command's response went to a caller that no
   // longer exists, so the retained copy is the only way the outcome can still be shown.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -430,7 +429,7 @@ fn a_completed_job_retains_the_answer_it_gave() {
 
 #[test]
 fn a_failed_job_retains_no_answer_because_it_gave_none() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -447,7 +446,7 @@ fn a_failed_job_retains_no_answer_because_it_gave_none() {
 fn a_cancelled_job_retains_what_it_managed_to_do() {
   // A cancelled operation answers `Ok` describing the part it finished, and that is exactly what the user who pressed
   // stop needs to see - which files are now on disk.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -467,7 +466,7 @@ fn a_cancelled_job_retains_what_it_managed_to_do() {
 fn a_running_job_describes_what_it_was_asked_to_do() {
   // After a reload the arguments live nowhere else: the page that sent them is gone, and a window taking the run over
   // would otherwise have nothing to show but its kind.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_request(&json!({ "source": "c:\\gamedata" })))
@@ -479,7 +478,7 @@ fn a_running_job_describes_what_it_was_asked_to_do() {
 #[test]
 fn a_finished_job_still_describes_what_it_was_asked_to_do() {
   // The retained listing is where somebody looks after the fact, and "which pack was that?" is the first question.
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
@@ -497,7 +496,7 @@ fn a_finished_job_still_describes_what_it_was_asked_to_do() {
 
 #[test]
 fn a_job_that_described_nothing_carries_nothing() {
-  let registry: Arc<JobRegistry> = registry();
+  let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::GamedataVerify))
@@ -508,8 +507,8 @@ fn a_job_that_described_nothing_carries_nothing() {
 
 #[test]
 fn reports_a_running_job_that_has_emitted_nothing_of_its_own() {
-  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
-  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+  let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
@@ -535,8 +534,8 @@ fn reports_a_running_job_that_has_emitted_nothing_of_its_own() {
 /// than sends, so how often a job speaks stays the job's own rule and a watcher is not told the same thing twice.
 #[test]
 fn does_not_report_a_job_that_has_spoken_recently() {
-  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::from_secs(3600));
-  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+  let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::from_secs(3600));
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
@@ -558,8 +557,8 @@ fn does_not_report_a_job_that_has_spoken_recently() {
 /// it had one.
 #[test]
 fn reports_nothing_for_a_job_that_is_between_phases() {
-  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
-  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+  let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
@@ -573,8 +572,8 @@ fn reports_nothing_for_a_job_that_is_between_phases() {
 /// A concluded job is no longer live, so nothing keeps reporting into a page that has already been told the answer.
 #[test]
 fn stops_reporting_a_job_that_has_finished() {
-  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::ZERO);
-  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = watching_channel();
+  let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::ZERO);
+  let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
@@ -597,7 +596,7 @@ fn stops_reporting_a_job_that_has_finished() {
 /// ticking, so what this pins is the claim rather than the reporting.
 #[test]
 fn starting_reporting_twice_leaves_one_reporter() {
-  let registry: Arc<JobRegistry> = registry_reporting_every(Duration::from_secs(3600)).start_reporting();
+  let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::from_secs(3600)).start_reporting();
 
   assert!(
     Arc::ptr_eq(&registry, &Arc::clone(&registry).start_reporting()),

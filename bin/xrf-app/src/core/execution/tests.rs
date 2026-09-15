@@ -7,7 +7,7 @@ use xrf_job::{ExecutionOrigin, ExecutionRequest};
 
 use crate::core::execution::execution_state::ExecutionState;
 
-fn bounded_to(workers: usize) -> ExecutionState {
+fn new_state_bounded_to(workers: usize) -> ExecutionState {
   ExecutionState::new(ExecutionRequest::Workers(
     NonZeroUsize::new(workers).expect("test worker counts are not zero"),
   ))
@@ -16,23 +16,19 @@ fn bounded_to(workers: usize) -> ExecutionState {
 
 #[test]
 fn resolves_the_plan_it_was_asked_for() {
-  let execution: ExecutionState = bounded_to(3);
+  let execution: ExecutionState = new_state_bounded_to(3);
 
   assert_eq!(execution.get_plan().get_workers().get(), 3);
   assert_eq!(execution.get_plan().get_origin(), ExecutionOrigin::Requested);
 }
 
 /// The guarantee the shared pool exists for: concurrent jobs share one budget rather than each taking a whole one.
-///
-/// Asserted two ways, because the interesting failure passes the first on its own. Every caller seeing the plan's width
-/// would also hold if each had built a pool of that size; what rules that out is that the threads doing the work are
-/// the *same* threads, so the union across all of them never exceeds the plan.
 #[test]
 fn bounds_every_concurrent_job_to_one_shared_budget() {
   const WORKERS: usize = 3;
   const JOBS: usize = 8;
 
-  let execution: ExecutionState = bounded_to(WORKERS);
+  let execution: ExecutionState = new_state_bounded_to(WORKERS);
   let widths: Mutex<Vec<usize>> = Mutex::new(Vec::new());
   let workers: Mutex<HashSet<thread::ThreadId>> = Mutex::new(HashSet::new());
 
