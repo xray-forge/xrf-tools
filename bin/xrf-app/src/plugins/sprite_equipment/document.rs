@@ -7,7 +7,6 @@ use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XrayProbe, XrayRoots};
 
 use crate::core::assets::AssetMountState;
 use crate::core::error::error_to_string;
-use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::location::EquipmentSheetLocation;
 use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;
@@ -107,7 +106,7 @@ impl EquipmentSpriteDocument {
       }
       EquipmentConfigSource::Asset { logical_path } => {
         let options: LtxProjectOptions = LtxProjectOptions::default().with_dialect(select_ltx_dialect(is_dltx));
-        let project: LtxProject = open_ltx_project(roots, None, options).map_err(error_to_string)?;
+        let project: LtxProject = LtxProject::open_at_roots_opt(roots, None, options).map_err(error_to_string)?;
         let entry: XrayLogicalPath = XrayLogicalPath::new(logical_path).map_err(error_to_string)?;
 
         project

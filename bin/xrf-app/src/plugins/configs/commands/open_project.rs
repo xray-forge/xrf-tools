@@ -9,7 +9,6 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
 use crate::core::execution::ExecutionState;
-use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
 use crate::plugins::configs::request::ConfigsOpenRequest;
@@ -83,7 +82,7 @@ pub async fn configs_open_project(
 /// Returns an error when the roots cannot be mounted, the project cannot be assembled, or a config it holds cannot be
 /// read.
 fn open_and_list(roots: XrayRoots, prefix: Option<String>, is_dltx: bool) -> XrfResult<OpenedConfigsProject> {
-  let project: LtxProject = open_ltx_project(
+  let project: LtxProject = LtxProject::open_at_roots_opt(
     &roots,
     prefix.as_deref(),
     LtxProjectOptions {

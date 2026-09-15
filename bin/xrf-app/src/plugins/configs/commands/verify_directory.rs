@@ -9,7 +9,6 @@ use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOp
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JOB_PHASE_PREPARE, JobKind, JobRegistration, JobRegistry, JobStart, run_job};
-use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsVerifyRequest;
 
@@ -45,7 +44,7 @@ pub async fn configs_verify_directory(
       let project: LtxProject = {
         let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
 
-        open_ltx_project(
+        LtxProject::open_at_roots_opt(
           &roots,
           prefix.as_deref(),
           LtxProjectOptions {

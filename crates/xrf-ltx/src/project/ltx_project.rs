@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayVfs};
 
 use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::document::LtxDocument;
@@ -66,6 +66,22 @@ impl LtxProject {
   /// Opens a directory-backed project with default options.
   pub fn open_at_path<P: AsRef<Path>>(root: P) -> XrfResult<Self> {
     Self::open_at_path_opt(root, Default::default())
+  }
+
+  /// Opens a project over roots.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the roots cannot be mounted, the prefix is not a logical path, or the project cannot be
+  /// assembled.
+  pub fn open_at_roots_opt(roots: &XrayRoots, prefix: Option<&str>, options: LtxProjectOptions) -> XrfResult<Self> {
+    let vfs: XrayVfs = roots.open()?.with_cache_policy(XrayCachePolicy::configs());
+    let scope: XrayLookupScope = match prefix {
+      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
+      None => XrayLookupScope::all(),
+    };
+
+    Self::open_at_scope_opt(roots.describe(), vfs, scope, options)
   }
 
   /// Opens a project from an existing VFS scope.

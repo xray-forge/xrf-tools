@@ -8,7 +8,6 @@ use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
-use crate::core::ltx::open_ltx_project;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
@@ -49,7 +48,7 @@ pub async fn configs_format_directory(
     "Configs formatting",
     registration,
     move || {
-      let project: LtxProject = open_ltx_project(&roots, prefix.as_deref(), Default::default())?;
+      let project: LtxProject = LtxProject::open_at_roots_opt(&roots, prefix.as_deref(), Default::default())?;
 
       project.format_all_files_opt(LtxFormatOptions::default().with_job(job))
     },
