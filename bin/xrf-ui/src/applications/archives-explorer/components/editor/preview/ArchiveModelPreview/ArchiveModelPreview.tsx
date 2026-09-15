@@ -5,6 +5,8 @@ import { ReactElement, useEffect, useState } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
@@ -75,7 +77,7 @@ export function ArchiveModelPreview({
       ) : null}
 
       {!visual.value && !visual.isLoading ? (
-        <Box sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}>
+        <Box sx={mergeSx(getSurfaceSx("content"), { position: "absolute", inset: 0, display: "flex" })}>
           <EmptyState
             title={visual.error ? "Could not read this model" : "No model to show"}
             description={visual.error?.message ?? name}

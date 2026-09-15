@@ -6,6 +6,8 @@ import { transformError } from "@/core/error/lib";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getWellSx } from "@/core/theme/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
@@ -75,7 +77,7 @@ export function ExportSourceView({
       content={source.value.content}
       language={getSyntaxLanguage(source.value.path)}
       firstLine={source.value.line}
-      sx={{ borderRadius: 1, backgroundColor: "background.default" }}
+      sx={mergeSx(getWellSx, { borderRadius: 1 })}
     />
   ) : (
     <EmptyState

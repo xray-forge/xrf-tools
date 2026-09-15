@@ -22,7 +22,7 @@ export function WindowControlButton({ label, isDanger, children, onClick }: IWin
       disableRipple={true}
       sx={{
         width: LAYOUT.windowControlWidth,
-        height: LAYOUT.titleBarHeight,
+        height: LAYOUT.windowControlHeight,
         flexShrink: 0,
         color: "text.primary",
         // A caption button lights up the instant it is entered. Easing it makes the window feel slow

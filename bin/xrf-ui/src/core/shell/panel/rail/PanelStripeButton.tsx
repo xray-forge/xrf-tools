@@ -36,7 +36,7 @@ export function PanelStripeButton({
           getRailButtonSx,
           {
             color: isActive ? "primary.main" : "text.secondary",
-            backgroundColor: isActive ? "action.selected" : "transparent",
+            backgroundColor: isActive ? "action.current" : "transparent",
           },
         ]}
         onClick={() => onTogglePanel(panel.id)}

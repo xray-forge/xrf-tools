@@ -2,6 +2,8 @@ import { Box, useTheme } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { KeyboardEvent, MouseEvent, ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getWellSx } from "@/core/theme/surface";
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
 import { useElementSize } from "@/lib/react/use-element-size";
 import { Nullable } from "@/lib/types/general";
@@ -143,14 +145,13 @@ export function AudioWaveform({
       ref={attach}
       role={"slider"}
       tabIndex={0}
-      sx={{
+      sx={mergeSx(getWellSx, {
         width: "100%",
         height: WAVEFORM_HEIGHT,
         cursor: "pointer",
         borderRadius: 1,
-        backgroundColor: "background.default",
         "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 },
-      }}
+      })}
       onClick={onClick}
       onKeyDown={onKeyDown}
     />

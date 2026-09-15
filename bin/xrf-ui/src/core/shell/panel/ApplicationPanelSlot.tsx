@@ -3,6 +3,8 @@ import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { Nullable } from "@/lib/types/general";
 
 interface IApplicationPanelSlotProps {
@@ -31,7 +33,7 @@ export function ApplicationPanelSlot({
   return (
     <Box
       data-testid={`application-panel-slot-${side}`}
-      sx={{
+      sx={mergeSx(getSurfaceSx("frame"), {
         position: "relative",
         display: "flex",
         flexDirection: "column",
@@ -40,8 +42,7 @@ export function ApplicationPanelSlot({
         minHeight: 0,
         ...(side === "left" ? { borderRight: 1 } : { borderLeft: 1 }),
         borderColor: "divider",
-        backgroundColor: "background.default",
-      }}
+      })}
     >
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>{panel.render()}</Box>
 

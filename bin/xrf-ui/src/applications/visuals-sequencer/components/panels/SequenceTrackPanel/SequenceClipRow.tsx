@@ -49,7 +49,7 @@ export function SequenceClipRow({
         paddingX: 1,
         paddingY: 0.5,
         borderRadius: 1,
-        backgroundColor: isPlaying ? "action.selected" : "transparent",
+        backgroundColor: isPlaying ? "action.current" : "transparent",
       }}
     >
       <Typography variant={"caption"} sx={{ color: "text.disabled", flexShrink: 0, minWidth: 20 }}>

@@ -4,6 +4,8 @@ import { Box } from "@mui/material";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { CODE, MONOSPACE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
 
@@ -55,10 +57,8 @@ export function VirtualizedLinesRow({
     >
       <Box
         data-testid={"virtualized-lines-gutter"}
-        sx={{
+        sx={mergeSx(getSurfaceSx("content"), {
           alignItems: "center",
-          // Opaque, and pinned to the left edge of the scroller: the text passes underneath it.
-          backgroundColor: "background.default",
           borderColor: "divider",
           borderRight: 1,
           boxSizing: "border-box",
@@ -76,7 +76,7 @@ export function VirtualizedLinesRow({
           width: gutterWidth,
           zIndex: 1,
           "& svg": { fontSize: CODE.markIconSize },
-        }}
+        })}
       >
         {line.mark ? MARK_ICONS[line.mark] : null}
         {line.number}

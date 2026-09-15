@@ -27,22 +27,16 @@ export function ApplicationStatusBar({
         gap: 1.5,
         height: LAYOUT.statusBarHeight,
         minHeight: LAYOUT.statusBarHeight,
-        paddingX: 1,
-        borderTop: 1,
-        borderColor: "divider",
+        paddingX: 5,
       }}
     >
-      {segments.length ? (
-        segments.map((segment: string, index: number) => (
-          <Typography key={segment + index} variant={"caption"} noWrap sx={{ color: "text.secondary" }}>
-            {segment}
-          </Typography>
-        ))
-      ) : (
-        <Typography variant={"caption"} sx={{ color: "text.secondary", opacity: 0.7 }}>
-          Ready
-        </Typography>
-      )}
+      {segments.length
+        ? segments.map((segment: string, index: number) => (
+            <Typography key={segment + index} variant={"caption"} noWrap sx={{ color: "text.secondary" }}>
+              {segment}
+            </Typography>
+          ))
+        : null}
     </Box>
   );
 }

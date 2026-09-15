@@ -17,21 +17,21 @@ export const RADIUS = {
   lg: 8,
 } as const;
 
-/** Diagonal color wash shared by the frame, launcher, picker, and other screens. */
-export const APPLICATION_BACKGROUND = {
-  angle: "155deg",
-  primary: { opacity: { light: "6%", dark: "3%" } },
-  secondary: { opacity: { light: "8%", dark: "6%" } },
+/**
+ * Diagonal accent wash over the frame and the reading plane.
+ */
+export const WASH = {
+  angle: "135deg",
+  /** Cool end, at the gradient's origin. */
+  secondary: { light: 0.05, dark: 0.05 },
+  /** Warm end. */
+  primary: { light: 0.05, dark: 0.03 },
 } as const;
 
-/**
- * A control's own tint, for something too small to sample the window's fields.
- */
-export const CONTROL_BACKGROUND = {
-  angle: "-90deg",
-  primary: { share: { light: "16%", dark: "4%" }, hoverShare: { light: "26%", dark: "14%" } },
-  secondary: { share: { light: "14%", dark: "4%" }, hoverShare: { light: "24%", dark: "12%" } },
-} as const;
+/** Formats a token share for `color-mix`, which takes a percentage rather than a fraction. */
+export function toSharePercent(share: number): string {
+  return `${share * 100}%`;
+}
 
 export const LAYOUT = {
   /** The button plus the breathing room on either side of it; the stripe holds nothing wider. */
@@ -47,12 +47,13 @@ export const LAYOUT = {
   railBadgePaddingX: 3,
   /** Dense `MuiToolbar` and `MuiTab` still measure themselves against this; the window caption does not. */
   toolbarHeight: 40,
-  statusBarHeight: 24,
+  statusBarHeight: 28,
   /**
    * The window's only top band: caption and the active application's toolbar in one row.
    */
   titleBarHeight: 36,
   windowControlWidth: 36,
+  windowControlHeight: 36,
   /**
    * A slider hosted in a toolbar popover.
    */
@@ -174,12 +175,13 @@ export const MONOSPACE = {
 export const MONOSPACE_CHARACTER_WIDTH: number = 7.25;
 
 export const ACCENT = {
+  // Light is `#ffa200` darkened along its own hue rather than desaturated, so the accent and the mark agree.
   primary: {
-    main: { light: "#9e5f1d", dark: "#f5aa4d" },
+    main: { light: "#9c5a00", dark: "#f5aa4d" },
     contrastText: { light: "#ffffff", dark: "#332414" },
   },
   secondary: {
-    main: { light: "#5c6aa3", dark: "#8e9ada" },
+    main: { light: "#56649c", dark: "#8e9ada" },
     contrastText: { light: "#ffffff", dark: "#20253f" },
   },
 } as const;
@@ -189,9 +191,10 @@ export const STATUS = {
     main: { light: "#3d671e", dark: "#9ccc65" },
     contrastText: { light: "#ffffff", dark: "#18230e" },
   },
+  // Yellow-gold, not amber: an amber-branded window washed in amber cannot also warn in amber.
   warning: {
-    main: { light: "#8f490c", dark: "#ffa45b" },
-    contrastText: { light: "#ffffff", dark: "#291807" },
+    main: { light: "#6b5d00", dark: "#e8c547" },
+    contrastText: { light: "#ffffff", dark: "#231e07" },
   },
   error: {
     main: { light: "#a33028", dark: "#ff958a" },
@@ -199,16 +202,77 @@ export const STATUS = {
   },
 } as const;
 
+/**
+ * The three opaque planes; every surface in the window is exactly one of them.
+ *
+ * The reading plane keeps the most contrast available for text and the others step toward the text colour. Dark
+ * expresses elevation as lightness and light as shadow, which is why `overlay` steps in one scheme and not the other.
+ */
 export const SURFACE = {
-  default: { light: "#eef1f5", dark: "#171717" },
-  paper: { light: "#f8fafc", dark: "#202020" },
-  raised: { light: "#ffffff", dark: "#262626" },
-  input: { light: "#ffffff", dark: "#1d1d1d" },
+  content: { light: "#ffffff", dark: "#171717" },
+  frame: { light: "#f2f2f2", dark: "#212121" },
+  overlay: { light: "#ffffff", dark: "#2e2e2e" },
 } as const;
 
+/** The tone a neutral state scrim is mixed from: toward the text colour in either scheme. */
+export const STATE_TONE = { light: "#000000", dark: "#ffffff" } as const;
+
+/** The tone a well is mixed from. A control that is not elevated must not gain lightness, so it recedes in both. */
+export const RECESS_TONE: string = "#000000";
+
+/**
+ * States, applied over a level as translucent scrims so they composite over any surface and inherit its wash.
+ *
+ * Shares of {@link STATE_TONE}, except `selected`, which is a share of `secondary`.
+ */
+export const STATE = {
+  hover: { light: 0.06, dark: 0.07 },
+  /** What the editor has open. Its own value, so a hovered row and an open row are never drawn the same. */
+  current: { light: 0.1, dark: 0.12 },
+  /** The keyboard cursor, the top of the neutral ladder rather than a hue of its own. */
+  selected: { light: 0.18, dark: 0.2 },
+  /** A recess holding input or a nested listing. Always bordered: on the dark content plane fill alone is ~1.05:1. */
+  well: { light: 0.08, dark: 0.3 },
+  /**
+   * MUI's own `selectedOpacity`, which several components apply to an *accent* rather than to a neutral.
+   *
+   * A separate number from `selected` because the jobs differ: `selected` tints a neutral hard enough to read as a
+   * cursor, while this tints `primary` or `text.primary`, where the same share would shout. MUI's stock 0.08 is too
+   * faint to see on a light plane.
+   */
+  accentSelected: { light: 0.12, dark: 0.16 },
+  disabledOpacity: 0.38,
+} as const;
+
+// Neutral by rule: every surface, divider and text value has equal channels, so all chrome hue comes from the wash.
+// A warm wash over a cool neutral cancels, and what survives is the grey that made light mode read as muddy.
 export const TEXT = {
-  primary: { light: "rgba(0, 0, 0, 0.87)", dark: "#d9d9d9" },
-  secondary: { light: "#4f5c6d", dark: "#b7b7b7" },
+  primary: { light: "#1a1a1a", dark: "#d9d9d9" },
+  secondary: { light: "#4a4a4a", dark: "#c4c4c4" },
+} as const;
+
+/**
+ * Per-group wayfinding hues for the launcher, hand-authored because a categorical palette needs hue distinctness
+ * that a lightness formula does not give. They tint icons rather than text, so they answer to the 3:1 tier.
+ */
+export const CATALOG_ACCENT = {
+  archives: { light: "#1c982d", dark: "#5d9f4b" },
+  configs: { light: "#5343c7", dark: "#a692ff" },
+  dialogs: { light: "#b22747", dark: "#f87887" },
+  environment: { light: "#986a13", dark: "#e9bd62" },
+  gamedata: { light: "#20733d", dark: "#43d37a" },
+  gameplay: { light: "#b24422", dark: "#ff875b" },
+  level: { light: "#8a5a3b", dark: "#d8a77d" },
+  materials: { light: "#77634c", dark: "#cfb18f" },
+  particles: { light: "#a53679", dark: "#f07ec3" },
+  scripts: { light: "#08778a", dark: "#2bd0df" },
+  shaders: { light: "#6548a3", dark: "#b99aea" },
+  sounds: { light: "#197f78", dark: "#62cfc6" },
+  spawns: { light: "#59730c", dark: "#a4d83b" },
+  sprites: { light: "#8934c4", dark: "#d087ff" },
+  textures: { light: "#896400", dark: "#f3c53d" },
+  translations: { light: "#007b64", dark: "#30d6af" },
+  visuals: { light: "#006faa", dark: "#39b8ff" },
 } as const;
 
 /** Shared content-state measurements. Spacing values use theme units. */
@@ -220,6 +284,24 @@ export const CONTENT_STATE = {
 } as const;
 
 export const DIVIDER = {
-  light: "#d0d7e0",
+  light: "#d2d2d2",
   dark: "#434343",
+} as const;
+
+/** A floating surface's own edge. It carries the separation in dark, where a shadow on near-black cannot. */
+export const OVERLAY_BORDER = {
+  light: "#e6e6e6",
+  dark: "#3a3a3a",
+} as const;
+
+/** The only two shadows, spread by `creation.ts` across the twenty-five slots MUI's theme requires. */
+export const SHADOW = {
+  raised: {
+    light: "0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.04)",
+    dark: "0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 4px rgba(0, 0, 0, 0.18)",
+  },
+  overlay: {
+    light: "0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.11)",
+    dark: "0 1px 3px rgba(0, 0, 0, 0.34), 0 8px 24px rgba(0, 0, 0, 0.44)",
+  },
 } as const;

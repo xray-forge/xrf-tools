@@ -34,7 +34,7 @@ export function ApplicationHelpButton({
         sx={mergeSx(
           {
             width: LAYOUT.windowControlWidth,
-            height: LAYOUT.titleBarHeight,
+            height: LAYOUT.windowControlHeight,
             flexShrink: 0,
             color: "text.secondary",
             transition: "none",

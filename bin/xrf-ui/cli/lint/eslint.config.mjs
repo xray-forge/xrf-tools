@@ -202,6 +202,36 @@ export default [
     },
   },
   {
+    // Chrome colour belongs to the theme, where it is contrast-tested against every surface it can land on.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/core/theme/**",
+      "**/*.test.{ts,tsx}",
+      "src/core/brand/XrfMark.tsx",
+      "src/core/shell/title-bar/WindowControlButton.tsx",
+      "src/core/ui/media/media.styles.ts",
+      "src/core/ui/media/ImageViewport/ImageViewport.tsx",
+      "src/lib/logging/**",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: String.raw`Literal[value=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
+          message:
+            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value is covered by the " +
+            "contrast matrix in `core/theme/tokens.test.ts`.",
+        },
+        {
+          selector: String.raw`TemplateElement[value.raw=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
+          message:
+            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value is covered by the " +
+            "contrast matrix in `core/theme/tokens.test.ts`.",
+        },
+      ],
+    },
+  },
+  {
     files: ["src/lib/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {

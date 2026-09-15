@@ -38,8 +38,6 @@ export function ApplicationTitleBar({
         flexShrink: 0,
         height: LAYOUT.titleBarHeight,
         minHeight: LAYOUT.titleBarHeight,
-        borderBottom: 1,
-        borderColor: "divider",
         userSelect: "none",
       }}
     >

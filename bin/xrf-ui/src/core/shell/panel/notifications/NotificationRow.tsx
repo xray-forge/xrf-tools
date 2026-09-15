@@ -14,6 +14,8 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getWellSx } from "@/core/theme/surface";
 import { MONOSPACE, PANEL } from "@/core/theme/tokens";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
@@ -170,12 +172,11 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
       {isBodyShown ? (
         <Box
-          sx={{
+          sx={mergeSx(getWellSx, {
             marginTop: 0.5,
             padding: 1,
             borderRadius: 1,
-            backgroundColor: "background.paper",
-          }}
+          })}
         >
           <Typography
             component={"pre"}

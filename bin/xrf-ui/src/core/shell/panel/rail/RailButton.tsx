@@ -41,7 +41,7 @@ export function RailButton({
             {
               [`& .${svgIconClasses.root}`]: { fill: "inherit" },
               color: isGradient ? (isSelected ? "primary.main" : "text.secondary") : `${appearance}.main`,
-              backgroundColor: isSelected ? "action.selected" : "transparent",
+              backgroundColor: isSelected ? "action.current" : "transparent",
               ...(isGradient ? {} : { backgroundImage: "none" }),
             },
           ]}

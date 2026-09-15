@@ -41,8 +41,6 @@ export function ApplicationPanelStripe({
         width: LAYOUT.railWidth,
         minWidth: LAYOUT.railWidth,
         paddingY: 1,
-        ...(side === "left" ? { borderRight: 1 } : { borderLeft: 1 }),
-        borderColor: "divider",
       }}
     >
       {panels.map((panel: IEditorPanel) => (

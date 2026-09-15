@@ -25,7 +25,7 @@ export function ArchiveCodePreview({
       label={`Contents of ${file.name}`}
       content={file.content}
       language={language}
-      sx={{ flexGrow: 1, minHeight: 0, backgroundColor: "background.default" }}
+      sx={{ flexGrow: 1, minHeight: 0 }}
     />
   );
 }

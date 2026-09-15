@@ -11,6 +11,8 @@ import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -55,7 +57,7 @@ export function VisualMotionsPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
         <Box
-          sx={{
+          sx={mergeSx(getSurfaceSx("frame"), {
             position: "sticky",
             top: 0,
             zIndex: 1,
@@ -63,10 +65,9 @@ export function VisualMotionsPanel({
             paddingX: 2,
             paddingTop: 1,
             paddingBottom: 1.5,
-            backgroundColor: "background.default",
             borderBottom: 1,
             borderColor: "divider",
-          }}
+          })}
         >
           <VisualMotionTransport />
 

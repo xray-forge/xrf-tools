@@ -3,7 +3,6 @@ import { ReactElement } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { getControlBackgroundSx } from "@/core/theme/control-background";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -36,7 +35,6 @@ export function ApplicationLauncherGroupFilters({
         label={`All ${totalCount}`}
         color={selectedGroupId === null ? "primary" : "default"}
         variant={selectedGroupId === null ? "filled" : "outlined"}
-        sx={selectedGroupId === null ? undefined : getControlBackgroundSx}
         onClick={() => onSelectGroup(null)}
       />
 
@@ -51,7 +49,6 @@ export function ApplicationLauncherGroupFilters({
             label={`${group.label} ${count}`}
             color={isSelected ? "primary" : "default"}
             variant={isSelected ? "filled" : "outlined"}
-            sx={isSelected ? undefined : getControlBackgroundSx}
             onClick={() => onSelectGroup(isSelected ? null : group.id)}
           />
         );

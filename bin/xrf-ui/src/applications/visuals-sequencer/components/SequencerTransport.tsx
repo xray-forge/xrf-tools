@@ -39,7 +39,7 @@ export function SequencerTransport(): ReactElement {
         paddingX: 1,
         paddingY: 1,
         flexShrink: 0,
-        backgroundColor: "background.default",
+        backgroundColor: "background.frame",
       }}
     >
       <EditorIconAction

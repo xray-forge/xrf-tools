@@ -63,7 +63,7 @@ export function VirtualizedTreeRow<T>({
       role={"treeitem"}
       sx={{
         alignItems: "center",
-        backgroundColor: isSelected ? "action.selected" : isActive ? "action.hover" : "transparent",
+        backgroundColor: isSelected ? "action.selected" : isActive ? "action.current" : "transparent",
         borderRadius: 1,
         boxSizing: "border-box",
         cursor: "pointer",
@@ -74,7 +74,7 @@ export function VirtualizedTreeRow<T>({
         paddingLeft: `${row.depth * TREE.indent + 4}px`,
         paddingRight: 0.5,
         userSelect: "none",
-        "&:hover": { backgroundColor: isSelected ? "action.selected" : "action.hover" },
+        "&:hover": { backgroundColor: isSelected ? "action.selected" : isActive ? "action.current" : "action.hover" },
       }}
       onClick={() => onSelect(row)}
       onDoubleClick={() => onActivate(row)}

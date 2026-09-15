@@ -1,6 +1,8 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { ReactElement, useId, useState } from "react";
 
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getWellFillSx } from "@/core/theme/surface";
 import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
@@ -56,14 +58,13 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
         <List
           dense
           disablePadding
-          sx={{
+          sx={mergeSx(getWellFillSx, {
             width: 148,
             flexShrink: 0,
             paddingY: 1,
             borderRight: 1,
             borderColor: "divider",
-            backgroundColor: "background.default",
-          }}
+          })}
         >
           {SECTIONS.map((it: EDetailSection) => (
             <ListItemButton key={it} selected={section === it} onClick={() => setSection(it)}>
@@ -79,7 +80,6 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
             overflowY: "auto",
             paddingX: DIALOG.paddingX,
             paddingY: DIALOG.contentPaddingY,
-            backgroundColor: "background.default",
           }}
         >
           {inline(() => {

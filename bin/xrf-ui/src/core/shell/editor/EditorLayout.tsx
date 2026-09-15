@@ -3,8 +3,8 @@ import { ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { useEditorToolbarHost } from "@/core/shell/header/editor-toolbar-host";
-import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -38,7 +38,7 @@ export function EditorLayout({
       id={id}
       className={className}
       sx={mergeSx(
-        getApplicationBackgroundSx,
+        getSurfaceSx("content"),
         { display: "flex", flexDirection: "column", width: "100%", height: "100%", flexWrap: "nowrap" },
         sx
       )}

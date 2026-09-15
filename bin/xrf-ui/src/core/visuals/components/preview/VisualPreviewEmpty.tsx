@@ -1,6 +1,8 @@
 import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
+import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -27,7 +29,7 @@ export function VisualPreviewEmpty({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={{ position: "absolute", inset: 0, display: "flex", backgroundColor: "background.default" }}
+      sx={mergeSx(getSurfaceSx("content"), { position: "absolute", inset: 0, display: "flex" })}
     >
       {error ? (
         <ErrorState title={"Could not open this visual"} description={error} onRetry={onRetry} />

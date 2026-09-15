@@ -74,6 +74,7 @@ import { VISUALS_EXPLORER_APPLICATION } from "@/applications/visuals-explorer";
 import { VISUALS_SEQUENCER_APPLICATION } from "@/applications/visuals-sequencer";
 import { WEATHER_EDITOR_APPLICATION } from "@/applications/weather-editor";
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import { CATALOG_ACCENT } from "@/core/theme/tokens";
 import { Nullable } from "@/lib/types/general";
 
 export interface IApplicationCatalog {
@@ -146,103 +147,103 @@ export const APPLICATION_CATALOG: IApplicationCatalog = {
   ],
   groups: [
     {
-      accent: { light: "#1c982d", dark: "#5d9f4b" },
+      accent: CATALOG_ACCENT.archives,
       id: EApplicationGroupId.ARCHIVES,
       label: "Archives",
       icon: <ArchiveIcon />,
     },
     {
-      accent: { light: "#5343c7", dark: "#a692ff" },
+      accent: CATALOG_ACCENT.configs,
       id: EApplicationGroupId.CONFIGS,
       label: "Configs",
       icon: <SettingsApplicationsIcon />,
     },
     {
-      accent: { light: "#b22747", dark: "#f87887" },
+      accent: CATALOG_ACCENT.dialogs,
       id: EApplicationGroupId.DIALOGS,
       label: "Dialogs",
       icon: <ForumIcon />,
     },
     {
-      accent: { light: "#986a13", dark: "#e9bd62" },
+      accent: CATALOG_ACCENT.environment,
       id: EApplicationGroupId.ENVIRONMENT,
       label: "Environment",
       icon: <WbSunnyIcon />,
     },
     {
-      accent: { light: "#20733d", dark: "#43d37a" },
+      accent: CATALOG_ACCENT.gamedata,
       id: EApplicationGroupId.GAMEDATA,
       label: "Gamedata",
       icon: <FactCheckIcon />,
     },
     {
-      accent: { light: "#b24422", dark: "#ff875b" },
+      accent: CATALOG_ACCENT.gameplay,
       id: EApplicationGroupId.GAMEPLAY,
       label: "Gameplay",
       icon: <SportsEsportsIcon />,
     },
     {
-      accent: { light: "#8a5a3b", dark: "#d8a77d" },
+      accent: CATALOG_ACCENT.level,
       id: EApplicationGroupId.LEVEL,
       label: "Level",
       icon: <TerrainIcon />,
     },
     {
-      accent: { light: "#77634c", dark: "#cfb18f" },
+      accent: CATALOG_ACCENT.materials,
       id: EApplicationGroupId.MATERIALS,
       label: "Materials",
       icon: <LayersIcon />,
     },
     {
-      accent: { light: "#a53679", dark: "#f07ec3" },
+      accent: CATALOG_ACCENT.particles,
       id: EApplicationGroupId.PARTICLES,
       label: "Particles",
       icon: <BlurOnIcon />,
     },
     {
-      accent: { light: "#08778a", dark: "#2bd0df" },
+      accent: CATALOG_ACCENT.scripts,
       id: EApplicationGroupId.SCRIPTS,
       label: "Scripts",
       icon: <CodeIcon />,
     },
     {
-      accent: { light: "#6548a3", dark: "#b99aea" },
+      accent: CATALOG_ACCENT.shaders,
       id: EApplicationGroupId.SHADERS,
       label: "Shaders",
       icon: <GradientIcon />,
     },
     {
-      accent: { light: "#197f78", dark: "#62cfc6" },
+      accent: CATALOG_ACCENT.sounds,
       id: EApplicationGroupId.SOUNDS,
       label: "Sounds",
       icon: <GraphicEqIcon />,
     },
     {
-      accent: { light: "#59730c", dark: "#a4d83b" },
+      accent: CATALOG_ACCENT.spawns,
       id: EApplicationGroupId.SPAWNS,
       label: "Spawns",
       icon: <MapIcon />,
     },
     {
-      accent: { light: "#8934c4", dark: "#d087ff" },
+      accent: CATALOG_ACCENT.sprites,
       id: EApplicationGroupId.SPRITES,
       label: "Sprites",
       icon: <ImageIcon />,
     },
     {
-      accent: { light: "#896400", dark: "#f3c53d" },
+      accent: CATALOG_ACCENT.textures,
       id: EApplicationGroupId.TEXTURES,
       label: "Textures",
       icon: <TextureIcon />,
     },
     {
-      accent: { light: "#007b64", dark: "#30d6af" },
+      accent: CATALOG_ACCENT.translations,
       id: EApplicationGroupId.TRANSLATIONS,
       label: "Translations",
       icon: <TranslateIcon />,
     },
     {
-      accent: { light: "#006faa", dark: "#39b8ff" },
+      accent: CATALOG_ACCENT.visuals,
       id: EApplicationGroupId.VISUALS,
       label: "Visuals",
       icon: <ViewInArIcon />,

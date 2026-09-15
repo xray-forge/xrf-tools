@@ -30,8 +30,9 @@ import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { getApplicationBackgroundSx } from "@/core/theme/application-background";
 import { mergeSx } from "@/core/theme/merge-sx";
+import { getSurfaceSx } from "@/core/theme/surface";
+import { RADIUS } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -110,8 +111,7 @@ export function ApplicationShellFrame({
         data-testid={dataTestId}
         id={id}
         className={className}
-        sx={mergeSx(getApplicationBackgroundSx, {
-          backgroundColor: "background.paper",
+        sx={mergeSx(getSurfaceSx("frame"), {
           display: "flex",
           flexDirection: "column",
           width: "100%",
@@ -128,31 +128,44 @@ export function ApplicationShellFrame({
             onTogglePanel={leftSelection.onTogglePanel}
           />
 
-          <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
-            <Suspense key={applicationPath} fallback={<ApplicationLoader />}>
-              <ApplicationScope application={application}>
-                <ApplicationPanelSlot
-                  side={"left"}
-                  panel={leftSelection.activePanel}
-                  width={leftSizing.width}
-                  onResize={leftSizing.onResize}
-                />
+          <Box
+            sx={{
+              display: "flex",
+              flexGrow: 1,
+              minWidth: 0,
+              minHeight: 0,
+              overflow: "hidden",
+              border: 1,
+              borderColor: "divider",
+              borderRadius: `${RADIUS.md}px`,
+            }}
+          >
+            <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
+              <Suspense key={applicationPath} fallback={<ApplicationLoader />}>
+                <ApplicationScope application={application}>
+                  <ApplicationPanelSlot
+                    side={"left"}
+                    panel={leftSelection.activePanel}
+                    width={leftSizing.width}
+                    onResize={leftSizing.onResize}
+                  />
 
-                <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
-                  <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
-                    {children}
-                  </ErrorBoundary>
-                </Box>
+                  <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+                    <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
+                      {children}
+                    </ErrorBoundary>
+                  </Box>
 
-                <ApplicationPanelSlot
-                  side={"right"}
-                  panel={rightSelection.activePanel}
-                  width={rightSizing.width}
-                  onResize={rightSizing.onResize}
-                />
-              </ApplicationScope>
-            </Suspense>
-          </ErrorBoundary>
+                  <ApplicationPanelSlot
+                    side={"right"}
+                    panel={rightSelection.activePanel}
+                    width={rightSizing.width}
+                    onResize={rightSizing.onResize}
+                  />
+                </ApplicationScope>
+              </Suspense>
+            </ErrorBoundary>
+          </Box>
 
           <ApplicationPanelStripe
             side={"right"}

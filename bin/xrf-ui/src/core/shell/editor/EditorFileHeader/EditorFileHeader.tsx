@@ -54,7 +54,7 @@ export function EditorFileHeader({
         paddingX: 1.5,
         borderBottom: 1,
         borderColor: "divider",
-        backgroundColor: "background.paper",
+        backgroundColor: "background.frame",
       }}
     >
       {icon}

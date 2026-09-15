@@ -320,7 +320,6 @@ export function VirtualizedLines({
       role={"listbox"}
       sx={mergeSx(
         {
-          backgroundColor: "background.default",
           // A definite height, or the listing grows to its content instead of windowing it.
           height: "100%",
           outline: "none",
