@@ -5,7 +5,7 @@ import { APPLICATION_BACKGROUND } from "@/core/theme/tokens";
 
 import { getApplicationBackgroundImage } from "./application-background-image";
 
-/** Theme-colored background whose fields stay fixed while the viewport resizes or its contents scroll. */
+/** Theme-colored wash anchored to the viewport across surfaces and scrolling content. */
 export function getApplicationBackgroundSx(theme: Theme): SystemStyleObject<Theme> {
   return {
     backgroundColor: "background.default",

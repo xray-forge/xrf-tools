@@ -14,12 +14,9 @@ export function getApplicationBackgroundImage({
   primaryOpacity,
   secondaryOpacity,
 }: IApplicationBackgroundColors): string {
-  const ellipse: string = `ellipse ${APPLICATION_BACKGROUND.radiusX}px ${APPLICATION_BACKGROUND.radiusY}px`;
-
-  return [
-    `radial-gradient(${ellipse} at ${APPLICATION_BACKGROUND.secondary.x}px ${APPLICATION_BACKGROUND.secondary.y}px, ` +
-      `color-mix(in srgb, ${secondary} ${secondaryOpacity}, transparent), transparent)`,
-    `radial-gradient(${ellipse} at ${APPLICATION_BACKGROUND.primary.x}px ${APPLICATION_BACKGROUND.primary.y}px, ` +
-      `color-mix(in srgb, ${primary} ${primaryOpacity}, transparent), transparent)`,
-  ].join(", ");
+  return (
+    `linear-gradient(${APPLICATION_BACKGROUND.angle}, ` +
+    `color-mix(in srgb, ${secondary} ${secondaryOpacity}, transparent), ` +
+    `color-mix(in srgb, ${primary} ${primaryOpacity}, transparent))`
+  );
 }
