@@ -23,6 +23,11 @@ impl LineEndings {
 impl FromStr for LineEndings {
   type Err = XrfError;
 
+  /// Parses the case-sensitive names `lf` and `crlf`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for any other spelling, including uppercase names and `cr`.
   fn from_str(value: &str) -> XrfResult<Self> {
     match value {
       "lf" => Ok(Self::Lf),
@@ -42,6 +47,15 @@ pub fn normalize_line_endings(content: &str) -> String {
 }
 
 /// Rewrites every line ending in `content` as `line_endings`.
+/// Accepts mixed LF, CRLF, and bare CR sequences. Does not append a line ending when none is present at the end.
+///
+/// # Examples
+///
+/// ```
+/// use xrf_utils::{LineEndings, apply_line_endings};
+///
+/// assert_eq!(apply_line_endings("a\r\nb\rc\nd", LineEndings::Crlf), "a\r\nb\r\nc\r\nd");
+/// ```
 pub fn apply_line_endings(content: &str, line_endings: LineEndings) -> String {
   match line_endings {
     LineEndings::Lf => normalize_line_endings(content),
@@ -49,15 +63,22 @@ pub fn apply_line_endings(content: &str, line_endings: LineEndings) -> String {
   }
 }
 
-/// The line ending an existing file already uses, or nothing when it holds no line break at all.
+/// Detects the more frequent LF or CRLF ending, choosing LF on a tie.
 ///
-/// The dominant ending wins rather than the first one seen, so a file somebody edited with two tools keeps the
-/// convention most of it is written in instead of whichever line happens to come first. A file with no break to read is
-/// `None`, which leaves the choice to the caller — there is nothing in the file to preserve.
+/// Counts each CRLF pair once and ignores bare CR bytes. Returns `None` when neither LF nor CRLF occurs, leaving the
+/// fallback to the caller. Unlike [`normalize_line_endings`], this function does not recognize bare CR as a line ending.
 ///
-/// Counts CRLF as CRLF rather than as a CR plus an LF, so the two are genuinely compared. A tie goes to LF, because a
-/// file split evenly between the two has no convention to preserve and LF is what every writer here produced before
-/// this existed.
+/// Use the dominant ending to preserve an existing file's convention when rewriting mixed input.
+///
+/// # Examples
+///
+/// ```
+/// use xrf_utils::{LineEndings, detect_line_endings};
+///
+/// assert_eq!(detect_line_endings(b"a\r\nb\r\nc\nd"), Some(LineEndings::Crlf));
+/// assert_eq!(detect_line_endings(b"a\r\nb\nc"), Some(LineEndings::Lf));
+/// assert_eq!(detect_line_endings(b"a\rb"), None);
+/// ```
 pub fn detect_line_endings(content: &[u8]) -> Option<LineEndings> {
   let mut lf: usize = 0;
   let mut crlf: usize = 0;
