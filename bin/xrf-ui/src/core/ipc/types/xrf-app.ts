@@ -20,7 +20,7 @@ import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visu
 
 /** Every `kind` the `ArchiveDescribeRefusal` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveDescribeRefusal {
-  /** Nothing describes this format yet. */
+  /** Nothing describes this format yet. The extension is the authored spelling, empty for a name without one. */
   NO_DESCRIBER = "noDescriber",
   /** The entry is larger than the policy admits for a read that holds the payload. */
   TOO_LARGE = "tooLarge",
@@ -28,7 +28,7 @@ export enum EArchiveDescribeRefusal {
 
 /** Why an entry was not described. */
 export type ArchiveDescribeRefusal =
-  /** Nothing describes this format yet. */
+  /** Nothing describes this format yet. The extension is the authored spelling, empty for a name without one. */
   | { kind: "noDescriber"; extension: string }
   /** The entry is larger than the policy admits for a read that holds the payload. */
   | { kind: "tooLarge"; size: number; maximum: number };
@@ -183,9 +183,8 @@ export type ArchiveThmBump = {
 /**
  * A declared size the texture beside the descriptor does not match.
  *
- * Reported as two facts rather than as a fault. The descriptor's width and height are authoring data and the file is
- * the authority (`STextureParams` records what was converted, not what came out), so a disagreement is worth seeing
- * and is not by itself wrong.
+ * Reported as two facts rather than as a fault: the descriptor's width and height are authoring data and the file is
+ * the authority, so a disagreement is worth seeing and is not by itself wrong.
  */
 export type ArchiveThmDeclaredSize = {
   width: number;
@@ -201,6 +200,9 @@ export type ArchiveThmDeclaredSize = {
  * describes, whether the engine reads it at all, what it names, how it shades, and only then the build recipe the
  * converter already consumed. The file's own chunk order puts the recipe third, which is the order to write it back
  * in and not the order to read it in.
+ *
+ * Every chunk stays optional, because an absent chunk and a chunk holding a default are different files: a descriptor
+ * with no bump chunk is not one declaring `bump mode: None`.
  */
 export type ArchiveThmDescription = {
   texture: ArchiveThmTexture;
@@ -224,8 +226,8 @@ export type ArchiveThmDetail = {
   /**
    * The flags that switch this association on, by the SDK's own spelling.
    *
-   * Empty when neither applies, which is a name the engine reads past (`TextureDescrManager.cpp:163`). Repeated here
-   * as well as in the flag word because the association means nothing without them.
+   * Empty when the engine reads past the association. Repeated here as well as in the flag word because the
+   * association means nothing without them.
    */
   enabledBy: Array<string>;
 };
@@ -249,7 +251,11 @@ export type ArchiveThmFlag = {
   isSet: boolean;
 };
 
-/** The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`. */
+/**
+ * The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`.
+ *
+ * The one piece of authoring data that reaches the renderer through the descriptor rather than through the DDS.
+ */
 export type ArchiveThmMaterial = {
   /** The two lighting models the surface sits between. */
   label: string;
@@ -262,7 +268,7 @@ export type ArchiveThmMaterial = {
  * The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
  *
  * Authoring data the converter consumed and the runtime does not read, with two exceptions that live in
- * [`ArchiveThmDetail::enabled_by`].
+ * the detail section, which reports them where they take effect.
  */
 export type ArchiveThmParameters = {
   formatLabel: string;

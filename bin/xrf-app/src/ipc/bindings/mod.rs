@@ -1,8 +1,6 @@
-//! Which of this application's surfaces reach the frontend, and the check that its mirrors still describe them.
+//! This application's frontend mirrors: what goes into them, and the check that they still describe it.
 //!
-//! The generator itself is `xrf-ipc-typescript`, which knows nothing of this application: what lives here is the list
-//! of Specta builders to export and the output they are written to, in `bin/xrf-ui/src/core/ipc/`. Regenerate with
-//! `cargo make generate-typescript`.
+//! The generator is the `xrf-ipc-typescript` crate, which knows nothing of this application. What lives here is the
+//! part that does — which Specta builders make up the surface, and where the output goes.
 
-#[cfg(test)]
-mod tests;
+mod generator;

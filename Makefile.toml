@@ -171,7 +171,7 @@ args = [
   # Ignored so a plain workspace test run only verifies the mirrors; rewriting them is intentional.
   "--ignored",
   "--exact",
-  "ipc::bindings::tests::export_typescript_bindings",
+  "ipc::bindings::generator::export_typescript_bindings",
 ]
 
 [tasks.format-typescript-bindings]

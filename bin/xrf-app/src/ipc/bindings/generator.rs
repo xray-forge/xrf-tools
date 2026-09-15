@@ -1,3 +1,12 @@
+//! Driving `xrf-ipc-typescript` over this application's command surface.
+//!
+//! Which Specta builders make up that surface, which raw commands travel beside them, and where the output goes
+//! (`bin/xrf-ui/src/core/ipc/`).
+//!
+//! Both entry points are `#[test]` because `cargo test` is the wrapper that has the Specta builders linked in;
+//! `export_typescript_bindings` is the generator and is `#[ignore]`d so only `cargo make generate-typescript` runs
+//! it, while `verify_typescript_bindings` is an ordinary test of the committed mirrors.
+
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
