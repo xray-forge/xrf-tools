@@ -1,3 +1,4 @@
+pub(crate) mod anm;
 pub(crate) mod constants;
 pub(crate) mod data;
 pub(crate) mod export;
@@ -17,6 +18,9 @@ pub mod fixtures;
 
 pub use xrf_chunk::XRayByteOrder;
 
+pub use crate::anm::anm_envelope::AnmEnvelope;
+pub use crate::anm::anm_file::{ANM_CHANNELS, ANM_DEFAULT_FPS, AnmFile};
+pub use crate::anm::anm_key::{AnmInterpolation, AnmKey};
 pub use crate::data::ogf::ogf_bone::OgfBone;
 pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
 pub use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
