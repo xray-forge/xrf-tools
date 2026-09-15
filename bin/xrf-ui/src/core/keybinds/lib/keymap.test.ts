@@ -1,19 +1,19 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { defineCommand, ECommandCategory, ICommandDescriptor } from "@/core/commands";
+import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 
 import { buildKeymap, findChordConflicts, IKeymap, resolveKeybinding } from "./keymap";
 
-const SEARCH: ICommandDescriptor = defineCommand({
-  category: ECommandCategory.NAVIGATION,
+const SEARCH: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.NAVIGATION,
   chords: ["mod+k", "/"],
   description: "Search.",
   id: "fixture/search",
   label: "Search",
 });
 
-const RELOAD: ICommandDescriptor = defineCommand({
-  category: ECommandCategory.APPLICATION,
+const RELOAD: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.APPLICATION,
   chords: ["F5"],
   description: "Reload.",
   id: "fixture/reload",
@@ -24,8 +24,8 @@ function mockKeyEvent(init: KeyboardEventInit): KeyboardEvent {
   return new KeyboardEvent("keydown", { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, ...init });
 }
 
-function getKeymapOf(commands: ReadonlyArray<ICommandDescriptor>): IKeymap {
-  return buildKeymap(commands, (command: ICommandDescriptor) => command.chords);
+function getKeymapOf(commands: ReadonlyArray<IKeybindCommand>): IKeymap {
+  return buildKeymap(commands, (command: IKeybindCommand) => command.chords);
 }
 
 describe("buildKeymap", () => {
@@ -74,8 +74,8 @@ describe("resolveKeybinding", () => {
 
 describe("findChordConflicts", () => {
   it("reports a chord two commands claim, in canonical spelling", () => {
-    const other: ICommandDescriptor = defineCommand({
-      category: ECommandCategory.VIEW,
+    const other: IKeybindCommand = defineKeybindCommand({
+      category: EKeybindCommandCategory.VIEW,
       chords: ["MOD + K"],
       description: "Other.",
       id: "fixture/other",

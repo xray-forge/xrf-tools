@@ -1,9 +1,10 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
-import { ICommandDescriptor } from "@/core/commands";
-import { ROOT_COMMANDS } from "@/core/commands/root-commands";
+import { IKeybindCommand } from "@/core/commands";
+import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
+import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
@@ -52,13 +53,16 @@ export class KeymapService {
   }
 
   /**
-   * Every command reachable right now: the root ones, plus whatever the open application declares.
+   * Every command reachable right now: the root ones, plus whatever the open screen declares.
    */
   @Computed()
-  public get commands(): ReadonlyArray<ICommandDescriptor> {
-    const byId: Map<string, ICommandDescriptor> = new Map();
+  public get commands(): ReadonlyArray<IKeybindCommand> {
+    const byId: Map<string, IKeybindCommand> = new Map();
 
-    for (const command of [...ROOT_COMMANDS, ...(this.application?.commands ?? [])]) {
+    for (const command of [
+      ...ROOT_KEYBIND_COMMANDS,
+      ...(this.application?.keybindCommands ?? LAUNCHER_KEYBIND_COMMANDS),
+    ]) {
       byId.set(command.id, command);
     }
 
@@ -68,7 +72,7 @@ export class KeymapService {
   /** The lookup the dispatcher scans, rebuilt only when the reachable set or a binding changes. */
   @Computed()
   public get keymap(): IKeymap {
-    return buildKeymap(this.commands, (command: ICommandDescriptor) => this.getChords(command));
+    return buildKeymap(this.commands, (command: IKeybindCommand) => this.getChords(command));
   }
 
   @OnDeprovision()
@@ -92,8 +96,18 @@ export class KeymapService {
    * @param command - Command to resolve.
    * @returns Its effective chords.
    */
-  public getChords(command: ICommandDescriptor): ReadonlyArray<string> {
+  public getChords(command: IKeybindCommand): ReadonlyArray<string> {
     return this.overrides[command.id] ?? command.chords;
+  }
+
+  /**
+   * The chords a command answers where it is reachable, and none where it is not.
+   *
+   * @param command - Command to resolve.
+   * @returns Its effective chords, or nothing when this screen does not declare it.
+   */
+  public getReachableChords(command: IKeybindCommand): ReadonlyArray<string> {
+    return this.commands.some((it: IKeybindCommand) => it.id === command.id) ? this.getChords(command) : [];
   }
 
   /**

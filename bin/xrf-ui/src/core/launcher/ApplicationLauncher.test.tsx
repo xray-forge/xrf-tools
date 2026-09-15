@@ -3,7 +3,7 @@ import { act, fireEvent, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { LauncherSearchService } from "@/core/launcher/services/launcher-search";
+import { KeybindCommandsService } from "@/core/commands";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -11,6 +11,7 @@ import {
   IApplicationDescriptor,
   IApplicationGroup,
 } from "@/core/routing/application";
+import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -206,7 +207,7 @@ describe("ApplicationLauncher", () => {
     );
 
     // The chord, its suppression inside fields and its platform modifier are the dispatcher's, and are tested there.
-    act(() => container.get(LauncherSearchService).focusSearch());
+    act(() => void container.get(KeybindCommandsService).execute(FOCUS_SEARCH_KEYBIND_COMMAND));
 
     expect(getByLabelText("Search tools")).toHaveFocus();
   });
@@ -219,7 +220,7 @@ describe("ApplicationLauncher", () => {
     );
     const field: HTMLElement = getByLabelText("Search tools");
 
-    act(() => container.get(LauncherSearchService).focusSearch());
+    act(() => void container.get(KeybindCommandsService).execute(FOCUS_SEARCH_KEYBIND_COMMAND));
 
     expect(field).toHaveFocus();
 

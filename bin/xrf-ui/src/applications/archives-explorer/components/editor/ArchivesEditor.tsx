@@ -1,4 +1,3 @@
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { Alert, Box } from "@mui/material";
@@ -26,11 +25,10 @@ import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
-import { ARCHIVE_EDITOR_PANELS } from "./archive-panels";
+import { ARCHIVE_EXPLORER_PANELS } from "./archive-panels";
 import { ArchivesFilePreview } from "./preview";
 import { ArchiveResolutionDialog } from "./resolution";
 import { ArchiveStatisticsDialog } from "./statistics";
-import { ArchivesMenu } from "./tree";
 
 export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
@@ -74,20 +72,7 @@ export function ArchivesEditor(): ReactElement {
     }
   }, [archivesService]);
 
-  useEditorPanels(
-    () => [
-      {
-        icon: <FolderOpenIcon />,
-        id: "archives",
-        isOpenByDefault: true,
-        label: "Archives",
-        render: () => <ArchivesMenu />,
-        side: "left",
-      },
-      ...ARCHIVE_EDITOR_PANELS,
-    ],
-    []
-  );
+  useEditorPanels(() => ARCHIVE_EXPLORER_PANELS, []);
 
   useEditorBusy(isBusy || Boolean(job));
 

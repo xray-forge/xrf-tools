@@ -1,15 +1,15 @@
 import { CommandBus, EventBus, inject, Injectable, QueryBus } from "@wirestate/core";
 
-import { ICommandDescriptor, toCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
+import { IKeybindCommand, toKeybindCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
 import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
 import { Logger } from "@/lib/logging";
 import { isCancellation } from "@/lib/mobx";
 
-/** Invokes declared commands and answers whether one can be invoked, for every surface that offers them. */
+/** Invokes declared keybind commands and answers whether one can be invoked, for every surface that offers them. */
 @Injectable()
-export class CommandsService {
+export class KeybindCommandsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   public constructor(
@@ -19,17 +19,29 @@ export class CommandsService {
   ) {}
 
   /**
+   * Whether anything at all answers this command.
+   *
+   * @param descriptor - Command to test.
+   * @returns Whether a handler is registered.
+   */
+  public isImplemented(descriptor: IKeybindCommand): boolean {
+    return this.commandBus.hasHandler(descriptor.id);
+  }
+
+  /**
    * Whether something is bound to handle this command and that handler's own guard allows it now.
    *
    * @param descriptor - Command to test.
    * @returns Whether invoking it would do anything.
    */
-  public isAvailable(descriptor: ICommandDescriptor): boolean {
-    if (!this.commandBus.hasHandler(descriptor.id)) {
+  public isAvailable(descriptor: IKeybindCommand): boolean {
+    if (!this.isImplemented(descriptor)) {
       return false;
     }
 
-    return this.queryBus.query<boolean>(toCommandEnabledQuery(descriptor), undefined, { optional: true }) ?? true;
+    return (
+      this.queryBus.query<boolean>(toKeybindCommandEnabledQuery(descriptor), undefined, { optional: true }) ?? true
+    );
   }
 
   /**
@@ -38,7 +50,7 @@ export class CommandsService {
    * @param descriptor - Command to run.
    * @returns Whether the command was dispatched.
    */
-  public execute(descriptor: ICommandDescriptor): boolean {
+  public execute(descriptor: IKeybindCommand): boolean {
     if (!this.isAvailable(descriptor)) {
       return false;
     }

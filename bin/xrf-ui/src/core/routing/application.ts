@@ -1,6 +1,6 @@
 import { ComponentType, ReactElement } from "react";
 
-import { ICommandDescriptor } from "@/core/commands/lib/command-descriptor";
+import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 /** Canonical application identity shared by its directory, route, descriptor, and component stem. */
@@ -137,7 +137,7 @@ export interface IApplicationMetadata {
   /** In-application help. Required for `READY` applications once the roster is covered. */
   help?: IApplicationHelp;
   /** Every command reachable inside this application, root ones excluded. */
-  commands?: ReadonlyArray<ICommandDescriptor>;
+  keybindCommands?: ReadonlyArray<IKeybindCommand>;
 }
 
 export interface IApplicationDescriptor extends IApplicationMetadata, IApplicationRuntime {

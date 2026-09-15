@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { CommandBus, Container, QueryBus } from "@wirestate/core";
 import { ReactElement, ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { useEditorPanels } from "@/core/shell/editor-shell";
+import {
+  IPanelSetActiveMessage,
+  IPanelSideMessage,
+  PANEL_ACTIVE_QUERY,
+  PANEL_SET_ACTIVE_MESSAGE,
+} from "@/core/shell/panel/panel-messages";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** Stands in for an editor that publishes one default-open panel, which most of them do. */
@@ -52,6 +60,38 @@ function EditorWithRouter(): ReactElement {
   );
 }
 
+/** Stands in for an editor whose browse panel starts closed, which is the case the panel command exists for. */
+function EditorWithClosedLeftPanel(): ReactElement {
+  useEditorPanels(
+    () => [
+      {
+        icon: <span>t</span>,
+        id: "tree",
+        isOpenByDefault: false,
+        label: "Tree",
+        render: () => <div>tree panel</div>,
+        side: "left",
+      },
+    ],
+    []
+  );
+
+  return <div>closed editor</div>;
+}
+
+function withoutActEnvironment(run: () => void): void {
+  const scope: Record<string, unknown> = globalThis as unknown as Record<string, unknown>;
+  const previous: unknown = scope.IS_REACT_ACT_ENVIRONMENT;
+
+  scope.IS_REACT_ACT_ENVIRONMENT = false;
+
+  try {
+    run();
+  } finally {
+    scope.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+}
+
 function renderFrame(children: ReactNode, route: string = "/"): RenderResult {
   return renderWithProviders(<ApplicationShellFrame>{children}</ApplicationShellFrame>, {
     bindings: [NotificationsService],
@@ -65,6 +105,27 @@ describe("ApplicationShellFrame", () => {
     window.localStorage.clear();
     // The narrowest window the app supports, where the ratio binds and the fixed maximum never did.
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
+  });
+
+  it("opens a panel synchronously, so what a caller wants inside it is mounted when the dispatch returns", () => {
+    const container: Container = mockContainer();
+    const { getByText, queryByText } = renderWithProviders(
+      <ApplicationShellFrame>
+        <EditorWithClosedLeftPanel />
+      </ApplicationShellFrame>,
+      { container, hasShell: true, route: "/" }
+    );
+
+    expect(queryByText("tree panel")).toBeNull();
+
+    withoutActEnvironment(() =>
+      container
+        .get(CommandBus)
+        .execute<void, IPanelSetActiveMessage>(PANEL_SET_ACTIVE_MESSAGE, { panelId: "tree", side: "left" })
+    );
+
+    expect(getByText("tree panel")).toBeInTheDocument();
+    expect(container.get(QueryBus).query<string, IPanelSideMessage>(PANEL_ACTIVE_QUERY, { side: "left" })).toBe("tree");
   });
 
   it("offers the jobs listing beside the notification centre in dev mode", async () => {

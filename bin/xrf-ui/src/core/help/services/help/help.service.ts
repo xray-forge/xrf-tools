@@ -1,8 +1,8 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
 
-import { Command } from "@/core/commands";
-import { OPEN_APPLICATION_HELP_COMMAND } from "@/core/help/commands";
+import { KeybindCommand } from "@/core/commands";
+import { OPEN_APPLICATION_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -51,7 +51,7 @@ export class HelpService {
   }
 
   /** Shows help for whatever is open. */
-  @Command(OPEN_APPLICATION_HELP_COMMAND, { isEnabled: (service: HelpService) => service.hasHelp })
+  @KeybindCommand(OPEN_APPLICATION_HELP_KEYBIND_COMMAND, { isEnabled: (service: HelpService) => service.hasHelp })
   @BoundAction()
   public open(): void {
     this.isOpen = true;

@@ -1,5 +1,6 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 
+import { ARCHIVES_EXPLORER_KEYBIND_COMMANDS } from "@/applications/archives-explorer/commands";
 import { ARCHIVES_EXPLORER_HELP } from "@/applications/archives-explorer/help";
 import {
   EApplicationGroupId,
@@ -16,6 +17,7 @@ export const ARCHIVES_EXPLORER_APPLICATION: IApplicationDescriptor = createAppli
     help: ARCHIVES_EXPLORER_HELP,
     icon: <ArchiveIcon />,
     id: EApplicationId.ARCHIVES_EXPLORER,
+    keybindCommands: ARCHIVES_EXPLORER_KEYBIND_COMMANDS,
     label: "Archives explorer",
     path: "/archives-explorer",
     status: EApplicationStatus.READY,

@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Fragment, ReactElement } from "react";
 
-import { COMMAND_CATEGORY_LABELS, ECommandCategory, ICommandDescriptor } from "@/core/commands";
+import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { MONOSPACE } from "@/core/theme/tokens";
@@ -11,7 +11,7 @@ import { Nullable } from "@/lib/types/general";
 
 /** One command and the chords it currently answers to. */
 interface IShortcutRow {
-  command: ICommandDescriptor;
+  command: IKeybindCommand;
   chords: ReadonlyArray<string>;
 }
 
@@ -27,16 +27,16 @@ export function ApplicationHelpShortcuts({
   const keymapService: KeymapService = useInjection(KeymapService);
 
   const rows: Array<IShortcutRow> = keymapService.commands
-    .map((command: ICommandDescriptor) => ({ chords: keymapService.getChords(command), command }))
+    .map((command: IKeybindCommand) => ({ chords: keymapService.getChords(command), command }))
     .filter((row: IShortcutRow) => row.chords.length > 0);
 
   if (rows.length === 0) {
     return null;
   }
 
-  const categories: Array<ECommandCategory> = (Object.keys(COMMAND_CATEGORY_LABELS) as Array<ECommandCategory>).filter(
-    (category: ECommandCategory) => rows.some((row: IShortcutRow) => row.command.category === category)
-  );
+  const categories: Array<EKeybindCommandCategory> = (
+    Object.keys(KEYBIND_COMMAND_CATEGORY_LABELS) as Array<EKeybindCommandCategory>
+  ).filter((category: EKeybindCommandCategory) => rows.some((row: IShortcutRow) => row.command.category === category));
 
   return (
     <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
@@ -44,10 +44,10 @@ export function ApplicationHelpShortcuts({
         Shortcuts
       </Typography>
 
-      {categories.map((category: ECommandCategory) => (
+      {categories.map((category: EKeybindCommandCategory) => (
         <Fragment key={category}>
           <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 0.5 }}>
-            {COMMAND_CATEGORY_LABELS[category]}
+            {KEYBIND_COMMAND_CATEGORY_LABELS[category]}
           </Typography>
 
           {rows

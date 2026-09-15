@@ -2,21 +2,21 @@ import { describe, expect, it } from "@jest/globals";
 import { Container, Injectable } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
-import { defineCommand, ECommandCategory, ICommandDescriptor } from "@/core/commands";
-import { Command } from "@/core/commands/lib/command.decorator";
-import { CommandsService } from "@/core/commands/services/commands";
+import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
+import { KeybindCommand } from "@/core/commands/lib/command.decorator";
+import { KeybindCommandsService } from "@/core/commands/services/commands";
 import { mockContainer } from "@/fixtures/utils/container";
 
-const SHADOWED: ICommandDescriptor = defineCommand({
-  category: ECommandCategory.APPLICATION,
+const SHADOWED: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.APPLICATION,
   chords: ["F6"],
   description: "Answered by whichever scope is innermost.",
   id: "fixture/shadowed",
   label: "Shadowed",
 });
 
-const GUARDED: ICommandDescriptor = defineCommand({
-  category: ECommandCategory.APPLICATION,
+const GUARDED: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.APPLICATION,
   description: "Refused until its owner is ready.",
   id: "fixture/guarded",
   label: "Guarded",
@@ -26,7 +26,7 @@ const GUARDED: ICommandDescriptor = defineCommand({
 class OuterHandlerService {
   public calls: number = 0;
 
-  @Command(SHADOWED)
+  @KeybindCommand(SHADOWED)
   public act(): void {
     this.calls += 1;
   }
@@ -36,7 +36,7 @@ class OuterHandlerService {
 class InnerHandlerService {
   public calls: number = 0;
 
-  @Command(SHADOWED)
+  @KeybindCommand(SHADOWED)
   public act(): void {
     this.calls += 1;
   }
@@ -54,16 +54,16 @@ class GuardedHandlerService {
     this.isReady = isReady;
   }
 
-  @Command(GUARDED, { isEnabled: (service: GuardedHandlerService) => service.isReady })
+  @KeybindCommand(GUARDED, { isEnabled: (service: GuardedHandlerService) => service.isReady })
   public act(): void {
     this.calls += 1;
   }
 }
 
-describe("CommandBindingPlugin", () => {
+describe("KeybindCommandBindingPlugin", () => {
   it("binds a decorated method for the lifetime of its container, with no registration of its own", () => {
     const container: Container = mockContainer([OuterHandlerService]).provision();
-    const commandsService: CommandsService = container.get(CommandsService);
+    const commandsService: KeybindCommandsService = container.get(KeybindCommandsService);
 
     expect(commandsService.isAvailable(SHADOWED)).toBe(true);
     expect(commandsService.execute(SHADOWED)).toBe(true);
@@ -79,14 +79,14 @@ describe("CommandBindingPlugin", () => {
     const container: Container = mockContainer([OuterHandlerService]).provision();
 
     // Nothing resolved the service before dispatching; the plugin's participation is what wired it.
-    container.get(CommandsService).execute(SHADOWED);
+    container.get(KeybindCommandsService).execute(SHADOWED);
 
     expect(container.get(OuterHandlerService).calls).toBe(1);
   });
 
   it("lets an inner scope shadow an outer one, and restores the outer when it releases", () => {
     const root: Container = mockContainer([OuterHandlerService]).provision();
-    const commandsService: CommandsService = root.get(CommandsService);
+    const commandsService: KeybindCommandsService = root.get(KeybindCommandsService);
     const child: Container = new Container({ bindings: [InnerHandlerService], parent: root }).provision();
 
     commandsService.execute(SHADOWED);
@@ -103,7 +103,7 @@ describe("CommandBindingPlugin", () => {
 
   it("refuses a command its own handler guards, without the caller knowing the condition", () => {
     const container: Container = mockContainer([GuardedHandlerService]).provision();
-    const commandsService: CommandsService = container.get(CommandsService);
+    const commandsService: KeybindCommandsService = container.get(KeybindCommandsService);
     const guarded: GuardedHandlerService = container.get(GuardedHandlerService);
 
     expect(commandsService.isAvailable(GUARDED)).toBe(false);

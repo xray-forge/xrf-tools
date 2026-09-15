@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
-import { ICommandDescriptor } from "@/core/commands";
-import { ROOT_COMMANDS } from "@/core/commands/root-commands";
+import { IKeybindCommand } from "@/core/commands";
+import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { findChordConflicts, IChordConflict } from "@/core/keybinds/lib/keymap";
+import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
 
 describe("the command catalog", () => {
@@ -11,7 +12,7 @@ describe("the command catalog", () => {
     const owners: Map<string, Array<string>> = new Map();
 
     for (const application of APPLICATION_CATALOG.applications) {
-      for (const command of application.commands ?? []) {
+      for (const command of application.keybindCommands ?? []) {
         owners.set(command.id, [...(owners.get(command.id) ?? []), application.id]);
       }
     }
@@ -27,7 +28,7 @@ describe("the command catalog", () => {
     const contested: Array<[string, Array<IChordConflict>]> = [];
 
     for (const application of APPLICATION_CATALOG.applications) {
-      const reachable: Array<ICommandDescriptor> = [...ROOT_COMMANDS, ...(application.commands ?? [])];
+      const reachable: Array<IKeybindCommand> = [...ROOT_KEYBIND_COMMANDS, ...(application.keybindCommands ?? [])];
       const conflicts: Array<IChordConflict> = findChordConflicts(reachable);
 
       if (conflicts.length > 0) {
@@ -39,13 +40,20 @@ describe("the command catalog", () => {
   });
 
   it("has a conflict-free root set, which every application inherits", () => {
-    expect(findChordConflicts(ROOT_COMMANDS)).toEqual([]);
+    expect(findChordConflicts(ROOT_KEYBIND_COMMANDS)).toEqual([]);
+  });
+
+  it("audits the home screen, which is reachable without being an application", () => {
+    expect(findChordConflicts([...ROOT_KEYBIND_COMMANDS, ...LAUNCHER_KEYBIND_COMMANDS])).toEqual([]);
   });
 
   it("lists only commands whose chords parse, since a malformed one never fires", () => {
-    const everyCommand: Array<ICommandDescriptor> = [
-      ...ROOT_COMMANDS,
-      ...APPLICATION_CATALOG.applications.flatMap((application: IApplicationDescriptor) => application.commands ?? []),
+    const everyCommand: Array<IKeybindCommand> = [
+      ...ROOT_KEYBIND_COMMANDS,
+      ...LAUNCHER_KEYBIND_COMMANDS,
+      ...APPLICATION_CATALOG.applications.flatMap(
+        (application: IApplicationDescriptor) => application.keybindCommands ?? []
+      ),
     ];
 
     // `findChordConflicts` parses every chord it is given, so a malformed one throws rather than reporting.

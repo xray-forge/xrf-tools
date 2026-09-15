@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
-import { useInjection } from "@wirestate/react";
+import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
+import { flushSync } from "react-dom";
 import { useLocation } from "react-router-dom";
 
 import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
@@ -19,6 +20,12 @@ import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
+import {
+  IPanelSetActiveMessage,
+  IPanelSideMessage,
+  PANEL_ACTIVE_QUERY,
+  PANEL_SET_ACTIVE_MESSAGE,
+} from "@/core/shell/panel/panel-messages";
 import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
@@ -84,6 +91,17 @@ export function ApplicationShellFrame({
         title: "The interface crashed and was replaced",
       }),
     [application, notify]
+  );
+
+  // Flushed so the command is synchronous for its caller: whoever opens a panel to reach something inside it finds
+  // that content mounted when the dispatch returns, with no frame to wait for and no retry to write.
+  useOnCommand(PANEL_SET_ACTIVE_MESSAGE, ({ side, panelId }: IPanelSetActiveMessage) =>
+    flushSync(() => (side === "left" ? leftSelection : rightSelection).onOpenPanel(panelId))
+  );
+
+  useOnQuery(
+    PANEL_ACTIVE_QUERY,
+    ({ side }: IPanelSideMessage) => (side === "left" ? leftSelection : rightSelection).activePanelId
   );
 
   return (

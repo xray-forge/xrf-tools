@@ -1,11 +1,11 @@
-import { ICommandDescriptor } from "@/core/commands";
+import { IKeybindCommand } from "@/core/commands";
 import { IKeyChord, isSuppressedInTextEntry, matchesChord, parseChord, toChordKey } from "@/core/keybinds/lib/chord";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** One chord bound to one command. */
 export interface IKeybinding {
   readonly chord: IKeyChord;
-  readonly command: ICommandDescriptor;
+  readonly command: IKeybindCommand;
 }
 
 /**
@@ -33,8 +33,8 @@ export interface IChordConflict {
  * @returns The keymap, partitioned by suppression.
  */
 export function buildKeymap(
-  commands: ReadonlyArray<ICommandDescriptor>,
-  getChords: (command: ICommandDescriptor) => ReadonlyArray<string>
+  commands: ReadonlyArray<IKeybindCommand>,
+  getChords: (command: IKeybindCommand) => ReadonlyArray<string>
 ): IKeymap {
   const anywhere: Array<IKeybinding> = [];
   const outsideTextEntry: Array<IKeybinding> = [];
@@ -73,9 +73,9 @@ export function resolveKeybinding(
   keymap: IKeymap,
   event: KeyboardEvent,
   isTextEntry: boolean
-): Nullable<ICommandDescriptor> {
+): Nullable<IKeybindCommand> {
   // Scanned in place rather than concatenated: this runs on every key a person types, including into a field.
-  const matched: Nullable<ICommandDescriptor> = findBoundCommand(keymap.anywhere, event);
+  const matched: Nullable<IKeybindCommand> = findBoundCommand(keymap.anywhere, event);
 
   if (matched || isTextEntry) {
     return matched;
@@ -89,7 +89,7 @@ export function resolveKeybinding(
  * @param event - Key event being dispatched.
  * @returns The first command whose chord the event is, or null.
  */
-function findBoundCommand(bindings: ReadonlyArray<IKeybinding>, event: KeyboardEvent): Nullable<ICommandDescriptor> {
+function findBoundCommand(bindings: ReadonlyArray<IKeybinding>, event: KeyboardEvent): Nullable<IKeybindCommand> {
   for (const binding of bindings) {
     if (matchesChord(event, binding.chord)) {
       return binding.command;
@@ -105,7 +105,7 @@ function findBoundCommand(bindings: ReadonlyArray<IKeybinding>, event: KeyboardE
  * @param commands - Commands reachable together.
  * @returns One entry per contested chord, in canonical spelling.
  */
-export function findChordConflicts(commands: ReadonlyArray<ICommandDescriptor>): Array<IChordConflict> {
+export function findChordConflicts(commands: ReadonlyArray<IKeybindCommand>): Array<IChordConflict> {
   const byChord: Map<string, Set<string>> = new Map();
 
   for (const command of commands) {

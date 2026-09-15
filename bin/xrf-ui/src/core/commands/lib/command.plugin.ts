@@ -1,24 +1,25 @@
 import { CommandBus, Container, QueryBus, ServiceToken, WirestatePlugin } from "@wirestate/core";
 
-import { toCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
+import { toKeybindCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
 import {
-  collectCommandHandlers,
-  hasCommandHandlers,
-  ICommandHandlerMetadata,
+  collectKeybindCommandHandlers,
+  hasKeybindCommandHandlers,
+  IKeybindCommandHandlerMetadata,
 } from "@/core/commands/lib/command-metadata";
+import { XrfApplicationError } from "@/core/error/lib";
 
 /**
- * Wires `@Command` methods onto the command and query buses for one provision cycle.
+ * Wires `@KeybindCommand` methods onto the command and query buses for one provision cycle.
  */
-export class CommandBindingPlugin implements WirestatePlugin {
+export class KeybindCommandBindingPlugin implements WirestatePlugin {
   /**
    * Force-activates any service declaring commands, so a service that exists only to answer them is still wired.
    *
    * @param token - Binding token to inspect.
-   * @returns Whether the token declares command handlers.
+   * @returns Whether the token declares keybind command handlers.
    */
   public participates(token: ServiceToken): boolean {
-    return hasCommandHandlers(token);
+    return hasKeybindCommandHandlers(token);
   }
 
   /**
@@ -29,7 +30,7 @@ export class CommandBindingPlugin implements WirestatePlugin {
    * @param addDisposer - Registers teardown for this provision cycle.
    */
   public onProvision(instance: object, container: Container, addDisposer: (dispose: () => void) => void): void {
-    const handlers: ReadonlyArray<ICommandHandlerMetadata> = collectCommandHandlers(instance);
+    const handlers: ReadonlyArray<IKeybindCommandHandlerMetadata> = collectKeybindCommandHandlers(instance);
 
     if (handlers.length === 0) {
       return;
@@ -42,8 +43,8 @@ export class CommandBindingPlugin implements WirestatePlugin {
       const method: unknown = (instance as Record<string, unknown>)[handler.methodName];
 
       if (typeof method !== "function") {
-        throw new Error(
-          `Command '${handler.descriptor.id}' names '${handler.methodName}' on ` +
+        throw new XrfApplicationError(
+          `Keybind command '${handler.descriptor.id}' names '${handler.methodName}' on ` +
             `'${instance.constructor.name}', which is not a method.`
         );
       }
@@ -53,7 +54,7 @@ export class CommandBindingPlugin implements WirestatePlugin {
       const isEnabled = handler.isEnabled;
 
       if (isEnabled) {
-        addDisposer(queryBus.register(toCommandEnabledQuery(handler.descriptor), () => isEnabled(instance)));
+        addDisposer(queryBus.register(toKeybindCommandEnabledQuery(handler.descriptor), () => isEnabled(instance)));
       }
     }
   }

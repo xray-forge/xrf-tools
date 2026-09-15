@@ -1,10 +1,14 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
 import { Box, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
+import { formatChord, parseChord } from "@/core/keybinds";
+import { KeymapService } from "@/core/keybinds/services/keymap";
+import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 interface IApplicationLauncherSearchFieldProps extends BaseComponentProps {
   /** Lets the launcher's keyboard shortcut reach the field it does not own. */
@@ -28,6 +32,10 @@ export function ApplicationLauncherSearchField({
   onKeyDown,
   onQueryChange,
 }: IApplicationLauncherSearchFieldProps): ReactElement {
+  const keymapService: KeymapService = useInjection(KeymapService);
+  // Read rather than written down: the overlay can rebind the command, and a hint nobody updates is a hint that lies.
+  const chord: Optional<string> = keymapService.getReachableChords(FOCUS_SEARCH_KEYBIND_COMMAND).at(0);
+
   const onFieldKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       if (event.key === "Escape") {
@@ -77,7 +85,7 @@ export function ApplicationLauncherSearchField({
                     <ClearIcon fontSize={"small"} />
                   </IconButton>
                 </Tooltip>
-              ) : (
+              ) : chord ? (
                 <Box
                   aria-hidden={true}
                   sx={{
@@ -91,9 +99,9 @@ export function ApplicationLauncherSearchField({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Ctrl K
+                  {formatChord(parseChord(chord))}
                 </Box>
-              )}
+              ) : null}
             </InputAdornment>
           ),
         },

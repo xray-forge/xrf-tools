@@ -1,20 +1,33 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent } from "@testing-library/react";
 import { Container, Injectable } from "@wirestate/core";
 
-import { RELOAD_EQUIPMENT_SPRITE_COMMAND } from "@/applications/sprite-equipment-editor/commands";
-import { Command } from "@/core/commands";
+import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
+import { KeybindCommand } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help";
 import { KeybindsDispatcher } from "@/core/keybinds/KeybindsDispatcher";
-import { LauncherSearchService } from "@/core/launcher/services/launcher-search";
+import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
+import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Logger } from "@/lib/logging";
+
+/** Stands in for the service a screen binds to answer the search chord. */
+@Injectable()
+class SearchFixtureService {
+  public calls: number = 0;
+
+  @KeybindCommand(FOCUS_SEARCH_KEYBIND_COMMAND)
+  public focus(): void {
+    this.calls += 1;
+  }
+}
 
 @Injectable()
 class ReloadFixtureService {
   public calls: number = 0;
 
-  @Command(RELOAD_EQUIPMENT_SPRITE_COMMAND)
+  @KeybindCommand(RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND)
   public reload(): void {
     this.calls += 1;
   }
@@ -24,10 +37,12 @@ interface IDispatcherHarness {
   container: Container;
   field: HTMLElement;
   guarded: HTMLElement;
+  search: SearchFixtureService;
 }
 
 function renderDispatcher(route: string = "/archives-explorer"): IDispatcherHarness {
-  const container: Container = mockContainer();
+  const container: Container = mockContainer([SearchFixtureService]);
+
   const { getByLabelText } = renderWithProviders(
     <>
       <input aria-label={"field"} />
@@ -37,7 +52,12 @@ function renderDispatcher(route: string = "/archives-explorer"): IDispatcherHarn
     { container, route }
   );
 
-  return { container, field: getByLabelText("field"), guarded: getByLabelText("guarded") };
+  return {
+    container,
+    field: getByLabelText("field"),
+    guarded: getByLabelText("guarded"),
+    search: container.get(SearchFixtureService),
+  };
 }
 
 describe("KeybindsDispatcher", () => {
@@ -71,51 +91,82 @@ describe("KeybindsDispatcher", () => {
   });
 
   it("withholds a bare chord from a text field while a modified one still reaches it", () => {
-    const { container, field } = renderDispatcher();
-    const launcherSearchService: LauncherSearchService = container.get(LauncherSearchService);
-
-    act(() => launcherSearchService.setMounted(true));
+    const { field, search } = renderDispatcher();
 
     fireEvent.keyDown(field, { key: "/" });
 
-    expect(launcherSearchService.focusRevision).toBe(0);
+    expect(search.calls).toBe(0);
 
     fireEvent.keyDown(field, { ctrlKey: true, key: "k" });
 
-    expect(launcherSearchService.focusRevision).toBe(1);
+    expect(search.calls).toBe(1);
   });
 
   it("runs a bare chord outside a text field", () => {
-    const { container } = renderDispatcher();
-    const launcherSearchService: LauncherSearchService = container.get(LauncherSearchService);
-
-    act(() => launcherSearchService.setMounted(true));
+    const { search } = renderDispatcher();
 
     fireEvent.keyDown(document.body, { key: "/" });
 
-    expect(launcherSearchService.focusRevision).toBe(1);
+    expect(search.calls).toBe(1);
   });
 
   it("yields to a control that handles the key itself", () => {
-    const { container, guarded } = renderDispatcher();
-    const launcherSearchService: LauncherSearchService = container.get(LauncherSearchService);
-
-    act(() => launcherSearchService.setMounted(true));
+    const { guarded, search } = renderDispatcher();
 
     fireEvent.keyDown(guarded, { ctrlKey: true, key: "k" });
 
-    expect(launcherSearchService.focusRevision).toBe(0);
+    expect(search.calls).toBe(0);
   });
 
   it("ignores a repeat, so a held key is not an action run sixty times", () => {
-    const { container } = renderDispatcher();
-    const launcherSearchService: LauncherSearchService = container.get(LauncherSearchService);
-
-    act(() => launcherSearchService.setMounted(true));
+    const { search } = renderDispatcher();
 
     fireEvent.keyDown(document.body, { ctrlKey: true, key: "k", repeat: true });
 
-    expect(launcherSearchService.focusRevision).toBe(0);
+    expect(search.calls).toBe(0);
+  });
+
+  it("stays out of the way while a modal has the screen", () => {
+    const { search } = renderDispatcher();
+
+    const dialog: HTMLElement = document.createElement("div");
+
+    dialog.setAttribute("aria-modal", "true");
+    document.body.appendChild(dialog);
+
+    const event: KeyboardEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "/" });
+
+    fireEvent(document.body, event);
+
+    expect(search.calls).toBe(0);
+    expect(event.defaultPrevented).toBe(false);
+
+    dialog.remove();
+  });
+
+  it("warns in dev mode about a chord nothing implements, and not about one a guard refused", () => {
+    const warn = jest.spyOn(Logger, "warn").mockImplementation(() => undefined);
+
+    try {
+      // No fixture service, so the archives explorer's search chord resolves to a command with no handler at all.
+      const container: Container = mockContainer();
+
+      renderWithProviders(<KeybindsDispatcher />, { container, route: "/archives-explorer" });
+
+      act(() => container.get(SettingsService).setDevModeEnabled(true));
+      act(() => container.get(HelpService).setApplication("archives-explorer", false));
+
+      fireEvent.keyDown(document.body, { key: "/" });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      // Help is implemented and its guard refuses, which is enablement working rather than anything to report.
+      fireEvent.keyDown(document.body, { key: "F1" });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it.each([

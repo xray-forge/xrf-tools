@@ -1,23 +1,24 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { SPRITE_EQUIPMENT_EDITOR_APPLICATION } from "@/applications/sprite-equipment-editor";
-import { RELOAD_EQUIPMENT_SPRITE_COMMAND } from "@/applications/sprite-equipment-editor/commands";
-import { defineCommand, ECommandCategory, ICommandDescriptor } from "@/core/commands";
-import { ROOT_COMMANDS } from "@/core/commands/root-commands";
+import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
+import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
+import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { IKeybinding, IKeymap } from "@/core/keybinds/lib/keymap";
+import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { KeymapService } from "./keymap.service";
 
-const RELOAD_ID: string = RELOAD_EQUIPMENT_SPRITE_COMMAND.id;
+const RELOAD_ID: string = RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND.id;
 
-function toIds(commands: ReadonlyArray<ICommandDescriptor>): Array<string> {
-  return commands.map((command: ICommandDescriptor) => command.id);
+function toIds(commands: ReadonlyArray<IKeybindCommand>): Array<string> {
+  return commands.map((command: IKeybindCommand) => command.id);
 }
 
-const RELOAD: ICommandDescriptor = defineCommand({
-  category: ECommandCategory.APPLICATION,
+const RELOAD: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.APPLICATION,
   chords: ["F5"],
   description: "Reload.",
   id: "fixture/reload",
@@ -89,10 +90,10 @@ describe("KeymapService", () => {
     expect(window.localStorage.getItem(KEYBINDS_STORAGE_KEY)).toBeNull();
   });
 
-  it("reaches only the root commands until an application is routed", () => {
+  it("reaches the home screen's commands while nothing is routed", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    expect(toIds(service.commands)).toEqual(toIds(ROOT_COMMANDS));
+    expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), ...toIds(LAUNCHER_KEYBIND_COMMANDS)]);
   });
 
   it("adds the routed application's declarations, and drops them when it closes", () => {
@@ -100,7 +101,8 @@ describe("KeymapService", () => {
 
     service.setApplication(SPRITE_EQUIPMENT_EDITOR_APPLICATION);
 
-    expect(toIds(service.commands)).toEqual([...toIds(ROOT_COMMANDS), RELOAD_ID]);
+    // The home screen's own declarations go with it: a routed application replaces them rather than adding to them.
+    expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
 
     service.setApplication(null);
 
@@ -112,10 +114,10 @@ describe("KeymapService", () => {
 
     service.setApplication({
       ...SPRITE_EQUIPMENT_EDITOR_APPLICATION,
-      commands: [...ROOT_COMMANDS, RELOAD_EQUIPMENT_SPRITE_COMMAND],
+      keybindCommands: [...ROOT_KEYBIND_COMMANDS, RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND],
     });
 
-    expect(toIds(service.commands)).toEqual([...toIds(ROOT_COMMANDS), RELOAD_ID]);
+    expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
   });
 
   it("builds a keymap through the overrides it holds, and rebuilds it when one changes", () => {

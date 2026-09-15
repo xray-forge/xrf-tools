@@ -1,9 +1,9 @@
-import { ICommandDescriptor } from "@/core/commands/lib/command-descriptor";
+import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** One decorated method, as recorded against the class that declares it. */
-export interface ICommandHandlerMetadata {
-  readonly descriptor: ICommandDescriptor;
+export interface IKeybindCommandHandlerMetadata {
+  readonly descriptor: IKeybindCommand;
   readonly methodName: string;
   /** Reads the guard from the instance that owns the handler; absent means always enabled. */
   readonly isEnabled?: (service: object) => boolean;
@@ -13,7 +13,7 @@ export interface ICommandHandlerMetadata {
  * Keyed by constructor rather than prototype, so a subclass adding handlers does not mutate its parent's list. The
  * chain walk below is what makes an inherited handler still register.
  */
-const COMMAND_HANDLERS: WeakMap<object, Array<ICommandHandlerMetadata>> = new WeakMap();
+const COMMAND_HANDLERS: WeakMap<object, Array<IKeybindCommandHandlerMetadata>> = new WeakMap();
 
 /**
  * Records one decorated method against its declaring class.
@@ -21,8 +21,8 @@ const COMMAND_HANDLERS: WeakMap<object, Array<ICommandHandlerMetadata>> = new We
  * @param constructor - Class the decorated method belongs to.
  * @param metadata - Handler to record.
  */
-export function appendCommandHandler(constructor: object, metadata: ICommandHandlerMetadata): void {
-  const existing: Optional<Array<ICommandHandlerMetadata>> = COMMAND_HANDLERS.get(constructor);
+export function appendKeybindCommandHandler(constructor: object, metadata: IKeybindCommandHandlerMetadata): void {
+  const existing: Optional<Array<IKeybindCommandHandlerMetadata>> = COMMAND_HANDLERS.get(constructor);
 
   if (existing) {
     existing.push(metadata);
@@ -37,8 +37,8 @@ export function appendCommandHandler(constructor: object, metadata: ICommandHand
  * @param constructor - Class to inspect.
  * @returns Every handler reachable from that class.
  */
-function collectFromConstructor(constructor: object): Array<ICommandHandlerMetadata> {
-  const collected: Array<ICommandHandlerMetadata> = [];
+function collectFromConstructor(constructor: object): Array<IKeybindCommandHandlerMetadata> {
+  const collected: Array<IKeybindCommandHandlerMetadata> = [];
   const claimedMethods: Map<string, Set<string>> = new Map();
 
   let current: Nullable<object> = constructor;
@@ -68,7 +68,7 @@ function collectFromConstructor(constructor: object): Array<ICommandHandlerMetad
  * @param instance - Service instance being wired.
  * @returns Every command handler that instance declares.
  */
-export function collectCommandHandlers(instance: object): ReadonlyArray<ICommandHandlerMetadata> {
+export function collectKeybindCommandHandlers(instance: object): ReadonlyArray<IKeybindCommandHandlerMetadata> {
   return collectFromConstructor(instance.constructor);
 }
 
@@ -78,7 +78,7 @@ export function collectCommandHandlers(instance: object): ReadonlyArray<ICommand
  * @param token - Binding token to inspect.
  * @returns Whether that token declares commands.
  */
-export function hasCommandHandlers(token: unknown): boolean {
+export function hasKeybindCommandHandlers(token: unknown): boolean {
   if (typeof token !== "function") {
     return false;
   }

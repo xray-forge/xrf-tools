@@ -1,6 +1,12 @@
-import { KeyboardEvent, ReactElement } from "react";
+import { useInjection } from "@wirestate/react";
+import { KeyboardEvent, ReactElement, useRef } from "react";
 
+import { formatChord, parseChord } from "@/core/keybinds";
+import { KeymapService } from "@/core/keybinds/services/keymap";
+import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
+import { useSearchFocusTarget } from "@/core/search/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable, Optional } from "@/lib/types/general";
 
 import { EditorFilterInput } from "./EditorFilterInput";
 import { EditorPanelHeader } from "./EditorPanelHeader";
@@ -35,12 +41,22 @@ export function EditorSearchHeader({
   onKeyDown,
   onQueryChange,
 }: IEditorSearchHeaderProps): ReactElement {
+  const keymapService: KeymapService = useInjection(KeymapService);
+
+  const inputRef = useRef<Nullable<HTMLInputElement>>(null);
+  // Only where this screen declares the command: a hint in a tool that does not answer the chord would be a lie.
+  const chord: Optional<string> = keymapService.getReachableChords(FOCUS_SEARCH_KEYBIND_COMMAND).at(0);
+
+  useSearchFocusTarget(inputRef);
+
   return (
     <EditorPanelHeader data-testid={dataTestId} id={id} className={className} title={title} caption={count}>
       <EditorFilterInput
+        ariaLabel={ariaLabel}
+        inputRef={inputRef}
+        chord={chord ? formatChord(parseChord(chord)) : undefined}
         query={query}
         placeholder={placeholder}
-        ariaLabel={ariaLabel}
         onClear={onClear}
         onKeyDown={onKeyDown}
         onQueryChange={onQueryChange}

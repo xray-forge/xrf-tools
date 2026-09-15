@@ -8,6 +8,8 @@ import { Nullable } from "@/lib/types/general";
 export interface IPanelSelection {
   activePanel: Nullable<IEditorPanel>;
   activePanelId: Nullable<string>;
+  /** Shows a panel whether or not it is already the open one. */
+  onOpenPanel: (id: string) => void;
   onTogglePanel: (id: string) => void;
 }
 
@@ -35,19 +37,24 @@ export function usePanelSelection(
 
   const activePanel: Nullable<IEditorPanel> = panels.find((panel) => panel.id === resolvedPanelId) ?? null;
 
-  const onTogglePanel = useCallback(
-    (id: string) => {
-      const next: string = resolvedPanelId === id ? "" : id;
-
+  const select = useCallback(
+    (next: string) => {
       setActiveId(next);
       setLocalStorageValue(storageKey, next);
     },
-    [resolvedPanelId, storageKey]
+    [storageKey]
+  );
+
+  const onOpenPanel = useCallback((id: string) => select(id), [select]);
+
+  const onTogglePanel = useCallback(
+    (id: string) => select(resolvedPanelId === id ? "" : id),
+    [resolvedPanelId, select]
   );
 
   useEffect(() => {
     setActiveId(getLocalStorageValue(storageKey));
   }, [storageKey]);
 
-  return { activePanel, activePanelId: resolvedPanelId, onTogglePanel };
+  return { activePanel, activePanelId: resolvedPanelId, onOpenPanel, onTogglePanel };
 }
