@@ -23,6 +23,7 @@ import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
+import { ArchiveSpawnDescriptionView } from "./ArchiveSpawnDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
 
 /**
@@ -138,6 +139,16 @@ export function ArchiveDescriptionPreview({
           className={className}
           description={description.format.description}
           scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.SPAWN:
+      return (
+        <ArchiveSpawnDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
         />
       );
 

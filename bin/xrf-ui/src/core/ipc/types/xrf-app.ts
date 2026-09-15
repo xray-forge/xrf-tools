@@ -18,12 +18,7 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
-/**
- * One chunk of a container, and whatever its payload turned out to hold.
- *
- * Named by nothing but its id. What an id means belongs to a format, and the whole premise of this description is
- * that no format claimed the file - so the number is reported as the number it is and never glossed.
- */
+/** One chunk of a container, and whatever its payload turned out to hold. */
 export type ArchiveChunkNode = {
   /** Chunk id with the compression flag masked off, which is what a format's own constants compare against. */
   id: number;
@@ -35,18 +30,7 @@ export type ArchiveChunkNode = {
   children: Array<ArchiveChunkNode>;
 };
 
-/**
- * The container a file is, for a file nothing here reads.
- *
- * Deliberately the shallowest description there is: every X-Ray binary is a tree of `u32` id and `u32` size, and
- * that framing is the one thing knowable without knowing the format. What a chunk holds is not guessed at, and no id
- * is named - the point is to say what shape the file has, so a reader can tell a container from a blob and see where
- * its weight sits.
- *
- * Offered only where the walk accounts for every byte. A partial walk is refused rather than shown: bytes that are
- * not a container read as one often enough that a lenient walk would draw confident structure over a `.ogm` video or
- * a `.cform` collision tree - 148 of vanilla's files are exactly that case.
- */
+/** The container a file is, for a file nothing here reads. */
 export type ArchiveChunksDescription = {
   /** Chunks in the order the file frames them. */
   chunks: Array<ArchiveChunkNode>;
@@ -103,6 +87,7 @@ export type ArchiveFileDescription = {
 /** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
   CHUNKS = "chunks",
+  SPAWN = "spawn",
   LEVEL = "level",
   OMF = "omf",
   PARTICLES = "particles",
@@ -114,6 +99,7 @@ export enum EArchiveFormatDescription {
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
   | { kind: "chunks"; description: ArchiveChunksDescription }
+  | { kind: "spawn"; description: ArchiveSpawnDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "omf"; description: ArchiveOmfDescription }
   | { kind: "particles"; description: ArchiveParticlesDescription }
@@ -465,6 +451,33 @@ export type ArchiveShadowedCopy = {
   container: XrayAssetContainer;
   /** Payload bytes once unpacked, as the mount holding this copy records or measures them. */
   sizeReal: number;
+};
+
+/** What a spawn set holds, taken from its header and the weight of its sections. */
+export type ArchiveSpawnDescription = {
+  version: number;
+  /** Identity of this build of the set, which a save game is pinned to. */
+  guid: string;
+  /** Identity of the game graph the set was built against. */
+  graphGuid: string;
+  objects: number;
+  levels: number;
+  /** Top-level sections in the order the file frames them, with what each weighs. */
+  sections: Array<ArchiveSpawnSection>;
+  size: number;
+};
+
+/**
+ * One top-level section of a spawn set, by id and weight.
+ *
+ * Named here, unlike the ids of a container nothing reads: this format is claimed, and the names are the chunk
+ * constants `SpawnFile` reads it by. An id outside them keeps its number.
+ */
+export type ArchiveSpawnSection = {
+  id: number;
+  /** What the section holds, where the format names it. */
+  label: string | null;
+  size: number;
 };
 
 /** Every `kind` the `ArchiveSubject` union is told apart by, so a switch or a comparison names one. */

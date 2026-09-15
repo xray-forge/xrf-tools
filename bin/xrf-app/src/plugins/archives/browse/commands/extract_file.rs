@@ -9,9 +9,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::{ArchiveBrowseState, ArchiveSubject};
 
 /// Write one file of the open subject to a path the user chose.
-///
-/// Stays on the calling worker, unlike whole-directory extraction: one entry is one seek and one payload, which is a
-/// short request rather than work bounded by the size of the tree.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "extract_file"))]
 #[tauri::command(rename = "extract_file")]
 pub async fn archives_extract_file(

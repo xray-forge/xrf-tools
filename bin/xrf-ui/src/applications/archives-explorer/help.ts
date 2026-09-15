@@ -55,8 +55,12 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Engine text covers configs, " +
       "scripts and every shader stage, so a `gs` or an `hlsl` reads like the `vs` beside it.",
     "A binary file the explorer cannot draw is described in words instead, where a reader for its format exists: " +
-      "`thm` descriptors, `omf` motion banks, `particles.xr`, `shaders.xr` and a compiled `level`. A description " +
+      "`thm` descriptors, `omf` motion banks, `particles.xr`, `shaders.xr`, a compiled `level` and a spawn set. A " +
+      "description " +
       "names the files it refers to, and a name the open subject holds selects it in the tree.",
+    "A spawn set is summarised from its header alone: how many objects over how many levels, and what each section " +
+      "of the file weighs. Its objects are not read - vanilla's set is 6,464 of them behind a game graph that is most " +
+      "of a 29 MB file.",
     "A `level` is described through its shader table, which is what the level draws with. Its shader names are " +
       "looked up in the `shaders.xr` of whatever is open; with no library open they are shown unasked rather than " +
       "reported as missing.",

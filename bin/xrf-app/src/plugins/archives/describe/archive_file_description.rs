@@ -11,6 +11,7 @@ use crate::plugins::archives::describe::level::ArchiveLevelDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
+use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
 /// What the explorer can say about one entry it cannot draw.
@@ -23,6 +24,9 @@ pub enum ArchiveFormatDescription {
   // a note about Rust layout says nothing.
   Chunks {
     description: Box<ArchiveChunksDescription>,
+  },
+  Spawn {
+    description: Box<ArchiveSpawnDescription>,
   },
   Level {
     description: Box<ArchiveLevelDescription>,
@@ -87,13 +91,21 @@ impl ArchiveFileDescription {
 
     let format: ArchiveFormatDescription = match ArchiveDescribedFormat::of(name) {
       None => Self::describe_container(source, name, size, weighed)?,
-      Some(_) if !policy.allows_describe_read(weighed) => {
+      // The ceiling bounds what a describer holds, and one that seeks holds a chunk header at a time however large
+      // the entry is. Where the subject can only hand the entry over whole it is held after all, and the format is
+      // what says whether that is a size worth refusing - see `reads_by_seeking`.
+      Some(format) if !format.reads_by_seeking() && !policy.allows_describe_read(weighed) => {
         ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
           size,
           maximum: policy.maximum_describe_size,
         })
       }
-      Some(format) => format.describe(source, name)?,
+      // A claim that did not hold is offered whatever the container walk can say, exactly as an unclaimed
+      // entry is: the file is still a file, and its shape is still readable.
+      Some(format) => match format.describe(source, name)? {
+        Some(description) => description,
+        None => Self::describe_container(source, name, size, weighed)?,
+      },
     };
 
     Ok(Self {

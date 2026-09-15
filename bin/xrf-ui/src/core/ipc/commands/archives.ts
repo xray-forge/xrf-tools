@@ -41,48 +41,18 @@ export const archivesCommands = {
   /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
   describeStatistics: (sessionId: SessionId) =>
     __TAURI_INVOKE<ArchiveStatistics>("plugin:archives|describe_statistics", { sessionId }),
-  /**
-   * Write every file the open subject holds under one directory into a destination root.
-   *
-   * An empty prefix means the whole tree, so this also covers extracting everything without needing a separate command
-   * — which is why it is a job rather than a quick read.
-   *
-   * Holds the destination tree exclusively, sharing that lease with an unpack: both lay an engine layout into the root,
-   * so two runs there overlap whatever each was asked for, even where their prefixes differ.
-   */
+  /** Write every file the open subject holds under one directory into a destination root. */
   extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>("plugin:archives|extract_directory", { request, jobId, progress }),
-  /**
-   * Write one file of the open subject to a path the user chose.
-   *
-   * Stays on the calling worker, unlike whole-directory extraction: one entry is one seek and one payload, which is a
-   * short request rather than work bounded by the size of the tree.
-   */
+  /** Write one file of the open subject to a path the user chose. */
   extractFile: (sessionId: SessionId, name: string, destination: string) =>
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { sessionId, name, destination }),
   /** What the explorer has open, so a reloaded frontend adopts it instead of asking for it again. */
   getSubject: () => __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|get_subject"),
-  /**
-   * Entries the open subject holds that no engine lookup can reach.
-   *
-   * Answered on demand rather than stored beside the subject, so there is one source of truth and no second slot a
-   * close could leave stale. Asking the mount layer for it is what keeps the explorer's answer the same one
-   * `gamedata list` and `archive verify` give.
-   */
+  /** Entries the open subject holds that no engine lookup can reach. */
   listCollisions: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions", { sessionId }),
-  /**
-   * Payloads that several entries of the open volume set locate at once.
-   *
-   * A volume set only: the group is derived from equal name-table descriptors, which a mounted world does not keep, so
-   * answering for one would mean answering a question it cannot see. The refusal is [`ArchiveSubject::require_volumes`]
-   * rather than an empty list, because nothing shared is a different claim from nothing knowable.
-   *
-   * Derived on demand out of the open subject rather than stored beside it, the way `list_collisions` answers, so a
-   * close cannot leave a stale answer behind. The derivation is `xrf-archive`'s: the format keeps no alias field, so
-   * this is what a reader observes from equal descriptors and never what the packer recorded. See
-   * [`ArchiveSharedPayload`].
-   */
+  /** Payloads that several entries of the open volume set locate at once. */
   listSharedPayloads: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads", { sessionId }),
   /** Open one archive volume, or every volume beneath a directory, as a single name table. */
@@ -91,12 +61,7 @@ export const archivesCommands = {
   /** Open a game folder as the engine mounts it: its archives and the loose tree standing in front of them. */
   openWorld: (sessionId: SessionId, roots: XrayRoots) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveSubject>>("plugin:archives|open_world", { sessionId, roots }),
-  /**
-   * Read one file of the open subject as text, subject to the viewer's read policy.
-   *
-   * Stays on the calling worker: one entry is one payload, which is a short request rather than work bounded by the
-   * size of the tree.
-   */
+  /** Read one file of the open subject as text, subject to the viewer's read policy. */
   readFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<ArchiveReadResult>("plugin:archives|read_file", { sessionId, path }),
   /**

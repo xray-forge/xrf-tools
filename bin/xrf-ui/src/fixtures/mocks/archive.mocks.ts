@@ -15,6 +15,7 @@ import {
   ArchiveShadersBlender,
   ArchiveShadersDescription,
   ArchiveShadowedCopy,
+  ArchiveSpawnDescription,
   ArchiveSubject,
   ArchiveThmDescription,
   ArchiveWorld,
@@ -786,6 +787,30 @@ export function mockArchiveShadersDescription(
     library: { blenders: blenders.length, classes: 1, textures: 1, absentTextures: 0 },
     ...overrides,
     blenders,
+  };
+}
+
+/**
+ * Creates a spawn set description whose game graph is most of the file, as vanilla's is.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a spawn set.
+ */
+export function mockArchiveSpawnDescription(overrides: Partial<ArchiveSpawnDescription> = {}): ArchiveSpawnDescription {
+  return {
+    version: 10,
+    guid: "6a0f0a1e-0000-4000-8000-000000000001",
+    graphGuid: "6a0f0a1e-0000-4000-8000-000000000002",
+    objects: 6464,
+    levels: 5,
+    sections: [
+      { id: 0, label: "Header", size: 44 },
+      { id: 1, label: "ALife objects", size: 1_732_838 },
+      { id: 4, label: "Game graph", size: 27_188_310 },
+      { id: 9, label: null, size: 128 },
+    ],
+    size: 30_619_587,
+    ...overrides,
   };
 }
 

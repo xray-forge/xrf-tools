@@ -1,10 +1,12 @@
 use xrf_archive::{ArchiveProject, ArchiveReadPolicy};
+use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayAsset, XrayProbe};
 
 use crate::core::assets::{AssetTextureDescriptor, AssetTextureShape};
 use crate::plugins::archives::browse::ArchiveWorld;
 use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeScope;
+use crate::plugins::archives::describe::archive_entry_reader::ArchiveEntryReader;
 
 /// The subject a description is taken from, as a describer sees it.
 pub enum ArchiveDescribeSource<'a> {
@@ -70,6 +72,30 @@ impl ArchiveDescribeSource<'_> {
         .find(path)
         .or_else(|| world.files.iter().find(|entry| is_same_logical_name(&entry.name, path)))
         .map(|entry| (entry.name.as_str(), entry.size_real)),
+    }
+  }
+
+  /// Opens an entry for reading, positionally where this source can.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the source holds no such entry, when the file cannot be opened, or when its bytes cannot
+  /// be read out of the container.
+  pub fn open_entry(&self, name: &str) -> XrfResult<ArchiveEntryReader> {
+    match self {
+      Self::Volumes { project } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
+        project.read_file_bytes(name)?,
+      )?)),
+      Self::World { probe, .. } => {
+        let asset: XrayAsset = find_mounted_asset(probe, name)?;
+
+        match asset.to_physical_path() {
+          Some(path) => Ok(ArchiveEntryReader::Sliced(ChunkReader::from_path(path)?)),
+          None => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
+            probe.read_asset_bytes(&asset)?,
+          )?)),
+        }
+      }
     }
   }
 

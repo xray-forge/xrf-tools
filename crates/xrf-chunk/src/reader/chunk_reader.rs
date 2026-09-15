@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fs::File;
 use std::io::{Read, SeekFrom};
+use std::path::Path;
 
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
@@ -35,6 +36,17 @@ impl ChunkReader<FileSlice> {
       position: slice.start_pos(),
       data: slice,
     })
+  }
+
+  /// Creates a reader over a file on disk, answering every read positionally rather than holding it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be opened, or is empty; see [`Self::from_source`] for the rule.
+  pub fn from_path(path: impl AsRef<Path>) -> XrfResult<Self> {
+    Self::from_slice(FileSlice::new(File::open(path.as_ref()).map_err(|error| {
+      XrfError::new_not_found_error(format!("Failed to open chunked file {:?}: {error}", path.as_ref()))
+    })?))
   }
 }
 

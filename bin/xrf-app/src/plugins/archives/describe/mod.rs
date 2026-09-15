@@ -7,6 +7,7 @@
 mod archive_describe_scope;
 mod archive_describe_source;
 mod archive_described_format;
+mod archive_entry_reader;
 mod archive_file_description;
 mod archive_reference;
 mod chunks;
@@ -15,6 +16,7 @@ mod level;
 mod omf;
 mod particles;
 mod shaders;
+mod spawn;
 mod thm;
 
 pub use archive_describe_source::ArchiveDescribeSource;

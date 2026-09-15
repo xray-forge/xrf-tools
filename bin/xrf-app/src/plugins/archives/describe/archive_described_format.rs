@@ -8,6 +8,7 @@ use crate::plugins::archives::describe::level::ArchiveLevelDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
+use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
 /// Which describer answers for an entry.
@@ -21,6 +22,8 @@ pub enum ArchiveDescribedFormat {
   Particles,
   /// The compiled blender library, `shaders.xr`.
   Shaders,
+  /// A spawn set, `all.spawn` and whatever else carries its header.
+  Spawn,
   /// A texture descriptor, `ETextureThumbnail` wrapping `STextureParams`.
   Thm,
 }
@@ -42,6 +45,7 @@ impl ArchiveDescribedFormat {
   pub fn of(name: &str) -> Option<Self> {
     match XrayExtensionOf::of(name).known() {
       Some(XrayExtension::Omf) => Some(Self::Omf),
+      Some(XrayExtension::Spawn) => Some(Self::Spawn),
       Some(XrayExtension::Thm) => Some(Self::Thm),
       // An extension that names a container rather than a format, and a name carrying none at all, ask the same
       // question: which file is this, by the name the engine loads it under.
@@ -50,29 +54,37 @@ impl ArchiveDescribedFormat {
     }
   }
 
-  /// Reads the entry this format claimed.
+  /// Whether this describer reads by seeking rather than by holding the entry, and so answers to no size ceiling.
+  pub const fn reads_by_seeking(self) -> bool {
+    matches!(self, Self::Spawn)
+  }
+
+  /// Reads the entry this format claimed, or answers `None` where the claim does not hold after all.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
-  pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<ArchiveFormatDescription> {
-    match self {
-      Self::Level => Ok(ArchiveFormatDescription::Level {
+  pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
+    Ok(match self {
+      Self::Level => Some(ArchiveFormatDescription::Level {
         description: Box::new(ArchiveLevelDescription::read(source, name)?),
       }),
-      Self::Omf => Ok(ArchiveFormatDescription::Omf {
+      Self::Omf => Some(ArchiveFormatDescription::Omf {
         description: Box::new(ArchiveOmfDescription::read(source, name)?),
       }),
-      Self::Particles => Ok(ArchiveFormatDescription::Particles {
+      Self::Particles => Some(ArchiveFormatDescription::Particles {
         description: Box::new(ArchiveParticlesDescription::read(source, name)?),
       }),
-      Self::Shaders => Ok(ArchiveFormatDescription::Shaders {
+      Self::Shaders => Some(ArchiveFormatDescription::Shaders {
         description: Box::new(ArchiveShadersDescription::read(source, name)?),
       }),
-      Self::Thm => Ok(ArchiveFormatDescription::Thm {
+      Self::Spawn => ArchiveSpawnDescription::read(source, name)?.map(|description| ArchiveFormatDescription::Spawn {
+        description: Box::new(description),
+      }),
+      Self::Thm => Some(ArchiveFormatDescription::Thm {
         description: Box::new(ArchiveThmDescription::read(source, name)?),
       }),
-    }
+    })
   }
 
   /// Which named file an entry is, folded the way the engine addresses it.
@@ -179,7 +191,11 @@ mod tests {
 
   #[test]
   fn everything_without_a_describer_is_left_unclaimed() {
-    for name in ["meshes\\actor.ogf", "textures\\act\\act_arm_1.dds", "spawns\\all.spawn"] {
+    for name in [
+      "meshes\\actor.ogf",
+      "textures\\act\\act_arm_1.dds",
+      "levels\\l01\\level.geom",
+    ] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' has no describer yet");
     }
   }

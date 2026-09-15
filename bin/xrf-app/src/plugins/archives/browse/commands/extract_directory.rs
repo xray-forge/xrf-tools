@@ -14,12 +14,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::{ArchiveBrowseState, ArchiveSubject, ArchivesExtractRequest};
 
 /// Write every file the open subject holds under one directory into a destination root.
-///
-/// An empty prefix means the whole tree, so this also covers extracting everything without needing a separate command
-/// — which is why it is a job rather than a quick read.
-///
-/// Holds the destination tree exclusively, sharing that lease with an unpack: both lay an engine layout into the root,
-/// so two runs there overlap whatever each was asked for, even where their prefixes differ.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "extract_directory"))]
 #[tauri::command(rename = "extract_directory")]
 pub async fn archives_extract_directory(
