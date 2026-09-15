@@ -245,6 +245,12 @@ export type VisualSubmesh = {
   content: VisualSubmeshContent;
 };
 
+/** Every `kind` the `VisualSubmeshContent` union is discriminated by, so a switch or a comparison names one. */
+export enum EVisualSubmeshContent {
+  PACKED = "packed",
+  SKIPPED = "skipped",
+}
+
 /**
  * Whether a submesh produced drawable geometry, and why not when it did not.
  *

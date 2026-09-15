@@ -13,6 +13,14 @@ export type XrayAsset = {
   container: XrayAssetContainer;
 };
 
+/** Every `kind` the `XrayAssetContainer` union is discriminated by, so a switch or a comparison names one. */
+export enum EXrayAssetContainer {
+  /** A loose file, preserving its root so consumers can identify the winning overlay. */
+  DIRECTORY = "directory",
+  /** An entry inside the archive volume set at `path`. */
+  ARCHIVE = "archive",
+}
+
 /**
  * The physical container of a located asset.
  *
@@ -139,6 +147,43 @@ export type XrayPathCollision = {
   /** File no lookup can reach, because `kept` already claims its identity. */
   unreachable: string;
 };
+
+/** Every `kind` the `XrayResolution` union is discriminated by, so a switch or a comparison names one. */
+export enum EXrayResolution {
+  /**
+   * The reference itself resolved.
+   *
+   * `assets` is never empty, and holds more than one entry only for a mask — a motion reference may name a set.
+   */
+  RESOLVED = "resolved",
+  /**
+   * The reference did not resolve, but the fallback the caller offered did.
+   *
+   * Substitution is engine behavior a caller opts into per kind, so the fallback reference travels back: reporting the
+   * asset alone would show a located texture while hiding that it is not the requested one.
+   */
+  SUBSTITUTED = "substituted",
+  /**
+   * Nothing resolved, across every step of the probe.
+   *
+   * `roots` is every source searched, in probe order and without duplicates.
+   */
+  MISSING = "missing",
+  /**
+   * There was nothing to search: the probe had no step, or no step selected a mounted source.
+   *
+   * Distinct from `Missing` because the question could not be asked rather than the answer being no, which is
+   * the difference between an unconfigured project and an absent asset.
+   */
+  NO_SCOPE = "noScope",
+  /**
+   * The reference could not be turned into a lookup at all, so none was attempted.
+   *
+   * Engine text is untrusted: a mesh header may hold a name no logical path can be made of. Folding that into `Missing`
+   * would report a garbage reference as an absent asset, and substituting for it would report it as a present one.
+   */
+  REJECTED = "rejected",
+}
 
 /**
  * What one reference lookup came to.

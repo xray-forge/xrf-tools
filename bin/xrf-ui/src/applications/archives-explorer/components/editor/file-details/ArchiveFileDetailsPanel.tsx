@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { EArchiveSubject, getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
-import { ArchiveSubject, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
+import { ArchiveSubject, ArchiveWorldEntry, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import {
   EditorPanel,

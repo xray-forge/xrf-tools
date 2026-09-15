@@ -2,7 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveFileDescription,
+  EArchiveDescribeRefusal,
+  EArchiveDescribeScope,
+  EArchiveFormatDescription,
+} from "@/core/ipc/types/xrf-app";
 import {
   mockArchiveFileDescription,
   mockArchiveReference,
@@ -34,7 +39,7 @@ describe("ArchiveDescriptionPreview", () => {
     // 53 of vanilla's 54 declared-size differences are this, so a surface that cannot say it is noise.
     const { getByText } = renderPreview(
       mockArchiveFileDescription({
-        kind: "thm",
+        kind: EArchiveFormatDescription.THM,
         description: mockArchiveThmDescription({
           texture: {
             reference: mockArchiveReference(),
@@ -53,7 +58,7 @@ describe("ArchiveDescriptionPreview", () => {
   it("says when the engine reads nothing further than the type", () => {
     const { getByText } = renderPreview(
       mockArchiveFileDescription({
-        kind: "thm",
+        kind: EArchiveFormatDescription.THM,
         description: mockArchiveThmDescription({
           textureType: { label: "Bump Map", value: 2, isReadByEngine: false, isDeclared: true },
         }),
@@ -72,7 +77,10 @@ describe("ArchiveDescriptionPreview", () => {
 
   it("words an absence in a world's own terms", () => {
     const { getByText } = renderPreview(
-      mockArchiveFileDescription({ kind: "thm", description: mockArchiveThmDescription() }, { kind: "world" })
+      mockArchiveFileDescription(
+        { kind: EArchiveFormatDescription.THM, description: mockArchiveThmDescription() },
+        { kind: EArchiveDescribeScope.WORLD }
+      )
     );
 
     expect(getByText("Not found in the mounted tree")).toBeTruthy();
@@ -90,7 +98,7 @@ describe("ArchiveDescriptionPreview", () => {
   it("distinguishes a chunk the file omits from one holding a default", () => {
     const { getAllByText } = renderPreview(
       mockArchiveFileDescription({
-        kind: "thm",
+        kind: EArchiveFormatDescription.THM,
         description: mockArchiveThmDescription({ bump: null, material: null }),
       })
     );
@@ -107,7 +115,10 @@ describe("ArchiveDescriptionPreview", () => {
 
   it("says calmly that a format has no describer yet", () => {
     const { getByText } = renderPreview(
-      mockArchiveFileDescription({ kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } })
+      mockArchiveFileDescription({
+        kind: EArchiveFormatDescription.UNSUPPORTED,
+        reason: { kind: EArchiveDescribeRefusal.NO_DESCRIBER, extension: "omf" },
+      })
     );
 
     expect(getByText("No description yet")).toBeTruthy();
@@ -117,8 +128,8 @@ describe("ArchiveDescriptionPreview", () => {
   it("reports an entry too large to read whole with both sizes", () => {
     const { getByText } = renderPreview(
       mockArchiveFileDescription({
-        kind: "unsupported",
-        reason: { kind: "tooLarge", size: 128 * 1024 * 1024, maximum: 64 * 1024 * 1024 },
+        kind: EArchiveFormatDescription.UNSUPPORTED,
+        reason: { kind: EArchiveDescribeRefusal.TOO_LARGE, size: 128 * 1024 * 1024, maximum: 64 * 1024 * 1024 },
       })
     );
 

@@ -9,7 +9,10 @@ import {
   ArchiveThmDescription,
   ArchiveWorld,
   ArchiveWorldEntry,
+  EArchiveDescribeScope,
+  EArchiveFormatDescription,
   EArchiveReferenceStatus,
+  EArchiveSubject,
 } from "@/core/ipc/types/xrf-app";
 import {
   ArchiveDescriptor,
@@ -21,7 +24,7 @@ import {
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetContainer, EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Creates the complete result of a packing run.
@@ -208,7 +211,7 @@ export function mockLooseContainer(
   relativePath: string = "configs\\system.ltx",
   root: string = "C:\\game\\gamedata"
 ): XrayAssetContainer {
-  return { kind: "directory", relativePath, root };
+  return { kind: EXrayAssetContainer.DIRECTORY, relativePath, root };
 }
 
 /**
@@ -218,7 +221,7 @@ export function mockLooseContainer(
  * @returns A container naming an entry of a volume.
  */
 export function mockArchivedContainer(path: string = "C:\\game\\db\\configs.db0"): XrayAssetContainer {
-  return { kind: "archive", path };
+  return { kind: EXrayAssetContainer.ARCHIVE, path };
 }
 
 /**
@@ -273,7 +276,7 @@ export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorl
  * @returns What the explorer has open when it indexed volumes.
  */
 export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): ArchiveSubject {
-  return { kind: "volumes", project: mockArchivesProject(files) };
+  return { kind: EArchiveSubject.VOLUMES, project: mockArchivesProject(files) };
 }
 
 /**
@@ -283,7 +286,7 @@ export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): Archi
  * @returns What the explorer has open when it mounted a world.
  */
 export function mockArchivesWorldSubject(files?: Array<ArchiveWorldEntry>): ArchiveSubject {
-  return { kind: "world", world: mockArchivesWorld(files) };
+  return { kind: EArchiveSubject.WORLD, world: mockArchivesWorld(files) };
 }
 
 /**
@@ -494,8 +497,11 @@ export function mockArchiveThmDescription(overrides: Partial<ArchiveThmDescripti
  * @returns One described entry, and the scope behind it.
  */
 export function mockArchiveFileDescription(
-  format: ArchiveFormatDescription = { kind: "thm", description: mockArchiveThmDescription() },
-  scope: ArchiveDescribeScope = { kind: "volumes", volumes: 3 }
+  format: ArchiveFormatDescription = {
+    kind: EArchiveFormatDescription.THM,
+    description: mockArchiveThmDescription(),
+  },
+  scope: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volumes: 3 }
 ): ArchiveFileDescription {
   return { scope, format };
 }

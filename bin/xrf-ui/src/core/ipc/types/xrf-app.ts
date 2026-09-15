@@ -18,12 +18,28 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
+/** Every `kind` the `ArchiveDescribeRefusal` union is discriminated by, so a switch or a comparison names one. */
+export enum EArchiveDescribeRefusal {
+  /** Nothing describes this format yet. */
+  NO_DESCRIBER = "noDescriber",
+  /** The entry is larger than the policy admits for a read that holds the payload. */
+  TOO_LARGE = "tooLarge",
+}
+
 /** Why an entry was not described. */
 export type ArchiveDescribeRefusal =
   /** Nothing describes this format yet. */
   | { kind: "noDescriber"; extension: string }
   /** The entry is larger than the policy admits for a read that holds the payload. */
   | { kind: "tooLarge"; size: number; maximum: number };
+
+/** Every `kind` the `ArchiveDescribeScope` union is discriminated by, so a switch or a comparison names one. */
+export enum EArchiveDescribeScope {
+  /** The merged name table of the volumes the explorer has open. */
+  VOLUMES = "volumes",
+  /** Every source a mounted world searches, which is what the engine would search. */
+  WORLD = "world",
+}
 
 /** What a description's reference lookups searched. */
 export type ArchiveDescribeScope =
@@ -37,6 +53,13 @@ export type ArchiveFileDescription = {
   scope: ArchiveDescribeScope;
   format: ArchiveFormatDescription;
 };
+
+/** Every `kind` the `ArchiveFormatDescription` union is discriminated by, so a switch or a comparison names one. */
+export enum EArchiveFormatDescription {
+  /** Boxed because a description is large beside a refusal, and the refusal is the commoner answer by a wide margin. */
+  THM = "thm",
+  UNSUPPORTED = "unsupported",
+}
 
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
@@ -116,6 +139,14 @@ export type ArchiveShadowedCopy = {
   /** Payload bytes once unpacked, as the mount holding this copy records or measures them. */
   sizeReal: number;
 };
+
+/** Every `kind` the `ArchiveSubject` union is discriminated by, so a switch or a comparison names one. */
+export enum EArchiveSubject {
+  /** The volumes at one path, merged into a single name table. */
+  VOLUMES = "volumes",
+  /** A game folder read as the engine mounts it, archives and loose tree together. */
+  WORLD = "world",
+}
 
 /**
  * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
@@ -592,6 +623,14 @@ export type DialogsReadRequest = {
   language: string | null;
 };
 
+/** Every `kind` the `EquipmentConfigSource` union is discriminated by, so a switch or a comparison names one. */
+export enum EEquipmentConfigSource {
+  /** A `system.ltx` on disk, named by its filesystem path. */
+  FILE = "file",
+  /** An entry point of the roots, named by its logical path such as `configs\system.ltx`. */
+  ASSET = "asset",
+}
+
 /**
  * Where the configuration that annotates a sheet is read from.
  *
@@ -615,6 +654,14 @@ export type EquipmentSheetLocation = {
   /** Where a write to the sheet would land. */
   writeTarget: string | null;
 };
+
+/** Every `kind` the `EquipmentSheetSource` union is discriminated by, so a switch or a comparison names one. */
+export enum EEquipmentSheetSource {
+  /** A loose `.dds` on disk, named by its filesystem path. */
+  FILE = "file",
+  /** A sheet of the roots, named by its engine reference such as `ui\ui_icon_equipment`. */
+  ASSET = "asset",
+}
 
 /** Where an equipment sheet is read from. */
 export type EquipmentSheetSource =
@@ -1354,6 +1401,14 @@ export type TextureSaveTarget = {
   expected: TextureFileStamp | null;
 };
 
+/** Every `kind` the `TextureSource` union is discriminated by, so a switch or a comparison names one. */
+export enum ETextureSource {
+  /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
+  FILE = "file",
+  /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
+  ASSET = "asset",
+}
+
 /** Where a texture is named from. */
 export type TextureSource =
   /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
@@ -1558,6 +1613,14 @@ export type TranslationParseSummary = {
   findings: Array<TranslationParseFinding>;
 };
 
+/** Every `kind` the `TranslationSaveOutcome` union is discriminated by, so a switch or a comparison names one. */
+export enum ETranslationSaveOutcome {
+  /** The edits are on disk, and this is the project as it now reads. */
+  SAVED = "saved",
+  /** The edits are on disk, but another project replaced this one while they were being written. */
+  STALE = "stale",
+}
+
 /** How a save ended, once its edits were on disk. */
 export type TranslationSaveOutcome =
   /** The edits are on disk, and this is the project as it now reads. */
@@ -1607,6 +1670,14 @@ export type TranslationsVerifyRequest = {
   /** Language the check is about. */
   language: string;
 };
+
+/** Every `kind` the `VisualSource` union is discriminated by, so a switch or a comparison names one. */
+export enum EVisualSource {
+  /** A loose `.ogf` file on disk, named by its filesystem path. */
+  FILE = "file",
+  /** An asset of the roots, loose or archived, named by its engine identity. */
+  ASSET = "asset",
+}
 
 /**
  * Where a visual is read from.

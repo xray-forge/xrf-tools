@@ -4,7 +4,6 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
   ArchivePreviewSupport,
-  EArchiveSubject,
   getArchivePreviewSupport,
   getSubjectReadPolicy,
   getSubjectRoots,
@@ -23,6 +22,7 @@ import {
   ArchiveResolution,
   ArchiveSubject,
   ArchiveWorldEntry,
+  EArchiveSubject,
   EJobKind,
   SessionId,
   SessionSnapshot,

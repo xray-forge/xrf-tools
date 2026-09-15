@@ -1,20 +1,10 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { listArchiveFiles } from "@/core/archive/lib/files";
 import { createArchiveRoots } from "@/core/archive/lib/roots";
-import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * Which of the two things the explorer has open.
- */
-export enum EArchiveSubject {
-  /** A set of `.db` volumes, read as one name table. */
-  VOLUMES = "volumes",
-  /** A game folder, read as the engine mounts it: its archives and the loose tree in front of them. */
-  WORLD = "world",
-}
 
 /**
  * How many sources a subject answers from: volumes for a volume set, mounts for a world.

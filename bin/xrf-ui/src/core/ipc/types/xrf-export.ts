@@ -1,5 +1,11 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** Every `kind` the `ExportContractDescriptor` union is discriminated by, so a switch or a comparison names one. */
+export enum EExportContractDescriptor {
+  CALLABLE = "callable",
+  VALUE = "value",
+}
+
 /** The mutually exclusive contracts an extern can expose. */
 export type ExportContractDescriptor =
   | { kind: "callable"; parameters: Array<ExportParameterDescriptor>; returns: ExportReturnDescriptor }

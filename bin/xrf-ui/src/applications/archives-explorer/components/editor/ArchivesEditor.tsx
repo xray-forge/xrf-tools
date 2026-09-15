@@ -5,14 +5,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import {
-  EArchiveSubject,
-  getSubjectRoot,
-  getSubjectShadowedCount,
-  getSubjectSize,
-  getSubjectSourceCount,
-} from "@/core/archive/lib";
-import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { getSubjectRoot, getSubjectShadowedCount, getSubjectSize, getSubjectSourceCount } from "@/core/archive/lib";
+import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";

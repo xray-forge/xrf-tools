@@ -17,6 +17,14 @@ export type TranslationBuildLanguageSummary = {
   entries: number;
 };
 
+/** Every `kind` the `TranslationEdit` union is discriminated by, so a switch or a comparison names one. */
+export enum ETranslationEdit {
+  /** Replace the winning entry's value, or append the entry when the file has none. */
+  SET = "set",
+  /** Remove the entry entirely, shadowed duplicates included. */
+  REMOVE = "remove",
+}
+
 /**
  * One change to a translation entry, in whichever kind of file holds it.
  *

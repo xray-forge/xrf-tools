@@ -198,6 +198,14 @@ export type ArchivePatchConfig = {
   volumeExtension: ArchiveVolumeExtension;
 };
 
+/** Every `kind` the `ArchivePatchOrigin` union is discriminated by, so a switch or a comparison names one. */
+export enum EArchivePatchOrigin {
+  /** A loose tree, named by the root it mounted at. */
+  DIRECTORY = "directory",
+  /** The archive volume set at `path`. */
+  ARCHIVE = "archive",
+}
+
 /**
  * One place a comparison read entries from, listed once per report and referred to by index.
  *

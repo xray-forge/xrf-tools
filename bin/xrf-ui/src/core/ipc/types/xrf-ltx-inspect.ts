@@ -116,6 +116,18 @@ export type LtxInventoryFile = {
   role: LtxInventoryRole;
 };
 
+/** Every `kind` the `LtxInventoryRole` union is discriminated by, so a switch or a comparison names one. */
+export enum ELtxInventoryRole {
+  /** Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for. */
+  ENTRY_POINT = "entryPoint",
+  /** Reached only through another config's `#include`; `included_by` names which. */
+  INCLUDED = "included",
+  /** A scheme declaration. Not verified against schemes itself, which is why it outranks every other role here. */
+  SCHEME_FILE = "schemeFile",
+  /** A file that patches another config rather than standing on its own, as the dialect identified it. */
+  ATTACHMENT = "attachment",
+}
+
 /** What one config is to the project holding it. */
 export type LtxInventoryRole =
   /** Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for. */
@@ -149,6 +161,21 @@ export type LtxResolvedField = {
   value: string;
   origin: LtxResolvedFieldOrigin;
 };
+
+/** Every `kind` the `LtxResolvedFieldOrigin` union is discriminated by, so a switch or a comparison names one. */
+export enum ELtxResolvedFieldOrigin {
+  /** Written in the body of the section that holds it. */
+  DECLARED = "declared",
+  /**
+   * Copied in by inheritance from the section that writes it, which is the ultimate writer and not the parent named
+   * in the header.
+   */
+  INHERITED = "inherited",
+  /** Won a load-order contest under a dialect that ranks statements rather than reading them in order. */
+  LOADED = "loaded",
+  /** The resolution carries no record for this field, because none was asked for. */
+  UNRECORDED = "unrecorded",
+}
 
 /** How one resolved field came to hold the value it holds. */
 export type LtxResolvedFieldOrigin =

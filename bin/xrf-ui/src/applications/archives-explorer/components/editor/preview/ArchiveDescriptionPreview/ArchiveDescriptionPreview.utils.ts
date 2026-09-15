@@ -1,4 +1,10 @@
-import { ArchiveDescribeScope, ArchiveReference } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveDescribeScope,
+  ArchiveReference,
+  EArchiveDescribeScope,
+  EArchiveReferenceStatus,
+} from "@/core/ipc/types/xrf-app";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
@@ -12,17 +18,17 @@ export const NOT_DECLARED: string = "Not declared";
  * @returns A phrase for the reference's caption, or null when the reference resolved and needs no qualifying.
  */
 export function describeReferenceStatus(reference: ArchiveReference, scope: ArchiveDescribeScope): Nullable<string> {
-  // Literal cases rather than the generated enum members, so a status added in Rust fails this switch rather than
-  // falling through to an absence it is not.
   switch (reference.status) {
-    case "present":
+    case EArchiveReferenceStatus.PRESENT:
       return reference.path ?? null;
-    case "absent":
-      return scope.kind === "world"
+    case EArchiveReferenceStatus.ABSENT:
+      return scope.kind === EArchiveDescribeScope.WORLD
         ? "Not found in the mounted tree"
         : `Not in ${scope.volumes === 1 ? "this volume" : `these ${scope.volumes} volumes`}`;
-    case "unknown":
+    case EArchiveReferenceStatus.UNKNOWN:
       return "Not a name that can be looked up";
+    default:
+      return assertExhaustive(reference.status);
   }
 }
 

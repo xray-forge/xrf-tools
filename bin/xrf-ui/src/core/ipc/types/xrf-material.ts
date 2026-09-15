@@ -85,6 +85,28 @@ export type XrayMaterialBumpInput = {
   resolution: XrayResolution;
 };
 
+/** Every `kind` the `XrayMaterialDeclaration` union is discriminated by, so a switch or a comparison names one. */
+export enum EXrayMaterialDeclaration {
+  /** No `.thm` sits beside the texture in any searched root. */
+  NO_DESCRIPTOR = "noDescriptor",
+  /** A `.thm` was located and could not be read as one. */
+  UNREADABLE = "unreadable",
+  /**
+   * The descriptor's texture type is one `LoadTHM` skips whole (`TextureDescrManager.cpp`), so whatever its bump
+   * chunk declares is never read. `declared_bump` is that chunk's used name, when it has one, so the panel can say
+   * the declaration is fine and the type is not.
+   */
+  TYPE_DISQUALIFIED = "typeDisqualified",
+  /** The descriptor carries no bump chunk at all. */
+  NO_BUMP_CHUNK = "noBumpChunk",
+  /** The bump chunk's mode is `none`, or the reserved value the engine clamps to it (`ETextureParams.cpp:77`). */
+  DISABLED = "disabled",
+  /** The mode asks for a bump and the name is empty, so `bump_exist()` is false and the flat shader is selected. */
+  EMPTY_NAME = "emptyName",
+  /** A bump the renderer will try to bind. */
+  DECLARED = "declared",
+}
+
 /**
  * What a texture's descriptor says about its bump, as the engine reads it.
  *
@@ -135,6 +157,28 @@ export type XrayMaterialDetail = {
    */
   usage: XrayDetailUsage | null;
 };
+
+/** Every `kind` the `XraySurfaceDeclaration` union is discriminated by, so a switch or a comparison names one. */
+export enum EXraySurfaceDeclaration {
+  /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
+  NO_LIBRARY = "noLibrary",
+  /** A library was located and could not be read as one. */
+  UNREADABLE = "unreadable",
+  /**
+   * The library holds no blender of that name.
+   *
+   * What the engine reports as `! Shader '%s' not found in library` before falling back to the default shader
+   * (`Layers/xrRender/ResourceManager.cpp:40`), so the surface still draws - opaque, and not as authored.
+   */
+  UNDEFINED = "undefined",
+  /**
+   * A blender whose class this crate does not derive a draw mode for, such as a particle or screen space class a
+   * mesh has no business naming, or one a mod's renderer added.
+   */
+  UNMODELLED = "unmodelled",
+  /** A blender whose class decides the surface from the knobs below. */
+  DESCRIBED = "described",
+}
 
 /** What the shader library says about a surface, as the renderer would read it. */
 export type XraySurfaceDeclaration =
@@ -193,6 +237,23 @@ export type XraySurfaceDescriptor = {
    */
   draw: XraySurfaceDraw;
 };
+
+/** Every `kind` the `XraySurfaceDraw` union is discriminated by, so a switch or a comparison names one. */
+export enum EXraySurfaceDraw {
+  /** Alpha is not read: whatever the texture carries in its fourth channel is ignored, and every texel is drawn. */
+  OPAQUE = "opaque",
+  /** Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass. */
+  ALPHA_TESTED = "alphaTested",
+  /**
+   * Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
+   *
+   * Reached when the author asked for something the g-buffer cannot hold - a partly transparent surface, or one it
+   * wants sorted - so the surface leaves the deferred path entirely. Depth is tested and not written
+   * (`Layers/xrRender/blenders/blender_deffer_model.cpp`), which is what lets one blended surface show through
+   * another.
+   */
+  BLENDED = "blended",
+}
 
 /**
  * How the renderer draws a surface once its blender is compiled: opaque, cut out, or blended.

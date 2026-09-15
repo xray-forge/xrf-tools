@@ -1,16 +1,21 @@
-//! Rendering a Rust enum whose variants carry no data as a TypeScript enum, beside the union it spells.
+//! Giving every identity the frontend compares against a name the compiler resolves.
 //!
 //! A string union names no member, so every frontend use of one is a quoted literal that nothing checks
 //! against the Rust source: a misspelling is a type error only if it is also not a member of the union, and a
 //! renamed variant silently becomes a different valid string somewhere else. An enum gives each identity a
 //! name the compiler resolves, which is what makes a rename fail at the call site rather than at runtime.
 //!
-//! Both are emitted, because they answer different questions. The enum is what a caller writes, and what a
-//! command parameter demands; the derived union is what a value read back is written against, and what a
-//! `Record<>` key, a fixture or a mock is written against, where naming every member would be noise.
+//! Two shapes reach that, and they are not the same thing:
 //!
-//! Which of the two a generated position gets is decided by direction, never by the type: see
-//! [`Enumerations::references`].
+//! - An enum whose variants carry no data becomes a TypeScript enum **replacing** the union Specta renders, with the
+//!   derived `${E..}` union beside it. Both are emitted because they answer different questions: the enum is what a
+//!   caller writes and what a command parameter demands; the union is what a value read back is written against, and
+//!   what a `Record<>` key, a fixture or a mock is written against, where naming every member would be noise. Which
+//!   of the two a generated position gets is decided by direction, never by the type: see
+//!   [`Enumerations::references`].
+//! - An internally tagged union keeps the object shapes Specta renders and gains an enum of its **discriminants**,
+//!   declared before it. That enum stands in for the tag and never for the value, so it is not offered to the
+//!   parameter rewrite.
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -31,10 +36,17 @@ struct EnumerationMember {
   deprecated: Option<Deprecated>,
 }
 
-/// Every exported type whose variants are all identities with no data, and the members each one declares.
+/// Every exported type that declares a TypeScript enum, and the members each one declares.
 pub(super) struct Enumerations {
+  /// Types whose variants are all identities: the enum replaces the union Specta would render.
+  ///
   /// Exported type name to the members of the enum declared beside it, in Rust declaration order.
   members: BTreeMap<String, Vec<EnumerationMember>>,
+  /// Internally tagged unions: the enum names the discriminants and is declared *beside* the rendered union.
+  ///
+  /// The union itself keeps the object shapes Specta renders, so the two are not interchangeable the way a unit
+  /// enum and its string union are.
+  discriminants: BTreeMap<String, Vec<EnumerationMember>>,
 }
 
 impl Enumerations {
@@ -45,10 +57,17 @@ impl Enumerations {
       .map(|named| ((named.module_path.as_ref(), named.location), named))
       .collect();
     let mut members: BTreeMap<String, Vec<EnumerationMember>> = BTreeMap::new();
+    let mut discriminants: BTreeMap<String, Vec<EnumerationMember>> = BTreeMap::new();
 
     for named in types.into_sorted_iter() {
-      let Some(spellings) = unit_variant_spellings(named) else {
-        continue;
+      // A type is one shape or the other, never both: a variant carrying data disqualifies the first, and a variant
+      // carrying none cannot be internally tagged.
+      let (spellings, into) = match unit_variant_spellings(named) {
+        Some(spellings) => (spellings, &mut members),
+        None => match tagged_variant_spellings(named) {
+          Some(spellings) => (spellings, &mut discriminants),
+          None => continue,
+        },
       };
 
       let collected: &NamedDataType = declared
@@ -85,18 +104,21 @@ impl Enumerations {
         .collect();
 
       assert_members_are_distinct(&named.name, &declared_members);
-      members.insert(named.name.to_string(), declared_members);
+      into.insert(named.name.to_string(), declared_members);
     }
 
-    Self { members }
+    Self { members, discriminants }
   }
 
   /// The enum `name` declares beside its union, or `None` for a type that stays a plain union.
   pub(super) fn enum_name_of(&self, name: &str) -> Option<String> {
-    self.members.contains_key(name).then(|| to_enum_name(name))
+    (self.members.contains_key(name) || self.discriminants.contains_key(name)).then(|| to_enum_name(name))
   }
 
-  /// Every type name that has an enum, mapped to it.
+  /// Every type name whose enum may stand in for the type itself, mapped to it.
+  ///
+  /// Only the unit enums. A tagged union's enum names its discriminants, not its values, so rewriting a parameter of
+  /// that type to it would ask a caller to pass `EArchiveSubject.WORLD` where a whole `ArchiveSubject` is wanted.
   ///
   /// What a command *parameter* is rewritten to, and nothing else. A parameter naming the union would accept a
   /// quoted literal the Rust side never declared, and there the enum costs nothing: the caller is writing the
@@ -121,11 +143,42 @@ impl Enumerations {
       .collect()
   }
 
-  /// Declaration text for `named`, or `None` for a type Specta renders unchanged.
+  /// Declaration text replacing what Specta would render for `named`, or `None` where its rendering stands.
   pub(super) fn render(&self, named: &NamedDataType) -> Option<String> {
     let members: &Vec<EnumerationMember> = self.members.get(named.name.as_ref())?;
     let enum_name: String = to_enum_name(&named.name);
-    let mut declaration: String = render_docs(&named.docs, named.deprecated.as_ref(), "");
+    let mut declaration: String = self.render_enum(named, members, &enum_name);
+
+    declaration.push('\n');
+    declaration.push_str(&format!(
+      "/** Every `{enum_name}` as the spelling it crosses IPC as, for a value no member has narrowed. */\n"
+    ));
+    declaration.push_str(&format!("export type {} = `${{{enum_name}}}`;\n", named.name));
+
+    Some(declaration)
+  }
+
+  /// The discriminant enum declared before the union Specta renders for `named`, or `None` for a type without one.
+  ///
+  /// Prepended rather than replacing, because the union is the object shapes and only the tag is named here.
+  pub(super) fn render_discriminant(&self, named: &NamedDataType) -> Option<String> {
+    let members: &Vec<EnumerationMember> = self.discriminants.get(named.name.as_ref())?;
+    let enum_name: String = to_enum_name(&named.name);
+
+    Some(format!(
+      "/** Every `kind` the `{}` union is discriminated by, so a switch or a comparison names one. */\n{}",
+      named.name,
+      self.render_enum(named, members, &enum_name)
+    ))
+  }
+
+  /// One `export enum` declaration, shared by both shapes so their members read the same.
+  fn render_enum(&self, named: &NamedDataType, members: &[EnumerationMember], enum_name: &str) -> String {
+    let mut declaration: String = match self.discriminants.contains_key(named.name.as_ref()) {
+      // The union below carries the type's own documentation; repeating it on the enum would say it twice.
+      true => String::new(),
+      false => render_docs(&named.docs, named.deprecated.as_ref(), ""),
+    };
 
     declaration.push_str(&format!("export enum {enum_name} {{\n"));
 
@@ -134,24 +187,16 @@ impl Enumerations {
       declaration.push_str(&format!("  {} = {},\n", member.name, render_string(&member.value)));
     }
 
-    declaration.push_str("}\n\n");
-    declaration.push_str(&format!(
-      "/** Every `{enum_name}` as the spelling it crosses IPC as, for a value no member has narrowed. */\n"
-    ));
-    declaration.push_str(&format!("export type {} = `${{{enum_name}}}`;\n", named.name));
-
-    Some(declaration)
+    declaration.push_str("}\n");
+    declaration
   }
 }
 
 /// The serialized spelling of every variant of `named`, when each is a bare identity and nothing else.
 ///
 /// A variant carrying data disqualifies its whole type, because the union Specta renders for it is a union of
-/// object shapes rather than of strings, and an enum of member names describes none of them.
-// todo: Generate an enum of the `kind` discriminants for a tagged union whose arms carry data, so
-// `EArchiveSubject` (bin/xrf-ui/src/core/archive/lib/subject.ts) can stop being hand-written. Held back because it
-// is the only such mirror the frontend has: fourteen unions would each gain an exported enum to retire one
-// duplication, and `subject.test.ts` already makes the compiler check that one.
+/// object shapes rather than of strings, and an enum of member names describes none of them. Such a type is offered
+/// to [`tagged_variant_spellings`] instead, which names its discriminants without claiming to name its values.
 fn unit_variant_spellings(named: &NamedDataType) -> Option<Vec<&str>> {
   let Some(DataType::Enum(declared)) = named.ty.as_ref() else {
     return None;
@@ -167,6 +212,53 @@ fn unit_variant_spellings(named: &NamedDataType) -> Option<Vec<&str>> {
   }
 
   // An enum with no variant left renders as `never`, which no member list describes.
+  (!spellings.is_empty()).then_some(spellings)
+}
+
+/// The serialized spelling of every variant of `named`, when it is an internally tagged union.
+///
+/// Read off the mapped shape rather than off Serde's container attributes, which `specta-serde` keeps to itself: an
+/// internally tagged variant is rendered as named fields whose tag field is a one-member literal carrying the
+/// variant's own spelling, and nothing else renders that way. Externally tagged, adjacently tagged and untagged
+/// unions therefore fall out on their own, which matters because none of them has a discriminant to name.
+///
+/// Every variant must agree on the tag field, since one enum is declared for the whole union.
+fn tagged_variant_spellings(named: &NamedDataType) -> Option<Vec<&str>> {
+  let Some(DataType::Enum(declared)) = named.ty.as_ref() else {
+    return None;
+  };
+  let mut spellings: Vec<&str> = Vec::with_capacity(declared.variants.len());
+  let mut tag: Option<&str> = None;
+
+  for (name, variant) in &declared.variants {
+    if variant.skip {
+      continue;
+    }
+
+    let Fields::Named(fields) = &variant.fields else {
+      return None;
+    };
+
+    let (field, spelling) = fields.fields.iter().find_map(|(field, declared)| {
+      let DataType::Enum(literal) = declared.ty.as_ref()? else {
+        return None;
+      };
+
+      match literal.variants.as_slice() {
+        [(spelling, only)] if matches!(only.fields, Fields::Unit) && spelling == name => {
+          Some((field.as_ref(), spelling.as_ref()))
+        }
+        _ => None,
+      }
+    })?;
+
+    if *tag.get_or_insert(field) != field {
+      return None;
+    }
+
+    spellings.push(spelling);
+  }
+
   (!spellings.is_empty()).then_some(spellings)
 }
 
@@ -294,7 +386,50 @@ fn render_string(value: &str) -> String {
 mod tests {
   use std::borrow::Cow;
 
-  use super::{EnumerationMember, assert_members_are_distinct, to_member_name};
+  use specta::Types;
+  use specta::datatype::{DataType, Enum, Field, NamedDataType, Variant};
+
+  use super::{EnumerationMember, assert_members_are_distinct, tagged_variant_spellings, to_member_name};
+
+  /// One enum datatype holding exactly these variants.
+  fn enumeration(variants: Vec<(Cow<'static, str>, Variant)>) -> DataType {
+    let mut declared: Enum = Enum::default();
+
+    declared.variants = variants;
+
+    DataType::Enum(declared)
+  }
+
+  /// The shape the TypeScript format maps a tag field to: a one-member literal carrying the variant's spelling.
+  fn tag_literal(spelling: &'static str) -> DataType {
+    enumeration(vec![(Cow::Borrowed(spelling), Variant::unit())])
+  }
+
+  /// A union as the mapped types hold one, built from `(spelling, tag field)` pairs.
+  fn union(variants: Vec<(&'static str, Option<(&'static str, DataType)>)>) -> NamedDataType {
+    let mut types: Types = Types::default();
+
+    NamedDataType::new("Union", &mut types, |_, named| {
+      named.ty = Some(enumeration(
+        variants
+          .into_iter()
+          .map(|(spelling, tag)| {
+            let variant: Variant = match tag {
+              // A payload beside the tag, because an internally tagged variant that carries nothing else would be
+              // a bare identity and belongs to the unit-enum path instead.
+              Some((field, literal)) => Variant::named()
+                .field(field, Field::new(literal))
+                .field("payload", Field::new(tag_literal("payload")))
+                .build(),
+              None => Variant::unit(),
+            };
+
+            (Cow::Borrowed(spelling), variant)
+          })
+          .collect(),
+      ));
+    })
+  }
 
   /// A member as [`Enumerations::resolve`] builds one, for the guard that reads only the first three fields.
   fn member(variant: &str, value: &str) -> EnumerationMember {
@@ -305,6 +440,43 @@ mod tests {
       docs: Cow::Borrowed(""),
       deprecated: None,
     }
+  }
+
+  #[test]
+  fn an_internally_tagged_union_names_its_discriminants() {
+    let named: NamedDataType = union(vec![
+      ("thm", Some(("kind", tag_literal("thm")))),
+      ("unsupported", Some(("kind", tag_literal("unsupported")))),
+    ]);
+
+    assert_eq!(tagged_variant_spellings(&named), Some(vec!["thm", "unsupported"]));
+  }
+
+  #[test]
+  fn a_variant_whose_tag_does_not_carry_its_own_spelling_is_not_a_discriminant() {
+    // An adjacently tagged union nests the payload under a second field, so the tag literal no longer sits beside
+    // the variant's own name. Naming its arms as discriminants would describe a shape the frontend never sees.
+    let named: NamedDataType = union(vec![("thm", Some(("kind", tag_literal("other"))))]);
+
+    assert_eq!(tagged_variant_spellings(&named), None);
+  }
+
+  #[test]
+  fn variants_disagreeing_about_the_tag_field_name_no_enum() {
+    // One enum is declared for the whole union, so a union with two tags has no single discriminant to declare.
+    let named: NamedDataType = union(vec![
+      ("thm", Some(("kind", tag_literal("thm")))),
+      ("unsupported", Some(("type", tag_literal("unsupported")))),
+    ]);
+
+    assert_eq!(tagged_variant_spellings(&named), None);
+  }
+
+  #[test]
+  fn a_union_of_bare_identities_is_left_to_the_unit_enum_path() {
+    let named: NamedDataType = union(vec![("thm", None), ("unsupported", None)]);
+
+    assert_eq!(tagged_variant_spellings(&named), None);
   }
 
   #[test]

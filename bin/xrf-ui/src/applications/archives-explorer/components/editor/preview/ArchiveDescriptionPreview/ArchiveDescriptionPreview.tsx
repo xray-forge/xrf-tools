@@ -3,12 +3,18 @@ import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";
-import { ArchiveDescribeRefusal, ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveDescribeRefusal,
+  ArchiveFileDescription,
+  EArchiveDescribeRefusal,
+  EArchiveFormatDescription,
+} from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
@@ -34,15 +40,17 @@ export function ArchiveDescriptionPreview({
 
   const onGetRefusalDescription = useCallback((reason: ArchiveDescribeRefusal): string => {
     switch (reason.kind) {
-      case "noDescriber":
+      case EArchiveDescribeRefusal.NO_DESCRIBER:
         return reason.extension
           ? `Nothing reads .${reason.extension} files yet. Their metadata is still available in Details.`
           : "Nothing reads files without an extension yet. Their metadata is still available in Details.";
-      case "tooLarge":
+      case EArchiveDescribeRefusal.TOO_LARGE:
         return (
           `This file is ${formatBytes(reason.size)}, past the ${formatBytes(reason.maximum)} limit for reading a ` +
           "file whole to describe it. Its metadata is still available in Details."
         );
+      default:
+        return assertExhaustive(reason);
     }
   }, []);
 
@@ -75,7 +83,7 @@ export function ArchiveDescriptionPreview({
   const description: ArchiveFileDescription = described.description;
 
   switch (description.format.kind) {
-    case "thm":
+    case EArchiveFormatDescription.THM:
       return (
         <ArchiveThmDescriptionView
           data-testid={dataTestId}
@@ -86,7 +94,7 @@ export function ArchiveDescriptionPreview({
         />
       );
 
-    case "unsupported":
+    case EArchiveFormatDescription.UNSUPPORTED:
       return (
         <EmptyState
           data-testid={dataTestId}
@@ -96,5 +104,8 @@ export function ArchiveDescriptionPreview({
           description={onGetRefusalDescription(description.format.reason)}
         />
       );
+
+    default:
+      return assertExhaustive(description.format);
   }
 }

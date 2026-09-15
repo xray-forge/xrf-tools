@@ -1,8 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { EArchiveSubject } from "@/core/archive/lib";
-import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { ArchiveWorldEntry, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {

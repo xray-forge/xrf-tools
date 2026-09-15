@@ -603,6 +603,16 @@ export type GraphVertex = {
   levelPointsCount: number;
 };
 
+/** Every `kind` the `LastSpawnTime` union is discriminated by, so a switch or a comparison names one. */
+export enum ELastSpawnTime {
+  /** The script class wrote nothing past the engine payload. */
+  ABSENT = "Absent",
+  /** The script class wrote its flag with no time behind it. */
+  UNSET = "Unset",
+  /** The script class wrote its flag and a time. */
+  SET = "Set",
+}
+
 /**
  * Trailing spawn time a fork's script class appends after the engine server class payload.
  *
