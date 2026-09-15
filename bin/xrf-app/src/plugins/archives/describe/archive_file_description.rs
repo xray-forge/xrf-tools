@@ -6,6 +6,8 @@ use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeS
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
+use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
+use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
 /// What the explorer can say about one entry it cannot draw.
@@ -16,9 +18,21 @@ pub enum ArchiveFormatDescription {
   // Boxed rather than inline: a description is large beside a refusal, and the refusal is the commoner answer by a
   // wide margin. A line comment because a variant's doc comment travels onto the generated TypeScript member, where
   // a note about Rust layout says nothing.
-  Omf { description: Box<ArchiveOmfDescription> },
-  Thm { description: Box<ArchiveThmDescription> },
-  Unsupported { reason: ArchiveDescribeRefusal },
+  Omf {
+    description: Box<ArchiveOmfDescription>,
+  },
+  Particles {
+    description: Box<ArchiveParticlesDescription>,
+  },
+  Shaders {
+    description: Box<ArchiveShadersDescription>,
+  },
+  Thm {
+    description: Box<ArchiveThmDescription>,
+  },
+  Unsupported {
+    reason: ArchiveDescribeRefusal,
+  },
 }
 
 /// Why an entry was not described.

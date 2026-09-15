@@ -11,6 +11,8 @@ mod archive_file_description;
 mod archive_reference;
 pub mod commands;
 mod omf;
+mod particles;
+mod shaders;
 mod thm;
 
 pub use archive_describe_source::ArchiveDescribeSource;

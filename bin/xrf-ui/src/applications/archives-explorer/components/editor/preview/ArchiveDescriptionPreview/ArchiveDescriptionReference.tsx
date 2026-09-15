@@ -1,13 +1,10 @@
-import { Link } from "@mui/material";
-import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveDescribeScope, ArchiveReference } from "@/core/ipc/types/xrf-app";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { describeReferenceStatus } from "./ArchiveDescriptionPreview.utils";
+import { ArchiveDescriptionReferenceLink } from "./ArchiveDescriptionReferenceLink";
 import { ArchiveDescriptionRow } from "./ArchiveDescriptionRow";
 
 interface IArchiveDescriptionReferenceProps extends BaseComponentProps {
@@ -17,7 +14,7 @@ interface IArchiveDescriptionReferenceProps extends BaseComponentProps {
 }
 
 /**
- * A file a description names, selectable in the tree when the open subject holds it.
+ * A file a description names, on a labelled line of its own.
  */
 export function ArchiveDescriptionReference({
   "data-testid": dataTestId = "archive-description-reference",
@@ -27,16 +24,6 @@ export function ArchiveDescriptionReference({
   reference,
   scope,
 }: IArchiveDescriptionReferenceProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-
-  const entry: Nullable<string> = reference.entry;
-
-  const onOpenReference = useCallback(() => {
-    if (entry) {
-      archivesService.openArchiveFileByName(entry);
-    }
-  }, [archivesService, entry]);
-
   return (
     <ArchiveDescriptionRow
       data-testid={dataTestId}
@@ -44,21 +31,7 @@ export function ArchiveDescriptionReference({
       className={className}
       label={label}
       isMonospace
-      value={
-        entry ? (
-          <Link
-            component={"button"}
-            type={"button"}
-            underline={"hover"}
-            onClick={onOpenReference}
-            sx={{ font: "inherit" }}
-          >
-            {reference.name}
-          </Link>
-        ) : (
-          reference.name
-        )
-      }
+      value={<ArchiveDescriptionReferenceLink reference={reference} />}
       caption={describeReferenceStatus(reference, scope)}
     />
   );

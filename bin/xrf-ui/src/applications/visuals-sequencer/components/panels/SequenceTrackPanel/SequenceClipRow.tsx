@@ -9,7 +9,7 @@ import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-se
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
+import { formatSeconds } from "@/lib/format/duration";
 import { Nullable } from "@/lib/types/general";
 
 interface ISequenceClipRowProps extends BaseComponentProps {
@@ -81,7 +81,7 @@ export function SequenceClipRow({
 
         {motion?.state === ESequenceMotionState.READY ? (
           <Typography variant={"caption"} sx={{ color: "text.disabled" }}>
-            {`${frames} frames · ${formatDuration(Math.round((motion.bake?.duration ?? 0) * 1000))}`}
+            {`${frames} frames · ${formatSeconds(motion.bake?.duration ?? 0)}`}
           </Typography>
         ) : null}
 

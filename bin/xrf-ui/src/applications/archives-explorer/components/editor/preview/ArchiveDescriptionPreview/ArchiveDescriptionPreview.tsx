@@ -19,6 +19,8 @@ import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
+import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
+import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
 
 /**
@@ -91,6 +93,28 @@ export function ArchiveDescriptionPreview({
           id={id}
           className={className}
           description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.PARTICLES:
+      return (
+        <ArchiveParticlesDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.SHADERS:
+      return (
+        <ArchiveShadersDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
         />
       );
 

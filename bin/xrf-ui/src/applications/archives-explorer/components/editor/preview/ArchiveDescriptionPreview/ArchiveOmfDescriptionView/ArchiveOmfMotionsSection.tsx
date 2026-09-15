@@ -6,6 +6,7 @@ import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { filterByName } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveOmfMotionRow } from "./ArchiveOmfMotionRow";
 
 interface IArchiveOmfMotionsSectionProps extends BaseComponentProps {
@@ -23,11 +24,10 @@ export function ArchiveOmfMotionsSection({
 }: IArchiveOmfMotionsSectionProps): ReactElement {
   const [filter, setFilter] = useState<string>("");
 
-  const matched: Array<ArchiveOmfMotion> = useMemo(() => {
-    const needle: string = filter.trim().toLowerCase();
-
-    return needle ? motions.filter((motion: ArchiveOmfMotion) => motion.name.toLowerCase().includes(needle)) : motions;
-  }, [filter, motions]);
+  const matched: Array<ArchiveOmfMotion> = useMemo(
+    () => filterByName(motions, filter, (motion: ArchiveOmfMotion) => motion.name),
+    [filter, motions]
+  );
 
   return (
     <EditorPanelSection

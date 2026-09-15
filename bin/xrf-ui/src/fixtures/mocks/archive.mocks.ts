@@ -4,8 +4,13 @@ import {
   ArchiveFormatDescription,
   ArchiveOmfDescription,
   ArchiveOmfMotion,
+  ArchiveParticlesDescription,
+  ArchiveParticlesEffect,
+  ArchiveParticlesGroup,
   ArchiveReference,
   ArchiveResolution,
+  ArchiveShadersBlender,
+  ArchiveShadersDescription,
   ArchiveShadowedCopy,
   ArchiveSubject,
   ArchiveThmDescription,
@@ -555,6 +560,132 @@ export function mockArchiveOmfDescription(overrides: Partial<ArchiveOmfDescripti
     ],
     ...overrides,
     motions,
+  };
+}
+
+/**
+ * Creates one emitter of a particle library, drawing a texture the open subject holds.
+ *
+ * @param overrides - Field values to override.
+ * @returns One effect, as a description carries it.
+ */
+export function mockArchiveParticlesEffect(overrides: Partial<ArchiveParticlesEffect> = {}): ArchiveParticlesEffect {
+  return {
+    name: "explosions\\smoke",
+    maxParticles: 10,
+    timeLimit: 0.25,
+    shader: "particles\\add",
+    texture: mockArchiveReference({
+      name: "pfx\\pfx_smoke_a",
+      path: "textures\\pfx\\pfx_smoke_a.dds",
+      entry: "textures\\pfx\\pfx_smoke_a.dds",
+    }),
+    actions: ["Source", "KillOld"],
+    actionsCount: 6,
+    flags: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one sequence of a particle library, playing one effect the library defines.
+ *
+ * @param overrides - Field values to override.
+ * @returns One group, as a description carries it.
+ */
+export function mockArchiveParticlesGroup(overrides: Partial<ArchiveParticlesGroup> = {}): ArchiveParticlesGroup {
+  return {
+    name: "explosions\\blast",
+    timeLimit: 0,
+    effects: [
+      {
+        effect: { name: "explosions\\smoke", isDefined: true },
+        onBirth: null,
+        onPlay: null,
+        onDead: null,
+        from: 0,
+        to: 1,
+        flags: 6,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a particle library description: one effect and one group that plays it.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about the particle library.
+ */
+export function mockArchiveParticlesDescription(
+  overrides: Partial<ArchiveParticlesDescription> = {}
+): ArchiveParticlesDescription {
+  const effects: Array<ArchiveParticlesEffect> = overrides.effects ?? [mockArchiveParticlesEffect()];
+  const groups: Array<ArchiveParticlesGroup> = overrides.groups ?? [mockArchiveParticlesGroup()];
+
+  return {
+    library: {
+      version: 1,
+      effects: effects.length,
+      groups: groups.length,
+      actions: 6,
+      textures: 1,
+      absentTextures: 0,
+      undefinedEffects: 0,
+    },
+    ...overrides,
+    effects,
+    groups,
+  };
+}
+
+/**
+ * Creates one blender of a shader library, binding a texture and a slot the renderer fills.
+ *
+ * @param overrides - Field values to override.
+ * @returns One blender, as a description carries it.
+ */
+export function mockArchiveShadersBlender(overrides: Partial<ArchiveShadersBlender> = {}): ArchiveShadersBlender {
+  return {
+    name: "models\\model_aref",
+    class: "MODEL",
+    version: 2,
+    computer: "GSC-WS-14",
+    time: 0,
+    properties: [
+      { name: "Name", kind: "Texture", value: "$base0", texture: null },
+      {
+        name: "R2-R",
+        kind: "Texture",
+        value: "detail\\detail_grnd_grass",
+        texture: mockArchiveReference({
+          name: "detail\\detail_grnd_grass",
+          path: "textures\\detail\\detail_grnd_grass.dds",
+          entry: "textures\\detail\\detail_grnd_grass.dds",
+        }),
+      },
+      { name: "Priority", kind: "Integer", value: "4 (0 to 8)", texture: null },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a shader library description holding one blender.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about the blender library.
+ */
+export function mockArchiveShadersDescription(
+  overrides: Partial<ArchiveShadersDescription> = {}
+): ArchiveShadersDescription {
+  const blenders: Array<ArchiveShadersBlender> = overrides.blenders ?? [mockArchiveShadersBlender()];
+
+  return {
+    library: { blenders: blenders.length, classes: 1, textures: 1, absentTextures: 0 },
+    ...overrides,
+    blenders,
   };
 }
 

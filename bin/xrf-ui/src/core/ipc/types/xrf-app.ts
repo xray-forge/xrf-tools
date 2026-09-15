@@ -57,6 +57,8 @@ export type ArchiveFileDescription = {
 /** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
   OMF = "omf",
+  PARTICLES = "particles",
+  SHADERS = "shaders",
   THM = "thm",
   UNSUPPORTED = "unsupported",
 }
@@ -64,15 +66,12 @@ export enum EArchiveFormatDescription {
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
   | { kind: "omf"; description: ArchiveOmfDescription }
+  | { kind: "particles"; description: ArchiveParticlesDescription }
+  | { kind: "shaders"; description: ArchiveShadersDescription }
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
 
-/**
- * What a bank holds, taken over the whole of it.
- *
- * Totals rather than a summary of the list below: which of eleven hundred motions to look at is a question the
- * reader answers, and how much there is to look at is one this can.
- */
+/** What a bank holds, taken over the whole of it. */
 export type ArchiveOmfBank = {
   version: number;
   /** Whether the version carries motion marks at all, which version 3 does not. */
@@ -88,23 +87,11 @@ export type ArchiveOmfBank = {
   divergingLabels: number;
   /** Motions carrying at least one mark. */
   markedMotions: number;
-  /**
-   * Motions whose declared falloff the engine replaces on load.
-   *
-   * Counted here because it is the rule rather than the exception - 94% of vanilla's motions - and a bank says it
-   * once far better than every row of a table repeating it.
-   */
+  /** Motions whose declared falloff the engine replaces on load. */
   replacedFalloffs: number;
 };
 
-/**
- * How a motion blends in and out, in the values the engine blends with.
- *
- * Neither is the number the file stores. `CMotionDef::Accrue` and `::Falloff` widen the quantized value by half
- * again, and a motion that is not an effect has its falloff rewritten on load - see [`Self::of`]. Both are carried:
- * the engine's value is what playback does, the declared one is what somebody authored, and deciding which of the
- * two is the mistake is not this viewer's to make.
- */
+/** How a motion blends in and out, in the values the engine blends with. */
 export type ArchiveOmfBlend = {
   /** What the engine blends in over, `1.5 × Dequantize(accrue)`. */
   accrue: number | null;
@@ -112,25 +99,11 @@ export type ArchiveOmfBlend = {
   falloff: number | null;
   declaredAccrue: number | null;
   declaredFalloff: number | null;
-  /**
-   * Whether the engine replaced the declared falloff rather than reading it.
-   *
-   * True for 94% of vanilla's motions, so it is a rule to state once about a bank rather than a remark to make on
-   * every row of it.
-   */
+  /** Whether the engine replaced the declared falloff rather than reading it. */
   isFalloffReplaced: boolean;
 };
 
-/**
- * Everything the viewer says about one motion bank.
- *
- * Reading order is the engine's: what the bank holds, the partition every cycle is routed through, then the motions
- * themselves. The partition leads the list because it is the bank's contract with a skeleton and a motion's target
- * means nothing without it.
- *
- * A bank names no other file, so nothing here resolves: a motion is addressed by the model that loads the bank, and
- * the bank has no opinion about which model that is.
- */
+/** Everything the viewer says about one motion bank. */
 export type ArchiveOmfDescription = {
   bank: ArchiveOmfBank;
   parts: Array<ArchiveOmfPart>;
@@ -138,46 +111,27 @@ export type ArchiveOmfDescription = {
   motions: Array<ArchiveOmfMotion>;
 };
 
-/**
- * One named set of moments within a motion, `motion_marks`.
- *
- * Foot contacts in practice: `Left foot` and `Right foot` account for 1,114 of vanilla's 1,779 marks, and the
- * inverse-kinematics controller is what reads them. A mark declaring no interval at all is not unusual - 239 of them
- * do - so the intervals are listed rather than assumed to exist.
- */
+/** One named set of moments within a motion, `motion_marks`. */
 export type ArchiveOmfMark = {
   name: string;
   /** The moments the mark covers, in the order the file lists them. */
   intervals: Array<ArchiveOmfMarkInterval>;
 };
 
-/**
- * One stretch of a motion a mark covers, in seconds from its start.
- *
- * Beside the mark rather than in a file of its own: it exists only as an element of that list, and the pair the file
- * stores carries no names of its own to give it.
- */
+/** One stretch of a motion a mark covers, in seconds from its start. */
 export type ArchiveOmfMarkInterval = {
   from: number | null;
   to: number | null;
 };
 
-/**
- * One motion of a bank: what it is called, how long it is, and how the engine plays it.
- *
- * A definition and the payload at its ordinal, joined - the definition carries everything about playback and the
- * payload carries the frames, and neither alone says how long the motion takes.
- */
+/** One motion of a bank: what it is called, how long it is, and how the engine plays it. */
 export type ArchiveOmfMotion = {
   /** The name the engine resolves the motion by, which is the definition's and never the payload's label. */
   name: string;
   frames: number;
   /** Seconds the frames span at the format's fixed 30 fps, before playback speed applies. */
   durationSeconds: number | null;
-  /**
-   * Seconds playing it actually takes, or `None` when the engine reads a speed of zero and the division has no
-   * answer.
-   */
+  /** Seconds playing it actually takes, or `None` when the engine reads a speed of zero and the division has no answer. */
   playbackSeconds: number | null;
   speed: ArchiveOmfQuantized;
   power: ArchiveOmfQuantized;
@@ -188,22 +142,11 @@ export type ArchiveOmfMotion = {
   /** Bits of the word no name here claims. */
   unnamedFlags: number;
   marks: Array<ArchiveOmfMark>;
-  /**
-   * Whether the payload still carries the name of the motion it holds.
-   *
-   * An editing artifact and nothing more: release playback never reads the label, which is why the name above comes
-   * from the definition.
-   */
+  /** Whether the payload still carries the name of the motion it holds. */
   hasDivergingLabel: boolean;
 };
 
-/**
- * One part of a bank's partition, and what plays on it.
- *
- * The partition is the contract a bank has with a skeleton: a model whose bones are named otherwise cannot use it.
- * 97 of vanilla's 116 banks declare a single part called `default`; the actor banks declare `torso`, `head` and
- * `legs`, which is what lets an upper body animate over a walk.
- */
+/** One part of a bank's partition, and what plays on it. */
 export type ArchiveOmfPart = {
   name: string;
   /** Bones the part drives, in the order it lists them. */
@@ -212,25 +155,13 @@ export type ArchiveOmfPart = {
   cycles: number;
 };
 
-/**
- * A playback value as the engine reads it, beside the one the file stores.
- *
- * `CMotionDef` keeps speed, power, accrue and falloff as `u16`, quantized on load and dequantized on use, so the
- * number the engine plays with is the stored one floored to a 1/655.35 step and held inside `0..=100`. Both are
- * carried because both get asked for: the declared one is what an author typed and what a surface compares against,
- * the engine's is what playback does.
- */
+/** A playback value as the engine reads it, beside the one the file stores. */
 export type ArchiveOmfQuantized = {
   /** What the engine reads, after the quantizer. */
   value: number | null;
   /** The float the file stores. */
   declared: number | null;
-  /**
-   * Whether the quantizer's range refused the declared value.
-   *
-   * The step between the two is rounding and never worth remarking on; the range is a different number entirely, and
-   * a negative speed reading as a stopped one is not something to leave a reader to notice.
-   */
+  /** Whether the quantizer's range refused the declared value. */
   isClamped: boolean;
 };
 
@@ -241,17 +172,102 @@ export enum EArchiveOmfTarget {
   UNNAMED = "unnamed",
 }
 
-/**
- * What a motion plays on.
- *
- * One field holds two different things: `bone_or_part` is a partition part for a cycle and a bone for an effect, and
- * which it is depends on `esmFX` - `bCycle ? part_id : bone_id`, as `CMotionDef::Load` puts it. The engine sorts a
- * bank into its cycle and effect maps by that same bit, so the two are never ambiguous, only unlabelled.
- */
+/** What a motion plays on. */
 export type ArchiveOmfTarget =
   | { kind: "part"; index: number; name: string | null }
   | { kind: "bone"; index: number; name: string | null }
   | { kind: "unnamed" };
+
+/**
+ * Everything the viewer says about the particle library.
+ *
+ * Effects lead the groups because a group is a list of effect names and means nothing until they exist; the order is
+ * the file's own.
+ */
+export type ArchiveParticlesDescription = {
+  library: ArchiveParticlesLibrary;
+  effects: Array<ArchiveParticlesEffect>;
+  groups: Array<ArchiveParticlesGroup>;
+};
+
+/**
+ * One emitter of the library: what it draws with, how much of it, and what moves it.
+ *
+ * The action list is reported as the kinds it holds rather than as their operands. An action carries domains,
+ * envelopes and vectors by the dozen - vanilla's 921 effects hold 5,938 actions between them - and what a reader of a
+ * library wants first is which of the nineteen kinds an effect is built from.
+ */
+export type ArchiveParticlesEffect = {
+  name: string;
+  /** Particles the emitter may hold at once, `max_particles`. */
+  maxParticles: number;
+  /** Seconds the emitter runs for, absent where it declares no limit and runs until something stops it. */
+  timeLimit: number | null;
+  /** The blender the sprite is drawn with, which names a definition of `shaders.xr` rather than a file. */
+  shader: string;
+  /** The texture the sprite is drawn from, resolved against the subject being browsed. */
+  texture: ArchiveReference;
+  /** Every action kind the effect is built from, in the order it first uses each. */
+  actions: Array<string>;
+  /** Actions in total, which is more than the kinds above when one kind is used twice. */
+  actionsCount: number;
+  flags: number;
+};
+
+/**
+ * An effect a group names, and whether this library is where it is defined.
+ *
+ * Not an [`ArchiveReference`](crate::plugins::archives::describe::archive_reference::ArchiveReference): a group names
+ * an effect of its own library rather than a file of the tree, so there is nothing to select and the lookup never
+ * leaves this file.
+ */
+export type ArchiveParticlesEffectName = {
+  name: string;
+  isDefined: boolean;
+};
+
+/** One sequence of the library: the effects it plays and what each one starts alongside itself. */
+export type ArchiveParticlesGroup = {
+  name: string;
+  /** Seconds the group runs for; zero where it declares no limit. */
+  timeLimit: number | null;
+  effects: Array<ArchiveParticlesGroupEffect>;
+};
+
+/** One slot of a group: the effect it plays, and the effects that effect starts with it. */
+export type ArchiveParticlesGroupEffect = {
+  effect: ArchiveParticlesEffectName;
+  onBirth: ArchiveParticlesEffectName | null;
+  onPlay: ArchiveParticlesEffectName | null;
+  onDead: ArchiveParticlesEffectName | null;
+  /** Seconds into the group the slot starts and stops, `time_0` and `time_1`. */
+  from: number | null;
+  to: number | null;
+  flags: number;
+};
+
+/**
+ * What the library holds, taken over the whole of it.
+ *
+ * The two counts of what is missing are here rather than beside each row for the reason the falloff rule is:
+ * a reader wants to know whether anything is missing before reading nine hundred rows to find out.
+ */
+export type ArchiveParticlesLibrary = {
+  version: number;
+  effects: number;
+  groups: number;
+  /** Actions across every effect. */
+  actions: number;
+  /**
+   * Distinct textures the effects draw from, which is far fewer than the effects naming them - 125 against 921 in
+   * vanilla.
+   */
+  textures: number;
+  /** Distinct textures the subject being browsed does not hold. */
+  absentTextures: number;
+  /** Effect names the groups use that this library does not define. */
+  undefinedEffects: number;
+};
 
 /** One file a description names, and what became of it. */
 export type ArchiveReference = {
@@ -317,6 +333,60 @@ export type ArchiveResolutionVolume = {
   sizeReal: number;
   /** Root the volume unpacks under, from `[header] entry_point` with its alias stripped. */
   outputRootPath: string;
+};
+
+/** One definition of the library: what a shader name resolves to. */
+export type ArchiveShadersBlender = {
+  /** The shader name a mesh, a level surface or a config declares to reach this definition. */
+  name: string;
+  /** The class tag, which decides which passes are compiled and how its properties are read. */
+  class: string;
+  /** The class's own format version, which decides the order its `Load` reads properties in. */
+  version: number;
+  /** Machine the SDK last saved it on, the file's only provenance; empty where it carries none. */
+  computer: string;
+  /** Save time as the SDK stored it, which is a `u32` of its own and not an instant this can date. */
+  time: number;
+  properties: Array<ArchiveShadersProperty>;
+};
+
+/**
+ * Everything the viewer says about the blender library.
+ *
+ * Only the blender chunk is read, which is what the reader models: the file also carries the shader script list, the
+ * constant table and the matrix table, and none of those name a surface.
+ */
+export type ArchiveShadersDescription = {
+  library: ArchiveShadersLibrary;
+  blenders: Array<ArchiveShadersBlender>;
+};
+
+/** What the library holds, taken over the whole of it. */
+export type ArchiveShadersLibrary = {
+  blenders: number;
+  /** Distinct class tags, of which the workspace libraries all use fifteen. */
+  classes: number;
+  /** Distinct textures the blenders bind by name, slots the renderer fills excluded. */
+  textures: number;
+  /** Distinct named textures the subject being browsed does not hold. */
+  absentTextures: number;
+};
+
+/**
+ * One value an author left in a blender's property grid.
+ *
+ * Rendered to a string here rather than crossing as a union of eleven payload shapes: what the frontend does with a
+ * blender property is show it, and the per-kind spelling is engine knowledge like every other label these
+ * descriptions resolve in Rust.
+ */
+export type ArchiveShadersProperty = {
+  name: string;
+  /** The type the file tags the payload with, as `xrEngine/Properties.h` names it. */
+  kind: string;
+  /** The value as a reader would compare it, empty for a marker, which carries none. */
+  value: string;
+  /** The texture a texture property names, when it names a file rather than a slot the renderer binds. */
+  texture: ArchiveReference | null;
 };
 
 /** One copy of an engine path no lookup reaches, as the explorer lists it. */
@@ -945,13 +1015,7 @@ export type HostInfo = {
   pid: number;
 };
 
-/**
- * How a job that is no longer running ended.
- *
- * Wider than `xrf_job::JobOutcome` on purpose: that one is what an operation reports about its own work, and an
- * operation that failed reports nothing at all — the failure travels as the command's error. The registry watches
- * from outside and has to describe that case too, or a job that blew up would sit in the listing looking finished.
- */
+/** How a job that is no longer running ended. */
 export enum EJobConclusion {
   COMPLETED = "completed",
   CANCELLED = "cancelled",
@@ -961,12 +1025,7 @@ export enum EJobConclusion {
 /** Every `EJobConclusion` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobConclusion = `${EJobConclusion}`;
 
-/**
- * One job as the listing describes it, running or recently finished.
- *
- * One shape for both rather than two, because the panel showing them shows one list: a job crossing from running to
- * finished should change its fields, not its type. `conclusion` is what separates the halves.
- */
+/** One job as the listing describes it, running or recently finished. */
 export type JobDescription = {
   id: string;
   /** What kind of work this is, as the command that started it named itself. */
@@ -975,10 +1034,6 @@ export type JobDescription = {
   leaseKeys: Array<string>;
   /**
    * What the job was asked to do, as the command that started it described itself.
-   *
-   * JSON for the same reason the answer is: the registry serves every domain and reads none of their argument types.
-   * It is what lets a window that did not start a run still name what is running.
-   *
    * Absent for a job whose command described nothing.
    */
   request: unknown | null;
@@ -989,7 +1044,6 @@ export type JobDescription = {
   isCancelRequested: boolean;
   /**
    * The job's own progress: live for a running job, as last seen for a finished one.
-   *
    * Absent for a job registered but not yet reporting — a run holding a lease while it validates its inputs, say.
    */
   progress: JobProgress | null;
@@ -999,10 +1053,6 @@ export type JobDescription = {
   error: string | null;
   /**
    * What the run answered, for a job that completed.
-   *
-   * JSON rather than a type, because the registry serves every domain and none of their result types are its
-   * business. The tool that started the work is the one that knows how to read it.
-   *
    * Absent while the job runs, and for a job that failed or was cancelled before it had an answer.
    */
   result: unknown | null;
@@ -1139,11 +1189,7 @@ export type SelectedVisualDescription = {
 /** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
 export type SessionId = string;
 
-/**
- * The optional committed snapshot returned during restoration.
- *
- * A named wire type also keeps the generic parameter scoped when Specta exports nullable results.
- */
+/** The optional committed snapshot returned during restoration. */
 export type SessionRestore<T> = SessionSnapshot<T> | null;
 
 /** An immutable value addressed by the opening that produced it; a held snapshot survives close. */
