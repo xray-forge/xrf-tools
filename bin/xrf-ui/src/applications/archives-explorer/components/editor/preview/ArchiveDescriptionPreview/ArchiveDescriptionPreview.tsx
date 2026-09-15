@@ -18,6 +18,7 @@ import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
+import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
 
 /**
@@ -83,6 +84,16 @@ export function ArchiveDescriptionPreview({
   const description: ArchiveFileDescription = described.description;
 
   switch (description.format.kind) {
+    case EArchiveFormatDescription.OMF:
+      return (
+        <ArchiveOmfDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
     case EArchiveFormatDescription.THM:
       return (
         <ArchiveThmDescriptionView

@@ -33,6 +33,7 @@ pub use crate::data::ogf::ogf_vertices::*;
 pub use crate::data::skeleton::skeleton_motion::*;
 pub use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
 pub use crate::data::skeleton::skeleton_motion_keys::{Quaternion, SAMPLE_FPS, SkeletonBoneMotion};
+pub use crate::data::skeleton::skeleton_motion_mark::SkeletonMotionMark;
 pub use crate::data::skeleton::skeleton_part::SkeletonPart;
 pub use crate::data::{
   alife::{

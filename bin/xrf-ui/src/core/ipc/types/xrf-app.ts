@@ -56,13 +56,202 @@ export type ArchiveFileDescription = {
 
 /** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
+  OMF = "omf",
   THM = "thm",
   UNSUPPORTED = "unsupported",
 }
 
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
-  { kind: "thm"; description: ArchiveThmDescription } | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+  | { kind: "omf"; description: ArchiveOmfDescription }
+  | { kind: "thm"; description: ArchiveThmDescription }
+  | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+
+/**
+ * What a bank holds, taken over the whole of it.
+ *
+ * Totals rather than a summary of the list below: which of eleven hundred motions to look at is a question the
+ * reader answers, and how much there is to look at is one this can.
+ */
+export type ArchiveOmfBank = {
+  version: number;
+  /** Whether the version carries motion marks at all, which version 3 does not. */
+  carriesMarks: boolean;
+  motions: number;
+  /** Motions flagged `esmFX`, which play on a bone rather than on a part of the partition. */
+  effects: number;
+  bones: number;
+  frames: number;
+  /** Seconds every motion together spans at the format's fixed sample rate, before playback speed applies. */
+  durationSeconds: number | null;
+  /** Motions whose payload still carries a name that is not theirs. */
+  divergingLabels: number;
+  /** Motions carrying at least one mark. */
+  markedMotions: number;
+  /**
+   * Motions whose declared falloff the engine replaces on load.
+   *
+   * Counted here because it is the rule rather than the exception - 94% of vanilla's motions - and a bank says it
+   * once far better than every row of a table repeating it.
+   */
+  replacedFalloffs: number;
+};
+
+/**
+ * How a motion blends in and out, in the values the engine blends with.
+ *
+ * Neither is the number the file stores. `CMotionDef::Accrue` and `::Falloff` widen the quantized value by half
+ * again, and a motion that is not an effect has its falloff rewritten on load - see [`Self::of`]. Both are carried:
+ * the engine's value is what playback does, the declared one is what somebody authored, and deciding which of the
+ * two is the mistake is not this viewer's to make.
+ */
+export type ArchiveOmfBlend = {
+  /** What the engine blends in over, `1.5 × Dequantize(accrue)`. */
+  accrue: number | null;
+  /** What the engine blends out over, after the rewrite. */
+  falloff: number | null;
+  declaredAccrue: number | null;
+  declaredFalloff: number | null;
+  /**
+   * Whether the engine replaced the declared falloff rather than reading it.
+   *
+   * True for 94% of vanilla's motions, so it is a rule to state once about a bank rather than a remark to make on
+   * every row of it.
+   */
+  isFalloffReplaced: boolean;
+};
+
+/**
+ * Everything the viewer says about one motion bank.
+ *
+ * Reading order is the engine's: what the bank holds, the partition every cycle is routed through, then the motions
+ * themselves. The partition leads the list because it is the bank's contract with a skeleton and a motion's target
+ * means nothing without it.
+ *
+ * A bank names no other file, so nothing here resolves: a motion is addressed by the model that loads the bank, and
+ * the bank has no opinion about which model that is.
+ */
+export type ArchiveOmfDescription = {
+  bank: ArchiveOmfBank;
+  parts: Array<ArchiveOmfPart>;
+  /** Every motion, in the order the bank declares them, which is also the order the engine pairs them by. */
+  motions: Array<ArchiveOmfMotion>;
+};
+
+/**
+ * One named set of moments within a motion, `motion_marks`.
+ *
+ * Foot contacts in practice: `Left foot` and `Right foot` account for 1,114 of vanilla's 1,779 marks, and the
+ * inverse-kinematics controller is what reads them. A mark declaring no interval at all is not unusual - 239 of them
+ * do - so the intervals are listed rather than assumed to exist.
+ */
+export type ArchiveOmfMark = {
+  name: string;
+  /** The moments the mark covers, in the order the file lists them. */
+  intervals: Array<ArchiveOmfMarkInterval>;
+};
+
+/**
+ * One stretch of a motion a mark covers, in seconds from its start.
+ *
+ * Beside the mark rather than in a file of its own: it exists only as an element of that list, and the pair the file
+ * stores carries no names of its own to give it.
+ */
+export type ArchiveOmfMarkInterval = {
+  from: number | null;
+  to: number | null;
+};
+
+/**
+ * One motion of a bank: what it is called, how long it is, and how the engine plays it.
+ *
+ * A definition and the payload at its ordinal, joined - the definition carries everything about playback and the
+ * payload carries the frames, and neither alone says how long the motion takes.
+ */
+export type ArchiveOmfMotion = {
+  /** The name the engine resolves the motion by, which is the definition's and never the payload's label. */
+  name: string;
+  frames: number;
+  /** Seconds the frames span at the format's fixed 30 fps, before playback speed applies. */
+  durationSeconds: number | null;
+  /**
+   * Seconds playing it actually takes, or `None` when the engine reads a speed of zero and the division has no
+   * answer.
+   */
+  playbackSeconds: number | null;
+  speed: ArchiveOmfQuantized;
+  power: ArchiveOmfQuantized;
+  blend: ArchiveOmfBlend;
+  target: ArchiveOmfTarget;
+  /** The named bits the definition's word carries, in bit order; only the set ones. */
+  flags: Array<string>;
+  /** Bits of the word no name here claims. */
+  unnamedFlags: number;
+  marks: Array<ArchiveOmfMark>;
+  /**
+   * Whether the payload still carries the name of the motion it holds.
+   *
+   * An editing artifact and nothing more: release playback never reads the label, which is why the name above comes
+   * from the definition.
+   */
+  hasDivergingLabel: boolean;
+};
+
+/**
+ * One part of a bank's partition, and what plays on it.
+ *
+ * The partition is the contract a bank has with a skeleton: a model whose bones are named otherwise cannot use it.
+ * 97 of vanilla's 116 banks declare a single part called `default`; the actor banks declare `torso`, `head` and
+ * `legs`, which is what lets an upper body animate over a walk.
+ */
+export type ArchiveOmfPart = {
+  name: string;
+  /** Bones the part drives, in the order it lists them. */
+  bones: Array<string>;
+  /** Cycles this bank routes to the part, which is what makes it more than a name. */
+  cycles: number;
+};
+
+/**
+ * A playback value as the engine reads it, beside the one the file stores.
+ *
+ * `CMotionDef` keeps speed, power, accrue and falloff as `u16`, quantized on load and dequantized on use, so the
+ * number the engine plays with is the stored one floored to a 1/655.35 step and held inside `0..=100`. Both are
+ * carried because both get asked for: the declared one is what an author typed and what a surface compares against,
+ * the engine's is what playback does.
+ */
+export type ArchiveOmfQuantized = {
+  /** What the engine reads, after the quantizer. */
+  value: number | null;
+  /** The float the file stores. */
+  declared: number | null;
+  /**
+   * Whether the quantizer's range refused the declared value.
+   *
+   * The step between the two is rounding and never worth remarking on; the range is a different number entirely, and
+   * a negative speed reading as a stopped one is not something to leave a reader to notice.
+   */
+  isClamped: boolean;
+};
+
+/** Every `kind` the `ArchiveOmfTarget` union is told apart by, so a switch or a comparison names one. */
+export enum EArchiveOmfTarget {
+  PART = "part",
+  BONE = "bone",
+  UNNAMED = "unnamed",
+}
+
+/**
+ * What a motion plays on.
+ *
+ * One field holds two different things: `bone_or_part` is a partition part for a cycle and a bone for an effect, and
+ * which it is depends on `esmFX` - `bCycle ? part_id : bone_id`, as `CMotionDef::Load` puts it. The engine sorts a
+ * bank into its cycle and effect maps by that same bit, so the two are never ambiguous, only unlabelled.
+ */
+export type ArchiveOmfTarget =
+  | { kind: "part"; index: number; name: string | null }
+  | { kind: "bone"; index: number; name: string | null }
+  | { kind: "unnamed" };
 
 /** One file a description names, and what became of it. */
 export type ArchiveReference = {
@@ -432,22 +621,11 @@ export type ArchivesUnpackRequest = {
   destination: string;
 };
 
-/**
- * What a texture file is, once it has been located.
- *
- * Reported by the command that resolved the reference rather than derived by the frontend: the facts all come from a
- * DDS header, `xrf-dds` already reads one, and a renderer-side reimplementation would name the same formats
- * differently than the `verify-ogf` census does.
- */
+/** What a texture file is, once it has been located. */
 export type AssetTextureDescriptor = {
   /** Bytes the file occupies, which is also what a renderer uploads for a block-compressed texture. */
   size: number;
-  /**
-   * Header facts, absent when the bytes are not a readable DDS.
-   *
-   * Nested rather than four independent options, so a partially known shape cannot be described: either the header
-   * parsed and every field is from it, or it did not and the size is all that is known.
-   */
+  /** Header facts, absent when the bytes are not a readable DDS. */
   shape: AssetTextureShape | null;
 };
 
@@ -455,12 +633,7 @@ export type AssetTextureDescriptor = {
 export type AssetTextureShape = {
   width: number;
   height: number;
-  /**
-   * Levels the file carries, one meaning no mip chain at all.
-   *
-   * Load bearing rather than trivia: a texture without mips has to be sampled with a linear filter or webgl renders it
-   * black, and 1,805 of Anomaly's 2,197 distinct textures ship without one.
-   */
+  /** Levels the file carries, one meaning no mip chain at all. */
   mipmapLevels: number;
   /** Format name from [`DdsMetadata::get_format_label`], so the viewer and the sweep agree on what a file is. */
   format: string;

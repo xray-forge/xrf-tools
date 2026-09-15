@@ -2,6 +2,8 @@ import {
   ArchiveDescribeScope,
   ArchiveFileDescription,
   ArchiveFormatDescription,
+  ArchiveOmfDescription,
+  ArchiveOmfMotion,
   ArchiveReference,
   ArchiveResolution,
   ArchiveShadowedCopy,
@@ -11,6 +13,7 @@ import {
   ArchiveWorldEntry,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
+  EArchiveOmfTarget,
   EArchiveReferenceStatus,
   EArchiveSubject,
 } from "@/core/ipc/types/xrf-app";
@@ -488,6 +491,70 @@ export function mockArchiveThmDescription(overrides: Partial<ArchiveThmDescripti
     fadeDelay: 0,
     file: { version: 0x0012, isSupportedVersion: true, thumbnailType: 1, thumbnail: null, extraChunks: [] },
     ...overrides,
+  };
+}
+
+/**
+ * Creates one motion of a bank, a cycle on no particular part playing at the rate it was sampled at.
+ *
+ * @param overrides - Field values to override.
+ * @returns One motion, as a description carries it.
+ */
+export function mockArchiveOmfMotion(overrides: Partial<ArchiveOmfMotion> = {}): ArchiveOmfMotion {
+  return {
+    name: "norm_idle_0",
+    frames: 46,
+    durationSeconds: 46 / 30,
+    playbackSeconds: 46 / 30,
+    speed: { value: 1, declared: 1, isClamped: false },
+    power: { value: 1, declared: 1, isClamped: false },
+    blend: {
+      accrue: 3,
+      falloff: 2.99,
+      declaredAccrue: 2,
+      declaredFalloff: 2,
+      isFalloffReplaced: true,
+    },
+    target: { kind: EArchiveOmfTarget.UNNAMED },
+    flags: ["esmStopAtEnd"],
+    unnamedFlags: 0,
+    marks: [],
+    hasDivergingLabel: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a motion bank description: one partition of two parts, and two motions.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about one motion bank.
+ */
+export function mockArchiveOmfDescription(overrides: Partial<ArchiveOmfDescription> = {}): ArchiveOmfDescription {
+  const motions: Array<ArchiveOmfMotion> = overrides.motions ?? [
+    mockArchiveOmfMotion(),
+    mockArchiveOmfMotion({ name: "norm_walk_0", frames: 60, durationSeconds: 2, playbackSeconds: 2 }),
+  ];
+
+  return {
+    bank: {
+      version: 4,
+      carriesMarks: true,
+      motions: motions.length,
+      effects: 0,
+      bones: 3,
+      frames: 106,
+      durationSeconds: 106 / 30,
+      divergingLabels: 0,
+      markedMotions: 0,
+      replacedFalloffs: motions.length,
+    },
+    parts: [
+      { name: "torso", bones: ["bip01_spine", "bip01_head"], cycles: 1 },
+      { name: "legs", bones: ["bip01_l_thigh"], cycles: 1 },
+    ],
+    ...overrides,
+    motions,
   };
 }
 
