@@ -45,10 +45,10 @@ export function ApplicationLauncherGroupFilters({
 
         return (
           <Chip
+            aria-pressed={isSelected}
             key={group.id}
             size={"small"}
             label={`${group.label} ${count}`}
-            aria-pressed={isSelected}
             color={isSelected ? "primary" : "default"}
             variant={isSelected ? "filled" : "outlined"}
             sx={isSelected ? undefined : getControlBackgroundSx}

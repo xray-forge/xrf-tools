@@ -2,6 +2,7 @@ import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
 
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
+import { EMPTY_ARRAY } from "@/lib/types/array";
 import { Nullable } from "@/lib/types/general";
 
 interface IEditorShellRegistration<T> {
@@ -9,9 +10,6 @@ interface IEditorShellRegistration<T> {
   application: string;
   values: ReadonlyArray<T>;
 }
-
-const NO_STATUS: ReadonlyArray<string> = [];
-const NO_PANELS: ReadonlyArray<IEditorPanel> = [];
 
 /** Holds the active editor's shell contributions independently of its React tree. */
 @Injectable()
@@ -33,12 +31,12 @@ export class EditorShellService {
 
   /** Returns status only for the application currently being rendered. */
   public getStatus(application: string): ReadonlyArray<string> {
-    return this.status?.application === application ? this.status.values : NO_STATUS;
+    return this.status?.application === application ? this.status.values : EMPTY_ARRAY;
   }
 
   /** Returns panels only for the application whose container can render them. */
   public getPanels(application: string): ReadonlyArray<IEditorPanel> {
-    return this.panels?.application === application ? this.panels.values : NO_PANELS;
+    return this.panels?.application === application ? this.panels.values : EMPTY_ARRAY;
   }
 
   /** Publishes status, retaining its snapshot when the same owner repeats unchanged text. */

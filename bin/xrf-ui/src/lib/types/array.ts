@@ -1,4 +1,12 @@
 /**
+ * The one empty list, shared by everything that needs a stable "nothing here".
+ *
+ * Typed `never` so it satisfies a `ReadonlyArray<T>` of any element type, and frozen so a caller that tries to push
+ * to it fails loudly rather than quietly filling in everyone else's default.
+ */
+export const EMPTY_ARRAY: ReadonlyArray<never> = Object.freeze([]);
+
+/**
  * The list without the entry at `index`.
  *
  * @param items - List to copy.

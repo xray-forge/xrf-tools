@@ -1,9 +1,9 @@
 import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
 import { IEquipmentGrid, isOccupantOutsideSheet, toEquipmentGrid } from "@/core/sprite-equipment/lib/grid";
+import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Nothing occupies most cells, and every caller reads the same array back for them. */
-const NOTHING: ReadonlyArray<EquipmentSlotOccupant> = [];
 
 /** One sheet as the editor reads it: the lattice, and what every cell of it holds. */
 export interface IEquipmentLayout {
@@ -62,7 +62,7 @@ export function toEquipmentLayout(
     at([row, column]: TEquipmentCell): ReadonlyArray<EquipmentSlotOccupant> {
       // Unique per cell because the lattice spans every occupant it was built from, which is what building both
       // here guarantees.
-      return cells.get(row * grid.columns + column) ?? NOTHING;
+      return cells.get(row * grid.columns + column) ?? EMPTY_ARRAY;
     },
     occupants,
     grid,
