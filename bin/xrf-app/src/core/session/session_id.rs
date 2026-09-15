@@ -10,6 +10,13 @@ use uuid::Uuid;
 #[serde(transparent)]
 pub(crate) struct SessionId(Uuid);
 
+#[cfg(test)]
+impl SessionId {
+  pub(crate) fn new() -> Self {
+    Self(Uuid::new_v4())
+  }
+}
+
 impl Display for SessionId {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
     self.0.fmt(formatter)
@@ -21,12 +28,5 @@ impl FromStr for SessionId {
 
   fn from_str(value: &str) -> Result<Self, Self::Err> {
     value.parse().map(Self)
-  }
-}
-
-#[cfg(test)]
-impl SessionId {
-  pub(crate) fn new() -> Self {
-    Self(Uuid::new_v4())
   }
 }

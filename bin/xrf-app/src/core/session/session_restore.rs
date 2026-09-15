@@ -5,8 +5,6 @@ use serde::Serialize;
 use crate::core::session::SessionSnapshot;
 
 /// The optional committed snapshot returned during restoration.
-///
-/// A named wire type also keeps the generic parameter scoped when Specta exports nullable results.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Serialize)]
 #[serde(transparent)]
