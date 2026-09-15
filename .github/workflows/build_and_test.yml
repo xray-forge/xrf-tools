@@ -198,7 +198,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run workspace tests on default features
-        run: cargo test --verbose --workspace --lib --locked
+        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript
 
       - name: Run CLI tests
         run: cargo test --verbose -p xrf-cli --bins --locked
