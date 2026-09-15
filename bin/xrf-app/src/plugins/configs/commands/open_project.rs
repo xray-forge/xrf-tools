@@ -5,10 +5,9 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxProjectOptions};
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::XrayRoots;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;

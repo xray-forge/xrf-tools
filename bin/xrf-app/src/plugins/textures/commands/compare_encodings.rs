@@ -6,11 +6,10 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMetadata, DdsMipChain, DdsMipmaps, RgbaImage};
 use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::XrayAssetType;
 
 use crate::core::assets::{AssetMountState, read_referenced_asset};
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::session::SessionId;

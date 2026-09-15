@@ -3,10 +3,10 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions};
 use xrf_texture::EquipmentSlotOccupant;
+use xrf_utils::error_to_string;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XrayProbe, XrayRoots};
 
 use crate::core::assets::AssetMountState;
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::location::EquipmentSheetLocation;
 use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;

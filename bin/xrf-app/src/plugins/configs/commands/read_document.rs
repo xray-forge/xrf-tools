@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxTextReader};
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::{encode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;

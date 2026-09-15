@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::dialogs::request::DialogsOpenRequest;

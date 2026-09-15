@@ -1,6 +1,6 @@
 use xrf_pack::ArchivePatchConfig;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Write the comparison scope and header of a configuration out as a patching configuration file.

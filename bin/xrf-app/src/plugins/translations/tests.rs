@@ -6,9 +6,9 @@ use std::path::PathBuf;
 
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
 use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
+use xrf_utils::error_to_string;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::error::error_to_string;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};

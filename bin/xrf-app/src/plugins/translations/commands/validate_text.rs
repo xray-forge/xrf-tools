@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_translation::find_unwritable_character;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::TranslationProjectState;

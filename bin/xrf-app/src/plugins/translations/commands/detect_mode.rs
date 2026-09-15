@@ -1,7 +1,7 @@
 use xrf_translation::{TranslationProjectMode, detect_mode};
+use xrf_utils::error_to_string;
 use xrf_vfs::XrayRoots;
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Report which layout roots look like, for the open form to preselect.

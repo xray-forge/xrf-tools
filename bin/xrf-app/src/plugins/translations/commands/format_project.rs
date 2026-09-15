@@ -7,9 +7,8 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
-use xrf_utils::LineEndings;
+use xrf_utils::{LineEndings, error_to_string};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;

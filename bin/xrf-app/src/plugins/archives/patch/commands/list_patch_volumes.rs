@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 
 use xrf_pack::{ArchivePatchConfig, ArchivePatcher};
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Volumes of this configuration's set the output already holds.

@@ -6,10 +6,10 @@ use xrf_archive_stats::ArchiveStatistics;
 use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
 };
+use xrf_utils::error_to_string;
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
 
 use crate::core::assets::AssetMountState;
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::archive_resolution::ArchiveResolution;
 use crate::plugins::archives::browse::archive_world::ArchiveWorld;

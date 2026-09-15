@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, read_gamedata, read_source};
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::request::TranslationsOpenRequest;

@@ -1,6 +1,6 @@
 use xrf_pack::ArchivePackConfig;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Write the selection rules of a configuration out as a packing configuration file.

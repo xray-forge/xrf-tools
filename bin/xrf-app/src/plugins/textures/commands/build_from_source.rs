@@ -7,9 +7,8 @@ use uuid::Uuid;
 use xrf_db::ThmFile;
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_texture::{BuildTextureOptions, BuildTextureProcessor, BuildTextureResult, read_image_as_rgba};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::{error_to_string, to_portable_path_string};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;

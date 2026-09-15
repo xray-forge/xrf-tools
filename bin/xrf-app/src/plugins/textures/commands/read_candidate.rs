@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use tauri::State;
 use tauri::ipc::Response;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;

@@ -9,10 +9,9 @@ use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{
   TranslationLanguage, TranslationParseCensus, TranslationParseOptions, TranslationParseResult, TranslationParser,
 };
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::XrayRoots;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;

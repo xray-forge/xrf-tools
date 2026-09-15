@@ -1,6 +1,13 @@
+use std::fmt::Display;
 use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
+
+/// Stringify provided error, to simplify casting at a boundary that carries messages rather than errors.
+#[inline]
+pub fn error_to_string<T: Display>(error: T) -> String {
+  error.to_string()
+}
 
 /// Stringify provided vector as comma-separated values.
 #[inline]

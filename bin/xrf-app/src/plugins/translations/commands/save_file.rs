@@ -5,9 +5,9 @@ use xrf_translation::{
   TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource, apply_edits_to_asset,
   read_gamedata_in, read_source_in,
 };
+use xrf_utils::error_to_string;
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
-use crate::core::error::error_to_string;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};

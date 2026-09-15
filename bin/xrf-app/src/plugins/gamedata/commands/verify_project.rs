@@ -12,9 +12,8 @@ use xrf_gamedata::{
   GamedataVerificationReport, GamedataVerificationType,
 };
 use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;

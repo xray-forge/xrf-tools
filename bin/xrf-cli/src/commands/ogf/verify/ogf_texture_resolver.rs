@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use xrf_dds::{DdsFile, DdsMetadata};
-use xrf_utils::format_path;
+use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayProbePlan, XrayProbeStep, XrayResolution, XrayVfs};
 
 /// The outcome of resolving and reading one texture reference.
@@ -144,7 +144,7 @@ impl OgfTextureResolver {
       .or_insert_with(|| {
         DdsFile::read_metadata_from_path(path)
           .map(|metadata| (metadata.get_format_label(), metadata))
-          .map_err(|error| error.to_string())
+          .map_err(error_to_string)
       })
       .clone()
   }

@@ -1,6 +1,6 @@
 use xrf_pack::ArchivePackConfig;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Read a packing configuration file over the configuration the caller holds.

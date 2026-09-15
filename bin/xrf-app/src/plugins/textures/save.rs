@@ -5,9 +5,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use xrf_db::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, XRayByteOrder};
 use xrf_job::{JobHandle, JobOutcome};
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{error_to_string, format_path, write_file_staged};
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::TextureEncodingFormat;

@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 use serde::Serialize;
 use xrf_job::JobOutcome;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistration;
 use crate::core::types::TauriResult;

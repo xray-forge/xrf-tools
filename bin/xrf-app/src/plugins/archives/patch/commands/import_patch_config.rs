@@ -1,6 +1,6 @@
 use xrf_pack::ArchivePatchConfig;
+use xrf_utils::error_to_string;
 
-use crate::core::error::error_to_string;
 use crate::core::types::TauriResult;
 
 /// Read a patching configuration file over the configuration the caller holds.
