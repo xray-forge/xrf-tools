@@ -37,7 +37,7 @@ impl ReferenceMarkdownRenderer {
       let commands: Vec<String> = group
         .commands
         .iter()
-        .map(|command| format!("[`{} {}`]({slug}.md#{})", group.slug, command.name, command.name))
+        .map(|command| format!("[`{slug} {0}`]({slug}.md#xrf-cli-{slug}-{0})", command.name))
         .collect();
 
       page.push_str(&format!("| [{}]({slug}.md) | {} |\n", group.label, commands.join(", ")));
@@ -235,9 +235,9 @@ mod tests {
     let pages: Vec<(String, String)> = ReferenceMarkdownRenderer::render_pages(&[build_group()]);
 
     assert!(
-      pages[0]
-        .1
-        .contains("| [Example](example.md) | [`example example-command`](example.md#example-command) |")
+      pages[0].1.contains(
+        "| [Example](example.md) | [`example example-command`](example.md#xrf-cli-example-example-command) |"
+      )
     );
     // The table is anchored too, so an overview page can carry it without listing commands itself.
     assert!(pages[0].1.contains(&format!("<!-- ANCHOR: {GROUPS_ANCHOR} -->")));
