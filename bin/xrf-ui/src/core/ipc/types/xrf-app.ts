@@ -18,6 +18,52 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
+/** Why an entry was not described. */
+export type ArchiveDescribeRefusal =
+  /** Nothing describes this format yet. */
+  | { kind: "noDescriber"; extension: string }
+  /** The entry is larger than the policy admits for a read that holds the payload. */
+  | { kind: "tooLarge"; size: number; maximum: number };
+
+/** What a description's reference lookups searched. */
+export type ArchiveDescribeScope =
+  /** The merged name table of the volumes the explorer has open. */
+  | { kind: "volumes"; volumes: number }
+  /** Every source a mounted world searches, which is what the engine would search. */
+  | { kind: "world" };
+
+/** One described entry, and what the lookups behind it searched. */
+export type ArchiveFileDescription = {
+  scope: ArchiveDescribeScope;
+  format: ArchiveFormatDescription;
+};
+
+/** What the explorer can say about one entry it cannot draw. */
+export type ArchiveFormatDescription =
+  /** Boxed because a description is large beside a refusal, and the refusal is the commoner answer by a wide margin. */
+  { kind: "thm"; description: ArchiveThmDescription } | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+
+/** One file a description names, and what became of it. */
+export type ArchiveReference = {
+  /** The name as the file authored it: engine style, and without the extension the loader implies. */
+  name: string;
+  /** The engine path the name was looked up as, or `None` for a name no logical path can be made of. */
+  path: string | null;
+  /** The name the open subject lists the file under, which is what a surface selects in the tree. */
+  entry: string | null;
+  status: ArchiveReferenceStatus;
+};
+
+/** Whether the subject being browsed holds what a description named. */
+export enum EArchiveReferenceStatus {
+  PRESENT = "present",
+  ABSENT = "absent",
+  UNKNOWN = "unknown",
+}
+
+/** Every `EArchiveReferenceStatus` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type ArchiveReferenceStatus = `${EArchiveReferenceStatus}`;
+
 /** How the open subject answers an engine path: every source it searches, in the order it searches them. */
 export type ArchiveResolution = {
   /** Sources searched, highest priority first: the first one holding an engine path is the one that answers for it. */
@@ -87,6 +133,170 @@ export type ArchiveSubject =
   | { kind: "volumes"; project: ArchiveProject }
   /** A game folder read as the engine mounts it, archives and loose tree together. */
   | { kind: "world"; world: ArchiveWorld };
+
+/** The bump declaration of a descriptor, `THM_CHUNK_BUMP`. */
+export type ArchiveThmBump = {
+  modeLabel: string;
+  mode: number;
+  /** Height the generator builds the pair against, read at generation time and never at runtime. */
+  virtualHeight: number | null;
+  /** The bump texture named, absent when the chunk names none. */
+  texture: ArchiveReference | null;
+  /**
+   * Whether the engine would try to resolve the name: a mode that uses one, and a name to use.
+   *
+   * A name that resolves to nothing does not turn bump mapping off. `bump_exist` tests only that the name is
+   * non-empty, so the renderer still takes the `_bump` variant and the loader substitutes `ed\ed_dummy_bump`.
+   */
+  isUsed: boolean;
+};
+
+/**
+ * A declared size the texture beside the descriptor does not match.
+ *
+ * Reported as two facts rather than as a fault. The descriptor's width and height are authoring data and the file is
+ * the authority (`STextureParams` records what was converted, not what came out), so a disagreement is worth seeing
+ * and is not by itself wrong.
+ */
+export type ArchiveThmDeclaredSize = {
+  width: number;
+  height: number;
+  /** Whether the declaration is a cube map's source strip: six faces wide, one face tall. */
+  isCubeStrip: boolean;
+};
+
+/**
+ * Everything the viewer says about one texture descriptor.
+ *
+ * Field order is reading order, and reading order is the engine's rather than the file's: what the descriptor
+ * describes, whether the engine reads it at all, what it names, how it shades, and only then the build recipe the
+ * converter already consumed. The file's own chunk order puts the recipe third, which is the order to write it back
+ * in and not the order to read it in.
+ */
+export type ArchiveThmDescription = {
+  texture: ArchiveThmTexture;
+  textureType: ArchiveThmTextureType;
+  bump: ArchiveThmBump | null;
+  detail: ArchiveThmDetail | null;
+  /** The normal map replacing the one the generator would derive, when the file names one. */
+  externalNormalMap: ArchiveReference | null;
+  material: ArchiveThmMaterial | null;
+  parameters: ArchiveThmParameters | null;
+  /** Mip level the converter starts fading from, `fade_delay` (`ETextureParams.h:88`). */
+  fadeDelay: number | null;
+  file: ArchiveThmFile;
+};
+
+/** The detail association of a descriptor, `THM_CHUNK_DETAIL_EXT`. */
+export type ArchiveThmDetail = {
+  scale: number | null;
+  /** The detail texture named, absent when the chunk names none. */
+  texture: ArchiveReference | null;
+  /**
+   * The flags that switch this association on, by the SDK's own spelling.
+   *
+   * Empty when neither applies, which is a name the engine reads past (`TextureDescrManager.cpp:163`). Repeated here
+   * as well as in the flag word because the association means nothing without them.
+   */
+  enabledBy: Array<string>;
+};
+
+/** What the file is, apart from what it declares. */
+export type ArchiveThmFile = {
+  version: number | null;
+  /** Whether the version is the one `ETextureThumbnail::Load` accepts. */
+  isSupportedVersion: boolean;
+  /** The kind of asset the thumbnail describes; `1` is a texture and the only one these tools read. */
+  thumbnailType: number | null;
+  thumbnail: ArchiveThmThumbnail | null;
+  /** Chunk ids the reader could not fold into a field, in the order it read them. */
+  extraChunks: Array<number>;
+};
+
+/** One bit of the texture param flag word. */
+export type ArchiveThmFlag = {
+  /** SDK identifier, which is the name an author of a `.thm` would recognise. */
+  label: string;
+  isSet: boolean;
+};
+
+/** The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`. */
+export type ArchiveThmMaterial = {
+  /** The two lighting models the surface sits between. */
+  label: string;
+  value: number;
+  /** Where between them it sits. */
+  weight: number | null;
+};
+
+/**
+ * The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
+ *
+ * Authoring data the converter consumed and the runtime does not read, with two exceptions that live in
+ * [`ArchiveThmDetail::enabled_by`].
+ */
+export type ArchiveThmParameters = {
+  formatLabel: string;
+  format: number;
+  mipFilterLabel: string;
+  mipFilter: number;
+  borderColor: number;
+  fadeColor: number;
+  fadeAmount: number;
+  width: number;
+  height: number;
+  /**
+   * Every bit the SDK names, in bit order, set or not.
+   *
+   * All twelve rather than the set ones: a recipe is read to see what the converter was told to do, and "dither is
+   * off" answers that as well as "dither is on".
+   */
+  flags: Array<ArchiveThmFlag>;
+  /**
+   * Bits the word carries that the SDK has no name for.
+   *
+   * Two vanilla descriptors carry one, so dropping the residue would silently lose what somebody's tool set.
+   */
+  unnamedFlags: number;
+};
+
+/** The texture a descriptor sits beside, and what that file actually is. */
+export type ArchiveThmTexture = {
+  /** The `.dds` this descriptor describes, which is the file beside it rather than a name it carries. */
+  reference: ArchiveReference;
+  /** What that file's header declares, when it was found and its header parsed. */
+  shape: AssetTextureShape | null;
+  /** The size the descriptor claims, carried only when the file beside it measures something else. */
+  declared: ArchiveThmDeclaredSize | null;
+};
+
+/** The kind of texture a descriptor describes, `STextureParams::ETType`. */
+export type ArchiveThmTextureType = {
+  /** Engine token for the type, or the raw number for one the SDK does not name. */
+  label: string;
+  value: number;
+  /**
+   * Whether `CTextureDescrMngr::LoadTHM` reads the bump, detail and material of a descriptor of this type at all.
+   *
+   * False for 743 of vanilla's 2,736 descriptors - every cube map and every bump map - whose declarations the engine
+   * never looks at however complete they are.
+   */
+  isReadByEngine: boolean;
+  /** Whether the file declares a type, or the engine's zeroed default is what applies. */
+  isDeclared: boolean;
+};
+
+/**
+ * The preview picture a descriptor carries, `THM_CHUNK_DATA`.
+ *
+ * Reported by size and never decoded. The trunk SDK stopped writing the chunk - its `w_chunk` call is commented out
+ * in `ETextureThumbnail::Save` - and 11 of the 19,849 descriptors across the workspace trees still carry one.
+ */
+export type ArchiveThmThumbnail = {
+  /** Whether the payload is the engine's own compressed stream, which is the only form seen in the wild. */
+  isCompressed: boolean;
+  size: number;
+};
 
 /** A source the plan named that could not be opened, so the search reaches nothing it holds. */
 export type ArchiveUnreadSource = {

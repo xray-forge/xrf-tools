@@ -58,10 +58,7 @@ impl AssetTextureDescriptor {
 
         Some(Self {
           size: bytes.len() as u64,
-          shape: DdsFile::read_metadata_from_bytes(&bytes)
-            .ok()
-            .as_ref()
-            .map(AssetTextureShape::from_metadata),
+          shape: AssetTextureShape::of_bytes(&bytes),
         })
       }
     }
@@ -106,6 +103,14 @@ pub fn read_texture_png(probe: &XrayProbe, logical_path: &str) -> XrfResult<Vec<
 }
 
 impl AssetTextureShape {
+  /// The shape a DDS header declares, for a caller already holding the bytes.
+  pub fn of_bytes(bytes: &[u8]) -> Option<Self> {
+    DdsFile::read_metadata_from_bytes(bytes)
+      .ok()
+      .as_ref()
+      .map(Self::from_metadata)
+  }
+
   fn from_metadata(metadata: &DdsMetadata) -> Self {
     Self {
       width: metadata.width,

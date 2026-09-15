@@ -1,5 +1,5 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { AssetTextureDescriptor, AudioDescriptor } from "@/core/ipc/types/xrf-app";
+import { ArchiveFileDescription, AssetTextureDescriptor, AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";
@@ -30,7 +30,8 @@ export type TArchiveBytes = Uint8Array<ArrayBuffer>;
 export type TArchiveContent =
   | { kind: "text"; result: ArchiveReadResult }
   | { kind: "image"; descriptor: AssetTextureDescriptor; bytes: TArchiveBytes }
-  | { kind: "audio"; descriptor: AudioDescriptor; bytes: TArchiveBytes };
+  | { kind: "audio"; descriptor: AudioDescriptor; bytes: TArchiveBytes }
+  | { kind: "description"; description: ArchiveFileDescription };
 
 /** The last thing written to disk, so the surface that started it can report what happened. */
 export type TArchiveOperation =

@@ -120,7 +120,6 @@ export default [
       "func-call-spacing": ["error", "never"],
       "function-paren-newline": "off",
       "import/default": "off",
-      "import/no-relative-parent-imports": "error",
       "import/no-unresolved": "off",
       "import/order": [
         "error",

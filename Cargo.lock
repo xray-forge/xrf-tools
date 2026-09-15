@@ -6817,6 +6817,7 @@ dependencies = [
  "xrf-dltx",
  "xrf-error",
  "xrf-export",
+ "xrf-extension",
  "xrf-gamedata",
  "xrf-job",
  "xrf-ltx",

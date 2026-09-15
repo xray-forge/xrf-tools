@@ -4,6 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ArchiveFileDescription,
   ArchiveResolution,
   ArchivesExtractRequest,
   ArchivesPackRequest,
@@ -98,6 +99,15 @@ export const archivesCommands = {
    */
   readFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<ArchiveReadResult>("plugin:archives|read_file", { sessionId, path }),
+  /**
+   * Describe one entry of the open subject in words, for a format the viewer cannot draw.
+   *
+   * Addressed by the session rather than by roots, because the answer is about an entry of what is open: the subject
+   * owns the name table a reference is resolved against and the policy the read is bounded by. The picture and sound
+   * commands take roots instead because they exist to serve bytes to the webview, which is a different question.
+   */
+  describeFile: (sessionId: SessionId, path: string) =>
+    __TAURI_INVOKE<ArchiveFileDescription>("plugin:archives|describe_file", { sessionId, path }),
   /**
    * Report whatever the engine would read out of a sound, without handing over the sound.
    *

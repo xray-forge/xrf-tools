@@ -57,6 +57,10 @@ describe("opened archives editor", () => {
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|describe_file"]: {
+        scope: { kind: "volumes", volumes: 1 },
+        format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
+      },
     });
   });
 
@@ -153,13 +157,19 @@ describe("opened archives editor", () => {
     });
   });
 
-  it("selects genuinely unsupported files without asking the backend to read them", async () => {
+  it("asks the backend what it can say about a binary file rather than reading it as text", async () => {
     const { findByText, getByText } = renderEditor();
 
     await userEvent.dblClick(await findByText("actor.omf"));
 
-    expect(getByText("Preview unavailable")).toBeInTheDocument();
-    expect(getByText(/this file type does not have a text preview/)).toBeInTheDocument();
+    // Which formats have a describer is the backend's answer, so the viewer asks even for the extensions nothing
+    // describes yet - and says so calmly, because such a file is not broken.
+    expect(await findByText("No description yet")).toBeInTheDocument();
+    expect(getByText(/Nothing reads \.omf files yet/)).toBeInTheDocument();
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_file", {
+      sessionId: expect.any(String),
+      path: MESH_FILE.name,
+    });
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", {
       sessionId: expect.any(String),
       path: MESH_FILE.name,
@@ -285,6 +295,10 @@ describe("opened archives editor", () => {
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|describe_file"]: {
+        scope: { kind: "volumes", volumes: 1 },
+        format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
+      },
     });
 
     const { findByLabelText, findByText } = await act(async () =>
@@ -428,6 +442,10 @@ describe("opened archives editor", () => {
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|describe_file"]: {
+        scope: { kind: "volumes", volumes: 1 },
+        format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
+      },
     });
 
     const { findByAltText, findByText, getByText } = renderEditor();

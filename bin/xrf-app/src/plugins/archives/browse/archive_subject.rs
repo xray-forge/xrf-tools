@@ -12,6 +12,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::archive_resolution::ArchiveResolution;
 use crate::plugins::archives::browse::archive_world::ArchiveWorld;
+use crate::plugins::archives::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
 ///
@@ -105,6 +106,24 @@ impl ArchiveSubject {
       Self::World { world } => assets.with_probe(&world.roots, |probe| world.read_text(probe, name))?,
     }
     .map_err(|error| format!("Failed to read '{name}': {error}"))
+  }
+
+  /// Describes one file in words, for a format the viewer cannot draw.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the subject does not hold the path, or a describer that claimed the entry could not read
+  /// it. A format nothing describes is an answer rather than a failure.
+  pub fn describe_file(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveFileDescription> {
+    match self {
+      Self::Volumes { project } => {
+        ArchiveFileDescription::of(&ArchiveDescribeSource::Volumes { project }, name, &project.read_policy)
+      }
+      Self::World { world } => assets.with_probe(&world.roots, |probe| {
+        ArchiveFileDescription::of(&ArchiveDescribeSource::World { world, probe }, name, &world.read_policy)
+      })?,
+    }
+    .map_err(|error| format!("Failed to describe '{name}': {error}"))
   }
 
   /// Writes one file to a path the caller chose.

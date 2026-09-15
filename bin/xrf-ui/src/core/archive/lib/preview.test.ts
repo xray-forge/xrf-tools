@@ -33,10 +33,9 @@ describe("archive preview support", () => {
     ).toEqual({ kind: "model" });
   });
 
-  it("identifies each unsupported reason before a backend read", () => {
+  it("sends an unreadable extension to the backend and refuses an oversized text read", () => {
     expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "meshes\\actor.omf" }), READ_POLICY)).toEqual({
-      kind: "unsupported-extension",
-      extension: "omf",
+      kind: "description",
     });
     expect(
       getArchivePreviewSupport(mockArchiveFileDescriptor({ sizeReal: 2048, sizeCompressed: 1024 }), READ_POLICY)
@@ -95,8 +94,7 @@ describe("archive preview support", () => {
       )
     ).toEqual({ kind: "supported" });
     expect(getArchivePreviewSupport(mockArchiveFileDescriptor(), policy)).toEqual({
-      kind: "unsupported-extension",
-      extension: "ltx",
+      kind: "description",
     });
   });
 });

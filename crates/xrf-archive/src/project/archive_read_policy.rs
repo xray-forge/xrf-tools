@@ -3,8 +3,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 use crate::project::constants::{
-  ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS,
-  ALLOWED_TEXT_SIZE,
+  ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_DESCRIBE_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE,
+  ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE,
 };
 
 /// What a viewer may read out of a mounted tree, by extension and size.
@@ -27,6 +27,8 @@ pub struct ArchiveReadPolicy {
   /// Extensions played by the webview itself, so the backend only has to hand over the bytes.
   pub audio_extensions: &'static [XrayExtension],
   pub maximum_audio_size: u32,
+  /// Ceiling on an entry read whole to describe its format.
+  pub maximum_describe_size: u32,
 }
 
 impl ArchiveReadPolicy {
@@ -60,6 +62,11 @@ impl ArchiveReadPolicy {
 
     Ok(())
   }
+
+  /// Whether an entry of `size` bytes may be read whole so its format can be described.
+  pub const fn allows_describe_read(&self, size: u32) -> bool {
+    size <= self.maximum_describe_size
+  }
 }
 
 impl Default for ArchiveReadPolicy {
@@ -71,6 +78,7 @@ impl Default for ArchiveReadPolicy {
       maximum_image_size: ALLOWED_IMAGE_SIZE,
       audio_extensions: ALLOWED_AUDIO_EXTENSIONS,
       maximum_audio_size: ALLOWED_AUDIO_SIZE,
+      maximum_describe_size: ALLOWED_DESCRIBE_SIZE,
     }
   }
 }
@@ -116,5 +124,16 @@ mod tests {
         .require_text_read("configs\\system.ltx", policy.maximum_size + 1)
         .is_err()
     );
+  }
+
+  #[test]
+  fn a_describe_read_is_bounded_by_size_alone() {
+    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+
+    // The extension is not consulted: which formats have a describer is not a question this policy answers, so a
+    // descriptor and a mesh are admitted on the same terms and refused on the same terms.
+    assert!(policy.allows_describe_read(0));
+    assert!(policy.allows_describe_read(policy.maximum_describe_size));
+    assert!(!policy.allows_describe_read(policy.maximum_describe_size + 1));
   }
 }

@@ -40,7 +40,7 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 @Injectable()
 export class ArchivesService {
@@ -292,6 +292,22 @@ export class ArchivesService {
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
     this.statistics = this.statistics.asIdle(null);
     this.resolution = this.resolution.asIdle(null);
+  }
+
+  /**
+   * Selects the entry a description named, by the name the open subject lists it under.
+   *
+   * @param name - Entry name as the open subject lists it.
+   */
+  @BoundAction()
+  public openArchiveFileByName(name: string): void {
+    const entry: Optional<IArchiveEntry> = this.entries.find((candidate: IArchiveEntry) => candidate.name === name);
+
+    if (entry) {
+      void this.selectArchiveFile(entry);
+    } else {
+      this.log.info("Referenced archive file is no longer listed:", name);
+    }
   }
 
   /**
@@ -602,8 +618,9 @@ export class ArchivesService {
         return yield* this.readContent(entry, support.kind, subject);
       case "supported":
         return yield* this.readContent(entry, "text", subject);
+      case "description":
+        return yield* this.readContent(entry, "description", subject);
       case "model":
-      case "unsupported-extension":
       case "too-large":
         return;
     }
@@ -635,6 +652,9 @@ export class ArchivesService {
         case "text":
           content = yield* call(this.readTextContent(entry));
           break;
+        case "description":
+          content = yield* call(this.readDescriptionContent(entry));
+          break;
       }
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
@@ -655,6 +675,19 @@ export class ArchivesService {
    */
   private async readTextContent(entry: IArchiveEntry): Promise<TArchiveContent> {
     return { kind: "text", result: await archivesCommands.readFile(this.requireSubjectSession(), entry.name) };
+  }
+
+  /**
+   * Reads what the backend can say about a binary format in words.
+   *
+   * @param entry - Entry naming the file.
+   * @returns The description, which may be the backend saying it has no describer for this format yet.
+   */
+  private async readDescriptionContent(entry: IArchiveEntry): Promise<TArchiveContent> {
+    return {
+      kind: "description",
+      description: await archivesCommands.describeFile(this.requireSubjectSession(), entry.name),
+    };
   }
 
   /**

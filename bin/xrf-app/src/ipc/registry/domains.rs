@@ -25,6 +25,7 @@ macro_rules! for_each_tauri_command_domain {
         open_volumes => crate::plugins::archives::browse::commands::open_volumes::archives_open_volumes,
         open_world => crate::plugins::archives::browse::commands::open_world::archives_open_world,
         read_file => crate::plugins::archives::browse::commands::read_file::archives_read_file,
+        describe_file => crate::plugins::archives::describe::commands::describe_file::archives_describe_file,
         describe_audio => crate::plugins::archives::preview::commands::describe_audio::archives_describe_audio,
         describe_image => crate::plugins::archives::preview::commands::describe_image::archives_describe_image,
         default_pack_config => crate::plugins::archives::pack::commands::default_pack_config::archives_default_pack_config,

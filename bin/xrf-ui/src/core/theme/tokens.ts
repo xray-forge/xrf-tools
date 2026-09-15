@@ -62,6 +62,10 @@ export const LAYOUT = {
   motionPickerWidth: 260,
   /** Frame counter beside the motion slider, sized so a four digit frame of a four digit total does not reflow it. */
   motionCounterWidth: 118,
+  /** Labelled rows read left to right, held to a column rather than stretched across the window. */
+  readingColumnWidth: 860,
+  /** Label column of a labelled row in one, wide enough for `External normal map` without wrapping. */
+  readingLabelWidth: 200,
 } as const;
 
 /**

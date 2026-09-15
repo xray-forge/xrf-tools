@@ -6,4 +6,4 @@ mod asset_texture;
 
 pub use asset_mount_state::AssetMountState;
 pub use asset_read::{read_located_asset, read_referenced_asset};
-pub use asset_texture::{AssetTextureDescriptor, read_texture_png};
+pub use asset_texture::{AssetTextureDescriptor, AssetTextureShape, read_texture_png};

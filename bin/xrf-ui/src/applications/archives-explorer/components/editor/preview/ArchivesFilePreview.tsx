@@ -23,6 +23,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { ArchiveAudioPreview } from "./ArchiveAudioPreview";
 import { ArchiveCodePreview } from "./ArchiveCodePreview";
+import { ArchiveDescriptionPreview } from "./ArchiveDescriptionPreview";
 import { ArchiveDirectoryContent } from "./ArchiveDirectoryContent";
 import { ArchiveFileHeader } from "./ArchiveFileHeader";
 import { ArchiveImagePreview } from "./ArchiveImagePreview";
@@ -32,7 +33,7 @@ import { ArchivePreviewError } from "./ArchivePreviewError";
 // Everything that renders its own preview leaves this union; what is left is a reason to explain.
 type TUnsupported = Exclude<
   ArchivePreviewSupport,
-  { kind: "supported" } | { kind: "image" } | { kind: "audio" } | { kind: "model" }
+  { kind: "supported" } | { kind: "image" } | { kind: "audio" } | { kind: "model" } | { kind: "description" }
 >;
 
 export function ArchivesFilePreview({
@@ -48,11 +49,6 @@ export function ArchivesFilePreview({
 
   const onGetUnsupportedDescription = useCallback((support: TUnsupported): string => {
     switch (support.kind) {
-      case "unsupported-extension":
-        return support.extension
-          ? `.${support.extension} files can be inspected in Details, ` +
-              "but this file type does not have a text preview."
-          : "Files without an extension can be inspected in Details, but do not have a text preview.";
       case "too-large":
         return (
           `This file exceeds the ${formatBytes(support.maximumSize)} preview limit. ` +
@@ -109,6 +105,8 @@ export function ArchivesFilePreview({
               return <ArchiveAudioPreview />;
             case "model":
               return <ArchiveModelPreview name={entry.name} />;
+            case "description":
+              return <ArchiveDescriptionPreview />;
           }
 
           if (support.kind !== "supported") {

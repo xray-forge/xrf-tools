@@ -113,6 +113,8 @@ export type ArchiveReadPolicy = {
   /** Extensions played by the webview itself, so the backend only has to hand over the bytes. */
   audioExtensions: Array<XrayExtension>;
   maximumAudioSize: number;
+  /** Ceiling on an entry read whole to describe its format. */
+  maximumDescribeSize: number;
 };
 
 /** One text file read for display: its name, decoded content, and unpacked size. */

@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useMemo } from "react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import {
   ARCHIVE_TREE_ICONS,
@@ -93,6 +93,12 @@ export function ArchivesMenu({
     },
     [archivesService, isWriting, onOpenEntry]
   );
+
+  useEffect(() => {
+    if (openItemId) {
+      reveal(openItemId);
+    }
+  }, [openItemId, reveal]);
 
   return (
     <EditorSearchMenu

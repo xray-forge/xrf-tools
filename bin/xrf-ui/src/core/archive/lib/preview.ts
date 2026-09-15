@@ -9,7 +9,7 @@ export type ArchivePreviewSupport =
   | { kind: "image" }
   | { kind: "audio" }
   | { kind: "model" }
-  | { kind: "unsupported-extension"; extension: string }
+  | { kind: "description" }
   | { kind: "too-large"; maximumSize: number };
 
 /**
@@ -42,7 +42,7 @@ export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: Arch
   }
 
   if (!policy.extensions.some((candidate: XrayExtension) => candidate === extension)) {
-    return { kind: "unsupported-extension", extension };
+    return { kind: "description" };
   }
 
   if (descriptor.sizeReal > policy.maximumSize) {

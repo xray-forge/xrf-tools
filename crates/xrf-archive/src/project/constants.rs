@@ -32,3 +32,6 @@ pub const ALLOWED_AUDIO_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Ogg];
 
 /// Upper bound on an audio entry, which is held whole in memory on the way to the webview.
 pub const ALLOWED_AUDIO_SIZE: u32 = 64 * 1024 * 1024; // 64 MBytes
+
+/// Upper bound on an entry read whole so its format can be described.
+pub const ALLOWED_DESCRIBE_SIZE: u32 = 64 * 1024 * 1024; // 64 MBytes

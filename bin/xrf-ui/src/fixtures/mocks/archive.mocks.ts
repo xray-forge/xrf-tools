@@ -1,9 +1,15 @@
 import {
+  ArchiveDescribeScope,
+  ArchiveFileDescription,
+  ArchiveFormatDescription,
+  ArchiveReference,
   ArchiveResolution,
   ArchiveShadowedCopy,
   ArchiveSubject,
+  ArchiveThmDescription,
   ArchiveWorld,
   ArchiveWorldEntry,
+  EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
 import {
   ArchiveDescriptor,
@@ -71,6 +77,7 @@ export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}
     maximumImageSize: 32 * 1024 * 1024,
     audioExtensions: [EXrayExtension.OGG],
     maximumAudioSize: 64 * 1024 * 1024,
+    maximumDescribeSize: 64 * 1024 * 1024,
     ...overrides,
   };
 }
@@ -410,4 +417,85 @@ export function mockArchiveResolution(overrides: Partial<ArchiveResolution> = {}
     ],
     ...overrides,
   };
+}
+
+/**
+ * Creates a reference a description resolved against the subject being browsed.
+ *
+ * @param overrides - Field values to override.
+ * @returns One file a description names, and what became of it.
+ */
+export function mockArchiveReference(overrides: Partial<ArchiveReference> = {}): ArchiveReference {
+  return {
+    name: "act\\act_arm_1",
+    path: "textures\\act\\act_arm_1.dds",
+    entry: "textures\\act\\act_arm_1.dds",
+    status: EArchiveReferenceStatus.PRESENT,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a texture descriptor description, with every chunk declared.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about one texture descriptor.
+ */
+export function mockArchiveThmDescription(overrides: Partial<ArchiveThmDescription> = {}): ArchiveThmDescription {
+  return {
+    texture: {
+      reference: mockArchiveReference(),
+      shape: { width: 512, height: 512, mipmapLevels: 10, format: "DXT5" },
+      declared: null,
+    },
+    textureType: { label: "2D Texture", value: 0, isReadByEngine: true, isDeclared: true },
+    bump: {
+      modeLabel: "Use",
+      mode: 2,
+      virtualHeight: 0.05,
+      texture: mockArchiveReference({
+        name: "act\\act_arm_1_bump",
+        path: "textures\\act\\act_arm_1_bump.dds",
+        entry: null,
+        status: EArchiveReferenceStatus.ABSENT,
+      }),
+      isUsed: true,
+    },
+    detail: { scale: 1, texture: null, enabledBy: [] },
+    externalNormalMap: null,
+    material: { label: "Blin <-> Phong", value: 1, weight: 0 },
+    parameters: {
+      formatLabel: "DXT5",
+      format: 5,
+      mipFilterLabel: "Box",
+      mipFilter: 0,
+      borderColor: 0,
+      fadeColor: 0,
+      fadeAmount: 0,
+      width: 512,
+      height: 512,
+      flags: [
+        { label: "flGenerateMipMaps", isSet: true },
+        { label: "flDitherColor", isSet: false },
+      ],
+      unnamedFlags: 0,
+    },
+    fadeDelay: 0,
+    file: { version: 0x0012, isSupportedVersion: true, thumbnailType: 1, thumbnail: null, extraChunks: [] },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates what the backend says about one entry the viewer cannot draw.
+ *
+ * @param format - The described format, defaulting to a texture descriptor.
+ * @param scope - What the reference lookups searched, defaulting to a volume set.
+ * @returns One described entry, and the scope behind it.
+ */
+export function mockArchiveFileDescription(
+  format: ArchiveFormatDescription = { kind: "thm", description: mockArchiveThmDescription() },
+  scope: ArchiveDescribeScope = { kind: "volumes", volumes: 3 }
+): ArchiveFileDescription {
+  return { scope, format };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
+import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
@@ -75,6 +76,44 @@ describe("ArchivesService file selection", () => {
     expect(service.selectedEntry).toStrictEqual(descriptor);
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
     expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it("asks the backend to describe an extension it cannot read as text", async () => {
+    const description: ArchiveFileDescription = {
+      scope: { kind: "volumes", volumes: 1 },
+      format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
+    };
+
+    setMockInvokeResponses({ ["plugin:archives|describe_file"]: description });
+
+    const descriptor = mockArchiveFileDescriptor({ name: "meshes\\actor.omf" });
+    const service: ArchivesService = mockArchivesService([descriptor]);
+
+    await service.selectArchiveFile(descriptor);
+
+    expect(service.content.value).toEqual({ kind: "description", description });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_file", {
+      sessionId: expect.any(String),
+      path: descriptor.name,
+    });
+  });
+
+  it("opens the entry a description referenced", () => {
+    const referenced = mockArchiveFileDescriptor({ name: "textures\\act\\act_arm_1.dds" });
+    const service: ArchivesService = mockArchivesService([mockArchiveFileDescriptor(), referenced]);
+
+    service.openArchiveFileByName(referenced.name);
+
+    expect(service.selectedEntry).toStrictEqual(referenced);
+  });
+
+  it("leaves the selection alone when a referenced entry is no longer listed", () => {
+    const descriptor = mockArchiveFileDescriptor();
+    const service: ArchivesService = mockArchivesService([descriptor]);
+
+    service.openArchiveFileByName("textures\\act\\act_arm_1.dds");
+
+    expect(service.selectedEntry).toBeNull();
   });
 
   it("allows only the latest selection to publish a completed read", async () => {
