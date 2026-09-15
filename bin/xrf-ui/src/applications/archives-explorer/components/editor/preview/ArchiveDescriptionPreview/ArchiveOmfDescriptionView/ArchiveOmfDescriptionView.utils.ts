@@ -7,25 +7,16 @@ import {
   EArchiveOmfTarget,
 } from "@/core/ipc/types/xrf-app";
 import { MOTION_DEFAULT_SPEED } from "@/core/visuals/lib/visual-motion";
+import { formatSeconds } from "@/lib/format/duration";
 import { formatNumber } from "@/lib/format/number";
 import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
-/** Decimals a second is worth showing to, which is finer than the format's own frame of a thirtieth. */
+/** Decimals a mark's own interval keeps, matching what `formatSeconds` gives the durations beside it. */
 const SECOND_DIGITS: number = 2;
 
 /** Decimals a playback value keeps, enough to read the number without stating a precision it does not have. */
 const VALUE_DIGITS: number = 2;
-
-/**
- * A span of time, keeping an absent one visibly absent.
- *
- * @param seconds - Seconds to render, which crosses the boundary as `number | null`.
- * @returns The span with its unit, or the placeholder.
- */
-export function formatSeconds(seconds: Nullable<number>): string {
-  return `${formatNumber(seconds, SECOND_DIGITS)} s`;
-}
 
 /**
  * A playback value the engine quantized, saying what the file declared when the two are different numbers.

@@ -1,3 +1,16 @@
+import { formatNumber } from "@/lib/format/number";
+import { Nullable } from "@/lib/types/general";
+
+/**
+ * Formats a measurement already taken in seconds, keeping an absent one visibly absent.
+ *
+ * @param seconds - Seconds to render, possibly absent.
+ * @returns The measurement with its unit, or the placeholder.
+ */
+export function formatSeconds(seconds: Nullable<number>): string {
+  return `${formatNumber(seconds, 2)} s`;
+}
+
 /**
  * Formats a millisecond duration for reports.
  *
