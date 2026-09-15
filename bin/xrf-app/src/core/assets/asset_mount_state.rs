@@ -10,9 +10,6 @@ use crate::core::types::TauriResult;
 /// path: a viewer stepping through fifty models under one root pays for one index instead of fifty. Callers never
 /// receive the VFS itself, only a probe over the steps their spec asked for, so an unscoped lookup cannot silently span
 /// two unrelated roots.
-///
-/// Lives in `core/` because it belongs to no command domain: visuals resolves a model's textures through it, and the
-/// surfaces that follow — an archive preview, a level view — mount the same roots instead of indexing their own.
 #[derive(Clone)]
 pub struct AssetMountState {
   vfs: Arc<Mutex<XrayVfs>>,
@@ -26,13 +23,6 @@ impl AssetMountState {
   }
 
   /// Mounts what a spec names and hands a probe over it to `consumer`.
-  ///
-  /// Scoped to a closure because a probe borrows the VFS the lock protects: returning one would either leak the guard or
-  /// outlive it. It also keeps mounting and searching in one critical section, so two commands opening the same root
-  /// cannot both index it.
-  ///
-  /// `asset`, when given, is searched for beside itself first — its own X-Ray root, then the installation containing it —
-  /// which is how the engine finds a texture shipped next to a model rather than in the shared tree.
   pub fn with_probe<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XrayProbe) -> T) -> TauriResult<T> {
     let mut vfs: MutexGuard<XrayVfs> = self
       .vfs
