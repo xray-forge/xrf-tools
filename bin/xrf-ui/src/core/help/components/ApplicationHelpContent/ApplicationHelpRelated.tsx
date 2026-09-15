@@ -39,6 +39,7 @@ export function ApplicationHelpRelated({
             key={application.id}
             icon={application.icon}
             label={application.label}
+            color={"primary"}
             size={"small"}
             variant={"outlined"}
             sx={{ paddingX: 1, paddingY: 2 }}

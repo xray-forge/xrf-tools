@@ -9,6 +9,7 @@ import { IApplicationDescriptor } from "@/core/routing/application";
 import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
+import { EMPTY_ARRAY } from "@/lib/types/array";
 import { Nullable } from "@/lib/types/general";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
@@ -58,11 +59,11 @@ export class KeymapService {
   @Computed()
   public get commands(): ReadonlyArray<IKeybindCommand> {
     const byId: Map<string, IKeybindCommand> = new Map();
+    const screen: ReadonlyArray<IKeybindCommand> = this.application
+      ? (this.application.keybindCommands ?? EMPTY_ARRAY)
+      : LAUNCHER_KEYBIND_COMMANDS;
 
-    for (const command of [
-      ...ROOT_KEYBIND_COMMANDS,
-      ...(this.application?.keybindCommands ?? LAUNCHER_KEYBIND_COMMANDS),
-    ]) {
+    for (const command of [...ROOT_KEYBIND_COMMANDS, ...screen]) {
       byId.set(command.id, command);
     }
 

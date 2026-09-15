@@ -6,6 +6,7 @@ import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { IKeybinding, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
+import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -94,6 +95,15 @@ describe("KeymapService", () => {
     const { service } = mockInjectedService(KeymapService);
 
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), ...toIds(LAUNCHER_KEYBIND_COMMANDS)]);
+  });
+
+  it("leaves an application that declares none with the root set, not the home screen's", () => {
+    const { service } = mockInjectedService(KeymapService);
+
+    service.setApplication({ ...SPRITE_EQUIPMENT_EDITOR_APPLICATION, keybindCommands: undefined });
+
+    expect(toIds(service.commands)).toEqual(toIds(ROOT_KEYBIND_COMMANDS));
+    expect(toIds(service.commands)).not.toContain(FOCUS_SEARCH_KEYBIND_COMMAND.id);
   });
 
   it("adds the routed application's declarations, and drops them when it closes", () => {

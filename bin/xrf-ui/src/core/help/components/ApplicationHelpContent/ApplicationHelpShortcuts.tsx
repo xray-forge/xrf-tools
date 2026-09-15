@@ -61,7 +61,7 @@ export function ApplicationHelpShortcuts({
                   {command.label}
                 </Typography>
 
-                <Typography variant={"caption"} sx={{ ...MONOSPACE, color: "text.secondary", whiteSpace: "nowrap" }}>
+                <Typography variant={"caption"} sx={{ ...MONOSPACE, color: "primary.main", whiteSpace: "nowrap" }}>
                   {chords.map((chord: string) => formatChord(parseChord(chord))).join("   ")}
                 </Typography>
               </Box>
