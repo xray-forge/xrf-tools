@@ -6,29 +6,25 @@ Generate the TypeScript mirror of a Tauri command surface and the Rust types it 
 
 ```rust,no_run
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
-use specta::Types;
-use xrf_ipc_typescript::{COMMANDS_DIRECTORY, TYPES_DIRECTORY, command_exporter, export_type_modules, reset_directory};
+use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, SurfaceDrift};
 
-fn export(output: &Path, builder: &tauri_specta::Builder<tauri::Wry>) {
-  let collected: Arc<Mutex<Types>> = Arc::new(Mutex::new(Types::default()));
+fn generate<R: tauri::Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) {
+  IpcBindingsGenerator::generate(output, surfaces);
+}
 
-  reset_directory(&output.join(TYPES_DIRECTORY));
-  reset_directory(&output.join(COMMANDS_DIRECTORY));
+fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) {
+  let drift: SurfaceDrift = IpcBindingsGenerator::verify(committed, scratch, surfaces);
 
-  builder
-    .export(
-      command_exporter(Arc::clone(&collected)),
-      output.join(COMMANDS_DIRECTORY).join("archives.ts"),
-    )
-    .expect("commands are exported");
-
-  let collected: Types = Arc::try_unwrap(collected).expect("nothing still holds the types").into_inner().expect("the lock is intact");
-
-  export_type_modules(&output.join(TYPES_DIRECTORY), &collected);
+  assert!(!drift.is_breaking(), "{}", drift.describe());
 }
 ```
+
+An [`IpcCommandSurface`] is one plugin: its `tauri_specta::Builder`, and the raw commands that builder cannot hold.
+The order the steps run in belongs to the generator and is not a caller's to reproduce — commands are exported first
+because that is what collects the types they reference, the type modules are written next because only then is it known
+which module declares what, and each command module is finalized last because the type modules say which imports
+replace the copies Specta inlined.
 
 ## What it writes
 
@@ -74,4 +70,17 @@ its mirrors in version control and fail a test when the Rust sources move past t
 
 Run `cargo test --locked -p xrf-ipc-typescript`.
 
-See [enumerations](src/enumerations/), [type ownership](src/ownership.rs), and [surface drift](src/surface.rs).
+## Layout
+
+One type per file, named for it: [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) owns the run,
+[`TypeModuleWriter`](src/type_module_writer.rs) and [`CommandModuleWriter`](src/command_module_writer.rs) write the two
+directories, [`TypeOwnership`](src/type_ownership.rs) answers which module declares what, and
+[`Surface`](src/bindings_surface.rs) reads a committed tree back.
+
+[`typescript/`](src/typescript/) is vocabulary rather than a layer: `source` reads generated text, `syntax` emits it,
+`normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every module
+in it is a leaf, depended on from above and depending on nothing else here, which is why it is free functions rather
+than types. `generated_output` is the one other such module, writing a file the frontend toolchain will reformat.
+
+The rest is one layer, not two: the writers of `types/` and `commands/` share ownership, enumerations, output and the
+exporter, so there is no `types/` and `commands/` split to make.

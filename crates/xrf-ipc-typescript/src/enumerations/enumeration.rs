@@ -4,7 +4,7 @@ use specta::datatype::NamedDataType;
 
 use crate::enumerations::enumeration_member::EnumerationMember;
 use crate::enumerations::enumeration_subject::EnumerationSubject;
-use crate::enumerations::typescript_syntax::{render_docs, render_string};
+use crate::typescript::syntax::{render_docs, render_string};
 
 /// One type's enum: what it stands for, and the members it declares in Rust declaration order.
 pub(crate) struct Enumeration {
