@@ -1,10 +1,12 @@
 use serde::Serialize;
+use xrf_archive::ArchiveReadPolicy;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtensionOf;
 
 use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeScope;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
+use crate::plugins::archives::describe::chunks::ArchiveChunksDescription;
 use crate::plugins::archives::describe::level::ArchiveLevelDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
@@ -19,6 +21,9 @@ pub enum ArchiveFormatDescription {
   // Boxed rather than inline: a description is large beside a refusal, and the refusal is the commoner answer by a
   // wide margin. A line comment because a variant's doc comment travels onto the generated TypeScript member, where
   // a note about Rust layout says nothing.
+  Chunks {
+    description: Box<ArchiveChunksDescription>,
+  },
   Level {
     description: Box<ArchiveLevelDescription>,
   },
@@ -44,7 +49,8 @@ pub enum ArchiveFormatDescription {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ArchiveDescribeRefusal {
-  /// Nothing describes this format yet. The extension is the authored spelling, empty for a name without one.
+  /// Nothing describes this format yet, and the file is not a container whose shape could be shown instead. The
+  /// extension is the authored spelling, empty for a name without one.
   NoDescriber { extension: String },
   /// The entry is larger than the policy admits for a read that holds the payload.
   TooLarge { size: u64, maximum: u32 },
@@ -63,8 +69,8 @@ impl ArchiveFileDescription {
   /// Describes one entry of the subject being browsed.
   ///
   /// Reads in the order a refusal is cheapest to reach: the entry has to be listed, a describer has to claim it, and
-  /// only then is its size weighed — because an entry nothing describes is refused whatever it weighs, and the gate
-  /// is asked before the bytes are fetched so an enormous entry is never held in memory to be turned down.
+  /// only then is its size weighed — because the gate is asked before the bytes are fetched, so an enormous entry is
+  /// never held in memory to be turned down.
   ///
   /// # Errors
   ///
@@ -75,26 +81,54 @@ impl ArchiveFileDescription {
       .get_size_of(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not held by the open subject")))?;
 
+    // Narrowed rather than compared as a `u64`: an entry past `u32` is past every ceiling this policy sets anyway.
+    let weighed: u32 = u32::try_from(size).unwrap_or(u32::MAX);
+    let policy: &ArchiveReadPolicy = source.get_read_policy();
+
     let format: ArchiveFormatDescription = match ArchiveDescribedFormat::of(name) {
-      None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
-        extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
-      }),
-      Some(format) => match source.get_read_policy() {
-        // Narrowed rather than compared as a `u64`: an entry whose size the format cannot describe is past every
-        // ceiling this policy sets anyway.
-        policy if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) => {
-          ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
-            size,
-            maximum: policy.maximum_describe_size,
-          })
-        }
-        _ => format.describe(source, name)?,
-      },
+      None => Self::describe_container(source, name, size, weighed)?,
+      Some(_) if !policy.allows_describe_read(weighed) => {
+        ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+          size,
+          maximum: policy.maximum_describe_size,
+        })
+      }
+      Some(format) => format.describe(source, name)?,
     };
 
     Ok(Self {
       scope: source.get_scope(),
       format,
+    })
+  }
+
+  /// What can be said about an entry no describer claimed, which is its container or nothing.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry's bytes cannot be read.
+  fn describe_container(
+    source: &ArchiveDescribeSource,
+    name: &str,
+    size: u64,
+    weighed: u32,
+  ) -> XrfResult<ArchiveFormatDescription> {
+    let policy: &ArchiveReadPolicy = source.get_read_policy();
+
+    if !policy.allows_chunk_tree_read(weighed) {
+      return Ok(ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+        size,
+        maximum: policy.maximum_chunk_tree_size,
+      }));
+    }
+
+    Ok(match ArchiveChunksDescription::read(source, name)? {
+      Some(description) => ArchiveFormatDescription::Chunks {
+        description: Box::new(description),
+      },
+      None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
+        extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
+      }),
     })
   }
 }

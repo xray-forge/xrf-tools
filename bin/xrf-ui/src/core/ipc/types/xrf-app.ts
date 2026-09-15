@@ -18,9 +18,52 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
+/**
+ * One chunk of a container, and whatever its payload turned out to hold.
+ *
+ * Named by nothing but its id. What an id means belongs to a format, and the whole premise of this description is
+ * that no format claimed the file - so the number is reported as the number it is and never glossed.
+ */
+export type ArchiveChunkNode = {
+  /** Chunk id with the compression flag masked off, which is what a format's own constants compare against. */
+  id: number;
+  /** Bytes of payload, which the children below account for in full when there are any. */
+  size: number;
+  /** Whether the id carried `CFS_CompressMark`, in which case the payload stands for data it is not and is not walked. */
+  isCompressed: boolean;
+  /** Chunks the payload is made of, empty for one holding data rather than a container. */
+  children: Array<ArchiveChunkNode>;
+};
+
+/**
+ * The container a file is, for a file nothing here reads.
+ *
+ * Deliberately the shallowest description there is: every X-Ray binary is a tree of `u32` id and `u32` size, and
+ * that framing is the one thing knowable without knowing the format. What a chunk holds is not guessed at, and no id
+ * is named - the point is to say what shape the file has, so a reader can tell a container from a blob and see where
+ * its weight sits.
+ *
+ * Offered only where the walk accounts for every byte. A partial walk is refused rather than shown: bytes that are
+ * not a container read as one often enough that a lenient walk would draw confident structure over a `.ogm` video or
+ * a `.cform` collision tree - 148 of vanilla's files are exactly that case.
+ */
+export type ArchiveChunksDescription = {
+  /** Chunks in the order the file frames them. */
+  chunks: Array<ArchiveChunkNode>;
+  /** Every chunk of the tree, the nested ones included. */
+  nodes: number;
+  /** How far the deepest branch descends. */
+  depth: number;
+  /** Bytes the file occupies unpacked, which the chunks account for in full. */
+  size: number;
+};
+
 /** Every `kind` the `ArchiveDescribeRefusal` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveDescribeRefusal {
-  /** Nothing describes this format yet. The extension is the authored spelling, empty for a name without one. */
+  /**
+   * Nothing describes this format yet, and the file is not a container whose shape could be shown instead. The
+   * extension is the authored spelling, empty for a name without one.
+   */
   NO_DESCRIBER = "noDescriber",
   /** The entry is larger than the policy admits for a read that holds the payload. */
   TOO_LARGE = "tooLarge",
@@ -28,7 +71,10 @@ export enum EArchiveDescribeRefusal {
 
 /** Why an entry was not described. */
 export type ArchiveDescribeRefusal =
-  /** Nothing describes this format yet. The extension is the authored spelling, empty for a name without one. */
+  /**
+   * Nothing describes this format yet, and the file is not a container whose shape could be shown instead. The
+   * extension is the authored spelling, empty for a name without one.
+   */
   | { kind: "noDescriber"; extension: string }
   /** The entry is larger than the policy admits for a read that holds the payload. */
   | { kind: "tooLarge"; size: number; maximum: number };
@@ -56,6 +102,7 @@ export type ArchiveFileDescription = {
 
 /** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
+  CHUNKS = "chunks",
   LEVEL = "level",
   OMF = "omf",
   PARTICLES = "particles",
@@ -66,6 +113,7 @@ export enum EArchiveFormatDescription {
 
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
+  | { kind: "chunks"; description: ArchiveChunksDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "omf"; description: ArchiveOmfDescription }
   | { kind: "particles"; description: ArchiveParticlesDescription }
@@ -89,29 +137,13 @@ export type ArchiveLevelBundle = {
   textures: number;
   /** Distinct textures the subject being browsed does not hold. */
   absentTextures: number;
-  /**
-   * The blender library the shader names were asked of, absent when the subject holds none.
-   *
-   * Carried as a reference so a surface can offer the file itself: a level that names a blender nothing defines is
-   * read by opening the library beside it.
-   */
+  /** The blender library the shader names were asked of, absent when the subject holds none. */
   library: ArchiveReference | null;
-  /**
-   * Whether the file declares a shader table at all.
-   *
-   * The renderer asserts `Level doesn't builded correctly.` on a bundle without one, so its absence is a fact about
-   * the build rather than a failure to read the file.
-   */
+  /** Whether the file declares a shader table at all. */
   hasShaderTable: boolean;
 };
 
-/**
- * Everything the viewer says about a compiled level bundle.
- *
- * The shader table is what the bundle is here for. Geometry, portals, sectors and lights are orders of magnitude
- * larger and say nothing about what the level draws with, so `LevelFile` reads two chunks of a file that is six to
- * eight megabytes and this describes what it read.
- */
+/** Everything the viewer says about a compiled level bundle. */
 export type ArchiveLevelDescription = {
   bundle: ArchiveLevelBundle;
   surfaces: Array<ArchiveLevelSurface>;
@@ -130,25 +162,13 @@ export type ArchiveLevelEntry =
   | { kind: "unusable"; raw: string }
   | { kind: "drawn"; shader: ArchiveLevelShader; textures: Array<ArchiveReference> };
 
-/**
- * The blender a surface draws with, and whether the subject being browsed defines it.
- *
- * Not an [`ArchiveReference`](crate::plugins::archives::describe::archive_reference::ArchiveReference): a shader name
- * addresses a definition inside `shaders.xr` rather than a file of the tree, so there is nothing to select. The
- * status is the same three-valued answer a reference gets, for the same reason - a library that is not open cannot
- * say a name is absent, only that it was not asked.
- */
+/** The blender a surface draws with, and whether the subject being browsed defines it. */
 export type ArchiveLevelShader = {
   name: string;
   status: ArchiveReferenceStatus;
 };
 
-/**
- * One row of the level's shader table.
- *
- * The index is carried because it is the address: a face of the level geometry names its surface by position in this
- * table, so row 42 is a thing somebody debugging a level can be told about.
- */
+/** One row of the level's shader table. */
 export type ArchiveLevelSurface = {
   index: number;
   entry: ArchiveLevelEntry;

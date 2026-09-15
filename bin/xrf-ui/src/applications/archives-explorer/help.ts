@@ -62,7 +62,10 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "reported as missing.",
     "A description states what a file says and what the engine reads from it, and never whether either is wrong. " +
       "Checking that is what `gamedata verify` is for.",
-    "Every other file still has a Details entry.",
+    "A binary file no reader claims is still shown as the container it is: X-Ray files are trees of numbered chunks, " +
+      "and that much is readable without knowing the format. Chunk ids are shown as numbers because naming one would " +
+      "mean reading the format. A file that is not a container, or too large to read for its headers alone, has a " +
+      "Details entry and nothing more.",
     "An `ogg` without X-Ray playback data still plays. The game would use its built-in source defaults.",
     "Extracting `configs\\gameplay` writes that folder's contents directly into the destination. Extract the tree " +
       "root to keep the full layout.",

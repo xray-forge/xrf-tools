@@ -6811,6 +6811,7 @@ dependencies = [
  "xrf-archive",
  "xrf-archive-stats",
  "xrf-build-info",
+ "xrf-chunk",
  "xrf-db",
  "xrf-dds",
  "xrf-dialog",

@@ -41,3 +41,6 @@ pub const ALLOWED_AUDIO_SIZE: u32 = 64 * 1024 * 1024; // 64 MBytes
 
 /// Upper bound on an entry read whole so its format can be described.
 pub const ALLOWED_DESCRIBE_SIZE: u32 = 64 * 1024 * 1024; // 64 MBytes
+
+/// Upper bound on an entry read whole only to walk the container it is.
+pub const ALLOWED_CHUNK_TREE_SIZE: u32 = 8 * 1024 * 1024; // 8 MBytes

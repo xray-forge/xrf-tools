@@ -115,6 +115,8 @@ export type ArchiveReadPolicy = {
   maximumAudioSize: number;
   /** Ceiling on an entry read whole to describe its format. */
   maximumDescribeSize: number;
+  /** Ceiling on an entry read whole only to walk the container it is, which buys far less and so admits far less. */
+  maximumChunkTreeSize: number;
 };
 
 /** One text file read for display: its name, decoded content, and unpacked size. */

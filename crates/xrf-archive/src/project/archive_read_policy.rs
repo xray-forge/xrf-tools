@@ -3,8 +3,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 use crate::project::constants::{
-  ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_DESCRIBE_SIZE, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE,
-  ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE,
+  ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_CHUNK_TREE_SIZE, ALLOWED_DESCRIBE_SIZE,
+  ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE,
 };
 
 /// What a viewer may read out of a mounted tree, by extension and size.
@@ -29,6 +29,8 @@ pub struct ArchiveReadPolicy {
   pub maximum_audio_size: u32,
   /// Ceiling on an entry read whole to describe its format.
   pub maximum_describe_size: u32,
+  /// Ceiling on an entry read whole only to walk the container it is, which buys far less and so admits far less.
+  pub maximum_chunk_tree_size: u32,
 }
 
 impl ArchiveReadPolicy {
@@ -67,6 +69,11 @@ impl ArchiveReadPolicy {
   pub const fn allows_describe_read(&self, size: u32) -> bool {
     size <= self.maximum_describe_size
   }
+
+  /// Whether an entry of `size` bytes may be read whole only to walk the container it is.
+  pub const fn allows_chunk_tree_read(&self, size: u32) -> bool {
+    size <= self.maximum_chunk_tree_size
+  }
 }
 
 impl Default for ArchiveReadPolicy {
@@ -79,6 +86,7 @@ impl Default for ArchiveReadPolicy {
       audio_extensions: ALLOWED_AUDIO_EXTENSIONS,
       maximum_audio_size: ALLOWED_AUDIO_SIZE,
       maximum_describe_size: ALLOWED_DESCRIBE_SIZE,
+      maximum_chunk_tree_size: ALLOWED_CHUNK_TREE_SIZE,
     }
   }
 }

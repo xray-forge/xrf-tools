@@ -1,4 +1,5 @@
 import {
+  ArchiveChunksDescription,
   ArchiveDescribeScope,
   ArchiveFileDescription,
   ArchiveFormatDescription,
@@ -101,6 +102,7 @@ export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}
     audioExtensions: [EXrayExtension.OGG],
     maximumAudioSize: 64 * 1024 * 1024,
     maximumDescribeSize: 64 * 1024 * 1024,
+    maximumChunkTreeSize: 8 * 1024 * 1024,
     ...overrides,
   };
 }
@@ -572,6 +574,35 @@ export function mockArchiveOmfDescription(overrides: Partial<ArchiveOmfDescripti
     ],
     ...overrides,
     motions,
+  };
+}
+
+/**
+ * Creates the container of a file nothing reads: two chunks, the first holding two of its own.
+ *
+ * @param overrides - Field values to override.
+ * @returns The shape a description gives an unknown container.
+ */
+export function mockArchiveChunksDescription(
+  overrides: Partial<ArchiveChunksDescription> = {}
+): ArchiveChunksDescription {
+  return {
+    chunks: [
+      {
+        id: 0x1,
+        size: 64,
+        isCompressed: false,
+        children: [
+          { id: 0x10, size: 24, isCompressed: false, children: [] },
+          { id: 0x11, size: 24, isCompressed: false, children: [] },
+        ],
+      },
+      { id: 0x1100, size: 512, isCompressed: false, children: [] },
+    ],
+    nodes: 4,
+    depth: 2,
+    size: 600,
+    ...overrides,
   };
 }
 
