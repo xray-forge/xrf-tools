@@ -2,6 +2,8 @@ import {
   ArchiveDescribeScope,
   ArchiveFileDescription,
   ArchiveFormatDescription,
+  ArchiveLevelDescription,
+  ArchiveLevelSurface,
   ArchiveOmfDescription,
   ArchiveOmfMotion,
   ArchiveParticlesDescription,
@@ -18,6 +20,7 @@ import {
   ArchiveWorldEntry,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
+  EArchiveLevelEntry,
   EArchiveOmfTarget,
   EArchiveReferenceStatus,
   EArchiveSubject,
@@ -569,6 +572,63 @@ export function mockArchiveOmfDescription(overrides: Partial<ArchiveOmfDescripti
     ],
     ...overrides,
     motions,
+  };
+}
+
+/**
+ * Creates one drawn row of a level shader table, binding a texture the open subject holds.
+ *
+ * @param index - Position in the table, which is what a face addresses.
+ * @param overrides - Entry values to override.
+ * @returns One surface, as a description carries it.
+ */
+export function mockArchiveLevelSurface(
+  index: number = 1,
+  overrides: Partial<ArchiveLevelSurface> = {}
+): ArchiveLevelSurface {
+  return {
+    index,
+    entry: {
+      kind: EArchiveLevelEntry.DRAWN,
+      shader: { name: "default", status: EArchiveReferenceStatus.PRESENT },
+      textures: [
+        mockArchiveReference({
+          name: "wall\\wall_beton",
+          path: "textures\\wall\\wall_beton.dds",
+          entry: "textures\\wall\\wall_beton.dds",
+        }),
+      ],
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level bundle description: the empty row every built level has, and one drawn surface.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a compiled level bundle.
+ */
+export function mockArchiveLevelDescription(overrides: Partial<ArchiveLevelDescription> = {}): ArchiveLevelDescription {
+  const surfaces: Array<ArchiveLevelSurface> = overrides.surfaces ?? [
+    { index: 0, entry: { kind: EArchiveLevelEntry.SKIPPED } },
+    mockArchiveLevelSurface(),
+  ];
+
+  return {
+    bundle: {
+      xrlcVersion: 14,
+      xrlcQuality: 2,
+      surfaces: surfaces.length,
+      shaders: 1,
+      undefinedShaders: 0,
+      textures: 1,
+      absentTextures: 0,
+      library: mockArchiveReference({ name: "shaders.xr", path: "shaders.xr", entry: "shaders.xr" }),
+      hasShaderTable: true,
+    },
+    ...overrides,
+    surfaces,
   };
 }
 

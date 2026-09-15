@@ -18,6 +18,7 @@ import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
+import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
@@ -86,6 +87,17 @@ export function ArchiveDescriptionPreview({
   const description: ArchiveFileDescription = described.description;
 
   switch (description.format.kind) {
+    case EArchiveFormatDescription.LEVEL:
+      return (
+        <ArchiveLevelDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
     case EArchiveFormatDescription.OMF:
       return (
         <ArchiveOmfDescriptionView

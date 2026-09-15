@@ -10,6 +10,7 @@ mod archive_described_format;
 mod archive_file_description;
 mod archive_reference;
 pub mod commands;
+mod level;
 mod omf;
 mod particles;
 mod shaders;

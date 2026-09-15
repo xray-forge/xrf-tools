@@ -56,6 +56,7 @@ export type ArchiveFileDescription = {
 
 /** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
+  LEVEL = "level",
   OMF = "omf",
   PARTICLES = "particles",
   SHADERS = "shaders",
@@ -65,11 +66,93 @@ export enum EArchiveFormatDescription {
 
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
+  | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "omf"; description: ArchiveOmfDescription }
   | { kind: "particles"; description: ArchiveParticlesDescription }
   | { kind: "shaders"; description: ArchiveShadersDescription }
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+
+/** What the bundle holds, taken over the whole of it. */
+export type ArchiveLevelBundle = {
+  /** Compiler version the bundle was built by, `hdrLEVEL::XRLC_version`. */
+  xrlcVersion: number;
+  /** Compiler quality the build ran at, `hdrLEVEL::XRLC_quality`. */
+  xrlcQuality: number;
+  /** Rows of the shader table, which is what a face addresses by position. */
+  surfaces: number;
+  /** Distinct shader names the surfaces draw with. */
+  shaders: number;
+  /** Distinct shader names no open library defines. Zero while there is no library to ask. */
+  undefinedShaders: number;
+  /** Distinct textures the surfaces bind. */
+  textures: number;
+  /** Distinct textures the subject being browsed does not hold. */
+  absentTextures: number;
+  /**
+   * The blender library the shader names were asked of, absent when the subject holds none.
+   *
+   * Carried as a reference so a surface can offer the file itself: a level that names a blender nothing defines is
+   * read by opening the library beside it.
+   */
+  library: ArchiveReference | null;
+  /**
+   * Whether the file declares a shader table at all.
+   *
+   * The renderer asserts `Level doesn't builded correctly.` on a bundle without one, so its absence is a fact about
+   * the build rather than a failure to read the file.
+   */
+  hasShaderTable: boolean;
+};
+
+/**
+ * Everything the viewer says about a compiled level bundle.
+ *
+ * The shader table is what the bundle is here for. Geometry, portals, sectors and lights are orders of magnitude
+ * larger and say nothing about what the level draws with, so `LevelFile` reads two chunks of a file that is six to
+ * eight megabytes and this describes what it read.
+ */
+export type ArchiveLevelDescription = {
+  bundle: ArchiveLevelBundle;
+  surfaces: Array<ArchiveLevelSurface>;
+};
+
+/** Every `kind` the `ArchiveLevelEntry` union is told apart by, so a switch or a comparison names one. */
+export enum EArchiveLevelEntry {
+  SKIPPED = "skipped",
+  UNUSABLE = "unusable",
+  DRAWN = "drawn",
+}
+
+/** What one row of the table holds, in the three shapes the renderer distinguishes. */
+export type ArchiveLevelEntry =
+  | { kind: "skipped" }
+  | { kind: "unusable"; raw: string }
+  | { kind: "drawn"; shader: ArchiveLevelShader; textures: Array<ArchiveReference> };
+
+/**
+ * The blender a surface draws with, and whether the subject being browsed defines it.
+ *
+ * Not an [`ArchiveReference`](crate::plugins::archives::describe::archive_reference::ArchiveReference): a shader name
+ * addresses a definition inside `shaders.xr` rather than a file of the tree, so there is nothing to select. The
+ * status is the same three-valued answer a reference gets, for the same reason - a library that is not open cannot
+ * say a name is absent, only that it was not asked.
+ */
+export type ArchiveLevelShader = {
+  name: string;
+  status: ArchiveReferenceStatus;
+};
+
+/**
+ * One row of the level's shader table.
+ *
+ * The index is carried because it is the address: a face of the level geometry names its surface by position in this
+ * table, so row 42 is a thing somebody debugging a level can be told about.
+ */
+export type ArchiveLevelSurface = {
+  index: number;
+  entry: ArchiveLevelEntry;
+};
 
 /** What a bank holds, taken over the whole of it. */
 export type ArchiveOmfBank = {
@@ -178,25 +261,14 @@ export type ArchiveOmfTarget =
   | { kind: "bone"; index: number; name: string | null }
   | { kind: "unnamed" };
 
-/**
- * Everything the viewer says about the particle library.
- *
- * Effects lead the groups because a group is a list of effect names and means nothing until they exist; the order is
- * the file's own.
- */
+/** Everything the viewer says about the particle library. */
 export type ArchiveParticlesDescription = {
   library: ArchiveParticlesLibrary;
   effects: Array<ArchiveParticlesEffect>;
   groups: Array<ArchiveParticlesGroup>;
 };
 
-/**
- * One emitter of the library: what it draws with, how much of it, and what moves it.
- *
- * The action list is reported as the kinds it holds rather than as their operands. An action carries domains,
- * envelopes and vectors by the dozen - vanilla's 921 effects hold 5,938 actions between them - and what a reader of a
- * library wants first is which of the nineteen kinds an effect is built from.
- */
+/** One emitter of the library: what it draws with, how much of it, and what moves it. */
 export type ArchiveParticlesEffect = {
   name: string;
   /** Particles the emitter may hold at once, `max_particles`. */
@@ -214,13 +286,7 @@ export type ArchiveParticlesEffect = {
   flags: number;
 };
 
-/**
- * An effect a group names, and whether this library is where it is defined.
- *
- * Not an [`ArchiveReference`](crate::plugins::archives::describe::archive_reference::ArchiveReference): a group names
- * an effect of its own library rather than a file of the tree, so there is nothing to select and the lookup never
- * leaves this file.
- */
+/** An effect a group names, and whether this library is where it is defined. */
 export type ArchiveParticlesEffectName = {
   name: string;
   isDefined: boolean;
@@ -246,12 +312,7 @@ export type ArchiveParticlesGroupEffect = {
   flags: number;
 };
 
-/**
- * What the library holds, taken over the whole of it.
- *
- * The two counts of what is missing are here rather than beside each row for the reason the falloff rule is:
- * a reader wants to know whether anything is missing before reading nine hundred rows to find out.
- */
+/** What the library holds, taken over the whole of it. */
 export type ArchiveParticlesLibrary = {
   version: number;
   effects: number;
@@ -350,12 +411,7 @@ export type ArchiveShadersBlender = {
   properties: Array<ArchiveShadersProperty>;
 };
 
-/**
- * Everything the viewer says about the blender library.
- *
- * Only the blender chunk is read, which is what the reader models: the file also carries the shader script list, the
- * constant table and the matrix table, and none of those name a surface.
- */
+/** Everything the viewer says about the blender library. */
 export type ArchiveShadersDescription = {
   library: ArchiveShadersLibrary;
   blenders: Array<ArchiveShadersBlender>;
@@ -372,13 +428,7 @@ export type ArchiveShadersLibrary = {
   absentTextures: number;
 };
 
-/**
- * One value an author left in a blender's property grid.
- *
- * Rendered to a string here rather than crossing as a union of eleven payload shapes: what the frontend does with a
- * blender property is show it, and the per-kind spelling is engine knowledge like every other label these
- * descriptions resolve in Rust.
- */
+/** One value an author left in a blender's property grid. */
 export type ArchiveShadersProperty = {
   name: string;
   /** The type the file tags the payload with, as `xrEngine/Properties.h` names it. */

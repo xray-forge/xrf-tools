@@ -54,6 +54,11 @@ impl LevelFile {
     Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
   }
 
+  /// Reads from bytes already in hand, which is how an archived bundle arrives: a volume holds no file to open.
+  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  }
+
   /// Reads from a chunk reader over any data source.
   ///
   /// The route an archived entry takes: a volume holds no file to slice, only bytes.

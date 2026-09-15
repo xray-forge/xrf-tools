@@ -1,3 +1,9 @@
+//! Loading unpacked browser extensions a developer supplied locally into the application window.
+//!
+//! Only a Windows debug build resolves anything: Chrome extensions are a WebView2 capability, and on other targets
+//! `extensions_path` means compiled `.so` web process extensions, which would be handed the wrong payload. Requires
+//! WebView2 Runtime `120.0.2210.55` or newer; older runtimes ignore extensions silently.
+
 use std::path::PathBuf;
 
 use tauri::webview::WebviewWindowBuilder;
@@ -7,9 +13,6 @@ use xrf_utils::format_path;
 /// Browser extensions a developer supplied locally, loaded into the application window.
 pub trait DevExtensions {
   /// Install every unpacked extension the local extensions directory holds.
-  ///
-  /// Leaves the builder untouched in release builds, outside Windows, and whenever the directory is
-  /// absent, empty, or holds anything WebView2 would reject.
   fn with_dev_extensions(self) -> Self;
 }
 
@@ -27,10 +30,6 @@ impl<R: Runtime, M: Manager<R>> DevExtensions for WebviewWindowBuilder<'_, R, M>
 }
 
 /// Resolve the directory unpacked extensions are installed from, when it holds only valid ones.
-///
-/// Chrome extensions are a WebView2 capability, so this only ever resolves on Windows: elsewhere
-/// `extensions_path` means compiled `.so` web process extensions and would be handed the wrong
-/// payload. Requires WebView2 Runtime `120.0.2210.55` or newer, older runtimes ignore extensions.
 #[cfg(all(debug_assertions, windows))]
 fn resolve_extensions_directory() -> Option<PathBuf> {
   /// Absolute path of an alternative directory to load unpacked extensions from.

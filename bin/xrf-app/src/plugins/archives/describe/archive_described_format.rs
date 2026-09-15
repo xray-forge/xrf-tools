@@ -4,6 +4,7 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
+use crate::plugins::archives::describe::level::ArchiveLevelDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
@@ -12,6 +13,8 @@ use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 /// Which describer answers for an entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArchiveDescribedFormat {
+  /// A compiled level bundle, `level`.
+  Level,
   /// A motion bank, `CKinematicsAnimated`'s partition and motions.
   Omf,
   /// The particle library, `particles.xr`.
@@ -23,20 +26,27 @@ pub enum ArchiveDescribedFormat {
 }
 
 impl ArchiveDescribedFormat {
-  /// The `.xr` libraries, by the file stem that tells one from another.
+  /// Files the engine loads by a name of their own rather than by a kind, folded as engine paths.
   ///
-  /// The extension says only that a file is a chunked X-Ray library; six unrelated formats share it and the engine
-  /// tells them apart by the name it loads each from. `gamemtl`, `lanims`, `senvironment` and `shaders_xrlc` are
-  /// absent because nothing reads them yet, not because they are anything else.
-  const LIBRARIES: [(&'static str, Self); 2] = [("particles", Self::Particles), ("shaders", Self::Shaders)];
+  /// Two different reasons land here. `.xr` says only that a file is a chunked X-Ray library, and six unrelated
+  /// formats share it; `level` has no extension at all. Either way the name the engine loads the file under is the
+  /// whole of the answer. `gamemtl.xr`, `lanims.xr`, `senvironment.xr` and `shaders_xrlc.xr` are absent because
+  /// nothing reads them yet, not because they are anything else.
+  const NAMED: [(&'static str, Self); 3] = [
+    ("level", Self::Level),
+    ("particles.xr", Self::Particles),
+    ("shaders.xr", Self::Shaders),
+  ];
 
   /// The describer for an entry name, or `None` when no describer claims it.
   pub fn of(name: &str) -> Option<Self> {
-    match XrayExtensionOf::of(name).known()? {
-      XrayExtension::Omf => Some(Self::Omf),
-      XrayExtension::Thm => Some(Self::Thm),
-      XrayExtension::Xr => Self::of_library(name),
-      _ => None,
+    match XrayExtensionOf::of(name).known() {
+      Some(XrayExtension::Omf) => Some(Self::Omf),
+      Some(XrayExtension::Thm) => Some(Self::Thm),
+      // An extension that names a container rather than a format, and a name carrying none at all, ask the same
+      // question: which file is this, by the name the engine loads it under.
+      Some(XrayExtension::Xr) | None => Self::of_named(name),
+      Some(_) => None,
     }
   }
 
@@ -47,6 +57,9 @@ impl ArchiveDescribedFormat {
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
   pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<ArchiveFormatDescription> {
     match self {
+      Self::Level => Ok(ArchiveFormatDescription::Level {
+        description: Box::new(ArchiveLevelDescription::read(source, name)?),
+      }),
       Self::Omf => Ok(ArchiveFormatDescription::Omf {
         description: Box::new(ArchiveOmfDescription::read(source, name)?),
       }),
@@ -62,18 +75,18 @@ impl ArchiveDescribedFormat {
     }
   }
 
-  /// Which `.xr` library an entry is, by its stem folded the way the engine addresses it.
+  /// Which named file an entry is, folded the way the engine addresses it.
   ///
   /// Through [`XrayLogicalPath`] rather than by slicing the name, so the case and separator rule is the one the name
   /// table already agrees on and is not restated here - which is the whole reason this decision is not the
   /// frontend's to make.
-  fn of_library(name: &str) -> Option<Self> {
+  fn of_named(name: &str) -> Option<Self> {
     let path: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
-    let stem: &str = path.file_name().strip_suffix(".xr")?;
+    let file: &str = path.file_name();
 
-    Self::LIBRARIES
+    Self::NAMED
       .into_iter()
-      .find_map(|(candidate, format)| (candidate == stem).then_some(format))
+      .find_map(|(candidate, format)| (candidate == file).then_some(format))
   }
 }
 
@@ -142,8 +155,31 @@ mod tests {
   }
 
   #[test]
+  fn a_bundle_is_claimed_though_its_name_carries_no_extension() {
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\level"),
+      Some(ArchiveDescribedFormat::Level)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("Levels/L01_Escape/LEVEL"),
+      Some(ArchiveDescribedFormat::Level)
+    );
+  }
+
+  #[test]
+  fn a_name_that_only_begins_with_a_named_file_is_not_one() {
+    for name in [
+      "levels\\l01_escape\\level.ai",
+      "levels\\l01_escape\\level_lods",
+      "mylevel",
+    ] {
+      assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' is not a bundle");
+    }
+  }
+
+  #[test]
   fn everything_without_a_describer_is_left_unclaimed() {
-    for name in ["meshes\\actor.ogf", "textures\\act\\act_arm_1.dds", "level"] {
+    for name in ["meshes\\actor.ogf", "textures\\act\\act_arm_1.dds", "spawns\\all.spawn"] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' has no describer yet");
     }
   }

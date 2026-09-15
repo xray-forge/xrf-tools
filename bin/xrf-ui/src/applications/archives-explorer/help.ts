@@ -52,8 +52,17 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "`Volumes`; a game folder gets `Origins` and `Overrides` instead, because a merged name table cannot say what " +
       "it folded away and a loose file has no stored size.",
     "Text is read as Windows-1251, so Cyrillic configs remain readable.",
-    "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Other files still have a " +
-      "Details entry.",
+    "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Engine text covers configs, " +
+      "scripts and every shader stage, so a `gs` or an `hlsl` reads like the `vs` beside it.",
+    "A binary file the explorer cannot draw is described in words instead, where a reader for its format exists: " +
+      "`thm` descriptors, `omf` motion banks, `particles.xr`, `shaders.xr` and a compiled `level`. A description " +
+      "names the files it refers to, and a name the open subject holds selects it in the tree.",
+    "A `level` is described through its shader table, which is what the level draws with. Its shader names are " +
+      "looked up in the `shaders.xr` of whatever is open; with no library open they are shown unasked rather than " +
+      "reported as missing.",
+    "A description states what a file says and what the engine reads from it, and never whether either is wrong. " +
+      "Checking that is what `gamedata verify` is for.",
+    "Every other file still has a Details entry.",
     "An `ogg` without X-Ray playback data still plays. The game would use its built-in source defaults.",
     "Extracting `configs\\gameplay` writes that folder's contents directly into the destination. Extract the tree " +
       "root to keep the full layout.",
