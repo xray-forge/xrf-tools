@@ -20,6 +20,7 @@ import { Nullable } from "@/lib/types/general";
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
+import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
@@ -107,6 +108,26 @@ export function ArchiveDescriptionPreview({
           className={className}
           description={description.format.description}
           scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_AI:
+      return (
+        <ArchiveLevelAiView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_COLLISION:
+      return (
+        <ArchiveLevelCollisionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
         />
       );
 

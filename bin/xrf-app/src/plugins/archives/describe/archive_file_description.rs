@@ -7,7 +7,9 @@ use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeS
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
 use crate::plugins::archives::describe::chunks::ArchiveChunksDescription;
-use crate::plugins::archives::describe::level::ArchiveLevelDescription;
+use crate::plugins::archives::describe::level::{
+  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
+};
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
@@ -30,6 +32,12 @@ pub enum ArchiveFormatDescription {
   },
   Level {
     description: Box<ArchiveLevelDescription>,
+  },
+  LevelAi {
+    description: Box<ArchiveLevelAiDescription>,
+  },
+  LevelCollision {
+    description: Box<ArchiveLevelCollisionDescription>,
   },
   Omf {
     description: Box<ArchiveOmfDescription>,

@@ -3,6 +3,8 @@ import {
   ArchiveDescribeScope,
   ArchiveFileDescription,
   ArchiveFormatDescription,
+  ArchiveLevelAiDescription,
+  ArchiveLevelCollisionDescription,
   ArchiveLevelDescription,
   ArchiveLevelSurface,
   ArchiveOmfDescription,
@@ -603,6 +605,46 @@ export function mockArchiveChunksDescription(
     nodes: 4,
     depth: 2,
     size: 600,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level collision mesh description of the size Anomaly's larger levels reach.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.cform`.
+ */
+export function mockArchiveLevelCollisionDescription(
+  overrides: Partial<ArchiveLevelCollisionDescription> = {}
+): ArchiveLevelCollisionDescription {
+  return {
+    version: 4,
+    vertices: 420_690,
+    faces: 812_004,
+    bounds: { width: 512, height: 128, depth: 512 },
+    size: 41_352_144,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level navigation grid description.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.ai`.
+ */
+export function mockArchiveLevelAiDescription(
+  overrides: Partial<ArchiveLevelAiDescription> = {}
+): ArchiveLevelAiDescription {
+  return {
+    version: 9,
+    nodes: 1_204_331,
+    nodeSize: 0.7,
+    nodeHeight: 0.4,
+    bounds: { width: 512, height: 128, depth: 512 },
+    guid: "6a0f0a1e-0000-4000-8000-000000000002",
+    size: 34_185_416,
     ...overrides,
   };
 }

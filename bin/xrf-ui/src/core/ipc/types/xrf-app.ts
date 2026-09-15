@@ -89,6 +89,8 @@ export enum EArchiveFormatDescription {
   CHUNKS = "chunks",
   SPAWN = "spawn",
   LEVEL = "level",
+  LEVEL_AI = "levelAi",
+  LEVEL_COLLISION = "levelCollision",
   OMF = "omf",
   PARTICLES = "particles",
   SHADERS = "shaders",
@@ -101,11 +103,45 @@ export type ArchiveFormatDescription =
   | { kind: "chunks"; description: ArchiveChunksDescription }
   | { kind: "spawn"; description: ArchiveSpawnDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
+  | { kind: "levelAi"; description: ArchiveLevelAiDescription }
+  | { kind: "levelCollision"; description: ArchiveLevelCollisionDescription }
   | { kind: "omf"; description: ArchiveOmfDescription }
   | { kind: "particles"; description: ArchiveParticlesDescription }
   | { kind: "shaders"; description: ArchiveShadersDescription }
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+
+/**
+ * What a level's navigation grid covers, from the 56 bytes that say so.
+ *
+ * `level.ai` is not chunked either: `CLevelGraph` opens the file and casts its pointer onto the header, so the nodes
+ * are read past rather than read. The guid is the one worth carrying - a grid and the spawn set built against it are
+ * pinned to each other by it, which is what makes two files from different builds recognisable as such.
+ */
+export type ArchiveLevelAiDescription = {
+  version: number;
+  nodes: number;
+  /** Spacing between nodes on the ground plane, in engine units. */
+  nodeSize: number | null;
+  /** Height one node spans, which is what decides whether a step is walkable. */
+  nodeHeight: number | null;
+  bounds: ArchiveLevelBounds;
+  /** Identity the spawn set built against this grid carries as its graph guid. */
+  guid: string;
+  size: number;
+};
+
+/**
+ * How much world a level piece covers, as the extent of the box it declares.
+ *
+ * The extents rather than the corners: where a level sits in world space is a fact about the build, and how big it
+ * is is the fact a reader of an archive is asking. X-Ray is Y-up, so `height` is the vertical one.
+ */
+export type ArchiveLevelBounds = {
+  width: number | null;
+  height: number | null;
+  depth: number | null;
+};
 
 /** What the bundle holds, taken over the whole of it. */
 export type ArchiveLevelBundle = {
@@ -127,6 +163,21 @@ export type ArchiveLevelBundle = {
   library: ArchiveReference | null;
   /** Whether the file declares a shader table at all. */
   hasShaderTable: boolean;
+};
+
+/**
+ * What a level's collision mesh weighs, from the 36 bytes that say so.
+ *
+ * `level.cform` is not chunked: `CDB` casts the file's leading bytes straight onto a header and streams the mesh
+ * behind it. So everything here is the first 36 bytes of a file that reaches 191 MB in Anomaly, and the mesh itself
+ * is never touched - which is the only reason describing one is affordable at all.
+ */
+export type ArchiveLevelCollisionDescription = {
+  version: number;
+  vertices: number;
+  faces: number;
+  bounds: ArchiveLevelBounds;
+  size: number;
 };
 
 /** Everything the viewer says about a compiled level bundle. */
@@ -467,12 +518,7 @@ export type ArchiveSpawnDescription = {
   size: number;
 };
 
-/**
- * One top-level section of a spawn set, by id and weight.
- *
- * Named here, unlike the ids of a container nothing reads: this format is claimed, and the names are the chunk
- * constants `SpawnFile` reads it by. An id outside them keeps its number.
- */
+/** One top-level section of a spawn set, by id and weight. */
 export type ArchiveSpawnSection = {
   id: number;
   /** What the section holds, where the format names it. */

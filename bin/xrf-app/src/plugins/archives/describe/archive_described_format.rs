@@ -4,7 +4,9 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
-use crate::plugins::archives::describe::level::ArchiveLevelDescription;
+use crate::plugins::archives::describe::level::{
+  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
+};
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
@@ -14,6 +16,10 @@ use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 /// Which describer answers for an entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArchiveDescribedFormat {
+  /// A level's navigation grid, `level.ai`.
+  LevelAi,
+  /// A level's collision mesh, `level.cform`.
+  LevelCollision,
   /// A compiled level bundle, `level`.
   Level,
   /// A motion bank, `CKinematicsAnimated`'s partition and motions.
@@ -44,6 +50,8 @@ impl ArchiveDescribedFormat {
   /// The describer for an entry name, or `None` when no describer claims it.
   pub fn of(name: &str) -> Option<Self> {
     match XrayExtensionOf::of(name).known() {
+      Some(XrayExtension::Ai) => Some(Self::LevelAi),
+      Some(XrayExtension::CForm) => Some(Self::LevelCollision),
       Some(XrayExtension::Omf) => Some(Self::Omf),
       Some(XrayExtension::Spawn) => Some(Self::Spawn),
       Some(XrayExtension::Thm) => Some(Self::Thm),
@@ -56,7 +64,7 @@ impl ArchiveDescribedFormat {
 
   /// Whether this describer reads by seeking rather than by holding the entry, and so answers to no size ceiling.
   pub const fn reads_by_seeking(self) -> bool {
-    matches!(self, Self::Spawn)
+    matches!(self, Self::Spawn | Self::LevelAi | Self::LevelCollision)
   }
 
   /// Reads the entry this format claimed, or answers `None` where the claim does not hold after all.
@@ -66,6 +74,12 @@ impl ArchiveDescribedFormat {
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
   pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
     Ok(match self {
+      Self::LevelAi => Some(ArchiveFormatDescription::LevelAi {
+        description: Box::new(ArchiveLevelAiDescription::read(source, name)?),
+      }),
+      Self::LevelCollision => Some(ArchiveFormatDescription::LevelCollision {
+        description: Box::new(ArchiveLevelCollisionDescription::read(source, name)?),
+      }),
       Self::Level => Some(ArchiveFormatDescription::Level {
         description: Box::new(ArchiveLevelDescription::read(source, name)?),
       }),
@@ -180,11 +194,14 @@ mod tests {
 
   #[test]
   fn a_name_that_only_begins_with_a_named_file_is_not_one() {
-    for name in [
-      "levels\\l01_escape\\level.ai",
-      "levels\\l01_escape\\level_lods",
-      "mylevel",
-    ] {
+    // `level.ai` is claimed, and as a different format: the bundle is the file called `level` and nothing else, which
+    // is the whole point of matching a file name rather than a prefix of one.
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\level.ai"),
+      Some(ArchiveDescribedFormat::LevelAi)
+    );
+
+    for name in ["levels\\l01_escape\\level_lods", "mylevel", "levelx"] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' is not a bundle");
     }
   }

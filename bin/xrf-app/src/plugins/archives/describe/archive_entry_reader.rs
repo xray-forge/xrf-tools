@@ -18,6 +18,21 @@ impl ArchiveEntryReader {
     }
   }
 
+  /// Reads a value framed at the start of the entry rather than inside a chunk of it.
+  ///
+  /// Some X-Ray files are not containers at all: `level.cform` and `level.ai` are a header the engine casts its file
+  /// pointer onto, with the payload streamed behind it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry holds fewer bytes than the value occupies.
+  pub fn read_leading<C: ChunkReadWrite>(&mut self) -> XrfResult<C> {
+    match self {
+      Self::Sliced(reader) => C::read::<XRayByteOrder, _>(reader),
+      Self::Held(reader) => C::read::<XRayByteOrder, _>(reader),
+    }
+  }
+
   /// Every top-level chunk as its id and size, read by the headers alone.
   ///
   /// # Errors

@@ -61,6 +61,9 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "A spawn set is summarised from its header alone: how many objects over how many levels, and what each section " +
       "of the file weighs. Its objects are not read - vanilla's set is 6,464 of them behind a game graph that is most " +
       "of a 29 MB file.",
+    "A `level.cform` and a `level.ai` are summarised from their leading header: how many faces the collision mesh " +
+      "holds, how many nodes the navigation grid does, and how much world each covers. Neither payload is read, " +
+      "which is why a 191 MB collision mesh opens at all.",
     "A `level` is described through its shader table, which is what the level draws with. Its shader names are " +
       "looked up in the `shaders.xr` of whatever is open; with no library open they are shown unasked rather than " +
       "reported as missing.",
