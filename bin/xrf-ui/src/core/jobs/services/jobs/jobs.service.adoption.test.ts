@@ -26,7 +26,7 @@ const SLOW_LISTING: number = 50;
 function described(patch: Partial<JobDescription> = {}): JobDescription {
   return {
     id: "b8f0",
-    kind: "archives.pack",
+    kind: EJobKind.ARCHIVES_PACK,
     leaseKeys: ["archives.pack:c:\\out|gamedata"],
     isCancelRequested: false,
     progress: null,

@@ -1,4 +1,9 @@
-import { TranslationEdit, TranslationFile, TranslationVariant } from "@/core/ipc/types/xrf-translation";
+import {
+  ETranslationEdit,
+  TranslationEdit,
+  TranslationFile,
+  TranslationVariant,
+} from "@/core/ipc/types/xrf-translation";
 import { Nullable } from "@/lib/types/general";
 
 /** The engine's literal line separator, used to display array variants as one editable line. */
@@ -115,12 +120,12 @@ export class TranslationDraft {
         language,
         Object.entries(byId).map(([id, value]): TranslationEdit => {
           if (value === null) {
-            return { kind: "remove", id };
+            return { kind: ETranslationEdit.REMOVE, id };
           }
 
           const variant = committed?.entries[id]?.[language];
 
-          return { kind: "set", id, value: Array.isArray(variant) ? value.split(LINE_BREAK) : value };
+          return { kind: ETranslationEdit.SET, id, value: Array.isArray(variant) ? value.split(LINE_BREAK) : value };
         }),
       ])
     );

@@ -6,7 +6,7 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -139,7 +139,7 @@ export class SequencerService implements IVisualInspection {
   public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
     // Centred on the file, so its own tree is searched for its textures and its animation banks, with the named root
     // behind it.
-    await this.open({ kind: "file", path }, path, assetRoot);
+    await this.open({ kind: EVisualSource.FILE, path }, path, assetRoot);
   }
 
   /** Close what is open, on screen and in the backend. */

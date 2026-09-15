@@ -245,7 +245,7 @@ export type VisualSubmesh = {
   content: VisualSubmeshContent;
 };
 
-/** Every `kind` the `VisualSubmeshContent` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `VisualSubmeshContent` union is told apart by, so a switch or a comparison names one. */
 export enum EVisualSubmeshContent {
   PACKED = "packed",
   SKIPPED = "skipped",

@@ -12,7 +12,7 @@ import {
 import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
+import { EXrayResolution, XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -85,7 +85,7 @@ export function toInitialTextureState(resolution: XrayResolution): EVisualTextur
     return EVisualTextureState.LOADING;
   }
 
-  return resolution.kind === "rejected" ? EVisualTextureState.FAILED : EVisualTextureState.UNRESOLVED;
+  return resolution.kind === EXrayResolution.REJECTED ? EVisualTextureState.FAILED : EVisualTextureState.UNRESOLVED;
 }
 
 /**

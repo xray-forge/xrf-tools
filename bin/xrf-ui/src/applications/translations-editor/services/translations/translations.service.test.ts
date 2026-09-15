@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
-import { TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
+import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
 import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -67,7 +67,10 @@ describe("TranslationsService", () => {
 
     setMockInvokeResponses({
       ["plugin:translations|open_project"]: mockSessionResponse(project),
-      ["plugin:translations|save_file"]: () => ({ kind: "saved", project: mockSessionSnapshot(project) }),
+      ["plugin:translations|save_file"]: () => ({
+        kind: ETranslationSaveOutcome.SAVED,
+        project: mockSessionSnapshot(project),
+      }),
     });
 
     await service.openProject(createRoots([FIRST_ROOT]), "source");
@@ -107,7 +110,7 @@ describe("TranslationsService", () => {
     const write = jest
       .fn()
       .mockImplementationOnce(() => answer)
-      .mockImplementation(() => ({ kind: "saved", project: mockSessionSnapshot(PROJECT) }));
+      .mockImplementation(() => ({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) }));
 
     setMockInvokeResponses({
       ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
@@ -124,7 +127,7 @@ describe("TranslationsService", () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(service.savingFile).toBe(FILE);
 
-    finish({ kind: "saved", project: mockSessionSnapshot(PROJECT) });
+    finish({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) });
 
     expect(await saving).toBe(true);
     expect(await overlapping).toBe(true);
@@ -144,7 +147,7 @@ describe("TranslationsService", () => {
         throw new Error("write failed");
       }
 
-      return { kind: "stale" };
+      return { kind: ETranslationSaveOutcome.STALE };
     });
 
     setMockInvokeResponses({
@@ -166,7 +169,10 @@ describe("TranslationsService", () => {
 
     setMockInvokeResponses({
       ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:translations|save_file"]: () => ({ kind: "saved", project: mockSessionSnapshot(OTHER_PROJECT) }),
+      ["plugin:translations|save_file"]: () => ({
+        kind: ETranslationSaveOutcome.SAVED,
+        project: mockSessionSnapshot(OTHER_PROJECT),
+      }),
     });
 
     await openWithEdit(service);
@@ -190,7 +196,7 @@ describe("TranslationsService", () => {
       ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
       // What the backend answers when the project was replaced while the edits were being written. It withholds the
       // refreshed tree on purpose, and the shown project has to survive that answer untouched.
-      ["plugin:translations|save_file"]: () => ({ kind: "stale" }),
+      ["plugin:translations|save_file"]: () => ({ kind: ETranslationSaveOutcome.STALE }),
     });
 
     await openWithEdit(service);

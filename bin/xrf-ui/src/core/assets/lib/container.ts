@@ -1,4 +1,4 @@
-import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetContainer, XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 /**
@@ -8,7 +8,7 @@ import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
  * @returns The host path of a loose file, or the volume an archived entry sits in.
  */
 export function describeAssetContainer(container: XrayAssetContainer): string {
-  return container.kind === "directory"
+  return container.kind === EXrayAssetContainer.DIRECTORY
     ? `${container.root}${LOGICAL_PATH_SEPARATOR}${container.relativePath}`
     : container.path;
 }
@@ -20,5 +20,5 @@ export function describeAssetContainer(container: XrayAssetContainer): string {
  * @returns Whether the bytes sit in a file of their own.
  */
 export function isLooseContainer(container: XrayAssetContainer): boolean {
-  return container.kind === "directory";
+  return container.kind === EXrayAssetContainer.DIRECTORY;
 }

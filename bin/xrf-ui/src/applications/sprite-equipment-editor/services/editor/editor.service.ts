@@ -12,6 +12,7 @@ import { transformError } from "@/core/error/lib";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import {
+  EEquipmentConfigSource,
   EquipmentConfigSource,
   EquipmentSpriteMetadata,
   EquipmentSpriteOpen,
@@ -99,7 +100,7 @@ export class SpriteEquipmentEditorService {
     const config: Nullable<EquipmentConfigSource> = metadata.open.config;
     const sheet: Nullable<string> = metadata.location.path;
 
-    return sheet && config?.kind === "file" ? { sheet, config: config.path } : null;
+    return sheet && config?.kind === EEquipmentConfigSource.FILE ? { sheet, config: config.path } : null;
   }
 
   @OnProvision()

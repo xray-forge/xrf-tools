@@ -13,7 +13,7 @@ export type XrayAsset = {
   container: XrayAssetContainer;
 };
 
-/** Every `kind` the `XrayAssetContainer` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `XrayAssetContainer` union is told apart by, so a switch or a comparison names one. */
 export enum EXrayAssetContainer {
   /** A loose file, preserving its root so consumers can identify the winning overlay. */
   DIRECTORY = "directory",
@@ -148,7 +148,7 @@ export type XrayPathCollision = {
   unreachable: string;
 };
 
-/** Every `kind` the `XrayResolution` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `XrayResolution` union is told apart by, so a switch or a comparison names one. */
 export enum EXrayResolution {
   /**
    * The reference itself resolved.

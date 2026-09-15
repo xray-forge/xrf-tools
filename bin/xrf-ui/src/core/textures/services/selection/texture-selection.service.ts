@@ -5,7 +5,7 @@ import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
-import { TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
+import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
@@ -101,7 +101,7 @@ export class TextureSelectionService {
    */
   @LatestFlow("selected")
   public *openFile(path: string): TFlow {
-    yield* this.describe({ kind: "file", path }, this.toFileRoots(path));
+    yield* this.describe({ kind: ETextureSource.FILE, path }, this.toFileRoots(path));
   }
 
   /**
@@ -112,7 +112,7 @@ export class TextureSelectionService {
    */
   @LatestFlow("selected")
   public *openReference(reference: string, roots: XrayRoots): TFlow {
-    yield* this.describe({ kind: "asset", reference }, roots);
+    yield* this.describe({ kind: ETextureSource.ASSET, reference }, roots);
   }
 
   /**
@@ -123,7 +123,7 @@ export class TextureSelectionService {
    */
   @LatestFlow("selected")
   public *open(source: TextureSource, roots: XrayRoots): TFlow {
-    yield* this.describe(source, source.kind === "file" ? this.toFileRoots(source.path) : roots);
+    yield* this.describe(source, source.kind === ETextureSource.FILE ? this.toFileRoots(source.path) : roots);
   }
 
   /**

@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/** Every `kind` the `ExportContractDescriptor` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ExportContractDescriptor` union is told apart by, so a switch or a comparison names one. */
 export enum EExportContractDescriptor {
   CALLABLE = "callable",
   VALUE = "value",

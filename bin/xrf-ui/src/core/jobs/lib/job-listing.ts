@@ -1,4 +1,5 @@
-import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 
 /** What every run of one kind came to. */
 export interface IJobKindSummary {
@@ -73,11 +74,13 @@ export function listHeldLeases(jobs: ReadonlyArray<JobDescription>): Array<IJobL
  */
 function conclusionField(conclusion: JobConclusion): "completed" | "cancelled" | "failed" {
   switch (conclusion) {
-    case "completed":
+    case EJobConclusion.COMPLETED:
       return "completed";
-    case "cancelled":
+    case EJobConclusion.CANCELLED:
       return "cancelled";
-    case "failed":
+    case EJobConclusion.FAILED:
       return "failed";
+    default:
+      return assertExhaustive(conclusion);
   }
 }

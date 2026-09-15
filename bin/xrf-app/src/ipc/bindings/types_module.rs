@@ -68,10 +68,7 @@ pub(super) fn export_type_modules(output: &Path, collected: &Types) -> (TypeOwne
   (ownership, enumerations)
 }
 
-/// One type as the frontend declares it: an enum and its union, or whatever Specta renders it as.
-///
-/// A tagged union takes the third road — Specta's rendering, with the enum naming its discriminants before it — so
-/// a switch over one can name the member it handles instead of quoting the wire spelling.
+/// One type as the frontend declares it, which is Specta's rendering plus whatever enum the type declares.
 fn render_declaration(
   exporter: &Exporter,
   types: &Types,
@@ -79,15 +76,8 @@ fn render_declaration(
   declared: &NamedDataType,
   module: &str,
 ) -> String {
-  if let Some(declaration) = enumerations.render(declared) {
-    return declaration;
-  }
-
-  let exported: String = primitives::export(&exporter, types, iter::once(declared), "")
+  let union: String = primitives::export(&exporter, types, iter::once(declared), "")
     .unwrap_or_else(|error| panic!("Failed to export {module} type {}: {error}", declared.name));
 
-  match enumerations.render_discriminant(declared) {
-    Some(discriminant) => format!("{discriminant}\n{exported}"),
-    None => exported,
-  }
+  enumerations.render(declared, &union)
 }

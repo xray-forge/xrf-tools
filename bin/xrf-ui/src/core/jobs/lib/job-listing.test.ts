@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
 import { listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 
 function mockJob(overrides: Partial<JobDescription> = {}): JobDescription {
@@ -45,7 +45,7 @@ describe("job history", () => {
     // A run still going has no total, and adding its elapsed time would make an average that moves while nobody
     // does anything.
     const summaries = summarizeJobKinds([
-      mockJob({ id: "a", conclusion: "completed", duration: 1000 }),
+      mockJob({ id: "a", conclusion: EJobConclusion.COMPLETED, duration: 1000 }),
       mockJob({ id: "b", duration: 9999 }),
     ]);
 
@@ -55,7 +55,12 @@ describe("job history", () => {
   it("lists what the running jobs hold and ignores what the finished ones held", () => {
     const leases = listHeldLeases([
       mockJob({ id: "a", leaseKeys: ["archives:out.db"] }),
-      mockJob({ id: "b", kind: "configs.format", leaseKeys: ["configs:gamedata"], conclusion: "completed" }),
+      mockJob({
+        id: "b",
+        kind: "configs.format",
+        leaseKeys: ["configs:gamedata"],
+        conclusion: EJobConclusion.COMPLETED,
+      }),
       mockJob({ id: "c", kind: "spawn.pack", leaseKeys: ["spawn:all.spawn", "spawn:level"] }),
     ]);
 

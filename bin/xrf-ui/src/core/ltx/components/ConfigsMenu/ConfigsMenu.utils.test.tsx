@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { LtxInventoryFile, LtxInventoryRole } from "@/core/ipc/types/xrf-ltx-inspect";
+import { ELtxInventoryRole, LtxInventoryFile, LtxInventoryRole } from "@/core/ipc/types/xrf-ltx-inspect";
 import { decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 
@@ -16,20 +16,32 @@ describe("decorateConfigIcon", () => {
   it("should tell the three roles worth stopping on apart", () => {
     // Three hues, not three slots: the theme paints secondary and info as near-identical light blues, so a scheme and
     // a patch wearing the two would wear the same colour on a 17-pixel icon.
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "entryPoint" })))?.color).toBe("primary.main");
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "schemeFile" })))?.color).toBe("secondary.main");
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "attachment" })))?.color).toBe("success.main");
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.ENTRY_POINT })))?.color).toBe(
+      "primary.main"
+    );
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.SCHEME_FILE })))?.color).toBe(
+      "secondary.main"
+    );
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.ATTACHMENT })))?.color).toBe(
+      "success.main"
+    );
   });
 
   it("should say what each tint means, since a colour on its own says nothing", () => {
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "entryPoint" })))?.title).toContain("Entry point");
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "schemeFile" })))?.title).toContain("Scheme");
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "attachment" })))?.title).toContain("Patch");
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.ENTRY_POINT })))?.title).toContain(
+      "Entry point"
+    );
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.SCHEME_FILE })))?.title).toContain(
+      "Scheme"
+    );
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.ATTACHMENT })))?.title).toContain(
+      "Patch"
+    );
   });
 
   it("should leave an included config neutral, since almost every config in a tree is one", () => {
     // A mark on nearly every row is a mark nobody reads.
-    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: "included" })))).toBeNull();
+    expect(decorateConfigIcon(mockNodeOf(mockFileOf({ kind: ELtxInventoryRole.INCLUDED })))).toBeNull();
   });
 
   it("should leave a directory row neutral, which stands for no config at all", () => {
@@ -40,9 +52,9 @@ describe("decorateConfigIcon", () => {
     // `warning` and `error` belong to the Problems panel; a role is not a problem, and an archived config is not one
     // either - it is the ordinary case on an install.
     const colors: Array<string> = [
-      { kind: "entryPoint" } as const,
-      { kind: "schemeFile" } as const,
-      { kind: "attachment" } as const,
+      { kind: ELtxInventoryRole.ENTRY_POINT } as const,
+      { kind: ELtxInventoryRole.SCHEME_FILE } as const,
+      { kind: ELtxInventoryRole.ATTACHMENT } as const,
     ].map((role: LtxInventoryRole) => decorateConfigIcon(mockNodeOf(mockFileOf(role)))?.color ?? "");
 
     expect(colors.some((color: string) => color.startsWith("warning") || color.startsWith("error"))).toBe(false);

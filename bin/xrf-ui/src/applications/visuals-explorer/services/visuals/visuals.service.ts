@@ -4,7 +4,7 @@ import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
-import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-db";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
@@ -172,7 +172,7 @@ export class VisualsService implements IVisualInspection {
   public get containingRoot(): Nullable<string> {
     const source: Nullable<VisualSource> = this.selected?.source ?? null;
 
-    if (source?.kind !== "file") {
+    if (source?.kind !== EVisualSource.FILE) {
       return null;
     }
 
@@ -262,7 +262,7 @@ export class VisualsService implements IVisualInspection {
   public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
     // Centred on the file, so its own tree is searched for its textures - and searched again when those textures are
     // read, because the roots travel with the description. The named root falls in behind it.
-    await this.open({ kind: "file", path }, [assetRoot], path);
+    await this.open({ kind: EVisualSource.FILE, path }, [assetRoot], path);
   }
 
   /**
@@ -276,7 +276,7 @@ export class VisualsService implements IVisualInspection {
    */
   @BoundAction()
   public async openAsset(logicalPath: string, roots: Array<Nullable<string>>): Promise<void> {
-    await this.open({ kind: "asset", logicalPath }, roots);
+    await this.open({ kind: EVisualSource.ASSET, logicalPath }, roots);
   }
 
   /**

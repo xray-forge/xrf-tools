@@ -4,7 +4,7 @@ import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { jobsCommands } from "@/core/ipc/commands/jobs";
-import { EJobKind, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, EJobKind, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
@@ -378,7 +378,7 @@ export class JobsService {
       typeof result === "object" &&
       result !== null &&
       "outcome" in result &&
-      (result.outcome === "completed" || result.outcome === "cancelled")
+      (result.outcome === EJobConclusion.COMPLETED || result.outcome === EJobConclusion.CANCELLED)
     ) {
       conclusion = result.outcome;
     }

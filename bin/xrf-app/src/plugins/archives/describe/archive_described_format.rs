@@ -1,6 +1,11 @@
+use xrf_error::XrfResult;
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-/// Which describer answers for an entry, decided from its name alone.
+use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
+use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
+use crate::plugins::archives::describe::thm::ArchiveThmDescription;
+
+/// Which describer answers for an entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArchiveDescribedFormat {
   /// A texture descriptor, `ETextureThumbnail` wrapping `STextureParams`.
@@ -13,6 +18,19 @@ impl ArchiveDescribedFormat {
     match XrayExtensionOf::of(name).known()? {
       XrayExtension::Thm => Some(Self::Thm),
       _ => None,
+    }
+  }
+
+  /// Reads the entry this format claimed.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
+  pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<ArchiveFormatDescription> {
+    match self {
+      Self::Thm => Ok(ArchiveFormatDescription::Thm {
+        description: Box::new(ArchiveThmDescription::read(source, name)?),
+      }),
     }
   }
 }

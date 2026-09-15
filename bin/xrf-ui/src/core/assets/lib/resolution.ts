@@ -1,4 +1,5 @@
-import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
+import { EXrayResolution, XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -24,7 +25,9 @@ export function getLocatedAsset(resolution: XrayResolution): Nullable<XrayAsset>
  * @returns The located assets, empty when the outcome located nothing.
  */
 export function listLocatedAssets(resolution: XrayResolution): Array<XrayAsset> {
-  return resolution.kind === "resolved" || resolution.kind === "substituted" ? resolution.assets : [];
+  return resolution.kind === EXrayResolution.RESOLVED || resolution.kind === EXrayResolution.SUBSTITUTED
+    ? resolution.assets
+    : [];
 }
 
 /**
@@ -39,19 +42,22 @@ export function listLocatedAssets(resolution: XrayResolution): Array<XrayAsset> 
  */
 export function describeResolution(resolution: XrayResolution): string {
   switch (resolution.kind) {
-    case "resolved":
+    case EXrayResolution.RESOLVED:
       return `Resolved in ${resolution.step}`;
 
-    case "substituted":
+    case EXrayResolution.SUBSTITUTED:
       return `Missing, showing the engine placeholder from ${resolution.step}`;
 
-    case "missing":
+    case EXrayResolution.MISSING:
       return "Not present in any searched source";
 
-    case "noScope":
+    case EXrayResolution.NO_SCOPE:
       return "No source was searchable for this visual";
 
-    case "rejected":
+    case EXrayResolution.REJECTED:
       return "Reference is not a usable asset path";
+
+    default:
+      return assertExhaustive(resolution);
   }
 }

@@ -603,7 +603,7 @@ export type GraphVertex = {
   levelPointsCount: number;
 };
 
-/** Every `kind` the `LastSpawnTime` union is discriminated by, so a switch or a comparison names one. */
+/** Every `type` the `LastSpawnTime` union is told apart by, so a switch or a comparison names one. */
 export enum ELastSpawnTime {
   /** The script class wrote nothing past the engine payload. */
   ABSENT = "Absent",

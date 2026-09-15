@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import {
+  ELtxResolvedFieldOrigin,
   LtxResolvedField,
   LtxResolvedFieldOrigin,
   LtxResolvedIndexEntry,
@@ -19,7 +20,7 @@ function entryOf(name: string, fieldCount: number, parents: Array<string> = []):
 
 /** A field written in the section that holds it, which is the case most of a config is. */
 function fieldOf(key: string, value: string, origin?: LtxResolvedFieldOrigin): LtxResolvedField {
-  return { key, origin: origin ?? { file: "configs\\weapons.ltx", kind: "declared" }, value };
+  return { key, origin: origin ?? { file: "configs\\weapons.ltx", kind: ELtxResolvedFieldOrigin.DECLARED }, value };
 }
 
 /** A fetched body for one section. */
@@ -114,7 +115,9 @@ describe("toResolvedLayout", () => {
   it("should colour a field with the shared token vocabulary and dim the note it adds", () => {
     const { source } = readingOf(
       [entryOf("wpn_ak74", 1)],
-      new Map([["wpn_ak74", bodyOf("wpn_ak74", [fieldOf("cost", "1000", { kind: "unrecorded" })])]])
+      new Map([
+        ["wpn_ak74", bodyOf("wpn_ak74", [fieldOf("cost", "1000", { kind: ELtxResolvedFieldOrigin.UNRECORDED })])],
+      ])
     );
 
     expect(spansOf(source, 2)).toEqual([
@@ -206,36 +209,52 @@ describe("toResolvedLayout", () => {
 
 describe("describeResolvedFieldOrigin", () => {
   it("should say a field written here, with the config it is written in when one was recorded", () => {
-    expect(describeResolvedFieldOrigin({ file: "configs\\w_ak74.ltx", kind: "declared" })).toBe(
+    expect(describeResolvedFieldOrigin({ file: "configs\\w_ak74.ltx", kind: ELtxResolvedFieldOrigin.DECLARED })).toBe(
       "written here, in configs\\w_ak74.ltx"
     );
-    expect(describeResolvedFieldOrigin({ file: null, kind: "declared" })).toBe("written here");
+    expect(describeResolvedFieldOrigin({ file: null, kind: ELtxResolvedFieldOrigin.DECLARED })).toBe("written here");
   });
 
   it("should name the section an inherited field is written in, which is not the parent in the header", () => {
-    expect(describeResolvedFieldOrigin({ file: "configs\\w_base.ltx", kind: "inherited", section: "wpn_base" })).toBe(
-      "inherited from [wpn_base] in configs\\w_base.ltx"
-    );
-    expect(describeResolvedFieldOrigin({ file: null, kind: "inherited", section: "wpn_base" })).toBe(
-      "inherited from [wpn_base]"
-    );
+    expect(
+      describeResolvedFieldOrigin({
+        file: "configs\\w_base.ltx",
+        kind: ELtxResolvedFieldOrigin.INHERITED,
+        section: "wpn_base",
+      })
+    ).toBe("inherited from [wpn_base] in configs\\w_base.ltx");
+    expect(
+      describeResolvedFieldOrigin({ file: null, kind: ELtxResolvedFieldOrigin.INHERITED, section: "wpn_base" })
+    ).toBe("inherited from [wpn_base]");
   });
 
   it("should name the operation and depth a patched field won on", () => {
     expect(
-      describeResolvedFieldOrigin({ depth: 2, file: "configs\\mod_system_zzz.ltx", kind: "loaded", operation: "!" })
+      describeResolvedFieldOrigin({
+        depth: 2,
+        file: "configs\\mod_system_zzz.ltx",
+        kind: ELtxResolvedFieldOrigin.LOADED,
+        operation: "!",
+      })
     ).toBe("set by configs\\mod_system_zzz.ltx ('!', depth 2)");
-    expect(describeResolvedFieldOrigin({ depth: 0, file: "configs\\system.ltx", kind: "loaded", operation: "" })).toBe(
-      "set by configs\\system.ltx (depth 0)"
-    );
+    expect(
+      describeResolvedFieldOrigin({
+        depth: 0,
+        file: "configs\\system.ltx",
+        kind: ELtxResolvedFieldOrigin.LOADED,
+        operation: "",
+      })
+    ).toBe("set by configs\\system.ltx (depth 0)");
   });
 
   it("should say an unrecorded origin rather than guessing one", () => {
     // A resolution produced without asking for provenance. Inventing "written here" for it is the one wrong answer.
-    expect(describeResolvedFieldOrigin({ kind: "unrecorded" })).toBe("origin not recorded");
+    expect(describeResolvedFieldOrigin({ kind: ELtxResolvedFieldOrigin.UNRECORDED })).toBe("origin not recorded");
   });
 
   it("should not claim a config for a root field, whose recorded file is the first one merged", () => {
-    expect(describeResolvedFieldOrigin({ file: "configs\\system.ltx", kind: "declared" }, true)).toBe("written here");
+    expect(
+      describeResolvedFieldOrigin({ file: "configs\\system.ltx", kind: ELtxResolvedFieldOrigin.DECLARED }, true)
+    ).toBe("written here");
   });
 });

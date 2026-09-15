@@ -1,4 +1,4 @@
-import { TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
+import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 
 /**
  * Identifies the texture a source names, independently of the roots it was resolved in.
@@ -7,7 +7,7 @@ import { TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
  * @returns A stable key for comparisons.
  */
 export function getTextureSourceKey(source: TextureSource): string {
-  return source.kind === "file" ? `file:${source.path}` : `asset:${source.reference}`;
+  return source.kind === ETextureSource.FILE ? `file:${source.path}` : `asset:${source.reference}`;
 }
 
 /**

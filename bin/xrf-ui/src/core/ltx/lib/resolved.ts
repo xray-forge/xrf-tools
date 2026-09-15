@@ -1,4 +1,5 @@
 import {
+  ELtxResolvedFieldOrigin,
   LtxResolvedField,
   LtxResolvedFieldOrigin,
   LtxResolvedIndexEntry,
@@ -174,18 +175,18 @@ function toLine(
  */
 export function describeResolvedFieldOrigin(origin: LtxResolvedFieldOrigin, isRootSection: boolean = false): string {
   switch (origin.kind) {
-    case "declared":
+    case ELtxResolvedFieldOrigin.DECLARED:
       // The root section is the one section that merges across configs instead of colliding, so its per-field file is
       // the first config merged rather than the one the field is written in. Naming it would be a claim this record
       // cannot stand behind (`plans/configs-explorer.md`, caveats).
       return origin.file && !isRootSection ? `written here, in ${origin.file}` : "written here";
 
-    case "inherited":
+    case ELtxResolvedFieldOrigin.INHERITED:
       return origin.file
         ? `inherited from [${origin.section}] in ${origin.file}`
         : `inherited from [${origin.section}]`;
 
-    case "loaded":
+    case ELtxResolvedFieldOrigin.LOADED:
       return origin.operation
         ? `set by ${origin.file} ('${origin.operation}', depth ${origin.depth})`
         : `set by ${origin.file} (depth ${origin.depth})`;

@@ -1,5 +1,5 @@
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
@@ -54,14 +54,14 @@ const ALPHA_REFERENCE_SCALE: number = 255;
 export function toVisualSurface(descriptor: Nullable<XraySurfaceDescriptor>): IVisualSurface {
   const draw: Nullable<XraySurfaceDraw> = descriptor?.draw ?? null;
 
-  if (!draw || draw.kind === "opaque") {
+  if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
     return OPAQUE_VISUAL_SURFACE;
   }
 
   return {
     alphaTest: draw.reference / ALPHA_REFERENCE_SCALE,
-    isDepthWritten: draw.kind !== "blended",
-    isTransparent: draw.kind === "blended",
+    isDepthWritten: draw.kind !== EXraySurfaceDraw.BLENDED,
+    isTransparent: draw.kind === EXraySurfaceDraw.BLENDED,
   };
 }
 

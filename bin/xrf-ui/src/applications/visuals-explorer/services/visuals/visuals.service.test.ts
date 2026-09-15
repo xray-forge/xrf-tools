@@ -4,7 +4,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
@@ -35,7 +35,7 @@ function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {
 
   return {
     selected: mockSelectedVisual({
-      source: { kind: "file", path },
+      source: { kind: EVisualSource.FILE, path },
       description: mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
     }),
     buffer: buffer.toArrayBuffer(),

@@ -1,5 +1,5 @@
 import { toAssetLocation } from "@/core/assets/lib";
-import { VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { Nullable } from "@/lib/types/general";
@@ -22,7 +22,7 @@ export function toVisualLocation(
     return null;
   }
 
-  if (source.kind === "file") {
+  if (source.kind === EVisualSource.FILE) {
     return { path: source.path };
   }
 

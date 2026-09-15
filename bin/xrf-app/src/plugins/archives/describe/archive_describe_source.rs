@@ -1,4 +1,4 @@
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveProject, ArchiveReadPolicy};
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayAsset, XrayProbe};
 
@@ -28,40 +28,48 @@ impl ArchiveDescribeSource<'_> {
     }
   }
 
-  /// Unpacked bytes of an entry this source lists, or `None` when it lists no file under that name.
-  ///
-  /// A directory entry answers `None`: a volume records the directories it contains, and reading one as a file would
-  /// describe an empty payload as a malformed descriptor.
-  pub fn get_size_of(&self, name: &str) -> Option<u64> {
+  /// What this source may be read under, which is the policy of the subject it is.
+  pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
     match self {
-      Self::Volumes { project } => project
-        .files
-        .get(name)
-        .filter(|descriptor| !descriptor.is_directory)
-        .map(|descriptor| u64::from(descriptor.size_real)),
-      Self::World { world, .. } => world.find(name).map(|entry| entry.size_real),
+      Self::Volumes { project } => &project.read_policy,
+      Self::World { world, .. } => &world.read_policy,
     }
+  }
+
+  /// Unpacked bytes of an entry this source lists, or `None` when it lists no file under that name.
+  pub fn get_size_of(&self, name: &str) -> Option<u64> {
+    self.find_file(name).map(|(_, size)| size)
   }
 
   /// The name this source lists an engine path under, ready to select in the tree.
   pub fn find_entry(&self, path: &str) -> Option<String> {
+    self.find_file(path).map(|(name, _)| name.to_owned())
+  }
+
+  /// The one file this source lists for an engine path, as the name it is listed under and its unpacked size.
+  ///
+  /// Both public lookups answer from here, so describing an entry and resolving a reference to it can never disagree
+  /// about which file that is.
+  ///
+  /// A directory answers `None`: a volume records the directories it contains, and reading one as a file would
+  /// describe an empty payload as a malformed descriptor.
+  fn find_file(&self, path: &str) -> Option<(&str, u64)> {
     match self {
       Self::Volumes { project } => project
         .files
         .get(path)
         .filter(|descriptor| !descriptor.is_directory)
-        .map(|descriptor| descriptor.name.to_string())
         .or_else(|| {
           project
             .files
             .values()
             .find(|descriptor| !descriptor.is_directory && is_same_logical_name(&descriptor.name, path))
-            .map(|descriptor| descriptor.name.to_string())
-        }),
+        })
+        .map(|descriptor| (descriptor.name.as_ref(), u64::from(descriptor.size_real))),
       Self::World { world, .. } => world
         .find(path)
         .or_else(|| world.files.iter().find(|entry| is_same_logical_name(&entry.name, path)))
-        .map(|entry| entry.name.clone()),
+        .map(|entry| (entry.name.as_str(), entry.size_real)),
     }
   }
 
@@ -79,7 +87,10 @@ impl ArchiveDescribeSource<'_> {
 
   /// The shape a texture this source lists declares in its header, or `None` when it holds no such texture or its
   /// header will not parse.
-  pub fn describe_texture(&self, name: &str) -> Option<AssetTextureShape> {
+  ///
+  /// A loose file costs only the header; an archived entry has no path to read a prefix of and so costs its payload,
+  /// which is the standing price of describing anything inside a volume.
+  pub fn get_texture_shape(&self, name: &str) -> Option<AssetTextureShape> {
     match self {
       Self::Volumes { project } => AssetTextureShape::of_bytes(&project.read_file_bytes(name).ok()?),
       Self::World { probe, .. } => {

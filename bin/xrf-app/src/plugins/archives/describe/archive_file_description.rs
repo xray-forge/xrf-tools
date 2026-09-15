@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_archive::ArchiveReadPolicy;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtensionOf;
 
@@ -25,7 +24,7 @@ pub enum ArchiveFormatDescription {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ArchiveDescribeRefusal {
-  /// Nothing describes this format yet.
+  /// Nothing describes this format yet. The extension is the authored spelling, empty for a name without one.
   NoDescriber { extension: String },
   /// The entry is larger than the policy admits for a read that holds the payload.
   TooLarge { size: u64, maximum: u32 },
@@ -43,50 +42,46 @@ pub struct ArchiveFileDescription {
 impl ArchiveFileDescription {
   /// Describes one entry of the subject being browsed.
   ///
+  /// Reads in the order a refusal is cheapest to reach: the entry has to be listed, a describer has to claim it, and
+  /// only then is its size weighed — because an entry nothing describes is refused whatever it weighs, and the gate
+  /// is asked before the bytes are fetched so an enormous entry is never held in memory to be turned down.
+  ///
   /// # Errors
   ///
   /// Returns an error when the subject holds no such file, or when a describer that claimed the entry could not read
   /// it. A format nothing describes, and an entry too large to read whole, are answers rather than failures.
-  pub fn of(source: &ArchiveDescribeSource, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<Self> {
+  pub fn of(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
     let size: u64 = source
       .get_size_of(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not held by the open subject")))?;
 
+    let format: ArchiveFormatDescription = match ArchiveDescribedFormat::of(name) {
+      None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
+        extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
+      }),
+      Some(format) => match source.get_read_policy() {
+        // Narrowed rather than compared as a `u64`: an entry whose size the format cannot describe is past every
+        // ceiling this policy sets anyway.
+        policy if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) => {
+          ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+            size,
+            maximum: policy.maximum_describe_size,
+          })
+        }
+        _ => format.describe(source, name)?,
+      },
+    };
+
     Ok(Self {
       scope: source.get_scope(),
-      format: describe_format(source, name, policy, size)?,
+      format,
     })
   }
 }
 
-fn describe_format(
-  source: &ArchiveDescribeSource,
-  name: &str,
-  policy: &ArchiveReadPolicy,
-  size: u64,
-) -> XrfResult<ArchiveFormatDescription> {
-  let Some(format) = ArchiveDescribedFormat::of(name) else {
-    return Ok(ArchiveFormatDescription::Unsupported {
-      reason: ArchiveDescribeRefusal::NoDescriber {
-        extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
-      },
-    });
-  };
-
-  // Narrowed rather than compared as a `u64`, because an entry the format cannot describe the size of is past every
-  // ceiling this policy sets anyway.
-  if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) {
-    return Ok(ArchiveFormatDescription::Unsupported {
-      reason: ArchiveDescribeRefusal::TooLarge {
-        size,
-        maximum: policy.maximum_describe_size,
-      },
-    });
-  }
-
-  match format {
-    ArchiveDescribedFormat::Thm => Ok(ArchiveFormatDescription::Thm {
-      description: Box::new(ArchiveThmDescription::read(source, name)?),
-    }),
+impl ArchiveFormatDescription {
+  /// The description that says nothing was described, and why.
+  fn refuse(reason: ArchiveDescribeRefusal) -> Self {
+    Self::Unsupported { reason }
   }
 }

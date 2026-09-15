@@ -198,7 +198,7 @@ export type ArchivePatchConfig = {
   volumeExtension: ArchiveVolumeExtension;
 };
 
-/** Every `kind` the `ArchivePatchOrigin` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ArchivePatchOrigin` union is told apart by, so a switch or a comparison names one. */
 export enum EArchivePatchOrigin {
   /** A loose tree, named by the root it mounted at. */
   DIRECTORY = "directory",

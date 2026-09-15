@@ -297,8 +297,8 @@ export function mockArchiveStatistics(overrides: Partial<ArchiveStatistics> = {}
   return {
     compression: { sizeCompressed: 3072, sizeReal: 7168, storedUncompressed: 1 },
     extensions: [
-      { extension: "dds", isDeclared: true, measure: { files: 1, sizeReal: 4096 }, sizeCompressed: 2048 },
-      { extension: "ltx", isDeclared: true, measure: { files: 4, sizeReal: 2048 }, sizeCompressed: 512 },
+      { extension: EXrayExtension.DDS, isDeclared: true, measure: { files: 1, sizeReal: 4096 }, sizeCompressed: 2048 },
+      { extension: EXrayExtension.LTX, isDeclared: true, measure: { files: 4, sizeReal: 2048 }, sizeCompressed: 512 },
       { extension: "som", isDeclared: false, measure: { files: 2, sizeReal: 1024 }, sizeCompressed: 512 },
     ],
     folders: [
@@ -341,7 +341,9 @@ export function mockArchiveStatistics(overrides: Partial<ArchiveStatistics> = {}
 export function mockArchiveWorldStatistics(overrides: Partial<ArchiveStatistics> = {}): ArchiveStatistics {
   return mockArchiveStatistics({
     compression: null,
-    extensions: [{ extension: "ltx", isDeclared: true, measure: { files: 2, sizeReal: 3072 }, sizeCompressed: null }],
+    extensions: [
+      { extension: EXrayExtension.LTX, isDeclared: true, measure: { files: 2, sizeReal: 3072 }, sizeCompressed: null },
+    ],
     origins: {
       archived: { files: 1, sizeReal: 1024 },
       hidden: { files: 1, sizeReal: 8192 },

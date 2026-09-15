@@ -85,7 +85,7 @@ export type XrayMaterialBumpInput = {
   resolution: XrayResolution;
 };
 
-/** Every `kind` the `XrayMaterialDeclaration` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `XrayMaterialDeclaration` union is told apart by, so a switch or a comparison names one. */
 export enum EXrayMaterialDeclaration {
   /** No `.thm` sits beside the texture in any searched root. */
   NO_DESCRIPTOR = "noDescriptor",
@@ -158,7 +158,7 @@ export type XrayMaterialDetail = {
   usage: XrayDetailUsage | null;
 };
 
-/** Every `kind` the `XraySurfaceDeclaration` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `XraySurfaceDeclaration` union is told apart by, so a switch or a comparison names one. */
 export enum EXraySurfaceDeclaration {
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   NO_LIBRARY = "noLibrary",
@@ -238,7 +238,7 @@ export type XraySurfaceDescriptor = {
   draw: XraySurfaceDraw;
 };
 
-/** Every `kind` the `XraySurfaceDraw` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `XraySurfaceDraw` union is told apart by, so a switch or a comparison names one. */
 export enum EXraySurfaceDraw {
   /** Alpha is not read: whatever the texture carries in its fourth channel is ignored, and every texel is drawn. */
   OPAQUE = "opaque",

@@ -1,4 +1,4 @@
-import { EquipmentSheetSource } from "@/core/ipc/types/xrf-app";
+import { EEquipmentSheetSource, EquipmentSheetSource } from "@/core/ipc/types/xrf-app";
 
 /**
  * What to call a sheet in a message about it.
@@ -7,5 +7,5 @@ import { EquipmentSheetSource } from "@/core/ipc/types/xrf-app";
  * @returns Its path, or the engine reference the roots were asked for.
  */
 export function describeEquipmentSheet(sheet: EquipmentSheetSource): string {
-  return sheet.kind === "file" ? sheet.path : sheet.reference;
+  return sheet.kind === EEquipmentSheetSource.FILE ? sheet.path : sheet.reference;
 }

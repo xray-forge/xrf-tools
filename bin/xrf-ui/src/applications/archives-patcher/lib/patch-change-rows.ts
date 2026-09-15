@@ -4,6 +4,7 @@ import {
   ArchivePatchOrigin,
   ArchivePatchResult,
   ArchivePatchSide,
+  EArchivePatchOrigin,
 } from "@/core/ipc/types/xrf-pack";
 import { Nullable } from "@/lib/types/general";
 
@@ -55,5 +56,5 @@ export function toPatchChangeRows(result: ArchivePatchResult): Array<IPatchChang
  * @returns The volume set path for an archived origin, or the mount root for a loose one.
  */
 function describeOrigin(origin: ArchivePatchOrigin): string {
-  return origin.kind === "archive" ? origin.path : origin.root;
+  return origin.kind === EArchivePatchOrigin.ARCHIVE ? origin.path : origin.root;
 }

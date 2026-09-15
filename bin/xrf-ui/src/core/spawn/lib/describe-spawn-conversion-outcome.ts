@@ -1,4 +1,4 @@
-import { SpawnConversion, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
+import { ESpawnConversion, SpawnConversion, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
@@ -27,14 +27,14 @@ export function describeSpawnConversionOutcome(
 
   if (outcome.result?.outcome === "cancelled") {
     return {
-      title: `Stopped ${operation === "pack" ? "packing" : "unpacking"} spawn file`,
+      title: `Stopped ${operation === ESpawnConversion.PACK ? "packing" : "unpacking"} spawn file`,
       severity: ENotificationSeverity.INFO,
       details: "Stopped before writing. Output was left unchanged.",
     };
   }
 
   return {
-    title: `${operation === "pack" ? "Packed" : "Unpacked"} spawn file`,
+    title: `${operation === ESpawnConversion.PACK ? "Packed" : "Unpacked"} spawn file`,
     severity: ENotificationSeverity.SUCCESS,
     details: [source, destination].join("\n"),
   };

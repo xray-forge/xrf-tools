@@ -116,7 +116,7 @@ export type LtxInventoryFile = {
   role: LtxInventoryRole;
 };
 
-/** Every `kind` the `LtxInventoryRole` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `LtxInventoryRole` union is told apart by, so a switch or a comparison names one. */
 export enum ELtxInventoryRole {
   /** Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for. */
   ENTRY_POINT = "entryPoint",
@@ -162,7 +162,7 @@ export type LtxResolvedField = {
   origin: LtxResolvedFieldOrigin;
 };
 
-/** Every `kind` the `LtxResolvedFieldOrigin` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `LtxResolvedFieldOrigin` union is told apart by, so a switch or a comparison names one. */
 export enum ELtxResolvedFieldOrigin {
   /** Written in the body of the section that holds it. */
   DECLARED = "declared",

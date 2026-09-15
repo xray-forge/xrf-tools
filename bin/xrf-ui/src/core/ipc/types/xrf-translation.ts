@@ -17,7 +17,7 @@ export type TranslationBuildLanguageSummary = {
   entries: number;
 };
 
-/** Every `kind` the `TranslationEdit` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `TranslationEdit` union is told apart by, so a switch or a comparison names one. */
 export enum ETranslationEdit {
   /** Replace the winning entry's value, or append the entry when the file has none. */
   SET = "set",

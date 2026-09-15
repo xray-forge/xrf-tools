@@ -6,7 +6,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ArchivesExplorerApplication } from "@/applications/archives-explorer/ArchivesExplorerApplication";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
-import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import {
@@ -58,7 +58,7 @@ describe("opened archives editor", () => {
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
-        scope: { kind: "volumes", volumes: 1 },
+        scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
     });
@@ -296,7 +296,7 @@ describe("opened archives editor", () => {
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
-        scope: { kind: "volumes", volumes: 1 },
+        scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
     });
@@ -443,7 +443,7 @@ describe("opened archives editor", () => {
       },
       ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
-        scope: { kind: "volumes", volumes: 1 },
+        scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
     });

@@ -1,5 +1,12 @@
-import { XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import {
+  EXraySurfaceDeclaration,
+  EXraySurfaceDraw,
+  XraySurfaceDeclaration,
+  XraySurfaceDescriptor,
+  XraySurfaceDraw,
+} from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 import { IMaterialStateDescriptor } from "./material-description";
@@ -19,20 +26,23 @@ const ALPHA_REFERENCE_SCALE: number = 255;
  */
 export function describeSurfaceOutcome(descriptor: XraySurfaceDescriptor): IMaterialStateDescriptor {
   switch (descriptor.declaration.kind) {
-    case "noLibrary":
+    case EXraySurfaceDeclaration.NO_LIBRARY:
       return { color: "warning", label: "No shader library" };
 
-    case "unreadable":
+    case EXraySurfaceDeclaration.UNREADABLE:
       return { color: "error", label: "Library unreadable" };
 
-    case "undefined":
+    case EXraySurfaceDeclaration.UNDEFINED:
       return { color: "warning", label: "Shader undefined" };
 
-    case "unmodelled":
+    case EXraySurfaceDeclaration.UNMODELLED:
       return { color: "warning", label: "Class not modelled" };
 
-    case "described":
+    case EXraySurfaceDeclaration.DESCRIBED:
       return describeDrawState(descriptor.draw);
+
+    default:
+      return assertExhaustive(descriptor.declaration);
   }
 }
 
@@ -44,20 +54,23 @@ export function describeSurfaceOutcome(descriptor: XraySurfaceDescriptor): IMate
  */
 export function describeSurfaceDraw(draw: XraySurfaceDraw): Nullable<string> {
   switch (draw.kind) {
-    case "opaque":
+    case EXraySurfaceDraw.OPAQUE:
       return null;
 
-    case "alphaTested":
+    case EXraySurfaceDraw.ALPHA_TESTED:
       return (
         `killed below ${draw.reference}/${ALPHA_REFERENCE_SCALE} · the deferred pixel shader's own constant, ` +
         "not the authored reference"
       );
 
-    case "blended":
+    case EXraySurfaceDraw.BLENDED:
       return (
         `source alpha over the background, killed below ${draw.reference}/${ALPHA_REFERENCE_SCALE} · ` +
         "depth tested and not written"
       );
+
+    default:
+      return assertExhaustive(draw);
   }
 }
 
@@ -72,25 +85,28 @@ export function describeSurfaceDeclaration(declaration: XraySurfaceDeclaration, 
   const source: string = library ? library.logicalPath : "shaders.xr";
 
   switch (declaration.kind) {
-    case "noLibrary":
+    case EXraySurfaceDeclaration.NO_LIBRARY:
       return "no searched root holds shaders.xr, so nothing is known about this surface";
 
-    case "unreadable":
+    case EXraySurfaceDeclaration.UNREADABLE:
       return `${source} could not be read: ${declaration.reason}`;
 
-    case "undefined":
+    case EXraySurfaceDeclaration.UNDEFINED:
       return `${source} defines no shader of this name, so the engine falls back to its default shader`;
 
-    case "unmodelled":
+    case EXraySurfaceDeclaration.UNMODELLED:
       return `${source}, class '${declaration.class}' · this viewer derives no pass from that class`;
 
-    case "described":
+    case EXraySurfaceDeclaration.DESCRIBED:
       return [
         source,
         `class '${declaration.class}'`,
         ...describeAlphaKnobs(declaration.isAlphaUsed, declaration.alphaReference),
         ...(declaration.isStrictSorting ? ["strict sorting"] : []),
       ].join(" · ");
+
+    default:
+      return assertExhaustive(declaration);
   }
 }
 
@@ -101,7 +117,7 @@ export function describeSurfaceDeclaration(declaration: XraySurfaceDeclaration, 
  * @returns A line for the row, or null when the viewer draws what it reports.
  */
 export function describeSurfaceShading(descriptor: XraySurfaceDescriptor): Nullable<string> {
-  if (descriptor.draw.kind !== "blended") {
+  if (descriptor.draw.kind !== EXraySurfaceDraw.BLENDED) {
     return null;
   }
 
@@ -114,14 +130,17 @@ export function describeSurfaceShading(descriptor: XraySurfaceDescriptor): Nulla
 /** The chip for a surface whose blender was read: what it draws as. */
 function describeDrawState(draw: XraySurfaceDraw): IMaterialStateDescriptor {
   switch (draw.kind) {
-    case "opaque":
+    case EXraySurfaceDraw.OPAQUE:
       return { color: "default", label: "Opaque" };
 
-    case "alphaTested":
+    case EXraySurfaceDraw.ALPHA_TESTED:
       return { color: "success", label: "Cut out" };
 
-    case "blended":
+    case EXraySurfaceDraw.BLENDED:
       return { color: "success", label: "Blended" };
+
+    default:
+      return assertExhaustive(draw);
   }
 }
 

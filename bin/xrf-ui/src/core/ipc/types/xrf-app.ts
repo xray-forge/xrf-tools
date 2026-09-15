@@ -18,7 +18,7 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
-/** Every `kind` the `ArchiveDescribeRefusal` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ArchiveDescribeRefusal` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveDescribeRefusal {
   /** Nothing describes this format yet. */
   NO_DESCRIBER = "noDescriber",
@@ -33,7 +33,7 @@ export type ArchiveDescribeRefusal =
   /** The entry is larger than the policy admits for a read that holds the payload. */
   | { kind: "tooLarge"; size: number; maximum: number };
 
-/** Every `kind` the `ArchiveDescribeScope` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ArchiveDescribeScope` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveDescribeScope {
   /** The merged name table of the volumes the explorer has open. */
   VOLUMES = "volumes",
@@ -54,16 +54,14 @@ export type ArchiveFileDescription = {
   format: ArchiveFormatDescription;
 };
 
-/** Every `kind` the `ArchiveFormatDescription` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ArchiveFormatDescription` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveFormatDescription {
-  /** Boxed because a description is large beside a refusal, and the refusal is the commoner answer by a wide margin. */
   THM = "thm",
   UNSUPPORTED = "unsupported",
 }
 
 /** What the explorer can say about one entry it cannot draw. */
 export type ArchiveFormatDescription =
-  /** Boxed because a description is large beside a refusal, and the refusal is the commoner answer by a wide margin. */
   { kind: "thm"; description: ArchiveThmDescription } | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
 
 /** One file a description names, and what became of it. */
@@ -140,7 +138,7 @@ export type ArchiveShadowedCopy = {
   sizeReal: number;
 };
 
-/** Every `kind` the `ArchiveSubject` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `ArchiveSubject` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveSubject {
   /** The volumes at one path, merged into a single name table. */
   VOLUMES = "volumes",
@@ -623,7 +621,7 @@ export type DialogsReadRequest = {
   language: string | null;
 };
 
-/** Every `kind` the `EquipmentConfigSource` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `EquipmentConfigSource` union is told apart by, so a switch or a comparison names one. */
 export enum EEquipmentConfigSource {
   /** A `system.ltx` on disk, named by its filesystem path. */
   FILE = "file",
@@ -655,7 +653,7 @@ export type EquipmentSheetLocation = {
   writeTarget: string | null;
 };
 
-/** Every `kind` the `EquipmentSheetSource` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `EquipmentSheetSource` union is told apart by, so a switch or a comparison names one. */
 export enum EEquipmentSheetSource {
   /** A loose `.dds` on disk, named by its filesystem path. */
   FILE = "file",
@@ -1401,7 +1399,7 @@ export type TextureSaveTarget = {
   expected: TextureFileStamp | null;
 };
 
-/** Every `kind` the `TextureSource` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `TextureSource` union is told apart by, so a switch or a comparison names one. */
 export enum ETextureSource {
   /** A loose `.dds` or `.thm` on disk, named by its filesystem path. */
   FILE = "file",
@@ -1613,7 +1611,7 @@ export type TranslationParseSummary = {
   findings: Array<TranslationParseFinding>;
 };
 
-/** Every `kind` the `TranslationSaveOutcome` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `TranslationSaveOutcome` union is told apart by, so a switch or a comparison names one. */
 export enum ETranslationSaveOutcome {
   /** The edits are on disk, and this is the project as it now reads. */
   SAVED = "saved",
@@ -1671,7 +1669,7 @@ export type TranslationsVerifyRequest = {
   language: string;
 };
 
-/** Every `kind` the `VisualSource` union is discriminated by, so a switch or a comparison names one. */
+/** Every `kind` the `VisualSource` union is told apart by, so a switch or a comparison names one. */
 export enum EVisualSource {
   /** A loose `.ogf` file on disk, named by its filesystem path. */
   FILE = "file",

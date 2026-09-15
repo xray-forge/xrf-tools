@@ -1,5 +1,9 @@
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
 import {
+  EXrayBumpMode,
+  EXrayBumpOutcome,
+  EXrayDetailUsage,
+  EXrayMaterialDeclaration,
   XrayBumpMode,
   XrayBumpOutcome,
   XrayDetailUsage,
@@ -10,6 +14,7 @@ import {
 } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { formatNumber } from "@/lib/format/number";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 /** How a material state reads, and how loudly. */
@@ -26,17 +31,20 @@ export interface IMaterialStateDescriptor {
  */
 export function describeBumpOutcome(outcome: XrayBumpOutcome): IMaterialStateDescriptor {
   switch (outcome) {
-    case "flat":
+    case EXrayBumpOutcome.FLAT:
       return { color: "default", label: "Flat" };
 
-    case "bumped":
+    case EXrayBumpOutcome.BUMPED:
       return { color: "success", label: "Bumped" };
 
-    case "dummy":
+    case EXrayBumpOutcome.DUMMY:
       return { color: "warning", label: "Dummy bump" };
 
-    case "missing":
+    case EXrayBumpOutcome.MISSING:
       return { color: "error", label: "Bump missing" };
+
+    default:
+      return assertExhaustive(outcome);
   }
 }
 
@@ -47,7 +55,7 @@ export function describeBumpOutcome(outcome: XrayBumpOutcome): IMaterialStateDes
  * @returns A short label.
  */
 export function describeBumpMode(mode: XrayBumpMode): string {
-  return mode === "parallax" ? "Use parallax" : "Use";
+  return mode === EXrayBumpMode.PARALLAX ? "Use parallax" : "Use";
 }
 
 /**
@@ -64,29 +72,32 @@ export function describeBumpDeclaration(
   const source: string = descriptor ? descriptor.logicalPath : "descriptor";
 
   switch (declaration.kind) {
-    case "noDescriptor":
+    case EXrayMaterialDeclaration.NO_DESCRIPTOR:
       return null;
 
-    case "unreadable":
+    case EXrayMaterialDeclaration.UNREADABLE:
       return `${source} could not be read: ${declaration.reason}`;
 
-    case "typeDisqualified":
+    case EXrayMaterialDeclaration.TYPE_DISQUALIFIED:
       return declaration.declaredBump
         ? `${source} declares '${declaration.declaredBump}', but its type '${declaration.label}' is skipped by the ` +
             "engine"
         : `${source} has type '${declaration.label}', which the engine skips`;
 
-    case "noBumpChunk":
+    case EXrayMaterialDeclaration.NO_BUMP_CHUNK:
       return `${source} carries no bump chunk`;
 
-    case "disabled":
+    case EXrayMaterialDeclaration.DISABLED:
       return `${source} sets bump mode to none`;
 
-    case "emptyName":
+    case EXrayMaterialDeclaration.EMPTY_NAME:
       return `${source} asks for '${describeBumpMode(declaration.mode)}' with an empty bump name`;
 
-    case "declared":
+    case EXrayMaterialDeclaration.DECLARED:
       return `${source}, mode '${describeBumpMode(declaration.mode)}'`;
+
+    default:
+      return assertExhaustive(declaration);
   }
 }
 
@@ -132,11 +143,14 @@ export function describeDetail(detail: XrayMaterialDetail): string {
 export function describeBumpShading(material: XrayMaterialDescriptor): Nullable<string> {
   const gaps: Array<string> = [];
 
-  if (material.bump?.mode === "parallax") {
+  if (material.bump?.mode === EXrayBumpMode.PARALLAX) {
     gaps.push("parallax is drawn as plain bump");
   }
 
-  if (material.detail?.usage === "bump" || material.detail?.usage === "diffuseAndBump") {
+  if (
+    material.detail?.usage === EXrayDetailUsage.BUMP ||
+    material.detail?.usage === EXrayDetailUsage.DIFFUSE_AND_BUMP
+  ) {
     gaps.push("the detail bump is not drawn");
   }
 
@@ -151,16 +165,19 @@ export function describeBumpShading(material: XrayMaterialDescriptor): Nullable<
  */
 function describeDetailUsage(usage: Nullable<XrayDetailUsage>): string {
   switch (usage) {
-    case "diffuse":
+    case EXrayDetailUsage.DIFFUSE:
       return "diffuse";
 
-    case "bump":
+    case EXrayDetailUsage.BUMP:
       return "bump";
 
-    case "diffuseAndBump":
+    case EXrayDetailUsage.DIFFUSE_AND_BUMP:
       return "diffuse and bump";
 
     case null:
       return "not applied, no usage flag is set";
+
+    default:
+      return assertExhaustive(usage);
   }
 }

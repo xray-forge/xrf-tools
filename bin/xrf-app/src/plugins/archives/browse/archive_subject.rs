@@ -116,11 +116,9 @@ impl ArchiveSubject {
   /// it. A format nothing describes is an answer rather than a failure.
   pub fn describe_file(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveFileDescription> {
     match self {
-      Self::Volumes { project } => {
-        ArchiveFileDescription::of(&ArchiveDescribeSource::Volumes { project }, name, &project.read_policy)
-      }
+      Self::Volumes { project } => ArchiveFileDescription::of(&ArchiveDescribeSource::Volumes { project }, name),
       Self::World { world } => assets.with_probe(&world.roots, |probe| {
-        ArchiveFileDescription::of(&ArchiveDescribeSource::World { world, probe }, name, &world.read_policy)
+        ArchiveFileDescription::of(&ArchiveDescribeSource::World { world, probe }, name)
       })?,
     }
     .map_err(|error| format!("Failed to describe '{name}': {error}"))

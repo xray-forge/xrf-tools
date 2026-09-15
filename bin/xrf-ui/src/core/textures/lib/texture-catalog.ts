@@ -1,4 +1,5 @@
 import {
+  ETextureRole,
   TextureBadges,
   TextureCatalog,
   TextureEntry,
@@ -282,7 +283,7 @@ function collectBadges(
     badges.add(ETextureBadge.ORPHAN);
   }
 
-  if (entry.role !== "texture" && !declaredBy.has(entry.reference)) {
+  if (entry.role !== ETextureRole.TEXTURE && !declaredBy.has(entry.reference)) {
     badges.add(ETextureBadge.UNREFERENCED);
   }
 

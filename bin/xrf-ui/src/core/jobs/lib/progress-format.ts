@@ -1,4 +1,4 @@
-import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
+import { EProgressUnit, JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
@@ -20,7 +20,7 @@ export const RENDERED_PROGRESS_LEVELS: number = 2;
  * @returns The count, formatted for its unit.
  */
 export function formatProgressUnits(value: number, unit: ProgressUnit): string {
-  return unit === "bytes" ? formatBytes(value) : value.toLocaleString();
+  return unit === EProgressUnit.BYTES ? formatBytes(value) : value.toLocaleString();
 }
 
 /**
@@ -31,7 +31,9 @@ export function formatProgressUnits(value: number, unit: ProgressUnit): string {
  * @returns The rate, per second.
  */
 export function formatProgressRate(rate: number, unit: ProgressUnit): string {
-  return unit === "bytes" ? `${formatBytes(rate)}/s` : `${formatProgressUnits(Math.round(rate), unit)} items/s`;
+  return unit === EProgressUnit.BYTES
+    ? `${formatBytes(rate)}/s`
+    : `${formatProgressUnits(Math.round(rate), unit)} items/s`;
 }
 
 /**

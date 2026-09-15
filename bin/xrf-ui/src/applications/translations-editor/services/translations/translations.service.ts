@@ -6,7 +6,7 @@ import { describeRoots } from "@/core/assets/lib/roots";
 import { transformError } from "@/core/error/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import { requireSessionId, Session } from "@/core/ipc/session";
-import { SessionSnapshot, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
+import { ETranslationSaveOutcome, SessionSnapshot, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
 import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -223,7 +223,7 @@ ${transformError(error).message}`,
       // just as much, so the pending work is gone either way - what it does not get to do is say what is open.
       this.discardFile(file);
 
-      if (response.kind === "stale") {
+      if (response.kind === ETranslationSaveOutcome.STALE) {
         this.log.warn("Translations file saved into a project that is no longer open:", file);
 
         emitNotification(this.eventBus, {
