@@ -23,6 +23,25 @@ impl ChunkWriter {
     W::write_list::<T>(self, list)
   }
 
+  /// Write a float as the `u16` a range quantises it to, `IWriter::w_float_q16`.
+  ///
+  /// The inverse of [`crate::ChunkReader::read_f32_q16`] and rounds the way the engine does, half away from zero, so
+  /// a value read and written back lands on the step it came from. A value outside the range is clamped rather than
+  /// wrapped: the engine asserts on one, and silently writing a value that reads back as its opposite end is the
+  /// worse failure for a writer whose output is meant to be byte identical.
+  pub fn write_f32_q16<T: ByteOrder>(&mut self, value: f32, minimum: f32, maximum: f32) -> XrfResult<usize> {
+    let span: f32 = maximum - minimum;
+    let quantised: f32 = if span == 0.0 {
+      0.0
+    } else {
+      ((value - minimum) / span * f32::from(u16::MAX)).round()
+    };
+
+    self.write_u16::<T>(quantised.clamp(0.0, f32::from(u16::MAX)) as u16)?;
+
+    Ok(size_of::<u16>())
+  }
+
   /// Write null terminated windows1251 encoded string.
   pub fn write_w1251_string(&mut self, data: &str) -> XrfResult<usize> {
     Ok(self.write(&encode_string_to_w1251_bytes(data)?)? + self.write(&[0u8])?)

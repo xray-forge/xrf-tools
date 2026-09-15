@@ -56,6 +56,16 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(vector)
   }
 
+  /// Read a float the format stored as a `u16` spread across a range, `IReader::r_float_q16`.
+  ///
+  /// Lossy in both directions, and not corrected: this is the number the engine reads, and a reader that
+  /// rounded it to something prettier would disagree with what the game does.
+  pub fn read_f32_q16<T: ByteOrder>(&mut self, minimum: f32, maximum: f32) -> XrfResult<f32> {
+    let value: u16 = self.read_u16::<T>()?;
+
+    Ok(f32::from(value) * (maximum - minimum) / f32::from(u16::MAX) + minimum)
+  }
+
   /// Read raw bytes.
   pub fn read_bytes(&mut self, count: usize) -> XrfResult<Vec<u8>> {
     let count: u64 = u64::try_from(count)
