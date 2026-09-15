@@ -92,6 +92,16 @@ pub use crate::ogf::residue::*;
 pub use crate::ogf::survey::*;
 pub use crate::omf::omf_file::*;
 pub use crate::omf::omf_motions_processor::*;
+pub use crate::data::particles::particle_action::ParticleAction;
+pub use crate::data::particles::particle_action_type::ParticleActionType;
+pub use crate::data::particles::particle_effect::ParticleEffect;
+pub use crate::data::particles::particle_effect_sprite::ParticleEffectSprite;
+pub use crate::data::particles::particle_group::ParticleGroup;
+pub use crate::data::particles::particle_group_effect::ParticleGroupEffect;
+pub use crate::particles::chunks::{
+  particles_effects_chunk::ParticlesEffectsChunk, particles_groups_chunk::ParticlesGroupsChunk,
+  particles_header_chunk::ParticlesHeaderChunk,
+};
 pub use crate::particles::particles_file::*;
 pub use crate::shader_library::shader_blender::*;
 pub use crate::shader_library::shader_blender_class::*;

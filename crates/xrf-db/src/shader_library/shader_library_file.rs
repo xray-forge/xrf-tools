@@ -39,6 +39,11 @@ impl ShaderLibraryFile {
     Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
+  /// Reads from bytes already in hand, which is how an archived library arrives: a volume holds no file to open.
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
+  }
+
   pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut blenders: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::BLENDERS_CHUNK_ID)?;

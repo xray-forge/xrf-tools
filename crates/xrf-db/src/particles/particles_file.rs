@@ -35,8 +35,10 @@ impl ParticlesFile {
   }
 
   /// Reads from a chunk reader over any data source.
-  ///
-  /// The route an archived entry takes: a volume holds no file to slice, only bytes.
+  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  }
+
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
