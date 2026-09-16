@@ -20,7 +20,6 @@ macro_rules! for_each_tauri_command_domain {
         extract_directory => crate::plugins::archives::browse::commands::extract_directory::archives_extract_directory,
         extract_file => crate::plugins::archives::browse::commands::extract_file::archives_extract_file,
         get_subject => crate::plugins::archives::browse::commands::get_subject::archives_get_subject,
-        list_collisions => crate::plugins::archives::browse::commands::list_collisions::archives_list_collisions,
         list_overrides => crate::plugins::archives::browse::commands::list_overrides::archives_list_overrides,
         list_shared_payloads => crate::plugins::archives::browse::commands::list_shared_payloads::archives_list_shared_payloads,
         open_volumes => crate::plugins::archives::browse::commands::open_volumes::archives_open_volumes,

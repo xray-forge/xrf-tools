@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 use serde::Serialize;
 use xrf_archive::{ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
 use xrf_archive_stats::ArchiveStatistics;
@@ -8,12 +7,14 @@ use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
 };
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
+use xrf_vfs::XrayArchiveSource;
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
+use crate::plugins::archives::browse::archive_override_report::ArchiveOverrideReport;
 use crate::plugins::archives::browse::archive_resolution::ArchiveResolution;
 use crate::plugins::archives::browse::archive_world::ArchiveWorld;
+use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 use crate::plugins::archives::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
@@ -73,19 +74,26 @@ impl ArchiveSubject {
     }
   }
 
-  /// Every engine path this subject answers with more than one copy, winner first.
-  pub fn list_overrides(&self) -> Vec<ArchiveWorldEntry> {
+  /// What this subject's fold onto engine identities found, in one pass.
+  pub fn describe_overrides(&self) -> ArchiveOverrideReport {
     match self {
-      Self::Volumes { project } => XrayArchiveSource::list_overrides_of(project)
-        .into_iter()
-        .map(ArchiveWorldEntry::from)
-        .collect(),
-      Self::World { world } => world
-        .files
-        .iter()
-        .filter(|entry| !entry.shadowed.is_empty())
-        .cloned()
-        .collect(),
+      Self::Volumes { project } => {
+        let (overridden, unreachable) = XrayArchiveSource::describe_overrides_of(project);
+
+        ArchiveOverrideReport {
+          overridden: overridden.into_iter().map(ArchiveWorldEntry::from).collect(),
+          unreachable,
+        }
+      }
+      Self::World { world } => ArchiveOverrideReport {
+        overridden: world
+          .files
+          .iter()
+          .filter(|entry| !entry.shadowed.is_empty())
+          .cloned()
+          .collect(),
+        unreachable: world.collisions.clone(),
+      },
     }
   }
 
@@ -98,17 +106,6 @@ impl ArchiveSubject {
     match self {
       Self::Volumes { project } => Ok(ArchiveResolution::of_volumes(project)),
       Self::World { world } => assets.with_probe(&world.roots, ArchiveResolution::of_probe),
-    }
-  }
-
-  /// Entries this subject holds that no engine lookup can reach.
-  ///
-  /// A world folded them while its mounts were walked; a volume set folds its merged name table here, which an
-  /// installation sizes rather than a gesture — so callers run this off the executor.
-  pub fn list_collisions(&self) -> Vec<XrayPathCollision> {
-    match self {
-      Self::Volumes { project } => XrayArchiveSource::list_collisions_of(project),
-      Self::World { world } => world.collisions.clone(),
     }
   }
 

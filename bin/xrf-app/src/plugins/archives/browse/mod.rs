@@ -1,5 +1,6 @@
 //! What the explorer has open, and reading or extracting out of it.
 
+mod archive_override_report;
 mod archive_resolution;
 mod archive_subject;
 mod archive_world;
@@ -8,6 +9,7 @@ pub mod commands;
 mod request;
 mod state;
 
+pub use archive_override_report::ArchiveOverrideReport;
 pub use archive_resolution::ArchiveResolution;
 pub use archive_subject::ArchiveSubject;
 pub use archive_world::ArchiveWorld;

@@ -86,9 +86,9 @@ impl XrayArchiveSource {
     Self::index(project).1
   }
 
-  /// Every engine path a volume set answers with more than one copy, without mounting it.
-  pub fn list_overrides_of(project: &ArchiveProject) -> Vec<XraySourceOverride> {
-    let (entries, _, shadowed) = Self::index(project);
+  /// Every engine path a volume set answers with more than one copy, and every copy it cannot reach.
+  pub fn describe_overrides_of(project: &ArchiveProject) -> (Vec<XraySourceOverride>, Vec<XrayPathCollision>) {
+    let (entries, collisions, shadowed) = Self::index(project);
     let mut overrides: Vec<XraySourceOverride> = Vec::new();
 
     // `shadowed` is already ordered by engine path, so the copies of one path arrive together and in precedence order.
@@ -113,7 +113,7 @@ impl XrayArchiveSource {
       }
     }
 
-    overrides
+    (overrides, collisions)
   }
 
   /// Keys an already-read volume set by engine identity.

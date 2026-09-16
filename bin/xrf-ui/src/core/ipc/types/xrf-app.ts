@@ -15,7 +15,7 @@ import {
   TranslationProjectMode,
   TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
-import { XrayAsset, XrayAssetContainer, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
+import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
 /** One chunk of a container, and whatever its payload turned out to hold. */
@@ -306,6 +306,14 @@ export type ArchiveOmfTarget =
   | { kind: "part"; index: number; name: string | null }
   | { kind: "bone"; index: number; name: string | null }
   | { kind: "unnamed" };
+
+/** What one fold of a subject onto engine identities found: the copies a patch buried, and the copies nothing reaches. */
+export type ArchiveOverrideReport = {
+  /** Engine paths this subject answers with more than one copy, winner first, ordered by path. */
+  overridden: Array<ArchiveWorldEntry>;
+  /** Copies no lookup reaches, because another entry of the same source already claims their engine path. */
+  unreachable: Array<XrayPathCollision>;
+};
 
 /** Everything the viewer says about the particle library. */
 export type ArchiveParticlesDescription = {

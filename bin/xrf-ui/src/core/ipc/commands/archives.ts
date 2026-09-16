@@ -5,13 +5,13 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   ArchiveFileDescription,
+  ArchiveOverrideReport,
   ArchiveResolution,
   ArchivesExtractRequest,
   ArchivesPackRequest,
   ArchivesPatchRequest,
   ArchiveSubject,
   ArchivesUnpackRequest,
-  ArchiveWorldEntry,
   AssetTextureDescriptor,
   AudioDescriptor,
   SessionId,
@@ -30,7 +30,7 @@ import {
   ArchivePatchResult,
   ArchiveUnpackResult,
 } from "@/core/ipc/types/xrf-pack";
-import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {
@@ -50,17 +50,9 @@ export const archivesCommands = {
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { sessionId, name, destination }),
   /** What the explorer has open, so a reloaded frontend adopts it instead of asking for it again. */
   getSubject: () => __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|get_subject"),
-  /** Entries the open subject holds that no engine lookup can reach. */
-  listCollisions: (sessionId: SessionId) =>
-    __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions", { sessionId }),
-  /**
-   * Every engine path the open subject answers with more than one copy, winner first.
-   *
-   * Answered here rather than filtered on the frontend because only one of the two subjects publishes its listing: a
-   * volume set folds its own name table, and the copies that fold displaced reach nothing until this asks for them.
-   */
+  /** What the open subject answers with more than one copy, and what it cannot reach at all. */
   listOverrides: (sessionId: SessionId) =>
-    __TAURI_INVOKE<Array<ArchiveWorldEntry>>("plugin:archives|list_overrides", { sessionId }),
+    __TAURI_INVOKE<ArchiveOverrideReport>("plugin:archives|list_overrides", { sessionId }),
   /** Payloads that several entries of the open volume set locate at once. */
   listSharedPayloads: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads", { sessionId }),
