@@ -4,5 +4,9 @@
   "printWidth": 120,
   "semi": true,
   "endOfLine": "lf",
-  "singleQuote": false
+  "singleQuote": false,
+  "plugins": [
+    "prettier-plugin-tailwindcss"
+  ],
+  "tailwindStylesheet": "./src/core/theme/tailwind.css"
 }

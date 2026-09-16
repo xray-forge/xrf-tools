@@ -1,0 +1,43 @@
+/* Layer order, declared before the framework so MUI's own styles can be slotted between the base and the utilities. */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss";
+
+/* The design vocabulary, aliased onto variables the theme already emits at build time. */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+
+  --color-primary: var(--mui-palette-primary-main);
+  --color-secondary: var(--mui-palette-secondary-main);
+  --color-error: var(--mui-palette-error-main);
+  --color-warning: var(--mui-palette-warning-main);
+  --color-success: var(--mui-palette-success-main);
+  --color-info: var(--mui-palette-info-main);
+
+  --color-text-primary: var(--mui-palette-text-primary);
+  --color-text-secondary: var(--mui-palette-text-secondary);
+  --color-text-disabled: var(--mui-palette-text-disabled);
+
+  --color-action-hover: var(--mui-palette-action-hover);
+  --color-action-selected: var(--mui-palette-action-selected);
+  --color-action-current: var(--mui-palette-action-current);
+  --color-action-disabled: var(--mui-palette-action-disabled);
+
+  --color-divider: var(--mui-palette-divider);
+  --color-surface-content: var(--mui-palette-background-default);
+  --color-surface-overlay: var(--mui-palette-background-paper);
+
+  --spacing-tree-row: var(--xrf-tree-row-height);
+  --spacing-tree-icon: var(--xrf-tree-icon-width);
+  --spacing-tree-gap: var(--xrf-tree-icon-gap);
+  --spacing-code-line: var(--xrf-code-line-height);
+  --spacing-header: var(--xrf-header-height);
+
+  --text-tree-icon: var(--xrf-tree-icon-size);
+
+  --radius-surface: var(--xrf-radius-surface);
+
+  /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
+  --container-reading: var(--xrf-reading-column);
+}

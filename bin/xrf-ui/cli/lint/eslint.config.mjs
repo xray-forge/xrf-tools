@@ -7,6 +7,7 @@ import jsdocPlugin from "eslint-plugin-jsdoc";
 import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sortKeysFixPlugin from "eslint-plugin-sort-keys-fix";
+import tailwindPlugin from "eslint-plugin-tailwindcss";
 import unusedImportsPlugin from "eslint-plugin-unused-imports";
 import globals from "globals";
 import tsPlugin from "typescript-eslint";
@@ -199,6 +200,30 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    // A name absent from `@theme` generates no CSS and fails silently, which is the one way Tailwind can
+    // break a screen without anything reporting it.
+    files: ["src/**/*.tsx"],
+    plugins: { tailwindcss: tailwindPlugin },
+    settings: { tailwindcss: { cssConfigPath: "src/core/theme/tailwind.css" } },
+    rules: {
+      "tailwindcss/classnames-order": "warn",
+      "tailwindcss/no-contradicting-classname": "error",
+      // Real classes the application declares itself: `monospace` in the theme, and two markers a
+      // parent selects on rather than styles directly.
+      "tailwindcss/no-custom-classname": [
+        "error",
+        { whitelist: ["monospace", "notification-row-actions", "workspace"] },
+      ],
+    },
+  },
+  {
+    // A test names a class to prove the prop reaches the DOM; the name is the assertion, not styling.
+    files: ["src/**/*.test.tsx"],
+    rules: {
+      "tailwindcss/no-custom-classname": "off",
     },
   },
   {

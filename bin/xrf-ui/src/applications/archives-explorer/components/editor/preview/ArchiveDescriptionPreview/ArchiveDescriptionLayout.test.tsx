@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { LAYOUT } from "@/core/theme/tokens";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveDescriptionLayout } from "./ArchiveDescriptionLayout";
@@ -14,11 +13,9 @@ describe("ArchiveDescriptionLayout", () => {
     );
 
     const column: Element = getByTestId("description").firstElementChild as Element;
-    const style: CSSStyleDeclaration = getComputedStyle(column);
 
-    expect(style.marginLeft).toBe("auto");
-    expect(style.marginRight).toBe("auto");
-    expect(style.maxWidth).toBe(`${LAYOUT.readingColumnWidth}px`);
+    expect(column).toHaveClass("mx-auto");
+    expect(column).toHaveClass("max-w-reading");
   });
 
   it("stays anchored to the top, because a description scrolls", () => {
@@ -28,9 +25,9 @@ describe("ArchiveDescriptionLayout", () => {
       </ArchiveDescriptionLayout>
     );
 
-    const style: CSSStyleDeclaration = getComputedStyle(getByTestId("description"));
+    const pane: Element = getByTestId("description");
 
-    expect(style.overflowY).toBe("auto");
-    expect(style.justifyContent).not.toBe("center");
+    expect(pane).toHaveClass("overflow-y-auto");
+    expect(pane).not.toHaveClass("justify-center");
   });
 });

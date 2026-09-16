@@ -1,5 +1,6 @@
 import * as path from "path";
 
+import { default as tailwindcss } from "@tailwindcss/vite";
 import { default as react } from "@vitejs/plugin-react";
 import { wirestate } from "@wirestate/dev/vite";
 import { defineConfig, Plugin } from "vite";
@@ -81,6 +82,7 @@ export default defineConfig({
     moduleNamePlugin(),
     preloadThemePlugin(),
     wirestate(),
+    tailwindcss(),
     inlineSource({ optimizeJs: true }),
     react(),
     reactObserverPlugin(),

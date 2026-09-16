@@ -1,7 +1,5 @@
-import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveDescriptionLayoutProps extends BaseComponentProps {
@@ -18,13 +16,8 @@ export function ArchiveDescriptionLayout({
   children,
 }: IArchiveDescriptionLayoutProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, overflowY: "auto" }}
-    >
-      <Box sx={{ maxWidth: LAYOUT.readingColumnWidth, marginX: "auto" }}>{children}</Box>
-    </Box>
+    <div data-testid={dataTestId} id={id} className={`min-h-0 min-w-0 grow overflow-y-auto ${className ?? ""}`}>
+      <div className={"mx-auto max-w-reading"}>{children}</div>
+    </div>
   );
 }
