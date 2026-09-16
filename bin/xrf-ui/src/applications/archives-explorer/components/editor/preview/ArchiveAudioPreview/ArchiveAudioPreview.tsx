@@ -1,4 +1,4 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -14,6 +14,7 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -68,19 +69,14 @@ export function ArchiveAudioPreview({
     <CenteredColumn
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        padding: 3,
-        gap: 2.5,
-        overflowY: "auto",
-        justifyContent: "safe center",
-      }}
+      className={cn("overflow-y-auto p-6", className)}
+      sx={{ gap: 2.5, justifyContent: "safe center" }}
     >
-      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: 640 }}>
+      <div className={"w-full max-w-160 shrink-0"}>
         <AudioPlayer src={url} bytes={bytes} />
-      </Box>
+      </div>
 
-      <Box sx={{ flexShrink: 0, width: "100%", maxWidth: 640 }}>
+      <div className={"w-full max-w-160 shrink-0"}>
         <Typography variant={"subtitle2"}>Stream</Typography>
 
         <EditorPanelProperty label={"Channels"} value={formatAudioChannels(descriptor.channels)} />
@@ -107,11 +103,11 @@ export function ArchiveAudioPreview({
             <EditorPanelProperty label={"Game type"} value={String(descriptor.parameters.gameType)} isMonospace />
           </>
         ) : (
-          <Typography variant={"body2"} sx={{ marginTop: 1, color: "text.secondary" }}>
+          <Typography className={"mt-2 text-text-secondary"} variant={"body2"}>
             This sound carries no X-Ray comment, so the engine would use its built-in source defaults.
           </Typography>
         )}
-      </Box>
+      </div>
     </CenteredColumn>
   );
 }

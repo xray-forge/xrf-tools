@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -12,6 +12,7 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -66,12 +67,7 @@ export function ArchiveImagePreview({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <ImageViewport
         alt={archivesService.selectedEntry?.name ?? "Texture"}
         src={url}
@@ -79,11 +75,11 @@ export function ArchiveImagePreview({
         height={shape.height}
       />
 
-      <Box sx={{ flexShrink: 0, paddingX: 1.5, paddingY: 0.5, borderTop: 1, borderColor: "divider" }}>
-        <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+      <div className={"shrink-0 border-t border-divider px-3 py-1"}>
+        <Typography className={"text-text-secondary"} variant={"caption"}>
           {describeTextureShape(shape)}
         </Typography>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

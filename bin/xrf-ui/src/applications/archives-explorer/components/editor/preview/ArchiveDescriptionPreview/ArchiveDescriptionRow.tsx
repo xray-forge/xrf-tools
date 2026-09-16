@@ -1,7 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { LAYOUT, MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveDescriptionRowProps extends BaseComponentProps {
@@ -26,53 +26,38 @@ export function ArchiveDescriptionRow({
   isMonospace = false,
 }: IArchiveDescriptionRowProps): ReactElement {
   return (
-    <Box
+    <dl
       data-testid={dataTestId}
       id={id}
-      className={className}
-      component={"dl"}
-      sx={{
-        display: "grid",
-        gridTemplateColumns: { xs: "1fr", sm: `${LAYOUT.readingLabelWidth}px 1fr` },
-        gap: PANEL.propertyValueGap,
-        margin: 0,
-        paddingY: PANEL.propertyPaddingY,
-        minWidth: 0,
-        lineHeight: PANEL.contentLineHeight,
-      }}
+      className={cn(
+        "m-0 grid min-w-0 grid-cols-1 gap-0.5 py-1.5 leading-panel",
+        "sm:grid-cols-[var(--container-reading-label)_1fr]",
+        className
+      )}
     >
       <Typography
+        className={"min-w-0 leading-[inherit] wrap-anywhere text-text-secondary"}
         component={"dt"}
         variant={"body2"}
-        sx={{ color: "text.secondary", minWidth: 0, overflowWrap: "anywhere", lineHeight: "inherit" }}
       >
         {label}
       </Typography>
 
-      <Box component={"dd"} sx={{ margin: 0, minWidth: 0 }}>
+      <dd className={"m-0 min-w-0"}>
         <Typography
+          className={cn("min-w-0 leading-[inherit] wrap-anywhere", isMonospace && "monospace")}
           component={"div"}
           variant={"body2"}
-          sx={{
-            ...(isMonospace ? MONOSPACE : null),
-            lineHeight: "inherit",
-            minWidth: 0,
-            overflowWrap: "anywhere",
-          }}
         >
           {value}
         </Typography>
 
         {caption ? (
-          <Typography
-            component={"div"}
-            variant={"caption"}
-            sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}
-          >
+          <Typography className={"block wrap-anywhere text-text-disabled"} component={"div"} variant={"caption"}>
             {caption}
           </Typography>
         ) : null}
-      </Box>
-    </Box>
+      </dd>
+    </dl>
   );
 }

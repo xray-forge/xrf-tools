@@ -38,11 +38,11 @@ export function ArchiveOmfMotionsSection({
       caption={"In the order the bank declares them, which is the order the engine pairs them by"}
     >
       <EditorFilterInput
+        className={"mb-2"}
         query={filter}
         placeholder={"Filter motions"}
         ariaLabel={"Filter motions"}
         onQueryChange={setFilter}
-        sx={{ marginBottom: 1 }}
       />
 
       {matched.length ? (
@@ -50,7 +50,7 @@ export function ArchiveOmfMotionsSection({
           <ArchiveOmfMotionRow key={`${index}-${motion.name}`} motion={motion} />
         ))
       ) : (
-        <Typography variant={"body2"} sx={{ color: "text.disabled" }}>
+        <Typography className={"text-text-disabled"} variant={"body2"}>
           No motion of this bank is named that.
         </Typography>
       )}

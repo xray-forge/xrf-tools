@@ -1,6 +1,6 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { Alert, Box, Button, Typography } from "@mui/material";
+import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
@@ -11,6 +11,7 @@ import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
@@ -76,15 +77,16 @@ export function ArchiveDirectoryContent({
     }
   }, [archivesService, log, path]);
 
+  // `gap` stays an `sx`: `CenteredColumn` sets it itself, and its unlayered Emotion rules outrank a utility.
   return (
-    <CenteredColumn data-testid={dataTestId} id={id} className={className} sx={{ padding: 3, gap: 1 }}>
+    <CenteredColumn data-testid={dataTestId} id={id} className={cn("p-6", className)} sx={{ gap: 1 }}>
       <FolderOpenIcon sx={{ color: "text.secondary" }} />
 
-      <Typography variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily, overflowWrap: "anywhere" }}>
+      <Typography className={"wrap-anywhere"} variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily }}>
         {path || "Tree root"}
       </Typography>
 
-      <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+      <Typography className={"text-text-secondary"} variant={"body2"}>
         {summary.count} files · {formatBytes(summary.size)}
       </Typography>
 
@@ -100,23 +102,23 @@ export function ArchiveDirectoryContent({
       </Button>
 
       {operation.error ? (
-        <Box sx={{ marginTop: 2, maxWidth: 480 }}>
+        <div className={"mt-4 max-w-120"}>
           <Alert severity={"error"} variant={"outlined"} onClose={archivesService.clearOperation}>
-            <Typography variant={"caption"} sx={{ wordBreak: "break-word" }}>
+            <Typography className={"wrap-break-word"} variant={"caption"}>
               {String(operation.error)}
             </Typography>
           </Alert>
-        </Box>
+        </div>
       ) : null}
 
       {extracted ? (
-        <Box sx={{ marginTop: 2, maxWidth: 480 }}>
+        <div className={"mt-4 max-w-120"}>
           <Alert severity={"success"} variant={"outlined"} onClose={archivesService.clearOperation}>
-            <Typography variant={"caption"} sx={{ wordBreak: "break-word" }}>
+            <Typography className={"wrap-break-word"} variant={"caption"}>
               {`Extracted ${extracted.extractedCount} files to ${extracted.destination}`}
             </Typography>
           </Alert>
-        </Box>
+        </div>
       ) : null}
     </CenteredColumn>
   );

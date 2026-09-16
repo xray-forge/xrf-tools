@@ -1,12 +1,23 @@
 /* Layer order, declared before the framework so MUI's own styles can be slotted between the base and the utilities. */
 @layer theme, base, components, utilities;
 
-@import "tailwindcss";
+/*
+ * What `@import "tailwindcss"` expands to, minus the layer on the utilities.
+ */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
 
 /* The design vocabulary, aliased onto variables the theme already emits at build time. */
 @theme {
   --color-*: initial;
   --radius-*: initial;
+
+  --breakpoint-*: initial;
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 900px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1536px;
 
   --color-primary: var(--mui-palette-primary-main);
   --color-secondary: var(--mui-palette-secondary-main);
@@ -38,6 +49,10 @@
 
   --radius-surface: var(--xrf-radius-surface);
 
+  --spacing-dialog: var(--xrf-dialog-padding-x);
+  --leading-panel: var(--xrf-panel-line-height);
+
   /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
   --container-reading: var(--xrf-reading-column);
+  --container-reading-label: var(--xrf-reading-label);
 }

@@ -1,8 +1,8 @@
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -27,29 +27,21 @@ export function ArchiveOverrideCopyRow({
   const container: string = describeAssetContainer(row.container);
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       data-kind={EArchiveOverrideRow.COPY}
       id={id}
-      className={className}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        height: ARCHIVE_OVERRIDE_ROW_HEIGHT,
-        paddingLeft: 3,
-        paddingRight: 1,
-        opacity: row.isWinner ? 1 : 0.7,
-      }}
+      className={cn("flex items-center gap-2 pr-2 pl-6", row.isWinner ? "opacity-100" : "opacity-70", className)}
+      style={{ height: ARCHIVE_OVERRIDE_ROW_HEIGHT }}
     >
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, width: 16 }}>
+      <Typography className={"w-4 shrink-0 text-text-secondary"} variant={"caption"}>
         {row.rank}
       </Typography>
 
       <Typography
+        className={"monospace min-w-0 grow overflow-hidden text-ellipsis"}
         variant={"caption"}
-        sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
-        noWrap
+        noWrap={true}
         title={container}
       >
         {container}
@@ -66,9 +58,9 @@ export function ArchiveOverrideCopyRow({
         <Chip size={"small"} color={"primary"} label={"Loaded"} title={"The copy the engine loads"} sx={CHIP_SX} />
       ) : null}
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, minWidth: 72, textAlign: "right" }}>
+      <Typography className={"min-w-18 shrink-0 text-right text-text-secondary"} variant={"caption"}>
         {formatBytes(row.sizeReal)}
       </Typography>
-    </Box>
+    </div>
   );
 }

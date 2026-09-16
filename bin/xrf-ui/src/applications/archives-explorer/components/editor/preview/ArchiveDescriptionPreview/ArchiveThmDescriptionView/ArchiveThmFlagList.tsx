@@ -1,7 +1,8 @@
-import { Box, Chip } from "@mui/material";
+import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveThmFlag } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveThmFlagListProps extends BaseComponentProps {
@@ -18,7 +19,7 @@ export function ArchiveThmFlagList({
   flags,
 }: IArchiveThmFlagListProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-wrap gap-1", className)}>
       {flags.map((flag: ArchiveThmFlag) => (
         <Chip
           key={flag.label}
@@ -28,6 +29,6 @@ export function ArchiveThmFlagList({
           sx={{ opacity: flag.isSet ? 1 : 0.6 }}
         />
       ))}
-    </Box>
+    </div>
   );
 }

@@ -66,11 +66,11 @@ export function ArchiveShadersDescriptionView({
         caption={"In name order, which is how a shader name is looked up"}
       >
         <EditorFilterInput
+          className={"mb-2"}
+          ariaLabel={"Filter blenders"}
           query={filter}
           placeholder={"Filter blenders"}
-          ariaLabel={"Filter blenders"}
           onQueryChange={setFilter}
-          sx={{ marginBottom: 1 }}
         />
 
         {matched.length ? (
@@ -78,7 +78,7 @@ export function ArchiveShadersDescriptionView({
             <ArchiveShadersBlenderRow key={blender.name} blender={blender} scope={scope} />
           ))
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"body2"}>
             No blender of this library is named that.
           </Typography>
         )}

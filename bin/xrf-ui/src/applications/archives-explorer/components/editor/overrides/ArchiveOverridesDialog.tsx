@@ -1,5 +1,5 @@
 import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
-import { Alert, Box, CircularProgress, Dialog, DialogContent, TextField } from "@mui/material";
+import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";
 
@@ -125,9 +125,9 @@ export function ArchiveOverridesDialog({
         ) : null}
 
         {archivesService.overrides.isLoading || archivesService.statistics.isLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", paddingY: 4 }}>
+          <div className={"flex justify-center py-8"}>
             <CircularProgress size={24} />
-          </Box>
+          </div>
         ) : null}
 
         {overridden.length === 0 && !archivesService.overrides.isLoading ? (
@@ -179,9 +179,9 @@ export function ArchiveOverridesDialog({
                 sx={{ marginBottom: 1 }}
               />
 
-              <Box sx={{ height: 220 }}>
+              <div className={"h-55"}>
                 <ArchiveOverrideList rows={rows} ariaLabel={"Overridden paths"} onOpen={onOpen} />
-              </Box>
+              </div>
             </DetailSection>
           </>
         ) : null}

@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -17,6 +16,7 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AsyncState } from "@/lib/async-state";
 import { inline } from "@/lib/callbacks/inline";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -80,23 +80,10 @@ export function ArchivesFilePreview({
   const support: ArchivePreviewSupport = getArchivePreviewSupport(entry, policy);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <ArchiveFileHeader entry={entry} />
 
-      <Box
-        sx={{
-          display: "flex",
-          flexGrow: 1,
-          minWidth: 0,
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
+      <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           switch (support.kind) {
             case "image":
@@ -123,7 +110,7 @@ export function ArchivesFilePreview({
             <EmptyState title={"Preview unavailable"} description={"The selected file did not return any content."} />
           );
         })}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchiveShadersBlender, ArchiveShadersProperty } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
@@ -24,27 +24,22 @@ export function ArchiveShadersBlenderRow({
   scope,
 }: IArchiveShadersBlenderRowProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ minWidth: 0, paddingY: PANEL.propertyPaddingY, lineHeight: PANEL.contentLineHeight }}
-    >
-      <Box sx={{ display: "flex", gap: 1, justifyContent: "space-between", minWidth: 0 }}>
-        <Typography variant={"body2"} sx={{ ...MONOSPACE, minWidth: 0, overflowWrap: "anywhere" }}>
+    <div data-testid={dataTestId} id={id} className={cn("min-w-0 py-1.5 leading-panel", className)}>
+      <div className={"flex min-w-0 justify-between gap-2"}>
+        <Typography className={"monospace min-w-0 wrap-anywhere"} variant={"body2"}>
           {blender.name}
         </Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0, whiteSpace: "nowrap" }}>
+        <Typography className={"shrink-0 whitespace-nowrap text-text-secondary"} variant={"body2"}>
           {`${blender.class} · v${blender.version}`}
         </Typography>
-      </Box>
+      </div>
 
       {blender.properties.map((property: ArchiveShadersProperty, index: number) => (
         <Typography
           key={`${index}-${property.name}`}
+          className={"block wrap-anywhere text-text-disabled"}
           variant={"caption"}
-          sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}
         >
           {`${property.name}: `}
 
@@ -58,6 +53,6 @@ export function ArchiveShadersBlenderRow({
           )}
         </Typography>
       ))}
-    </Box>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
-import { Box } from "@mui/material";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
 import { ReactElement, useId, useMemo, useRef } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -61,19 +61,18 @@ export function ArchiveOverrideList({
   const positionerProps = virtualizer.store.use(LayoutList.selectors.positionerProps);
 
   return (
-    <Box
+    <div
       {...containerProps}
       data-testid={dataTestId}
-      id={id}
-      className={className}
-      role={"list"}
       aria-label={ariaLabel}
-      sx={{ height: "100%", overflow: "auto", outline: "none" }}
+      id={id}
+      className={cn("h-full overflow-auto outline-none", className)}
+      role={"list"}
     >
       <div {...contentProps} />
       <div {...positionerProps} role={"presentation"} />
 
       {virtualizer.api.getters.getRows()}
-    </Box>
+    </div>
   );
 }

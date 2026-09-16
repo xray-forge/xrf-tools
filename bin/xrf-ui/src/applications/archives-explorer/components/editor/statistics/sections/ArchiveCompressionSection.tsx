@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, useMemo } from "react";
 
 import { ArchiveCompression, ArchiveExtensionUsage } from "@/core/ipc/types/xrf-archive-stats";
@@ -61,7 +61,7 @@ export function ArchiveCompressionSection({
       }
       fact={`ratio ${formatRatio(compression.sizeCompressed, compression.sizeReal)}`}
     >
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 2 }}>
+      <div className={"mb-4 flex flex-wrap gap-4"}>
         <StatFigure label={"Stored"} value={formatBytes(compression.sizeCompressed)} />
         <StatFigure label={"Unpacked"} value={formatBytes(compression.sizeReal)} />
         <StatFigure
@@ -69,23 +69,23 @@ export function ArchiveCompressionSection({
           value={compression.storedUncompressed.toLocaleString()}
           hint={"entries"}
         />
-      </Box>
+      </div>
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginBottom: 1 }}>
+      <Typography className={"mb-2 block text-text-secondary"} variant={"caption"}>
         By extension, lowest ratio first - what actually compresses.
       </Typography>
 
-      <Box sx={{ display: "grid", rowGap: 0.5 }}>
+      <div className={"grid gap-y-1"}>
         {ratios.map((row: IExtensionRatio) => (
-          <Box key={row.extension} sx={{ display: "flex", justifyContent: "space-between", gap: 2, paddingY: 0.25 }}>
+          <div key={row.extension} className={"flex justify-between gap-4 py-0.5"}>
             <Typography variant={"caption"}>{row.extension}</Typography>
 
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               {`${row.ratio.toFixed(3)} · ${formatBytes(row.sizeReal)}`}
             </Typography>
-          </Box>
+          </div>
         ))}
-      </Box>
+      </div>
     </DetailSection>
   );
 }

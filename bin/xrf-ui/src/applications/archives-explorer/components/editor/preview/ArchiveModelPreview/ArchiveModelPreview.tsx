@@ -5,7 +5,6 @@ import { ReactElement, useEffect } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getSurfaceSx } from "@/core/theme/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -13,6 +12,7 @@ import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/components/scene";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -44,11 +44,10 @@ export function ArchiveModelPreview({
   }, [loadService, name, subject]);
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{ position: "relative", display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
+      className={cn("relative flex min-h-0 min-w-0 grow overflow-hidden", className)}
     >
       <VisualPreviewViewport
         detail={0}
@@ -59,19 +58,19 @@ export function ArchiveModelPreview({
       />
 
       {visual.isLoading ? (
-        <Box sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className={"absolute inset-0 flex items-center justify-center"}>
           <DelayedProgress />
-        </Box>
+        </div>
       ) : null}
 
       {!visual.value && !visual.isLoading ? (
-        <Box sx={mergeSx(getSurfaceSx("content"), { position: "absolute", inset: 0, display: "flex" })}>
+        <Box className={"absolute inset-0 flex"} sx={getSurfaceSx("content")}>
           <EmptyState
             title={visual.error ? "Could not read this model" : "No model to show"}
             description={visual.error?.message ?? name}
           />
         </Box>
       ) : null}
-    </Box>
+    </div>
   );
 }

@@ -34,7 +34,7 @@ export function ArchiveThmEngineSection({
       />
 
       {textureType.isReadByEngine ? null : (
-        <Typography variant={"body2"} sx={{ color: "text.secondary", paddingY: PANEL.propertyPaddingY }}>
+        <Typography className={"text-text-secondary"} variant={"body2"} sx={{ paddingY: PANEL.propertyPaddingY }}>
           {`LoadTHM takes nothing further from a ${textureType.label.toLowerCase()} descriptor: the bump, detail and material below are read by the converter and never by the engine.`}
         </Typography>
       )}

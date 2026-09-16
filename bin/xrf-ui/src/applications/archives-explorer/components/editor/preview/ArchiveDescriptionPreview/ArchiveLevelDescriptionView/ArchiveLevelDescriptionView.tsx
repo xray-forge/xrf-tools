@@ -104,11 +104,11 @@ export function ArchiveLevelDescriptionView({
         caption={"In table order, which is the order a face addresses them in"}
       >
         <EditorFilterInput
+          className={"mb-2"}
+          ariaLabel={"Filter by shader or texture"}
           query={filter}
           placeholder={"Filter by shader or texture"}
-          ariaLabel={"Filter by shader or texture"}
           onQueryChange={setFilter}
-          sx={{ marginBottom: 1 }}
         />
 
         {matched.length ? (
@@ -116,7 +116,7 @@ export function ArchiveLevelDescriptionView({
             <ArchiveLevelSurfaceRow key={surface.index} surface={surface} scope={scope} />
           ))
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"body2"}>
             No surface of this level names that.
           </Typography>
         )}

@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveParticlesGroup, ArchiveParticlesGroupEffect } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeGroupEffectChildren, describeGroupEffectName } from "./ArchiveParticlesDescriptionView.utils";
@@ -21,31 +21,26 @@ export function ArchiveParticlesGroupRow({
   group,
 }: IArchiveParticlesGroupRowProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ minWidth: 0, paddingY: PANEL.propertyPaddingY, lineHeight: PANEL.contentLineHeight }}
-    >
-      <Box sx={{ display: "flex", gap: 1, justifyContent: "space-between", minWidth: 0 }}>
-        <Typography variant={"body2"} sx={{ ...MONOSPACE, minWidth: 0, overflowWrap: "anywhere" }}>
+    <div data-testid={dataTestId} id={id} className={cn("min-w-0 py-1.5 leading-panel", className)}>
+      <div className={"flex min-w-0 justify-between gap-2"}>
+        <Typography className={"monospace min-w-0 wrap-anywhere"} variant={"body2"}>
           {group.name}
         </Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0, whiteSpace: "nowrap" }}>
+        <Typography className={"shrink-0 whitespace-nowrap text-text-secondary"} variant={"body2"}>
           {`${group.effects.length} ${group.effects.length === 1 ? "effect" : "effects"}`}
         </Typography>
-      </Box>
+      </div>
 
       {group.effects.map((slot: ArchiveParticlesGroupEffect, index: number) => (
         <Typography
           key={`${index}-${slot.effect.name}`}
+          className={"block wrap-anywhere text-text-disabled"}
           variant={"caption"}
-          sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}
         >
           {[describeGroupEffectName(slot.effect), ...describeGroupEffectChildren(slot)].join(" · ")}
         </Typography>
       ))}
-    </Box>
+    </div>
   );
 }

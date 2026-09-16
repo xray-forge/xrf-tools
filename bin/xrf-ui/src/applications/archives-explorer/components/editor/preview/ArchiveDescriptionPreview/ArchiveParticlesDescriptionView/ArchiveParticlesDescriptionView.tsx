@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, useMemo, useState } from "react";
 
 import {
@@ -78,14 +78,14 @@ export function ArchiveParticlesDescriptionView({
         <ArchiveDescriptionRow label={"Version"} value={`${library.version}`} />
       </EditorPanelSection>
 
-      <Box sx={{ paddingX: 2, paddingTop: 1 }}>
+      <div className={"px-4 pt-2"}>
         <EditorFilterInput
           query={filter}
           placeholder={"Filter effects and groups"}
           ariaLabel={"Filter effects and groups"}
           onQueryChange={setFilter}
         />
-      </Box>
+      </div>
 
       <EditorPanelSection
         title={isFiltered ? `Effects (${matchedEffects.length} of ${effects.length})` : `Effects (${effects.length})`}
@@ -96,7 +96,7 @@ export function ArchiveParticlesDescriptionView({
             <ArchiveParticlesEffectRow key={`${index}-${effect.name}`} effect={effect} scope={scope} />
           ))
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"body2"}>
             No effect of this library is named that.
           </Typography>
         )}
@@ -111,7 +111,7 @@ export function ArchiveParticlesDescriptionView({
             <ArchiveParticlesGroupRow key={`${index}-${group.name}`} group={group} />
           ))
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"body2"}>
             No group of this library is named that.
           </Typography>
         )}

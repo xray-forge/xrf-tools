@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
@@ -46,7 +45,7 @@ export function ArchiveOriginsSection({
       view={view}
       isPreordered
     >
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 2 }}>
+      <div className={"mb-4 flex flex-wrap gap-4"}>
         <StatFigure
           label={"Loose files"}
           value={origins.loose.files.toLocaleString()}
@@ -57,7 +56,7 @@ export function ArchiveOriginsSection({
           value={origins.archived.files.toLocaleString()}
           hint={formatBytes(origins.archived.sizeReal)}
         />
-      </Box>
+      </div>
     </ArchiveBreakdownSection>
   );
 }

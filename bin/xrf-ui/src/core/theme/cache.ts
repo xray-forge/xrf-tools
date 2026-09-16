@@ -7,10 +7,12 @@ const INSERTION_POINT_NAME: string = "emotion-insertion-point";
 /**
  * Puts MUI's styles at the top of `<head>`, ahead of the application's own stylesheet.
  *
- * Emotion appends to `<head>` by default, which lands its rules after the bundled stylesheet and lets a
- * component's own styling beat a utility of equal specificity. MUI's `enableCssLayer` solves the same
- * problem with `@layer`, which cannot be used here: jsdom does not implement cascade layers, so every
- * rule inside one stops applying and each `getComputedStyle` assertion in the suite silently reads empty.
+ * Emotion appends to `<head>` by default, which lands its rules after the bundled stylesheet; a utility
+ * would then lose to a component's own `sx` on the same property. Both sides are unlayered - MUI's
+ * `enableCssLayer` cannot be used because jsdom does not implement cascade layers, and every
+ * `getComputedStyle` assertion in the suite would read empty - so source order is what decides, and this
+ * is what sets it. `core/theme/tailwind.css` keeps Tailwind's utilities out of a layer for the same
+ * reason: an unlayered rule outranks every layer however the layers are ordered.
  */
 function getInsertionPoint(): Optional<HTMLElement> {
   if (typeof document !== "object") {

@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveOverview } from "@/core/ipc/types/xrf-archive-stats";
@@ -26,7 +25,7 @@ export function ArchiveOverviewSection({
       title={"Overview"}
       description={"What this subject holds. Every breakdown below sums back to these totals."}
     >
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+      <div className={"flex flex-wrap gap-4"}>
         <StatFigure label={"Files"} value={overview.total.files.toLocaleString()} />
         <StatFigure label={"Unpacked"} value={formatBytes(overview.total.sizeReal)} />
         <StatFigure label={"Sources"} value={overview.sources.toLocaleString()} />
@@ -47,7 +46,7 @@ export function ArchiveOverviewSection({
             hint={"hold no bytes"}
           />
         ) : null}
-      </Box>
+      </div>
     </DetailSection>
   );
 }

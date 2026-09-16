@@ -1,5 +1,5 @@
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
-import { Alert, Box, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
+import { Alert, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 
@@ -7,7 +7,6 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { getWellFillSx } from "@/core/theme/surface";
-import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -93,7 +92,7 @@ export function ArchiveStatisticsDialog({
           ))}
         </List>
 
-        <Box sx={{ flexGrow: 1, minWidth: 0, overflowY: "auto", paddingX: DIALOG.paddingX, paddingY: 2 }}>
+        <div className={"min-w-0 grow overflow-y-auto px-dialog py-4"}>
           {archivesService.statistics.error ? (
             <Alert severity={"error"}>
               {`Could not describe this archive: ${archivesService.statistics.error.message}`}
@@ -101,13 +100,13 @@ export function ArchiveStatisticsDialog({
           ) : null}
 
           {archivesService.statistics.isLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", paddingY: 4 }}>
+            <div className={"flex justify-center py-8"}>
               <CircularProgress size={24} />
-            </Box>
+            </div>
           ) : null}
 
           {statistics && selected ? selected.render(statistics, view) : null}
-        </Box>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveDetailLibraryDescription } from "@/core/ipc/types/xrf-app";
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDetailLayerSection } from "./ArchiveDetailLayerSection";
 import { ArchiveDetailObjectsSection } from "./ArchiveDetailObjectsSection";
 
@@ -22,17 +21,10 @@ export function ArchiveDetailLibraryDescriptionView({
   description,
 }: IArchiveDetailLibraryDescriptionViewProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, overflowY: "auto" }}
-    >
-      <Box sx={{ maxWidth: LAYOUT.readingColumnWidth }}>
-        <ArchiveDetailLayerSection description={description} />
+    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+      <ArchiveDetailLayerSection description={description} />
 
-        <ArchiveDetailObjectsSection entries={description.entries} />
-      </Box>
-    </Box>
+      <ArchiveDetailObjectsSection entries={description.entries} />
+    </ArchiveDescriptionLayout>
   );
 }

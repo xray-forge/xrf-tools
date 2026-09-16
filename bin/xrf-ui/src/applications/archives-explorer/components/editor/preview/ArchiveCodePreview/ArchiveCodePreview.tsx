@@ -3,6 +3,7 @@ import { ReactElement, useMemo } from "react";
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { CodeView } from "@/core/syntax/components/CodeView";
 import { ESyntaxLanguage, getSyntaxLanguage } from "@/core/syntax/lib";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveCodePreviewProps extends BaseComponentProps {
@@ -21,11 +22,10 @@ export function ArchiveCodePreview({
     <CodeView
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("min-h-0 grow", className)}
       label={`Contents of ${file.name}`}
       content={file.content}
       language={language}
-      sx={{ flexGrow: 1, minHeight: 0 }}
     />
   );
 }

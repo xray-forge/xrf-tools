@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -23,23 +23,18 @@ export function ArchiveResolutionVolumeRow({
   rank,
 }: IArchiveResolutionVolumeRowProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "baseline", gap: 1, paddingY: 0.25 }}
-    >
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, width: 20 }}>
+    <div data-testid={dataTestId} id={id} className={cn("flex items-baseline gap-2 py-0.5", className)}>
+      <Typography className={"w-5 shrink-0 text-text-secondary"} variant={"caption"}>
         {rank}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+      <Typography className={"monospace min-w-0 grow wrap-anywhere"} variant={"caption"}>
         {volume.path}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+      <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
         {`${volume.entries.toLocaleString()} entries · ${formatBytes(volume.sizeReal)}`}
       </Typography>
-    </Box>
+    </div>
   );
 }

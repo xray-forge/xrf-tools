@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -133,11 +133,11 @@ export function ArchivesMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             No archive files found.
           </Typography>
-        </Box>
+        </div>
       )}
     </EditorSearchMenu>
   );

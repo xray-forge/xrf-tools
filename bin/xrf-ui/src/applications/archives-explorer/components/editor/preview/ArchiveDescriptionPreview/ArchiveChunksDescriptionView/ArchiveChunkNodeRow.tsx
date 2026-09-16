@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { Fragment, ReactElement } from "react";
 
 import { ArchiveChunkNode } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -25,34 +25,26 @@ export function ArchiveChunkNodeRow({
 }: IArchiveChunkNodeRowProps): ReactElement {
   return (
     <Fragment>
-      <Box
+      <div
         data-testid={dataTestId}
         id={id}
-        className={className}
-        sx={{
-          display: "flex",
-          gap: 1,
-          justifyContent: "space-between",
-          minWidth: 0,
-          paddingY: PANEL.propertyPaddingY,
-          paddingLeft: depth * 2,
-          lineHeight: PANEL.contentLineHeight,
-        }}
+        className={cn("flex min-w-0 justify-between gap-2 py-1.5 leading-panel", className)}
+        style={{ paddingLeft: depth * 16 }}
       >
-        <Typography variant={"body2"} sx={{ ...MONOSPACE, minWidth: 0, overflowWrap: "anywhere" }}>
+        <Typography className={"monospace min-w-0 wrap-anywhere"} variant={"body2"}>
           {formatChunkId(node.id)}
 
           {node.isCompressed ? (
-            <Typography component={"span"} variant={"caption"} sx={{ color: "text.disabled", marginLeft: 1 }}>
+            <Typography component={"span"} variant={"caption"} className={"ml-2 text-text-disabled"}>
               compressed
             </Typography>
           ) : null}
         </Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0, whiteSpace: "nowrap" }}>
+        <Typography className={"shrink-0 whitespace-nowrap text-text-secondary"} variant={"body2"}>
           {formatBytes(node.size)}
         </Typography>
-      </Box>
+      </div>
 
       {node.children.map((child: ArchiveChunkNode, index: number) => (
         <ArchiveChunkNodeRow key={`${index}-${child.id}`} node={child} depth={depth + 1} />

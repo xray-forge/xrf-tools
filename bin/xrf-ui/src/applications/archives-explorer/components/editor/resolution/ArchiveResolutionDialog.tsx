@@ -1,5 +1,5 @@
 import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { Alert, Box, CircularProgress, Dialog, DialogContent } from "@mui/material";
+import { Alert, CircularProgress, Dialog, DialogContent } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useId } from "react";
 
@@ -76,9 +76,9 @@ export function ArchiveResolutionDialog({
         ) : null}
 
         {archivesService.resolution.isLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", paddingY: 4 }}>
+          <div className={"flex justify-center py-8"}>
             <CircularProgress size={24} />
-          </Box>
+          </div>
         ) : null}
 
         {resolution ? (

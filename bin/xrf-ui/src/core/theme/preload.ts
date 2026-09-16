@@ -1,6 +1,6 @@
 import { createApplicationTheme } from "./creation";
 import { getWashImage } from "./surface";
-import { CODE, LAYOUT, RADIUS, TREE } from "./tokens";
+import { CODE, DIALOG, LAYOUT, PANEL, RADIUS, TREE } from "./tokens";
 
 /** Serializes one of MUI's generated style objects, which arrive as selector-keyed rule trees rather than as text. */
 function toCssRules(rule: Record<string, unknown>, selector?: string): string {
@@ -40,6 +40,9 @@ export function getPreloadThemeCss(): string {
       --xrf-header-height: ${LAYOUT.headerHeight}px;
       --xrf-radius-surface: ${RADIUS.md}px;
       --xrf-reading-column: ${LAYOUT.readingColumnWidth}px;
+      --xrf-reading-label: ${LAYOUT.readingLabelWidth}px;
+      --xrf-dialog-padding-x: ${DIALOG.paddingX * 8}px;
+      --xrf-panel-line-height: ${PANEL.contentLineHeight};
       --preload-title-bar-height: ${LAYOUT.titleBarHeight}px;
       --preload-status-bar-height: ${LAYOUT.statusBarHeight}px;
       --preload-rail-width: ${LAYOUT.railWidth}px;

@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { Fragment, ReactElement } from "react";
 
 import {
@@ -8,8 +8,8 @@ import {
   EArchiveLevelEntry,
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
 import { inline } from "@/lib/callbacks/inline";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { assertExhaustive } from "@/lib/types/exhaustive";
 
@@ -33,14 +33,9 @@ export function ArchiveLevelSurfaceRow({
   scope,
 }: IArchiveLevelSurfaceRowProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ minWidth: 0, paddingY: PANEL.propertyPaddingY, lineHeight: PANEL.contentLineHeight }}
-    >
-      <Box sx={{ display: "flex", gap: 1, justifyContent: "space-between", minWidth: 0 }}>
-        <Typography variant={"body2"} sx={{ ...MONOSPACE, minWidth: 0, overflowWrap: "anywhere" }}>
+    <div data-testid={dataTestId} id={id} className={cn("min-w-0 py-1.5 leading-panel", className)}>
+      <div className={"flex min-w-0 justify-between gap-2"}>
+        <Typography className={"monospace min-w-0 wrap-anywhere"} variant={"body2"}>
           {inline(() => {
             switch (surface.entry.kind) {
               case EArchiveLevelEntry.DRAWN:
@@ -55,12 +50,12 @@ export function ArchiveLevelSurfaceRow({
           })}
         </Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0, whiteSpace: "nowrap" }}>
+        <Typography className={"shrink-0 whitespace-nowrap text-text-secondary"} variant={"body2"}>
           {`#${surface.index}`}
         </Typography>
-      </Box>
+      </div>
 
-      <Typography variant={"caption"} sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}>
+      <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
         {inline(() => {
           switch (surface.entry.kind) {
             case EArchiveLevelEntry.SKIPPED:
@@ -97,6 +92,6 @@ export function ArchiveLevelSurfaceRow({
           }
         })}
       </Typography>
-    </Box>
+    </div>
   );
 }

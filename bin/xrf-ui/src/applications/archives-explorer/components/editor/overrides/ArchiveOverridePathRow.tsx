@@ -1,7 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -24,41 +24,28 @@ export function ArchiveOverridePathRow({
   onOpen,
 }: IArchiveOverridePathRowProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       data-kind={EArchiveOverrideRow.PATH}
       id={id}
-      className={className}
+      className={cn("flex cursor-pointer items-center gap-2 rounded-surface px-2 hover:bg-action-hover", className)}
+      style={{ height: ARCHIVE_OVERRIDE_ROW_HEIGHT }}
       role={"button"}
       tabIndex={-1}
       title={"Open this file"}
       onClick={() => onOpen(row.entry.name)}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        height: ARCHIVE_OVERRIDE_ROW_HEIGHT,
-        paddingX: 1,
-        cursor: "pointer",
-        borderRadius: 1,
-        "&:hover": { backgroundColor: "action.hover" },
-      }}
     >
-      <Typography
-        variant={"body2"}
-        sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
-        noWrap
-      >
+      <Typography className={"monospace min-w-0 grow overflow-hidden text-ellipsis"} variant={"body2"} noWrap={true}>
         {row.entry.name}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+      <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
         {`${row.copies} copies`}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, minWidth: 72, textAlign: "right" }}>
+      <Typography className={"min-w-18 shrink-0 text-right text-text-secondary"} variant={"caption"}>
         {`${formatBytes(row.hiddenSize)} hidden`}
       </Typography>
-    </Box>
+    </div>
   );
 }

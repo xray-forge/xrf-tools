@@ -3,6 +3,7 @@ import { Button, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchivePreviewErrorProps extends BaseComponentProps {
@@ -18,12 +19,12 @@ export function ArchivePreviewError({
   onRetry,
 }: IArchivePreviewErrorProps): ReactElement {
   return (
-    <CenteredColumn data-testid={dataTestId} id={id} className={className} sx={{ padding: 3, textAlign: "center" }}>
+    <CenteredColumn data-testid={dataTestId} id={id} className={cn("p-6 text-center", className)}>
       <ErrorOutlineIcon color={"error"} sx={{ fontSize: 40 }} />
 
       <Typography variant={"subtitle1"}>Could not read this file</Typography>
 
-      <Typography variant={"body2"} sx={{ maxWidth: 520, color: "text.secondary", whiteSpace: "pre-line" }}>
+      <Typography variant={"body2"} className={"max-w-130 whitespace-pre-line text-text-secondary"}>
         {error.message}
       </Typography>
 

@@ -1,7 +1,7 @@
 import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
-import { Alert, Box } from "@mui/material";
+import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
@@ -143,9 +143,9 @@ export function ArchivesEditor(): ReactElement {
         job || closeError ? (
           <>
             {job ? (
-              <Box sx={{ paddingX: 2, paddingY: 1 }}>
+              <div className={"px-4 py-2"}>
                 <JobProgressView job={job} onCancel={onCancelExtraction} />
-              </Box>
+              </div>
             ) : null}
 
             {closeError ? (

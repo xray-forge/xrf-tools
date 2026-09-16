@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveUnreadSource } from "@/core/ipc/types/xrf-app";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveResolutionUnreadRowProps extends BaseComponentProps {
@@ -19,23 +19,18 @@ export function ArchiveResolutionUnreadRow({
   source,
 }: IArchiveResolutionUnreadRowProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ paddingY: 1, borderTop: 1, borderColor: "divider" }}
-    >
-      <Typography variant={"body2"} sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>
+    <div data-testid={dataTestId} id={id} className={cn("border-t border-divider py-2", className)}>
+      <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
         {source.origin}
       </Typography>
 
-      <Typography variant={"body2"} sx={{ ...MONOSPACE, color: "text.secondary", overflowWrap: "anywhere" }}>
+      <Typography className={"monospace wrap-anywhere text-text-secondary"} variant={"body2"}>
         {source.path}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ color: "warning.main", display: "block", overflowWrap: "anywhere" }}>
+      <Typography className={"block wrap-anywhere text-warning"} variant={"caption"}>
         {source.reason}
       </Typography>
-    </Box>
+    </div>
   );
 }

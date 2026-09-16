@@ -1,11 +1,11 @@
 import { default as FolderIcon } from "@mui/icons-material/FolderOutlined";
 import { default as ArchiveIcon } from "@mui/icons-material/Inventory2Outlined";
-import { Box, Chip, chipClasses, Typography } from "@mui/material";
+import { Chip, chipClasses, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
 import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";
@@ -29,18 +29,13 @@ export function ArchiveResolutionSourceRow({
   const isLoose: boolean = source.kind === EXraySourceKind.DIRECTORY;
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", gap: 1.5, paddingY: 1, borderTop: 1, borderColor: "divider" }}
-    >
-      <Typography variant={"body2"} sx={{ color: "text.secondary", flexShrink: 0, width: 24, textAlign: "right" }}>
+    <div data-testid={dataTestId} id={id} className={cn("flex gap-3 border-t border-divider py-2", className)}>
+      <Typography className={"w-6 shrink-0 text-right text-text-secondary"} variant={"body2"}>
         {rank}
       </Typography>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, flexGrow: 1, minWidth: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+      <div className={"flex min-w-0 grow flex-col gap-1"}>
+        <div className={"flex flex-wrap items-center gap-2"}>
           <Chip
             size={"small"}
             variant={"outlined"}
@@ -51,34 +46,34 @@ export function ArchiveResolutionSourceRow({
           />
 
           {source.origin ? (
-            <Typography variant={"body2"} sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>
+            <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
               {source.origin}
             </Typography>
           ) : null}
 
           {source.base ? (
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               {`mounted at ${source.base}`}
             </Typography>
           ) : null}
-        </Box>
+        </div>
 
-        <Typography variant={"body2"} sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>
+        <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
           {source.path}
         </Typography>
 
-        <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block" }}>
+        <Typography className={"block text-text-secondary"} variant={"caption"}>
           {`${source.entries.toLocaleString()} entries · reached through ${source.step}`}
         </Typography>
 
         {source.volumes.length ? (
-          <Box sx={{ marginTop: 0.5, paddingLeft: 1, borderLeft: 1, borderColor: "divider" }}>
+          <div className={"mt-1 border-l border-divider pl-2"}>
             {source.volumes.map((volume: ArchiveResolutionVolume, index: number) => (
               <ArchiveResolutionVolumeRow key={volume.path} volume={volume} rank={index + 1} />
             ))}
-          </Box>
+          </div>
         ) : null}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
