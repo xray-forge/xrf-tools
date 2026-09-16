@@ -24,10 +24,10 @@ function Toggle(): ReactElement {
 }
 
 describe("useEditorStatus", () => {
-  it("shows a resting state when no editor publishes anything", () => {
-    const { getByText } = renderWithProviders(<ApplicationStatusBar />);
+  it("renders nothing when no editor publishes anything", () => {
+    const { getByTestId } = renderWithProviders(<ApplicationStatusBar />);
 
-    expect(getByText("Ready")).toBeInTheDocument();
+    expect(getByTestId("application-status-bar")).toBeEmptyDOMElement();
   });
 
   it("renders published segments verbatim", async () => {
@@ -54,7 +54,7 @@ describe("useEditorStatus", () => {
   });
 
   it("clears the status when the publishing editor unmounts", async () => {
-    const { findByText, getByText } = renderWithProviders(
+    const { findByText, getByTestId, getByText } = renderWithProviders(
       <>
         <Toggle />
         <ApplicationStatusBar />
@@ -65,6 +65,6 @@ describe("useEditorStatus", () => {
 
     await userEvent.click(getByText("unmount"));
 
-    expect(getByText("Ready")).toBeInTheDocument();
+    expect(getByTestId("application-status-bar")).toBeEmptyDOMElement();
   });
 });

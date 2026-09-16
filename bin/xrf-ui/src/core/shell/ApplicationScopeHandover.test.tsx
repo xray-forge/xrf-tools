@@ -80,7 +80,7 @@ describe("panel handover between applications", () => {
     // The registry is cleared by an effect, but the container is swapped during render. For the commit
     // in between, the frame held the outgoing application's panels and the incoming one's container -
     // so a panel that injects asked a container that never bound its service.
-    const { getByText, findByText, queryByText } = await act(async () =>
+    const { getByTestId, getByText, findByText, queryByText } = await act(async () =>
       renderWithProviders(
         <ApplicationShell>
           <Routes>
@@ -100,6 +100,6 @@ describe("panel handover between applications", () => {
     expect(await findByText("spawn editor")).toBeInTheDocument();
     expect(queryByText(/archives panel/)).not.toBeInTheDocument();
     expect(queryByText("Archive project status")).not.toBeInTheDocument();
-    expect(getByText("Ready")).toBeInTheDocument();
+    expect(getByTestId("application-status-bar")).toBeEmptyDOMElement();
   });
 });
