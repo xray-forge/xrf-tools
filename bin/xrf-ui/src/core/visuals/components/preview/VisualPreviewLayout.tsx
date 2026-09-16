@@ -1,6 +1,6 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { Box, circularProgressClasses, typographyClasses } from "@mui/material";
-import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
+import { ReactElement, ReactNode, useMemo, useState } from "react";
 import { Texture } from "three";
 
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -42,9 +42,6 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   hiddenBones?: ReadonlySet<number>;
   /**
    * Draws the viewport, for a surface that poses the model from something other than a single picked motion.
-   *
-   * A render prop rather than a node, because the model, the view toggles, the detail level and the camera reset token
-   * are this layout's to own: a caller passing a finished element would have to be handed all four back.
    */
   renderViewport?: (props: IVisualPreviewViewportProps) => ReactNode;
   /** Drawn under the viewport, at whatever height it asks for. */
@@ -93,10 +90,7 @@ export function VisualPreviewLayout({
   onDeselect = null,
 }: IVisualPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<IVisualPreviewViewOptions>(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS);
-  const [cameraResetToken, setCameraResetToken] = useState(0);
   const [detail, setDetail] = useState(0);
-
-  const onResetCamera = useCallback(() => setCameraResetToken((it) => it + 1), []);
 
   /**
    * Detail is a fraction of each submesh's collapse chain, so it needs no clamping and survives a model change
@@ -153,7 +147,6 @@ export function VisualPreviewLayout({
           detail={detail}
           onChangeOptions={setOptions}
           onChangeDetail={setDetail}
-          onResetCamera={onResetCamera}
           onBack={onBack}
           onBrowse={onBrowse}
         />
@@ -178,12 +171,11 @@ export function VisualPreviewLayout({
           sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
         >
           {renderViewport ? (
-            renderViewport({ bumps, cameraResetToken, detail, hiddenBones, highlightedJoint, model, options, textures })
+            renderViewport({ bumps, detail, hiddenBones, highlightedJoint, model, options, textures })
           ) : (
             <VisualPreviewMotionViewport
               model={model}
               options={options}
-              cameraResetToken={cameraResetToken}
               detail={detail}
               highlightedJoint={highlightedJoint}
               hiddenBones={hiddenBones}

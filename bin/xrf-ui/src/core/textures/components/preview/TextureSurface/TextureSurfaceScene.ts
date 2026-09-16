@@ -19,6 +19,7 @@ import {
   listTextureSurfaceTextures,
 } from "@/core/textures/lib/texture-surface";
 import { applyXrayBumpShading, IVisualBumpShading } from "@/core/visuals/lib/visual-bump";
+import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 import { createTextureSurfaceGeometry, toLightPosition } from "./TextureSurfaceScene.utils";
@@ -221,6 +222,28 @@ export class TextureSurfaceScene {
     };
 
     this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
+  }
+
+  /**
+   * Moves the camera along the line it is looking down, by one notch of the shared step.
+   *
+   * @param step - Multiplier on the distance to what the camera orbits; above one moves away.
+   */
+  public dolly(step: number): void {
+    const { x, y, z } = this.camera.position;
+    const target = this.controls.target;
+
+    this.camera.position.set(
+      ...toDolliedPosition(
+        [x, y, z],
+        [target.x, target.y, target.z],
+        step,
+        this.controls.minDistance,
+        this.controls.maxDistance
+      )
+    );
+
+    this.controls.update();
   }
 
   /** Puts the camera and the light back where they started. */

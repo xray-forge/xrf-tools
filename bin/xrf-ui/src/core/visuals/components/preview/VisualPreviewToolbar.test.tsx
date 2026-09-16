@@ -22,7 +22,6 @@ function renderToolbar(
       hasAlpha={true}
       onChangeOptions={jest.fn()}
       onChangeDetail={onChangeDetail}
-      onResetCamera={jest.fn()}
     />
   );
 }
@@ -41,7 +40,6 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
         hasAlpha={true}
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 
@@ -60,7 +58,6 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 
@@ -84,7 +81,6 @@ describe("VisualPreviewToolbar bump toggle", () => {
         hasAlpha={true}
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 
@@ -103,7 +99,6 @@ describe("VisualPreviewToolbar bump toggle", () => {
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 
@@ -128,7 +123,6 @@ describe("VisualPreviewToolbar alpha toggle", () => {
         hasAlpha={false}
         onChangeOptions={jest.fn()}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 
@@ -148,7 +142,6 @@ describe("VisualPreviewToolbar alpha toggle", () => {
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
         onChangeDetail={jest.fn()}
-        onResetCamera={jest.fn()}
       />
     );
 

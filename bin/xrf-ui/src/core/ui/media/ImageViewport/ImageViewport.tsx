@@ -14,6 +14,7 @@ import {
 } from "react";
 
 import { IMAGE_CHECKERBOARD, toCheckerboardSizing } from "@/core/ui/media/media.styles";
+import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import {
   IPanZoomCamera,
   IPanZoomPoint,
@@ -32,8 +33,6 @@ import {
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { IElementSize, useElementSize } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
-
-import { ImageViewportControls } from "./ImageViewportControls";
 
 /** Stands in for the viewport until it has been measured, when there is nowhere to place anything anyway. */
 const UNMEASURED: IPanZoomSize = { width: 0, height: 0 };
@@ -287,13 +286,7 @@ export function ImageViewport({
         ) : null}
 
         {hasControls ? (
-          <ImageViewportControls
-            scale={scale}
-            onZoomIn={onZoomIn}
-            onZoomOut={onZoomOut}
-            onActualSize={onActualSize}
-            onFit={onFit}
-          />
+          <ViewportControls zoom={{ scale, onActualSize }} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onFit} />
         ) : null}
       </Box>
     </Box>

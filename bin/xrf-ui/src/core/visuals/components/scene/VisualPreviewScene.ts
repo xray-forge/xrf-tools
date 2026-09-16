@@ -24,6 +24,7 @@ import { VisualPreviewModel } from "@/core/visuals/components/scene/VisualPrevie
 import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -125,6 +126,10 @@ export class VisualPreviewScene {
    */
   private hasFramed: boolean = false;
   /**
+   * Whether the last fit was measured against a viewport that had no size yet.
+   */
+  private isFitUnmeasured: boolean = false;
+  /**
    * The pose and the hidden bones last asked for, kept because they outlive any one model.
    *
    * Both are stated against a skeleton rather than against one model's geometry, so a replacement wears them straight
@@ -185,7 +190,7 @@ export class VisualPreviewScene {
    * shows and held for every one after it: stepping through a tree is comparing models, and a refit per model throws
    * away the angle and the distance the comparison is being made from. Held across the empty viewport between two
    * models as well, since a load clears the screen before the replacement lands. A model of a very different size can
-   * end up out of frame that way, which is what the toolbar's reset is for.
+   * end up out of frame that way, which is what the viewport's reset is for.
    *
    * @param views - Model views to display, or `null` to clear the scene.
    */
@@ -350,6 +355,28 @@ export class VisualPreviewScene {
   }
 
   /**
+   * Moves the camera along the line it is looking down, by one notch of the shared step.
+   *
+   * @param step - Multiplier on the distance to what the camera orbits; above one moves away.
+   */
+  public dolly(step: number): void {
+    const { x, y, z } = this.camera.position;
+    const target = this.controls.target;
+
+    this.camera.position.set(
+      ...toDolliedPosition(
+        [x, y, z],
+        [target.x, target.y, target.z],
+        step,
+        this.controls.minDistance,
+        this.controls.maxDistance
+      )
+    );
+
+    this.controls.update();
+  }
+
+  /**
    * Frame the model from its measured extent.
    *
    * A constant distance cannot serve this viewer: loose visuals run from a pistol a few centimetres across to an actor
@@ -359,6 +386,7 @@ export class VisualPreviewScene {
     const { cameraFieldOfView, cameraFitMargin, cameraDirection } = this.config;
 
     this.hasFramed = true;
+    this.isFitUnmeasured = !this.renderedWidth || !this.renderedHeight;
 
     const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
     const [x, y, z] = this.views?.fit.center ?? [0, 0, 0];
@@ -475,6 +503,10 @@ export class VisualPreviewScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+
+    if (this.isFitUnmeasured) {
+      this.resetCamera();
+    }
   }
 
   /**

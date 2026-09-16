@@ -22,7 +22,6 @@ function renderToolbar(
       options={options}
       hasBump={hasBump}
       onChangeOptions={onChangeOptions}
-      onResetCamera={jest.fn()}
       onBack={jest.fn()}
     />
   );
@@ -35,7 +34,6 @@ describe("TextureWorkspaceToolbar", () => {
     expect((getByLabelText("Body") as HTMLButtonElement).disabled).toBe(true);
     expect((getByLabelText("Light") as HTMLButtonElement).disabled).toBe(true);
     expect((getByLabelText("Bump") as HTMLButtonElement).disabled).toBe(true);
-    expect((getByLabelText("Reset camera") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("switches between the picture and the lit body from one control", () => {

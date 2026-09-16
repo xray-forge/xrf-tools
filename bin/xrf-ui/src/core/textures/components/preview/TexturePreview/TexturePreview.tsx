@@ -35,7 +35,6 @@ interface ITexturePreviewProps extends BaseComponentProps {
   /** What the toolbar is asking for. Defaulted, so the preview stands on its own outside the editor. */
   options?: ITexturePreviewOptions;
   /** Changes whenever the toolbar asks the lit body to put its camera and light back. */
-  resetToken?: number;
   /**
    * Another encoding of this texture to show beside it, or null to show the file alone.
    *
@@ -53,7 +52,6 @@ export function TexturePreview({
   id,
   className,
   options = DEFAULT_TEXTURE_PREVIEW_OPTIONS,
-  resetToken = 0,
   comparison = null,
 }: ITexturePreviewProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
@@ -171,11 +169,7 @@ export function TexturePreview({
       // The lit surface is a transparent canvas and needs the frame's checkerboard; a gap needs no ground at all.
       isCheckered={!gap}
     >
-      {gap ? (
-        <EmptyState title={gap.title} description={gap.description} />
-      ) : (
-        <TextureSurface options={options} resetToken={resetToken} />
-      )}
+      {gap ? <EmptyState title={gap.title} description={gap.description} /> : <TextureSurface options={options} />}
     </TexturePreviewFrame>
   );
 }

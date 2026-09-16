@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useState } from "react";
+import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
@@ -35,8 +35,6 @@ export function ArchiveModelPreview({
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const visual: AsyncState<Nullable<IOpenVisual>> = loadService.visual;
 
-  const [cameraResetToken, setCameraResetToken] = useState(0);
-
   useEffect(() => {
     if (subject) {
       void loadService.load({ kind: "asset", logicalPath: name }, getSubjectRoots(subject));
@@ -44,15 +42,6 @@ export function ArchiveModelPreview({
 
     return () => loadService.clear();
   }, [loadService, name, subject]);
-
-  // Refit once the model is on screen. The scene fits its camera when the geometry lands, but this viewport mounts with
-  // the selection rather than with the application, so at that moment the panel is still taking its width - and a fit
-  // measured against the wrong aspect leaves the model filling the frame.
-  useEffect(() => {
-    if (visual.value) {
-      setCameraResetToken((it) => it + 1);
-    }
-  }, [visual.value]);
 
   return (
     <Box
@@ -65,7 +54,6 @@ export function ArchiveModelPreview({
         detail={0}
         model={visual.value?.views ?? null}
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        cameraResetToken={cameraResetToken}
         textures={loadService.textures}
         bumps={loadService.bumps}
       />

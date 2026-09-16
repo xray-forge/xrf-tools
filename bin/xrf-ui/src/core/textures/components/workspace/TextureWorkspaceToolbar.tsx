@@ -1,11 +1,9 @@
-import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocusStrong";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { Divider } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
@@ -22,7 +20,6 @@ interface ITextureWorkspaceToolbarProps {
   /** Whether the open texture declares a bump pair, which is what makes shading with one worth offering. */
   hasBump: boolean;
   onChangeOptions: (options: ITexturePreviewOptions) => void;
-  onResetCamera: () => void;
   /** Closes the open texture and returns to the tree. */
   onBack: () => void;
 }
@@ -35,7 +32,6 @@ export function TextureWorkspaceToolbar({
   options,
   hasBump,
   onChangeOptions,
-  onResetCamera,
   onBack,
 }: ITextureWorkspaceToolbarProps): ReactElement {
   const isSurface: boolean = options.mode === ETexturePreviewMode.SURFACE;
@@ -75,14 +71,6 @@ export function TextureWorkspaceToolbar({
             isDisabled={!isSurface || !hasBump || !options.isLit}
             unavailableTitle={describeUnavailableBump(isSurface, hasBump, options.isLit)}
             onToggle={() => onChangeOptions({ ...options, isBumped: !options.isBumped })}
-          />
-
-          <EditorIconAction
-            label={"Reset camera"}
-            description={isSurface ? "Reset camera and light" : SURFACE_ONLY}
-            icon={<CenterFocusStrongIcon />}
-            isDisabled={!isSurface}
-            onClick={onResetCamera}
           />
         </>
       }

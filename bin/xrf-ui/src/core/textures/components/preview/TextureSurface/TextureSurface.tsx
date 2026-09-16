@@ -12,7 +12,9 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 import { TextureSurfaceScene } from "./TextureSurfaceScene";
@@ -37,8 +39,6 @@ interface IDragOrigin {
 
 interface ITextureSurfaceProps extends BaseComponentProps {
   options: ITextureSurfaceOptions;
-  /** Changes whenever the toolbar asks for the camera and the light to go back where they started. */
-  resetToken: number;
 }
 
 /**
@@ -49,7 +49,6 @@ export function TextureSurface({
   id,
   className,
   options,
-  resetToken,
 }: ITextureSurfaceProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
@@ -111,16 +110,15 @@ export function TextureSurface({
     };
   }, []);
 
+  const onZoomIn = useCallback((): void => sceneRef.current?.dolly(1 / DOLLY_STEP), []);
+
+  const onZoomOut = useCallback((): void => sceneRef.current?.dolly(DOLLY_STEP), []);
+
+  const onReset = useCallback((): void => sceneRef.current?.reset(), []);
+
   useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
 
   useEffect(() => sceneRef.current?.setOptions(options), [options]);
-
-  useEffect(() => {
-    // Skipped at zero, which is the token before anyone has asked: a fresh scene is already where reset would put it.
-    if (resetToken) {
-      sceneRef.current?.reset();
-    }
-  }, [resetToken]);
 
   return (
     <Box
@@ -157,6 +155,10 @@ export function TextureSurface({
           />
         </Box>
       ) : null}
+
+      {isUploading || isUntextured ? null : (
+        <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
+      )}
     </Box>
   );
 }

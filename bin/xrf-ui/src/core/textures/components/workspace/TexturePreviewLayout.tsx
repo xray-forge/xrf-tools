@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactElement, ReactNode, useEffect, useState } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -59,11 +59,8 @@ export function TexturePreviewLayout({
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
 
   const [previewOptions, setPreviewOptions] = useState<ITexturePreviewOptions>(DEFAULT_TEXTURE_PREVIEW_OPTIONS);
-  const [cameraResetToken, setCameraResetToken] = useState<number>(0);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
-
-  const onResetCamera = useCallback(() => setCameraResetToken((it: number) => it + 1), []);
 
   // Uploaded for whichever texture is open rather than by whatever happens to be drawing it, because the lit surface
   // and the channel panel read the same pair and either of the two can be the only one on screen.
@@ -92,7 +89,6 @@ export function TexturePreviewLayout({
           options={previewOptions}
           hasBump={Boolean(description?.material?.bump)}
           onChangeOptions={setPreviewOptions}
-          onResetCamera={onResetCamera}
           onBack={onBack}
         />
       }
@@ -111,7 +107,7 @@ export function TexturePreviewLayout({
         ) : null}
 
         <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
-          <TexturePreview options={previewOptions} resetToken={cameraResetToken} comparison={comparison} />
+          <TexturePreview options={previewOptions} comparison={comparison} />
         </Box>
       </Box>
     </EditorLayout>

@@ -1,10 +1,12 @@
 import { Box } from "@mui/material";
-import { ReactElement, useEffect, useRef } from "react";
+import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { Texture } from "three";
 
+import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/components/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 /** Stable, so a viewport given no hidden bones does not re-apply an empty set on every render. */
@@ -13,7 +15,6 @@ const EMPTY_BONES: ReadonlySet<number> = new Set();
 export interface IVisualPreviewViewportProps {
   model: Nullable<IVisualModelViews>;
   options: IVisualPreviewViewOptions;
-  cameraResetToken: number;
   /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
   detail: number;
   /** Baked bone transforms of a playing motion, or null when the model should show its bind pose. */
@@ -44,7 +45,6 @@ export interface IVisualPreviewViewportProps {
 export function VisualPreviewViewport({
   model,
   options,
-  cameraResetToken,
   detail,
   highlightedJoint = null,
   hiddenBones,
@@ -140,9 +140,17 @@ export function VisualPreviewViewport({
     }
   }, [bumps, model]);
 
-  useEffect(() => {
-    sceneRef.current?.resetCamera();
-  }, [cameraResetToken]);
+  const onZoomIn = useCallback((): void => sceneRef.current?.dolly(1 / DOLLY_STEP), []);
 
-  return <Box ref={containerRef} sx={{ width: "100%", height: "100%", overflow: "hidden" }} />;
+  const onZoomOut = useCallback((): void => sceneRef.current?.dolly(DOLLY_STEP), []);
+
+  const onReset = useCallback((): void => sceneRef.current?.resetCamera(), []);
+
+  return (
+    <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
+      <Box ref={containerRef} sx={{ width: "100%", height: "100%", overflow: "hidden" }} />
+
+      {model ? <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} /> : null}
+    </Box>
+  );
 }

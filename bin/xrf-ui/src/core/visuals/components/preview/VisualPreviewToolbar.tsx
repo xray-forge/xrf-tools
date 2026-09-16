@@ -1,5 +1,4 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocusStrong";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
@@ -33,7 +32,6 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   hasDetailLevels: boolean;
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
   onChangeDetail: (detail: number) => void;
-  onResetCamera: () => void;
   onBack?: () => void;
   onBrowse?: () => void;
 }
@@ -54,7 +52,6 @@ export function VisualPreviewToolbar({
   hasAlpha,
   onChangeOptions,
   onChangeDetail,
-  onResetCamera,
   onBack,
   onBrowse,
 }: IVisualPreviewToolbarProps): ReactElement {
@@ -146,13 +143,6 @@ export function VisualPreviewToolbar({
             icon={<ThreeDRotationIcon />}
             isOn={options.isAxesVisible}
             onToggle={() => onToggle("isAxesVisible")}
-          />
-
-          <EditorIconAction
-            label={"Reset camera"}
-            description={"Reset camera"}
-            icon={<CenterFocusStrongIcon />}
-            onClick={onResetCamera}
           />
         </>
       }

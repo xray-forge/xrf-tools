@@ -149,9 +149,21 @@ describe("ImageViewport", () => {
     const { render, viewport } = renderViewport();
 
     drag(viewport, 300, 300);
-    fireEvent.click(render.getByLabelText("Fit to view"));
+    fireEvent.click(render.getByLabelText("Reset view"));
 
     expect(readTransform(render)).toEqual(FITTED);
+  });
+
+  it("returns to one to one through the magnification it reports", () => {
+    const { render, viewport } = renderViewport();
+
+    drag(viewport, 300, 300);
+    fireEvent.click(render.getByLabelText("Actual size"));
+
+    // The readout is the control: one button resets, and the only other thing a person asks a picture for is its own
+    // pixels, which is what the number already names.
+    expect(readTransform(render).scale).toBe(1);
+    expect(render.getByLabelText("Actual size")).toHaveTextContent("100%");
   });
 
   it("places the picture without restyling it", () => {
