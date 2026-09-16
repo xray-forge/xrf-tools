@@ -1,4 +1,5 @@
 import "./tailwind.css";
+import "./base.css";
 import "./syntax.css";
 
 export * from "./surface";
