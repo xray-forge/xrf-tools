@@ -5,7 +5,7 @@ use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
-use xrf_archive::{ArchiveDescriptor, ArchiveProject};
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -13,6 +13,7 @@ use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
 use crate::source::xray_asset_source::label_from_path;
 use crate::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XraySourceKind,
+  XraySourceShadowedCopy,
 };
 
 /// Mounts an archive volume set as a read-only asset source.
@@ -33,8 +34,27 @@ pub struct XrayArchiveSource {
   /// The key is this source's own value: a normalized logical path exists nowhere else. The value is the archive's
   /// name for the same entry, shared with the descriptor that owns it rather than cloned, since it is only ever used
   /// to address that descriptor again.
-  entries: HashMap<String, Arc<str>>,
+  entries: HashMap<String, IndexedEntry>,
   collisions: Vec<XrayPathCollision>,
+  /// Copies a later volume overrode, in engine-path order.
+  shadowed: Vec<XraySourceShadowedCopy>,
+}
+
+/// What one engine identity resolves to inside a volume set.
+struct IndexedEntry {
+  /// The archive's own name for the entry, shared with the descriptor that owns it rather than cloned.
+  name: Arc<str>,
+  /// Volume holding it, as a position in [`ArchiveProject::archives`].
+  volume: u32,
+}
+
+impl IndexedEntry {
+  fn of(descriptor: &ArchiveFileDescriptor, name: &Arc<str>) -> Self {
+    Self {
+      name: Arc::clone(name),
+      volume: descriptor.volume,
+    }
+  }
 }
 
 impl XrayArchiveSource {
@@ -71,96 +91,174 @@ impl XrayArchiveSource {
   /// Separate from [`Self::read`] because a case-only collision inside one volume cannot exist on a case-insensitive
   /// filesystem, so the ordering rule below is only reachable from a name table built in a test.
   fn from_project(project: ArchiveProject, label: String) -> Self {
-    let (entries, collisions) = Self::index(&project);
+    let (entries, collisions, shadowed) = Self::index(&project);
 
     Self {
       collisions,
       entries,
       label,
       project,
+      shadowed,
     }
   }
 
-  /// Folds authored names to engine identities, recording the entries the fold leaves unreachable.
+  /// Folds authored names to engine identities, ranking every copy of one identity and classifying what lost.
   ///
   /// **Last wins**, as `CLocatorAPI::Register` resolves it: it lower-cases a name before its name-table lookup and
   /// overwrites on a hit, so the later registration answers (`xray-16/src/xrCore/LocatorAPI.cpp`). Later here means the
-  /// later volume in [`ArchiveProject`] order, which is the precedence it already applies to exact duplicates, so a patch
-  /// volume overrides `Textures\A.DDS` exactly as it overrides `textures\a.dds`.
+  /// later volume in [`ArchiveProject`] order, so a patch volume overrides `Textures\A.DDS` exactly as it overrides
+  /// `textures\a.dds`.
   ///
-  /// Within one volume the engine order is the header chunk order, and the authored name stands in for it. That is the
-  /// same order for anything `xrCompress` or `ArchivePacker` wrote, since both emit entries sorted by name.
+  /// A loser is an **override** when the copy ahead of it sits in another volume, and **unreachable** only when that
+  /// copy sits in the same one — where no volume order separated them, which is what `XrayPathCollision` means by
+  /// having no priority to appeal to. Within one volume the engine order is the header chunk order and the authored
+  /// name stands in for it, which is why that arm is the one reported as an authoring error.
   ///
-  /// A collision is recorded rather than refused: a person has to be able to open a volume set to learn what is wrong
-  /// with it, and the engine does not refuse it either.
+  /// Neither is refused: a person has to be able to open a volume set to learn what is wrong with it, and the engine
+  /// does not refuse it either.
   // todo: Header order is dropped by the reader, so the within-volume rule is an approximation.
-  fn index(project: &ArchiveProject) -> (HashMap<String, Arc<str>>, Vec<XrayPathCollision>) {
-    let mut entries: HashMap<String, Arc<str>> = HashMap::with_capacity(project.files.len());
-    let mut collisions: Vec<XrayPathCollision> = Vec::new();
+  fn index(
+    project: &ArchiveProject,
+  ) -> (
+    HashMap<String, IndexedEntry>,
+    Vec<XrayPathCollision>,
+    Vec<XraySourceShadowedCopy>,
+  ) {
+    let mut entries: HashMap<String, IndexedEntry> = HashMap::with_capacity(project.files.len());
+    // Losers only, so an uncontested identity - which is nearly all of them - allocates nothing here at all.
+    let mut losers: Vec<(String, &ArchiveFileDescriptor)> = Vec::new();
 
     for (name, descriptor) in &project.files {
       if descriptor.is_directory {
         continue;
       }
 
-      let Ok(normalized) = normalize_logical(name).inspect_err(|error| {
-        log::warn!("Skipping archive entry '{name}': {error}");
-      }) else {
+      let Some(normalized) = Self::to_identity(descriptor) else {
         continue;
       };
 
       match entries.entry(normalized) {
         Entry::Vacant(slot) => {
-          slot.insert(Arc::clone(name));
+          slot.insert(IndexedEntry::of(descriptor, name));
         }
         Entry::Occupied(mut slot) => {
-          let incumbent: Arc<str> = Arc::clone(slot.get());
-          let logical_path: XrayLogicalPath = XrayLogicalPath::from_normalized(slot.key().clone());
-          let is_replacing: bool = (descriptor.volume as usize, &**name) > Self::get_precedence(project, &incumbent);
+          let incumbent: &ArchiveFileDescriptor = project
+            .files
+            .get(&slot.get().name)
+            .expect("an indexed name belongs to the table it was read from");
 
-          let (kept, unreachable) = if is_replacing {
-            (&**name, &*incumbent)
+          if Self::to_precedence(descriptor) > Self::to_precedence(incumbent) {
+            losers.push((slot.key().clone(), incumbent));
+            slot.insert(IndexedEntry::of(descriptor, name));
           } else {
-            (&*incumbent, &**name)
-          };
-
-          collisions.push(XrayPathCollision {
-            kept: Self::get_new_site(project, kept),
-            logical_path,
-            unreachable: Self::get_new_site(project, unreachable),
-          });
-
-          if is_replacing {
-            slot.insert(Arc::clone(name));
+            losers.push((slot.key().clone(), descriptor));
           }
         }
       }
     }
 
-    (entries, collisions)
+    // What the name-table merge overwrote. Each is outranked by the entry that displaced it - same authored name, later
+    // volume - so one can never win its identity, and every one of them is a loser without being compared.
+    for descriptor in &project.shadowed {
+      if descriptor.is_directory {
+        continue;
+      }
+
+      if let Some(normalized) = Self::to_identity(descriptor) {
+        losers.push((normalized, descriptor));
+      }
+    }
+
+    let (collisions, shadowed) = Self::classify(project, &entries, losers);
+
+    (entries, collisions, shadowed)
   }
 
-  /// What decides between two entries folding to one identity: volume order first, then the authored name.
-  ///
-  /// An entry records the volume it came from as a position in merge order, so the volume rank this compares on is the
-  /// entry's own field rather than something recovered by matching paths back to the volume list.
-  fn get_precedence<'a>(project: &ArchiveProject, name: &'a str) -> (usize, &'a str) {
-    let rank: usize = project
-      .files
-      .get(name)
-      .map_or(usize::default(), |descriptor| descriptor.volume as usize);
+  /// Sorts each contested identity into the copies a patch buried and the copies nothing can reach.
+  fn classify(
+    project: &ArchiveProject,
+    entries: &HashMap<String, IndexedEntry>,
+    losers: Vec<(String, &ArchiveFileDescriptor)>,
+  ) -> (Vec<XrayPathCollision>, Vec<XraySourceShadowedCopy>) {
+    let mut collisions: Vec<XrayPathCollision> = Vec::new();
+    let mut shadowed: Vec<XraySourceShadowedCopy> = Vec::new();
+    let mut contested: HashMap<String, Vec<&ArchiveFileDescriptor>> = HashMap::new();
 
-    (rank, name)
+    for (logical_path, descriptor) in losers {
+      contested.entry(logical_path).or_default().push(descriptor);
+    }
+
+    for (logical_path, mut behind) in contested {
+      let Some(winner) = entries
+        .get(&logical_path)
+        .and_then(|entry| project.files.get(&entry.name))
+      else {
+        continue;
+      };
+
+      // Highest precedence first, so each copy is judged against the one directly ahead of it. The winner outranks
+      // every one of them by construction, so it leads without being sorted in.
+      behind.sort_by(|first, second| Self::to_precedence(second).cmp(&Self::to_precedence(first)));
+
+      for (index, loser) in behind.iter().enumerate() {
+        let ahead: &ArchiveFileDescriptor = if index == 0 { winner } else { behind[index - 1] };
+
+        if ahead.volume == loser.volume {
+          collisions.push(XrayPathCollision {
+            kept: Self::to_site(project, ahead),
+            logical_path: XrayLogicalPath::from_normalized(logical_path.clone()),
+            unreachable: Self::to_site(project, loser),
+          });
+        } else {
+          shadowed.push(XraySourceShadowedCopy {
+            container: Self::to_volume_container(project, loser.volume),
+            logical_path: logical_path.clone(),
+            size: u64::from(loser.size_real),
+          });
+        }
+      }
+    }
+
+    // Sorted, so a report reads the same twice: the groups above come out of a `HashMap` in no order at all.
+    collisions.sort_by(|first, second| first.logical_path.as_str().cmp(second.logical_path.as_str()));
+    shadowed.sort_by(|first, second| first.logical_path.cmp(&second.logical_path));
+
+    (collisions, shadowed)
+  }
+
+  /// The engine identity one entry folds to, or nothing when its name is not one.
+  fn to_identity(descriptor: &ArchiveFileDescriptor) -> Option<String> {
+    normalize_logical(&descriptor.name)
+      .inspect_err(|error| log::warn!("Skipping archive entry '{}': {error}", descriptor.name))
+      .ok()
+  }
+
+  /// What decides between two copies of one identity: volume order first, then the authored name.
+  ///
+  /// Read off the descriptor rather than recovered by matching names back to the table, because a displaced copy is
+  /// not in that table and shares its name with the entry that displaced it.
+  fn to_precedence(descriptor: &ArchiveFileDescriptor) -> (u32, &str) {
+    (descriptor.volume, &descriptor.name)
+  }
+
+  /// The volume one copy sits in, which is what a person needs to act on it.
+  fn to_volume_container(project: &ArchiveProject, volume: u32) -> XrayAssetContainer {
+    XrayAssetContainer::Archive {
+      path: project
+        .archives
+        .get(volume as usize)
+        .map(|volume| volume.path.clone())
+        .unwrap_or_else(|| project.root.clone()),
+    }
   }
 
   /// Where an authored entry sits, for a collision diagnostic.
-  fn get_new_site(project: &ArchiveProject, name: &str) -> XrayCollisionSite {
+  fn to_site(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> XrayCollisionSite {
     XrayCollisionSite::Archived {
-      name: name.to_owned(),
+      name: descriptor.name.to_string(),
       volume: project
-        .files
-        .get(name)
-        .and_then(|descriptor| project.archives.get(descriptor.volume as usize))
+        .archives
+        .get(descriptor.volume as usize)
         .map(|volume| volume.path.clone())
         .unwrap_or_default(),
     }
@@ -208,14 +306,17 @@ impl XrayAssetSource for XrayArchiveSource {
     self.entries.contains_key(path)
   }
 
+  /// Names the volume the entry sits in, not the set's root: a directory-mounted set answers for many volumes, and a
+  /// caller comparing two copies of one path needs to see which files they are.
   fn locate(&self, path: &str) -> Option<XrayAssetContainer> {
-    self.entries.contains_key(path).then(|| XrayAssetContainer::Archive {
-      path: self.project.root.clone(),
-    })
+    self
+      .entries
+      .get(path)
+      .map(|entry| Self::to_volume_container(&self.project, entry.volume))
   }
 
   fn read(&self, path: &str) -> XrfResult<Vec<u8>> {
-    let Some(name) = self.entries.get(path) else {
+    let Some(entry) = self.entries.get(path) else {
       // Absent, not unreadable: the distinction lets a caller fall back rather than fail.
       return Err(XrfError::new_not_found_error(format!(
         "no archive entry '{path}' in {}",
@@ -223,7 +324,7 @@ impl XrayAssetSource for XrayArchiveSource {
       )));
     };
 
-    self.project.read_file_bytes(name)
+    self.project.read_file_bytes(&entry.name)
   }
 
   /// Answers from the volume's name table, so no entry is decompressed to learn its size.
@@ -231,7 +332,7 @@ impl XrayAssetSource for XrayArchiveSource {
     self
       .entries
       .get(path)
-      .and_then(|name| self.project.files.get(name))
+      .and_then(|entry| self.project.files.get(&entry.name))
       .map(|descriptor| u64::from(descriptor.size_real))
   }
 
@@ -263,7 +364,7 @@ impl XrayAssetSource for XrayArchiveSource {
     self
       .entries
       .get(path)
-      .and_then(|name| self.project.files.get(name))
+      .and_then(|entry| self.project.files.get(&entry.name))
       .map(|descriptor| descriptor.crc)
   }
 
@@ -295,16 +396,21 @@ impl XrayAssetSource for XrayArchiveSource {
   fn get_collisions(&self) -> &[XrayPathCollision] {
     &self.collisions
   }
+
+  fn list_shadowed(&self) -> &[XraySourceShadowedCopy] {
+    &self.shadowed
+  }
 }
 
 #[cfg(test)]
 mod tests {
+  use std::collections::HashMap;
   use std::path::{Path, PathBuf};
   use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 
-  use crate::{XrayAssetSource, XrayCollisionSite, XrayPathCollision};
+  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XraySourceShadowedCopy};
 
   use super::XrayArchiveSource;
 
@@ -317,6 +423,8 @@ mod tests {
   /// which is the only way to reach the within-volume half of the rule. The packed round trip is covered by
   /// `xrf-pack`'s `asset_source_tests`.
   fn project(volumes: &[&str], files: &[(&str, &str, u32)]) -> ArchiveProject {
+    let merged: (HashMap<Arc<str>, ArchiveFileDescriptor>, Vec<ArchiveFileDescriptor>) = merge(volumes, files);
+
     ArchiveProject {
       archives: volumes
         .iter()
@@ -330,32 +438,62 @@ mod tests {
           size_real: 0,
         })
         .collect(),
-      files: files
-        .iter()
-        .map(|(volume, name, size)| {
-          // Cases name their volume, which reads better than a position; the project addresses it by position, so the
-          // fixture resolves one to the other exactly as reading a real set does.
-          let index: u32 = volumes
-            .iter()
-            .position(|candidate| candidate == volume)
-            .expect("an entry names a volume of its own set") as u32;
-
-          let name: Arc<str> = Arc::from(*name);
-
-          (
-            Arc::clone(&name),
-            ArchiveFileDescriptor::new(0, name, 0, *size, *size).in_volume(index),
-          )
-        })
-        .collect(),
+      files: merged.0,
       read_policy: ArchiveReadPolicy::default(),
       root: PathBuf::from("C:\\game\\db"),
+      shadowed: merged.1,
       size_real: 0,
     }
   }
 
+  /// Merges the cases into a name table the way [`ArchiveProject`] does: volume by volume, keeping what is displaced.
+  fn merge(
+    volumes: &[&str],
+    files: &[(&str, &str, u32)],
+  ) -> (HashMap<Arc<str>, ArchiveFileDescriptor>, Vec<ArchiveFileDescriptor>) {
+    let mut table: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
+    let mut displaced: Vec<ArchiveFileDescriptor> = Vec::new();
+
+    // Cases name their volume, which reads better than a position; the project addresses it by position, so the
+    // fixture resolves one to the other exactly as reading a real set does.
+    let mut ordered: Vec<(u32, &str, u32)> = files
+      .iter()
+      .map(|(volume, name, size)| {
+        let index: u32 = volumes
+          .iter()
+          .position(|candidate| candidate == volume)
+          .expect("an entry names a volume of its own set") as u32;
+
+        (index, *name, *size)
+      })
+      .collect();
+
+    // By volume, because a set is read in merge order however a case happens to list its entries.
+    ordered.sort_by_key(|(index, _, _)| *index);
+
+    for (index, name, size) in ordered {
+      let name: Arc<str> = Arc::from(name);
+      let descriptor: ArchiveFileDescriptor =
+        ArchiveFileDescriptor::new(0, Arc::clone(&name), 0, size, size).in_volume(index);
+
+      if let Some(previous) = table.insert(name, descriptor) {
+        displaced.push(previous);
+      }
+    }
+
+    (table, displaced)
+  }
+
   fn source(volumes: &[&str], files: &[(&str, &str, u32)]) -> XrayArchiveSource {
     XrayArchiveSource::from_project(project(volumes, files), String::from("db"))
+  }
+
+  /// Asserts a container names the volume file a copy sits in, rather than the set's root.
+  fn assert_container(container: &XrayAssetContainer, expected_volume: &str) {
+    match container {
+      XrayAssetContainer::Archive { path } => assert_eq!(path, Path::new(expected_volume)),
+      XrayAssetContainer::Directory { root, .. } => panic!("archived copy expected, got loose {}", root.display()),
+    }
   }
 
   /// Asserts a site names one authored entry of one volume.
@@ -370,7 +508,7 @@ mod tests {
   }
 
   #[test]
-  fn a_later_volume_wins_a_case_folded_collision() {
+  fn a_later_volume_overrides_a_case_folded_entry_rather_than_colliding() {
     // Volume order beats the name tiebreak, so a patch overrides `Textures\A.DDS` exactly as it overrides
     // `textures\a.dds` - otherwise a patch would win or lose by how the two happened to be spelled.
     let source: XrayArchiveSource = source(
@@ -384,12 +522,64 @@ mod tests {
       "the patch volume answers, though its name sorts first"
     );
 
+    assert!(
+      source.get_collisions().is_empty(),
+      "an override is not an authoring error"
+    );
+
+    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+
+    assert_eq!(shadowed.len(), 1);
+    assert_eq!(shadowed[0].logical_path, "textures\\a.dds");
+    assert_eq!(shadowed[0].size, 10, "the base copy, which is what the patch buried");
+    assert_container(&shadowed[0].container, BASE);
+  }
+
+  #[test]
+  fn a_later_volume_overrides_an_identically_spelled_entry() {
+    // The ordinary patch, and the case that was invisible: the merged name table keeps one row, so without the
+    // displaced descriptor nothing anywhere could say the base copy had ever existed.
+    let source: XrayArchiveSource = source(
+      &[BASE, PATCH],
+      &[(BASE, "configs\\system.ltx", 10), (PATCH, "configs\\system.ltx", 20)],
+    );
+
+    assert_eq!(source.get_size("configs\\system.ltx"), Some(20));
+    assert!(source.get_collisions().is_empty());
+
+    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+
+    assert_eq!(shadowed.len(), 1);
+    assert_eq!(shadowed[0].logical_path, "configs\\system.ltx");
+    assert_eq!(shadowed[0].size, 10);
+    assert_container(&shadowed[0].container, BASE);
+  }
+
+  #[test]
+  fn a_copy_is_unreachable_only_behind_one_from_its_own_volume() {
+    // Three copies of one identity: the patch wins, the base copy behind it is an override, and the second base copy
+    // is unreachable - nothing orders it against the first but an authored name the reader no longer has.
+    let source: XrayArchiveSource = source(
+      &[BASE, PATCH],
+      &[
+        (BASE, "textures\\a.dds", 10),
+        (BASE, "Textures\\A.DDS", 11),
+        (PATCH, "textures\\a.dds", 20),
+      ],
+    );
+
+    assert_eq!(source.get_size("textures\\a.dds"), Some(20));
+
+    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+
+    assert_eq!(shadowed.len(), 1, "the base copy the patch buried");
+    assert_eq!(shadowed[0].size, 10);
+
     let collisions: &[XrayPathCollision] = source.get_collisions();
 
-    assert_eq!(collisions.len(), 1);
-    assert_eq!(collisions[0].logical_path.as_str(), "textures\\a.dds");
-    assert_site(&collisions[0].kept, PATCH, "Textures\\A.DDS");
-    assert_site(&collisions[0].unreachable, BASE, "textures\\a.dds");
+    assert_eq!(collisions.len(), 1, "the pair authored twice inside the base volume");
+    assert_site(&collisions[0].kept, BASE, "textures\\a.dds");
+    assert_site(&collisions[0].unreachable, BASE, "Textures\\A.DDS");
   }
 
   #[test]
@@ -423,7 +613,8 @@ mod tests {
       );
 
       assert_eq!(source.get_size("textures\\a.dds"), Some(20));
-      assert_eq!(source.get_collisions().len(), 1);
+      assert!(source.get_collisions().is_empty());
+      assert_eq!(source.list_shadowed().len(), 1);
     }
   }
 

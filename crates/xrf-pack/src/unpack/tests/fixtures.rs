@@ -93,6 +93,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
     files,
     read_policy: ArchiveReadPolicy::default(),
     root: directory.into(),
+    shadowed: Vec::new(),
     size_real: payload.len() as u64,
   }
 }

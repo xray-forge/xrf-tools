@@ -19,7 +19,7 @@ use crate::reader::ArchiveReader;
 /// `xrf-vfs` answers (`XrayMountPlan::from_fsgame`), and answering it here too would put `fsgame.ltx` knowledge in the
 /// volume-format layer and give the same declaration two readers.
 ///
-/// Later volumes win the merge, so a patch volume shadows the entry it replaces.
+/// Later volumes win the merge, so a patch volume shadows the entry it replaces, which is kept in [`Self::shadowed`].
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,6 +30,8 @@ pub struct ArchiveProject {
   /// Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
   #[cfg_attr(feature = "typescript-bindings", specta(type = HashMap<String, ArchiveFileDescriptor>))]
   pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
+  /// Entries a later volume overwrote in the merge, in the order they were displaced.
+  pub shadowed: Vec<ArchiveFileDescriptor>,
   pub read_policy: ArchiveReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
@@ -124,6 +126,7 @@ impl ArchiveProject {
 
   fn read_to_depth(path: &Path, depth: usize) -> XrfResult<Self> {
     let mut files: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
+    let mut shadowed: Vec<ArchiveFileDescriptor> = Vec::new();
     let is_single_volume: bool = path.is_file();
 
     if !is_single_volume {
@@ -141,10 +144,20 @@ impl ArchiveProject {
       // attribute entries to the wrong file rather than refusing the set.
       let index: u32 = to_format_size(archives.len(), "archive volume count")?;
 
-      // Moved in, not cloned out: volumes are read in merge order, so a later one overwrites the name an earlier one
-      // claimed, and nothing retains a second copy of what it inserted. Attributing each entry here is the only point
-      // that knows both the entry and which volume of the set it arrived from.
-      files.extend(entries.into_iter().map(|(name, entry)| (name, entry.in_volume(index))));
+      // Volumes are read in merge order, so a later one overwrites the name an earlier one claimed. The displaced
+      // entry is kept rather than dropped: it is the copy a patch volume replaced, and nothing downstream can
+      // reconstruct it once the table has folded. Attributing each entry here is the only point that knows both the
+      // entry and which volume of the set it arrived from.
+      for (name, entry) in entries {
+        // A displaced directory row is not a hidden copy of anything: every volume records the directories it
+        // contains, so keeping those would retain one per shared directory per volume and say nothing.
+        if let Some(displaced) = files.insert(name, entry.in_volume(index))
+          && !displaced.is_directory
+        {
+          shadowed.push(displaced);
+        }
+      }
+
       archives.push(descriptor);
     }
 
@@ -169,6 +182,7 @@ impl ArchiveProject {
       files,
       read_policy: ArchiveReadPolicy::default(),
       root,
+      shadowed,
       size_real,
     })
   }

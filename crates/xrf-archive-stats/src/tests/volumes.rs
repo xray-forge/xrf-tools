@@ -46,6 +46,7 @@ fn project() -> ArchiveProject {
       .collect::<HashMap<Arc<str>, ArchiveFileDescriptor>>(),
     read_policy: ArchiveReadPolicy::default(),
     root: PathBuf::from("C:/game/db"),
+    shadowed: Vec::new(),
     size_real: 15_848,
   }
 }

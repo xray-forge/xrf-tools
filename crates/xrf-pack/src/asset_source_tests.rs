@@ -6,11 +6,12 @@
 use std::fs;
 use std::path::PathBuf;
 
+use xrf_archive::ArchiveProject;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
-  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayCollisionSite, XrayDeclaredRoot, XrayLookupScope,
-  XrayMountPlan, XrayPathCollision, XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XrayVfs,
+  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope, XrayMountPlan, XrayProbe,
+  XrayProbePlan, XrayProbeStep, XraySourceKind, XraySourceShadowedCopy, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;
@@ -232,7 +233,7 @@ fn a_directory_of_volumes_is_planned_as_an_archive_source() {
 }
 
 #[test]
-fn a_case_only_duplicate_across_volumes_is_reported_and_resolved_by_volume_order() {
+fn a_case_only_duplicate_across_volumes_is_an_override_resolved_by_volume_order() {
   let source: XrayArchiveSource = mount_volumes(
     "case_collision",
     &[
@@ -249,12 +250,16 @@ fn a_case_only_duplicate_across_volumes_is_reported_and_resolved_by_volume_order
     "the later volume answers, as CLocatorAPI::Register resolves it"
   );
 
-  let collisions: &[XrayPathCollision] = source.get_collisions();
+  assert!(
+    source.get_collisions().is_empty(),
+    "volume order is a priority to appeal to, so nothing here is unreachable"
+  );
 
-  assert_eq!(collisions.len(), 1, "one identity, one report");
-  assert_eq!(collisions[0].logical_path.as_str(), "textures\\wpn\\wpn_ak74.dds");
-  assert_site(&collisions[0].kept, "patch.db", "Textures\\Wpn\\WPN_AK74.DDS");
-  assert_site(&collisions[0].unreachable, "base.db", "textures\\wpn\\wpn_ak74.dds");
+  let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+
+  assert_eq!(shadowed.len(), 1, "one identity, one buried copy");
+  assert_eq!(shadowed[0].logical_path, "textures\\wpn\\wpn_ak74.dds");
+  assert_eq!(shadowed[0].size, TEXTURE.len() as u64, "the base copy the patch buried");
 }
 
 #[test]
@@ -271,17 +276,36 @@ fn an_exact_name_override_across_volumes_is_precedence_rather_than_a_collision()
 
   assert_eq!(source.read("configs\\system.ltx").expect("reads"), PATCHED);
   assert!(source.get_collisions().is_empty());
-}
 
-/// Asserts a collision side names one authored entry of one volume.
-fn assert_site(site: &XrayCollisionSite, expected_volume: &str, expected_name: &str) {
-  match site {
-    XrayCollisionSite::Archived { volume, name } => {
-      assert_eq!(volume.file_name().and_then(|name| name.to_str()), Some(expected_volume));
-      assert_eq!(name, expected_name, "the authored spelling survives the fold");
-    }
-    XrayCollisionSite::Loose(path) => panic!("archived entry expected, got loose {}", path.display()),
-  }
+  // The merge itself keeps what it overwrote: one row survives in the table, and the displaced descriptor names the
+  // volume it came from. Dropping this is what made an ordinary patch impossible to describe.
+  let project: &ArchiveProject = source.get_project();
+
+  assert_eq!(
+    project
+      .files
+      .get("configs\\system.ltx")
+      .expect("the surviving row")
+      .volume,
+    1,
+    "the patch volume holds the row the table kept"
+  );
+
+  // Directory rows are displaced too - every volume records the directories it holds - and are not retained, or a
+  // multi-volume set would carry one per shared directory while hiding nothing.
+  assert_eq!(project.shadowed.len(), 1, "the base copy, and no directory rows");
+  assert_eq!(
+    project.shadowed[0].volume, 0,
+    "the base volume, which the patch outranks"
+  );
+  assert_eq!(project.shadowed[0].size_real as usize, CONFIG.len());
+
+  // The copy the merge displaced, which the name table alone can no longer name.
+  let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+
+  assert_eq!(shadowed.len(), 1);
+  assert_eq!(shadowed[0].logical_path, "configs\\system.ltx");
+  assert_eq!(shadowed[0].size, CONFIG.len() as u64);
 }
 
 #[test]

@@ -5,7 +5,7 @@ use serde::Serialize;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
-use crate::source::XrayDeclaredRoot;
+use crate::source::{XrayDeclaredRoot, XraySourceShadowedCopy};
 use crate::{XrayAssetContainer, XrayPathCollision};
 
 /// The storage kind backing a mount.
@@ -126,6 +126,11 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// authored is not enough: an archive volume keys entries by their authored name, yet `Textures\A.DDS` and
   /// `textures\a.dds` are one identity to the engine, so [`XrayArchiveSource`](crate::XrayArchiveSource) overrides this.
   fn get_collisions(&self) -> &[XrayPathCollision] {
+    &[]
+  }
+
+  /// Copies this source holds behind the one it answers with, because its own ordering put another in front.
+  fn list_shadowed(&self) -> &[XraySourceShadowedCopy] {
     &[]
   }
 }

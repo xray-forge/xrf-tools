@@ -7,7 +7,7 @@ use xrf_utils::format_path;
 
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
-use crate::source::XrayDirectorySource;
+use crate::source::{XrayDirectorySource, XraySourceShadowedCopy};
 use crate::trace::XrayReadTrace;
 use crate::vfs::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::{
@@ -602,11 +602,34 @@ impl XrayVfs {
         continue;
       };
 
+      // Grouped once per mount rather than looked up per entry. A source that hides nothing - which is every loose
+      // tree and every volume set no patch overrides - never builds the map and never consults it, so the common
+      // listing walks exactly the entries it always did.
+      let mut hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = HashMap::new();
+
+      for copy in mount.get_source().list_shadowed() {
+        hidden.entry(copy.logical_path.as_str()).or_default().push(copy);
+      }
+
       for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
         if let Ok(logical_path) = mount.to_logical_path(&source_path)
           && let Some(asset) = Self::locate_at(mount, &logical_path, &source_path)
         {
           located.push((asset, mount.get_source().get_size(&source_path).unwrap_or_default()));
+
+          if hidden.is_empty() {
+            continue;
+          }
+
+          for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
+            located.push((
+              XrayAsset::new(
+                XrayLogicalPath::from_normalized(logical_path.to_string()),
+                copy.container.clone(),
+              ),
+              copy.size,
+            ));
+          }
         }
       }
     }
