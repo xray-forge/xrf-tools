@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchiveThmDescription } from "@/core/ipc/types/xrf-app";
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveThmEngineSection } from "./ArchiveThmEngineSection";
 import { ArchiveThmFileSection } from "./ArchiveThmFileSection";
 import { ArchiveThmRecipeSection } from "./ArchiveThmRecipeSection";
@@ -28,30 +27,23 @@ export function ArchiveThmDescriptionView({
   scope,
 }: IArchiveThmDescriptionViewProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, overflowY: "auto" }}
-    >
-      <Box sx={{ maxWidth: LAYOUT.readingColumnWidth }}>
-        <ArchiveThmTextureSection texture={description.texture} scope={scope} />
+    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+      <ArchiveThmTextureSection texture={description.texture} scope={scope} />
 
-        <ArchiveThmEngineSection textureType={description.textureType} />
+      <ArchiveThmEngineSection textureType={description.textureType} />
 
-        <ArchiveThmReferencesSection
-          bump={description.bump}
-          detail={description.detail}
-          externalNormalMap={description.externalNormalMap}
-          scope={scope}
-        />
+      <ArchiveThmReferencesSection
+        bump={description.bump}
+        detail={description.detail}
+        externalNormalMap={description.externalNormalMap}
+        scope={scope}
+      />
 
-        <ArchiveThmShadingSection material={description.material} />
+      <ArchiveThmShadingSection material={description.material} />
 
-        <ArchiveThmRecipeSection parameters={description.parameters} fadeDelay={description.fadeDelay} />
+      <ArchiveThmRecipeSection parameters={description.parameters} fadeDelay={description.fadeDelay} />
 
-        <ArchiveThmFileSection file={description.file} />
-      </Box>
-    </Box>
+      <ArchiveThmFileSection file={description.file} />
+    </ArchiveDescriptionLayout>
   );
 }

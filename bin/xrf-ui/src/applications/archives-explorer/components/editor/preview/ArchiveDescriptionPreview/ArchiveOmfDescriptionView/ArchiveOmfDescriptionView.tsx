@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveOmfDescription } from "@/core/ipc/types/xrf-app";
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveOmfBankSection } from "./ArchiveOmfBankSection";
 import { ArchiveOmfMotionsSection } from "./ArchiveOmfMotionsSection";
 import { ArchiveOmfPartitionSection } from "./ArchiveOmfPartitionSection";
@@ -23,19 +22,12 @@ export function ArchiveOmfDescriptionView({
   description,
 }: IArchiveOmfDescriptionViewProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, overflowY: "auto" }}
-    >
-      <Box sx={{ maxWidth: LAYOUT.readingColumnWidth }}>
-        <ArchiveOmfBankSection bank={description.bank} parts={description.parts.length} />
+    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+      <ArchiveOmfBankSection bank={description.bank} parts={description.parts.length} />
 
-        <ArchiveOmfPartitionSection parts={description.parts} />
+      <ArchiveOmfPartitionSection parts={description.parts} />
 
-        <ArchiveOmfMotionsSection motions={description.motions} />
-      </Box>
-    </Box>
+      <ArchiveOmfMotionsSection motions={description.motions} />
+    </ArchiveDescriptionLayout>
   );
 }

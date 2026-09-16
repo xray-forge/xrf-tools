@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchivePpeColor, ArchivePpeDescription } from "@/core/ipc/types/xrf-app";
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchivePpeColorSection } from "./ArchivePpeColorSection";
 import { ArchivePpeEffectSection } from "./ArchivePpeEffectSection";
 import { ArchivePpeValuesSection } from "./ArchivePpeValuesSection";
@@ -25,21 +24,14 @@ export function ArchivePpeDescriptionView({
   scope,
 }: IArchivePpeDescriptionViewProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, overflowY: "auto" }}
-    >
-      <Box sx={{ maxWidth: LAYOUT.readingColumnWidth }}>
-        <ArchivePpeEffectSection description={description} scope={scope} />
+    <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
+      <ArchivePpeEffectSection description={description} scope={scope} />
 
-        {description.colors.map((color: ArchivePpeColor) => (
-          <ArchivePpeColorSection key={color.name} color={color} />
-        ))}
+      {description.colors.map((color: ArchivePpeColor) => (
+        <ArchivePpeColorSection key={color.name} color={color} />
+      ))}
 
-        <ArchivePpeValuesSection values={description.values} colorMap={description.colorMap} />
-      </Box>
-    </Box>
+      <ArchivePpeValuesSection values={description.values} colorMap={description.colorMap} />
+    </ArchiveDescriptionLayout>
   );
 }
