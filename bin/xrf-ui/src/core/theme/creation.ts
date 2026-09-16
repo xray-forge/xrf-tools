@@ -264,7 +264,7 @@ export function createApplicationTheme(): Theme {
         defaultProps: { variant: "outlined" },
         styleOverrides: {
           root: ({ theme }) => ({
-            borderRadius: RADIUS.lg,
+            borderRadius: LAYOUT.surfaceRadius,
             borderColor: `color-mix(in srgb, ${(theme.vars ?? theme).palette.text.primary} 12%, transparent)`,
             backgroundColor: (theme.vars ?? theme).palette.background.frame,
             "--xrf-card-opacity": "75%",

@@ -34,6 +34,11 @@ export function toSharePercent(share: number): string {
 }
 
 export const LAYOUT = {
+  /**
+   * The corner a framed surface turns: the workspace edge, a form card, and the first-paint skeleton that stands in
+   * for both. Named once so the three cannot drift, which a reader would only ever notice as a jump on load.
+   */
+  surfaceRadius: RADIUS.md,
   /** The button plus the breathing room on either side of it; the stripe holds nothing wider. */
   railWidth: 36,
   /** Every control in either stripe. */
@@ -297,8 +302,8 @@ export const OVERLAY_BORDER = {
 /** The only two shadows, spread by `creation.ts` across the twenty-five slots MUI's theme requires. */
 export const SHADOW = {
   raised: {
-    light: "0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.04)",
-    dark: "0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 4px rgba(0, 0, 0, 0.18)",
+    light: "0 1px 2px rgba(0, 0, 0, 0.03)",
+    dark: "0 1px 2px rgba(0, 0, 0, 0.13)",
   },
   overlay: {
     light: "0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.11)",

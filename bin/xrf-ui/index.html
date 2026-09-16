@@ -57,7 +57,10 @@
       }
 
       .preload-canvas {
+        box-sizing: border-box;
         flex-grow: 1;
+        border: 1px solid var(--mui-palette-divider);
+        border-radius: var(--preload-surface-radius);
         background-color: var(--mui-palette-background-default);
         background-image: var(--xrf-wash);
         background-attachment: fixed;

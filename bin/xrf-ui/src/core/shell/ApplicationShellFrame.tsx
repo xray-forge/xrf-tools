@@ -32,7 +32,7 @@ import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { getSurfaceSx } from "@/core/theme/surface";
-import { RADIUS } from "@/core/theme/tokens";
+import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -137,7 +137,7 @@ export function ApplicationShellFrame({
               overflow: "hidden",
               border: 1,
               borderColor: "divider",
-              borderRadius: `${RADIUS.md}px`,
+              borderRadius: `${LAYOUT.surfaceRadius}px`,
             }}
           >
             <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>

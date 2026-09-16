@@ -35,6 +35,7 @@ export function getPreloadThemeCss(): string {
       --preload-title-bar-height: ${LAYOUT.titleBarHeight}px;
       --preload-status-bar-height: ${LAYOUT.statusBarHeight}px;
       --preload-rail-width: ${LAYOUT.railWidth}px;
+      --preload-surface-radius: ${LAYOUT.surfaceRadius}px;
       --xrf-wash: ${getWashImage("dark")};
       color-scheme: dark;
     }`,
