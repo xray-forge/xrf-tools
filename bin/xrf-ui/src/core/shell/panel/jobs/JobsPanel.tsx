@@ -7,15 +7,10 @@ import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { JobRow } from "@/core/shell/panel/jobs/JobRow";
+import { PANEL } from "@/core/theme";
 
 /**
  * What the backend is doing, and what it recently finished.
- *
- * Read straight from the backend rather than from `JobsService`, because the two answer different questions: the
- * service knows the runs this window started or adopted, and this is the only surface that can also see the ones that
- * have already ended.
- *
- * Running first, then the last few that finished, which is the order the backend already answers in.
  */
 export function JobsPanel(): ReactElement {
   const jobsService: JobsService = useInjection(JobsService);
@@ -25,11 +20,11 @@ export function JobsPanel(): ReactElement {
 
   return (
     <EditorPanel title={"Jobs"} sx={{ height: "100%" }}>
-      <Box sx={{ height: "100%", overflowY: "auto" }}>
+      <Box sx={{ height: "100%", overflowY: "auto", padding: 2 }}>
         {listed.length ? (
           listed.map((job: JobDescription) => <JobRow key={job.id} job={job} onCancel={onCancel} />)
         ) : (
-          <Typography variant={"caption"} color={"text.secondary"} sx={{ display: "block", padding: 1.5 }}>
+          <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
             Nothing is running, and nothing has finished recently.
           </Typography>
         )}

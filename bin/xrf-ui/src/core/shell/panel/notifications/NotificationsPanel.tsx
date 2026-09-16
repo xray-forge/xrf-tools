@@ -9,6 +9,7 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panel/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panel/notifications/NotificationRow";
+import { PANEL } from "@/core/theme";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -70,9 +71,11 @@ export function NotificationsPanel(): ReactElement {
             />
           ))
         ) : (
-          <Typography variant={"caption"} sx={{ display: "block", padding: 2, color: "text.secondary" }}>
-            Nothing has been reported yet. Command outcomes from every tool collect here.
-          </Typography>
+          <Box sx={{ padding: 2 }}>
+            <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
+              Nothing has been reported yet. Command outcomes from every tool collect here.
+            </Typography>
+          </Box>
         )}
       </Box>
     </EditorPanel>

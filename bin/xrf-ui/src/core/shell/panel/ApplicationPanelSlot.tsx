@@ -33,6 +33,7 @@ export function ApplicationPanelSlot({
   return (
     <Box
       data-testid={`application-panel-slot-${side}`}
+      data-panel-side={side}
       sx={mergeSx(getSurfaceSx("frame"), {
         position: "relative",
         display: "flex",

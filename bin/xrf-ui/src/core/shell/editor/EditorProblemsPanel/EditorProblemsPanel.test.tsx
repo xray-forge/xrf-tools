@@ -37,6 +37,7 @@ describe("EditorProblemsPanel", () => {
 
     expect(getByText("read.failed")).toBeInTheDocument();
     expect(getByText("Could not read the project.")).toBeInTheDocument();
+
     expect(container.querySelectorAll("[title]")).toHaveLength(1);
   });
 

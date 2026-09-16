@@ -15,5 +15,8 @@ export interface IPanelSetActiveMessage extends IPanelSideMessage {
 /** Shows a panel, whatever was open on that side. */
 export const PANEL_SET_ACTIVE_MESSAGE: CommandType = Symbol("@/panel/set-active");
 
+/** Closes whatever one side has open. */
+export const PANEL_CLOSE_MESSAGE: CommandType = Symbol("@/panel/close");
+
 /** Answers which panel a side currently shows, or null when the side is closed. */
 export const PANEL_ACTIVE_QUERY: QueryType = Symbol("@/panel/active");

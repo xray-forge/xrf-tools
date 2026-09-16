@@ -190,6 +190,7 @@ export function mockArchivesProject(files?: Array<ArchiveFileDescriptor>): Archi
     files: Object.fromEntries(descriptors.map((descriptor) => [descriptor.name, descriptor])),
     readPolicy: mockArchiveReadPolicy(),
     root: "C:\\game\\database",
+    shadowed: [],
     sizeReal: descriptors.reduce((total: number, descriptor) => total + descriptor.sizeReal, 0),
   };
 }
@@ -332,7 +333,12 @@ export function mockArchiveStatistics(overrides: Partial<ArchiveStatistics> = {}
       { folder: "meshes", measure: { files: 2, sizeReal: 1024 }, sizeCompressed: 512 },
     ],
     largest: [{ name: "textures\\wpn\\ak74.dds", sizeCompressed: 2048, sizeReal: 4096 }],
-    origins: null,
+    origins: {
+      archived: { files: 7, sizeReal: 7168 },
+      hidden: { files: 0, sizeReal: 0 },
+      loose: { files: 0, sizeReal: 0 },
+      sources: [],
+    },
     overview: {
       directories: 1,
       emptyFiles: 0,

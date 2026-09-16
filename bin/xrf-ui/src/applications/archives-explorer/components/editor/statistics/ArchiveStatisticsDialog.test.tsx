@@ -135,17 +135,17 @@ describe("archive statistics dialog", () => {
   });
 
   it("offers a volume set the sections only it can answer", async () => {
-    const { findByLabelText, findByText, queryByText } = await renderExplorer();
+    const { findByLabelText, findByText } = await renderExplorer();
 
     await userEvent.click(await findByLabelText("Statistics"));
 
     expect(await findByText("Compression")).toBeInTheDocument();
     expect(await findByText("Volumes")).toBeInTheDocument();
 
-    // A volume set merged its name table before anything could count what it folded away, so it is never offered a
-    // section it would have to answer with nothing.
-    expect(queryByText("Origins")).toBeNull();
-    expect(queryByText("Overrides")).toBeNull();
+    // A volume set is an ordered stack of volumes exactly as a world is an ordered stack of mounts, so it answers
+    // where its entries come from and what its own merge buried. It used to be offered neither, because the merge
+    // discarded the evidence rather than because the question did not apply.
+    expect(await findByText("Origins")).toBeInTheDocument();
   });
 
   it("offers a world the sections only it can answer", async () => {

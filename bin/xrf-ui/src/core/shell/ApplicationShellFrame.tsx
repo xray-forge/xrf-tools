@@ -24,6 +24,7 @@ import {
   IPanelSetActiveMessage,
   IPanelSideMessage,
   PANEL_ACTIVE_QUERY,
+  PANEL_CLOSE_MESSAGE,
   PANEL_SET_ACTIVE_MESSAGE,
 } from "@/core/shell/panel/panel-messages";
 import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
@@ -99,6 +100,15 @@ export function ApplicationShellFrame({
   useOnCommand(PANEL_SET_ACTIVE_MESSAGE, ({ side, panelId }: IPanelSetActiveMessage) =>
     flushSync(() => (side === "left" ? leftSelection : rightSelection).onOpenPanel(panelId))
   );
+
+  // Closing a side is toggling whatever it has open, which is what `usePanelSelection` already means by it.
+  useOnCommand(PANEL_CLOSE_MESSAGE, ({ side }: IPanelSideMessage) => {
+    const selection: IPanelSelection = side === "left" ? leftSelection : rightSelection;
+
+    if (selection.activePanelId) {
+      selection.onTogglePanel(selection.activePanelId);
+    }
+  });
 
   useOnQuery(
     PANEL_ACTIVE_QUERY,

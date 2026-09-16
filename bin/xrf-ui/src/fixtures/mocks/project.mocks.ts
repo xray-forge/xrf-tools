@@ -64,6 +64,7 @@ export function mockArchivesProject(overrides: Partial<ArchiveProject> = {}): Ar
     },
     readPolicy: mockArchiveReadPolicy(),
     root: "db",
+    shadowed: [],
     sizeReal: 6144,
     ...overrides,
   };

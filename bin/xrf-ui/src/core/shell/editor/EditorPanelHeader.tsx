@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { LAYOUT, PANEL } from "@/core/theme/tokens";
 import { StyledComponentProps } from "@/lib/dom/element-types";
@@ -72,18 +73,18 @@ export function EditorPanelHeader({
           ) : null}
         </Box>
 
-        {actions ? (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              flexShrink: 0,
-              marginLeft: 1,
-            }}
-          >
-            {actions}
-          </Box>
-        ) : null}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            marginLeft: 1,
+          }}
+        >
+          {actions}
+
+          <PanelCloseAction />
+        </Box>
       </Box>
 
       {children ? (
