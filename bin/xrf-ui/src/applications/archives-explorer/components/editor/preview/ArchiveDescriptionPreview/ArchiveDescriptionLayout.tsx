@@ -1,5 +1,6 @@
 import { ReactElement, ReactNode } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveDescriptionLayoutProps extends BaseComponentProps {
@@ -16,7 +17,7 @@ export function ArchiveDescriptionLayout({
   children,
 }: IArchiveDescriptionLayoutProps): ReactElement {
   return (
-    <div data-testid={dataTestId} id={id} className={`min-h-0 min-w-0 grow overflow-y-auto ${className ?? ""}`}>
+    <div data-testid={dataTestId} id={id} className={cn("min-h-0 min-w-0 grow overflow-y-auto", className)}>
       <div className={"mx-auto max-w-reading"}>{children}</div>
     </div>
   );
