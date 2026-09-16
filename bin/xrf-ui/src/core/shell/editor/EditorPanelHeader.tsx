@@ -3,6 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
 import { mergeSx } from "@/core/theme/merge-sx";
+import { getHeaderBandSx } from "@/core/theme/surface";
 import { LAYOUT, PANEL } from "@/core/theme/tokens";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
@@ -38,15 +39,14 @@ export function EditorPanelHeader({
       sx={mergeSx({ display: "flex", flexDirection: "column", flexShrink: 0 }, sx)}
     >
       <Box
-        sx={{
+        sx={mergeSx(getHeaderBandSx, {
           display: "flex",
           alignItems: "center",
           minHeight: LAYOUT.headerHeight,
           paddingX: PANEL.contentPadding,
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "background.frame",
-        }}
+        })}
       >
         <Box
           sx={{

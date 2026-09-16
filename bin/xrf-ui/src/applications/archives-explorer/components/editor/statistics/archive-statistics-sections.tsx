@@ -11,7 +11,6 @@ import { ArchiveExtensionsSection } from "./sections/ArchiveExtensionsSection";
 import { ArchiveFoldersSection } from "./sections/ArchiveFoldersSection";
 import { ArchiveLargestSection } from "./sections/ArchiveLargestSection";
 import { ArchiveOriginsSection } from "./sections/ArchiveOriginsSection";
-import { ArchiveOverridesSection } from "./sections/ArchiveOverridesSection";
 import { ArchiveOverviewSection } from "./sections/ArchiveOverviewSection";
 import { ArchiveSizesSection } from "./sections/ArchiveSizesSection";
 import { ArchiveVolumesSection } from "./sections/ArchiveVolumesSection";
@@ -74,12 +73,6 @@ export const ARCHIVE_STATISTICS_SECTIONS: ReadonlyArray<IArchiveStatisticsSectio
     // A world only: a merged name table cannot say what it folded away.
     select: (statistics: ArchiveStatistics) => statistics.origins,
     render: (origins, view) => <ArchiveOriginsSection origins={origins} view={view} />,
-  }),
-  defineArchiveStatisticsSection({
-    id: EArchiveStatisticsSection.OVERRIDES,
-    label: "Overrides",
-    select: (statistics: ArchiveStatistics) => statistics.origins,
-    render: (origins, view) => <ArchiveOverridesSection origins={origins} view={view} />,
   }),
 ];
 

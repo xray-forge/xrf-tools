@@ -277,15 +277,15 @@ impl XrayVfs {
       XrayAssetContainer::Archive { path } => path,
     };
 
-    // todo: A container names a source by its root, and an archive source's root is the common parent of its volumes,
-    //   so two mounts planned from single volumes in one directory are indistinguishable here and the first one wins.
-    //   No plan constructor produces that today — `from_fsgame` plans directories — but disambiguating needs the
-    //   container to carry the mount, or this find to prefer a root-matching mount that also holds the path.
-    let Some(mount) = self
-      .mounts
-      .iter()
-      .find(|mount| mount.get_source().get_root_path() == container_root)
-    else {
+    // A loose container names its mount's root, but an archived one names the volume the entry sits in, which is a
+    // file inside the mount rather than the mount itself. Matching the volume is also what tells two mounts planned
+    // from single volumes of one directory apart, where a root match alone would hand both to the first.
+    let Some(mount) = self.mounts.iter().find(|mount| {
+      let source: &dyn XrayAssetSource = mount.get_source();
+
+      source.get_root_path() == container_root
+        || source.list_volumes().iter().any(|volume| volume.path == container_root)
+    }) else {
       return Err(XrfError::new_not_found_error(format!(
         "cannot read '{}': no mount in this VFS holds {}",
         asset.get_logical_path(),

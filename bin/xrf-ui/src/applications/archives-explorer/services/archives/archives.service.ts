@@ -5,6 +5,7 @@ import { describeExtractOutcome } from "@/applications/archives-explorer/lib/des
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
+  getArchiveVolumeOf,
   getSubjectReadPolicy,
   getSubjectRoots,
   IArchiveEntry,
@@ -19,6 +20,7 @@ import { archivesRawCommands } from "@/core/ipc/commands/archives-raw";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import {
+  ArchiveOverrideReport,
   ArchiveResolution,
   ArchiveSubject,
   ArchiveWorldEntry,
@@ -27,10 +29,15 @@ import {
   SessionId,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
-import { ArchiveFileDescriptor, ArchiveReadPolicy, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
+import {
+  ArchiveDescriptor,
+  ArchiveFileDescriptor,
+  ArchiveReadPolicy,
+  ArchiveSharedPayload,
+} from "@/core/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
-import { XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetContainer, XrayPathCollision, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -41,6 +48,9 @@ import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
+
+/** What a subject answers before one has been folded, so an idle state carries a shape rather than a null. */
+const EMPTY_OVERRIDES: ArchiveOverrideReport = { overridden: [], unreachable: [] };
 
 @Injectable()
 export class ArchivesService {
@@ -67,9 +77,21 @@ export class ArchivesService {
     return this.subjectState.map((snapshot) => snapshot.value);
   }
 
-  /** Entries the open subject holds that no engine lookup can reach. */
+  /** What the open subject answers twice over, and what it cannot reach at all. */
   @Observable()
-  public collisions: AsyncState<Array<XrayPathCollision>> = AsyncState.idle([]);
+  public overrides: AsyncState<ArchiveOverrideReport> = AsyncState.idle(EMPTY_OVERRIDES);
+
+  /** Engine paths the open subject answers with more than one copy, winner first. */
+  @Computed()
+  public get overridden(): Array<ArchiveWorldEntry> {
+    return this.overrides.value?.overridden ?? [];
+  }
+
+  /** Copies the open subject holds that no engine lookup can reach. */
+  @Computed()
+  public get unreachable(): Array<XrayPathCollision> {
+    return this.overrides.value?.unreachable ?? [];
+  }
 
   /** Payloads several entries of the open volume set read at once. Empty for a world, which has no name table. */
   @Observable()
@@ -146,6 +168,40 @@ export class ArchivesService {
     }
 
     return subject.world.files.find((candidate: ArchiveWorldEntry) => candidate.name === entry.name) ?? null;
+  }
+
+  /**
+   * Where the selected file's bytes come from, and which copies that decision hides.
+   *
+   * @returns The origin of the selection, or null when nothing is selected.
+   */
+  @Computed()
+  public get selectedOrigin(): Nullable<ArchiveWorldEntry> {
+    const entry: Nullable<IArchiveEntry> = this.selectedEntry;
+
+    if (!entry) {
+      return null;
+    }
+
+    if (this.subject.value?.kind === EArchiveSubject.WORLD) {
+      return this.selectedWorldEntry;
+    }
+
+    const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
+      this.subject.value?.project ?? null,
+      this.selectedDescriptor
+    );
+
+    if (!volume) {
+      return null;
+    }
+
+    return {
+      container: { kind: EXrayAssetContainer.ARCHIVE, path: volume.path },
+      name: entry.name,
+      shadowed: this.overridden.find((candidate: ArchiveWorldEntry) => candidate.name === entry.name)?.shadowed ?? [],
+      sizeReal: entry.sizeReal,
+    };
   }
 
   /**
@@ -288,7 +344,7 @@ export class ArchivesService {
 
     this.clearFileSelection();
     this.subjectState = this.subjectState.asReady(null);
-    this.collisions = this.collisions.asIdle([]);
+    this.overrides = this.overrides.asIdle(EMPTY_OVERRIDES);
     this.sharedPayloads = this.sharedPayloads.asIdle([]);
     this.statistics = this.statistics.asIdle(null);
     this.resolution = this.resolution.asIdle(null);
@@ -468,7 +524,7 @@ export class ArchivesService {
       this.clearFileSelection();
 
       this.subjectState = this.subjectState.asLoading();
-      this.collisions = this.collisions.asIdle([]);
+      this.overrides = this.overrides.asIdle(EMPTY_OVERRIDES);
       this.sharedPayloads = this.sharedPayloads.asIdle([]);
       // Both are loaded once and kept, so a new subject has to discard them or the dialogs describe the previous one.
       this.statistics = this.statistics.asIdle(null);
@@ -500,7 +556,7 @@ export class ArchivesService {
    * rest of its own work instead of racing it from a lane of its own.
    */
   private *loadPanels(): TFlow {
-    yield* this.loadCollisions();
+    yield* this.loadOverrides();
 
     // A name table only. A world derives nothing about shared payloads, so asking would answer a question it cannot
     // see rather than answer it with an empty list.
@@ -561,21 +617,25 @@ export class ArchivesService {
     }
   }
 
-  private *loadCollisions(): TFlow {
+  private *loadOverrides(): TFlow {
     try {
-      this.collisions = this.collisions.asLoading([]);
+      this.overrides = this.overrides.asLoading(EMPTY_OVERRIDES);
 
-      const collisions: Array<XrayPathCollision> = yield* call(
-        archivesCommands.listCollisions(this.requireSubjectSession())
+      const report: ArchiveOverrideReport = yield* call(archivesCommands.listOverrides(this.requireSubjectSession()));
+
+      this.log.info(
+        "Archives overrides:",
+        report.overridden.length,
+        "overridden,",
+        report.unreachable.length,
+        "unreachable"
       );
 
-      this.log.info("Archives unreachable entries:", collisions.length);
-
-      this.collisions = this.collisions.asReady(collisions);
+      this.overrides = this.overrides.asReady(report);
     } catch (error: unknown) {
-      this.log.error("Failed to list archives collisions:", error);
+      this.log.error("Failed to describe archives overrides:", error);
 
-      this.collisions = this.collisions.asFailed(transformError(error), []);
+      this.overrides = this.overrides.asFailed(transformError(error), EMPTY_OVERRIDES);
     }
   }
 

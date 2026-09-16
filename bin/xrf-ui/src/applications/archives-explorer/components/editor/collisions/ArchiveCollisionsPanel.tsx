@@ -9,7 +9,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ArchiveCollisionRow } from "./ArchiveCollisionRow";
 
 /**
- * Every entry the open volume set holds that no engine lookup can reach.
+ * Copies the open subject holds that no search order can rescue.
  */
 export function ArchiveCollisionsPanel({
   "data-testid": dataTestId = "archive-collisions-panel",
@@ -18,16 +18,16 @@ export function ArchiveCollisionsPanel({
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
+  const collisions: Array<XrayPathCollision> = archivesService.unreachable;
 
-  if (archivesService.collisions.error || !collisions.length) {
+  if (archivesService.overrides.error || !collisions.length) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Unreachable files"}>
         <EditorPanelEmpty
           label={
-            archivesService.collisions.error
-              ? "Could not read what this volume set cannot reach."
-              : "Every entry in this volume set resolves to a path of its own. No collisions."
+            archivesService.overrides.error
+              ? "Could not read what this subject cannot reach."
+              : "Every source here reaches each of its own entries. Nothing is unreachable."
           }
         />
       </EditorPanel>

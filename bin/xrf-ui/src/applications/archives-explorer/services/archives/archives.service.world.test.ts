@@ -66,14 +66,14 @@ describe("ArchivesService world subject", () => {
   it("asks what a world cannot reach, and not for a name table it has none of", async () => {
     setMockInvokeResponses({
       ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_collisions"]: [],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openWorld(mockInstallationRoots());
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions", { sessionId: expect.any(String) });
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_overrides", { sessionId: expect.any(String) });
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|list_shared_payloads", expect.anything());
   });
 
@@ -98,7 +98,7 @@ describe("ArchivesService world subject", () => {
     setMockInvokeResponses({
       ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
       ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_collisions"]: [],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
       ["plugin:archives|list_shared_payloads"]: [],
       ["plugin:archives|close_subject"]: () => void closed.push("subject"),
     });
@@ -115,7 +115,7 @@ describe("ArchivesService world subject", () => {
   it("restores whichever subject the backend still holds", async () => {
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_collisions"]: [],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
     });
 
     const { service } = mockInjectedService(ArchivesService);

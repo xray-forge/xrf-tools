@@ -6,6 +6,7 @@ import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { StatBar } from "@/core/ui/stats/StatBar";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
+import { Nullable } from "@/lib/types/general";
 
 export interface IStatBreakdownRow {
   /** Identifies the row, and is what a click reports.  */
@@ -23,6 +24,10 @@ export interface IStatBreakdownTableProps extends BaseComponentProps {
   measure: EStatMeasure;
   /** Keeps the rows in the order given instead of ordering them by `measure`. */
   isPreordered?: boolean;
+  /** The row a listing below is scoped to, drawn as chosen. Only a selectable table has one. */
+  selectedId?: Nullable<string>;
+  /** A row was chosen, by its id. Given the row already chosen, so a second click can clear it. */
+  onSelect?: (id: string) => void;
 }
 
 /**
@@ -35,6 +40,8 @@ export function StatBreakdownTable({
   rows,
   measure,
   isPreordered = false,
+  selectedId = null,
+  onSelect,
 }: IStatBreakdownTableProps): ReactElement {
   const totals: { files: number; sizeReal: number } = useMemo(
     () =>
@@ -70,6 +77,8 @@ export function StatBreakdownTable({
         <Box
           key={row.id}
           data-testid={"stat-breakdown-row"}
+          aria-pressed={onSelect ? row.id === selectedId : undefined}
+          role={onSelect ? "button" : undefined}
           sx={{
             display: "grid",
             gridTemplateColumns: "minmax(0, 1fr) 72px 90px",
@@ -77,7 +86,10 @@ export function StatBreakdownTable({
             columnGap: 1.5,
             padding: 0.5,
             borderRadius: 1,
+            ...(onSelect ? { cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } } : {}),
+            ...(row.id === selectedId ? { backgroundColor: "action.selected" } : {}),
           }}
+          onClick={onSelect ? () => onSelect(row.id) : undefined}
         >
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, minWidth: 0 }}>

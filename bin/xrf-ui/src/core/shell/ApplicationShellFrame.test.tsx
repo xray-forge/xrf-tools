@@ -9,10 +9,10 @@ import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { useEditorPanels } from "@/core/shell/editor-shell";
 import {
-  IPanelSetActiveMessage,
-  IPanelSideMessage,
+  IPanelSetActiveCommand,
+  IPanelSideCommand,
   PANEL_ACTIVE_QUERY,
-  PANEL_SET_ACTIVE_MESSAGE,
+  PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -121,11 +121,11 @@ describe("ApplicationShellFrame", () => {
     withoutActEnvironment(() =>
       container
         .get(CommandBus)
-        .execute<void, IPanelSetActiveMessage>(PANEL_SET_ACTIVE_MESSAGE, { panelId: "tree", side: "left" })
+        .execute<void, IPanelSetActiveCommand>(PANEL_SET_ACTIVE_COMMAND, { panelId: "tree", side: "left" })
     );
 
     expect(getByText("tree panel")).toBeInTheDocument();
-    expect(container.get(QueryBus).query<string, IPanelSideMessage>(PANEL_ACTIVE_QUERY, { side: "left" })).toBe("tree");
+    expect(container.get(QueryBus).query<string, IPanelSideCommand>(PANEL_ACTIVE_QUERY, { side: "left" })).toBe("tree");
   });
 
   it("offers the jobs listing beside the notification centre in dev mode", async () => {

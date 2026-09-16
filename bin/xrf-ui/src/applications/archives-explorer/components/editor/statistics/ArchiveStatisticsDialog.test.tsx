@@ -159,24 +159,13 @@ describe("archive statistics dialog", () => {
     await userEvent.click(await findByLabelText("Statistics"));
 
     expect(await findByText("Origins")).toBeInTheDocument();
-    expect(await findByText("Overrides")).toBeInTheDocument();
+
+    // What a source hides moved to the Overrides dialog, beside the paths it hides. A breakdown that states a cost
+    // with no way to see what was buried is the complaint that started this.
+    expect(queryByText("Overrides")).toBeNull();
 
     // A loose file has no stored size, so no compression figure over a mixed tree would be honest.
     expect(queryByText("Compression")).toBeNull();
     expect(queryByText("Volumes")).toBeNull();
-  });
-
-  it("says what an override arrangement costs, apart from what the engine loads", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|describe_statistics"]: mockArchiveWorldStatistics(),
-      ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
-    });
-
-    const { findByLabelText, findByText } = await renderExplorer();
-
-    await userEvent.click(await findByLabelText("Statistics"));
-    await userEvent.click(await findByText("Overrides"));
-
-    expect(await findByText("8 KB hidden")).toBeInTheDocument();
   });
 });

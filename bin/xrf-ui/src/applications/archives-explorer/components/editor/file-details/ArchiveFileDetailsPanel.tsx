@@ -16,8 +16,8 @@ import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
 import { Nullable } from "@/lib/types/general";
 
+import { ArchiveOriginDetail } from "./ArchiveOriginDetail";
 import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";
-import { ArchiveWorldOriginDetail } from "./ArchiveWorldOriginDetail";
 
 /**
  * What the tree has selected, described in the vocabulary of whichever subject is open.
@@ -32,7 +32,7 @@ export function ArchiveFileDetailsPanel({
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const entry: Nullable<IArchiveEntry> = archivesService.selectedEntry;
   const descriptor: Nullable<ArchiveFileDescriptor> = archivesService.selectedDescriptor;
-  const worldEntry: Nullable<ArchiveWorldEntry> = archivesService.selectedWorldEntry;
+  const origin: Nullable<ArchiveWorldEntry> = archivesService.selectedOrigin;
 
   const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
     subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
@@ -68,8 +68,6 @@ export function ArchiveFileDetailsPanel({
 
         {descriptor ? (
           <>
-            <EditorPanelProperty label={"Source archive"} value={volume?.path ?? "-"} isMonospace />
-
             <EditorPanelProperty label={"Destination root"} value={volume?.outputRootPath ?? "-"} isMonospace />
 
             <EditorPanelProperty label={"Stored size"} value={formatBytes(descriptor.sizeCompressed)} />
@@ -93,7 +91,7 @@ export function ArchiveFileDetailsPanel({
         ) : null}
       </EditorPanelSection>
 
-      {worldEntry ? <ArchiveWorldOriginDetail entry={worldEntry} /> : null}
+      {origin ? <ArchiveOriginDetail entry={origin} /> : null}
     </EditorPanel>
   );
 }

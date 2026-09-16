@@ -10,7 +10,7 @@ interface IArchiveCollisionRowProps extends BaseComponentProps {
 }
 
 /**
- * One engine path and the two files claiming it.
+ * One engine path and the two files of a single source claiming it.
  */
 export function ArchiveCollisionRow({
   "data-testid": dataTestId,

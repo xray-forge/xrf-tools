@@ -10,8 +10,8 @@ use xrf_archive::ArchiveProject;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
-  XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope, XrayMountPlan, XrayProbe,
-  XrayProbePlan, XrayProbeStep, XraySourceKind, XraySourceShadowedCopy, XrayVfs,
+  XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope, XrayMountPlan,
+  XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XraySourceShadowedCopy, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;
@@ -156,6 +156,39 @@ fn resolves_a_texture_reference_once_mounted_in_a_vfs() {
     vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
     TEXTURE
   );
+}
+
+#[test]
+fn an_asset_located_in_a_volume_set_reads_back_through_the_mount_that_answered() {
+  // An archived asset's container names the *volume* it sits in, while a mount's root is the
+  // directory holding every volume of the set. A read that matched the two would find no mount and refuse a file the
+  // very same VFS had just located, which is what every describe and preview of an archived entry does.
+  let source: XrayArchiveSource = mount_volumes(
+    "read_back",
+    &[
+      ("base", "configs\\system.ltx", CONFIG),
+      ("patch", "textures\\wpn\\wpn_ak74.dds", TEXTURE),
+    ],
+  );
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount("", Box::new(source)).expect("archive mounts");
+
+  let scope: XrayLookupScope = XrayLookupScope::all();
+
+  for (path, expected) in [
+    ("configs\\system.ltx", CONFIG),
+    ("textures\\wpn\\wpn_ak74.dds", TEXTURE),
+  ] {
+    let asset: XrayAsset = vfs
+      .scoped(&scope)
+      .find(path)
+      .expect("lookup succeeds")
+      .expect("the entry resolves");
+
+    assert_eq!(vfs.read_asset_bytes(&asset).expect("the located asset reads"), expected);
+  }
 }
 
 #[test]

@@ -14,6 +14,16 @@ export function describeAssetContainer(container: XrayAssetContainer): string {
 }
 
 /**
+ * The source a container belongs to, spelled as a statistics report names it.
+ *
+ * @param container - Container the backend resolved the asset out of.
+ * @returns The source's own path.
+ */
+export function getAssetContainerSource(container: XrayAssetContainer): string {
+  return container.kind === EXrayAssetContainer.DIRECTORY ? container.root : container.path;
+}
+
+/**
  * Whether a located asset is loose on disk rather than packed into a volume.
  *
  * @param container - Container the backend resolved the asset out of.

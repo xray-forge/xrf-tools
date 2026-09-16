@@ -21,7 +21,7 @@ interface IRenderedMenu {
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
     ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
-    ["plugin:archives|list_collisions"]: [],
+    ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
     ["plugin:archives|list_shared_payloads"]: [],
     ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
   });

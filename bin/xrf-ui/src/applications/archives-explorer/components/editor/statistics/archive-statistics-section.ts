@@ -14,7 +14,6 @@ export enum EArchiveStatisticsSection {
   COMPRESSION = "compression",
   VOLUMES = "volumes",
   ORIGINS = "origins",
-  OVERRIDES = "overrides",
 }
 
 /**

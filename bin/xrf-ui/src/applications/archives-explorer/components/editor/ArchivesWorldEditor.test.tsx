@@ -37,6 +37,7 @@ describe("opened archives world", () => {
 
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(WORLD),
+      ["plugin:archives|list_overrides"]: { overridden: [OVERRIDDEN], unreachable: [] },
       ["plugin:archives|read_file"]: {
         name: OVERRIDDEN.name,
         content: "[system]",
@@ -62,10 +63,12 @@ describe("opened archives world", () => {
     expect(await findByText("1 overridden")).toBeInTheDocument();
   });
 
-  it("says once that some files exist in more than one source", async () => {
-    const { findByText } = renderEditor();
+  it("marks the action that answers it, rather than raising a banner", async () => {
+    const { findByLabelText, findByText, queryByText } = renderEditor();
 
-    expect(await findByText(/1 file\(s\) here exist in more than one source/, { exact: false })).toBeInTheDocument();
+    expect(await findByLabelText("Overrides")).toBeInTheDocument();
+    expect(await findByText("1 overridden")).toBeInTheDocument();
+    expect(queryByText(/exist in more than one source/)).not.toBeInTheDocument();
   });
 
   it("shows where a selected file is read from and what it hides", async () => {

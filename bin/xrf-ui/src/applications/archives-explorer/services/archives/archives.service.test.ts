@@ -248,26 +248,29 @@ describe("ArchivesService visual preview lifecycle", () => {
 });
 
 describe("ArchivesService reachability", () => {
-  it("asks what the opened volume set cannot reach", async () => {
+  it("asks what the opened volume set overrides and what it cannot reach, in one fold", async () => {
     const collision: XrayPathCollision = mockPathCollision();
 
     setMockInvokeResponses({
       ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_collisions"]: [collision],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [collision] },
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openVolumes("C:\\game\\database");
 
-    expect(service.collisions.value ?? []).toEqual([collision]);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_collisions", { sessionId: expect.any(String) });
+    expect(service.unreachable).toEqual([collision]);
+
+    // One command for both halves: a volume set walks its whole merged name table to answer either, so asking
+    // separately folded an installation-sized table twice.
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_overrides", { sessionId: expect.any(String) });
   });
 
   it("keeps a project browsable when reachability cannot be answered", async () => {
     setMockInvokeResponses({
       ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_collisions"]: () => {
+      ["plugin:archives|list_overrides"]: () => {
         throw new Error("fold failed");
       },
     });
@@ -278,13 +281,13 @@ describe("ArchivesService reachability", () => {
 
     expect(service.subject.value).not.toBeNull();
     expect(service.subject.error).toBeNull();
-    expect(service.collisions.error?.message).toBe("fold failed");
+    expect(service.overrides.error?.message).toBe("fold failed");
   });
 
   it("forgets them when the project closes", async () => {
     setMockInvokeResponses({
       ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_collisions"]: [mockPathCollision()],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [mockPathCollision()] },
       ["plugin:archives|close_subject"]: undefined,
     });
 
@@ -293,6 +296,6 @@ describe("ArchivesService reachability", () => {
     await service.openVolumes("C:\\game\\database");
     await service.closeSubject();
 
-    expect(service.collisions.value ?? []).toEqual([]);
+    expect(service.unreachable).toEqual([]);
   });
 });

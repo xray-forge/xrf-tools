@@ -21,11 +21,11 @@ import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStrip
 import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
 import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
 import {
-  IPanelSetActiveMessage,
-  IPanelSideMessage,
+  IPanelSetActiveCommand,
+  IPanelSideCommand,
   PANEL_ACTIVE_QUERY,
-  PANEL_CLOSE_MESSAGE,
-  PANEL_SET_ACTIVE_MESSAGE,
+  PANEL_CLOSE_COMMAND,
+  PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
 import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
@@ -97,12 +97,12 @@ export function ApplicationShellFrame({
 
   // Flushed so the command is synchronous for its caller: whoever opens a panel to reach something inside it finds
   // that content mounted when the dispatch returns, with no frame to wait for and no retry to write.
-  useOnCommand(PANEL_SET_ACTIVE_MESSAGE, ({ side, panelId }: IPanelSetActiveMessage) =>
+  useOnCommand(PANEL_SET_ACTIVE_COMMAND, ({ side, panelId }: IPanelSetActiveCommand) =>
     flushSync(() => (side === "left" ? leftSelection : rightSelection).onOpenPanel(panelId))
   );
 
   // Closing a side is toggling whatever it has open, which is what `usePanelSelection` already means by it.
-  useOnCommand(PANEL_CLOSE_MESSAGE, ({ side }: IPanelSideMessage) => {
+  useOnCommand(PANEL_CLOSE_COMMAND, ({ side }: IPanelSideCommand) => {
     const selection: IPanelSelection = side === "left" ? leftSelection : rightSelection;
 
     if (selection.activePanelId) {
@@ -112,7 +112,7 @@ export function ApplicationShellFrame({
 
   useOnQuery(
     PANEL_ACTIVE_QUERY,
-    ({ side }: IPanelSideMessage) => (side === "left" ? leftSelection : rightSelection).activePanelId
+    ({ side }: IPanelSideCommand) => (side === "left" ? leftSelection : rightSelection).activePanelId
   );
 
   return (

@@ -1,13 +1,14 @@
+import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { Alert, Box } from "@mui/material";
+import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { getSubjectRoot, getSubjectShadowedCount, getSubjectSize, getSubjectSourceCount } from "@/core/archive/lib";
+import { getSubjectRoot, getSubjectSize, getSubjectSourceCount, IArchiveEntry } from "@/core/archive/lib";
 import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
-import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
@@ -16,23 +17,25 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
-import { ARCHIVE_EXPLORER_PANELS } from "./archive-panels";
+import { ARCHIVE_EXPLORER_PANELS, EArchivePanelId } from "./archive-panels";
+import { ArchiveOverridesDialog } from "./overrides";
 import { ArchivesFilePreview } from "./preview";
 import { ArchiveResolutionDialog } from "./resolution";
 import { ArchiveStatisticsDialog } from "./statistics";
 
 export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
+  const commandBus: CommandBus = useInjection(CommandBus);
 
   const [isClosing, setClosing] = useState<boolean>(false);
   const [closeError, setCloseError] = useState<Nullable<string>>(null);
-  const [isCollisionNoticeDismissed, setCollisionNoticeDismissed] = useState<boolean>(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
   const [isResolutionOpen, setResolutionOpen] = useState<boolean>(false);
-  const [isShadowNoticeDismissed, setShadowNoticeDismissed] = useState<boolean>(false);
+  const [isOverridesOpen, setOverridesOpen] = useState<boolean>(false);
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
   // finds it again instead of showing an idle tree over files it is still writing.
@@ -40,14 +43,11 @@ export function ArchivesEditor(): ReactElement {
 
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const root: string = getSubjectRoot(subject);
-  const collisions: Array<XrayPathCollision> = archivesService.collisions.value ?? [];
-  const shadowedCount: number = getSubjectShadowedCount(subject);
+  const overriddenCount: number = archivesService.overridden.length;
 
   const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
   const isExtracting: boolean = archivesService.operation.isLoading;
   const isBusy: boolean = isClosing || isExtracting;
-  const isCollisionNoticeShown: boolean = collisions.length > 0 && !isCollisionNoticeDismissed;
-  const isShadowNoticeShown: boolean = shadowedCount > 0 && !isShadowNoticeDismissed;
 
   const location: Nullable<IEditorLocation> = root ? { path: root } : null;
 
@@ -66,6 +66,30 @@ export function ArchivesEditor(): ReactElement {
     }
   }, [archivesService]);
 
+  /**
+   * Opens the file a contested path names, and raises the tree that shows where it sits.
+   */
+  const onOpenOverride = useCallback(
+    (name: string): void => {
+      const entry: Optional<IArchiveEntry> = archivesService.entries.find(
+        (candidate: IArchiveEntry) => candidate.name === name
+      );
+
+      if (!entry) {
+        return;
+      }
+
+      commandBus.execute<void, IPanelSetActiveCommand>(
+        PANEL_SET_ACTIVE_COMMAND,
+        { panelId: EArchivePanelId.FILES, side: "left" },
+        { optional: true }
+      );
+
+      void archivesService.selectArchiveFile(entry);
+    },
+    [archivesService, commandBus]
+  );
+
   useEditorPanels(() => ARCHIVE_EXPLORER_PANELS, []);
 
   useEditorBusy(isBusy || Boolean(job));
@@ -74,7 +98,7 @@ export function ArchivesEditor(): ReactElement {
     `${getSubjectSourceCount(subject)} ${isWorld ? "sources" : "archives"}`,
     `${archivesService.entries.length} files`,
     formatBytes(getSubjectSize(subject)),
-    ...(isWorld ? [`${shadowedCount} overridden`] : []),
+    ...(overriddenCount ? [`${overriddenCount} overridden`] : []),
   ]);
 
   return (
@@ -95,6 +119,15 @@ export function ArchivesEditor(): ReactElement {
 
               <EditorIconAction
                 aria-haspopup={"dialog"}
+                aria-expanded={isOverridesOpen}
+                label={"Overrides"}
+                description={"Engine paths held more than once, and what each contest buries"}
+                icon={<ContentCopyIcon />}
+                onClick={() => setOverridesOpen(true)}
+              />
+
+              <EditorIconAction
+                aria-haspopup={"dialog"}
                 aria-expanded={isStatisticsOpen}
                 label={"Statistics"}
                 description={"What this archive holds, broken down"}
@@ -107,7 +140,7 @@ export function ArchivesEditor(): ReactElement {
         />
       }
       banner={
-        job || closeError || isCollisionNoticeShown || isShadowNoticeShown ? (
+        job || closeError ? (
           <>
             {job ? (
               <Box sx={{ paddingX: 2, paddingY: 1 }}>
@@ -120,28 +153,6 @@ export function ArchivesEditor(): ReactElement {
                 Could not close archives: {closeError}
               </Alert>
             ) : null}
-
-            {isShadowNoticeShown ? (
-              <Alert
-                severity={"info"}
-                closeText={"Dismiss overridden files notice"}
-                onClose={() => setShadowNoticeDismissed(true)}
-              >
-                {shadowedCount} file(s) here exist in more than one source. The tree shows the copy the engine would
-                load; the rest are listed under Origin in File details.
-              </Alert>
-            ) : null}
-
-            {isCollisionNoticeShown ? (
-              <Alert
-                severity={"warning"}
-                closeText={"Dismiss unreachable files notice"}
-                onClose={() => setCollisionNoticeDismissed(true)}
-              >
-                {collisions.length} file(s) here cannot be reached - another entry claims their engine path. See the
-                Unreachable files panel.
-              </Alert>
-            ) : null}
           </>
         ) : null
       }
@@ -151,6 +162,12 @@ export function ArchivesEditor(): ReactElement {
       <ArchiveResolutionDialog isOpen={isResolutionOpen} onClose={() => setResolutionOpen(false)} />
 
       <ArchiveStatisticsDialog isOpen={isStatisticsOpen} onClose={() => setStatisticsOpen(false)} />
+
+      <ArchiveOverridesDialog
+        isOpen={isOverridesOpen}
+        onClose={() => setOverridesOpen(false)}
+        onOpenFile={onOpenOverride}
+      />
     </EditorLayout>
   );
 }

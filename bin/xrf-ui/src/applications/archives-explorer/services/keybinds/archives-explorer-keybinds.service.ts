@@ -6,10 +6,10 @@ import { KeybindCommand } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { FOCUS_SEARCH_FIELD_MESSAGE } from "@/core/search/lib";
 import {
-  IPanelSetActiveMessage,
-  IPanelSideMessage,
+  IPanelSetActiveCommand,
+  IPanelSideCommand,
   PANEL_ACTIVE_QUERY,
-  PANEL_SET_ACTIVE_MESSAGE,
+  PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
 import { Nullable } from "@/lib/types/general";
 
@@ -32,7 +32,7 @@ export class ArchivesExplorerKeybindsService {
   })
   public focusSearch(): void {
     const active: Nullable<string> =
-      this.queryBus.query<Nullable<string>, IPanelSideMessage>(
+      this.queryBus.query<Nullable<string>, IPanelSideCommand>(
         PANEL_ACTIVE_QUERY,
         { side: "left" },
         { optional: true }
@@ -40,8 +40,8 @@ export class ArchivesExplorerKeybindsService {
 
     // The panel command renders synchronously, so the field it holds is mounted and listening by the next line.
     if (active !== EArchivePanelId.FILES) {
-      this.commandBus.execute<void, IPanelSetActiveMessage>(
-        PANEL_SET_ACTIVE_MESSAGE,
+      this.commandBus.execute<void, IPanelSetActiveCommand>(
+        PANEL_SET_ACTIVE_COMMAND,
         { panelId: EArchivePanelId.FILES, side: "left" },
         { optional: true }
       );

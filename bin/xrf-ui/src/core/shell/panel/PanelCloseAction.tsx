@@ -6,7 +6,7 @@ import { ReactElement, useEffect, useRef, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
-import { IPanelSideMessage, PANEL_CLOSE_MESSAGE } from "@/core/shell/panel/panel-messages";
+import { IPanelSideCommand, PANEL_CLOSE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -36,7 +36,7 @@ export function PanelCloseAction(): ReactElement {
           label={"Close panel"}
           description={"Close this panel"}
           icon={<CloseIcon />}
-          onClick={() => commandBus.execute<void, IPanelSideMessage>(PANEL_CLOSE_MESSAGE, { side }, { optional: true })}
+          onClick={() => commandBus.execute<void, IPanelSideCommand>(PANEL_CLOSE_COMMAND, { side }, { optional: true })}
         />
       )}
     </Box>

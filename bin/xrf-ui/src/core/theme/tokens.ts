@@ -298,6 +298,16 @@ export const DIVIDER = {
   dark: "#434343",
 } as const;
 
+/**
+ * The title band's own sheen.
+ */
+export const HEADER_GLOSS = {
+  highlight: { light: 0.6, dark: 0.01 },
+  shade: { light: 0.05, dark: 0.1 },
+  /** Where the highlight has fully faded, leaving the band its own colour before the shade begins. */
+  fadeAt: "60%",
+} as const;
+
 /** A floating surface's own edge. It carries the separation in dark, where a shadow on near-black cannot. */
 export const OVERLAY_BORDER = {
   light: "#e6e6e6",
@@ -307,7 +317,7 @@ export const OVERLAY_BORDER = {
 /** The only two shadows, spread by `creation.ts` across the twenty-five slots MUI's theme requires. */
 export const SHADOW = {
   raised: {
-    light: "0 1px 2px rgba(0, 0, 0, 0.03)",
+    light: "0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.10)",
     dark: "0 1px 2px rgba(0, 0, 0, 0.13)",
   },
   overlay: {

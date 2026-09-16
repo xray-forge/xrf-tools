@@ -7,9 +7,9 @@ import { KeybindCommandsService } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { FOCUS_SEARCH_FIELD_MESSAGE } from "@/core/search/lib";
 import {
-  IPanelSetActiveMessage,
+  IPanelSetActiveCommand,
   PANEL_ACTIVE_QUERY,
-  PANEL_SET_ACTIVE_MESSAGE,
+  PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
 import { mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -20,7 +20,7 @@ import { Nullable } from "@/lib/types/general";
 interface IKeybindsHarness {
   container: Container;
   dispatched: Array<CommandType>;
-  openedPanels: Array<IPanelSetActiveMessage>;
+  openedPanels: Array<IPanelSetActiveCommand>;
   service: ArchivesExplorerKeybindsService;
 }
 
@@ -28,12 +28,12 @@ function mockKeybinds(activePanelId: Nullable<string>): IKeybindsHarness {
   const { service, container } = mockInjectedService(ArchivesExplorerKeybindsService, [ArchivesService]);
 
   const dispatched: Array<CommandType> = [];
-  const openedPanels: Array<IPanelSetActiveMessage> = [];
+  const openedPanels: Array<IPanelSetActiveCommand> = [];
 
   const commandBus: CommandBus = container.get(CommandBus);
 
-  commandBus.register(PANEL_SET_ACTIVE_MESSAGE, (message: IPanelSetActiveMessage) => {
-    dispatched.push(PANEL_SET_ACTIVE_MESSAGE);
+  commandBus.register(PANEL_SET_ACTIVE_COMMAND, (message: IPanelSetActiveCommand) => {
+    dispatched.push(PANEL_SET_ACTIVE_COMMAND);
     openedPanels.push(message);
   });
 
@@ -57,7 +57,7 @@ describe("ArchivesExplorerKeybindsService", () => {
 
     service.focusSearch();
 
-    expect(dispatched).toEqual([PANEL_SET_ACTIVE_MESSAGE, FOCUS_SEARCH_FIELD_MESSAGE]);
+    expect(dispatched).toEqual([PANEL_SET_ACTIVE_COMMAND, FOCUS_SEARCH_FIELD_MESSAGE]);
     expect(openedPanels).toEqual([{ panelId: "archives", side: "left" }]);
   });
 

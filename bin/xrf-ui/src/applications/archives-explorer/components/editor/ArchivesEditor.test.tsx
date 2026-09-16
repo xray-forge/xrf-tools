@@ -90,12 +90,12 @@ describe("opened archives editor", () => {
     expect(await findByText("Open game archives")).toBeInTheDocument();
   });
 
-  it.each(["list_collisions", "list_shared_payloads"])(
+  it.each(["list_overrides", "list_shared_payloads"])(
     "shows the restored archive while %s is pending",
     async (command) => {
       setMockInvokeResponses({
         ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
-        ["plugin:archives|list_collisions"]: [],
+        ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
         ["plugin:archives|list_shared_payloads"]: [],
         [`plugin:archives|${command}`]: () => new Promise(() => {}),
       });
@@ -277,7 +277,7 @@ describe("opened archives editor", () => {
     await userEvent.dblClick(await findByText("texture.dds"));
     await userEvent.click(await findByLabelText("File details"));
 
-    expect(await findByText("Source archive")).toBeInTheDocument();
+    expect(await findByText("Origin")).toBeInTheDocument();
     expect(await findByText("C:\\game\\database\\configs.db0")).toBeInTheDocument();
     expect(await findByText("0x12345678")).toBeInTheDocument();
     expect(await findByText("Stored")).toBeInTheDocument();
@@ -324,35 +324,13 @@ describe("opened archives editor", () => {
     expect(queryByText(/cannot be reached/)).not.toBeInTheDocument();
   });
 
-  it("reports unreachable entries unprompted and names them in its panel", async () => {
+  it("names unreachable entries in its own panel, without a banner over the tree", async () => {
     // The explorer used to show the winner and nothing else, so an entry nobody could reach was indistinguishable
-    // from one nobody packed.
+    // from one nobody packed. The panel is where that is said; a banner over the tree stated a count, offered
+    // nothing to do about it, and had to be dismissed before the tree was whole again.
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
-      ["plugin:archives|list_collisions"]: [mockPathCollision()],
-    });
-
-    const { findByLabelText, findByText } = await act(async () =>
-      renderWithProviders(
-        <ApplicationShellFrame>
-          <ArchivesExplorerApplication />
-        </ApplicationShellFrame>,
-        { route: "/archives-explorer", bindings: [AssetService, ArchivesService], hasShell: true }
-      )
-    );
-
-    expect(await findByText(/1 file\(s\) here cannot be reached/)).toBeInTheDocument();
-
-    await userEvent.click(await findByLabelText("Unreachable files"));
-
-    expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
-    expect(await findByText("C:/game/database/configs.db0::textures/a.dds")).toBeInTheDocument();
-  });
-
-  it("dismisses the reachability notice without hiding the entries themselves", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
-      ["plugin:archives|list_collisions"]: [mockPathCollision()],
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [mockPathCollision()] },
     });
 
     const { findByLabelText, findByText, queryByText } = await act(async () =>
@@ -364,13 +342,12 @@ describe("opened archives editor", () => {
       )
     );
 
-    await userEvent.click(await findByLabelText("Dismiss unreachable files notice"));
-
-    await waitFor(() => expect(queryByText(/cannot be reached/)).not.toBeInTheDocument());
+    expect(queryByText(/cannot be reached/)).not.toBeInTheDocument();
 
     await userEvent.click(await findByLabelText("Unreachable files"));
 
     expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
+    expect(await findByText("C:/game/database/configs.db0::textures/a.dds")).toBeInTheDocument();
   });
 
   it("closes into its own picker rather than navigating away", async () => {

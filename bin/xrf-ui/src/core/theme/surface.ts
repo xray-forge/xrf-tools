@@ -1,7 +1,7 @@
 import { Theme } from "@mui/material";
 import { SystemStyleObject } from "@mui/system";
 
-import { ACCENT, RECESS_TONE, STATE, SURFACE, toSharePercent, WASH } from "./tokens";
+import { ACCENT, HEADER_GLOSS, RECESS_TONE, STATE, SURFACE, toSharePercent, WASH } from "./tokens";
 
 /** One of the three opaque planes. */
 export type TSurfaceLevel = keyof typeof SURFACE;
@@ -60,5 +60,29 @@ export function getWellSx(theme: Theme): SystemStyleObject<Theme> {
     ...getWellFillSx(theme),
     border: "1px solid",
     borderColor: "divider",
+  };
+}
+
+/** The band's gloss for one scheme, as a gradient over its flat fill. */
+function getHeaderGlossImage(scheme: "light" | "dark"): string {
+  return (
+    `linear-gradient(180deg, ` +
+    `rgba(255, 255, 255, ${HEADER_GLOSS.highlight[scheme]}) 0%, ` +
+    `rgba(255, 255, 255, 0) ${HEADER_GLOSS.fadeAt}, ` +
+    `rgba(0, 0, 0, ${HEADER_GLOSS.shade[scheme]}) 100%)`
+  );
+}
+
+/**
+ * The band a surface names itself in: the file header over the body, and a panel's title row.
+ *
+ * Flat `frame` rather than the level helper - the band is chrome in its own right, not a piece of the surface behind
+ * it - with a gloss of its own so it reads as a lit strip instead of a painted rectangle.
+ */
+export function getHeaderBandSx(theme: Theme): SystemStyleObject<Theme> {
+  return {
+    backgroundColor: "background.frame",
+    backgroundImage: getHeaderGlossImage("light"),
+    ...theme.applyStyles("dark", { backgroundImage: getHeaderGlossImage("dark") }),
   };
 }

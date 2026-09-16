@@ -15,7 +15,7 @@ use xrf_vfs::XrayAssetContainer;
 pub enum ArchivePatchOrigin {
   /// A loose tree, named by the root it mounted at.
   Directory { root: PathBuf },
-  /// The archive volume set at `path`.
+  /// The archive volume at `path`.
   Archive { path: PathBuf },
 }
 

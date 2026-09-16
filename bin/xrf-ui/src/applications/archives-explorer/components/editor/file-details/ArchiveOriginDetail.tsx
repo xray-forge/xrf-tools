@@ -6,19 +6,19 @@ import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/Edi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
-interface IArchiveWorldOriginDetailProps extends BaseComponentProps {
+interface IArchiveOriginDetailProps extends BaseComponentProps {
   entry: ArchiveWorldEntry;
 }
 
 /**
  * Where the selected file's bytes actually come from, and which copies that decision hides.
  */
-export function ArchiveWorldOriginDetail({
-  "data-testid": dataTestId = "archive-world-origin-detail",
+export function ArchiveOriginDetail({
+  "data-testid": dataTestId = "archive-origin-detail",
   id,
   className,
   entry,
-}: IArchiveWorldOriginDetailProps): ReactElement {
+}: IArchiveOriginDetailProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Origin"}>
       <EditorPanelProperty label={"Read from"} value={isLooseContainer(entry.container) ? "Loose file" : "Archive"} />
