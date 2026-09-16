@@ -7,7 +7,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_b
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::anm::anm_envelope::AnmEnvelope;
+use crate::data::animation::animation_envelope::AnimationEnvelope;
 
 /// Channels a motion animates, in the order the file stores them.
 pub const ANM_CHANNELS: [&str; 6] = [
@@ -38,7 +38,7 @@ pub struct AnmFile {
   pub fps: f32,
   pub version: u16,
   /// One envelope per channel of [`ANM_CHANNELS`], in that order.
-  pub channels: Vec<AnmEnvelope>,
+  pub channels: Vec<AnimationEnvelope>,
 }
 
 impl AnmFile {
@@ -122,13 +122,13 @@ impl AnmFile {
       )));
     }
 
-    let mut channels: Vec<AnmEnvelope> = Vec::with_capacity(Self::CHANNEL_COUNT);
+    let mut channels: Vec<AnimationEnvelope> = Vec::with_capacity(Self::CHANNEL_COUNT);
 
     for _ in 0..Self::CHANNEL_COUNT {
       channels.push(if version == 3 {
-        AnmEnvelope::read_wide::<T, D>(reader)?
+        AnimationEnvelope::read_wide::<T, D>(reader)?
       } else {
-        AnmEnvelope::read::<T, D>(reader)?
+        AnimationEnvelope::read::<T, D>(reader)?
       });
     }
 

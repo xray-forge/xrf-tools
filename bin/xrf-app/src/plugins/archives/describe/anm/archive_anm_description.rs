@@ -65,12 +65,12 @@ impl ArchiveAnmDescription {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{AnmEnvelope, AnmFile, AnmKey};
+  use xrf_db::{AnimationEnvelope, AnimationKey, AnmFile};
 
   use super::ArchiveAnmDescription;
 
-  fn key(value: f32, time: f32) -> AnmKey {
-    AnmKey {
+  fn key(value: f32, time: f32) -> AnimationKey {
+    AnimationKey {
       value,
       time,
       shape: 0,
@@ -78,7 +78,7 @@ mod tests {
     }
   }
 
-  fn animation(frame_start: i32, frame_end: i32, keys: Vec<AnmKey>) -> AnmFile {
+  fn animation(frame_start: i32, frame_end: i32, keys: Vec<AnimationKey>) -> AnmFile {
     AnmFile {
       name: String::new(),
       frame_start,
@@ -86,7 +86,7 @@ mod tests {
       fps: 30.0,
       version: 5,
       channels: (0..AnmFile::CHANNEL_COUNT)
-        .map(|index| AnmEnvelope {
+        .map(|index| AnimationEnvelope {
           behavior: (1, 1),
           keys: if index == 0 { keys.clone() } else { Vec::new() },
         })

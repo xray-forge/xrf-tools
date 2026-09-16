@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{ANM_CHANNELS, AnmEnvelope, AnmKey};
+use xrf_db::{ANM_CHANNELS, AnimationEnvelope, AnimationKey};
 
 use crate::plugins::archives::describe::anm::archive_anm_behavior::ArchiveAnmBehavior;
 use crate::plugins::archives::describe::anm::archive_anm_shape::ArchiveAnmShape;
@@ -30,7 +30,7 @@ pub struct ArchiveAnmChannel {
 
 impl ArchiveAnmChannel {
   /// Every channel of an animation, named by the position it holds.
-  pub fn of_all(channels: &[AnmEnvelope]) -> Vec<Self> {
+  pub fn of_all(channels: &[AnimationEnvelope]) -> Vec<Self> {
     ANM_CHANNELS
       .into_iter()
       .zip(channels)
@@ -39,7 +39,7 @@ impl ArchiveAnmChannel {
   }
 
   /// One channel, taken over the keys it carries.
-  fn of(name: &str, envelope: &AnmEnvelope) -> Self {
+  fn of(name: &str, envelope: &AnimationEnvelope) -> Self {
     let (before, after): (u8, u8) = envelope.behavior;
 
     Self {
@@ -57,24 +57,24 @@ impl ArchiveAnmChannel {
 }
 
 /// The one value a fold over a channel's keys leaves, or `None` for a channel carrying none.
-fn fold_values(envelope: &AnmEnvelope, fold: fn(f32, f32) -> f32) -> Option<f32> {
+fn fold_values(envelope: &AnimationEnvelope, fold: fn(f32, f32) -> f32) -> Option<f32> {
   envelope
     .keys
     .iter()
-    .map(|key: &AnmKey| key.value)
+    .map(|key: &AnimationKey| key.value)
     .reduce(fold)
     .filter(|value| value.is_finite())
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{AnmEnvelope, AnmKey};
+  use xrf_db::{AnimationEnvelope, AnimationKey};
 
   use super::ArchiveAnmChannel;
   use crate::plugins::archives::describe::anm::archive_anm_behavior::ArchiveAnmBehavior;
 
-  fn key(value: f32, time: f32, shape: u8) -> AnmKey {
-    AnmKey {
+  fn key(value: f32, time: f32, shape: u8) -> AnimationKey {
+    AnimationKey {
       value,
       time,
       shape,
@@ -82,8 +82,8 @@ mod tests {
     }
   }
 
-  fn envelope(behavior: (u8, u8), keys: Vec<AnmKey>) -> AnmEnvelope {
-    AnmEnvelope { behavior, keys }
+  fn envelope(behavior: (u8, u8), keys: Vec<AnimationKey>) -> AnimationEnvelope {
+    AnimationEnvelope { behavior, keys }
   }
 
   #[test]

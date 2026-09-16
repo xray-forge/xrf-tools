@@ -4,9 +4,9 @@ use byteorder::WriteBytesExt;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::anm::anm_envelope::AnmEnvelope;
 use crate::anm::anm_file::AnmFile;
-use crate::anm::anm_key::{AnmInterpolation, AnmKey};
+use crate::data::animation::animation_envelope::AnimationEnvelope;
+use crate::data::animation::animation_key::{AnimationInterpolation, AnimationKey};
 
 /// One interpolating key, as version 5 lays it out: value, time, shape, then seven quantised parameters.
 fn curved_key_bytes(value: f32, time: f32, quantised: u16) -> Vec<u8> {
@@ -116,7 +116,7 @@ fn an_animation_is_written_back_byte_for_byte() -> XrfResult {
 #[test]
 fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
-  let key: &AnmKey = &animation.channels[1].keys[0];
+  let key: &AnimationKey = &animation.channels[1].keys[0];
 
   assert!(key.is_stepped());
   assert_eq!(key.interpolation, None, "a stepped key stores no interpolation");
@@ -130,7 +130,7 @@ fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
 #[test]
 fn a_quantised_parameter_reads_as_the_step_it_sits_on() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
-  let interpolation: AnmInterpolation = animation.channels[0].keys[0]
+  let interpolation: AnimationInterpolation = animation.channels[0].keys[0]
     .interpolation
     .expect("the first key interpolates");
 
@@ -187,7 +187,7 @@ fn a_payload_holding_more_than_six_channels_is_refused() -> XrfResult {
 fn a_declared_key_count_past_the_payload_is_refused_before_it_is_reserved() -> XrfResult {
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 1, 0xff, 0xff])?;
 
-  let error: String = AnmEnvelope::read::<XRayByteOrder, _>(&mut reader)
+  let error: String = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)
     .expect_err("expect the declared key count to exceed the payload")
     .to_string();
 

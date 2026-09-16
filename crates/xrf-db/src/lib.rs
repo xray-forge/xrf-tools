@@ -7,6 +7,7 @@ pub(crate) mod level;
 pub(crate) mod ogf;
 pub(crate) mod omf;
 pub(crate) mod particles;
+pub(crate) mod ppe;
 pub(crate) mod shader_library;
 pub(crate) mod skeleton;
 pub(crate) mod spawn;
@@ -18,9 +19,9 @@ pub mod fixtures;
 
 pub use xrf_chunk::XRayByteOrder;
 
-pub use crate::anm::anm_envelope::AnmEnvelope;
 pub use crate::anm::anm_file::{ANM_CHANNELS, ANM_DEFAULT_FPS, AnmFile};
-pub use crate::anm::anm_key::{AnmInterpolation, AnmKey};
+pub use crate::data::animation::animation_envelope::AnimationEnvelope;
+pub use crate::data::animation::animation_key::{AnimationInterpolation, AnimationKey};
 pub use crate::data::ogf::ogf_bone::OgfBone;
 pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
 pub use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
@@ -107,6 +108,9 @@ pub use crate::particles::chunks::{
   particles_header_chunk::ParticlesHeaderChunk,
 };
 pub use crate::particles::particles_file::*;
+pub use crate::ppe::ppe_color::PpeColor;
+pub use crate::ppe::ppe_color_map::PpeColorMap;
+pub use crate::ppe::ppe_file::{PPE_COLORS, PPE_VALUES, PpeFile};
 pub use crate::shader_library::shader_blender::*;
 pub use crate::shader_library::shader_blender_class::*;
 pub use crate::shader_library::shader_blender_property::*;

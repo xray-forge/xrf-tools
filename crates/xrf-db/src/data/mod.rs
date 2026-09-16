@@ -1,4 +1,5 @@
 pub(crate) mod alife;
+pub(crate) mod animation;
 pub(crate) mod artefact_spawn;
 pub(crate) mod generic;
 pub(crate) mod graph;

@@ -12,25 +12,25 @@ const SHAPE_STEPPED: u8 = 4;
 /// One key of an animation envelope: a value at a time, and the curve leading to it.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AnmKey {
+pub struct AnimationKey {
   pub value: f32,
   /// Seconds from the start of the animation.
   pub time: f32,
   pub shape: u8,
-  pub interpolation: Option<AnmInterpolation>,
+  pub interpolation: Option<AnimationInterpolation>,
 }
 
 /// The curve parameters a key that interpolates carries.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AnmInterpolation {
+pub struct AnimationInterpolation {
   pub tension: f32,
   pub continuity: f32,
   pub bias: f32,
   pub parameters: [f32; 4],
 }
 
-impl AnmKey {
+impl AnimationKey {
   /// Bytes a stepped key occupies: the value, the time and the shape.
   pub const MIN_SERIALIZED_SIZE: u64 = 4 + 4 + 1;
 
@@ -39,7 +39,7 @@ impl AnmKey {
     self.shape == SHAPE_STEPPED
   }
 
-  /// Reads a key as the versions from 4 on store one, `st_Key::Load_2`.
+  /// Reads a key the narrow way, `st_Key::Load_2`.
   ///
   /// # Errors
   ///
@@ -56,15 +56,15 @@ impl AnmKey {
       interpolation: if shape == SHAPE_STEPPED {
         None
       } else {
-        Some(AnmInterpolation::read::<T, D>(reader)?)
+        Some(AnimationInterpolation::read::<T, D>(reader)?)
       },
     })
   }
 
-  /// Reads a key as version 3 stores one, `st_Key::Load_1`.
+  /// Reads a key the wide way, `st_Key::Load_1`.
   ///
   /// The older layout is wider in every field: the shape is a `u32` and the curve parameters are full floats rather
-  /// than quantised, and it carries them whatever the shape.
+  /// than quantised, and it carries them whatever the shape. Only an object motion of version 3 stores one.
   ///
   /// # Errors
   ///
@@ -79,11 +79,11 @@ impl AnmKey {
       time,
       // Narrowed the way the engine does, which keeps only the low byte.
       shape: (shape & 0xff) as u8,
-      interpolation: Some(AnmInterpolation::read_wide::<T, D>(reader)?),
+      interpolation: Some(AnimationInterpolation::read_wide::<T, D>(reader)?),
     })
   }
 
-  /// Writes a key the way the versions from 4 on store one.
+  /// Writes a key the narrow way, `st_Key::Save`.
   ///
   /// # Errors
   ///
@@ -101,7 +101,7 @@ impl AnmKey {
   }
 }
 
-impl AnmInterpolation {
+impl AnimationInterpolation {
   /// Bytes the quantised form occupies: seven `u16`.
   pub const SERIALIZED_SIZE: u64 = 7 * 2;
 
