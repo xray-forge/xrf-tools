@@ -1,7 +1,9 @@
 import { IconButton, svgIconClasses, Tooltip, useTheme } from "@mui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
-import { getRailButtonSx } from "./RailButton.styles";
+import { getControlStateSx } from "@/core/theme/control-state";
+
+import { RAIL_BUTTON_SX } from "./RailButton.styles";
 
 interface IRailButtonProps {
   isSelected?: boolean;
@@ -37,12 +39,11 @@ export function RailButton({
           disabled={isDisabled}
           style={{ fill: isDisabled || !isGradient ? "currentColor" : `url("#${gradientId}")` }}
           sx={[
-            getRailButtonSx,
+            RAIL_BUTTON_SX,
+            getControlStateSx(Boolean(isSelected)),
             {
               [`& .${svgIconClasses.root}`]: { fill: "inherit" },
-              color: isGradient ? (isSelected ? "primary.main" : "text.secondary") : `${appearance}.main`,
-              backgroundColor: isSelected ? "action.current" : "transparent",
-              ...(isGradient ? {} : { backgroundImage: "none" }),
+              ...(isGradient ? {} : { color: `${appearance}.main`, backgroundImage: "none" }),
             },
           ]}
           onClick={onClick}

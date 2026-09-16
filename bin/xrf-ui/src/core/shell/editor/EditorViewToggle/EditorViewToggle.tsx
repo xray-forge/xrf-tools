@@ -20,7 +20,7 @@ export interface IEditorViewToggleProps extends BaseComponentProps {
  * One on/off view toggle of an editor toolbar.
  *
  * Lives with the toolbar rather than with any one editor, because the vocabulary is what makes two tools feel like
- * one program: a person who has learned that a faded icon means the view option is off has learned it everywhere.
+ * one program: a person who has learned that a lit icon means the view option is on has learned it everywhere.
  */
 export function EditorViewToggle({
   "data-testid": dataTestId = "editor-view-toggle",
@@ -43,8 +43,8 @@ export function EditorViewToggle({
       label={label}
       description={isDisabled && unavailableTitle ? unavailableTitle : description}
       icon={icon}
+      isActive={isOn}
       isDisabled={isDisabled}
-      sx={{ opacity: isOn ? 1 : 0.45 }}
       onClick={onToggle}
     />
   );

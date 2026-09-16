@@ -81,19 +81,28 @@ describe("EditorToolbar", () => {
   });
 
   it("divides its controls from the window's, and only when it has some", () => {
-    const bare = renderWithProviders(<EditorToolbar />, { route: "/spawn-editor" });
+    const bare = renderWithProviders(<EditorToolbar />, { route: "/characters-explorer" });
 
     // With nothing to its left the rule was floating in empty space between the breadcrumb and the
     // window buttons, dividing nothing from nothing.
-    expect(bare.container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
+    expect(bare.queryByTestId("editor-toolbar-divider")).not.toBeInTheDocument();
 
     bare.unmount();
 
     const acting = renderWithProviders(<EditorToolbar actions={<button>refresh</button>} />, {
-      route: "/spawn-editor",
+      route: "/characters-explorer",
     });
 
-    expect(acting.container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+    expect(acting.getByTestId("editor-toolbar-divider")).toBeInTheDocument();
+  });
+
+  it("carries the application's help inside its own action group rather than beside the window buttons", () => {
+    const { getByLabelText, getByTestId } = renderWithProviders(<EditorToolbar />, { route: "/archives-explorer" });
+
+    // Help is something the open application offers, so the rule divides it from the window too. It used to
+    // be dressed as a caption button, where it read as a fourth thing the window itself did.
+    expect(getByTestId("editor-toolbar-actions")).toContainElement(getByLabelText("Help"));
+    expect(getByTestId("editor-toolbar-divider")).toBeInTheDocument();
   });
 
   it("sizes its controls against the caption rather than a toolbar that no longer exists", () => {

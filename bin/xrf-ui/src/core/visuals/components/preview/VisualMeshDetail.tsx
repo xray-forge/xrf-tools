@@ -48,7 +48,7 @@ export function VisualMeshDetail({
       description={hasDetailLevels ? `Mesh detail: ${Math.round((1 - detail) * 100)}%` : "Nothing to decimate"}
       icon={<TuneIcon />}
       isDisabled={!hasDetailLevels}
-      isHighlighted={detail !== 0 && hasDetailLevels}
+      isActive={detail !== 0 && hasDetailLevels}
     >
       <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>
         <Typography variant={"overline"} sx={{ color: "text.secondary" }}>

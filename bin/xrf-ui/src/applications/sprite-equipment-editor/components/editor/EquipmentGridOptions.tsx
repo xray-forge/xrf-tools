@@ -52,7 +52,7 @@ export function EquipmentGridOptions({
       description={isGridVisible ? `Grid: ${gridSize}px cells` : "Grid: hidden"}
       icon={<GridIcon />}
       // A size the engine never reads is worth noticing from the toolbar, without opening anything.
-      isHighlighted={!isEngineSize}
+      isActive={!isEngineSize}
     >
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1, paddingX: 2, paddingY: 1 }}>
         <Typography variant={"overline"} sx={{ color: "text.secondary" }}>

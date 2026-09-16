@@ -2,6 +2,7 @@ import { Box, iconButtonClasses, svgIconClasses } from "@mui/material";
 import { ReactElement, ReactNode, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
+import { ApplicationHelp } from "@/core/help/components/ApplicationHelp";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
@@ -40,6 +41,9 @@ export function EditorToolbar({
   const requestLeave: (leave: () => void) => void = useRequestLeave();
 
   const label: Nullable<string> = title ?? application?.label ?? null;
+
+  // The help action renders nothing where none is authored, so the group and its rule have to know before it does.
+  const hasActions: boolean = Boolean(actions) || Boolean(application?.help);
 
   // Asks first when the editor is holding unsaved work; goes straight home when it is not.
   const onGoHome = useCallback(() => requestLeave(() => navigate("/", { replace: true })), [navigate, requestLeave]);
@@ -97,9 +101,10 @@ export function EditorToolbar({
 
       <Box sx={{ flexGrow: 1, minWidth: 8 }} />
 
-      {actions ? (
+      {hasActions ? (
         <>
           <Box
+            data-testid={"editor-toolbar-actions"}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -113,9 +118,12 @@ export function EditorToolbar({
             }}
           >
             {actions}
+
+            <ApplicationHelp />
           </Box>
 
           <Box
+            data-testid={"editor-toolbar-divider"}
             aria-hidden={true}
             sx={{ width: "1px", height: 18, marginLeft: 0.5, flexShrink: 0, backgroundColor: "divider" }}
           />

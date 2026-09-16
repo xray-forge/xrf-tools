@@ -1,6 +1,7 @@
 import { Box, IconButton, svgIconClasses, Tooltip } from "@mui/material";
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
+import { getControlStateSx } from "@/core/theme/control-state";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CONTROL } from "@/core/theme/tokens";
 import { StyledComponentProps } from "@/lib/dom/element-types";
@@ -13,7 +14,8 @@ interface IEditorIconActionProps
   description: string;
   icon: ReactNode;
   isDisabled?: boolean;
-  isHighlighted?: boolean;
+  /** The control is doing something: a toggle that is on, or a value that differs from its default. */
+  isActive?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
 }
 
@@ -28,7 +30,7 @@ export function EditorIconAction({
   description,
   icon,
   isDisabled = false,
-  isHighlighted = false,
+  isActive = false,
   onClick,
   sx,
   ...rest
@@ -43,10 +45,10 @@ export function EditorIconAction({
           aria-description={description}
           id={id}
           className={className}
-          color={isHighlighted ? "primary" : "inherit"}
           disabled={isDisabled}
           size={"small"}
           sx={mergeSx(
+            getControlStateSx(isActive),
             {
               width: CONTROL.editorActionSize,
               height: CONTROL.editorActionSize,

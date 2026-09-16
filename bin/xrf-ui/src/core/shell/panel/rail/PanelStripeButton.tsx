@@ -2,7 +2,8 @@ import { IconButton, Tooltip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
-import { getRailButtonSx } from "@/core/shell/panel/rail/RailButton.styles";
+import { RAIL_BUTTON_SX } from "@/core/shell/panel/rail/RailButton.styles";
+import { getControlStateSx } from "@/core/theme/control-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPanelStripeButtonProps extends BaseComponentProps {
@@ -32,13 +33,7 @@ export function PanelStripeButton({
         aria-pressed={isActive}
         id={id}
         className={className}
-        sx={[
-          getRailButtonSx,
-          {
-            color: isActive ? "primary.main" : "text.secondary",
-            backgroundColor: isActive ? "action.current" : "transparent",
-          },
-        ]}
+        sx={[RAIL_BUTTON_SX, getControlStateSx(isActive)]}
         onClick={() => onTogglePanel(panel.id)}
       >
         {panel.icon}

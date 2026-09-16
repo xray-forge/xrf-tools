@@ -39,7 +39,7 @@ export function MotionPlaybackRate({
       label={"Playback rate"}
       description={`Playback rate: ${fps} fps`}
       icon={<SpeedIcon />}
-      isHighlighted={fps !== MOTION_SAMPLE_FPS}
+      isActive={fps !== MOTION_SAMPLE_FPS}
       placement={"top"}
     >
       <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>

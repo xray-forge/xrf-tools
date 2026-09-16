@@ -9,7 +9,7 @@ import { useCurrentApplication } from "@/core/routing/current-application.contex
 import { Nullable } from "@/lib/types/general";
 
 /**
- * The current application's help: the caption-row button and the dialog.
+ * The current application's help: the toolbar action and the dialog.
  *
  * `F1` is no longer handled here - it is the `help/open` command, dispatched by `core/keybinds` against the same
  * service this button calls, so the shortcut and the button cannot disagree about whether help exists.

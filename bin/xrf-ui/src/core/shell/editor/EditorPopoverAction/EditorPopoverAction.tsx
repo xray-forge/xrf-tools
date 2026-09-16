@@ -10,8 +10,8 @@ interface IEditorPopoverActionProps extends BaseComponentProps {
   description: string;
   icon: ReactNode;
   isDisabled?: boolean;
-  /** Highlights a control whose value differs from its default. */
-  isHighlighted?: boolean;
+  /** The value behind the popover differs from its default, which is painted the same as a toggle that is on. */
+  isActive?: boolean;
   /** Side of the trigger on which the content opens. */
   placement?: "top" | "bottom";
   children: ReactNode;
@@ -28,7 +28,7 @@ export function EditorPopoverAction({
   description,
   icon,
   isDisabled = false,
-  isHighlighted = false,
+  isActive = false,
   placement = "bottom",
   children,
 }: IEditorPopoverActionProps): ReactElement {
@@ -58,7 +58,7 @@ export function EditorPopoverAction({
         label={label}
         description={description}
         icon={icon}
-        isHighlighted={isHighlighted}
+        isActive={isActive}
         isDisabled={isDisabled}
         onClick={onOpen}
       />

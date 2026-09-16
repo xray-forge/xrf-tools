@@ -39,6 +39,35 @@ describe("EditorViewToggle", () => {
     expect(getByRole("button", { name: "Loop", pressed: true })).toBeInTheDocument();
   });
 
+  it("tells its three states apart, and never advertises one it cannot be acted on in", () => {
+    function paintOf(isOn: boolean, isDisabled: boolean): string {
+      const view = renderWithProviders(
+        <EditorViewToggle
+          label={"Loop"}
+          icon={<RepeatIcon />}
+          isOn={isOn}
+          isDisabled={isDisabled}
+          onToggle={() => {}}
+        />
+      );
+      const style: CSSStyleDeclaration = getComputedStyle(view.getByRole("button", { name: "Loop" }));
+      const paint: string = `${style.color} ${style.backgroundColor}`;
+
+      view.unmount();
+
+      return paint;
+    }
+
+    // Off used to be a 0.45 fade over a 0.38 one, which is the whole of what separated a view option somebody
+    // had turned off from one this model could not offer at all.
+    expect(paintOf(false, false)).not.toBe(paintOf(false, true));
+    expect(paintOf(true, false)).not.toBe(paintOf(false, false));
+
+    // Alpha, bump and skeleton each default on while being unavailable whenever the model carries neither, so a
+    // disabled toggle that is nominally on is the ordinary case rather than the corner one.
+    expect(paintOf(true, true)).toBe(paintOf(false, true));
+  });
+
   it("keeps the unavailable reason reachable without activating the toggle", async () => {
     const onToggle = jest.fn();
     const { getByRole, getByTitle, findByRole } = renderWithProviders(
