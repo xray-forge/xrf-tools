@@ -1,1 +1,8 @@
+pub(crate) mod fixtures;
 mod level_details_tests;
+mod level_env_mod_tests;
+mod level_game_tests;
+mod level_hom_tests;
+mod level_ps_static_tests;
+mod level_snd_static_tests;
+mod level_som_tests;

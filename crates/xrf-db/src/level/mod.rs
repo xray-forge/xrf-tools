@@ -2,10 +2,25 @@ pub(crate) mod level_ai_file;
 pub(crate) mod level_cform_file;
 pub(crate) mod level_details_file;
 pub(crate) mod level_details_slot;
+pub(crate) mod level_env_mod_file;
+pub(crate) mod level_env_modifier;
 pub(crate) mod level_file;
+pub(crate) mod level_game_file;
+pub(crate) mod level_game_rpoint;
+pub(crate) mod level_game_way;
+pub(crate) mod level_game_way_link;
+pub(crate) mod level_game_way_point;
 pub(crate) mod level_header_chunk;
+pub(crate) mod level_hom_file;
+pub(crate) mod level_hom_polygon;
+pub(crate) mod level_ps_static_file;
+pub(crate) mod level_ps_static_placement;
 pub(crate) mod level_shader_entry;
 pub(crate) mod level_shaders_chunk;
-
+pub(crate) mod level_snd_static_file;
+pub(crate) mod level_snd_static_sound;
+pub(crate) mod level_snd_static_window;
+pub(crate) mod level_som_file;
+pub(crate) mod level_som_polygon;
 #[cfg(test)]
 mod tests;
