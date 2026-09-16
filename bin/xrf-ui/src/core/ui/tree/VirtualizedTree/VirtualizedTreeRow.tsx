@@ -101,7 +101,7 @@ export function VirtualizedTreeRow<T>({
 
       <span
         className={
-          "min-w-0 overflow-hidden tracking-body2 text-ellipsis whitespace-nowrap [font:var(--mui-font-body2)] data-[active=true]:font-medium"
+          "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap [font:var(--mui-font-body2)] data-[active=true]:font-medium"
         }
         data-active={isActive}
       >
