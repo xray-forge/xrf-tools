@@ -7,6 +7,7 @@ import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureSource } from "@/core/ipc/types/xrf-app";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { TextureBadgeFilters } from "@/core/textures/components/tree/TextureBadgeFilters";
 import {
   countTextureBadges,
@@ -117,6 +118,13 @@ export function TexturesMenu({
     [onOpenNode]
   );
 
+  const toTextureRow = useCallback((node: ITextureNode): IEditorSearchResultRow => {
+    const path: string = toTextureNodePath(node);
+    const { name, directory } = splitLogicalPath(path);
+
+    return { id: path, label: name, description: directory ?? undefined };
+  }, []);
+
   return (
     <EditorSearchMenu
       data-testid={dataTestId}
@@ -127,15 +135,10 @@ export function TexturesMenu({
       searchLabel={"Filter textures"}
       resultsLabel={"Texture search results"}
       items={filtered}
-      toSearchText={toTextureNodePath}
-      toRow={(node) => {
-        const path: string = toTextureNodePath(node);
-        const { name, directory } = splitLogicalPath(path);
-
-        return { id: path, label: name, description: directory ?? undefined };
-      }}
-      onSelect={onOpenNode}
       header={<TextureBadgeFilters counts={counts} selected={badges} onChange={setBadges} />}
+      toSearchText={toTextureNodePath}
+      toRow={toTextureRow}
+      onSelect={onOpenNode}
     >
       {items.length ? (
         <VirtualizedTree<ITextureNode>

@@ -1,9 +1,10 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { KeyboardEvent, ReactElement, RefObject } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -50,35 +51,26 @@ export function ApplicationLauncherHeader({
   onSelectView,
 }: IApplicationLauncherHeaderProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        gap: 1.5,
-        paddingBottom: 1.5,
-        borderBottom: 1,
-        borderColor: "divider",
-      }}
+      className={cn("flex shrink-0 flex-col gap-3 border-b border-divider pb-3", className)}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+      <div className={"flex items-center gap-4"}>
+        <div className={"flex min-w-0 items-baseline gap-2"}>
           <Typography component={"h1"} variant={"h5"}>
             Tools
           </Typography>
 
           <Typography
             variant={"body2"}
-            sx={{ color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            className={"overflow-hidden text-ellipsis whitespace-nowrap text-text-secondary"}
           >
             {summary}
           </Typography>
-        </Box>
+        </div>
 
-        <Box sx={{ flexGrow: 1 }} />
+        <div className={"grow"} />
 
         <ApplicationLauncherSearchField
           inputRef={inputRef}
@@ -89,7 +81,7 @@ export function ApplicationLauncherHeader({
         />
 
         <ApplicationLauncherViewToggle view={view} onSelectView={onSelectView} />
-      </Box>
+      </div>
 
       <ApplicationLauncherGroupFilters
         filters={filters}
@@ -97,6 +89,6 @@ export function ApplicationLauncherHeader({
         totalCount={totalCount}
         onSelectGroup={onSelectGroup}
       />
-    </Box>
+    </div>
   );
 }

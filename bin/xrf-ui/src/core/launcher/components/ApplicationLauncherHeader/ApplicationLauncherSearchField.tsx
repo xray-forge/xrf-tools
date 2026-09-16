@@ -1,12 +1,13 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
-import { Box, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
+import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -86,21 +87,15 @@ export function ApplicationLauncherSearchField({
                   </IconButton>
                 </Tooltip>
               ) : chord ? (
-                <Box
+                <span
                   aria-hidden={true}
-                  sx={{
-                    paddingX: 0.5,
-                    color: "text.secondary",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    fontSize: "0.625rem",
-                    lineHeight: "16px",
-                    whiteSpace: "nowrap",
-                  }}
+                  className={cn(
+                    "rounded-surface border border-divider px-1",
+                    "text-badge leading-4 whitespace-nowrap text-text-secondary"
+                  )}
                 >
                   {formatChord(parseChord(chord))}
-                </Box>
+                </span>
               ) : null}
             </InputAdornment>
           ),

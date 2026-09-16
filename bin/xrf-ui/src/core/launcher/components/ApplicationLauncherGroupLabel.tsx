@@ -1,7 +1,9 @@
-import { Box, Theme, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { toAccentColor } from "@/core/launcher/lib";
 import { IApplicationGroup } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherGroupLabelProps extends BaseComponentProps {
@@ -18,36 +20,19 @@ export function ApplicationLauncherGroupLabel({
   group,
 }: IApplicationLauncherGroupLabelProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}
-    >
-      <Box
+    <div data-testid={dataTestId} id={id} className={cn("flex min-w-0 items-center gap-1.5", className)}>
+      <span
         aria-hidden={true}
-        sx={(theme: Theme) => ({
-          flexShrink: 0,
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          backgroundColor: group.accent.light,
-          ...theme.applyStyles("dark", { backgroundColor: group.accent.dark }),
-        })}
+        className={"size-1.5 shrink-0 rounded-full"}
+        style={{ backgroundColor: toAccentColor(group.accent) }}
       />
 
       <Typography
+        className={"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-secondary"}
         variant={"caption"}
-        sx={{
-          minWidth: 0,
-          overflow: "hidden",
-          color: "text.secondary",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
       >
         {group.label}
       </Typography>
-    </Box>
+    </div>
   );
 }

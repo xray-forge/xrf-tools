@@ -4,6 +4,7 @@ import { Fragment, ReactElement } from "react";
 import { ApplicationLauncherRow } from "@/core/launcher/components/ApplicationLauncherRow";
 import { ICatalogEntry, ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupHeading } from "./ApplicationLauncherGroupHeading";
@@ -31,13 +32,7 @@ export function ApplicationLauncherRowList({
             <ListSubheader
               disableGutters={true}
               disableSticky={true}
-              sx={{
-                backgroundColor: "transparent",
-                lineHeight: "unset",
-                paddingX: 1,
-                paddingTop: sectionIndex === 0 ? 0 : 2,
-                paddingBottom: 0.5,
-              }}
+              className={cn("bg-transparent px-2 pb-1 leading-[unset]", sectionIndex === 0 ? "pt-0" : "pt-4")}
             >
               <ApplicationLauncherGroupHeading group={section.group} count={section.entries.length} />
             </ListSubheader>

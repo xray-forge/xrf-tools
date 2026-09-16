@@ -6,6 +6,7 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -62,6 +63,18 @@ export function ExportsMenu({
     [onSelectDeclaration]
   );
 
+  const toDeclarationSearchText = useCallback((declaration: ExportDescriptor): string => declaration.name, []);
+
+  const toDeclarationRow = useCallback((declaration: ExportDescriptor): IEditorSearchResultRow => {
+    const separatorAt: number = declaration.name.lastIndexOf(".");
+
+    return {
+      id: declaration.name,
+      label: separatorAt === -1 ? declaration.name : declaration.name.slice(separatorAt + 1),
+      description: separatorAt === -1 ? undefined : declaration.name.slice(0, separatorAt),
+    };
+  }, []);
+
   // The viewer is showing a declaration the tree did not necessarily choose - a filter result, or the first one
   // after a refresh - so the row follows what is on screen rather than being derived from it.
   useEffect(() => {
@@ -79,16 +92,8 @@ export function ExportsMenu({
       searchLabel={"Filter exports"}
       resultsLabel={"Export search results"}
       items={declarations}
-      toSearchText={(declaration) => declaration.name}
-      toRow={(declaration) => {
-        const separatorAt: number = declaration.name.lastIndexOf(".");
-
-        return {
-          id: declaration.name,
-          label: separatorAt === -1 ? declaration.name : declaration.name.slice(separatorAt + 1),
-          description: separatorAt === -1 ? undefined : declaration.name.slice(0, separatorAt),
-        };
-      }}
+      toSearchText={toDeclarationSearchText}
+      toRow={toDeclarationRow}
       onSelect={onSelectDeclaration}
       toSecondaryText={getExportSearchText}
     >

@@ -1,11 +1,12 @@
 import { default as SearchOffIcon } from "@mui/icons-material/SearchOff";
-import { Box, Button, Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -40,18 +41,10 @@ export function ApplicationLauncherCatalog({
   onOpen,
 }: IApplicationLauncherCatalogProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        flexGrow: 1,
-        minHeight: 0,
-        scrollbarGutter: "stable",
-        overflowY: "auto",
-        paddingX: 3,
-        paddingY: 2.5,
-      }}
+      className={cn("min-h-0 grow [scrollbar-gutter:stable] overflow-y-auto px-6 py-5", className)}
     >
       {search && !sections.length ? (
         <EmptyState
@@ -68,7 +61,7 @@ export function ApplicationLauncherCatalog({
       ) : (
         <>
           {search ? (
-            <Typography variant={"caption"} sx={{ display: "block", marginBottom: 1, color: "text.secondary" }}>
+            <Typography className={"mb-2 block text-text-secondary"} variant={"caption"}>
               {search.matchCount} {search.matchCount === 1 ? "match" : "matches"}
             </Typography>
           ) : null}
@@ -80,6 +73,6 @@ export function ApplicationLauncherCatalog({
           )}
         </>
       )}
-    </Box>
+    </div>
   );
 }

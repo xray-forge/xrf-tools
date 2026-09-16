@@ -1,18 +1,15 @@
 import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
 import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
-import { Box } from "@mui/material";
-import { Fragment, ReactElement, ReactNode } from "react";
+import { CSSProperties, Fragment, ReactElement, ReactNode } from "react";
 
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getSurfaceSx } from "@/core/theme/surface";
-import { CODE, MONOSPACE } from "@/core/theme/tokens";
+import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
 
 /** Titled so the mark is announced and can be found by name; the icon alone says nothing. */
 const MARK_ICONS: Record<ECodeLineMark, ReactNode> = {
-  [ECodeLineMark.ERROR]: <ErrorOutlineIcon sx={{ color: "error.main" }} titleAccess={"Error"} />,
-  [ECodeLineMark.WARNING]: <WarningAmberIcon sx={{ color: "warning.main" }} titleAccess={"Warning"} />,
+  [ECodeLineMark.ERROR]: <ErrorOutlineIcon className={"text-error"} titleAccess={"Error"} />,
+  [ECodeLineMark.WARNING]: <WarningAmberIcon className={"text-warning"} titleAccess={"Warning"} />,
 };
 
 interface IVirtualizedLinesRowProps {
@@ -36,61 +33,34 @@ export function VirtualizedLinesRow({
   onSelect,
 }: IVirtualizedLinesRowProps): ReactElement {
   return (
-    <Box
+    <div
       aria-selected={isSelected}
       data-testid={"virtualized-lines-row"}
       id={rowId}
+      className={"monospace flex h-code-line w-max min-w-full cursor-default leading-[var(--spacing-code-line)]"}
       role={"option"}
-      sx={{
-        cursor: "default",
-        display: "flex",
-        fontFamily: MONOSPACE.fontFamily,
-        fontSize: MONOSPACE.fontSize,
-        height: CODE.lineHeight,
-        lineHeight: `${CODE.lineHeight}px`,
-        // A row is as wide as its content and never narrower than the viewport, so a long value
-        // scrolls sideways while a short line still draws its selection across the whole width.
-        minWidth: "100%",
-        width: "max-content",
-      }}
       onClick={() => onSelect(line)}
     >
-      <Box
+      <div
+        data-selected={isSelected}
         data-testid={"virtualized-lines-gutter"}
-        sx={mergeSx(getSurfaceSx("content"), {
-          alignItems: "center",
-          borderColor: "divider",
-          borderRight: 1,
-          boxSizing: "border-box",
-          // The gutter keeps the page colour when the line is selected and brightens its number
-          // instead, since a translucent selection here would let the text show through it.
-          color: isSelected ? "text.primary" : "text.secondary",
-          display: "flex",
-          flexShrink: 0,
-          gap: `${CODE.gutterGap}px`,
-          justifyContent: "flex-end",
-          left: 0,
-          paddingX: `${CODE.gutterPaddingX}px`,
-          position: "sticky",
-          userSelect: "none",
-          width: gutterWidth,
-          zIndex: 1,
-          "& svg": { fontSize: CODE.markIconSize },
-        })}
+        className={
+          "sticky left-0 z-1 box-border flex w-[var(--gutter-width)] shrink-0 items-center justify-end gap-1 border-r border-divider surface-content px-2 text-text-secondary select-none data-[selected=true]:text-text-primary [&_svg]:text-[length:var(--gutter-mark-icon)]"
+        }
+        style={
+          {
+            "--gutter-mark-icon": `${CODE.markIconSize}px`,
+            "--gutter-width": `${gutterWidth}px`,
+          } as CSSProperties
+        }
       >
         {line.mark ? MARK_ICONS[line.mark] : null}
         {line.number}
-      </Box>
+      </div>
 
-      <Box
-        component={"span"}
-        sx={{
-          backgroundColor: isSelected ? "action.selected" : "transparent",
-          flexGrow: 1,
-          paddingX: `${CODE.contentPaddingX}px`,
-          tabSize: 2,
-          whiteSpace: "pre",
-        }}
+      <span
+        data-selected={isSelected}
+        className={"grow px-2.5 whitespace-pre tab-2 data-[selected=true]:bg-action-selected"}
       >
         {line.spans.map((span: ISyntaxSpan, index: number) =>
           span.token === ESyntaxToken.PLAIN ? (
@@ -101,7 +71,7 @@ export function VirtualizedLinesRow({
             </span>
           )
         )}
-      </Box>
-    </Box>
+      </span>
+    </div>
   );
 }

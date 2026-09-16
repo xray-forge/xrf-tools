@@ -14,6 +14,21 @@ export const CONFIG_TREE_ICONS: IVirtualizedTreeIcons = {
   leaf: <DescriptionIcon />,
 };
 
+const ENTRY_POINT_DECORATION: ITreeIconDecoration = {
+  color: "primary.main",
+  title: "Entry point: nothing includes it, so it resolves on its own",
+};
+
+const SCHEME_FILE_DECORATION: ITreeIconDecoration = {
+  color: "secondary.main",
+  title: "Scheme declaration: what a section bound to it may hold",
+};
+
+const ATTACHMENT_DECORATION: ITreeIconDecoration = {
+  color: "success.main",
+  title: "Patch file: it changes another config rather than standing on its own",
+};
+
 /**
  * How a row is tinted by what the config is to the project.
  *
@@ -25,13 +40,13 @@ export function decorateConfigIcon(item: ITreeNode<LtxInventoryFile>): Nullable<
   // inventory is a compiler error here instead of a row that silently loses its mark.
   switch (item.payload?.role.kind) {
     case "entryPoint":
-      return { color: "primary.main", title: "Entry point: nothing includes it, so it resolves on its own" };
+      return ENTRY_POINT_DECORATION;
 
     case "schemeFile":
-      return { color: "secondary.main", title: "Scheme declaration: what a section bound to it may hold" };
+      return SCHEME_FILE_DECORATION;
 
     case "attachment":
-      return { color: "success.main", title: "Patch file: it changes another config rather than standing on its own" };
+      return ATTACHMENT_DECORATION;
 
     case "included":
       return null;

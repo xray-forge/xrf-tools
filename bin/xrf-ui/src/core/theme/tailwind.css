@@ -47,6 +47,7 @@
 
   --text-tree-icon: var(--xrf-tree-icon-size);
   --text-content-state-icon: var(--xrf-content-state-icon);
+  --text-badge: var(--xrf-badge-font-size);
 
   --radius-surface: var(--xrf-radius-surface);
 
@@ -56,6 +57,7 @@
   /* The face on its own. `.monospace` also sets a size, which is wrong for a heading. */
   --font-monospace: var(--xrf-monospace-family);
   --leading-panel: var(--xrf-panel-line-height);
+  --tracking-body2: var(--xrf-body2-tracking);
 
   /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
   --container-reading: var(--xrf-reading-column);

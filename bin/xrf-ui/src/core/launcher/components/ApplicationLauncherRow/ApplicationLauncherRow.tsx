@@ -1,12 +1,17 @@
-import { Box, ListItem, ListItemButton, svgIconClasses, Theme, Typography } from "@mui/material";
+import { ListItem, ListItemButton, SxProps, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/components/ApplicationLauncherPlannedBadge";
-import { useApplicationLauncherActions } from "@/core/launcher/lib";
+import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { TREE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+const ROW_COLUMNS: string = `${TREE.iconWidth}px 240px minmax(0, 1fr)`;
+const ROW_SX: SxProps<Theme> = { gridTemplateColumns: ROW_COLUMNS };
+const NAMED_ROW_SX: SxProps<Theme> = { gridTemplateColumns: `${ROW_COLUMNS} 132px` };
 
 interface IApplicationLauncherRowProps extends BaseComponentProps {
   application: IApplicationDescriptor;
@@ -31,64 +36,37 @@ export function ApplicationLauncherRow({
   const { onWarm, onClick } = useApplicationLauncherActions(application, onOpen);
 
   return (
-    <ListItem data-testid={dataTestId} id={id} className={className} disablePadding={true} sx={{ display: "block" }}>
+    <ListItem data-testid={dataTestId} id={id} className={cn("block", className)} disablePadding={true}>
       <ListItemButton
         aria-label={application.label}
-        sx={{
-          // A row measures the same as an explorer tree row, so the two read as one application. The group
-          // takes a column only where it is not already stated above the section this row belongs to.
-          display: "grid",
-          gridTemplateColumns: `${TREE.iconWidth}px 240px minmax(0, 1fr)${isGroupNamed ? " 132px" : ""}`,
-          alignItems: "center",
-          gap: 1,
-          height: TREE.rowHeight,
-          paddingX: 1,
-          paddingY: 0,
-        }}
+        className={"grid h-tree-row items-center gap-2 px-2 py-0"}
+        sx={isGroupNamed ? NAMED_ROW_SX : ROW_SX}
         onFocus={onWarm}
         onMouseEnter={onWarm}
         onClick={onClick}
       >
-        <Box
+        <span
           aria-hidden={true}
-          sx={(theme: Theme) => ({
-            display: "flex",
-            flexShrink: 0,
-            color: group.accent.light,
-            [`& .${svgIconClasses.root}`]: { fontSize: TREE.iconSize },
-            ...theme.applyStyles("dark", { color: group.accent.dark }),
-          })}
+          className={"flex shrink-0 [&>svg]:text-tree-icon"}
+          style={{ color: toAccentColor(group.accent) }}
         >
           {application.icon}
-        </Box>
+        </span>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+        <div className={"flex min-w-0 items-center gap-1.5"}>
           <Typography
+            className={"min-w-0 overflow-hidden font-medium text-ellipsis whitespace-nowrap text-text-primary"}
             variant={"body2"}
-            sx={{
-              minWidth: 0,
-              overflow: "hidden",
-              color: "text.primary",
-              fontWeight: 500,
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
           >
             {application.label}
           </Typography>
 
           {application.status === EApplicationStatus.PLANNED ? <ApplicationLauncherPlannedBadge /> : null}
-        </Box>
+        </div>
 
         <Typography
           variant={"body2"}
-          sx={{
-            minWidth: 0,
-            overflow: "hidden",
-            color: "text.secondary",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          className={"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-secondary"}
         >
           {application.description}
         </Typography>

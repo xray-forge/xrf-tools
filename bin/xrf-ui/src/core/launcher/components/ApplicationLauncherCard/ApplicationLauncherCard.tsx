@@ -1,11 +1,21 @@
-import { Box, Card, CardActionArea, cardActionAreaClasses, svgIconClasses, Theme, Typography } from "@mui/material";
+import { Card, CardActionArea, cardActionAreaClasses, SxProps, Theme, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/components/ApplicationLauncherPlannedBadge";
-import { useApplicationLauncherActions } from "@/core/launcher/lib";
+import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/** The focus ring, which only MUI's own class can carry. */
+const ACTION_AREA_SX: SxProps<Theme> = {
+  [`&.${cardActionAreaClasses.focusVisible}`]: {
+    outline: "2px solid",
+    outlineColor: "primary.main",
+    outlineOffset: -2,
+  },
+};
 
 interface IApplicationLauncherCardProps extends BaseComponentProps {
   application: IApplicationDescriptor;
@@ -30,80 +40,38 @@ export function ApplicationLauncherCard({
   const { onWarm, onClick } = useApplicationLauncherActions(application, onOpen);
 
   return (
-    <Card data-testid={dataTestId} id={id} className={className} sx={{ height: "100%" }}>
+    <Card data-testid={dataTestId} id={id} className={cn("h-full", className)}>
       <CardActionArea
         aria-label={application.label}
-        sx={{
-          display: "block",
-          height: "100%",
-          [`&.${cardActionAreaClasses.focusVisible}`]: {
-            outline: "2px solid",
-            outlineColor: "primary.main",
-            outlineOffset: -2,
-          },
-        }}
+        className={"block h-full"}
+        sx={ACTION_AREA_SX}
         onFocus={onWarm}
         onMouseEnter={onWarm}
         onClick={onClick}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.5,
-            height: "100%",
-            padding: 1.25,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
-            <Box
+        <div className={"flex h-full flex-col gap-1 p-2.5"}>
+          <div className={"flex min-w-0 items-center gap-1.5"}>
+            <span
               aria-hidden={true}
-              sx={(theme: Theme) => ({
-                display: "flex",
-                flexShrink: 0,
-                color: group.accent.light,
-                [`& .${svgIconClasses.root}`]: { fontSize: 18 },
-                ...theme.applyStyles("dark", { color: group.accent.dark }),
-              })}
+              className={"flex shrink-0 [&>svg]:text-[1.125rem]"}
+              style={{ color: toAccentColor(group.accent) }}
             >
               {application.icon}
-            </Box>
+            </span>
 
-            <Typography
-              variant={"subtitle2"}
-              sx={{
-                display: "-webkit-box",
-                flexGrow: 1,
-                minWidth: 0,
-                color: "text.primary",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-                overflow: "hidden",
-                lineHeight: 1.3,
-              }}
-            >
+            <Typography variant={"subtitle2"} className={"line-clamp-2 min-w-0 grow leading-[1.3] text-text-primary"}>
               {application.label}
             </Typography>
 
             {application.status === EApplicationStatus.PLANNED ? <ApplicationLauncherPlannedBadge /> : null}
-          </Box>
+          </div>
 
-          <Typography
-            variant={"body2"}
-            sx={{
-              display: "-webkit-box",
-              color: "text.secondary",
-              WebkitBoxOrient: "vertical",
-              WebkitLineClamp: 2,
-              overflow: "hidden",
-              lineHeight: 1.35,
-            }}
-          >
+          <Typography variant={"body2"} className={"line-clamp-2 leading-[1.35] text-text-secondary"}>
             {application.description}
           </Typography>
 
           {isGroupNamed ? <ApplicationLauncherGroupLabel group={group} /> : null}
-        </Box>
+        </div>
       </CardActionArea>
     </Card>
   );

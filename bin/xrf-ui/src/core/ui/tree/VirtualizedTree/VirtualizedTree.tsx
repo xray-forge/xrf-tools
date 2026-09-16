@@ -43,7 +43,7 @@ interface IVirtualizedTreeProps<T> extends StyledComponentProps {
   icons?: IVirtualizedTreeIcons;
   /** Decorates a row's label, for a consumer that marks where the entry came from. */
   renderLabel?: (item: ITreeNode<T>) => ReactNode;
-  /** Tints a row's icon, for a tree whose rows come from sources worth telling apart. Null leaves it neutral. */
+  /** Tints a row's icon, for a tree whose rows come from sources worth telling apart. */
   decorateIcon?: (item: ITreeNode<T>) => Nullable<ITreeIconDecoration>;
   onToggleExpanded: (id: string) => void;
   /** A row was chosen for inspection, by click or by arrow key. */
@@ -103,6 +103,24 @@ export function VirtualizedTree<T>({
     [rows, selectedId]
   );
 
+  const select = useCallback((row: IFlatTreeRow<T>) => onSelect(row.item), [onSelect]);
+
+  const labelOf = useMemo(() => {
+    if (!renderLabel) {
+      return undefined;
+    }
+
+    const cache: WeakMap<ITreeNode<T>, ReactNode> = new WeakMap();
+
+    return (item: ITreeNode<T>): ReactNode => {
+      if (!cache.has(item)) {
+        cache.set(item, renderLabel(item));
+      }
+
+      return cache.get(item);
+    };
+  }, [renderLabel]);
+
   const activate = useCallback(
     (row: IFlatTreeRow<T>) => {
       // Opening a node with children is opening the node: the consumer hears about it either way, and decides
@@ -142,8 +160,8 @@ export function VirtualizedTree<T>({
           iconDecoration={decorateIcon?.(row.item) ?? null}
           isSelected={row.item.id === selectedId}
           isActive={row.item.id === activeId}
-          label={renderLabel?.(row.item)}
-          onSelect={(it: IFlatTreeRow<T>) => onSelect(it.item)}
+          label={labelOf?.(row.item)}
+          onSelect={select}
           onActivate={activate}
           onToggleExpanded={onToggleExpanded}
         />

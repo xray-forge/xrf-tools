@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { SxProps, Theme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -8,6 +9,7 @@ import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
+import { noop } from "@/lib/callbacks/noop";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -19,8 +21,8 @@ import {
   toResolvedIndex,
 } from "./configs-index-rows";
 
-/** No row of this list has children, so nothing is ever expanded and nothing can toggle. */
 const NOTHING_EXPANDED: ReadonlySet<string> = new Set();
+const TREE_SX: SxProps<Theme> = { height: "100%" };
 
 /**
  * Everything the open document declares, as a jump list.
@@ -87,8 +89,8 @@ export function ConfigsSectionsPanel({
             items={items}
             expandedIds={NOTHING_EXPANDED}
             selectedId={null}
-            sx={{ height: "100%" }}
-            onToggleExpanded={() => undefined}
+            sx={TREE_SX}
+            onToggleExpanded={noop}
             onSelect={onSelect}
             onActivate={onSelect}
           />

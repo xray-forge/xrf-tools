@@ -1,8 +1,9 @@
-import { Box, Chip } from "@mui/material";
+import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -28,7 +29,7 @@ export function ApplicationLauncherGroupFilters({
   onSelectGroup,
 }: IApplicationLauncherGroupFiltersProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-wrap gap-1.5", className)}>
       <Chip
         aria-pressed={selectedGroupId === null}
         size={"small"}
@@ -53,6 +54,6 @@ export function ApplicationLauncherGroupFilters({
           />
         );
       })}
-    </Box>
+    </div>
   );
 }

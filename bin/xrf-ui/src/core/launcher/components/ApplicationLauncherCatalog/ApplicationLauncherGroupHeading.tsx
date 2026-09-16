@@ -1,7 +1,9 @@
-import { Box, svgIconClasses, Theme, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { toAccentColor } from "@/core/launcher/lib";
 import { IApplicationGroup } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherGroupHeadingProps extends BaseComponentProps {
@@ -20,31 +22,18 @@ export function ApplicationLauncherGroupHeading({
   count,
 }: IApplicationLauncherGroupHeadingProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}
-    >
-      <Box
-        aria-hidden={true}
-        sx={(theme: Theme) => ({
-          display: "flex",
-          color: group.accent.light,
-          [`& .${svgIconClasses.root}`]: { fontSize: 16 },
-          ...theme.applyStyles("dark", { color: group.accent.dark }),
-        })}
-      >
+    <div data-testid={dataTestId} id={id} className={cn("flex min-w-0 items-center gap-1.5", className)}>
+      <span aria-hidden={true} className={"flex [&>svg]:text-[1rem]"} style={{ color: toAccentColor(group.accent) }}>
         {group.icon}
-      </Box>
+      </span>
 
-      <Typography component={"h2"} variant={"subtitle2"} sx={{ color: "text.primary", fontWeight: 600 }}>
+      <Typography component={"h2"} variant={"subtitle2"} className={"font-semibold text-text-primary"}>
         {group.label}
       </Typography>
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary", opacity: 0.7 }}>
+      <Typography variant={"caption"} className={"text-text-secondary opacity-70"}>
         {count}
       </Typography>
-    </Box>
+    </div>
   );
 }

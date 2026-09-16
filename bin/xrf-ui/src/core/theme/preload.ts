@@ -1,6 +1,8 @@
+import { Theme } from "@mui/material";
+
 import { createApplicationTheme } from "./creation";
 import { getWashImage } from "./surface";
-import { CODE, CONTENT_STATE, DIALOG, LAYOUT, MONOSPACE, PANEL, RADIUS, TREE } from "./tokens";
+import { BADGE_FONT_SIZE, CODE, CONTENT_STATE, DIALOG, LAYOUT, MONOSPACE, PANEL, RADIUS, TREE } from "./tokens";
 
 /** Serializes one of MUI's generated style objects, which arrive as selector-keyed rule trees rather than as text. */
 function toCssRules(rule: Record<string, unknown>, selector?: string): string {
@@ -27,7 +29,8 @@ function toCssRules(rule: Record<string, unknown>, selector?: string): string {
  * cannot fail to exist here.
  */
 export function getPreloadThemeCss(): string {
-  const sheets: Array<Record<string, unknown>> = createApplicationTheme().generateStyleSheets();
+  const theme: Theme = createApplicationTheme();
+  const sheets: Array<Record<string, unknown>> = theme.generateStyleSheets();
 
   return [
     ...sheets.map((sheet: Record<string, unknown>) => toCssRules(sheet)),
@@ -46,6 +49,8 @@ export function getPreloadThemeCss(): string {
       --xrf-panel-property-padding: ${PANEL.propertyPaddingY * 8}px;
       --xrf-monospace-family: ${MONOSPACE.fontFamily};
       --xrf-content-state-icon: ${CONTENT_STATE.iconSize}px;
+      --xrf-badge-font-size: ${BADGE_FONT_SIZE};
+      --xrf-body2-tracking: ${theme.typography.body2.letterSpacing};
       --preload-title-bar-height: ${LAYOUT.titleBarHeight}px;
       --preload-status-bar-height: ${LAYOUT.statusBarHeight}px;
       --preload-rail-width: ${LAYOUT.railWidth}px;

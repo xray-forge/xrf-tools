@@ -1,6 +1,5 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useRef } from "react";
+import { ReactElement, useCallback, useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
@@ -11,7 +10,7 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { ApplicationLauncherCatalog } from "./components/ApplicationLauncherCatalog";
+import { ApplicationLauncherCatalog, IApplicationLauncherCatalogSearch } from "./components/ApplicationLauncherCatalog";
 import { ApplicationLauncherHeader } from "./components/ApplicationLauncherHeader";
 import { ICatalogEntry, IUseApplicationCatalog, useApplicationCatalog } from "./lib";
 
@@ -47,12 +46,20 @@ export function ApplicationLauncherScreen({
 
   const catalog: IUseApplicationCatalog = useApplicationCatalog({ applications, groups, onSelect: onSelectResult });
 
+  const search: Nullable<IApplicationLauncherCatalogSearch> = useMemo(
+    () =>
+      catalog.search.isSearching
+        ? { query: catalog.search.query, matchCount: catalog.search.total, onClear: catalog.search.clear }
+        : null,
+    [catalog.search.isSearching, catalog.search.query, catalog.search.total, catalog.search.clear]
+  );
+
   useSearchFocusTarget(searchInputRef);
 
   return (
     <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
-      <Box sx={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }}>
-        <Box sx={{ flexShrink: 0, paddingX: 3, paddingTop: 3 }}>
+      <div className={"flex h-full min-h-0 w-full flex-col"}>
+        <div className={"shrink-0 px-6 pt-6"}>
           <ApplicationLauncherHeader
             filters={catalog.filters}
             inputRef={searchInputRef}
@@ -67,23 +74,15 @@ export function ApplicationLauncherScreen({
             onSelectGroup={catalog.onSelectGroup}
             onSelectView={settingsService.setCatalogView}
           />
-        </Box>
+        </div>
 
         <ApplicationLauncherCatalog
           sections={catalog.sections}
           view={settingsService.catalogView}
-          search={
-            catalog.search.isSearching
-              ? {
-                  query: catalog.search.query,
-                  matchCount: catalog.search.total,
-                  onClear: catalog.search.clear,
-                }
-              : null
-          }
+          search={search}
           onOpen={onOpen}
         />
-      </Box>
+      </div>
     </EditorLayout>
   );
 }

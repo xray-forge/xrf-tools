@@ -1,6 +1,6 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
 import { Box, Typography } from "@mui/material";
-import { ReactElement, useMemo } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationFile } from "@/core/ipc/types/xrf-translation";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
@@ -50,6 +50,8 @@ export function TranslationsFilesMenu({
     [dirtyFiles, files]
   );
 
+  const toFileSearchText = useCallback((entry: IFileEntry): string => entry.name, []);
+
   const sections: Array<IEditorSideMenuItem> = entries.map((entry: IFileEntry) => ({
     ...toFileRow(entry),
     isSelected: entry.name === selected,
@@ -63,7 +65,7 @@ export function TranslationsFilesMenu({
       placeholder={"Filter files"}
       resultsLabel={"Translation file search results"}
       items={entries}
-      toSearchText={(entry) => entry.name}
+      toSearchText={toFileSearchText}
       toRow={toFileRow}
       onSelect={(entry) => onSelect(entry.name)}
       sections={sections}

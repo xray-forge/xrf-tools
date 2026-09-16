@@ -1,13 +1,17 @@
 import { default as ChevronRightIcon } from "@mui/icons-material/ChevronRight";
 import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import { Box } from "@mui/material";
-import { MouseEvent, ReactElement, ReactNode } from "react";
+import { CSSProperties, MouseEvent, ReactElement, ReactNode } from "react";
 
 import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
 import { Nullable } from "@/lib/types/general";
+
+/** A theme colour path as the variable the theme emits for it, since a plain element has no `sx` to resolve it. */
+function toPaletteColor(path: string): string {
+  return `var(--mui-palette-${path.replaceAll(".", "-")})`;
+}
 
 interface IVirtualizedTreeRowProps<T> {
   row: IFlatTreeRow<T>;
@@ -51,47 +55,28 @@ export function VirtualizedTreeRow<T>({
   const item: ITreeNode<T> = row.item;
 
   return (
-    <Box
+    <div
       aria-current={isActive ? true : undefined}
       aria-expanded={row.hasChildren ? row.isExpanded : undefined}
       aria-level={row.depth + 1}
       aria-posinset={row.posInSet}
       aria-selected={isSelected}
       aria-setsize={row.setSize}
+      data-active={isActive}
+      data-selected={isSelected}
       data-testid={"virtualized-tree-row"}
       id={rowId}
       role={"treeitem"}
-      sx={{
-        alignItems: "center",
-        backgroundColor: isSelected ? "action.selected" : isActive ? "action.current" : "transparent",
-        borderRadius: 1,
-        boxSizing: "border-box",
-        cursor: "pointer",
-        display: "flex",
-        gap: `${TREE.iconGap}px`,
-        height: TREE.rowHeight,
-        // Indentation replaces the nesting a flat DOM gave up, so it has to be paid per level here.
-        paddingLeft: `${row.depth * TREE.indent + 4}px`,
-        paddingRight: 0.5,
-        userSelect: "none",
-        "&:hover": { backgroundColor: isSelected ? "action.selected" : isActive ? "action.current" : "action.hover" },
-      }}
+      className={
+        "box-border flex h-tree-row cursor-pointer items-center gap-tree-gap rounded-surface pr-1 pl-[var(--row-indent)] select-none hover:bg-action-hover data-[active=true]:data-[selected=false]:bg-action-current data-[active=true]:data-[selected=false]:hover:bg-action-current data-[selected=true]:bg-action-selected data-[selected=true]:hover:bg-action-selected"
+      }
+      style={{ "--row-indent": `${row.depth * TREE.indent + 4}px` } as CSSProperties}
       onClick={() => onSelect(row)}
       onDoubleClick={() => onActivate(row)}
     >
-      <Box
+      <div
         data-testid={"virtualized-tree-chevron"}
-        sx={{
-          alignItems: "center",
-          color: "text.secondary",
-          display: "flex",
-          flexShrink: 0,
-          justifyContent: "center",
-          width: TREE.iconWidth,
-          "& svg": { fontSize: TREE.iconSize },
-        }}
-        // Expansion is structural, so it leaves the selection where the user put it. The double click is
-        // swallowed as well, or the row would activate and toggle a second time under the same gesture.
+        className={"flex w-tree-icon shrink-0 items-center justify-center text-text-secondary [&_svg]:text-tree-icon"}
         onClick={(event: MouseEvent<HTMLElement>) => {
           event.stopPropagation();
 
@@ -102,39 +87,26 @@ export function VirtualizedTreeRow<T>({
         onDoubleClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
       >
         {row.hasChildren ? row.isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon /> : null}
-      </Box>
+      </div>
 
       {icon === null ? null : (
-        <Box
+        <div
           title={iconDecoration?.title}
-          sx={{
-            alignItems: "center",
-            color: iconDecoration?.color ?? "text.secondary",
-            display: "flex",
-            flexShrink: 0,
-            justifyContent: "center",
-            width: TREE.iconWidth,
-            "& svg": { fontSize: TREE.iconSize },
-          }}
+          className={"flex w-tree-icon shrink-0 items-center justify-center text-text-secondary [&_svg]:text-tree-icon"}
+          style={iconDecoration ? { color: toPaletteColor(iconDecoration.color) } : undefined}
         >
           {icon}
-        </Box>
+        </div>
       )}
 
-      <Box
-        component={"span"}
-        sx={{
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          typography: "body2",
-          whiteSpace: "nowrap",
-          // After the variant, which carries a weight of its own and would otherwise win.
-          ...(isActive ? { fontWeight: 500 } : null),
-        }}
+      <span
+        className={
+          "min-w-0 overflow-hidden tracking-body2 text-ellipsis whitespace-nowrap [font:var(--mui-font-body2)] data-[active=true]:font-medium"
+        }
+        data-active={isActive}
       >
         {label ?? item.label}
-      </Box>
-    </Box>
+      </span>
+    </div>
   );
 }

@@ -74,18 +74,29 @@ export function useApplicationCatalog({
     onSelect,
   });
 
-  const sections: Array<ICatalogSection> = search.isSearching
-    ? toRankedSections(search.results.map(({ item }: ISearchResult<ICatalogEntry>) => item))
-    : visibleSections;
+  const sections: Array<ICatalogSection> = useMemo(
+    () =>
+      search.isSearching
+        ? toRankedSections(search.results.map(({ item }: ISearchResult<ICatalogEntry>) => item))
+        : visibleSections,
+    [search.isSearching, search.results, visibleSections]
+  );
+
+  const filters: Array<ICatalogGroupFilter> = useMemo(() => toCatalogGroupFilters(catalogSections), [catalogSections]);
+
+  const summary: string = useMemo(
+    () => getCatalogSummary(visibleSections, selectedGroupId),
+    [visibleSections, selectedGroupId]
+  );
 
   const onSelectGroup = useCallback((groupId: Nullable<EApplicationGroupId>) => setSelectedGroupId(groupId), []);
 
   return {
-    filters: toCatalogGroupFilters(catalogSections),
+    filters,
     selectedGroupId,
     onSelectGroup,
     sections,
-    summary: getCatalogSummary(visibleSections, selectedGroupId),
+    summary,
     search,
   };
 }

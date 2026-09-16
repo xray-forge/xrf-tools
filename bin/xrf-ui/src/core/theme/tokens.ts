@@ -17,6 +17,8 @@ export const RADIUS = {
   lg: 8,
 } as const;
 
+export const BADGE_FONT_SIZE = "0.625rem";
+
 /**
  * Diagonal accent wash over the frame and the reading plane.
  */
@@ -53,7 +55,7 @@ export const LAYOUT = {
   /** Unread count contained within a rail button, including the capped `99+` label. */
   railBadgeHeight: 14,
   railBadgeMinWidth: 14,
-  railBadgeFontSize: "0.625rem",
+  railBadgeFontSize: BADGE_FONT_SIZE,
   railBadgePaddingX: 3,
   /** Dense `MuiToolbar` and `MuiTab` still measure themselves against this; the window caption does not. */
   toolbarHeight: 40,

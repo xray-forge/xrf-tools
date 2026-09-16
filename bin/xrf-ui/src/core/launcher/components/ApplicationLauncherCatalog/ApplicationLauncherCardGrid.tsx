@@ -1,9 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherCard } from "@/core/launcher/components/ApplicationLauncherCard";
 import { ICatalogEntry, ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupHeading } from "./ApplicationLauncherGroupHeading";
@@ -24,31 +24,14 @@ export function ApplicationLauncherCardGrid({
   onOpen,
 }: IApplicationLauncherCardGridProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", gap: 4 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-8", className)}>
       {sections.map((section: ICatalogSection) => (
-        <Box key={section.group?.id ?? "ranked"} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <div key={section.group?.id ?? "ranked"} className={"flex flex-col gap-2"}>
           {section.group ? (
             <ApplicationLauncherGroupHeading group={section.group} count={section.entries.length} />
           ) : null}
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "repeat(1, minmax(0, 1fr))",
-                sm: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))",
-                lg: "repeat(3, minmax(0, 1fr))",
-                xl: "repeat(4, minmax(0, 1fr))",
-              },
-              gap: 1.5,
-            }}
-          >
+          <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"}>
             {section.entries.map(({ application, group }: ICatalogEntry) => (
               <ApplicationLauncherCard
                 key={application.id}
@@ -58,9 +41,9 @@ export function ApplicationLauncherCardGrid({
                 onOpen={onOpen}
               />
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
       ))}
-    </Box>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -52,6 +53,8 @@ export function DialogsTreeMenu({
     [dialogsService]
   );
 
+  const onOpenEntry = useCallback((entry: IDialogTreeEntry) => onOpenLeaf(entry.payload), [onOpenLeaf]);
+
   const onSelectItem = useCallback((item: ITreeNode<IDialogTreeLeaf>) => tree.select(item.id), [tree]);
 
   const onActivateItem = useCallback(
@@ -64,6 +67,17 @@ export function DialogsTreeMenu({
       }
     },
     [onOpenLeaf]
+  );
+
+  const toDialogSearchText = useCallback((entry: IDialogTreeEntry): string => entry.payload.id, []);
+
+  const toDialogRow = useCallback(
+    (entry: IDialogTreeEntry): IEditorSearchResultRow => ({
+      id: entry.path,
+      label: entry.payload.id,
+      description: splitLogicalPath(entry.payload.logicalPath).name,
+    }),
+    []
   );
 
   useEffect(() => {
@@ -81,13 +95,9 @@ export function DialogsTreeMenu({
       searchLabel={"Filter dialogs"}
       resultsLabel={"Dialog search results"}
       items={entries}
-      toSearchText={(entry) => entry.payload.id}
-      toRow={(entry) => ({
-        id: entry.path,
-        label: entry.payload.id,
-        description: splitLogicalPath(entry.payload.logicalPath).name,
-      })}
-      onSelect={(entry) => onOpenLeaf(entry.payload)}
+      toSearchText={toDialogSearchText}
+      toRow={toDialogRow}
+      onSelect={onOpenEntry}
     >
       <VirtualizedTree
         items={items}

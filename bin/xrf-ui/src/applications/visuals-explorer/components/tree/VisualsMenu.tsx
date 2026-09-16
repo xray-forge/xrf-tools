@@ -10,6 +10,7 @@ import { VisualsService } from "@/applications/visuals-explorer/services/visuals
 import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
@@ -79,6 +80,8 @@ export function VisualsMenu({
   const source: Nullable<VisualSource> = visualsService.selected?.source ?? null;
   const openItemId: Nullable<string> = source?.kind === EVisualSource.ASSET ? toFileItemId(source.logicalPath) : null;
 
+  const onOpenAsset = useCallback((asset: XrayAsset) => onOpenPath(asset.logicalPath), [onOpenPath]);
+
   const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
 
   const onActivateAsset = useCallback(
@@ -90,6 +93,14 @@ export function VisualsMenu({
     [onOpenPath]
   );
 
+  const toVisualSearchText = useCallback((asset: XrayAsset): string => asset.logicalPath, []);
+
+  const toVisualRow = useCallback((asset: XrayAsset): IEditorSearchResultRow => {
+    const { name, directory } = splitLogicalPath(asset.logicalPath);
+
+    return { id: asset.logicalPath, label: name, description: directory ?? undefined };
+  }, []);
+
   return (
     <EditorSearchMenu
       data-testid={dataTestId}
@@ -100,13 +111,9 @@ export function VisualsMenu({
       searchLabel={"Filter visuals"}
       resultsLabel={"Visual search results"}
       items={visuals}
-      toSearchText={(asset: XrayAsset) => asset.logicalPath}
-      toRow={(asset) => {
-        const { name, directory } = splitLogicalPath(asset.logicalPath);
-
-        return { id: asset.logicalPath, label: name, description: directory ?? undefined };
-      }}
-      onSelect={(asset) => onOpenPath(asset.logicalPath)}
+      toSearchText={toVisualSearchText}
+      toRow={toVisualRow}
+      onSelect={onOpenAsset}
     >
       {items.length ? (
         <VirtualizedTree<XrayAsset>
