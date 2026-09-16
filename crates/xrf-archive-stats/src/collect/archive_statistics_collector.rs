@@ -8,6 +8,7 @@ use crate::report::archive_extension_usage::ArchiveExtensionUsage;
 use crate::report::archive_folder_usage::ArchiveFolderUsage;
 use crate::report::archive_largest_entry::ArchiveLargestEntry;
 use crate::report::archive_measure::ArchiveMeasure;
+use crate::report::archive_origins::ArchiveOrigins;
 use crate::report::archive_overview::ArchiveOverview;
 use crate::report::archive_size_band::ArchiveSizeBand;
 use crate::report::archive_statistics::ArchiveStatistics;
@@ -70,8 +71,7 @@ impl ArchiveStatisticsCollector {
 
   /// Turns the walk into the report, with the source count its own kind of subject supplies.
   ///
-  /// Leaves `volumes` and `origins` absent: they are what only one kind of subject can answer, and each constructor
-  /// fills in its own.
+  /// Leaves `volumes` and `origins` empty: neither falls out of a walk of entries, and each constructor fills its own.
   pub(crate) fn into_report(mut self, sources: u64) -> ArchiveStatistics {
     self.sizes.sort_unstable();
 
@@ -85,7 +85,7 @@ impl ArchiveStatisticsCollector {
       largest: self.largest,
       // Neither is knowable from a walk of entries alone, so each constructor supplies its own.
       volumes: None,
-      origins: None,
+      origins: ArchiveOrigins::default(),
     }
   }
 

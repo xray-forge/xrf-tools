@@ -111,13 +111,7 @@ export type ArchiveFormatDescription =
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
 
-/**
- * What a level's navigation grid covers, from the 56 bytes that say so.
- *
- * `level.ai` is not chunked either: `CLevelGraph` opens the file and casts its pointer onto the header, so the nodes
- * are read past rather than read. The guid is the one worth carrying - a grid and the spawn set built against it are
- * pinned to each other by it, which is what makes two files from different builds recognisable as such.
- */
+/** What a level's navigation grid covers, from the 56 bytes that say so. */
 export type ArchiveLevelAiDescription = {
   version: number;
   nodes: number;
@@ -131,12 +125,7 @@ export type ArchiveLevelAiDescription = {
   size: number;
 };
 
-/**
- * How much world a level piece covers, as the extent of the box it declares.
- *
- * The extents rather than the corners: where a level sits in world space is a fact about the build, and how big it
- * is is the fact a reader of an archive is asking. X-Ray is Y-up, so `height` is the vertical one.
- */
+/** How much world a level piece covers, as the extent of the box it declares. */
 export type ArchiveLevelBounds = {
   width: number | null;
   height: number | null;

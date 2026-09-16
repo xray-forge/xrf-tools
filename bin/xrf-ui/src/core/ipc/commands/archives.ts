@@ -11,6 +11,7 @@ import {
   ArchivesPatchRequest,
   ArchiveSubject,
   ArchivesUnpackRequest,
+  ArchiveWorldEntry,
   AssetTextureDescriptor,
   AudioDescriptor,
   SessionId,
@@ -52,6 +53,14 @@ export const archivesCommands = {
   /** Entries the open subject holds that no engine lookup can reach. */
   listCollisions: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<XrayPathCollision>>("plugin:archives|list_collisions", { sessionId }),
+  /**
+   * Every engine path the open subject answers with more than one copy, winner first.
+   *
+   * Answered here rather than filtered on the frontend because only one of the two subjects publishes its listing: a
+   * volume set folds its own name table, and the copies that fold displaced reach nothing until this asks for them.
+   */
+  listOverrides: (sessionId: SessionId) =>
+    __TAURI_INVOKE<Array<ArchiveWorldEntry>>("plugin:archives|list_overrides", { sessionId }),
   /** Payloads that several entries of the open volume set locate at once. */
   listSharedPayloads: (sessionId: SessionId) =>
     __TAURI_INVOKE<Array<ArchiveSharedPayload>>("plugin:archives|list_shared_payloads", { sessionId }),

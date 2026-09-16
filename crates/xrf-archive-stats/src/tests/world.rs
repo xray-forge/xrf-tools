@@ -89,7 +89,7 @@ fn source<'a>(origins: &'a ArchiveOrigins, name: &str) -> &'a ArchiveSourceUsage
 
 #[test]
 fn a_world_counts_only_what_the_engine_would_load() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
 
   assert_eq!(statistics.overview.total.files, 3);
   assert_eq!(
@@ -102,7 +102,7 @@ fn a_world_counts_only_what_the_engine_would_load() {
 
 #[test]
 fn a_world_records_no_stored_size_and_no_volumes() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
 
   // Absent rather than zero: a loose file has no stored size, so a compression figure here would be invented.
   assert!(statistics.compression.is_none());
@@ -115,8 +115,8 @@ fn a_world_records_no_stored_size_and_no_volumes() {
 
 #[test]
 fn origins_split_what_wins_by_where_it_is_read_from() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
-  let origins: ArchiveOrigins = statistics.origins.expect("a world knows where its files come from");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
+  let origins: ArchiveOrigins = statistics.origins;
 
   assert_eq!(origins.loose.files, 2);
   assert_eq!(origins.loose.size_real, 1200);
@@ -131,8 +131,8 @@ fn origins_split_what_wins_by_where_it_is_read_from() {
 
 #[test]
 fn overrides_are_counted_apart_from_what_the_engine_loads() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
-  let origins: ArchiveOrigins = statistics.origins.expect("a world knows what it hides");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
+  let origins: ArchiveOrigins = statistics.origins;
 
   assert_eq!(origins.hidden.files, 1);
   assert_eq!(
@@ -143,8 +143,8 @@ fn overrides_are_counted_apart_from_what_the_engine_loads() {
 
 #[test]
 fn a_source_row_says_both_what_it_wins_and_what_it_loses() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
-  let origins: ArchiveOrigins = statistics.origins.expect("a world has sources");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
+  let origins: ArchiveOrigins = statistics.origins;
 
   let tree: &ArchiveSourceUsage = source(&origins, LOOSE_ROOT);
 
@@ -165,8 +165,8 @@ fn a_source_row_says_both_what_it_wins_and_what_it_loses() {
 
 #[test]
 fn sources_are_listed_in_mount_order() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
-  let origins: ArchiveOrigins = statistics.origins.expect("a world has sources");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
+  let origins: ArchiveOrigins = statistics.origins;
 
   assert_eq!(
     origins
@@ -185,8 +185,8 @@ fn a_mount_answering_nothing_is_still_reported() {
 
   mounts.push(String::from("C:/game/db/empty.db0"));
 
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts);
-  let origins: ArchiveOrigins = statistics.origins.expect("a world has sources");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts, &mounts);
+  let origins: ArchiveOrigins = statistics.origins;
 
   // A mount contributing nothing is a finding rather than an absence: it is usually a mod that did not load.
   let empty: &ArchiveSourceUsage = source(&origins, "C:/game/db/empty.db0");
@@ -201,13 +201,12 @@ fn a_source_no_mount_named_is_still_reported_in_a_stable_place() {
   // would lose bytes the totals already counted, and leaving it in hash order would make the report unreproducible.
   let mounts: Vec<String> = vec![String::from(LOOSE_ROOT)];
 
-  let first: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts);
-  let second: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts);
+  let first: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts, &mounts);
+  let second: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts, &mounts);
 
   let names = |statistics: ArchiveStatistics| -> Vec<String> {
     statistics
       .origins
-      .expect("a world has sources")
       .sources
       .into_iter()
       .map(|source| source.source)
@@ -224,8 +223,8 @@ fn a_source_no_mount_named_is_still_reported_in_a_stable_place() {
 
 #[test]
 fn every_winning_byte_is_attributed_to_exactly_one_source() {
-  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts());
-  let origins: ArchiveOrigins = statistics.origins.expect("a world has sources");
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_world(&world(), &mounts(), &mounts());
+  let origins: ArchiveOrigins = statistics.origins;
 
   assert_eq!(
     origins.sources.iter().map(|source| source.wins.size_real).sum::<u64>(),

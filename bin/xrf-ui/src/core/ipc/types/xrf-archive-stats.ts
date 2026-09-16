@@ -51,7 +51,7 @@ export type ArchiveMeasure = {
   sizeReal: number;
 };
 
-/** Where a mounted world's files come from, and what its mount order hides. */
+/** Where a subject's files come from, and what its own search order hides. */
 export type ArchiveOrigins = {
   /** Winning entries served from a loose file on disk. */
   loose: ArchiveMeasure;
@@ -59,7 +59,7 @@ export type ArchiveOrigins = {
   archived: ArchiveMeasure;
   /** Entries no lookup reaches, across every source. */
   hidden: ArchiveMeasure;
-  /** One entry per source, in mount priority order, so the row above is the one that wins. */
+  /** One entry per source, in search priority order, so the row above is the one that wins. */
   sources: Array<ArchiveSourceUsage>;
 };
 
@@ -90,9 +90,9 @@ export type ArchiveSizeBand = {
   measure: ArchiveMeasure;
 };
 
-/** How much of a mounted world one source accounts for, and how much of itself it loses to the sources above it. */
+/** How much of a subject one source accounts for, and how much of itself it loses to the sources above it. */
 export type ArchiveSourceUsage = {
-  /** The source as it names itself, matching an entry of the world's own mount list. */
+  /** The volume file, or the loose root, a copy sits in — the grain a container names, not the mount's. */
   source: string;
   /** Whether this source is a loose tree rather than a volume set. */
   isLoose: boolean;
@@ -118,10 +118,10 @@ export type ArchiveStatistics = {
   /** One entry per volume, in merge order. `None` for a world, whose sources are mounts rather than volumes. */
   volumes: Array<ArchiveVolumeSummary> | null;
   /**
-   * Where the files come from and what the mount order hides, for a world. `None` for a volume set, which cannot see
-   * what its own merge folded away.
+   * Where the files come from and what the search order hides. Answered by both subjects: a volume set is an ordered
+   * stack of volumes exactly as a world is an ordered stack of mounts.
    */
-  origins: ArchiveOrigins | null;
+  origins: ArchiveOrigins;
 };
 
 /** One volume of a set, as its own name table recorded it. */

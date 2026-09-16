@@ -33,7 +33,8 @@ pub use mount::{
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
 pub use source::{
-  XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, XraySourceShadowedCopy, label_from_path,
+  XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, XraySourceOverride, XraySourceShadowedCopy,
+  label_from_path,
 };
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{

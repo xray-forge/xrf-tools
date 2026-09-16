@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 use serde::Serialize;
 use xrf_archive::{ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
 use xrf_archive_stats::ArchiveStatistics;
@@ -68,7 +69,23 @@ impl ArchiveSubject {
   pub fn describe_statistics(&self) -> ArchiveStatistics {
     match self {
       Self::Volumes { project } => ArchiveStatistics::of_volumes(project),
-      Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts),
+      Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts, &world.sources),
+    }
+  }
+
+  /// Every engine path this subject answers with more than one copy, winner first.
+  pub fn list_overrides(&self) -> Vec<ArchiveWorldEntry> {
+    match self {
+      Self::Volumes { project } => XrayArchiveSource::list_overrides_of(project)
+        .into_iter()
+        .map(ArchiveWorldEntry::from)
+        .collect(),
+      Self::World { world } => world
+        .files
+        .iter()
+        .filter(|entry| !entry.shadowed.is_empty())
+        .cloned()
+        .collect(),
     }
   }
 

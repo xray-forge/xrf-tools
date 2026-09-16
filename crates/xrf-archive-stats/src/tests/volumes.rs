@@ -173,12 +173,76 @@ fn a_volume_row_reads_the_volume_descriptor_rather_than_recounting_the_merged_ta
 }
 
 #[test]
-fn a_volume_set_cannot_answer_what_its_merge_folded_away() {
+fn a_volume_set_answers_where_its_entries_come_from() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
 
-  // Absent rather than empty: the name table keeps one entry per name, so the copies it merged away are gone before
-  // anything could count them. An empty answer would claim nothing was shadowed.
-  assert!(statistics.origins.is_none());
+  // A volume set is an ordered stack of volumes exactly as a world is an ordered stack of mounts, so it answers the
+  // same question. Nothing here is loose, which is a fact rather than a gap.
+  assert!(statistics.origins.loose.is_empty());
+  assert_eq!(statistics.origins.archived, statistics.overview.total);
+  assert!(
+    statistics.origins.hidden.is_empty(),
+    "this set merged nothing away, so it hides nothing"
+  );
+
+  assert_eq!(
+    statistics
+      .origins
+      .sources
+      .iter()
+      .map(|source| source.source.as_str())
+      .collect::<Vec<&str>>(),
+    vec!["C:/game/db/textures.db0"]
+  );
+  assert!(
+    statistics.origins.sources.iter().all(|source| !source.is_loose),
+    "a volume set has no loose source"
+  );
+}
+
+#[test]
+fn a_volume_set_reports_the_copies_its_merge_displaced() {
+  let mut project: ArchiveProject = project();
+
+  // A base volume behind the one the fixture already holds, and the copy a patch displaced in it.
+  project.archives.insert(
+    0,
+    ArchiveDescriptor {
+      created_at: None,
+      modified_at: None,
+      entries: 1,
+      output_root_path: PathBuf::from("gamedata/"),
+      path: PathBuf::from("C:/game/db/base.db0"),
+      size_compressed: 100,
+      size_real: 900,
+    },
+  );
+
+  for descriptor in project.files.values_mut() {
+    descriptor.volume = 1;
+  }
+
+  project
+    .shadowed
+    .push(descriptor("configs\\system.ltx", 900, 100, false));
+
+  let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project);
+
+  // Counted apart from the totals: the merged table never held it, so no other section can see it.
+  assert_eq!(statistics.origins.hidden.files, 1);
+  assert_eq!(statistics.origins.hidden.size_real, 900);
+  assert_eq!(statistics.origins.archived, statistics.overview.total);
+
+  // Reverse merge order, so the volume that wins leads and the one it buried sits under it.
+  assert_eq!(
+    statistics
+      .origins
+      .sources
+      .iter()
+      .map(|source| (source.source.as_str(), source.wins.files, source.hides.files))
+      .collect::<Vec<(&str, u64, u64)>>(),
+    vec![("C:/game/db/textures.db0", 6, 0), ("C:/game/db/base.db0", 0, 1)]
+  );
 }
 
 #[test]

@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
 use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry};
@@ -151,6 +152,25 @@ impl<'a> XrayProbe<'a> {
     }
 
     roots
+  }
+
+  /// Every place this probe can answer from, named as a located asset names its container, in search order.
+  pub fn list_containers(&self) -> Vec<String> {
+    let mut containers: Vec<String> = Vec::new();
+
+    for source in self.list_sources() {
+      let volumes: &[ArchiveDescriptor] = source.mount.get_source().list_volumes();
+
+      if volumes.is_empty() {
+        containers.push(source.mount.get_source().get_root_path().display().to_string());
+      } else {
+        containers.extend(volumes.iter().rev().map(|volume| volume.path.display().to_string()));
+      }
+    }
+
+    containers.dedup();
+
+    containers
   }
 
   /// Files any source this probe searches holds but cannot reach, because another file in that same source claims

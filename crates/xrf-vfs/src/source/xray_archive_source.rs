@@ -13,7 +13,7 @@ use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
 use crate::source::xray_asset_source::label_from_path;
 use crate::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XraySourceKind,
-  XraySourceShadowedCopy,
+  XraySourceOverride, XraySourceShadowedCopy,
 };
 
 /// Mounts an archive volume set as a read-only asset source.
@@ -84,6 +84,36 @@ impl XrayArchiveSource {
   /// of.
   pub fn list_collisions_of(project: &ArchiveProject) -> Vec<XrayPathCollision> {
     Self::index(project).1
+  }
+
+  /// Every engine path a volume set answers with more than one copy, without mounting it.
+  pub fn list_overrides_of(project: &ArchiveProject) -> Vec<XraySourceOverride> {
+    let (entries, _, shadowed) = Self::index(project);
+    let mut overrides: Vec<XraySourceOverride> = Vec::new();
+
+    // `shadowed` is already ordered by engine path, so the copies of one path arrive together and in precedence order.
+    for copy in shadowed {
+      match overrides.last_mut() {
+        Some(previous) if previous.logical_path == copy.logical_path => previous.shadowed.push(copy),
+        _ => {
+          let Some(winner) = entries
+            .get(&copy.logical_path)
+            .and_then(|entry| project.files.get(&entry.name))
+          else {
+            continue;
+          };
+
+          overrides.push(XraySourceOverride {
+            container: Self::to_volume_container(project, winner.volume),
+            logical_path: copy.logical_path.clone(),
+            shadowed: vec![copy],
+            size: u64::from(winner.size_real),
+          });
+        }
+      }
+    }
+
+    overrides
   }
 
   /// Keys an already-read volume set by engine identity.

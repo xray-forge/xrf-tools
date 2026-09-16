@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_vfs::XrayAssetContainer;
 
 use crate::collect::archive_statistics_entry::ArchiveWorldStatisticsEntry;
@@ -14,7 +15,7 @@ struct SourceTally {
   hides: ArchiveMeasure,
 }
 
-/// Where a mounted world's files come from, and what its mount order hides.
+/// Where a subject's files come from, and what its own ordering hides.
 #[derive(Default)]
 pub(crate) struct ArchiveOriginsCollector {
   origins: ArchiveOrigins,
@@ -51,13 +52,57 @@ impl ArchiveOriginsCollector {
     }
   }
 
+  /// Where a volume set's entries come from and what its own merge hides.
+  pub(crate) fn collect_volumes(project: &ArchiveProject, sources: &[String]) -> ArchiveOrigins {
+    let mut collector: Self = Self::default();
+
+    for descriptor in project.files.values() {
+      if descriptor.is_directory {
+        continue;
+      }
+
+      let size: u64 = u64::from(descriptor.size_real);
+
+      collector.origins.archived.add(size);
+      collector
+        .tally_of(Self::volume_of(project, descriptor), false)
+        .wins
+        .add(size);
+    }
+
+    for descriptor in &project.shadowed {
+      let size: u64 = u64::from(descriptor.size_real);
+
+      collector.origins.hidden.add(size);
+      collector
+        .tally_of(Self::volume_of(project, descriptor), false)
+        .hides
+        .add(size);
+    }
+
+    collector.into_origins(sources)
+  }
+
   /// The running tally for whatever source a container names, created on first sight.
   fn tally(&mut self, container: &XrayAssetContainer) -> &mut SourceTally {
-    let tally: &mut SourceTally = self.tallies.entry(Self::source_of(container)).or_default();
+    self.tally_of(Self::source_of(container), Self::is_loose(container))
+  }
 
-    tally.is_loose = Self::is_loose(container);
+  /// The running tally for a source named directly, created on first sight.
+  fn tally_of(&mut self, source: String, is_loose: bool) -> &mut SourceTally {
+    let tally: &mut SourceTally = self.tallies.entry(source).or_default();
+
+    tally.is_loose = is_loose;
 
     tally
+  }
+
+  /// The volume file one entry sits in, which is the grain a copy is attributed to.
+  fn volume_of(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> String {
+    project.archives.get(descriptor.volume as usize).map_or_else(
+      || project.root.display().to_string(),
+      |volume| volume.path.display().to_string(),
+    )
   }
 
   /// Turns the walk into the report, with one entry per source, mount order first.

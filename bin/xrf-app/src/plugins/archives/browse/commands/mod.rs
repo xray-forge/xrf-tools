@@ -5,6 +5,7 @@ pub mod extract_directory;
 pub mod extract_file;
 pub mod get_subject;
 pub mod list_collisions;
+pub mod list_overrides;
 pub mod list_shared_payloads;
 pub mod open_volumes;
 pub mod open_world;

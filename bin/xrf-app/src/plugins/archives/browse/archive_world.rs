@@ -23,6 +23,10 @@ pub struct ArchiveWorld {
   pub roots: XrayRoots,
   /// Sources searched, highest priority first, as each one names itself.
   pub mounts: Vec<String>,
+  /// The same search order at the grain a container names — one entry per volume, not per merged mount.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub sources: Vec<String>,
   /// Winning entries, one per engine path, ordered by that path.
   pub files: Vec<ArchiveWorldEntry>,
   /// Entries a mount holds but no lookup can reach, folded during the open like the listing itself.
@@ -48,6 +52,7 @@ impl ArchiveWorld {
     Self {
       collisions: probe.list_collisions(),
       mounts: probe.list_roots(),
+      sources: probe.list_containers(),
       read_policy: ArchiveReadPolicy::default(),
       roots,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),

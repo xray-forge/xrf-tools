@@ -18,4 +18,4 @@ pub(crate) use xray_asset_index::XrayAssetIndex;
 pub use xray_asset_source::{XrayAssetSource, XraySourceKind, label_from_path};
 pub use xray_declared_root::XrayDeclaredRoot;
 pub(crate) use xray_directory_source::XrayDirectorySource;
-pub use xray_source_shadowed_copy::XraySourceShadowedCopy;
+pub use xray_source_shadowed_copy::{XraySourceOverride, XraySourceShadowedCopy};

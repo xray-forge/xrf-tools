@@ -74,7 +74,7 @@ export type ArchiveFileDescriptor = {
  * `xrf-vfs` answers (`XrayMountPlan::from_fsgame`), and answering it here too would put `fsgame.ltx` knowledge in the
  * volume-format layer and give the same declaration two readers.
  *
- * Later volumes win the merge, so a patch volume shadows the entry it replaces.
+ * Later volumes win the merge, so a patch volume shadows the entry it replaces, which is kept in [`Self::shadowed`].
  */
 export type ArchiveProject = {
   /**
@@ -84,6 +84,8 @@ export type ArchiveProject = {
   archives: Array<ArchiveDescriptor>;
   /** Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`. */
   files: { [key in string]: ArchiveFileDescriptor };
+  /** Entries a later volume overwrote in the merge, in the order they were displaced. */
+  shadowed: Array<ArchiveFileDescriptor>;
   readPolicy: ArchiveReadPolicy;
   /**
    * The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common

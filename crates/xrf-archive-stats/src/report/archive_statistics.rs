@@ -31,9 +31,9 @@ pub struct ArchiveStatistics {
   pub compression: Option<ArchiveCompression>,
   /// One entry per volume, in merge order. `None` for a world, whose sources are mounts rather than volumes.
   pub volumes: Option<Vec<ArchiveVolumeSummary>>,
-  /// Where the files come from and what the mount order hides, for a world. `None` for a volume set, which cannot see
-  /// what its own merge folded away.
-  pub origins: Option<ArchiveOrigins>,
+  /// Where the files come from and what the search order hides. Answered by both subjects: a volume set is an ordered
+  /// stack of volumes exactly as a world is an ordered stack of mounts.
+  pub origins: ArchiveOrigins,
 }
 
 impl ArchiveStatistics {
@@ -41,22 +41,33 @@ impl ArchiveStatistics {
   pub fn of_volumes(project: &ArchiveProject) -> Self {
     let collector: ArchiveStatisticsCollector = ArchiveStatisticsCollector::collect(project.files.values());
 
+    // Reverse merge order, because a later volume wins the name table and so is the one a lookup reaches first.
+    let sources: Vec<String> = project
+      .archives
+      .iter()
+      .rev()
+      .map(|volume| volume.path.display().to_string())
+      .collect();
+
     Self {
       volumes: Some(project.archives.iter().map(ArchiveVolumeSummary::from).collect()),
-      origins: None,
+      origins: ArchiveOriginsCollector::collect_volumes(project, &sources),
       ..collector.into_report(project.archives.len() as u64)
     }
   }
 
   /// Breaks down one mounted world.
-  pub fn of_world<E: ArchiveWorldStatisticsEntry>(entries: &[E], mounts: &[String]) -> Self {
+  ///
+  /// `mounts` counts the sources the overview reports; `sources` names them at the grain a container does, which is
+  /// finer — one merged mount answers out of each of its volumes.
+  pub fn of_world<E: ArchiveWorldStatisticsEntry>(entries: &[E], mounts: &[String], sources: &[String]) -> Self {
     let collector: ArchiveStatisticsCollector = ArchiveStatisticsCollector::collect(entries.iter());
 
     Self {
       // A loose file has no stored size, so no arrangement of them has one either, and a world's sources are mounts
       // rather than volumes.
       volumes: None,
-      origins: Some(ArchiveOriginsCollector::collect(entries, mounts)),
+      origins: ArchiveOriginsCollector::collect(entries, sources),
       ..collector.into_report(mounts.len() as u64)
     }
   }
