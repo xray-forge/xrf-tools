@@ -139,6 +139,9 @@ pub use crate::level::level_wallmark::*;
 pub use crate::level::level_wallmark_slot::*;
 pub use crate::level::level_wallmark_vertex::*;
 pub use crate::level::level_wallmarks_file::*;
+pub use crate::light_anim::light_anim_file::*;
+pub use crate::light_anim::light_anim_item::*;
+pub use crate::light_anim::light_anim_key::*;
 pub use crate::ogf::chunks::{
   ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
   ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,
@@ -160,9 +163,6 @@ pub use crate::particles::particles_file::*;
 pub use crate::ppe::ppe_color::PpeColor;
 pub use crate::ppe::ppe_color_map::PpeColorMap;
 pub use crate::ppe::ppe_file::{PPE_COLORS, PPE_VALUES, PpeFile};
-pub use crate::light_anim::light_anim_file::*;
-pub use crate::light_anim::light_anim_item::*;
-pub use crate::light_anim::light_anim_key::*;
 pub use crate::shader_compiler::shader_compiler_file::*;
 pub use crate::shader_compiler::shader_compiler_shader::*;
 pub use crate::shader_library::shader_blender::*;
@@ -172,10 +172,10 @@ pub use crate::shader_library::shader_blender_property_kind::*;
 pub use crate::shader_library::shader_blender_property_value::*;
 pub use crate::shader_library::shader_blender_token::*;
 pub use crate::shader_library::shader_library_file::*;
-pub use crate::sound::sound_environment::*;
-pub use crate::sound::sound_environment_file::*;
 pub use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
 pub use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
+pub use crate::sound::sound_environment::*;
+pub use crate::sound::sound_environment_file::*;
 pub use crate::spawn::chunks::{
   spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk, spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk,
   spawn_graphs_chunk::SpawnGraphsChunk, spawn_header_chunk::SpawnHeaderChunk, spawn_patrols_chunk::SpawnPatrolsChunk,

@@ -72,7 +72,8 @@ impl ShaderCompilerFile {
       reader.new_bounded_vec(count, ShaderCompilerShader::SERIALIZED_SIZE, "compiler shaders")?;
 
     for _ in 0..count {
-      let (name, name_trailing) = ShaderCompilerShader::read_name(&reader.read_bytes(ShaderCompilerShader::NAME_SIZE)?)?;
+      let (name, name_trailing) =
+        ShaderCompilerShader::read_name(&reader.read_bytes(ShaderCompilerShader::NAME_SIZE)?)?;
 
       shaders.push(ShaderCompilerShader {
         name,
@@ -108,6 +109,9 @@ impl ShaderCompilerFile {
 
   /// The shader a name resolves to, matched the way `Shader_xrLC_LIB::GetID` matches it.
   pub fn find_shader(&self, name: &str) -> Option<&ShaderCompilerShader> {
-    self.shaders.iter().find(|shader| shader.name.eq_ignore_ascii_case(name))
+    self
+      .shaders
+      .iter()
+      .find(|shader| shader.name.eq_ignore_ascii_case(name))
   }
 }
