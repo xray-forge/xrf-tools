@@ -58,7 +58,12 @@ export class PatcherService {
   public isBusy: boolean = false;
 
   @Observable()
-  public error: Nullable<string> = null;
+  private configError: Nullable<string> = null;
+
+  @Computed()
+  public get error(): Nullable<string> {
+    return this.configError ?? this.operation.error;
+  }
 
   /** Configuration file this was read from or last written to. */
   @Observable()
@@ -144,7 +149,13 @@ export class PatcherService {
   @BoundAction()
   public setVolumeSize(volumeSize: string): void {
     this.volumeSize = volumeSize;
+    this.resetResult();
+  }
+
+  @BoundAction()
+  public resetResult(): void {
     this.operation.reset();
+    this.configError = null;
   }
 
   /**
@@ -171,7 +182,7 @@ export class PatcherService {
       this.config = { ...this.config, ...patch };
 
       // A result describes the configuration that produced it and stops being true the moment one is changed.
-      this.operation.reset();
+      this.resetResult();
     }
   }
 
@@ -217,7 +228,8 @@ export class PatcherService {
     this.log.info("Importing config:", path);
 
     this.isBusy = true;
-    this.error = null;
+    this.configError = null;
+    this.operation.clearError();
 
     try {
       const imported: ArchivePatchConfig = yield* call(archivesCommands.importPatchConfig(path, this.config));
@@ -232,7 +244,7 @@ export class PatcherService {
     } catch (error: unknown) {
       this.log.error("Import error after:", formatDuration(timer.elapsed()), error);
 
-      this.error = transformError(error).message;
+      this.configError = transformError(error).message;
     } finally {
       this.isBusy = false;
     }
@@ -256,7 +268,8 @@ export class PatcherService {
     this.log.info("Exporting config:", path);
 
     this.isBusy = true;
-    this.error = null;
+    this.configError = null;
+    this.operation.clearError();
 
     try {
       yield* call(archivesCommands.exportPatchConfig(path, config));
@@ -268,7 +281,7 @@ export class PatcherService {
     } catch (error: unknown) {
       this.log.error("Export error after:", formatDuration(timer.elapsed()), error);
 
-      this.error = transformError(error).message;
+      this.configError = transformError(error).message;
     } finally {
       this.isBusy = false;
     }
@@ -302,6 +315,7 @@ export class PatcherService {
     const config: ArchivePatchConfig = request.config;
 
     this.log.info("Comparing:", config.input, "against", config.target ?? "its own loose gamedata");
+    this.configError = null;
 
     yield* this.operation.run({
       kind,
@@ -315,6 +329,8 @@ export class PatcherService {
 
   @OnEvent(JOB_SETTLED_EVENT)
   public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
+    if (this.operation.adopt(event.payload)) {
+      this.configError = null;
+    }
   }
 }

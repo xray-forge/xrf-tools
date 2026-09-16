@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher/index";
-import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { EJobOutcome } from "@/core/ipc/types/xrf-job";
+import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -120,6 +121,68 @@ describe("PatcherService configuration", () => {
     expect(service.error).toContain("not a patching configuration");
     expect(service.config?.name).toBe("patch");
     expect(service.configPath).toBeNull();
+  });
+});
+
+describe("PatcherService error recovery", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  it("clears a configuration failure when a comparison succeeds", async () => {
+    const result: ArchivePatchResult = {
+      outcome: EJobOutcome.COMPLETED,
+      added: [],
+      modified: [],
+      unchanged: 1,
+      origins: [],
+      payloadsRead: 0,
+      sizeCarried: 0,
+      publication: { kind: "compared" },
+      duration: 0,
+      compareDuration: 0,
+      packDuration: 0,
+    };
+
+    setMockInvokeResponses({
+      ["plugin:archives|import_patch_config"]: () => {
+        throw new Error("invalid configuration");
+      },
+      ["plugin:archives|compare_archives"]: result,
+    });
+
+    const service: PatcherService = mockPatcherService();
+
+    await service.importConfig("C:\\work\\patch.json");
+
+    expect(service.error).toBe("invalid configuration");
+
+    await service.compare({ config: CONFIG, isForced: false, isVerifyingPayload: false });
+
+    expect(service.operation.result).toEqual(result);
+    expect(service.error).toBeNull();
+  });
+
+  it("clears a job failure when configuration export succeeds", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|compare_archives"]: () => {
+        throw new Error("cannot read input");
+      },
+      ["plugin:archives|export_patch_config"]: null,
+    });
+
+    const service: PatcherService = mockPatcherService();
+
+    await service.compare({ config: CONFIG, isForced: false, isVerifyingPayload: false });
+
+    expect(service.operation.error).toBe("cannot read input");
+    expect(service.error).toBe("cannot read input");
+
+    await service.exportConfig("C:\\work\\patch.json");
+
+    expect(service.configPath).toBe("C:\\work\\patch.json");
+    expect(service.operation.error).toBeNull();
+    expect(service.error).toBeNull();
   });
 });
 

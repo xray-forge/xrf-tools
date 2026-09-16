@@ -192,7 +192,7 @@ export function ArchivesPatcherApplication(): ReactElement {
 
   // Changing what is compared invalidates whatever the previous run reported.
   useEffect(() => {
-    patcherService.operation.reset();
+    patcherService.resetResult();
   }, [destination.value, input.value, patcherService, target.value]);
 
   // Drawn by the shell beside every other application's navigation rather than as a column of this application's
@@ -250,8 +250,6 @@ export function ArchivesPatcherApplication(): ReactElement {
       <Box sx={{ flexGrow: 1, minWidth: 0, overflowY: "auto", p: 3 }}>
         <Stack spacing={2} sx={{ maxWidth: 860 }}>
           {patcherService.error ? <Alert severity={"error"}>{patcherService.error}</Alert> : null}
-
-          {patcherService.operation.error ? <Alert severity={"error"}>{patcherService.operation.error}</Alert> : null}
 
           {job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
 
