@@ -22,6 +22,8 @@ pub use xrf_chunk::XRayByteOrder;
 pub use crate::anm::anm_file::{ANM_CHANNELS, ANM_DEFAULT_FPS, AnmFile};
 pub use crate::data::animation::animation_envelope::AnimationEnvelope;
 pub use crate::data::animation::animation_key::{AnimationInterpolation, AnimationKey};
+pub use crate::data::detail::detail_model::DetailModel;
+pub use crate::data::detail::detail_vertex::DetailVertex;
 pub use crate::data::ogf::ogf_bone::OgfBone;
 pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
 pub use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
@@ -86,6 +88,8 @@ pub use crate::data::{
 };
 pub use crate::level::level_ai_file::*;
 pub use crate::level::level_cform_file::*;
+pub use crate::level::level_details_file::*;
+pub use crate::level::level_details_slot::*;
 pub use crate::level::level_file::*;
 pub use crate::level::level_header_chunk::*;
 pub use crate::level::level_shader_entry::*;

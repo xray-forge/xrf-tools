@@ -16,6 +16,8 @@ use crate::plugins::registry::domain_plugins;
 
 /// Assemble the application from its plugins and hand control to Tauri.
 pub fn run() {
+  log::info!("Starting application");
+
   let builder: Builder<Wry> = Builder::default()
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
