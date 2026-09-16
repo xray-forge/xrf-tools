@@ -1,6 +1,40 @@
 use serde::Serialize;
 use xrf_report::Status;
-use xrf_vfs::XrayPathCollision;
+use xrf_utils::to_portable_path_string;
+use xrf_vfs::{XrayAssetContainer, XrayPathCollision, XraySourceOverride};
+
+/// One engine path the set answers with more than one copy, as a report states it.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveVerifyOverrideReport {
+  logical_path: String,
+  /// Where the copy a lookup reaches sits.
+  container: String,
+  /// The copies behind it, in precedence order.
+  hidden: Vec<String>,
+}
+
+impl From<&XraySourceOverride> for ArchiveVerifyOverrideReport {
+  fn from(entry: &XraySourceOverride) -> Self {
+    Self {
+      container: to_portable_container(&entry.container),
+      hidden: entry
+        .shadowed
+        .iter()
+        .map(|copy| to_portable_container(&copy.container))
+        .collect(),
+      logical_path: entry.logical_path.clone(),
+    }
+  }
+}
+
+/// Where a container sits, spelled the one way every report spells a path.
+fn to_portable_container(container: &XrayAssetContainer) -> String {
+  match container {
+    XrayAssetContainer::Directory { root, relative_path } => to_portable_path_string(root.join(relative_path)),
+    XrayAssetContainer::Archive { path } => to_portable_path_string(path),
+  }
+}
 
 /// One payload that could not be read back.
 #[derive(Debug, Serialize)]
@@ -35,16 +69,26 @@ pub struct ArchiveVerifyReport {
   /// `gamedata verify` is where a project's reachability belongs in a verdict. Reporting it at all keeps a clean CRC
   /// sweep from implying a volume set nothing is wrong with.
   collisions: Vec<XrayPathCollision>,
+  /// Engine paths the set answers with more than one copy, reported beside the verdict without joining it.
+  overrides: Vec<ArchiveVerifyOverrideReport>,
   findings: Vec<ArchiveVerifyFindingReport>,
   status: Status,
 }
 
 impl ArchiveVerifyReport {
-  pub fn new(checked: usize, collisions: Vec<XrayPathCollision>, findings: Vec<ArchiveVerifyFindingReport>) -> Self {
+  pub fn new(
+    checked: usize,
+    overrides: &[XraySourceOverride],
+    collisions: Vec<XrayPathCollision>,
+    findings: Vec<ArchiveVerifyFindingReport>,
+  ) -> Self {
     Self {
+      // Overrides are deliberately absent from this: they are not defects, and a set full of working patches must
+      // still pass.
       status: Status::from_is_valid(findings.is_empty()),
       checked,
       collisions,
+      overrides: overrides.iter().map(ArchiveVerifyOverrideReport::from).collect(),
       findings,
     }
   }

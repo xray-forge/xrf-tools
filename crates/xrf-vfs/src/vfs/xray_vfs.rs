@@ -535,11 +535,24 @@ impl XrayVfs {
         continue;
       };
 
+      let hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = Self::group_hidden(mount.get_source());
+
       for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
         if let Ok(logical_path) = mount.to_logical_path(&source_path)
           && let Some(location) = Self::locate_in(mount, &logical_path)
         {
           located.push(location);
+
+          if hidden.is_empty() {
+            continue;
+          }
+
+          for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
+            located.push(XrayAsset::new(
+              XrayLogicalPath::from_normalized(logical_path.to_string()),
+              copy.container.clone(),
+            ));
+          }
         }
       }
     }
@@ -548,6 +561,20 @@ impl XrayVfs {
     located.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
 
     located
+  }
+
+  /// Copies a source holds behind the ones it answers with, keyed by the path they would have answered for.
+  ///
+  /// Grouped once per mount rather than looked up per entry, and empty for every source that hides nothing — which is
+  /// every loose tree, and every volume set no patch overrides.
+  fn group_hidden(source: &dyn XrayAssetSource) -> HashMap<&str, Vec<&XraySourceShadowedCopy>> {
+    let mut hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = HashMap::new();
+
+    for copy in source.list_shadowed() {
+      hidden.entry(copy.logical_path.as_str()).or_default().push(copy);
+    }
+
+    hidden
   }
 
   /// Returns the winning entry for every reachable path with its size, ordered by logical path.
@@ -602,14 +629,7 @@ impl XrayVfs {
         continue;
       };
 
-      // Grouped once per mount rather than looked up per entry. A source that hides nothing - which is every loose
-      // tree and every volume set no patch overrides - never builds the map and never consults it, so the common
-      // listing walks exactly the entries it always did.
-      let mut hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = HashMap::new();
-
-      for copy in mount.get_source().list_shadowed() {
-        hidden.entry(copy.logical_path.as_str()).or_default().push(copy);
-      }
+      let hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = Self::group_hidden(mount.get_source());
 
       for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
         if let Ok(logical_path) = mount.to_logical_path(&source_path)

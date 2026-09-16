@@ -74,7 +74,7 @@ impl GenericCommand for ListCommand {
       )
       .arg(
         Arg::new("shadowed")
-          .help("Also report entries hidden by a higher-priority mount")
+          .help("Also report entries hidden by a higher-priority source, mount or volume")
           .long("shadowed")
           .action(ArgAction::SetTrue),
       )

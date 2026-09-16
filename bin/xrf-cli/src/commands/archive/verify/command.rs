@@ -5,17 +5,20 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_vfs::{XrayArchiveSource, XrayPathCollision};
+use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XraySourceOverride};
 
 use super::report::{ArchiveVerifyFindingReport, ArchiveVerifyReport};
 use crate::commands::archive::list::ListCommand;
-use crate::core::collisions::print_collisions;
+use crate::core::collisions::{print_collisions, print_overrides};
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 /// Maximum unreachable entries printed before reporting the omitted count.
 const COLLISION_PRINT_LIMIT: usize = 40;
+
+/// Maximum contested paths printed before reporting the omitted count.
+const OVERRIDE_PRINT_LIMIT: usize = 40;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -50,8 +53,10 @@ impl GenericCommand for VerifyCommand {
       ListCommand::entries(&project, crate::commands::archive::list::ArchiveEntrySelection::Files);
 
     // Folded over the volume set this run read, rather than by mounting the path again: a second read would answer
-    // over the volumes `XrayArchiveSource::read` discovers, which is not recursively the set verified here.
-    let collisions: Vec<XrayPathCollision> = XrayArchiveSource::list_collisions_of(&project);
+    // over the volumes `XrayArchiveSource::read` discovers, which is not recursively the set verified here. Both
+    // halves come from that one fold.
+    let (overrides, collisions): (Vec<XraySourceOverride>, Vec<XrayPathCollision>) =
+      XrayArchiveSource::describe_overrides_of(&project);
 
     let checked: usize = entries.len();
     let mut findings: Vec<ArchiveVerifyFindingReport> = Vec::new();
@@ -63,7 +68,7 @@ impl GenericCommand for VerifyCommand {
         // reporting: depositing before giving up keeps the entries found corrupt out of the run's
         // loss column.
         Err(error @ XrfError::Io { .. }) => {
-          context.set_result(|| ArchiveVerifyReport::new(checked, collisions, findings))?;
+          context.set_result(|| ArchiveVerifyReport::new(checked, &overrides, collisions, findings))?;
 
           return Err(error.into());
         }
@@ -76,10 +81,11 @@ impl GenericCommand for VerifyCommand {
 
     let finding_count: usize = findings.len();
 
+    print_overrides(&output, &overrides, OVERRIDE_PRINT_LIMIT);
     print_collisions(&output, &collisions, COLLISION_PRINT_LIMIT);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
-    context.set_result(|| ArchiveVerifyReport::new(checked, collisions, findings))?;
+    context.set_result(|| ArchiveVerifyReport::new(checked, &overrides, collisions, findings))?;
 
     if finding_count == 0 {
       xrf_output::success!(

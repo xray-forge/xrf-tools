@@ -108,11 +108,18 @@ impl XrayAsset {
     require_writable_path(self.logical_path.as_str(), self.to_physical_path())
   }
 
-  /// Describes the containing tree or archive volume set for display.
+  /// Describes the containing tree or archive volume for display.
   pub fn format_container(&self) -> String {
-    match &self.container {
-      XrayAssetContainer::Directory { root, .. } => root.display().to_string(),
-      XrayAssetContainer::Archive { path } => format!("{} (archive)", format_path(path)),
+    self.container.format()
+  }
+}
+
+impl XrayAssetContainer {
+  /// Describes where bytes sit, for a reader rather than for a lookup.
+  pub fn format(&self) -> String {
+    match self {
+      Self::Directory { root, .. } => root.display().to_string(),
+      Self::Archive { path } => format!("{} (archive)", format_path(path)),
     }
   }
 }
