@@ -14,7 +14,7 @@ import { PANEL } from "@/core/theme";
  */
 export function JobsPanel(): ReactElement {
   const jobsService: JobsService = useInjection(JobsService);
-  const listed: Array<JobDescription> = useJobsListing();
+  const listed: ReadonlyArray<JobDescription> = useJobsListing();
 
   const onCancel = useCallback((id: string) => jobsService.cancel(id), [jobsService]);
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { act, RenderResult } from "@testing-library/react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { JobsPanel } from "@/core/shell/panel/jobs/JobsPanel";
@@ -68,7 +68,7 @@ describe("JobsPanel", () => {
   it("says plainly when there is nothing to show", async () => {
     setMockInvokeResponses({ [LIST_COMMAND]: [] });
 
-    const rendered: RenderResult = renderWithProviders(<JobsPanel />);
+    const rendered: RenderResult = await act(async () => renderWithProviders(<JobsPanel />));
 
     expect(await rendered.findByText(/Nothing is running/)).toBeInTheDocument();
   });
@@ -101,7 +101,7 @@ describe("JobsPanel", () => {
       },
     });
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await act(async () => jest.advanceTimersByTimeAsync(1000));
 
     expect(rendered.queryByText("Archive packing")).toBeInTheDocument();
   });

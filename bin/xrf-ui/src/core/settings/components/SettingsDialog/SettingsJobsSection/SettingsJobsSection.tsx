@@ -23,7 +23,7 @@ export function SettingsJobsSection({
   className,
   id,
 }: BaseComponentProps): ReactElement {
-  const listed: Array<JobDescription> = useJobsListing();
+  const listed: ReadonlyArray<JobDescription> = useJobsListing();
 
   const forceUpdate: Callable = useForceUpdate();
 
