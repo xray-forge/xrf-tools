@@ -12,7 +12,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
-import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /** Sections of the patching configuration, in the order they are edited. */
@@ -190,6 +190,7 @@ export class PatcherService {
    *
    * @param config - Configuration whose output and volume name to look at.
    */
+  @LatestFlow()
   public *checkDestination(config: ArchivePatchConfig): TFlow {
     try {
       this.publishedVolumes = yield* call(archivesCommands.listPatchVolumes(config));

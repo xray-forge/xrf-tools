@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { flowResult } from "@wirestate/mobx";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher/index";
 import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { noop } from "@/lib/callbacks/noop";
 import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 /** A configuration shaped like the one the backend answers with. */
@@ -118,6 +120,51 @@ describe("PatcherService configuration", () => {
     expect(service.error).toContain("not a patching configuration");
     expect(service.config?.name).toBe("patch");
     expect(service.configPath).toBeNull();
+  });
+});
+
+describe("PatcherService destination check", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  it("lists existing volumes when the destination check is called", async () => {
+    const config: ArchivePatchConfig = { ...CONFIG, destination: "C:\\out" };
+    const volumes: Array<string> = ["C:\\out\\patch.db0"];
+
+    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: volumes });
+
+    const service: PatcherService = mockPatcherService();
+
+    await service.checkDestination(config);
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_patch_volumes", { config });
+    expect(service.publishedVolumes).toEqual(volumes);
+  });
+
+  it("ignores an older destination listing that finishes after its replacement", async () => {
+    let resolveOlder: (volumes: Array<string>) => void = noop;
+    const olderResponse = new Promise<Array<string>>((resolve) => {
+      resolveOlder = resolve;
+    });
+
+    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: () => olderResponse });
+
+    const service: PatcherService = mockPatcherService();
+    const olderCheck = flowResult(service.checkDestination({ ...CONFIG, destination: "C:\\old" }));
+    const newerVolumes: Array<string> = ["C:\\new\\patch.db0"];
+
+    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: newerVolumes });
+
+    await service.checkDestination({ ...CONFIG, destination: "C:\\new" });
+
+    expect(service.publishedVolumes).toEqual(newerVolumes);
+
+    resolveOlder(["C:\\old\\patch.db0"]);
+    await olderResponse;
+    await olderCheck;
+
+    expect(service.publishedVolumes).toEqual(newerVolumes);
   });
 });
 
