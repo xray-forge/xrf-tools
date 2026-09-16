@@ -3,6 +3,7 @@ use xrf_archive::ArchiveReadPolicy;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtensionOf;
 
+use crate::plugins::archives::describe::anm::ArchiveAnmDescription;
 use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeScope;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
@@ -29,6 +30,9 @@ pub enum ArchiveFormatDescription {
   },
   Spawn {
     description: Box<ArchiveSpawnDescription>,
+  },
+  Anm {
+    description: Box<ArchiveAnmDescription>,
   },
   Level {
     description: Box<ArchiveLevelDescription>,

@@ -28,10 +28,12 @@ pub const ANM_DEFAULT_FPS: f32 = 30.0;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnmFile {
-  /// Name the editor saved it under, empty in 440 of the 550 shipped animations.
+  /// Name the editor saved it under, empty in 1,051 of the 1,221 animations the workspace trees ship.
   pub name: String,
-  pub frame_start: u32,
-  pub frame_end: u32,
+  /// First frame of the range, `iFrameStart`. Signed because five of the vanilla camera effects start at -1.
+  pub frame_start: i32,
+  /// Last frame of the range, `iFrameEnd`, which the engine plays inclusively.
+  pub frame_end: i32,
   /// Frames a second the keys are timed against.
   pub fps: f32,
   pub version: u16,
@@ -108,8 +110,8 @@ impl AnmFile {
   /// Returns an error when the version is one this does not read, or the payload does not account for six envelopes.
   pub fn read_from_motion_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
-    let frame_start: u32 = reader.read_u32::<T>()?;
-    let frame_end: u32 = reader.read_u32::<T>()?;
+    let frame_start: i32 = reader.read_i32::<T>()?;
+    let frame_end: i32 = reader.read_i32::<T>()?;
     let fps: f32 = reader.read_f32::<T>()?;
     let version: u16 = reader.read_u16::<T>()?;
 
@@ -166,8 +168,8 @@ impl AnmFile {
     }
 
     writer.write_w1251_string(&self.name)?;
-    writer.write_u32::<T>(self.frame_start)?;
-    writer.write_u32::<T>(self.frame_end)?;
+    writer.write_i32::<T>(self.frame_start)?;
+    writer.write_i32::<T>(self.frame_end)?;
     writer.write_f32::<T>(self.fps)?;
     writer.write_u16::<T>(self.version)?;
 
@@ -180,12 +182,17 @@ impl AnmFile {
 }
 
 impl AnmFile {
-  /// Frames the animation spans, which is the range its keys are timed within.
+  /// Frames the animation spans, `CCustomMotion::Length` (`xrCore/Animation/Motion.hpp`).
+  ///
+  /// The range is inclusive of both ends, so an animation from 0 to 480 is 481 frames and not 480. A range running
+  /// backwards, which nothing shipped carries, counts as no frames rather than as a negative number.
   pub const fn get_frame_count(&self) -> u32 {
-    self.frame_end.saturating_sub(self.frame_start)
+    let frames: i64 = self.frame_end as i64 - self.frame_start as i64 + 1;
+
+    if frames > 0 { frames as u32 } else { 0 }
   }
 
-  /// Seconds the animation runs for at the rate it declares.
+  /// Seconds the animation runs for, `CObjectAnimator::GetLength` (`xrEngine/ObjectAnimator.cpp`).
   ///
   /// A rate that is not positive - which nothing shipped carries - would make this meaningless, so the format's own
   /// default stands in, exactly as `CCustomMotion` starts at it.

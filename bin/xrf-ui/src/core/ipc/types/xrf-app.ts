@@ -18,6 +18,92 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
+/** Every `kind` the `ArchiveAnmBehavior` union is told apart by, so a switch or a comparison names one. */
+export enum EArchiveAnmBehavior {
+  /** `BEH_RESET`: falls back to nothing. */
+  RESET = "reset",
+  /** `BEH_CONSTANT`: holds the value of the nearest key, which is what everything shipped declares. */
+  CONSTANT = "constant",
+  /** `BEH_REPEAT`: plays the keyed range again from its start. */
+  REPEAT = "repeat",
+  /** `BEH_OSCILLATE`: plays the keyed range again backwards. */
+  OSCILLATE = "oscillate",
+  /** `BEH_OFFSET`: repeats, each pass starting where the last ended. */
+  OFFSET = "offset",
+  /** `BEH_LINEAR`: carries on along the slope the end key leaves. */
+  LINEAR = "linear",
+  /** A value the engine gives no name, kept as the number the file stores. */
+  UNNAMED = "unnamed",
+}
+
+/**
+ * What a channel does outside its keys, `BEH_*` (`xrCore/Animation/Envelope.hpp`).
+ *
+ * Both ends of every envelope in every animation the workspace trees ship are `BEH_CONSTANT`, so a surface has
+ * something to say here only when one is not.
+ */
+export type ArchiveAnmBehavior =
+  /** `BEH_RESET`: falls back to nothing. */
+  | { kind: "reset" }
+  /** `BEH_CONSTANT`: holds the value of the nearest key, which is what everything shipped declares. */
+  | { kind: "constant" }
+  /** `BEH_REPEAT`: plays the keyed range again from its start. */
+  | { kind: "repeat" }
+  /** `BEH_OSCILLATE`: plays the keyed range again backwards. */
+  | { kind: "oscillate" }
+  /** `BEH_OFFSET`: repeats, each pass starting where the last ended. */
+  | { kind: "offset" }
+  /** `BEH_LINEAR`: carries on along the slope the end key leaves. */
+  | { kind: "linear" }
+  /** A value the engine gives no name, kept as the number the file stores. */
+  | { kind: "unnamed"; value: number };
+
+/** One channel of an animation: what it drives, and the keys that drive it. */
+export type ArchiveAnmChannel = {
+  /** What the channel animates, which is its position in the file rather than anything the file names. */
+  name: string;
+  keys: number;
+  /** Seconds its first key sits at, absent for a channel carrying none. */
+  firstSeconds: number | null;
+  /** Seconds its last key sits at, absent for a channel carrying none. */
+  lastSeconds: number | null;
+  /** The smallest value any of its keys holds, absent for a channel carrying none. */
+  minimum: number | null;
+  /** The largest value any of its keys holds, absent for a channel carrying none. */
+  maximum: number | null;
+  /** What it does before its first key. */
+  behaviorBefore: ArchiveAnmBehavior;
+  /** What it does after its last key. */
+  behaviorAfter: ArchiveAnmBehavior;
+  /** Curve shapes its keys use, named, each once. */
+  shapes: Array<string>;
+};
+
+/** Everything the viewer says about one object motion. */
+export type ArchiveAnmDescription = {
+  /** The name the editor saved it under, absent for the 1,051 of 1,221 shipped animations carrying none. */
+  name: string | null;
+  version: number;
+  frameStart: number;
+  frameEnd: number;
+  /** Frames the range spans, counting both ends, which is the engine's `Length`. */
+  frames: number;
+  fps: number | null;
+  /** Seconds the engine plays it for, which is what a camera effect's lifetime is taken from. */
+  durationSeconds: number | null;
+  /** Keys across every channel. */
+  keys: number;
+  /**
+   * Seconds the last key of any channel sits at, absent when nothing is keyed.
+   *
+   * Not the same number as the duration, and 101 of the 1,221 shipped animations prove it: keys past the declared
+   * end never play, and keys stopping short leave the rest of the range holding the last value.
+   */
+  keyedSeconds: number | null;
+  /** One entry per channel, in the order the format stores them. */
+  channels: Array<ArchiveAnmChannel>;
+};
+
 /** One chunk of a container, and whatever its payload turned out to hold. */
 export type ArchiveChunkNode = {
   /** Chunk id with the compression flag masked off, which is what a format's own constants compare against. */
@@ -88,6 +174,7 @@ export type ArchiveFileDescription = {
 export enum EArchiveFormatDescription {
   CHUNKS = "chunks",
   SPAWN = "spawn",
+  ANM = "anm",
   LEVEL = "level",
   LEVEL_AI = "levelAi",
   LEVEL_COLLISION = "levelCollision",
@@ -102,6 +189,7 @@ export enum EArchiveFormatDescription {
 export type ArchiveFormatDescription =
   | { kind: "chunks"; description: ArchiveChunksDescription }
   | { kind: "spawn"; description: ArchiveSpawnDescription }
+  | { kind: "anm"; description: ArchiveAnmDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "levelAi"; description: ArchiveLevelAiDescription }
   | { kind: "levelCollision"; description: ArchiveLevelCollisionDescription }

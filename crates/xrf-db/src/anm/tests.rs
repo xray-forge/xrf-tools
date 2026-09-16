@@ -55,8 +55,8 @@ fn animation_bytes() -> XrfResult<Vec<u8>> {
   let mut payload: Vec<u8> = Vec::new();
 
   payload.extend_from_slice(b"camera_shake\0");
-  payload.extend_from_slice(&0u32.to_le_bytes());
-  payload.extend_from_slice(&480u32.to_le_bytes());
+  payload.extend_from_slice(&0i32.to_le_bytes());
+  payload.extend_from_slice(&479i32.to_le_bytes());
   payload.extend_from_slice(&30.0f32.to_le_bytes());
   payload.extend_from_slice(&5u16.to_le_bytes());
 
@@ -82,7 +82,7 @@ fn an_animation_reads_as_the_header_and_six_channels_it_is() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
 
   assert_eq!(animation.name, "camera_shake");
-  assert_eq!((animation.frame_start, animation.frame_end), (0, 480));
+  assert_eq!((animation.frame_start, animation.frame_end), (0, 479));
   assert_eq!(animation.fps, 30.0);
   assert_eq!(animation.version, 5);
   assert_eq!(animation.channels.len(), AnmFile::CHANNEL_COUNT);
@@ -221,10 +221,39 @@ fn a_version_this_writer_does_not_emit_is_refused_rather_than_written_as_another
 fn what_an_animation_is_worth_comes_from_its_frames_and_its_rate() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
 
+  // 0 to 479 inclusive, which is 480 frames and not 479.
   assert_eq!(animation.get_frame_count(), 480);
   assert_eq!(animation.get_duration_seconds(), 16.0);
   assert_eq!(animation.get_keys_count(), 4);
   assert!(animation.is_keyed());
+
+  Ok(())
+}
+
+#[test]
+fn a_range_starting_before_zero_spans_the_frames_the_engine_plays() -> XrfResult {
+  // `camera_effects\head_shot.anm`, which every one of the workspace trees ships: -1 to 60, which the engine reads
+  // as 62 frames. Read unsigned, the start would be 4294967295 and the animation would last no time at all.
+  let mut animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
+
+  animation.frame_start = -1;
+  animation.frame_end = 60;
+
+  assert_eq!(animation.get_frame_count(), 62);
+  assert_eq!(animation.get_duration_seconds(), 62.0 / 30.0);
+
+  Ok(())
+}
+
+#[test]
+fn a_range_running_backwards_spans_no_frames_rather_than_a_negative_count() -> XrfResult {
+  let mut animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(animation_bytes()?)?;
+
+  animation.frame_start = 60;
+  animation.frame_end = 0;
+
+  assert_eq!(animation.get_frame_count(), 0);
+  assert_eq!(animation.get_duration_seconds(), 0.0);
 
   Ok(())
 }

@@ -55,9 +55,12 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Engine text covers configs, " +
       "scripts and every shader stage, so a `gs` or an `hlsl` reads like the `vs` beside it.",
     "A binary file the explorer cannot draw is described in words instead, where a reader for its format exists: " +
-      "`thm` descriptors, `omf` motion banks, `particles.xr`, `shaders.xr`, a compiled `level` and a spawn set. A " +
-      "description " +
-      "names the files it refers to, and a name the open subject holds selects it in the tree.",
+      "`thm` descriptors, `omf` motion banks, `anm` object motions, `particles.xr`, `shaders.xr`, a compiled `level` " +
+      "and a spawn set. A description names the files it refers to, and a name the open subject holds selects it in " +
+      "the tree.",
+    "An `anm` is a camera or object path over six channels, and is described by what the engine would play: the " +
+      "frame range counts both its ends, so a range of 0 to 59 runs for 60 frames. Where the keys reach past that " +
+      "range, or stop short of it, the description says so - 101 of the shipped animations do one or the other.",
     "A spawn set is summarised from its header alone: how many objects over how many levels, and what each section " +
       "of the file weighs. Its objects are not read - vanilla's set is 6,464 of them behind a game graph that is most " +
       "of a 29 MB file.",

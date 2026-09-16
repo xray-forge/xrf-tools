@@ -202,7 +202,7 @@ export type ArchivePatchConfig = {
 export enum EArchivePatchOrigin {
   /** A loose tree, named by the root it mounted at. */
   DIRECTORY = "directory",
-  /** The archive volume set at `path`. */
+  /** The archive volume at `path`. */
   ARCHIVE = "archive",
 }
 
@@ -216,7 +216,7 @@ export enum EArchivePatchOrigin {
 export type ArchivePatchOrigin =
   /** A loose tree, named by the root it mounted at. */
   | { kind: "directory"; root: string }
-  /** The archive volume set at `path`. */
+  /** The archive volume at `path`. */
   | { kind: "archive"; path: string };
 
 /** Patch publication outcome, serialized with a `kind` tag. */

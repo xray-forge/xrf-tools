@@ -18,6 +18,7 @@ import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
+import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
@@ -90,6 +91,16 @@ export function ArchiveDescriptionPreview({
   const description: ArchiveFileDescription = described.description;
 
   switch (description.format.kind) {
+    case EArchiveFormatDescription.ANM:
+      return (
+        <ArchiveAnmDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
     case EArchiveFormatDescription.CHUNKS:
       return (
         <ArchiveChunksDescriptionView

@@ -1,4 +1,6 @@
 import {
+  ArchiveAnmChannel,
+  ArchiveAnmDescription,
   ArchiveChunksDescription,
   ArchiveDescribeScope,
   ArchiveFileDescription,
@@ -22,6 +24,7 @@ import {
   ArchiveThmDescription,
   ArchiveWorld,
   ArchiveWorldEntry,
+  EArchiveAnmBehavior,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
   EArchiveLevelEntry,
@@ -549,6 +552,69 @@ export function mockArchiveOmfMotion(overrides: Partial<ArchiveOmfMotion> = {}):
     marks: [],
     hasDivergingLabel: false,
     ...overrides,
+  };
+}
+
+/**
+ * Creates one channel of an object motion, keyed the way a camera effect's position channel is.
+ *
+ * @param name - What the channel animates, which is the position it holds in the file.
+ * @param overrides - Field values to override.
+ * @returns One channel, as a description carries it.
+ */
+export function mockArchiveAnmChannel(
+  name: string = "position x",
+  overrides: Partial<ArchiveAnmChannel> = {}
+): ArchiveAnmChannel {
+  return {
+    name,
+    keys: 9,
+    firstSeconds: 0,
+    lastSeconds: 2,
+    minimum: -0.125,
+    maximum: 0.25,
+    behaviorBefore: { kind: EArchiveAnmBehavior.CONSTANT },
+    behaviorAfter: { kind: EArchiveAnmBehavior.CONSTANT },
+    shapes: ["tcb"],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates an object motion description: a two second camera effect keyed on all six channels.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about one object motion.
+ */
+export function mockArchiveAnmDescription(overrides: Partial<ArchiveAnmDescription> = {}): ArchiveAnmDescription {
+  const channels: Array<ArchiveAnmChannel> = overrides.channels ?? [
+    mockArchiveAnmChannel("position x"),
+    mockArchiveAnmChannel("position y"),
+    mockArchiveAnmChannel("position z", {
+      keys: 0,
+      firstSeconds: null,
+      lastSeconds: null,
+      minimum: null,
+      maximum: null,
+      shapes: [],
+    }),
+    mockArchiveAnmChannel("rotation pitch", { shapes: ["tcb", "linear"] }),
+    mockArchiveAnmChannel("rotation heading"),
+    mockArchiveAnmChannel("rotation bank", { keys: 1, firstSeconds: 0, lastSeconds: 0, shapes: ["stepped"] }),
+  ];
+
+  return {
+    name: null,
+    version: 5,
+    frameStart: 0,
+    frameEnd: 59,
+    frames: 60,
+    fps: 30,
+    durationSeconds: 2,
+    keys: channels.reduce((total: number, channel: ArchiveAnmChannel) => total + channel.keys, 0),
+    keyedSeconds: 2,
+    ...overrides,
+    channels,
   };
 }
 

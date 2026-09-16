@@ -2,6 +2,7 @@ use xrf_error::XrfResult;
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_vfs::XrayLogicalPath;
 
+use crate::plugins::archives::describe::anm::ArchiveAnmDescription;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
 use crate::plugins::archives::describe::level::{
@@ -16,6 +17,8 @@ use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 /// Which describer answers for an entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArchiveDescribedFormat {
+  /// An object motion, `.anm` and `.anm1`, which the two spellings of share a format.
+  Anm,
   /// A level's navigation grid, `level.ai`.
   LevelAi,
   /// A level's collision mesh, `level.cform`.
@@ -50,6 +53,7 @@ impl ArchiveDescribedFormat {
   /// The describer for an entry name, or `None` when no describer claims it.
   pub fn of(name: &str) -> Option<Self> {
     match XrayExtensionOf::of(name).known() {
+      Some(XrayExtension::Anm | XrayExtension::Anm1) => Some(Self::Anm),
       Some(XrayExtension::Ai) => Some(Self::LevelAi),
       Some(XrayExtension::CForm) => Some(Self::LevelCollision),
       Some(XrayExtension::Omf) => Some(Self::Omf),
@@ -74,6 +78,9 @@ impl ArchiveDescribedFormat {
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
   pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
     Ok(match self {
+      Self::Anm => Some(ArchiveFormatDescription::Anm {
+        description: Box::new(ArchiveAnmDescription::read(source, name)?),
+      }),
       Self::LevelAi => Some(ArchiveFormatDescription::LevelAi {
         description: Box::new(ArchiveLevelAiDescription::read(source, name)?),
       }),
@@ -142,6 +149,21 @@ mod tests {
       ArchiveDescribedFormat::of("meshes\\actors\\stalker_animation.OMF"),
       Some(ArchiveDescribedFormat::Omf)
     );
+  }
+
+  #[test]
+  fn an_object_motion_is_claimed_under_either_spelling_of_its_extension() {
+    for name in [
+      "anims\\camera_effects\\head_shot.anm",
+      "anims\\camera_effects\\head_shot.ANM",
+      "anims\\dof_zoom_in.anm1",
+    ] {
+      assert_eq!(
+        ArchiveDescribedFormat::of(name),
+        Some(ArchiveDescribedFormat::Anm),
+        "'{name}' is an object motion"
+      );
+    }
   }
 
   #[test]

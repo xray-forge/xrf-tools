@@ -136,7 +136,7 @@ export type XrayMountMode = `${EXrayMountMode}`;
  * (`xray-16/src/xrCore/LocatorAPI.cpp`).
  *
  * This record is also the reported shape, deposited as it stands by every surface that answers for a mounted world —
- * `gamedata list`, `archive verify`, and the application's `archives|list_collisions`. Restating it per surface is
+ * `gamedata list`, `archive verify`, and the application's `archives|list_overrides`. Restating it per surface is
  * what left the condition recorded in one place and told to nobody anywhere else.
  */
 export type XrayPathCollision = {
