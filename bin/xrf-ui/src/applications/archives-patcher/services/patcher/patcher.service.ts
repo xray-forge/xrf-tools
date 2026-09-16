@@ -125,19 +125,25 @@ export class PatcherService {
       : null;
   }
 
+  @Computed()
+  public get volumeSizeBytes(): number {
+    if (!this.config) {
+      return 0;
+    }
+
+    return this.volumeSize.trim() && !this.volumeSizeError
+      ? megabytesToBytes(Number(this.volumeSize))
+      : this.config.maxVolumeSize;
+  }
+
   /**
-   * Records a typed volume ceiling, writing it into the configuration once it is usable.
+   * Records a per-run volume ceiling without changing the configuration's default or validation limit.
    *
    * @param volumeSize - Ceiling in megabytes as typed, which may be empty or not yet a number.
    */
   @BoundAction()
   public setVolumeSize(volumeSize: string): void {
     this.volumeSize = volumeSize;
-
-    if (this.config && volumeSize.trim() && !this.volumeSizeError) {
-      this.config = { ...this.config, maxVolumeSize: megabytesToBytes(Number(volumeSize)) };
-    }
-
     this.operation.reset();
   }
 

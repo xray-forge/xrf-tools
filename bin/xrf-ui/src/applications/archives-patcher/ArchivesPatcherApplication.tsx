@@ -106,11 +106,21 @@ export function ArchivesPatcherApplication(): ReactElement {
         input: input.value,
         target: isDeliveringOwnTree ? target.value : null,
         destination: destination.value,
+        maxVolumeSize: patcherService.volumeSizeBytes,
       },
       isForced,
       isVerifyingPayload,
     };
-  }, [config, destination.value, input.value, isDeliveringOwnTree, isForced, isVerifyingPayload, target.value]);
+  }, [
+    config,
+    destination.value,
+    input.value,
+    isDeliveringOwnTree,
+    isForced,
+    isVerifyingPayload,
+    patcherService.volumeSizeBytes,
+    target.value,
+  ]);
 
   const onImport = useCallback(async () => {
     const selected: Nullable<string> = await open({

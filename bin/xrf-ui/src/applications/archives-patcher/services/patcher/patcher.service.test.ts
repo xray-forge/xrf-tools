@@ -126,13 +126,36 @@ describe("PatcherService volume size", () => {
     resetMockInvoke();
   });
 
-  it("writes a usable ceiling into the configuration", () => {
+  it("allows increasing the volume size after lowering it", () => {
+    const service: PatcherService = mockPatcherService();
+
+    service.setVolumeSize("512");
+    service.setVolumeSize("1024");
+
+    expect(service.volumeSizeError).toBeNull();
+    expect(service.volumeSizeBytes).toBe(1024 * BYTES_PER_MEGABYTE);
+    expect(service.maxVolumeSizeMegabytes).toBe(1900);
+  });
+
+  it("restores the default volume size when an override is cleared", () => {
+    const service: PatcherService = mockPatcherService();
+
+    service.setVolumeSize("512");
+    service.setVolumeSize("");
+
+    expect(service.config?.maxVolumeSize).toBe(CONFIG.maxVolumeSize);
+    expect(service.volumeSizeBytes).toBe(CONFIG.maxVolumeSize);
+    expect(service.volumeSizeError).toBeNull();
+  });
+
+  it("resolves a usable ceiling without changing the configuration", () => {
     const service: PatcherService = mockPatcherService();
 
     service.setVolumeSize("512");
 
     expect(service.volumeSizeError).toBeNull();
-    expect(service.config?.maxVolumeSize).toBe(512 * BYTES_PER_MEGABYTE);
+    expect(service.volumeSizeBytes).toBe(512 * BYTES_PER_MEGABYTE);
+    expect(service.config?.maxVolumeSize).toBe(CONFIG.maxVolumeSize);
   });
 
   it("reports an unusable ceiling rather than writing it", () => {
@@ -142,6 +165,7 @@ describe("PatcherService volume size", () => {
 
     expect(service.volumeSizeError).toContain("between 1 and");
     expect(service.config?.maxVolumeSize).toBe(1900 * BYTES_PER_MEGABYTE);
+    expect(service.volumeSizeBytes).toBe(CONFIG.maxVolumeSize);
   });
 
   it("treats an empty ceiling as the format's own", () => {
@@ -150,5 +174,6 @@ describe("PatcherService volume size", () => {
     service.setVolumeSize("");
 
     expect(service.volumeSizeError).toBeNull();
+    expect(service.volumeSizeBytes).toBe(CONFIG.maxVolumeSize);
   });
 });
