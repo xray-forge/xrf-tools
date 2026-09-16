@@ -172,7 +172,7 @@ export function PickerForm({
             justifyContent: "center",
           }}
         >
-          <Card variant={"outlined"} sx={{ position: "relative", width: "100%", maxWidth: PANEL_WIDTH }}>
+          <Card variant={"elevation"} elevation={0} sx={{ position: "relative", width: "100%", maxWidth: PANEL_WIDTH }}>
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, padding: 2 }}>
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 {title ? (

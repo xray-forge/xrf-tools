@@ -8,6 +8,8 @@ import { StyledComponentProps } from "@/lib/dom/element-types";
 interface IEditorPanelProps extends StyledComponentProps {
   /** The name this panel's stripe button carries. */
   title: string;
+  /** Controls acting on the whole panel, at the end of the title row. */
+  actions?: ReactNode;
   children: ReactNode;
 }
 
@@ -20,6 +22,7 @@ export function EditorPanel({
   className,
   sx,
   title,
+  actions,
   children,
 }: IEditorPanelProps): ReactElement {
   return (
@@ -29,7 +32,7 @@ export function EditorPanel({
       className={className}
       sx={mergeSx({ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }, sx)}
     >
-      <EditorPanelHeader title={title} />
+      <EditorPanelHeader title={title} actions={actions} />
 
       <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}>{children}</Box>
     </Box>

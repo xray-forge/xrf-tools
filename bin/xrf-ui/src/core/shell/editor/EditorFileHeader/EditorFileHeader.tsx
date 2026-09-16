@@ -4,7 +4,7 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { MONOSPACE } from "@/core/theme";
+import { LAYOUT, MONOSPACE } from "@/core/theme";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {
@@ -50,7 +50,7 @@ export function EditorFileHeader({
         display: "flex",
         alignItems: "center",
         gap: 1,
-        minHeight: 40,
+        minHeight: LAYOUT.headerHeight,
         paddingX: 1.5,
         borderBottom: 1,
         borderColor: "divider",

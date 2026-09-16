@@ -39,6 +39,11 @@ export const LAYOUT = {
    * for both. Named once so the three cannot drift, which a reader would only ever notice as a jump on load.
    */
   surfaceRadius: RADIUS.md,
+  /**
+   * The band a surface names itself in: the file header over the body, and a panel's title row. One value, so the
+   * three run as a single line across the window instead of three headers that each end somewhere else.
+   */
+  headerHeight: 40,
   /** The button plus the breathing room on either side of it; the stripe holds nothing wider. */
   railWidth: 36,
   /** Every control in either stripe. */

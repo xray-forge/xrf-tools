@@ -1,10 +1,11 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { JobRow } from "@/core/shell/panel/jobs/JobRow";
 
 /**
@@ -23,14 +24,8 @@ export function JobsPanel(): ReactElement {
   const onCancel = useCallback((id: string) => jobsService.cancel(id), [jobsService]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
-      <Box sx={{ paddingX: 1.5, paddingY: 1 }}>
-        <Typography variant={"subtitle2"}>Jobs</Typography>
-      </Box>
-
-      <Divider />
-
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
+    <EditorPanel title={"Jobs"} sx={{ height: "100%" }}>
+      <Box sx={{ height: "100%", overflowY: "auto" }}>
         {listed.length ? (
           listed.map((job: JobDescription) => <JobRow key={job.id} job={job} onCancel={onCancel} />)
         ) : (
@@ -39,6 +34,6 @@ export function JobsPanel(): ReactElement {
           </Typography>
         )}
       </Box>
-    </Box>
+    </EditorPanel>
   );
 }

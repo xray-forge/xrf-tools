@@ -6,6 +6,7 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 import { INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
 import { SettingsService } from "@/core/settings/services/settings";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panel/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panel/notifications/NotificationRow";
 import { Nullable } from "@/lib/types/general";
@@ -40,21 +41,10 @@ export function NotificationsPanel(): ReactElement {
   }, [notificationsService, unreadCount]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
-          paddingX: 1.5,
-          paddingY: 0.5,
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <Typography variant={"subtitle2"}>Notifications</Typography>
-
+    <EditorPanel
+      title={"Notifications"}
+      sx={{ height: "100%" }}
+      actions={
         <Tooltip describeChild title={"Clear all"} placement={"left"}>
           <span>
             <IconButton
@@ -67,9 +57,9 @@ export function NotificationsPanel(): ReactElement {
             </IconButton>
           </span>
         </Tooltip>
-      </Box>
-
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
+      }
+    >
+      <Box sx={{ height: "100%", overflowY: "auto" }}>
         {entries.length ? (
           entries.map((entry: INotificationEntry) => (
             <NotificationRow
@@ -85,6 +75,6 @@ export function NotificationsPanel(): ReactElement {
           </Typography>
         )}
       </Box>
-    </Box>
+    </EditorPanel>
   );
 }
