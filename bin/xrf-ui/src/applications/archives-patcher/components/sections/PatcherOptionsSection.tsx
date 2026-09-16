@@ -14,11 +14,9 @@ interface IPatcherOptionsSectionProps extends BaseComponentProps {
   volumeSize: string;
   volumeSizeError: Nullable<string>;
   isVerifyingPayload: boolean;
-  isForced: boolean;
   isDisabled?: boolean;
   onVolumeSizeChange: (value: string) => void;
   onVerifyingPayloadChange: (isVerifying: boolean) => void;
-  onForcedChange: (isForced: boolean) => void;
   onChange: (patch: Partial<ArchivePatchConfig>) => void;
 }
 
@@ -34,11 +32,9 @@ export function PatcherOptionsSection({
   volumeSize,
   volumeSizeError,
   isVerifyingPayload,
-  isForced,
   isDisabled,
   onVolumeSizeChange,
   onVerifyingPayloadChange,
-  onForcedChange,
   onChange,
 }: IPatcherOptionsSectionProps): ReactElement {
   return (
@@ -66,21 +62,6 @@ export function PatcherOptionsSection({
           checked={isVerifyingPayload}
           slotProps={{ input: { "aria-label": "Verify payloads" } }}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onVerifyingPayloadChange(event.target.checked)}
-        />
-      </FormRow>
-
-      <FormRow
-        label={"Replace existing output volumes"}
-        description={"Publishing over a set already in the output cannot be undone if it fails partway"}
-        controlId={"patcher-force"}
-        isInline
-      >
-        <Switch
-          id={"patcher-force"}
-          disabled={isDisabled}
-          checked={isForced}
-          slotProps={{ input: { "aria-label": "Replace existing output volumes" } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onForcedChange(event.target.checked)}
         />
       </FormRow>
     </Stack>

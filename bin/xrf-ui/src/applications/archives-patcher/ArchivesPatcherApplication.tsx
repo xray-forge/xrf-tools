@@ -289,11 +289,9 @@ export function ArchivesPatcherApplication(): ReactElement {
               volumeSize={patcherService.volumeSize}
               volumeSizeError={patcherService.volumeSizeError}
               isVerifyingPayload={isVerifyingPayload}
-              isForced={isForced}
               isDisabled={isBusy}
               onVolumeSizeChange={onVolumeSizeChange}
               onVerifyingPayloadChange={setIsVerifyingPayload}
-              onForcedChange={setIsForced}
               onChange={patcherService.patchConfig}
             />
           ) : null}
