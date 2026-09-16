@@ -6,7 +6,7 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { getFileItemPath, IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
@@ -55,15 +55,11 @@ export function ExportsMenu({
 
   const onActivateItem = useCallback(
     (item: ITreeNode<ExportDescriptor>) => {
-      // Namespaces activate too, and answer null here, which is what used to be spelled as disabling
-      // their selection.
-      const name: Nullable<string> = getFileItemPath(item.id);
-
-      if (name) {
-        onSelect(name);
+      if (item.payload) {
+        onSelectDeclaration(item.payload);
       }
     },
-    [onSelect]
+    [onSelectDeclaration]
   );
 
   // The viewer is showing a declaration the tree did not necessarily choose - a filter result, or the first one

@@ -4,13 +4,7 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import {
-  getFileItemPath,
-  IPathTreeItem,
-  parsePathTree,
-  splitLogicalPath,
-  toFileItemId,
-} from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -51,8 +45,6 @@ export function ConfigsMenu({
     [files]
   );
 
-  const searchable: Array<LtxInventoryFile> = useMemo(() => [...files], [files]);
-
   // Whether the engine reads it out of an archive. What the config is to the project - entry point, scheme, patch -
   // is the icon's tint instead, because it is the dimension that varies.
   const onRenderConfigLabel = useCallback(
@@ -70,10 +62,8 @@ export function ConfigsMenu({
 
   const onActivateNode = useCallback(
     (item: ITreeNode<LtxInventoryFile>) => {
-      const path: Nullable<string> = getFileItemPath(item.id);
-
-      if (path) {
-        onOpen(path);
+      if (item.payload) {
+        onOpen(item.payload.path);
       }
     },
     [onOpen]
@@ -96,7 +86,7 @@ export function ConfigsMenu({
       title={"Configs"}
       searchLabel={"Filter configs"}
       resultsLabel={"Config search results"}
-      items={searchable}
+      items={files}
       toSearchText={(file: LtxInventoryFile) => file.path}
       toRow={(file: LtxInventoryFile) => {
         const { name, directory } = splitLogicalPath(file.path);

@@ -10,19 +10,14 @@ import { VisualsService } from "@/applications/visuals-explorer/services/visuals
 import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import {
-  getFileItemPath,
-  IPathTreeItem,
-  parsePathTree,
-  splitLogicalPath,
-  toFileItemId,
-} from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
+import { EMPTY_ARRAY } from "@/lib/types/array";
 import { Nullable } from "@/lib/types/general";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
@@ -47,8 +42,7 @@ export function VisualsMenu({
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
 
-  // Memoized rather than defaulted inline, so an empty listing does not hand the tree a new array every render.
-  const visuals: Array<XrayAsset> = useMemo(() => browseService.visuals.value ?? [], [browseService.visuals.value]);
+  const visuals: ReadonlyArray<XrayAsset> = browseService.visuals.value ?? EMPTY_ARRAY;
 
   const items: Array<IPathTreeItem<XrayAsset>> = useMemo(
     () =>
@@ -89,10 +83,8 @@ export function VisualsMenu({
 
   const onActivateAsset = useCallback(
     (item: ITreeNode<XrayAsset>) => {
-      const path: Nullable<string> = getFileItemPath(item.id);
-
-      if (path) {
-        onOpenPath(path);
+      if (item.payload) {
+        onOpenPath(item.payload.logicalPath);
       }
     },
     [onOpenPath]
