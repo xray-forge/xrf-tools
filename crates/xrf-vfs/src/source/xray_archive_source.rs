@@ -9,11 +9,12 @@ use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
+use crate::asset::XrayAsset;
 use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
 use crate::source::xray_asset_source::label_from_path;
 use crate::{
-  XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XraySourceKind,
-  XraySourceOverride, XraySourceShadowedCopy,
+  XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XrayShadowedCopy,
+  XrayShadowingEntry, XraySourceKind,
 };
 
 /// Mounts an archive volume set as a read-only asset source.
@@ -37,7 +38,17 @@ pub struct XrayArchiveSource {
   entries: HashMap<String, IndexedEntry>,
   collisions: Vec<XrayPathCollision>,
   /// Copies a later volume overrode, in engine-path order.
-  shadowed: Vec<XraySourceShadowedCopy>,
+  shadowed: Vec<XrayShadowedCopy>,
+}
+
+/// What one fold of a volume set onto engine identities produced.
+struct XrayArchiveIndex {
+  /// The copy each engine identity resolves to.
+  entries: HashMap<String, IndexedEntry>,
+  /// Copies no lookup reaches, because another entry of the same volume claims their identity.
+  collisions: Vec<XrayPathCollision>,
+  /// Copies a higher-ranked volume overrode, in engine-path order.
+  shadowed: Vec<XrayShadowedCopy>,
 }
 
 /// What one engine identity resolves to inside a volume set.
@@ -72,48 +83,51 @@ impl XrayArchiveSource {
     Ok(source)
   }
 
-  /// Files a volume set's fold onto engine identities leaves unreachable, without mounting it.
+  /// Every engine path a volume set answers with more than one copy, and every copy it cannot reach.
+  ///
+  /// Both halves of one fold, because they are one walk: a caller asking for them separately folded an
+  /// installation-sized name table twice to answer two halves of the same question.
   ///
   /// For a caller holding a volume set it has already read: `archive verify` reads every payload out of an
-  /// [`ArchiveProject`] and then asks which of them no lookup can reach. Mounting the same path through [`Self::read`]
-  /// would read every name table a second time, and discover volumes nonrecursively, so it would answer over a
-  /// different volume set than the one just verified.
+  /// [`ArchiveProject`] and then asks what it overrides and what it cannot reach. Mounting the same path through
+  /// [`Self::read`] would read every name table a second time, and discover volumes nonrecursively, so it would
+  /// answer over a different volume set than the one just verified.
   ///
   /// The fold stays here rather than in `xrf-archive`, which cannot reach it: an archive keys entries by the name its
   /// header authored, and what those names fold to is the engine identity this crate's `path` module is the sole owner
   /// of.
-  pub fn list_collisions_of(project: &ArchiveProject) -> Vec<XrayPathCollision> {
-    Self::index(project).1
-  }
-
-  /// Every engine path a volume set answers with more than one copy, and every copy it cannot reach.
-  pub fn describe_overrides_of(project: &ArchiveProject) -> (Vec<XraySourceOverride>, Vec<XrayPathCollision>) {
-    let (entries, collisions, shadowed) = Self::index(project);
-    let mut overrides: Vec<XraySourceOverride> = Vec::new();
+  pub fn describe_overrides_of(project: &ArchiveProject) -> (Vec<XrayShadowingEntry>, Vec<XrayPathCollision>) {
+    let index: XrayArchiveIndex = Self::index(project);
+    let mut overrides: Vec<XrayShadowingEntry> = Vec::new();
 
     // `shadowed` is already ordered by engine path, so the copies of one path arrive together and in precedence order.
-    for copy in shadowed {
+    for copy in index.shadowed {
+      let logical_path: &str = copy.asset.get_logical_path().as_str();
+
       match overrides.last_mut() {
-        Some(previous) if previous.logical_path == copy.logical_path => previous.shadowed.push(copy),
+        Some(previous) if previous.get_logical_path() == logical_path => previous.shadowed.push(copy),
         _ => {
-          let Some(winner) = entries
-            .get(&copy.logical_path)
+          let Some(winner) = index
+            .entries
+            .get(logical_path)
             .and_then(|entry| project.files.get(&entry.name))
           else {
             continue;
           };
 
-          overrides.push(XraySourceOverride {
-            container: Self::to_volume_container(project, winner.volume),
-            logical_path: copy.logical_path.clone(),
-            shadowed: vec![copy],
-            size: u64::from(winner.size_real),
-          });
+          let asset: XrayAsset = XrayAsset::new(
+            XrayLogicalPath::from_normalized(logical_path.to_string()),
+            Self::to_volume_container(project, winner.volume),
+          );
+          let mut entry: XrayShadowingEntry = XrayShadowingEntry::new(asset, u64::from(winner.size_real));
+
+          entry.shadowed.push(copy);
+          overrides.push(entry);
         }
       }
     }
 
-    (overrides, collisions)
+    (overrides, index.collisions)
   }
 
   /// Keys an already-read volume set by engine identity.
@@ -121,7 +135,11 @@ impl XrayArchiveSource {
   /// Separate from [`Self::read`] because a case-only collision inside one volume cannot exist on a case-insensitive
   /// filesystem, so the ordering rule below is only reachable from a name table built in a test.
   fn from_project(project: ArchiveProject, label: String) -> Self {
-    let (entries, collisions, shadowed) = Self::index(&project);
+    let XrayArchiveIndex {
+      entries,
+      collisions,
+      shadowed,
+    } = Self::index(&project);
 
     Self {
       collisions,
@@ -147,13 +165,7 @@ impl XrayArchiveSource {
   /// Neither is refused: a person has to be able to open a volume set to learn what is wrong with it, and the engine
   /// does not refuse it either.
   // todo: Header order is dropped by the reader, so the within-volume rule is an approximation.
-  fn index(
-    project: &ArchiveProject,
-  ) -> (
-    HashMap<String, IndexedEntry>,
-    Vec<XrayPathCollision>,
-    Vec<XraySourceShadowedCopy>,
-  ) {
+  fn index(project: &ArchiveProject) -> XrayArchiveIndex {
     let mut entries: HashMap<String, IndexedEntry> = HashMap::with_capacity(project.files.len());
     // Losers only, so an uncontested identity - which is nearly all of them - allocates nothing here at all.
     let mut losers: Vec<(String, &ArchiveFileDescriptor)> = Vec::new();
@@ -201,7 +213,11 @@ impl XrayArchiveSource {
 
     let (collisions, shadowed) = Self::classify(project, &entries, losers);
 
-    (entries, collisions, shadowed)
+    XrayArchiveIndex {
+      collisions,
+      entries,
+      shadowed,
+    }
   }
 
   /// Sorts each contested identity into the copies a patch buried and the copies nothing can reach.
@@ -209,9 +225,9 @@ impl XrayArchiveSource {
     project: &ArchiveProject,
     entries: &HashMap<String, IndexedEntry>,
     losers: Vec<(String, &ArchiveFileDescriptor)>,
-  ) -> (Vec<XrayPathCollision>, Vec<XraySourceShadowedCopy>) {
+  ) -> (Vec<XrayPathCollision>, Vec<XrayShadowedCopy>) {
     let mut collisions: Vec<XrayPathCollision> = Vec::new();
-    let mut shadowed: Vec<XraySourceShadowedCopy> = Vec::new();
+    let mut shadowed: Vec<XrayShadowedCopy> = Vec::new();
     let mut contested: HashMap<String, Vec<&ArchiveFileDescriptor>> = HashMap::new();
 
     for (logical_path, descriptor) in losers {
@@ -240,18 +256,19 @@ impl XrayArchiveSource {
             unreachable: Self::to_site(project, loser),
           });
         } else {
-          shadowed.push(XraySourceShadowedCopy {
-            container: Self::to_volume_container(project, loser.volume),
-            logical_path: logical_path.clone(),
-            size: u64::from(loser.size_real),
-          });
+          let asset: XrayAsset = XrayAsset::new(
+            XrayLogicalPath::from_normalized(logical_path.clone()),
+            Self::to_volume_container(project, loser.volume),
+          );
+
+          shadowed.push(XrayShadowedCopy::new(asset, u64::from(loser.size_real)));
         }
       }
     }
 
     // Sorted, so a report reads the same twice: the groups above come out of a `HashMap` in no order at all.
     collisions.sort_by(|first, second| first.logical_path.as_str().cmp(second.logical_path.as_str()));
-    shadowed.sort_by(|first, second| first.logical_path.cmp(&second.logical_path));
+    shadowed.sort_by(|first, second| first.asset.get_logical_path().cmp(second.asset.get_logical_path()));
 
     (collisions, shadowed)
   }
@@ -427,7 +444,7 @@ impl XrayAssetSource for XrayArchiveSource {
     &self.collisions
   }
 
-  fn list_shadowed(&self) -> &[XraySourceShadowedCopy] {
+  fn list_shadowed(&self) -> &[XrayShadowedCopy] {
     &self.shadowed
   }
 }
@@ -440,7 +457,7 @@ mod tests {
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 
-  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XraySourceShadowedCopy};
+  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
 
   use super::XrayArchiveSource;
 
@@ -557,12 +574,12 @@ mod tests {
       "an override is not an authoring error"
     );
 
-    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+    let shadowed: &[XrayShadowedCopy] = source.list_shadowed();
 
     assert_eq!(shadowed.len(), 1);
-    assert_eq!(shadowed[0].logical_path, "textures\\a.dds");
+    assert_eq!(shadowed[0].asset.get_logical_path().as_str(), "textures\\a.dds");
     assert_eq!(shadowed[0].size, 10, "the base copy, which is what the patch buried");
-    assert_container(&shadowed[0].container, BASE);
+    assert_container(shadowed[0].asset.get_container(), BASE);
   }
 
   #[test]
@@ -577,12 +594,12 @@ mod tests {
     assert_eq!(source.get_size("configs\\system.ltx"), Some(20));
     assert!(source.get_collisions().is_empty());
 
-    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+    let shadowed: &[XrayShadowedCopy] = source.list_shadowed();
 
     assert_eq!(shadowed.len(), 1);
-    assert_eq!(shadowed[0].logical_path, "configs\\system.ltx");
+    assert_eq!(shadowed[0].asset.get_logical_path().as_str(), "configs\\system.ltx");
     assert_eq!(shadowed[0].size, 10);
-    assert_container(&shadowed[0].container, BASE);
+    assert_container(shadowed[0].asset.get_container(), BASE);
   }
 
   #[test]
@@ -600,7 +617,7 @@ mod tests {
 
     assert_eq!(source.get_size("textures\\a.dds"), Some(20));
 
-    let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+    let shadowed: &[XrayShadowedCopy] = source.list_shadowed();
 
     assert_eq!(shadowed.len(), 1, "the base copy the patch buried");
     assert_eq!(shadowed[0].size, 10);

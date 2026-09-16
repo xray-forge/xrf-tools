@@ -5,8 +5,8 @@ use serde::Serialize;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
-use crate::source::{XrayDeclaredRoot, XraySourceShadowedCopy};
-use crate::{XrayAssetContainer, XrayPathCollision};
+use crate::source::XrayDeclaredRoot;
+use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
 
 /// The storage kind backing a mount.
 ///
@@ -130,7 +130,7 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   }
 
   /// Copies this source holds behind the one it answers with, because its own ordering put another in front.
-  fn list_shadowed(&self) -> &[XraySourceShadowedCopy] {
+  fn list_shadowed(&self) -> &[XrayShadowedCopy] {
     &[]
   }
 }

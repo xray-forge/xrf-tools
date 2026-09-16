@@ -23,15 +23,15 @@ pub(crate) struct ArchiveOriginsCollector {
 }
 
 impl ArchiveOriginsCollector {
-  /// Accumulates every winning entry and the copies each one hides.
-  pub(crate) fn collect<E: ArchiveWorldStatisticsEntry>(entries: &[E], mounts: &[String]) -> ArchiveOrigins {
+  /// Accumulates every winning entry of a mounted world and the copies each one hides.
+  pub(crate) fn collect<E: ArchiveWorldStatisticsEntry>(entries: &[E], searched: &[String]) -> ArchiveOrigins {
     let mut collector: Self = Self::default();
 
     for entry in entries {
       collector.add(entry);
     }
 
-    collector.into_origins(mounts)
+    collector.into_origins(searched)
   }
 
   fn add<E: ArchiveWorldStatisticsEntry>(&mut self, entry: &E) {
@@ -53,7 +53,7 @@ impl ArchiveOriginsCollector {
   }
 
   /// Where a volume set's entries come from and what its own merge hides.
-  pub(crate) fn collect_volumes(project: &ArchiveProject, sources: &[String]) -> ArchiveOrigins {
+  pub(crate) fn collect_volumes(project: &ArchiveProject, searched: &[String]) -> ArchiveOrigins {
     let mut collector: Self = Self::default();
 
     for descriptor in project.files.values() {
@@ -80,7 +80,7 @@ impl ArchiveOriginsCollector {
         .add(size);
     }
 
-    collector.into_origins(sources)
+    collector.into_origins(searched)
   }
 
   /// The running tally for whatever source a container names, created on first sight.
@@ -105,9 +105,9 @@ impl ArchiveOriginsCollector {
     )
   }
 
-  /// Turns the walk into the report, with one entry per source, mount order first.
-  fn into_origins(mut self, mounts: &[String]) -> ArchiveOrigins {
-    let mut named: Vec<String> = mounts.to_vec();
+  /// Turns the walk into the report, with one entry per source in the order they are searched.
+  fn into_origins(mut self, searched: &[String]) -> ArchiveOrigins {
+    let mut named: Vec<String> = searched.to_vec();
     let mut unnamed: Vec<String> = self
       .tallies
       .keys()

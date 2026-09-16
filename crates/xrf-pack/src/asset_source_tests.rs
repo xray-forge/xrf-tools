@@ -11,7 +11,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope, XrayMountPlan,
-  XrayProbe, XrayProbePlan, XrayProbeStep, XraySourceKind, XraySourceShadowedCopy, XrayVfs,
+  XrayProbe, XrayProbePlan, XrayProbeStep, XrayShadowedCopy, XraySourceKind, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;
@@ -288,10 +288,13 @@ fn a_case_only_duplicate_across_volumes_is_an_override_resolved_by_volume_order(
     "volume order is a priority to appeal to, so nothing here is unreachable"
   );
 
-  let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+  let shadowed: &[XrayShadowedCopy] = source.list_shadowed();
 
   assert_eq!(shadowed.len(), 1, "one identity, one buried copy");
-  assert_eq!(shadowed[0].logical_path, "textures\\wpn\\wpn_ak74.dds");
+  assert_eq!(
+    shadowed[0].asset.get_logical_path().as_str(),
+    "textures\\wpn\\wpn_ak74.dds"
+  );
   assert_eq!(shadowed[0].size, TEXTURE.len() as u64, "the base copy the patch buried");
 }
 
@@ -334,10 +337,10 @@ fn an_exact_name_override_across_volumes_is_precedence_rather_than_a_collision()
   assert_eq!(project.shadowed[0].size_real as usize, CONFIG.len());
 
   // The copy the merge displaced, which the name table alone can no longer name.
-  let shadowed: &[XraySourceShadowedCopy] = source.list_shadowed();
+  let shadowed: &[XrayShadowedCopy] = source.list_shadowed();
 
   assert_eq!(shadowed.len(), 1);
-  assert_eq!(shadowed[0].logical_path, "configs\\system.ltx");
+  assert_eq!(shadowed[0].asset.get_logical_path().as_str(), "configs\\system.ltx");
   assert_eq!(shadowed[0].size, CONFIG.len() as u64);
 }
 

@@ -3,6 +3,9 @@ import { ArchiveShadowedCopy, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
 
+/** Height every row of the listing draws at, so the virtualizer never has to measure one. */
+export const ARCHIVE_OVERRIDE_ROW_HEIGHT = 28;
+
 /** Every kind of row the listing draws, named where a switch or a comparison has to pick one. */
 export enum EArchiveOverrideRow {
   /** The contested engine path, and what the contest costs. */

@@ -5,8 +5,9 @@ import { ReactElement, useCallback, useId, useMemo, useRef } from "react";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { TArchiveOverrideRow } from "./archive-override-rows";
-import { ARCHIVE_OVERRIDE_ROW_HEIGHT, ArchiveOverrideRow } from "./ArchiveOverrideRow";
+import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, TArchiveOverrideRow } from "./archive-override-rows";
+import { ArchiveOverrideCopyRow } from "./ArchiveOverrideCopyRow";
+import { ArchiveOverridePathRow } from "./ArchiveOverridePathRow";
 
 export interface IArchiveOverrideListProps extends BaseComponentProps {
   ariaLabel: string;
@@ -47,7 +48,11 @@ export function ArchiveOverrideList({
     renderRow: (params) => {
       const row: TArchiveOverrideRow = params.model as unknown as TArchiveOverrideRow;
 
-      return <ArchiveOverrideRow key={row.id} row={row} rowId={`${listId}-row-${params.rowIndex}`} onOpen={onOpen} />;
+      return row.kind === EArchiveOverrideRow.PATH ? (
+        <ArchiveOverridePathRow key={row.id} id={`${listId}-row-${params.rowIndex}`} row={row} onOpen={onOpen} />
+      ) : (
+        <ArchiveOverrideCopyRow key={row.id} id={`${listId}-row-${params.rowIndex}`} row={row} />
+      );
     },
   });
 

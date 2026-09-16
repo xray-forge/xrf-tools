@@ -6,7 +6,7 @@
 //! override listing, deposited as they stand.
 
 use xrf_output::OutputOptions;
-use xrf_vfs::{XrayPathCollision, XraySourceOverride};
+use xrf_vfs::{XrayPathCollision, XrayShadowingEntry};
 
 /// Warns about files a source holds but cannot reach, printing at most `limit` of them.
 ///
@@ -39,7 +39,7 @@ pub fn print_collisions(output: &OutputOptions, collisions: &[XrayPathCollision]
 }
 
 /// Reports the engine paths a set of sources answers with more than one copy, printing at most `limit` of them.
-pub fn print_overrides(output: &OutputOptions, overrides: &[XraySourceOverride], limit: usize) {
+pub fn print_overrides(output: &OutputOptions, overrides: &[XrayShadowingEntry], limit: usize) {
   if overrides.is_empty() {
     return;
   }
@@ -56,8 +56,8 @@ pub fn print_overrides(output: &OutputOptions, overrides: &[XraySourceOverride],
     xrf_output::info!(
       output,
       "  '{}' answers from {}, hiding {} cop(ies)",
-      entry.logical_path,
-      entry.container.format(),
+      entry.get_logical_path(),
+      entry.get_asset().format_container(),
       entry.shadowed.len()
     );
   }

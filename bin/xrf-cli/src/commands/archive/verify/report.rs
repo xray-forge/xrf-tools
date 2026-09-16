@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_report::Status;
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAssetContainer, XrayPathCollision, XraySourceOverride};
+use xrf_vfs::{XrayAssetContainer, XrayPathCollision, XrayShadowingEntry};
 
 /// One engine path the set answers with more than one copy, as a report states it.
 #[derive(Debug, Serialize)]
@@ -14,16 +14,16 @@ pub struct ArchiveVerifyOverrideReport {
   hidden: Vec<String>,
 }
 
-impl From<&XraySourceOverride> for ArchiveVerifyOverrideReport {
-  fn from(entry: &XraySourceOverride) -> Self {
+impl From<&XrayShadowingEntry> for ArchiveVerifyOverrideReport {
+  fn from(entry: &XrayShadowingEntry) -> Self {
     Self {
-      container: to_portable_container(&entry.container),
+      container: to_portable_container(entry.get_asset().get_container()),
       hidden: entry
         .shadowed
         .iter()
-        .map(|copy| to_portable_container(&copy.container))
+        .map(|copy| to_portable_container(copy.asset.get_container()))
         .collect(),
-      logical_path: entry.logical_path.clone(),
+      logical_path: entry.get_logical_path().to_string(),
     }
   }
 }
@@ -78,7 +78,7 @@ pub struct ArchiveVerifyReport {
 impl ArchiveVerifyReport {
   pub fn new(
     checked: usize,
-    overrides: &[XraySourceOverride],
+    overrides: &[XrayShadowingEntry],
     collisions: Vec<XrayPathCollision>,
     findings: Vec<ArchiveVerifyFindingReport>,
   ) -> Self {

@@ -5,7 +5,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XraySourceOverride};
+use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 
 use super::report::{ArchiveVerifyFindingReport, ArchiveVerifyReport};
 use crate::commands::archive::list::ListCommand;
@@ -55,7 +55,7 @@ impl GenericCommand for VerifyCommand {
     // Folded over the volume set this run read, rather than by mounting the path again: a second read would answer
     // over the volumes `XrayArchiveSource::read` discovers, which is not recursively the set verified here. Both
     // halves come from that one fold.
-    let (overrides, collisions): (Vec<XraySourceOverride>, Vec<XrayPathCollision>) =
+    let (overrides, collisions): (Vec<XrayShadowingEntry>, Vec<XrayPathCollision>) =
       XrayArchiveSource::describe_overrides_of(&project);
 
     let checked: usize = entries.len();

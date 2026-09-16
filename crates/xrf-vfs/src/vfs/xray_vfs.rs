@@ -7,7 +7,7 @@ use xrf_utils::format_path;
 
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::path::{XrayLogicalPath, normalize};
-use crate::source::{XrayDirectorySource, XraySourceShadowedCopy};
+use crate::source::XrayDirectorySource;
 use crate::trace::XrayReadTrace;
 use crate::vfs::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::{
@@ -530,32 +530,7 @@ impl XrayVfs {
   pub(crate) fn list_entries_all_in(&self, scope: &XrayLookupScope) -> Vec<XrayAsset> {
     let mut located: Vec<XrayAsset> = Vec::new();
 
-    for mount in self.mounts_in(scope) {
-      let Some(source_prefix) = mount.to_source_prefix(scope.get_prefix()) else {
-        continue;
-      };
-
-      let hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = Self::group_hidden(mount.get_source());
-
-      for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
-        if let Ok(logical_path) = mount.to_logical_path(&source_path)
-          && let Some(location) = Self::locate_in(mount, &logical_path)
-        {
-          located.push(location);
-
-          if hidden.is_empty() {
-            continue;
-          }
-
-          for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
-            located.push(XrayAsset::new(
-              XrayLogicalPath::from_normalized(logical_path.to_string()),
-              copy.container.clone(),
-            ));
-          }
-        }
-      }
-    }
+    self.for_each_copy(scope, |_, _, asset, _| located.push(asset));
 
     // Stable, so copies of one logical path keep the mount order they were enumerated in.
     located.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
@@ -563,15 +538,51 @@ impl XrayVfs {
     located
   }
 
+  /// Visits every copy every mount in scope holds: the one each mount answers with, then the ones it holds behind it.
+  fn for_each_copy(&self, scope: &XrayLookupScope, mut visit: impl FnMut(&XrayMount, &str, XrayAsset, Option<u64>)) {
+    for mount in self.mounts_in(scope) {
+      let Some(source_prefix) = mount.to_source_prefix(scope.get_prefix()) else {
+        continue;
+      };
+
+      // Grouped once per mount rather than looked up per entry, and never built at all by a source that hides
+      // nothing - every loose tree, and every volume set no patch overrides.
+      let hidden: HashMap<&str, Vec<&XrayShadowedCopy>> = Self::group_hidden(mount.get_source());
+
+      for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
+        let Ok(logical_path) = mount.to_logical_path(&source_path) else {
+          continue;
+        };
+
+        let Some(asset) = Self::locate_at(mount, &logical_path, &source_path) else {
+          continue;
+        };
+
+        visit(mount, &source_path, asset, None);
+
+        for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
+          // Re-addressed under this mount's base: a source names its copies in its own terms, and a listing answers
+          // in the world's.
+          let asset: XrayAsset = XrayAsset::new(
+            XrayLogicalPath::from_normalized(logical_path.to_string()),
+            copy.asset.get_container().clone(),
+          );
+
+          visit(mount, &source_path, asset, Some(copy.size));
+        }
+      }
+    }
+  }
+
   /// Copies a source holds behind the ones it answers with, keyed by the path they would have answered for.
-  ///
-  /// Grouped once per mount rather than looked up per entry, and empty for every source that hides nothing — which is
-  /// every loose tree, and every volume set no patch overrides.
-  fn group_hidden(source: &dyn XrayAssetSource) -> HashMap<&str, Vec<&XraySourceShadowedCopy>> {
-    let mut hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = HashMap::new();
+  fn group_hidden(source: &dyn XrayAssetSource) -> HashMap<&str, Vec<&XrayShadowedCopy>> {
+    let mut hidden: HashMap<&str, Vec<&XrayShadowedCopy>> = HashMap::new();
 
     for copy in source.list_shadowed() {
-      hidden.entry(copy.logical_path.as_str()).or_default().push(copy);
+      hidden
+        .entry(copy.asset.get_logical_path().as_str())
+        .or_default()
+        .push(copy);
     }
 
     hidden
@@ -624,35 +635,11 @@ impl XrayVfs {
   fn locate_sized_in(&self, scope: &XrayLookupScope) -> Vec<(XrayAsset, u64)> {
     let mut located: Vec<(XrayAsset, u64)> = Vec::new();
 
-    for mount in self.mounts_in(scope) {
-      let Some(source_prefix) = mount.to_source_prefix(scope.get_prefix()) else {
-        continue;
-      };
+    self.for_each_copy(scope, |mount, source_path, asset, recorded| {
+      let size: u64 = recorded.unwrap_or_else(|| mount.get_source().get_size(source_path).unwrap_or_default());
 
-      let hidden: HashMap<&str, Vec<&XraySourceShadowedCopy>> = Self::group_hidden(mount.get_source());
-
-      for source_path in mount.get_source().list_entries(source_prefix.as_deref()) {
-        if let Ok(logical_path) = mount.to_logical_path(&source_path)
-          && let Some(asset) = Self::locate_at(mount, &logical_path, &source_path)
-        {
-          located.push((asset, mount.get_source().get_size(&source_path).unwrap_or_default()));
-
-          if hidden.is_empty() {
-            continue;
-          }
-
-          for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
-            located.push((
-              XrayAsset::new(
-                XrayLogicalPath::from_normalized(logical_path.to_string()),
-                copy.container.clone(),
-              ),
-              copy.size,
-            ));
-          }
-        }
-      }
-    }
+      located.push((asset, size));
+    });
 
     // Stable, so copies of one logical path keep the mount order they were enumerated in and the winner stays first.
     located.sort_by(|first, second| first.0.get_logical_path().cmp(second.0.get_logical_path()));

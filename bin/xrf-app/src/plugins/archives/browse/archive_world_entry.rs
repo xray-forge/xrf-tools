@@ -1,8 +1,6 @@
 use serde::Serialize;
 use xrf_archive_stats::{ArchiveStatisticsEntry, ArchiveWorldStatisticsEntry};
-use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayShadowedCopy, XrayShadowingEntry, XraySourceOverride, XraySourceShadowedCopy,
-};
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayShadowedCopy, XrayShadowingEntry};
 
 /// One copy of an engine path no lookup reaches, as the explorer lists it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -68,27 +66,6 @@ impl ArchiveWorldStatisticsEntry for ArchiveWorldEntry {
 
   fn list_shadowed(&self) -> impl Iterator<Item = (&XrayAssetContainer, u64)> {
     self.shadowed.iter().map(|copy| (&copy.container, copy.size_real))
-  }
-}
-
-/// The volume-set fold reported in the same shape a world reports its own.
-impl From<XraySourceOverride> for ArchiveWorldEntry {
-  fn from(entry: XraySourceOverride) -> Self {
-    Self {
-      container: entry.container,
-      name: entry.logical_path,
-      shadowed: entry.shadowed.into_iter().map(ArchiveShadowedCopy::from).collect(),
-      size_real: entry.size,
-    }
-  }
-}
-
-impl From<XraySourceShadowedCopy> for ArchiveShadowedCopy {
-  fn from(copy: XraySourceShadowedCopy) -> Self {
-    Self {
-      container: copy.container,
-      size_real: copy.size,
-    }
   }
 }
 
