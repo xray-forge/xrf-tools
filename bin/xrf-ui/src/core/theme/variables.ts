@@ -1,6 +1,17 @@
 import { Theme } from "@mui/material";
 
-import { BADGE_FONT_SIZE, CODE, CONTENT_STATE, DIALOG, LAYOUT, MONOSPACE, PANEL, RADIUS, TREE } from "./tokens";
+import {
+  BADGE_FONT_SIZE,
+  CODE,
+  CONTENT_STATE,
+  DIALOG,
+  LAYOUT,
+  MONOSPACE,
+  PANEL,
+  RADIUS,
+  TREE,
+  VIEWPORT,
+} from "./tokens";
 
 /** Every published property, so a consumer and a test name the same thing. */
 export type TThemeVariableName = keyof ReturnType<typeof getThemeVariables>;
@@ -11,7 +22,7 @@ function px(value: number): string {
 }
 
 /**
- * The design tokens CSS can read, projected from `tokens.ts`.
+ * The values CSS can read, projected from the modules that own them.
  *
  * @param theme - Resolved application theme, for the values MUI owns rather than `tokens.ts`.
  * @returns Custom property names mapped to their CSS values.
@@ -19,6 +30,9 @@ function px(value: number): string {
 export function getThemeVariables(theme: Theme) {
   return {
     "--xrf-badge-font-size": BADGE_FONT_SIZE,
+    "--xrf-checkerboard-dark": VIEWPORT.checkerboardDark,
+    "--xrf-checkerboard-light": VIEWPORT.checkerboardLight,
+    "--xrf-checkerboard-square": px(VIEWPORT.checkerboardSquare),
     "--xrf-code-line-height": px(CODE.lineHeight),
     "--xrf-content-state-icon": px(CONTENT_STATE.iconSize),
     "--xrf-dialog-padding-x": theme.spacing(DIALOG.paddingX),
@@ -37,5 +51,6 @@ export function getThemeVariables(theme: Theme) {
     "--xrf-tree-icon-size": px(TREE.iconSize),
     "--xrf-tree-icon-width": px(TREE.iconWidth),
     "--xrf-tree-row-height": px(TREE.rowHeight),
+    "--xrf-viewport-backdrop": VIEWPORT.backdrop,
   } as const;
 }

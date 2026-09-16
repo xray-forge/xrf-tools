@@ -1,7 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
 import { tid, uid } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -34,10 +33,8 @@ export function TexturePreviewFrame({
       <Box
         data-testid={tid(dataTestId, "body")}
         id={uid(id, "body")}
-        sx={[
-          { display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 },
-          isCheckered ? IMAGE_CHECKERBOARD : {},
-        ]}
+        className={isCheckered ? "checkerboard" : undefined}
+        sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
       >
         {children}
       </Box>

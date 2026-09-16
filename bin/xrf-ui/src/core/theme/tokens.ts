@@ -20,6 +20,17 @@ export const RADIUS = {
 export const BADGE_FONT_SIZE = "0.625rem";
 
 /**
+ * The plane a picture is judged against, and the alpha checkerboard drawn behind it.
+ */
+export const VIEWPORT = {
+  backdrop: "#353535",
+  checkerboardDark: "#707070",
+  checkerboardLight: "#808080",
+  /** Side of one checkerboard square, in css pixels. */
+  checkerboardSquare: 10,
+} as const;
+
+/**
  * Diagonal accent wash over the frame and the reading plane.
  */
 export const WASH = {

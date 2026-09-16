@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import {
   MouseEvent,
   ReactElement,
@@ -13,7 +12,7 @@ import {
   WheelEvent,
 } from "react";
 
-import { IMAGE_CHECKERBOARD, toCheckerboardSizing } from "@/core/ui/media/media.styles";
+import { toCheckerboardSizing } from "@/core/ui/media/media.styles";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import {
   IPanZoomCamera,
@@ -242,58 +241,34 @@ export function ImageViewport({
   }, [ownController, sharedController, src]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
-      <Box
+    <div className={"flex min-h-0 min-w-0 grow flex-col"}>
+      <div
         ref={viewportRef}
-        sx={[
-          {
-            position: "relative",
-            flexGrow: 1,
-            minHeight: 0,
-            overflow: "hidden",
-            cursor: "grab",
-            "&:active": { cursor: "grabbing" },
-            backgroundColor: "#353535",
-          },
-        ]}
+        className={"relative min-h-0 grow cursor-grab overflow-hidden bg-viewport-backdrop active:cursor-grabbing"}
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
       >
-        <Box
+        <img
           ref={imageRef}
-          component={"img"}
+          className={"absolute top-0 left-0 max-w-none origin-top-left checkerboard will-change-transform select-none"}
           alt={alt}
           src={src}
           draggable={false}
-          sx={[
-            {
-              position: "absolute",
-              left: 0,
-              top: 0,
-              width,
-              height,
-              maxWidth: "none",
-              transformOrigin: "0 0",
-              willChange: "transform",
-              userSelect: "none",
-            },
-            IMAGE_CHECKERBOARD,
-          ]}
         />
 
         {renderOverlay ? (
-          <Box sx={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <div className={"absolute inset-0"} style={{ pointerEvents: "none" }}>
             {renderOverlay({ content: { width, height }, controller, viewport: measured ?? UNMEASURED })}
-          </Box>
+          </div>
         ) : null}
 
         {hasControls ? (
           <ViewportControls zoom={{ scale, onActualSize }} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onFit} />
         ) : null}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

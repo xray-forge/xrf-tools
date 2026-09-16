@@ -12,7 +12,6 @@ import {
 import { ITextureBumpTexels, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { IMAGE_CHECKERBOARD } from "@/core/ui/media/media.styles";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
@@ -159,7 +158,8 @@ export function TextureChannelsPanel({
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
             <EditorPanelSection key={tile.view} title={tile.label} caption={tile.caption}>
               <Box
-                sx={[{ aspectRatio: aspect, width: "100%" }, IMAGE_CHECKERBOARD]}
+                className={"checkerboard"}
+                sx={{ aspectRatio: aspect, width: "100%" }}
                 onPointerMove={onHover}
                 onPointerLeave={() => setPosition(null)}
               >
