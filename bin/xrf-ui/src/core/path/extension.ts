@@ -16,14 +16,3 @@ const XRAY_EXTENSION_BY_SPELLING: ReadonlyMap<string, EXrayExtension> = new Map(
 export function getXrayExtension(name: string): Nullable<EXrayExtension> {
   return XRAY_EXTENSION_BY_SPELLING.get(getFoldedFileExtension(name)) ?? null;
 }
-
-/**
- * Whether `name` carries `extension`, compared the way `XrayExtension::matches` compares one.
- *
- * @param name - Engine entry name or host file name, `\` or `/` separated.
- * @param extension - The declared spelling to test for.
- * @returns Whether the name's extension is that one.
- */
-export function hasXrayExtension(name: string, extension: EXrayExtension): boolean {
-  return getFoldedFileExtension(name) === extension;
-}

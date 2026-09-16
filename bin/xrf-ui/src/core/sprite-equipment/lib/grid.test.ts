@@ -2,7 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   IEquipmentGrid,
-  isCellOutsideSheet,
   isOccupantOutsideSheet,
   isSameCell,
   toCellAt,
@@ -145,13 +144,6 @@ describe("outside the sheet", () => {
   const grid: IEquipmentGrid = toEquipmentGrid(1024, 2048, 50, [
     mockEquipmentOccupant("af_medusa", { x: 48, y: 48, w: 3, h: 3 }),
   ]);
-
-  it("knows which cells the image cannot cover", () => {
-    expect(isCellOutsideSheet(grid, [0, 0])).toBe(false);
-    expect(isCellOutsideSheet(grid, [40, 20])).toBe(false);
-    expect(isCellOutsideSheet(grid, [0, 21])).toBe(true);
-    expect(isCellOutsideSheet(grid, [41, 0])).toBe(true);
-  });
 
   it("knows which rectangles leave the image", () => {
     expect(isOccupantOutsideSheet(grid, mockEquipmentOccupant("inside"))).toBe(false);

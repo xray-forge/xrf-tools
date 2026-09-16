@@ -35,19 +35,6 @@ export function getSubjectSize(subject: Nullable<ArchiveSubject>): number {
 }
 
 /**
- * Engine paths a subject answers with more than one copy for.
- *
- * Always zero for a volume set: a name table keeps one entry per name, so the copies it merged away are gone before
- * anything can count them. Shadowing is a fact about mounts, which only a world has.
- *
- * @param subject - What the explorer has open, or null when nothing is.
- * @returns How many paths are held more than once.
- */
-export function getSubjectShadowedCount(subject: Nullable<ArchiveSubject>): number {
-  return subject?.kind === EArchiveSubject.WORLD ? subject.world.shadowedCount : 0;
-}
-
-/**
  * The files a subject holds, in the one shape every browsing surface reads.
  *
  * @param subject - What the explorer has open, or null when nothing is.

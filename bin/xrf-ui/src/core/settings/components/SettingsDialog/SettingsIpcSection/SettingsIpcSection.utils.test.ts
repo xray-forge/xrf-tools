@@ -2,13 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { IIpcCommandMetrics } from "@/core/ipc/metrics";
 
-import {
-  describeInFlight,
-  describeWeighedCalls,
-  EIpcSort,
-  formatCallDuration,
-  sortIpcCommands,
-} from "./SettingsIpcSection.utils";
+import { describeWeighedCalls, EIpcSort, formatCallDuration, sortIpcCommands } from "./SettingsIpcSection.utils";
 
 function mockEntry(command: string, overrides: Partial<IIpcCommandMetrics> = {}): IIpcCommandMetrics {
   return {
@@ -64,11 +58,6 @@ describe("ipc usage", () => {
     expect(formatCallDuration(2.25)).toBe("2.3 ms");
     expect(formatCallDuration(48.6)).toBe("49 ms");
     expect(formatCallDuration(2400)).toBe("2.4 s");
-  });
-
-  it("reads a peak of one as a phrase rather than a number dropped into a sentence", () => {
-    expect(describeInFlight(1)).toBe("one was in flight");
-    expect(describeInFlight(14)).toBe("14 were in flight");
   });
 
   it("says what a size is true of when it is not true of every call", () => {

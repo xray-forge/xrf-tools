@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { getXrayExtension, hasXrayExtension } from "@/core/path/extension";
+import { getXrayExtension } from "@/core/path/extension";
 
 describe("getXrayExtension", () => {
   it("names the member a spelling belongs to, whatever case it was authored in", () => {
@@ -18,13 +18,5 @@ describe("getXrayExtension", () => {
   it("answers null for a spelling no variant declares", () => {
     expect(getXrayExtension("notes\\readme.psd")).toBeNull();
     expect(getXrayExtension("gamedata\\spawns")).toBeNull();
-  });
-});
-
-describe("hasXrayExtension", () => {
-  it("compares the split extension rather than the end of the name", () => {
-    expect(hasXrayExtension("configs\\SYSTEM.LTX", EXrayExtension.LTX)).toBe(true);
-    // A suffix rule would call this one XML; the splitter's rule does not.
-    expect(hasXrayExtension("notes\\myxml", EXrayExtension.XML)).toBe(false);
   });
 });

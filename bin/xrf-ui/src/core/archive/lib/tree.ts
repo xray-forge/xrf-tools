@@ -1,14 +1,7 @@
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { TArchiveSelection } from "@/core/archive/lib/selection";
 import { EPathEntryKind } from "@/core/path/entry-kind";
-import {
-  IPathDirectoryTreeItem,
-  IPathFileTreeItem,
-  IPathTreeItem,
-  parsePathTree,
-  toDirectoryItemId,
-  toFileItemId,
-} from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -37,12 +30,6 @@ export function isUnderArchiveDirectory(descriptor: IArchiveEntry, prefix: strin
 
   return name.length > normalized.length && name.startsWith(normalized) && /[\\/]/.test(name[normalized.length]);
 }
-
-/** An archive directory node. */
-export type IArchiveDirectoryTreeItem = IPathDirectoryTreeItem<IArchiveEntry>;
-
-/** An archive file leaf, carrying the entry it was built from as its payload. */
-export type IArchiveFileTreeItem = IPathFileTreeItem<IArchiveEntry>;
 
 export type IArchiveTreeItem = IPathTreeItem<IArchiveEntry>;
 

@@ -150,19 +150,6 @@ export function isCellWithin(grid: IEquipmentGrid, cell: TEquipmentCell): boolea
 }
 
 /**
- * Whether a cell lies beyond the image the lattice was built over.
- *
- * @param grid - Lattice the cell belongs to.
- * @param cell - Cell as `[row, column]`.
- * @returns Whether nothing on the sheet can be drawn there.
- */
-export function isCellOutsideSheet(grid: IEquipmentGrid, cell: TEquipmentCell): boolean {
-  const [row, column] = cell;
-
-  return column >= grid.sheetColumns || row >= grid.sheetRows;
-}
-
-/**
  * Whether a declared rectangle leaves the image.
  *
  * @param grid - Lattice the rectangle is measured against.

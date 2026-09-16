@@ -44,16 +44,6 @@ export function formatCallDuration(durationMs: number): string {
 }
 
 /**
- * Names how many calls were ever in flight together.
- *
- * @param peak - The most that overlapped.
- * @returns That count, read as a phrase rather than a number dropped into a sentence.
- */
-export function describeInFlight(peak: number): string {
-  return peak === 1 ? "one was in flight" : `${peak} were in flight`;
-}
-
-/**
  * Says what a size is true of, when it is not true of every call.
  *
  * @param entry - Command to describe.
