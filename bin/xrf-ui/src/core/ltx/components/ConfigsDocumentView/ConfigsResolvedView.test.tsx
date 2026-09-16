@@ -6,10 +6,13 @@ import { Container } from "@wirestate/core";
 import { LtxResolvedIndex } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Nullable } from "@/lib/types/general";
 
 const ENTRY: string = "configs\\system.ltx";
 const INCLUDER: string = "configs\\includes_only.ltx";
@@ -23,8 +26,14 @@ const INDEX: LtxResolvedIndex = {
 };
 
 /** The view over a resolution that is already indexed, narrowed to whichever config a case is about. */
-function renderResolved(narrowedTo: string | null): RenderResult {
-  const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService, ConfigsResolvedService]);
+function renderResolved(narrowedTo: Nullable<string>): RenderResult {
+  const container: Container = mockContainer([
+    ConfigsProjectService,
+    ConfigsDocumentService,
+    ConfigsResolvedService,
+    ConfigsFindingsService,
+    ConfigsSchemeService,
+  ]);
   const service: ConfigsResolvedService = container.get(ConfigsResolvedService);
 
   service.entry = ENTRY;

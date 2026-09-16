@@ -6,7 +6,10 @@ import { ReactElement } from "react";
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
@@ -33,7 +36,13 @@ function RevealProbe({ seen }: IRevealProbeProps): ReactElement {
 
 describe("useRevealed", () => {
   it("hands a request over once and spends it, so the same section can be asked for again", () => {
-    const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService]);
+    const container: Container = mockContainer([
+      ConfigsProjectService,
+      ConfigsDocumentService,
+      ConfigsFindingsService,
+      ConfigsResolvedService,
+      ConfigsSchemeService,
+    ]);
     const documentService: ConfigsDocumentService = container.get(ConfigsDocumentService);
     const seen: Array<Nullable<string>> = [];
 

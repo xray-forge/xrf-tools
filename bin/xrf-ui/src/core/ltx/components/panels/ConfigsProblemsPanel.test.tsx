@@ -9,6 +9,8 @@ import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProble
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -33,7 +35,13 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
   render: RenderResult;
   documentService: ConfigsDocumentService;
 } {
-  const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService, ConfigsFindingsService]);
+  const container: Container = mockContainer([
+    ConfigsProjectService,
+    ConfigsDocumentService,
+    ConfigsFindingsService,
+    ConfigsResolvedService,
+    ConfigsSchemeService,
+  ]);
   const project = container.get(ConfigsProjectService);
   const documentService: ConfigsDocumentService = container.get(ConfigsDocumentService);
 

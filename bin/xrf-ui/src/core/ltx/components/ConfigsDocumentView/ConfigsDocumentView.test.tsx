@@ -8,6 +8,7 @@ import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -21,6 +22,7 @@ function renderView(onDeselect: () => void = jest.fn()): { render: RenderResult;
     ConfigsDocumentService,
     ConfigsFindingsService,
     ConfigsResolvedService,
+    ConfigsSchemeService,
   ]);
 
   return {

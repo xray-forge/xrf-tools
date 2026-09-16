@@ -9,6 +9,8 @@ import { ConfigsAuthoredView } from "@/core/ltx/components/ConfigsDocumentView/C
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -24,7 +26,13 @@ function documentOf(lines: Array<string>): ConfigsDocument {
 }
 
 function renderAuthored(document: ConfigsDocument): { render: RenderResult; container: Container } {
-  const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService, ConfigsFindingsService]);
+  const container: Container = mockContainer([
+    ConfigsProjectService,
+    ConfigsDocumentService,
+    ConfigsFindingsService,
+    ConfigsResolvedService,
+    ConfigsSchemeService,
+  ]);
 
   return { container, render: renderWithProviders(<ConfigsAuthoredView document={document} />, { container }) };
 }

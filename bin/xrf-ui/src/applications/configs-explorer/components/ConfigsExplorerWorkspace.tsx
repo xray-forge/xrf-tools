@@ -5,10 +5,8 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
-import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
-import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
@@ -30,8 +28,6 @@ export function ConfigsExplorerWorkspace({
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
   const documentService: ConfigsDocumentService = useInjection(ConfigsDocumentService);
   const resolvedService: ConfigsResolvedService = useInjection(ConfigsResolvedService);
-  const findingsService: ConfigsFindingsService = useInjection(ConfigsFindingsService);
-  const schemeService: ConfigsSchemeService = useInjection(ConfigsSchemeService);
 
   const project: Nullable<ConfigsProjectDescriptor> = projectService.project.value;
 
@@ -39,14 +35,7 @@ export function ConfigsExplorerWorkspace({
   const entry: Nullable<string> = documentService.entry;
   const isResolved: boolean = documentService.mode === EConfigsDocumentMode.RESOLVED;
 
-  // Everything held about one config: the document, what its root resolved to, and the two panels reading that root.
-  // Leaving any of it behind would leave a panel explaining a config nobody has open.
-  const onDeselect = useCallback(() => {
-    documentService.clear();
-    resolvedService.clear();
-    findingsService.clear();
-    schemeService.clear();
-  }, [documentService, findingsService, resolvedService, schemeService]);
+  const onDeselect = useCallback(() => documentService.clear(), [documentService]);
 
   const onBack = useCallback(() => {
     onDeselect();

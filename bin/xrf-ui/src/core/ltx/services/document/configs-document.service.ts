@@ -5,7 +5,10 @@ import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
 import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -80,7 +83,12 @@ export class ConfigsDocumentService {
     return error ? `${error.line}:${error.column} ${error.message}` : null;
   }
 
-  public constructor(private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService)) {}
+  public constructor(
+    private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService),
+    private readonly resolvedService: ConfigsResolvedService = inject(ConfigsResolvedService),
+    private readonly findingsService: ConfigsFindingsService = inject(ConfigsFindingsService),
+    private readonly schemeService: ConfigsSchemeService = inject(ConfigsSchemeService)
+  ) {}
 
   /**
    * Show one config of the open project.
@@ -129,7 +137,8 @@ export class ConfigsDocumentService {
   }
 
   /**
-   * Cancel the pending read and forget the document when its project closes.
+   * Abandon pending reads and clear the document, resolution, findings, and scheme report together.
+   * The project stays open, retaining its native caches for subsequent selections.
    */
   public clear(): void {
     cancelFlow(this, "document");
@@ -139,6 +148,10 @@ export class ConfigsDocumentService {
       this.selectedSection = null;
       this.document = this.document.asIdle(null);
     });
+
+    this.resolvedService.clear();
+    this.findingsService.clear();
+    this.schemeService.clear();
   }
 
   /**

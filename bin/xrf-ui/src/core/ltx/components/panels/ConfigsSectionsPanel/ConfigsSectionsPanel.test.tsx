@@ -6,8 +6,10 @@ import { Container } from "@wirestate/core";
 import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -28,7 +30,13 @@ function getStructureOf(structure: Partial<LtxFileStructure>): LtxFileStructure 
 }
 
 function renderPanel(structure: LtxFileStructure): { render: RenderResult; service: ConfigsDocumentService } {
-  const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService, ConfigsResolvedService]);
+  const container: Container = mockContainer([
+    ConfigsProjectService,
+    ConfigsDocumentService,
+    ConfigsResolvedService,
+    ConfigsFindingsService,
+    ConfigsSchemeService,
+  ]);
   const service: ConfigsDocumentService = container.get(ConfigsDocumentService);
 
   service.selected = structure.path;

@@ -6,7 +6,9 @@ import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsSchemePanel } from "@/core/ltx/components/panels/ConfigsSchemePanel/ConfigsSchemePanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
+import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -25,7 +27,13 @@ function fieldOf(name: string, declared: LtxSchemeFieldReport["declared"], value
 
 /** The panel over one report, with a section already selected. */
 function renderScheme(report: LtxSectionSchemeReport): RenderResult {
-  const container: Container = mockContainer([ConfigsProjectService, ConfigsDocumentService, ConfigsSchemeService]);
+  const container: Container = mockContainer([
+    ConfigsProjectService,
+    ConfigsDocumentService,
+    ConfigsSchemeService,
+    ConfigsFindingsService,
+    ConfigsResolvedService,
+  ]);
   const project = container.get(ConfigsProjectService);
   const documentService: ConfigsDocumentService = container.get(ConfigsDocumentService);
 
