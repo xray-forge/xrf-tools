@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -76,6 +76,31 @@ impl LightAnimFile {
       },
       items: Self::read_items::<T, D>(&mut find_required_chunk_by_id(&chunks, Self::ITEMS_CHUNK_ID)?)?,
     })
+  }
+
+  /// Writes the library back in the chunk order `ELightAnimLibrary::Load` reads it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut version: ChunkWriter = ChunkWriter::new();
+
+    version.write_u16::<T>(self.version)?;
+    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+
+    let mut items: ChunkWriter = ChunkWriter::new();
+
+    for (index, item) in self.items.iter().enumerate() {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      item.write::<T>(&mut chunk)?;
+      chunk.flush_chunk_into::<T>(&mut items.buffer, index as u32)?;
+    }
+
+    items.flush_chunk_into::<T>(&mut writer.buffer, Self::ITEMS_CHUNK_ID)?;
+
+    Ok(())
   }
 
   /// Reads every animation, one per child chunk, in the order the library numbers them.

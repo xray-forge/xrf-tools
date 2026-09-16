@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{
-  ChunkDataSource, ChunkReadWrite, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id, read_f32_chunk,
-  read_u32_chunk,
+  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id,
+  read_f32_chunk, read_u32_chunk,
 };
 use xrf_error::XrfResult;
 
@@ -115,6 +115,77 @@ impl GameMtlMaterial {
         .map(|mut chunk| GameMtlAcoustics::read::<T, D>(&mut chunk))
         .transpose()?,
     })
+  }
+
+  /// Writes the material back in the chunk order the editor wrote it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut main: ChunkWriter = ChunkWriter::new();
+
+    main.write_u32::<T>(self.id)?;
+    main.write_w1251_string(&self.name)?;
+    main.flush_chunk_into::<T>(&mut writer.buffer, Self::MAIN_CHUNK_ID)?;
+
+    if let Some(description) = &self.description {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      chunk.write_w1251_string(description)?;
+      chunk.flush_chunk_into::<T>(&mut writer.buffer, Self::DESCRIPTION_CHUNK_ID)?;
+    }
+
+    let mut flags: ChunkWriter = ChunkWriter::new();
+
+    flags.write_u32::<T>(self.flags)?;
+    flags.flush_chunk_into::<T>(&mut writer.buffer, Self::FLAGS_CHUNK_ID)?;
+
+    let mut physics: ChunkWriter = ChunkWriter::new();
+
+    physics.write_f32::<T>(self.ph_friction)?;
+    physics.write_f32::<T>(self.ph_damping)?;
+    physics.write_f32::<T>(self.ph_spring)?;
+    physics.write_f32::<T>(self.ph_bounce_start_velocity)?;
+    physics.write_f32::<T>(self.ph_bouncing)?;
+    physics.flush_chunk_into::<T>(&mut writer.buffer, Self::PHYSICS_CHUNK_ID)?;
+
+    let mut factors: ChunkWriter = ChunkWriter::new();
+
+    factors.write_f32::<T>(self.shoot_factor)?;
+    factors.write_f32::<T>(self.bounce_damage_factor)?;
+    factors.write_f32::<T>(self.visual_transparency_factor)?;
+    factors.write_f32::<T>(self.sound_occlusion_factor)?;
+    factors.flush_chunk_into::<T>(&mut writer.buffer, Self::FACTORS_CHUNK_ID)?;
+
+    // The multiplayer factor goes before the three chunks that follow it, which is not the order
+    // `SGameMtl::Load` reads them in and is the order every shipped library writes them in: 317 of the 377 materials
+    // in the trees are `1000 1005 1001 1002 1003 1008 1004 1006 1007`, and the other 60 are the same without 1008.
+    Self::write_optional_f32::<T>(writer, Self::FACTORS_MP_CHUNK_ID, self.shoot_factor_mp)?;
+    Self::write_optional_f32::<T>(writer, Self::FLOTATION_CHUNK_ID, self.flotation_factor)?;
+    Self::write_optional_f32::<T>(writer, Self::INJURIOUS_CHUNK_ID, self.injurious_speed)?;
+    Self::write_optional_f32::<T>(writer, Self::DENSITY_CHUNK_ID, self.density_factor)?;
+
+    if let Some(acoustics) = &self.acoustics {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      acoustics.write::<T>(&mut chunk)?;
+      chunk.flush_chunk_into::<T>(&mut writer.buffer, Self::ACOUSTICS_CHUNK_ID)?;
+    }
+
+    Ok(())
+  }
+
+  /// Writes one optional single-float chunk, or nothing where the material declares none.
+  fn write_optional_f32<T: ByteOrder>(writer: &mut ChunkWriter, id: u32, value: Option<f32>) -> XrfResult {
+    if let Some(value) = value {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      chunk.write_f32::<T>(value)?;
+      chunk.flush_chunk_into::<T>(&mut writer.buffer, id)?;
+    }
+
+    Ok(())
   }
 
   /// The flags the material sets, named.

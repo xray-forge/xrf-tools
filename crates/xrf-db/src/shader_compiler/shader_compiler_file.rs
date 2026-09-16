@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -72,8 +72,11 @@ impl ShaderCompilerFile {
       reader.new_bounded_vec(count, ShaderCompilerShader::SERIALIZED_SIZE, "compiler shaders")?;
 
     for _ in 0..count {
+      let (name, name_trailing) = ShaderCompilerShader::read_name(&reader.read_bytes(ShaderCompilerShader::NAME_SIZE)?)?;
+
       shaders.push(ShaderCompilerShader {
-        name: ShaderCompilerShader::read_name(&reader.read_bytes(ShaderCompilerShader::NAME_SIZE)?)?,
+        name,
+        name_trailing,
         flags: reader.read_u32::<T>()?,
         vertex_translucency: reader.read_f32::<T>()?,
         vertex_ambient: reader.read_f32::<T>()?,
@@ -84,6 +87,23 @@ impl ShaderCompilerFile {
     reader.assert_read("Expect all data to be read from compiler shader library")?;
 
     Ok(Self { shaders })
+  }
+
+  /// Writes the library back as the plain array `Shader_xrLC_LIB::Save` writes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a name does not fit its fixed field, or the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for shader in &self.shaders {
+      writer.buffer.extend_from_slice(&shader.write_name()?);
+      writer.write_u32::<T>(shader.flags)?;
+      writer.write_f32::<T>(shader.vertex_translucency)?;
+      writer.write_f32::<T>(shader.vertex_ambient)?;
+      writer.write_f32::<T>(shader.lightmap_density)?;
+    }
+
+    Ok(())
   }
 
   /// The shader a name resolves to, matched the way `Shader_xrLC_LIB::GetID` matches it.

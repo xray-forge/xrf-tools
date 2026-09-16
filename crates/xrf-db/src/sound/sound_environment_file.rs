@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -70,6 +70,22 @@ impl SoundEnvironmentFile {
     }
 
     Ok(Self { environments })
+  }
+
+  /// Writes the library back as the flat run of chunks `SoundEnvironment_LIB::Save` writes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for (index, environment) in self.environments.iter().enumerate() {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      environment.write::<T>(&mut chunk)?;
+      chunk.flush_chunk_into::<T>(&mut writer.buffer, index as u32)?;
+    }
+
+    Ok(())
   }
 
   /// The preset a name resolves to, matched the way `SoundEnvironment_LIB::GetID` matches it.

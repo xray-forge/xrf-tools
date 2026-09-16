@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -94,6 +94,48 @@ impl GameMtlFile {
         None => Vec::new(),
       },
     })
+  }
+
+  /// Writes the library back in the chunk order `CGameMtlLibrary::Load` reads it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut version: ChunkWriter = ChunkWriter::new();
+
+    version.write_u16::<T>(self.version)?;
+    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+
+    let mut autoincrement: ChunkWriter = ChunkWriter::new();
+
+    autoincrement.write_u32::<T>(self.material_index)?;
+    autoincrement.write_u32::<T>(self.material_pair_index)?;
+    autoincrement.flush_chunk_into::<T>(&mut writer.buffer, Self::AUTOINCREMENT_CHUNK_ID)?;
+
+    let mut materials: ChunkWriter = ChunkWriter::new();
+
+    for (index, material) in self.materials.iter().enumerate() {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      material.write::<T>(&mut chunk)?;
+      chunk.flush_chunk_into::<T>(&mut materials.buffer, index as u32)?;
+    }
+
+    materials.flush_chunk_into::<T>(&mut writer.buffer, Self::MATERIALS_CHUNK_ID)?;
+
+    let mut pairs: ChunkWriter = ChunkWriter::new();
+
+    for (index, pair) in self.pairs.iter().enumerate() {
+      let mut chunk: ChunkWriter = ChunkWriter::new();
+
+      pair.write::<T>(&mut chunk)?;
+      chunk.flush_chunk_into::<T>(&mut pairs.buffer, index as u32)?;
+    }
+
+    pairs.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIRS_CHUNK_ID)?;
+
+    Ok(())
   }
 
   /// Reads every material, one per child chunk, in the order the library numbers them.

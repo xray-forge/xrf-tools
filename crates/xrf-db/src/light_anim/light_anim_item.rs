@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::XrfResult;
 
 use crate::light_anim::light_anim_key::LightAnimKey;
@@ -55,6 +55,33 @@ impl LightAnimItem {
       frame_count,
       keys: read,
     })
+  }
+
+  /// Writes the animation back in the chunk order the library reads it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut common: ChunkWriter = ChunkWriter::new();
+
+    common.write_w1251_string(&self.name)?;
+    common.write_f32::<T>(self.fps)?;
+    common.write_u32::<T>(self.frame_count)?;
+    common.flush_chunk_into::<T>(&mut writer.buffer, Self::COMMON_CHUNK_ID)?;
+
+    let mut keys: ChunkWriter = ChunkWriter::new();
+
+    keys.write_u32::<T>(self.keys.len() as u32)?;
+
+    for key in &self.keys {
+      keys.write_u32::<T>(key.frame)?;
+      keys.write_u32::<T>(key.color)?;
+    }
+
+    keys.flush_chunk_into::<T>(&mut writer.buffer, Self::KEYS_CHUNK_ID)?;
+
+    Ok(())
   }
 
   /// How long the animation runs, in seconds, which is its frames over its own rate.

@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::XrfResult;
 
 /// What a pair declares for itself rather than inheriting, by the bit `SGameMtlPair` names it under.
@@ -62,6 +62,41 @@ impl GameMtlPair {
       collide_particles: collide.read_w1251_string()?,
       collide_marks: collide.read_w1251_string()?,
     })
+  }
+
+  /// Writes the pair back in the chunk order the editor wrote it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut pair: ChunkWriter = ChunkWriter::new();
+
+    pair.write_u32::<T>(self.material_a)?;
+    pair.write_u32::<T>(self.material_b)?;
+    pair.write_u32::<T>(self.id)?;
+    pair.write_u32::<T>(self.parent_id)?;
+    pair.write_u32::<T>(self.own_properties)?;
+    pair.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIR_CHUNK_ID)?;
+
+    let mut breaking: ChunkWriter = ChunkWriter::new();
+
+    breaking.write_w1251_string(&self.breaking_sounds)?;
+    breaking.flush_chunk_into::<T>(&mut writer.buffer, Self::BREAKING_CHUNK_ID)?;
+
+    let mut step: ChunkWriter = ChunkWriter::new();
+
+    step.write_w1251_string(&self.step_sounds)?;
+    step.flush_chunk_into::<T>(&mut writer.buffer, Self::STEP_CHUNK_ID)?;
+
+    let mut collide: ChunkWriter = ChunkWriter::new();
+
+    collide.write_w1251_string(&self.collide_sounds)?;
+    collide.write_w1251_string(&self.collide_particles)?;
+    collide.write_w1251_string(&self.collide_marks)?;
+    collide.flush_chunk_into::<T>(&mut writer.buffer, Self::COLLIDE_CHUNK_ID)?;
+
+    Ok(())
   }
 
   /// Whether the pair declares its own behaviour rather than taking another pair's.

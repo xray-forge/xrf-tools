@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 /// One reverb preset, `CSoundRender_Environment` (`xrSound/SoundRender_Environment.cpp`).
@@ -68,5 +68,33 @@ impl SoundEnvironment {
         None
       },
     })
+  }
+
+  /// Writes the preset back in the layout `CSoundRender_Environment::save` writes it in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32::<T>(self.version)?;
+    writer.write_w1251_string(&self.name)?;
+    writer.write_f32::<T>(self.room)?;
+    writer.write_f32::<T>(self.room_hf)?;
+    writer.write_f32::<T>(self.room_rolloff_factor)?;
+    writer.write_f32::<T>(self.decay_time)?;
+    writer.write_f32::<T>(self.decay_hf_ratio)?;
+    writer.write_f32::<T>(self.reflections)?;
+    writer.write_f32::<T>(self.reflections_delay)?;
+    writer.write_f32::<T>(self.reverb)?;
+    writer.write_f32::<T>(self.reverb_delay)?;
+    writer.write_f32::<T>(self.environment_size)?;
+    writer.write_f32::<T>(self.environment_diffusion)?;
+    writer.write_f32::<T>(self.air_absorption_hf)?;
+
+    if let Some(environment) = self.environment {
+      writer.write_u32::<T>(environment)?;
+    }
+
+    Ok(())
   }
 }
