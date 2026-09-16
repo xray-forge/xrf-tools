@@ -109,6 +109,9 @@ pub use crate::level::level_game_way_point::*;
 pub use crate::level::level_header_chunk::*;
 pub use crate::level::level_hom_file::*;
 pub use crate::level::level_hom_polygon::*;
+pub use crate::level::level_light::*;
+pub use crate::level::level_lights_chunk::*;
+pub use crate::level::level_lights_file::*;
 pub use crate::level::level_ps_static_file::*;
 pub use crate::level::level_ps_static_placement::*;
 pub use crate::level::level_shader_entry::*;
@@ -118,6 +121,10 @@ pub use crate::level::level_snd_static_sound::*;
 pub use crate::level::level_snd_static_window::*;
 pub use crate::level::level_som_file::*;
 pub use crate::level::level_som_polygon::*;
+pub use crate::level::level_wallmark::*;
+pub use crate::level::level_wallmark_slot::*;
+pub use crate::level::level_wallmark_vertex::*;
+pub use crate::level::level_wallmarks_file::*;
 pub use crate::ogf::chunks::{
   ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
   ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,

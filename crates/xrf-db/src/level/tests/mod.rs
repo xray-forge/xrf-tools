@@ -4,6 +4,8 @@ mod level_env_mod_tests;
 mod level_fog_vol_tests;
 mod level_game_tests;
 mod level_hom_tests;
+mod level_lights_tests;
 mod level_ps_static_tests;
 mod level_snd_static_tests;
 mod level_som_tests;
+mod level_wallmarks_tests;
