@@ -20,6 +20,7 @@ import { Nullable } from "@/lib/types/general";
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
+import { ArchiveDescriptionPendingView } from "./ArchiveDescriptionPendingView";
 import { ArchiveDetailDescriptionView } from "./ArchiveDetailDescriptionView";
 import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescriptionView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
@@ -132,6 +133,25 @@ export function ArchiveDescriptionPreview({
           id={id}
           className={className}
           description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.EFD:
+    case EArchiveFormatDescription.LEVEL_ENV_MOD:
+    case EArchiveFormatDescription.LEVEL_FOG_VOL:
+    case EArchiveFormatDescription.LEVEL_GAME:
+    case EArchiveFormatDescription.LEVEL_HOM:
+    case EArchiveFormatDescription.LEVEL_LIGHTS:
+    case EArchiveFormatDescription.LEVEL_PS_STATIC:
+    case EArchiveFormatDescription.LEVEL_SND_STATIC:
+    case EArchiveFormatDescription.LEVEL_SOM:
+    case EArchiveFormatDescription.LEVEL_WALLMARKS:
+      return (
+        <ArchiveDescriptionPendingView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          kind={description.format.kind}
         />
       );
 
