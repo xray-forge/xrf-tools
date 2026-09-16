@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
-import { ReactElement, useCallback, useId, useMemo, useRef } from "react";
+import { ReactElement, useId, useMemo, useRef } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -60,23 +60,9 @@ export function ArchiveOverrideList({
   const contentProps = virtualizer.store.use(LayoutList.selectors.contentProps);
   const positionerProps = virtualizer.store.use(LayoutList.selectors.positionerProps);
 
-  const setScroller = useCallback(
-    (node: Nullable<HTMLElement>): void => {
-      const attach: unknown = containerProps.ref;
-
-      if (typeof attach === "function") {
-        (attach as (element: Nullable<HTMLElement>) => void)(node);
-      } else if (attach) {
-        (attach as { current: Nullable<HTMLElement> }).current = node;
-      }
-    },
-    [containerProps.ref]
-  );
-
   return (
     <Box
       {...containerProps}
-      ref={setScroller}
       data-testid={dataTestId}
       id={id}
       className={className}

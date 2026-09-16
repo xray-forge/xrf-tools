@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useForkRef } from "@mui/material/utils";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
@@ -163,26 +164,8 @@ export function VirtualizedLines({
   const contentProps = virtualizer.store.use(LayoutList.selectors.contentProps);
   const positionerProps = virtualizer.store.use(LayoutList.selectors.positionerProps);
 
-  /**
-   * Hands the scroller node to the virtualizer and keeps a reference to it.
-   *
-   * The virtualizer's own ref is what attaches its scroll and resize listeners, so it has to be called;
-   * keeping the node as well is what lets a line be scrolled into view.
-   */
-  const setScroller = useCallback(
-    (node: Nullable<HTMLElement>): void => {
-      scrollerRef.current = node;
-
-      const attach: unknown = containerProps.ref;
-
-      if (typeof attach === "function") {
-        (attach as (element: Nullable<HTMLElement>) => void)(node);
-      } else if (attach) {
-        (attach as { current: Nullable<HTMLElement> }).current = node;
-      }
-    },
-    [containerProps.ref]
-  );
+  // Both the virtualizer's listeners and line reveals need the scroller node.
+  const handleScrollerRef = useForkRef(scrollerRef, containerProps.ref);
 
   /** Scrolls a line into view by arithmetic, since every line is exactly one `CODE.lineHeight` tall. */
   const revealLine = useCallback((index: number, reveal: ECodeLineReveal): void => {
@@ -308,7 +291,7 @@ export function VirtualizedLines({
   return (
     <Box
       {...containerProps}
-      ref={setScroller}
+      ref={handleScrollerRef}
       // `LayoutList` pins `overflowX` to hidden for a listing with no columns declared, which is right
       // for a tree of ellipsized labels and wrong here: a config line is read to its end or not at all.
       style={{ ...containerProps.style, overflowX: "auto" }}

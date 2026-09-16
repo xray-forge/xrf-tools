@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useForkRef } from "@mui/material/utils";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
@@ -154,26 +155,8 @@ export function VirtualizedTree<T>({
   const contentProps = virtualizer.store.use(LayoutList.selectors.contentProps);
   const positionerProps = virtualizer.store.use(LayoutList.selectors.positionerProps);
 
-  /**
-   * Hands the scroller node to the virtualizer and keeps a reference to it.
-   *
-   * The virtualizer's own ref is what attaches its scroll and resize listeners, so it has to be called;
-   * keeping the node as well is what lets the keyboard scroll a row into view.
-   */
-  const setScroller = useCallback(
-    (node: Nullable<HTMLElement>): void => {
-      scrollerRef.current = node;
-
-      const attach: unknown = containerProps.ref;
-
-      if (typeof attach === "function") {
-        (attach as (element: Nullable<HTMLElement>) => void)(node);
-      } else if (attach) {
-        (attach as { current: Nullable<HTMLElement> }).current = node;
-      }
-    },
-    [containerProps.ref]
-  );
+  // Both the virtualizer's listeners and keyboard scrolling need the scroller node.
+  const handleScrollerRef = useForkRef(scrollerRef, containerProps.ref);
 
   /** Scrolls a row into view by arithmetic, since every row is exactly one `TREE.rowHeight` tall. */
   const revealRow = useCallback((index: number): void => {
@@ -294,7 +277,7 @@ export function VirtualizedTree<T>({
   return (
     <Box
       {...containerProps}
-      ref={setScroller}
+      ref={handleScrollerRef}
       aria-activedescendant={selectedIndex === -1 ? undefined : rowIdOf(selectedIndex)}
       aria-label={ariaLabel}
       data-testid={dataTestId}
