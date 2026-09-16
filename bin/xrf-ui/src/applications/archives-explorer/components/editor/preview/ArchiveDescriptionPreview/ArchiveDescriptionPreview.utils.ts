@@ -1,14 +1,19 @@
 import {
+  ArchiveBounds,
   ArchiveDescribeScope,
   ArchiveReference,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
+import { formatNumber } from "@/lib/format/number";
 import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
 export const NOT_DECLARED: string = "Not declared";
+
+/** Shown for a piece of a level holding nothing whose extent could be taken, rather than a box of no size. */
+export const NOTHING_TO_MEASURE: string = "Nothing to measure";
 
 /**
  * What became of a reference, worded in the terms of the subject that was searched.
@@ -67,4 +72,32 @@ export function filterByName<T>(items: Array<T>, filter: string, getName: (item:
   const needle: string = filter.trim().toLowerCase();
 
   return needle ? items.filter((item: T) => getName(item).toLowerCase().includes(needle)) : items;
+}
+
+/**
+ * A count with thousands separated, because these run to millions and a bare run of digits is not read.
+ *
+ * @param value - Count to render.
+ * @returns The count, grouped.
+ */
+export function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
+/**
+ * How much world a piece of a level covers.
+ *
+ * @param bounds - Extents the piece declares, absent for a piece carrying nothing to measure.
+ * @returns The three extents in engine units, which are metres, or the phrase for a piece with no extent at all.
+ */
+export function formatLevelBounds(bounds: Nullable<ArchiveBounds>): string {
+  if (!bounds) {
+    return NOTHING_TO_MEASURE;
+  }
+
+  const width: string = formatNumber(bounds.width, 1);
+  const height: string = formatNumber(bounds.height, 1);
+  const depth: string = formatNumber(bounds.depth, 1);
+
+  return `${width} × ${height} × ${depth} m`;
 }

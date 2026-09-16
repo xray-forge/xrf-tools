@@ -6,8 +6,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
+import { formatCount, formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
-import { formatCount, formatLevelBounds } from "./ArchiveLevelPartView.utils";
 
 interface IArchiveLevelCollisionViewProps extends BaseComponentProps {
   description: ArchiveLevelCollisionDescription;

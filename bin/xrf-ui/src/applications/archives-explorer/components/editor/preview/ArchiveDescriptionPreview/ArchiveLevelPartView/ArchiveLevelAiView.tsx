@@ -6,8 +6,9 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
+import { formatCount, formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
-import { formatCount, formatLevelBounds, formatNodeSize } from "./ArchiveLevelPartView.utils";
+import { formatNodeSize } from "./ArchiveLevelPartView.utils";
 
 interface IArchiveLevelAiViewProps extends BaseComponentProps {
   description: ArchiveLevelAiDescription;

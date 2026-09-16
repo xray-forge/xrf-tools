@@ -1,18 +1,10 @@
 import { ArchiveDetailEntry, ArchiveDetailLibraryDescription } from "@/core/ipc/types/xrf-app";
 import { formatNumber } from "@/lib/format/number";
 
+import { formatCount } from "../ArchiveDescriptionPreview.utils";
+
 /** Metres one slot of the grid covers, `DETAIL_SLOT_SIZE`, which is fixed by the format. */
 export const DETAIL_SLOT_METERS: number = 2;
-
-/**
- * A count with thousands separated, because a grid runs to hundreds of thousands of slots.
- *
- * @param value - Count to render.
- * @returns The count, grouped.
- */
-export function formatCount(value: number): string {
-  return value.toLocaleString("en-US");
-}
 
 /**
  * How much of the level the layer actually dresses.
