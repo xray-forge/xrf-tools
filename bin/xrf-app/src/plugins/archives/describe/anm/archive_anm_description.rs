@@ -1,8 +1,8 @@
 use serde::Serialize;
-use xrf_db::{AnmFile, XRayByteOrder};
+use xrf_db::{ANM_CHANNELS, AnmFile, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::plugins::archives::describe::anm::archive_anm_channel::ArchiveAnmChannel;
+use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one object motion.
@@ -25,7 +25,7 @@ pub struct ArchiveAnmDescription {
   /// Seconds the last key of any channel sits at, absent when nothing is keyed.
   pub keyed_seconds: Option<f32>,
   /// One entry per channel, in the order the format stores them.
-  pub channels: Vec<ArchiveAnmChannel>,
+  pub channels: Vec<ArchiveAnimationChannel>,
 }
 
 impl ArchiveAnmDescription {
@@ -43,7 +43,7 @@ impl ArchiveAnmDescription {
 
   /// What an animation already in hand says about itself.
   pub fn of(file: &AnmFile) -> Self {
-    let channels: Vec<ArchiveAnmChannel> = ArchiveAnmChannel::of_all(&file.channels);
+    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(ANM_CHANNELS, &file.channels);
 
     Self {
       name: Some(file.name.clone()).filter(|name| !name.is_empty()),

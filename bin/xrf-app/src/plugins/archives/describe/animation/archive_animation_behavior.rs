@@ -4,7 +4,7 @@ use serde::Serialize;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum ArchiveAnmBehavior {
+pub enum ArchiveAnimationBehavior {
   /// `BEH_RESET`: falls back to nothing.
   Reset,
   /// `BEH_CONSTANT`: holds the value of the nearest key, which is what everything shipped declares.
@@ -21,7 +21,7 @@ pub enum ArchiveAnmBehavior {
   Unnamed { value: u8 },
 }
 
-impl ArchiveAnmBehavior {
+impl ArchiveAnimationBehavior {
   /// The behaviour a stored byte names.
   pub const fn of(value: u8) -> Self {
     match value {
@@ -38,17 +38,20 @@ impl ArchiveAnmBehavior {
 
 #[cfg(test)]
 mod tests {
-  use super::ArchiveAnmBehavior;
+  use super::ArchiveAnimationBehavior;
 
   #[test]
   fn each_behavior_is_the_one_the_engine_numbers() {
-    assert_eq!(ArchiveAnmBehavior::of(0), ArchiveAnmBehavior::Reset);
-    assert_eq!(ArchiveAnmBehavior::of(1), ArchiveAnmBehavior::Constant);
-    assert_eq!(ArchiveAnmBehavior::of(5), ArchiveAnmBehavior::Linear);
+    assert_eq!(ArchiveAnimationBehavior::of(0), ArchiveAnimationBehavior::Reset);
+    assert_eq!(ArchiveAnimationBehavior::of(1), ArchiveAnimationBehavior::Constant);
+    assert_eq!(ArchiveAnimationBehavior::of(5), ArchiveAnimationBehavior::Linear);
   }
 
   #[test]
   fn a_value_the_engine_does_not_name_keeps_its_number() {
-    assert_eq!(ArchiveAnmBehavior::of(9), ArchiveAnmBehavior::Unnamed { value: 9 });
+    assert_eq!(
+      ArchiveAnimationBehavior::of(9),
+      ArchiveAnimationBehavior::Unnamed { value: 9 }
+    );
   }
 }

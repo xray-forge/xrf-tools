@@ -55,12 +55,16 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Engine text covers configs, " +
       "scripts and every shader stage, so a `gs` or an `hlsl` reads like the `vs` beside it.",
     "A binary file the explorer cannot draw is described in words instead, where a reader for its format exists: " +
-      "`thm` descriptors, `omf` motion banks, `anm` object motions, `particles.xr`, `shaders.xr`, a compiled `level` " +
-      "and a spawn set. A description names the files it refers to, and a name the open subject holds selects it in " +
-      "the tree.",
+      "`thm` descriptors, `omf` motion banks, `anm` object motions, `ppe` post-process effects, `particles.xr`, " +
+      "`shaders.xr`, a compiled `level` and a spawn set. A description names the files it refers to, and a name the " +
+      "open subject holds selects it in the tree.",
     "An `anm` is a camera or object path over six channels, and is described by what the engine would play: the " +
       "frame range counts both its ends, so a range of 0 to 59 runs for 60 frames. Where the keys reach past that " +
       "range, or stop short of it, the description says so - 101 of the shipped animations do one or the other.",
+    "A `ppe` is a screen effect over eleven parameters, three of which are colours the engine assembles from a red, " +
+      "a green and a blue envelope of their own. Every effect stores all of them and a shipped one keys three or " +
+      "four, so the description says how many are keyed rather than leaving eleven mostly empty rows to be read. It " +
+      "runs for as long as its longest parameter, which is not where its last key sits.",
     "A spawn set is summarised from its header alone: how many objects over how many levels, and what each section " +
       "of the file weighs. Its objects are not read - vanilla's set is 6,464 of them behind a game graph that is most " +
       "of a 29 MB file.",

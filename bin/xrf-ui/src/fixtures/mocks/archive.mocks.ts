@@ -1,5 +1,5 @@
 import {
-  ArchiveAnmChannel,
+  ArchiveAnimationChannel,
   ArchiveAnmDescription,
   ArchiveChunksDescription,
   ArchiveDescribeScope,
@@ -14,6 +14,8 @@ import {
   ArchiveParticlesDescription,
   ArchiveParticlesEffect,
   ArchiveParticlesGroup,
+  ArchivePpeColor,
+  ArchivePpeDescription,
   ArchiveReference,
   ArchiveResolution,
   ArchiveShadersBlender,
@@ -24,7 +26,7 @@ import {
   ArchiveThmDescription,
   ArchiveWorld,
   ArchiveWorldEntry,
-  EArchiveAnmBehavior,
+  EArchiveAnimationBehavior,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
   EArchiveLevelEntry,
@@ -562,10 +564,10 @@ export function mockArchiveOmfMotion(overrides: Partial<ArchiveOmfMotion> = {}):
  * @param overrides - Field values to override.
  * @returns One channel, as a description carries it.
  */
-export function mockArchiveAnmChannel(
+export function mockArchiveAnimationChannel(
   name: string = "position x",
-  overrides: Partial<ArchiveAnmChannel> = {}
-): ArchiveAnmChannel {
+  overrides: Partial<ArchiveAnimationChannel> = {}
+): ArchiveAnimationChannel {
   return {
     name,
     keys: 9,
@@ -573,8 +575,8 @@ export function mockArchiveAnmChannel(
     lastSeconds: 2,
     minimum: -0.125,
     maximum: 0.25,
-    behaviorBefore: { kind: EArchiveAnmBehavior.CONSTANT },
-    behaviorAfter: { kind: EArchiveAnmBehavior.CONSTANT },
+    behaviorBefore: { kind: EArchiveAnimationBehavior.CONSTANT },
+    behaviorAfter: { kind: EArchiveAnimationBehavior.CONSTANT },
     shapes: ["tcb"],
     ...overrides,
   };
@@ -587,10 +589,10 @@ export function mockArchiveAnmChannel(
  * @returns Everything the viewer says about one object motion.
  */
 export function mockArchiveAnmDescription(overrides: Partial<ArchiveAnmDescription> = {}): ArchiveAnmDescription {
-  const channels: Array<ArchiveAnmChannel> = overrides.channels ?? [
-    mockArchiveAnmChannel("position x"),
-    mockArchiveAnmChannel("position y"),
-    mockArchiveAnmChannel("position z", {
+  const channels: Array<ArchiveAnimationChannel> = overrides.channels ?? [
+    mockArchiveAnimationChannel("position x"),
+    mockArchiveAnimationChannel("position y"),
+    mockArchiveAnimationChannel("position z", {
       keys: 0,
       firstSeconds: null,
       lastSeconds: null,
@@ -598,9 +600,9 @@ export function mockArchiveAnmDescription(overrides: Partial<ArchiveAnmDescripti
       maximum: null,
       shapes: [],
     }),
-    mockArchiveAnmChannel("rotation pitch", { shapes: ["tcb", "linear"] }),
-    mockArchiveAnmChannel("rotation heading"),
-    mockArchiveAnmChannel("rotation bank", { keys: 1, firstSeconds: 0, lastSeconds: 0, shapes: ["stepped"] }),
+    mockArchiveAnimationChannel("rotation pitch", { shapes: ["tcb", "linear"] }),
+    mockArchiveAnimationChannel("rotation heading"),
+    mockArchiveAnimationChannel("rotation bank", { keys: 1, firstSeconds: 0, lastSeconds: 0, shapes: ["stepped"] }),
   ];
 
   return {
@@ -611,10 +613,85 @@ export function mockArchiveAnmDescription(overrides: Partial<ArchiveAnmDescripti
     frames: 60,
     fps: 30,
     durationSeconds: 2,
-    keys: channels.reduce((total: number, channel: ArchiveAnmChannel) => total + channel.keys, 0),
+    keys: channels.reduce((total: number, channel: ArchiveAnimationChannel) => total + channel.keys, 0),
     keyedSeconds: 2,
     ...overrides,
     channels,
+  };
+}
+
+/**
+ * Creates one colour parameter of a post-process effect, keyed on red and green and flat on blue.
+ *
+ * @param name - Which colour it is, which is the position it holds in the file.
+ * @param overrides - Field values to override.
+ * @returns One colour parameter, as a description carries it.
+ */
+export function mockArchivePpeColor(
+  name: string = "base color",
+  overrides: Partial<ArchivePpeColor> = {}
+): ArchivePpeColor {
+  return {
+    name,
+    base: 0.5,
+    keys: 4,
+    lengthSeconds: 3,
+    channels: [
+      mockArchiveAnimationChannel("red", { keys: 2, firstSeconds: 0, lastSeconds: 3 }),
+      mockArchiveAnimationChannel("green", { keys: 2, firstSeconds: 0, lastSeconds: 3 }),
+      mockArchiveAnimationChannel("blue", {
+        keys: 0,
+        firstSeconds: null,
+        lastSeconds: null,
+        minimum: null,
+        maximum: null,
+        shapes: [],
+      }),
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a post-process effect description: a version 2 effect grading through a gradient the subject holds.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about one post-process effect.
+ */
+export function mockArchivePpeDescription(overrides: Partial<ArchivePpeDescription> = {}): ArchivePpeDescription {
+  const empty: Partial<ArchiveAnimationChannel> = {
+    keys: 0,
+    firstSeconds: null,
+    lastSeconds: null,
+    minimum: null,
+    maximum: null,
+    shapes: [],
+  };
+
+  return {
+    version: 2,
+    lengthSeconds: 5,
+    keys: 11,
+    colors: [
+      mockArchivePpeColor("base color"),
+      mockArchivePpeColor("add color", { keys: 0, lengthSeconds: 0 }),
+      mockArchivePpeColor("gray color", { keys: 0, lengthSeconds: 0 }),
+    ],
+    values: [
+      mockArchiveAnimationChannel("gray value", { keys: 3, firstSeconds: 0, lastSeconds: 5 }),
+      mockArchiveAnimationChannel("blur", empty),
+      mockArchiveAnimationChannel("duality horizontal", empty),
+      mockArchiveAnimationChannel("duality vertical", empty),
+      mockArchiveAnimationChannel("noise intensity", empty),
+      mockArchiveAnimationChannel("noise granularity", empty),
+      mockArchiveAnimationChannel("noise fps", empty),
+    ],
+    colorMap: {
+      texture: mockArchiveReference({ name: "grad\\grad_psi" }),
+      influence: mockArchiveAnimationChannel("colour map influence", { keys: 1, firstSeconds: 0, lastSeconds: 0 }),
+      isUsed: true,
+    },
+    ...overrides,
   };
 }
 

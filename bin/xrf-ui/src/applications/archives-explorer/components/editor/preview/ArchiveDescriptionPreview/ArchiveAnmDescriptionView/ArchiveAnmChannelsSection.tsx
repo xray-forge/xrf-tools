@@ -1,14 +1,13 @@
 import { ReactElement } from "react";
 
-import { ArchiveAnmChannel } from "@/core/ipc/types/xrf-app";
+import { ArchiveAnimationChannel } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
-import { describeChannelDetail, describeChannelKeys } from "./ArchiveAnmDescriptionView.utils";
+import { ArchiveAnimationChannelRow } from "../ArchiveAnimationChannelRow";
 
 interface IArchiveAnmChannelsSectionProps extends BaseComponentProps {
-  channels: Array<ArchiveAnmChannel>;
+  channels: Array<ArchiveAnimationChannel>;
 }
 
 /**
@@ -28,13 +27,8 @@ export function ArchiveAnmChannelsSection({
       title={"Channels"}
       caption={"Position in engine units and rotation in radians, each keyed on its own envelope"}
     >
-      {channels.map((channel: ArchiveAnmChannel) => (
-        <ArchiveDescriptionRow
-          key={channel.name}
-          label={channel.name}
-          value={describeChannelKeys(channel)}
-          caption={describeChannelDetail(channel)}
-        />
+      {channels.map((channel: ArchiveAnimationChannel) => (
+        <ArchiveAnimationChannelRow key={channel.name} channel={channel} />
       ))}
     </EditorPanelSection>
   );

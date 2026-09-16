@@ -18,8 +18,8 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
-/** Every `kind` the `ArchiveAnmBehavior` union is told apart by, so a switch or a comparison names one. */
-export enum EArchiveAnmBehavior {
+/** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
+export enum EArchiveAnimationBehavior {
   /** `BEH_RESET`: falls back to nothing. */
   RESET = "reset",
   /** `BEH_CONSTANT`: holds the value of the nearest key, which is what everything shipped declares. */
@@ -36,13 +36,8 @@ export enum EArchiveAnmBehavior {
   UNNAMED = "unnamed",
 }
 
-/**
- * What a channel does outside its keys, `BEH_*` (`xrCore/Animation/Envelope.hpp`).
- *
- * Both ends of every envelope in every animation the workspace trees ship are `BEH_CONSTANT`, so a surface has
- * something to say here only when one is not.
- */
-export type ArchiveAnmBehavior =
+/** What a channel does outside its keys, `BEH_*` (`xrCore/Animation/Envelope.hpp`). */
+export type ArchiveAnimationBehavior =
   /** `BEH_RESET`: falls back to nothing. */
   | { kind: "reset" }
   /** `BEH_CONSTANT`: holds the value of the nearest key, which is what everything shipped declares. */
@@ -58,8 +53,13 @@ export type ArchiveAnmBehavior =
   /** A value the engine gives no name, kept as the number the file stores. */
   | { kind: "unnamed"; value: number };
 
-/** One channel of an animation: what it drives, and the keys that drive it. */
-export type ArchiveAnmChannel = {
+/**
+ * One animated channel: what it drives, and the keys that drive it.
+ *
+ * Shared by every format built on `CEnvelope`, which is why it is named for the envelope rather than for a channel
+ * of one of them: an object motion's six and a post-process effect's seventeen are described identically.
+ */
+export type ArchiveAnimationChannel = {
   /** What the channel animates, which is its position in the file rather than anything the file names. */
   name: string;
   keys: number;
@@ -72,9 +72,9 @@ export type ArchiveAnmChannel = {
   /** The largest value any of its keys holds, absent for a channel carrying none. */
   maximum: number | null;
   /** What it does before its first key. */
-  behaviorBefore: ArchiveAnmBehavior;
+  behaviorBefore: ArchiveAnimationBehavior;
   /** What it does after its last key. */
-  behaviorAfter: ArchiveAnmBehavior;
+  behaviorAfter: ArchiveAnimationBehavior;
   /** Curve shapes its keys use, named, each once. */
   shapes: Array<string>;
 };
@@ -93,15 +93,10 @@ export type ArchiveAnmDescription = {
   durationSeconds: number | null;
   /** Keys across every channel. */
   keys: number;
-  /**
-   * Seconds the last key of any channel sits at, absent when nothing is keyed.
-   *
-   * Not the same number as the duration, and 101 of the 1,221 shipped animations prove it: keys past the declared
-   * end never play, and keys stopping short leave the rest of the range holding the last value.
-   */
+  /** Seconds the last key of any channel sits at, absent when nothing is keyed. */
   keyedSeconds: number | null;
   /** One entry per channel, in the order the format stores them. */
-  channels: Array<ArchiveAnmChannel>;
+  channels: Array<ArchiveAnimationChannel>;
 };
 
 /** One chunk of a container, and whatever its payload turned out to hold. */
@@ -180,6 +175,7 @@ export enum EArchiveFormatDescription {
   LEVEL_COLLISION = "levelCollision",
   OMF = "omf",
   PARTICLES = "particles",
+  PPE = "ppe",
   SHADERS = "shaders",
   THM = "thm",
   UNSUPPORTED = "unsupported",
@@ -195,6 +191,7 @@ export type ArchiveFormatDescription =
   | { kind: "levelCollision"; description: ArchiveLevelCollisionDescription }
   | { kind: "omf"; description: ArchiveOmfDescription }
   | { kind: "particles"; description: ArchiveParticlesDescription }
+  | { kind: "ppe"; description: ArchivePpeDescription }
   | { kind: "shaders"; description: ArchiveShadersDescription }
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
@@ -470,6 +467,46 @@ export type ArchiveParticlesLibrary = {
   absentTextures: number;
   /** Effect names the groups use that this library does not define. */
   undefinedEffects: number;
+};
+
+/** One colour parameter of an effect, and the three channels it is assembled from. */
+export type ArchivePpeColor = {
+  name: string;
+  /**
+   * `m_fBase`, stored ahead of the envelopes and never read at runtime - `update` assembles the colour from the
+   * three channels alone.
+   */
+  base: number | null;
+  /** Keys across all three channels. */
+  keys: number;
+  /** Seconds the longest of the three spans, which is what this parameter contributes to the effect's own length. */
+  lengthSeconds: number | null;
+  channels: Array<ArchiveAnimationChannel>;
+};
+
+/** The colour grading an effect applies, which only version 2 carries. */
+export type ArchivePpeColorMap = {
+  /** The gradient texture the grading samples, absent when the effect names none. */
+  texture: ArchiveReference | null;
+  /** How much of the graded colour is mixed in over time. */
+  influence: ArchiveAnimationChannel;
+  /** Whether the effect grades at all, which is a name being present rather than an influence being non-zero. */
+  isUsed: boolean;
+};
+
+/** Everything the viewer says about one post-process effect. */
+export type ArchivePpeDescription = {
+  version: number;
+  /** Seconds the effect runs for, which is its longest parameter and not where its last key sits. */
+  lengthSeconds: number | null;
+  /** Keys across every parameter. */
+  keys: number;
+  /** The three colour parameters, in the order the file stores them. */
+  colors: Array<ArchivePpeColor>;
+  /** The seven scalar parameters, in the order the file stores them. */
+  values: Array<ArchiveAnimationChannel>;
+  /** The colour grading version 2 appends, absent below it. */
+  colorMap: ArchivePpeColorMap | null;
 };
 
 /** One file a description names, and what became of it. */

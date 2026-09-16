@@ -24,6 +24,7 @@ import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
+import { ArchivePpeDescriptionView } from "./ArchivePpeDescriptionView";
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
 import { ArchiveSpawnDescriptionView } from "./ArchiveSpawnDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
@@ -155,6 +156,17 @@ export function ArchiveDescriptionPreview({
     case EArchiveFormatDescription.PARTICLES:
       return (
         <ArchiveParticlesDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.PPE:
+      return (
+        <ArchivePpeDescriptionView
           data-testid={dataTestId}
           id={id}
           className={className}

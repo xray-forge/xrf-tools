@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { ArchiveAnmDescription, EArchiveAnmBehavior } from "@/core/ipc/types/xrf-app";
-import { mockArchiveAnmChannel, mockArchiveAnmDescription } from "@/fixtures/mocks/archive.mocks";
+import { ArchiveAnmDescription, EArchiveAnimationBehavior } from "@/core/ipc/types/xrf-app";
+import { mockArchiveAnimationChannel, mockArchiveAnmDescription } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
@@ -84,8 +84,8 @@ describe("ArchiveAnmDescriptionView", () => {
     const { getByText } = renderView(
       mockArchiveAnmDescription({
         channels: [
-          mockArchiveAnmChannel("position x", {
-            behaviorAfter: { kind: EArchiveAnmBehavior.REPEAT },
+          mockArchiveAnimationChannel("position x", {
+            behaviorAfter: { kind: EArchiveAnimationBehavior.REPEAT },
           }),
         ],
       })

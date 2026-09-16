@@ -13,6 +13,7 @@ use crate::plugins::archives::describe::level::{
 };
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
+use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
 use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
@@ -48,6 +49,9 @@ pub enum ArchiveFormatDescription {
   },
   Particles {
     description: Box<ArchiveParticlesDescription>,
+  },
+  Ppe {
+    description: Box<ArchivePpeDescription>,
   },
   Shaders {
     description: Box<ArchiveShadersDescription>,

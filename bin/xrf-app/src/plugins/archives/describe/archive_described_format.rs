@@ -10,6 +10,7 @@ use crate::plugins::archives::describe::level::{
 };
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
+use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
 use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
@@ -29,6 +30,8 @@ pub enum ArchiveDescribedFormat {
   Omf,
   /// The particle library, `particles.xr`.
   Particles,
+  /// A post-process effect, `.ppe`.
+  Ppe,
   /// The compiled blender library, `shaders.xr`.
   Shaders,
   /// A spawn set, `all.spawn` and whatever else carries its header.
@@ -57,6 +60,7 @@ impl ArchiveDescribedFormat {
       Some(XrayExtension::Ai) => Some(Self::LevelAi),
       Some(XrayExtension::CForm) => Some(Self::LevelCollision),
       Some(XrayExtension::Omf) => Some(Self::Omf),
+      Some(XrayExtension::Ppe) => Some(Self::Ppe),
       Some(XrayExtension::Spawn) => Some(Self::Spawn),
       Some(XrayExtension::Thm) => Some(Self::Thm),
       // An extension that names a container rather than a format, and a name carrying none at all, ask the same
@@ -95,6 +99,9 @@ impl ArchiveDescribedFormat {
       }),
       Self::Particles => Some(ArchiveFormatDescription::Particles {
         description: Box::new(ArchiveParticlesDescription::read(source, name)?),
+      }),
+      Self::Ppe => Some(ArchiveFormatDescription::Ppe {
+        description: Box::new(ArchivePpeDescription::read(source, name)?),
       }),
       Self::Shaders => Some(ArchiveFormatDescription::Shaders {
         description: Box::new(ArchiveShadersDescription::read(source, name)?),
@@ -164,6 +171,18 @@ mod tests {
         "'{name}' is an object motion"
       );
     }
+  }
+
+  #[test]
+  fn a_post_process_effect_is_claimed_by_its_extension() {
+    assert_eq!(
+      ArchiveDescribedFormat::of("anims\\camera_effects\\acidic.ppe"),
+      Some(ArchiveDescribedFormat::Ppe)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("anims\\BLINK.PPE"),
+      Some(ArchiveDescribedFormat::Ppe)
+    );
   }
 
   #[test]

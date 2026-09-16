@@ -4,6 +4,7 @@
 //! disk. Everything a describer needs of the explorer arrives through [`ArchiveDescribeSource`], so a describer is
 //! written against its format and not against the two subjects the explorer browses.
 
+mod animation;
 mod anm;
 mod archive_describe_scope;
 mod archive_describe_source;
@@ -16,6 +17,7 @@ pub mod commands;
 mod level;
 mod omf;
 mod particles;
+mod ppe;
 mod shaders;
 mod spawn;
 mod thm;

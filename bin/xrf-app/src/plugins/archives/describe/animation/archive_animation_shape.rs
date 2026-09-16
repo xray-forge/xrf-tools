@@ -1,6 +1,6 @@
 /// The curve a key interpolates along, `SHAPE_*` (`xrCore/Animation/Envelope.hpp`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ArchiveAnmShape {
+pub enum ArchiveAnimationShape {
   Tcb,
   Hermite,
   Bezier,
@@ -9,7 +9,7 @@ pub enum ArchiveAnmShape {
   Bezier2,
 }
 
-impl ArchiveAnmShape {
+impl ArchiveAnimationShape {
   /// Every shape the engine names, in the order it numbers them.
   pub const NAMED: [Self; 6] = [
     Self::Tcb,
@@ -61,26 +61,26 @@ impl ArchiveAnmShape {
 
 #[cfg(test)]
 mod tests {
-  use super::ArchiveAnmShape;
+  use super::ArchiveAnimationShape;
 
   #[test]
   fn each_shape_sits_where_the_engine_numbers_it() {
-    assert_eq!(ArchiveAnmShape::Tcb.value(), 0);
-    assert_eq!(ArchiveAnmShape::Stepped.value(), 4);
-    assert_eq!(ArchiveAnmShape::Bezier2.value(), 5);
+    assert_eq!(ArchiveAnimationShape::Tcb.value(), 0);
+    assert_eq!(ArchiveAnimationShape::Stepped.value(), 4);
+    assert_eq!(ArchiveAnimationShape::Bezier2.value(), 5);
   }
 
   #[test]
   fn a_run_of_keys_names_each_shape_it_uses_once() {
     // The mix of a vanilla camera effect: mostly tcb with a few linear segments.
     assert_eq!(
-      ArchiveAnmShape::label_all([0, 3, 0, 0, 3]),
+      ArchiveAnimationShape::label_all([0, 3, 0, 0, 3]),
       vec![String::from("tcb"), String::from("linear")]
     );
   }
 
   #[test]
   fn a_shape_the_engine_does_not_name_keeps_its_number() {
-    assert_eq!(ArchiveAnmShape::label_all([7]), vec![String::from("shape 7")]);
+    assert_eq!(ArchiveAnimationShape::label_all([7]), vec![String::from("shape 7")]);
   }
 }

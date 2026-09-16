@@ -1,14 +1,14 @@
 use serde::Serialize;
-use xrf_db::{ANM_CHANNELS, AnimationEnvelope, AnimationKey};
+use xrf_db::{AnimationEnvelope, AnimationKey};
 
-use crate::plugins::archives::describe::anm::archive_anm_behavior::ArchiveAnmBehavior;
-use crate::plugins::archives::describe::anm::archive_anm_shape::ArchiveAnmShape;
+use crate::plugins::archives::describe::animation::archive_animation_behavior::ArchiveAnimationBehavior;
+use crate::plugins::archives::describe::animation::archive_animation_shape::ArchiveAnimationShape;
 
-/// One channel of an animation: what it drives, and the keys that drive it.
+/// One animated channel: what it drives, and the keys that drive it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveAnmChannel {
+pub struct ArchiveAnimationChannel {
   /// What the channel animates, which is its position in the file rather than anything the file names.
   pub name: String,
   pub keys: usize,
@@ -21,25 +21,25 @@ pub struct ArchiveAnmChannel {
   /// The largest value any of its keys holds, absent for a channel carrying none.
   pub maximum: Option<f32>,
   /// What it does before its first key.
-  pub behavior_before: ArchiveAnmBehavior,
+  pub behavior_before: ArchiveAnimationBehavior,
   /// What it does after its last key.
-  pub behavior_after: ArchiveAnmBehavior,
+  pub behavior_after: ArchiveAnimationBehavior,
   /// Curve shapes its keys use, named, each once.
   pub shapes: Vec<String>,
 }
 
-impl ArchiveAnmChannel {
-  /// Every channel of an animation, named by the position it holds.
-  pub fn of_all(channels: &[AnimationEnvelope]) -> Vec<Self> {
-    ANM_CHANNELS
+impl ArchiveAnimationChannel {
+  /// Every envelope of a fixed run, each under the name its position gives it.
+  pub fn of_all<'a>(names: impl IntoIterator<Item = &'a str>, envelopes: &[AnimationEnvelope]) -> Vec<Self> {
+    names
       .into_iter()
-      .zip(channels)
+      .zip(envelopes)
       .map(|(name, envelope)| Self::of(name, envelope))
       .collect()
   }
 
   /// One channel, taken over the keys it carries.
-  fn of(name: &str, envelope: &AnimationEnvelope) -> Self {
+  pub fn of(name: &str, envelope: &AnimationEnvelope) -> Self {
     let (before, after): (u8, u8) = envelope.behavior;
 
     Self {
@@ -49,9 +49,17 @@ impl ArchiveAnmChannel {
       last_seconds: envelope.keys.last().map(|key| key.time),
       minimum: fold_values(envelope, f32::min),
       maximum: fold_values(envelope, f32::max),
-      behavior_before: ArchiveAnmBehavior::of(before),
-      behavior_after: ArchiveAnmBehavior::of(after),
-      shapes: ArchiveAnmShape::label_all(envelope.keys.iter().map(|key| key.shape)),
+      behavior_before: ArchiveAnimationBehavior::of(before),
+      behavior_after: ArchiveAnimationBehavior::of(after),
+      shapes: ArchiveAnimationShape::label_all(envelope.keys.iter().map(|key| key.shape)),
+    }
+  }
+
+  /// Seconds between its first and last key, which is `CEnvelope::GetLength`.
+  pub fn get_length_seconds(&self) -> f32 {
+    match (self.first_seconds, self.last_seconds) {
+      (Some(first), Some(last)) => last - first,
+      _ => 0.0,
     }
   }
 }
@@ -68,10 +76,10 @@ fn fold_values(envelope: &AnimationEnvelope, fold: fn(f32, f32) -> f32) -> Optio
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{AnimationEnvelope, AnimationKey};
+  use xrf_db::{ANM_CHANNELS, AnimationEnvelope, AnimationKey};
 
-  use super::ArchiveAnmChannel;
-  use crate::plugins::archives::describe::anm::archive_anm_behavior::ArchiveAnmBehavior;
+  use super::ArchiveAnimationChannel;
+  use crate::plugins::archives::describe::animation::archive_animation_behavior::ArchiveAnimationBehavior;
 
   fn key(value: f32, time: f32, shape: u8) -> AnimationKey {
     AnimationKey {
@@ -88,8 +96,10 @@ mod tests {
 
   #[test]
   fn a_channel_is_named_by_the_position_it_holds() {
-    let channels: Vec<ArchiveAnmChannel> =
-      ArchiveAnmChannel::of_all(&[envelope((1, 1), vec![key(0.0, 0.0, 0)]), envelope((1, 1), Vec::new())]);
+    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
+      ANM_CHANNELS,
+      &[envelope((1, 1), vec![key(0.0, 0.0, 0)]), envelope((1, 1), Vec::new())],
+    );
 
     assert_eq!(channels.len(), 2);
     assert_eq!(channels[0].name, "position x");
@@ -97,11 +107,24 @@ mod tests {
   }
 
   #[test]
+  fn a_name_no_envelope_answers_describes_nothing() {
+    // A format naming more channels than the file carries describes the ones it has, not an empty row for the rest.
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all(["red", "green", "blue"], &[envelope((1, 1), Vec::new())]);
+
+    assert_eq!(channels.len(), 1);
+    assert_eq!(channels[0].name, "red");
+  }
+
+  #[test]
   fn a_channel_reports_the_span_and_the_reach_of_its_own_keys() {
-    let channels: Vec<ArchiveAnmChannel> = ArchiveAnmChannel::of_all(&[envelope(
-      (1, 1),
-      vec![key(0.5, 0.0, 0), key(-1.25, 1.5, 3), key(2.0, 4.0, 0)],
-    )]);
+    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
+      ANM_CHANNELS,
+      &[envelope(
+        (1, 1),
+        vec![key(0.5, 0.0, 0), key(-1.25, 1.5, 3), key(2.0, 4.0, 0)],
+      )],
+    );
 
     assert_eq!(channels[0].keys, 3);
     assert_eq!(
@@ -110,23 +133,27 @@ mod tests {
     );
     assert_eq!((channels[0].minimum, channels[0].maximum), (Some(-1.25), Some(2.0)));
     assert_eq!(channels[0].shapes, vec![String::from("tcb"), String::from("linear")]);
+    assert_eq!(channels[0].get_length_seconds(), 4.0);
   }
 
   #[test]
   fn a_channel_carrying_no_keys_reports_no_span_rather_than_an_empty_one() {
-    let channels: Vec<ArchiveAnmChannel> = ArchiveAnmChannel::of_all(&[envelope((1, 1), Vec::new())]);
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all(ANM_CHANNELS, &[envelope((1, 1), Vec::new())]);
 
     assert_eq!(channels[0].keys, 0);
     assert_eq!(channels[0].first_seconds, None);
     assert_eq!(channels[0].minimum, None);
     assert!(channels[0].shapes.is_empty());
+    assert_eq!(channels[0].get_length_seconds(), 0.0);
   }
 
   #[test]
   fn a_channel_says_what_it_does_at_either_end_of_its_keys() {
-    let channels: Vec<ArchiveAnmChannel> = ArchiveAnmChannel::of_all(&[envelope((1, 2), vec![key(0.0, 0.0, 0)])]);
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all(ANM_CHANNELS, &[envelope((1, 2), vec![key(0.0, 0.0, 0)])]);
 
-    assert_eq!(channels[0].behavior_before, ArchiveAnmBehavior::Constant);
-    assert_eq!(channels[0].behavior_after, ArchiveAnmBehavior::Repeat);
+    assert_eq!(channels[0].behavior_before, ArchiveAnimationBehavior::Constant);
+    assert_eq!(channels[0].behavior_after, ArchiveAnimationBehavior::Repeat);
   }
 }
