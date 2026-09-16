@@ -64,7 +64,7 @@ export function getWellSx(theme: Theme): SystemStyleObject<Theme> {
 }
 
 /** The band's gloss for one scheme, as a gradient over its flat fill. */
-function getHeaderGlossImage(scheme: "light" | "dark"): string {
+export function getHeaderGlossImage(scheme: "light" | "dark"): string {
   return (
     `linear-gradient(180deg, ` +
     `rgba(255, 255, 255, ${HEADER_GLOSS.highlight[scheme]}) 0%, ` +

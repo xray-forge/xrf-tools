@@ -6,7 +6,7 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { getWashImage } from "./surface";
+import { getHeaderGlossImage, getWashImage } from "./surface";
 import {
   ACCENT,
   CONTROL,
@@ -329,6 +329,9 @@ export function createApplicationTheme(): Theme {
             boxSizing: "border-box",
             minHeight: DIALOG.headerMinHeight,
             padding: theme.spacing(DIALOG.headerPaddingY, DIALOG.paddingX),
+            backgroundColor: (theme.vars ?? theme).palette.background.frame,
+            backgroundImage: getHeaderGlossImage("light"),
+            ...theme.applyStyles("dark", { backgroundImage: getHeaderGlossImage("dark") }),
           }),
         },
       },
@@ -352,6 +355,9 @@ export function createApplicationTheme(): Theme {
           root: ({ theme }) => ({
             gap: theme.spacing(DIALOG.gap),
             padding: theme.spacing(DIALOG.actionsPaddingY, DIALOG.paddingX),
+            backgroundColor: (theme.vars ?? theme).palette.background.frame,
+            backgroundImage: getHeaderGlossImage("light"),
+            ...theme.applyStyles("dark", { backgroundImage: getHeaderGlossImage("dark") }),
           }),
         },
       },
