@@ -114,6 +114,8 @@ export function ImageViewport({
 
     const checkerboard = toCheckerboardSizing(transform.scale);
 
+    element.style.width = `${width}px`;
+    element.style.height = `${height}px`;
     element.style.transform = `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`;
     element.style.backgroundSize = checkerboard.backgroundSize;
     element.style.backgroundPosition = checkerboard.backgroundPosition;
@@ -271,6 +273,9 @@ export function ImageViewport({
               position: "absolute",
               left: 0,
               top: 0,
+              width,
+              height,
+              maxWidth: "none",
               transformOrigin: "0 0",
               willChange: "transform",
               userSelect: "none",
