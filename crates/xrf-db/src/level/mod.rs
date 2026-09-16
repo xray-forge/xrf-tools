@@ -5,6 +5,8 @@ pub(crate) mod level_details_slot;
 pub(crate) mod level_env_mod_file;
 pub(crate) mod level_env_modifier;
 pub(crate) mod level_file;
+pub(crate) mod level_fog_vol_file;
+pub(crate) mod level_fog_volume;
 pub(crate) mod level_game_file;
 pub(crate) mod level_game_rpoint;
 pub(crate) mod level_game_way;

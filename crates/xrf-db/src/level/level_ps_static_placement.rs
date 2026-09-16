@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
+use crate::data::generic::matrix_4x4::Matrix4x4;
 use crate::data::generic::vector_3d::Vector3d;
 
 /// The gametype word that admits every mode, which is what a single-player placement carries.
@@ -16,21 +17,14 @@ pub struct PsStaticPlacement {
   pub game_types: Option<u16>,
   /// The effect it plays, which names a definition inside `particles.xr` rather than a file.
   pub effect: String,
-  /// `Fmatrix`, row major, the fourth row being the translation the engine nudges up by a centimetre on load.
-  pub transform: [f32; 16],
+  /// Where it sits, the engine nudging the translation up by a centimetre on load.
+  pub transform: Matrix4x4,
 }
 
 impl PsStaticPlacement {
-  /// Bytes the transform occupies.
-  pub const TRANSFORM_SIZE: u64 = 16 * 4;
-
   /// Where the placement sits, which is the transform's translation row.
   pub const fn get_position(&self) -> Vector3d<f32> {
-    Vector3d {
-      x: self.transform[12],
-      y: self.transform[13],
-      z: self.transform[14],
-    }
+    self.transform.get_translation()
   }
 
   /// Whether the placement plays in every mode, which all but a handful of multiplayer ones do.
@@ -53,17 +47,10 @@ impl PsStaticPlacement {
       None
     };
 
-    let effect: String = reader.read_w1251_string()?;
-    let mut transform: [f32; 16] = [0.0; 16];
-
-    for value in &mut transform {
-      *value = reader.read_f32::<T>()?;
-    }
-
     Ok(Self {
       game_types,
-      effect,
-      transform,
+      effect: reader.read_w1251_string()?,
+      transform: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -78,10 +65,7 @@ impl PsStaticPlacement {
     }
 
     writer.write_w1251_string(&self.effect)?;
-
-    for value in self.transform {
-      writer.write_f32::<T>(value)?;
-    }
+    writer.write_xr::<T, _>(&self.transform)?;
 
     Ok(())
   }

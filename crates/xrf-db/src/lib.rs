@@ -1,6 +1,7 @@
 pub(crate) mod anm;
 pub(crate) mod constants;
 pub(crate) mod data;
+pub(crate) mod efd;
 pub(crate) mod export;
 pub(crate) mod file_import;
 pub(crate) mod level;
@@ -78,7 +79,9 @@ pub use crate::data::{
     },
   },
   artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint,
-  generic::{rgb_color::RgbColor, shape::Shape, time::Time, u32_bytes::U32Bytes, vector_3d::Vector3d},
+  generic::{
+    matrix_4x4::Matrix4x4, rgb_color::RgbColor, shape::Shape, time::Time, u32_bytes::U32Bytes, vector_3d::Vector3d,
+  },
   graph::{
     graph_cross_table::GraphCrossTable, graph_edge::GraphEdge, graph_header::GraphHeader, graph_level::GraphLevel,
     graph_level_point::GraphLevelPoint, graph_vertex::GraphVertex,
@@ -86,6 +89,9 @@ pub use crate::data::{
   meta::cls_id::ClsId,
   patrols::{patrol::Patrol, patrol_link::PatrolLink, patrol_point::PatrolPoint},
 };
+pub use crate::efd::efd_file::*;
+pub use crate::efd::efd_pattern::*;
+pub use crate::efd::efd_variable::*;
 pub use crate::level::level_ai_file::*;
 pub use crate::level::level_cform_file::*;
 pub use crate::level::level_details_file::*;
@@ -93,6 +99,8 @@ pub use crate::level::level_details_slot::*;
 pub use crate::level::level_env_mod_file::*;
 pub use crate::level::level_env_modifier::*;
 pub use crate::level::level_file::*;
+pub use crate::level::level_fog_vol_file::*;
+pub use crate::level::level_fog_volume::*;
 pub use crate::level::level_game_file::*;
 pub use crate::level::level_game_rpoint::*;
 pub use crate::level::level_game_way::*;
