@@ -7,7 +7,13 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { getSubjectRoot, getSubjectSize, getSubjectSourceCount, IArchiveEntry } from "@/core/archive/lib";
+import {
+  getEntryEngineIdentity,
+  getSubjectRoot,
+  getSubjectSize,
+  getSubjectSourceCount,
+  IArchiveEntry,
+} from "@/core/archive/lib";
 import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -72,7 +78,7 @@ export function ArchivesEditor(): ReactElement {
   const onOpenOverride = useCallback(
     (name: string): void => {
       const entry: Optional<IArchiveEntry> = archivesService.entries.find(
-        (candidate: IArchiveEntry) => candidate.name === name
+        (candidate: IArchiveEntry) => getEntryEngineIdentity(candidate) === name
       );
 
       if (!entry) {

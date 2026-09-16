@@ -324,16 +324,13 @@ describe("opened archives editor", () => {
     expect(queryByText(/cannot be reached/)).not.toBeInTheDocument();
   });
 
-  it("names unreachable entries in its own panel, without a banner over the tree", async () => {
-    // The explorer used to show the winner and nothing else, so an entry nobody could reach was indistinguishable
-    // from one nobody packed. The panel is where that is said; a banner over the tree stated a count, offered
-    // nothing to do about it, and had to be dismissed before the tree was whole again.
+  it("names unreachable copies inside Overrides, without a panel or a banner over the tree", async () => {
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [mockPathCollision()] },
     });
 
-    const { findByLabelText, findByText, queryByText } = await act(async () =>
+    const { findByLabelText, findByText, queryByLabelText, queryByText } = await act(async () =>
       renderWithProviders(
         <ApplicationShellFrame>
           <ArchivesExplorerApplication />
@@ -343,8 +340,9 @@ describe("opened archives editor", () => {
     );
 
     expect(queryByText(/cannot be reached/)).not.toBeInTheDocument();
+    expect(queryByLabelText("Unreachable files")).not.toBeInTheDocument();
 
-    await userEvent.click(await findByLabelText("Unreachable files"));
+    await userEvent.click(await findByLabelText("Overrides"));
 
     expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
     expect(await findByText("C:/game/database/configs.db0::textures/a.dds")).toBeInTheDocument();

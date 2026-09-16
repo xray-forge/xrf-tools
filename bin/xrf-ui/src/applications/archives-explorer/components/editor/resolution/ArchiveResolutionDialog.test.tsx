@@ -85,6 +85,20 @@ describe("archive resolution dialog", () => {
     expect(await findByText("failed to read archive header")).toBeInTheDocument();
   });
 
+  it("states that every declared source opened rather than dropping the section", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|describe_resolution"]: mockArchiveResolution({ unread: [] }),
+      ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
+    });
+
+    const { findByLabelText, findByTestId, findByText } = await renderExplorer();
+
+    await userEvent.click(await findByLabelText("Resolution"));
+
+    expect(await findByTestId("archive-resolution-unread-section")).toBeInTheDocument();
+    expect(await findByText(/Every source declared here opened/)).toBeInTheDocument();
+  });
+
   it("asks once and keeps the answer across openings", async () => {
     let calls: number = 0;
 

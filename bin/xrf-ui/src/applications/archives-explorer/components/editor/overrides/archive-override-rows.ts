@@ -6,6 +6,13 @@ import { Nullable } from "@/lib/types/general";
 /** Height every row of the listing draws at, so the virtualizer never has to measure one. */
 export const ARCHIVE_OVERRIDE_ROW_HEIGHT = 28;
 
+/** Chip sizing shared by every mark a copy row carries, so the rank column stays aligned whichever marks a row has. */
+export const ARCHIVE_OVERRIDE_CHIP_SX = {
+  flexShrink: 0,
+  height: 18,
+  "& .MuiChip-label": { paddingX: 0.75, fontSize: 10 },
+} as const;
+
 /** Every kind of row the listing draws, named where a switch or a comparison has to pick one. */
 export enum EArchiveOverrideRow {
   /** The contested engine path, and what the contest costs. */

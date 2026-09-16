@@ -6,10 +6,12 @@ import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
-import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, IArchiveOverrideCopyRow } from "./archive-override-rows";
-
-/** Chip sizing shared by both marks, so the rank column stays aligned whichever marks a row carries. */
-const CHIP_SX = { flexShrink: 0, height: 18, "& .MuiChip-label": { paddingX: 0.75, fontSize: 10 } } as const;
+import {
+  ARCHIVE_OVERRIDE_CHIP_SX,
+  ARCHIVE_OVERRIDE_ROW_HEIGHT,
+  EArchiveOverrideRow,
+  IArchiveOverrideCopyRow,
+} from "./archive-override-rows";
 
 export interface IArchiveOverrideCopyRowProps extends BaseComponentProps {
   row: IArchiveOverrideCopyRow;
@@ -51,11 +53,17 @@ export function ArchiveOverrideCopyRow({
         size={"small"}
         variant={"outlined"}
         label={isLooseContainer(row.container) ? "Loose" : "Archived"}
-        sx={CHIP_SX}
+        sx={ARCHIVE_OVERRIDE_CHIP_SX}
       />
 
       {row.isWinner ? (
-        <Chip size={"small"} color={"primary"} label={"Loaded"} title={"The copy the engine loads"} sx={CHIP_SX} />
+        <Chip
+          size={"small"}
+          color={"primary"}
+          label={"Loaded"}
+          title={"The copy the engine loads"}
+          sx={ARCHIVE_OVERRIDE_CHIP_SX}
+        />
       ) : null}
 
       <Typography className={"min-w-18 shrink-0 text-right text-text-secondary"} variant={"caption"}>

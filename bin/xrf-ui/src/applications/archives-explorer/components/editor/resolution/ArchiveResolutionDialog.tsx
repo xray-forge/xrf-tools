@@ -88,21 +88,23 @@ export function ArchiveResolutionDialog({
               ))}
             </DetailSection>
 
-            {resolution.unread.length ? (
-              <DetailSection
-                data-testid={"archive-resolution-unread-section"}
-                title={"Unread sources"}
-                description={
-                  "Declared here but never opened, so nothing they hold is reachable. Absent content reads exactly " +
-                  "like content that was never there, which is why these are listed rather than left out."
-                }
-                fact={`${resolution.unread.length} source(s)`}
-              >
-                {resolution.unread.map((unread: ArchiveUnreadSource) => (
-                  <ArchiveResolutionUnreadRow key={unread.path} source={unread} />
-                ))}
-              </DetailSection>
-            ) : null}
+            <DetailSection
+              data-testid={"archive-resolution-unread-section"}
+              title={"Unread sources"}
+              description={
+                resolution.unread.length
+                  ? "Declared here but never opened, so nothing they hold is reachable. Absent content reads exactly " +
+                    "like content that was never there, which is why these are listed rather than left out."
+                  : "Every source declared here opened, so the order above is the whole of what is searched. Absent " +
+                    "content reads exactly like content that was never there, which is why this is stated rather " +
+                    "than left out."
+              }
+              fact={`${resolution.unread.length} source(s)`}
+            >
+              {resolution.unread.map((unread: ArchiveUnreadSource) => (
+                <ArchiveResolutionUnreadRow key={unread.path} source={unread} />
+              ))}
+            </DetailSection>
           </>
         ) : null}
       </DialogContent>

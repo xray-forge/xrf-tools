@@ -10,10 +10,13 @@ import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import {
   mockArchivedContainer,
+  mockArchiveFileDescriptor,
   mockArchiveShadowedCopy,
+  mockArchivesVolumes,
   mockArchivesWorldSubject,
   mockArchiveWorldEntry,
   mockArchiveWorldStatistics,
+  mockPathCollision,
 } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -145,5 +148,57 @@ describe("archive overrides dialog", () => {
     await userEvent.click(await findByLabelText("Overrides"));
 
     expect(await findByText(/No engine path here is held more than once/)).toBeInTheDocument();
+    expect(await findByText(/Every source here reaches each of its own entries/)).toBeInTheDocument();
+  });
+
+  it("names both spellings of a copy nothing reaches, and marks which one loads", async () => {
+    setMockInvokeResponses({
+      ["plugin:archives|describe_statistics"]: mockStatistics(),
+      ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject([])),
+      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [mockPathCollision()] },
+    });
+
+    const { findByLabelText, findByText, queryByRole } = await renderExplorer();
+
+    await userEvent.click(await findByLabelText("Overrides"));
+
+    expect(await findByText("C:/game/database/configs.db0::textures/a.dds")).toBeInTheDocument();
+    expect(await findByText("C:/game/database/patch.db0::Textures/A.DDS")).toBeInTheDocument();
+    expect(await findByText("Unreachable")).toBeInTheDocument();
+
+    await userEvent.click(await findByText("textures\\a.dds"));
+
+    expect(queryByRole("dialog", { name: "Overrides" })).not.toBeNull();
+  });
+
+  it("opens the file a row names on a volume set, which spells its entries as authored", async () => {
+    const AUTHORED: string = "Configs\\System.LTX";
+
+    setMockInvokeResponses({
+      ["plugin:archives|describe_statistics"]: mockStatistics(),
+      ["plugin:archives|get_subject"]: mockSessionResponse(
+        mockArchivesVolumes([mockArchiveFileDescriptor({ name: AUTHORED })])
+      ),
+      ["plugin:archives|list_overrides"]: {
+        overridden: [
+          mockArchiveWorldEntry({
+            container: mockArchivedContainer(PATCH),
+            name: "configs\\system.ltx",
+            shadowed: [mockArchiveShadowedCopy(mockArchivedContainer(BASE), 1024)],
+            sizeReal: 2048,
+          }),
+        ],
+        unreachable: [],
+      },
+      ["plugin:archives|read_file"]: { content: "[system]", name: AUTHORED, size: 2048 },
+    });
+
+    const { findByLabelText, findByText, queryByText } = await renderExplorer();
+
+    await userEvent.click(await findByLabelText("Overrides"));
+    await userEvent.click(await findByText("configs\\system.ltx"));
+
+    expect(await findByText(AUTHORED)).toBeInTheDocument();
+    expect(queryByText("Select a file to preview")).toBeNull();
   });
 });

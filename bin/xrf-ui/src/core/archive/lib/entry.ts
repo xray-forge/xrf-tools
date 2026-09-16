@@ -1,4 +1,5 @@
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
+import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 /**
  * One file the explorer browses, whichever subject it came from.
@@ -8,7 +9,7 @@ import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
  * so both `ArchiveFileDescriptor` and `ArchiveWorldEntry` satisfy this without being converted into anything.
  */
 export interface IArchiveEntry {
-  /** Engine path of the file, backslash separated. */
+  /** Name of the file, backslash separated, as its own subject spells it. */
   name: string;
   /** Payload bytes once unpacked. */
   sizeReal: number;
@@ -16,4 +17,14 @@ export interface IArchiveEntry {
   isDirectory?: boolean;
   /** Where the winning copy physically sits. */
   container?: XrayAssetContainer;
+}
+
+/**
+ * The engine identity an entry answers for, whichever subject named it.
+ *
+ * @param entry - Entry to identify.
+ * @returns Its engine identity: lower case, backslash separated.
+ */
+export function getEntryEngineIdentity(entry: IArchiveEntry): string {
+  return entry.name.split("/").join(LOGICAL_PATH_SEPARATOR).toLowerCase();
 }

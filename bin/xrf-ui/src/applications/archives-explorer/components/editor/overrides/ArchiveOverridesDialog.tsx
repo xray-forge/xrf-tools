@@ -17,6 +17,7 @@ import { Nullable } from "@/lib/types/general";
 
 import { filterOverrides, flattenOverrides, TArchiveOverrideRow } from "./archive-override-rows";
 import { ArchiveOverrideList } from "./ArchiveOverrideList";
+import { ArchiveUnreachableSection } from "./ArchiveUnreachableSection";
 
 export interface IArchiveOverridesDialogProps extends BaseComponentProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export function ArchiveOverridesDialog({
 
   const overridden: Array<ArchiveWorldEntry> = archivesService.overridden;
   const statistics: Nullable<ArchiveStatistics> = archivesService.statistics.value;
+
+  const isFolded: boolean = !archivesService.overrides.isLoading && !archivesService.overrides.error;
 
   const sources: Array<IStatBreakdownRow> = useMemo(
     () =>
@@ -138,6 +141,7 @@ export function ArchiveOverridesDialog({
           <>
             <DetailSection
               data-testid={"archive-overrides-sources-section"}
+              className={"shrink-0"}
               title={"By source"}
               description={
                 "A source claims an engine path a lower-priority one also holds, and the lower copy stays on disk " +
@@ -148,11 +152,14 @@ export function ArchiveOverridesDialog({
               fact={`${formatBytes(statistics?.origins.hidden.sizeReal ?? 0)} hidden`}
               action={<StatMeasureToggle measure={measure} onChange={setMeasure} />}
             >
-              <StatBreakdownTable rows={sources} measure={measure} selectedId={source} onSelect={onSelectSource} />
+              <div className={"max-h-40 overflow-y-auto"}>
+                <StatBreakdownTable rows={sources} measure={measure} selectedId={source} onSelect={onSelectSource} />
+              </div>
             </DetailSection>
 
             <DetailSection
               data-testid={"archive-overrides-paths-section"}
+              className={"flex min-h-0 grow flex-col"}
               title={"Overridden paths"}
               description={
                 "Each path with every copy claiming it, highest priority first. The top copy is the one the engine " +
@@ -162,7 +169,7 @@ export function ArchiveOverridesDialog({
               fact={`${entries.length} of ${overridden.length} path(s)`}
             >
               <TextField
-                className={"mb-2"}
+                className={"mb-2 shrink-0"}
                 size={"small"}
                 fullWidth
                 value={filter}
@@ -171,11 +178,15 @@ export function ArchiveOverridesDialog({
                 onChange={onFilterChange}
               />
 
-              <div className={"h-55"}>
+              <div className={"min-h-0 grow"}>
                 <ArchiveOverrideList rows={rows} ariaLabel={"Overridden paths"} onOpen={onOpen} />
               </div>
             </DetailSection>
           </>
+        ) : null}
+
+        {isFolded ? (
+          <ArchiveUnreachableSection className={"shrink-0"} collisions={archivesService.unreachable} />
         ) : null}
       </DialogContent>
     </Dialog>
