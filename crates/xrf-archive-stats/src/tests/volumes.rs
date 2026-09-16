@@ -26,7 +26,7 @@ fn project() -> ArchiveProject {
     descriptor("configs\\system.ltx", 1000, 100, false),
     descriptor("sounds\\ambient.ogg", 8192, 8192, false),
     descriptor("readme", 0, 0, false),
-    descriptor("meshes\\actor.som", 512, 512, false),
+    descriptor("meshes\\actor.mdl", 512, 512, false),
     descriptor("textures\\", 0, 0, true),
   ];
 
@@ -78,12 +78,13 @@ fn an_overview_counts_files_and_leaves_directories_out_of_the_bytes() {
 fn an_undeclared_spelling_is_reported_as_itself() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
 
-  // The point of the section: `som` is a real X-Ray format the extension vocabulary does not declare, and folding it
-  // into an `Other` row would hide the one row worth acting on.
-  let som: &ArchiveExtensionUsage = row(&statistics.extensions, Some("som"));
+  // The point of the section: `mdl` is a spelling the workspace trees ship and the extension vocabulary does
+  // not declare, and folding it into an `Other` row would hide the one row worth acting on. It stands in for
+  // `som`, which the vocabulary gained when `level.som` got a reader.
+  let undeclared: &ArchiveExtensionUsage = row(&statistics.extensions, Some("mdl"));
 
-  assert!(!som.is_declared, "the vocabulary does not declare it");
-  assert_eq!(som.measure.files, 1);
+  assert!(!undeclared.is_declared, "the vocabulary does not declare it");
+  assert_eq!(undeclared.measure.files, 1);
 
   assert!(row(&statistics.extensions, Some("dds")).is_declared);
   assert!(row(&statistics.extensions, Some("ltx")).is_declared);
@@ -111,7 +112,7 @@ fn extensions_are_ordered_by_bytes_and_sum_back_to_the_total() {
       .iter()
       .map(|row| row.extension.as_deref())
       .collect::<Vec<Option<&str>>>(),
-    vec![Some("ogg"), Some("dds"), Some("ltx"), Some("som"), None],
+    vec![Some("ogg"), Some("dds"), Some("ltx"), Some("mdl"), None],
     "heaviest first: one ogg outweighs two dds, which is the ordering a count column would invert"
   );
 
@@ -157,7 +158,7 @@ fn compression_reads_the_stored_sizes_the_format_records() {
   assert_eq!(compression.size_real, statistics.overview.total.size_real);
   assert_eq!(
     compression.stored_uncompressed, 3,
-    "the ogg, the som and the empty file are each stored at their own size"
+    "the ogg, the mdl and the empty file are each stored at their own size"
   );
 }
 
@@ -260,7 +261,7 @@ fn largest_entries_are_ordered_and_addressed_by_engine_path() {
       "textures\\wpn\\ak74.dds",
       "textures\\wpn\\pm.dds",
       "configs\\system.ltx",
-      "meshes\\actor.som",
+      "meshes\\actor.mdl",
       "readme"
     ]
   );
