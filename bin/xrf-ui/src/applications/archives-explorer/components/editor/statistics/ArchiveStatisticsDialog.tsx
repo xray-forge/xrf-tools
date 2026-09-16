@@ -81,7 +81,6 @@ export function ArchiveStatisticsDialog({
           sx={mergeSx(getWellFillSx, {
             width: 148,
             flexShrink: 0,
-            paddingY: 1,
             borderRight: 1,
             borderColor: "divider",
             overflowY: "auto",
