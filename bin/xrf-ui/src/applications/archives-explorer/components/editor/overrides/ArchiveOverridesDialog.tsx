@@ -6,7 +6,6 @@ import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useS
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
-import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
@@ -82,6 +81,8 @@ export function ArchiveOverridesDialog({
     [onClose, onOpenFile]
   );
 
+  const onFilterChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setFilter(event.target.value), []);
+
   // The aggregate is the backend's, so the two halves of this dialog cannot disagree about what a source hides.
   useEffect(() => {
     if (isOpen) {
@@ -108,16 +109,7 @@ export function ArchiveOverridesDialog({
         onClose={onClose}
       />
 
-      <DialogContent
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          height: 460,
-          maxHeight: "64vh",
-          paddingX: DIALOG.paddingX,
-        }}
-      >
+      <DialogContent className={"flex h-115 max-h-[64vh] flex-col gap-4 px-dialog"}>
         {archivesService.overrides.error ? (
           <Alert severity={"error"}>
             {`Could not describe what this overrides: ${archivesService.overrides.error.message}`}
@@ -170,13 +162,13 @@ export function ArchiveOverridesDialog({
               fact={`${entries.length} of ${overridden.length} path(s)`}
             >
               <TextField
+                className={"mb-2"}
                 size={"small"}
                 fullWidth
                 value={filter}
                 placeholder={"Filter by engine path"}
                 slotProps={{ htmlInput: { "aria-label": "Filter overridden paths" } }}
-                onChange={(event: ChangeEvent<HTMLInputElement>) => setFilter(event.target.value)}
-                sx={{ marginBottom: 1 }}
+                onChange={onFilterChange}
               />
 
               <div className={"h-55"}>

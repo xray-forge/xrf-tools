@@ -23,7 +23,7 @@ export function ArchiveExtensionsSection({
   view,
 }: IArchiveExtensionsSectionProps): ReactElement {
   const undeclaredSpelling = useMemo(
-    () => <Chip label={"unknown"} size={"small"} color={"warning"} variant={"outlined"} sx={{ height: 16 }} />,
+    () => <Chip className={"h-4"} label={"unknown"} size={"small"} color={"warning"} variant={"outlined"} />,
     []
   );
 

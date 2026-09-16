@@ -3,7 +3,6 @@ import { ReactElement } from "react";
 
 import { ArchiveThmTextureType } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { PANEL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
@@ -34,7 +33,7 @@ export function ArchiveThmEngineSection({
       />
 
       {textureType.isReadByEngine ? null : (
-        <Typography className={"text-text-secondary"} variant={"body2"} sx={{ paddingY: PANEL.propertyPaddingY }}>
+        <Typography className={"py-panel-property text-text-secondary"} variant={"body2"}>
           {`LoadTHM takes nothing further from a ${textureType.label.toLowerCase()} descriptor: the bump, detail and material below are read by the converter and never by the engine.`}
         </Typography>
       )}

@@ -46,13 +46,27 @@
   --spacing-header: var(--xrf-header-height);
 
   --text-tree-icon: var(--xrf-tree-icon-size);
+  --text-content-state-icon: var(--xrf-content-state-icon);
 
   --radius-surface: var(--xrf-radius-surface);
 
   --spacing-dialog: var(--xrf-dialog-padding-x);
+  --spacing-panel-property: var(--xrf-panel-property-padding);
+
+  /* The face on its own. `.monospace` also sets a size, which is wrong for a heading. */
+  --font-monospace: var(--xrf-monospace-family);
   --leading-panel: var(--xrf-panel-line-height);
 
   /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
   --container-reading: var(--xrf-reading-column);
   --container-reading-label: var(--xrf-reading-label);
+}
+
+/*
+ * The `content` plane and its wash, as `getSurfaceSx("content")` builds it.
+ */
+@utility surface-content {
+  background-attachment: fixed;
+  background-color: var(--mui-palette-background-default);
+  background-image: var(--xrf-wash);
 }

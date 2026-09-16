@@ -8,7 +8,6 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive/lib";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
-import { MONOSPACE } from "@/core/theme";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
@@ -77,12 +76,11 @@ export function ArchiveDirectoryContent({
     }
   }, [archivesService, log, path]);
 
-  // `gap` stays an `sx`: `CenteredColumn` sets it itself, and its unlayered Emotion rules outrank a utility.
   return (
-    <CenteredColumn data-testid={dataTestId} id={id} className={cn("p-6", className)} sx={{ gap: 1 }}>
-      <FolderOpenIcon sx={{ color: "text.secondary" }} />
+    <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)}>
+      <FolderOpenIcon className={"text-text-secondary"} />
 
-      <Typography className={"wrap-anywhere"} variant={"subtitle1"} sx={{ fontFamily: MONOSPACE.fontFamily }}>
+      <Typography className={"font-monospace wrap-anywhere"} variant={"subtitle1"}>
         {path || "Tree root"}
       </Typography>
 
@@ -95,7 +93,6 @@ export function ArchiveDirectoryContent({
         size={"small"}
         disabled={operation.isLoading || !summary.count}
         startIcon={<SaveAltIcon fontSize={"small"} />}
-        sx={{ marginTop: 1 }}
         onClick={onExtract}
       >
         {operation.isLoading ? "Extracting..." : "Extract directory"}

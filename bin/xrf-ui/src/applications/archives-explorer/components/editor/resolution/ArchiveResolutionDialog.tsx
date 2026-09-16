@@ -5,7 +5,6 @@ import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from "@/core/ipc/types/xrf-app";
-import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -59,16 +58,7 @@ export function ArchiveResolutionDialog({
         onClose={onClose}
       />
 
-      <DialogContent
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          height: 460,
-          maxHeight: "64vh",
-          paddingX: DIALOG.paddingX,
-        }}
-      >
+      <DialogContent className={"flex h-115 max-h-[64vh] flex-col gap-4 px-dialog"}>
         {archivesService.resolution.error ? (
           <Alert severity={"error"}>
             {`Could not describe how this is resolved: ${archivesService.resolution.error.message}`}

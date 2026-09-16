@@ -69,8 +69,7 @@ export function ArchiveAudioPreview({
     <CenteredColumn
       data-testid={dataTestId}
       id={id}
-      className={cn("overflow-y-auto p-6", className)}
-      sx={{ gap: 2.5, justifyContent: "safe center" }}
+      className={cn("justify-center-safe gap-5 overflow-y-auto p-6", className)}
     >
       <div className={"w-full max-w-160 shrink-0"}>
         <AudioPlayer src={url} bytes={bytes} />
@@ -85,7 +84,7 @@ export function ArchiveAudioPreview({
           value={descriptor.sampleRate ? `${descriptor.sampleRate} Hz` : "-"}
         />
 
-        <Divider sx={{ marginY: 1.5 }} />
+        <Divider className={"my-3"} />
 
         <Typography variant={"subtitle2"}>Engine parameters</Typography>
 

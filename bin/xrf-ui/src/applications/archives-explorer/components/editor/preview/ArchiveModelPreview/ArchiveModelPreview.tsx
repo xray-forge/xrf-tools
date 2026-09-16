@@ -1,11 +1,9 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
@@ -64,12 +62,12 @@ export function ArchiveModelPreview({
       ) : null}
 
       {!visual.value && !visual.isLoading ? (
-        <Box className={"absolute inset-0 flex"} sx={getSurfaceSx("content")}>
+        <div className={"absolute inset-0 flex surface-content"}>
           <EmptyState
             title={visual.error ? "Could not read this model" : "No model to show"}
             description={visual.error?.message ?? name}
           />
-        </Box>
+        </div>
       ) : null}
     </div>
   );

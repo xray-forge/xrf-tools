@@ -23,10 +23,10 @@ export function ArchiveThmFlagList({
       {flags.map((flag: ArchiveThmFlag) => (
         <Chip
           key={flag.label}
+          className={flag.isSet ? "opacity-100" : "opacity-60"}
           size={"small"}
           variant={flag.isSet ? "filled" : "outlined"}
           label={flag.label}
-          sx={{ opacity: flag.isSet ? 1 : 0.6 }}
         />
       ))}
     </div>

@@ -20,7 +20,7 @@ export function ArchivePreviewError({
 }: IArchivePreviewErrorProps): ReactElement {
   return (
     <CenteredColumn data-testid={dataTestId} id={id} className={cn("p-6 text-center", className)}>
-      <ErrorOutlineIcon color={"error"} sx={{ fontSize: 40 }} />
+      <ErrorOutlineIcon className={"text-content-state-icon"} color={"error"} />
 
       <Typography variant={"subtitle1"}>Could not read this file</Typography>
 
@@ -28,7 +28,7 @@ export function ArchivePreviewError({
         {error.message}
       </Typography>
 
-      <Button variant={"outlined"} onClick={() => void onRetry()}>
+      <Button variant={"outlined"} onClick={onRetry}>
         Retry
       </Button>
     </CenteredColumn>

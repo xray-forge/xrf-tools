@@ -5,7 +5,6 @@ import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getWellFillSx } from "@/core/theme/surface";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
@@ -73,17 +72,12 @@ export function ArchiveStatisticsDialog({
         onClose={onClose}
       />
 
-      <DialogContent sx={{ display: "flex", padding: 0, height: 460, maxHeight: "64vh" }}>
+      <DialogContent className={"flex h-115 max-h-[64vh] p-0"}>
         <List
-          dense
-          disablePadding
-          sx={mergeSx(getWellFillSx, {
-            width: 148,
-            flexShrink: 0,
-            borderRight: 1,
-            borderColor: "divider",
-            overflowY: "auto",
-          })}
+          className={"w-37 shrink-0 overflow-y-auto border-r border-divider"}
+          dense={true}
+          disablePadding={true}
+          sx={getWellFillSx}
         >
           {sections.map((it: IArchiveStatisticsSection) => (
             <ListItemButton key={it.id} selected={selected?.id === it.id} onClick={() => setSelectedId(it.id)}>

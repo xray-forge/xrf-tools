@@ -4,6 +4,7 @@ import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveReference } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -42,12 +43,11 @@ export function ArchiveDescriptionReferenceLink({
     <Link
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("align-baseline [font:inherit]", className)}
       component={"button"}
       type={"button"}
       underline={"hover"}
       onClick={onOpenReference}
-      sx={{ font: "inherit", verticalAlign: "baseline" }}
     >
       {reference.name}
     </Link>

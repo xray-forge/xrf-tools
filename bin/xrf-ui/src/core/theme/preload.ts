@@ -1,6 +1,6 @@
 import { createApplicationTheme } from "./creation";
 import { getWashImage } from "./surface";
-import { CODE, DIALOG, LAYOUT, PANEL, RADIUS, TREE } from "./tokens";
+import { CODE, CONTENT_STATE, DIALOG, LAYOUT, MONOSPACE, PANEL, RADIUS, TREE } from "./tokens";
 
 /** Serializes one of MUI's generated style objects, which arrive as selector-keyed rule trees rather than as text. */
 function toCssRules(rule: Record<string, unknown>, selector?: string): string {
@@ -43,6 +43,9 @@ export function getPreloadThemeCss(): string {
       --xrf-reading-label: ${LAYOUT.readingLabelWidth}px;
       --xrf-dialog-padding-x: ${DIALOG.paddingX * 8}px;
       --xrf-panel-line-height: ${PANEL.contentLineHeight};
+      --xrf-panel-property-padding: ${PANEL.propertyPaddingY * 8}px;
+      --xrf-monospace-family: ${MONOSPACE.fontFamily};
+      --xrf-content-state-icon: ${CONTENT_STATE.iconSize}px;
       --preload-title-bar-height: ${LAYOUT.titleBarHeight}px;
       --preload-status-bar-height: ${LAYOUT.statusBarHeight}px;
       --preload-rail-width: ${LAYOUT.railWidth}px;
