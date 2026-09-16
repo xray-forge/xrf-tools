@@ -11,6 +11,8 @@ impl GamedataPlugin {
   pub const NAME: &'static str = crate::ipc::registry::gamedata::NAME;
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    log::info!("Initialize plugin {}", Self::NAME);
+
     tauri::plugin::Builder::new(Self::NAME)
       .invoke_handler(crate::core::logging::warn_on_unhandled_command(
         Self::NAME,

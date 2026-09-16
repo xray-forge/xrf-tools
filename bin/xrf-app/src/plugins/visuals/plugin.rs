@@ -9,6 +9,8 @@ impl VisualsPlugin {
   pub const NAME: &'static str = crate::ipc::registry::visuals::NAME;
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    log::info!("Initialize plugin {}", Self::NAME);
+
     Builder::new(Self::NAME)
       .setup(|application, _| {
         application.manage(VisualState::new());

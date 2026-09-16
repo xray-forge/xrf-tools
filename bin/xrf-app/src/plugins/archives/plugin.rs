@@ -9,6 +9,8 @@ impl ArchivesPlugin {
   pub const NAME: &'static str = crate::ipc::registry::archives::NAME;
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    log::info!("Initialize plugin {}", Self::NAME);
+
     Builder::new(Self::NAME)
       .setup(|application, _| {
         application.manage(ArchiveBrowseState::new("archive browse"));

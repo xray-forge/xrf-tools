@@ -11,6 +11,8 @@ impl SystemPlugin {
   pub const NAME: &'static str = crate::ipc::registry::system::NAME;
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    log::info!("Initialize plugin {}", Self::NAME);
+
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
         application.manage(SystemPathsState::new(application.path().app_local_data_dir().ok()));

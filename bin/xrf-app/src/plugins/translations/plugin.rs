@@ -9,6 +9,8 @@ impl TranslationsPlugin {
   pub const NAME: &'static str = crate::ipc::registry::translations::NAME;
 
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    log::info!("Initialize plugin {}", Self::NAME);
+
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
         application.manage(TranslationProjectState::new());
