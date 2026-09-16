@@ -10,18 +10,12 @@ import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/cor
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-interface IConfigsExplorerOpenFormProps extends BaseComponentProps {
-  /** Called once an open attempt has finished, successfully or not. */
-  onFinished?: () => void;
-}
-
 /**
  * The way into the explorer: name a configs tree, and say which rules resolve it.
  */
 export function ConfigsExplorerOpenForm({
   "data-testid": dataTestId = "configs-explorer-open-form",
-  onFinished,
-}: IConfigsExplorerOpenFormProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -50,9 +44,7 @@ export function ConfigsExplorerOpenForm({
     log.info("Opening configs project:", root.value, dialect);
 
     await projectService.open(root.value, isDltx);
-
-    onFinished?.();
-  }, [dialect, isDltx, log, onFinished, projectService, root.value]);
+  }, [dialect, isDltx, log, projectService, root.value]);
 
   return (
     <PickerForm

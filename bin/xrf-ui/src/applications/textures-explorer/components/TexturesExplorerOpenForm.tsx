@@ -24,7 +24,6 @@ import {
   usePathField,
   useRememberedValue,
 } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -36,18 +35,11 @@ const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> =
   })
 );
 
-interface ITexturesExplorerOpenFormProps extends BaseComponentProps {
-  /**
-   * Called once an open attempt has finished, successfully or not.
-   */
-  onFinished?: () => void;
-}
-
 /**
  * The way into the explorer: browse the game as the engine mounts it, a gamedata tree or a directory of loose
  * textures, or inspect one texture.
  */
-export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFormProps): ReactElement {
+export function TexturesExplorerOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
@@ -112,9 +104,7 @@ export function TexturesExplorerOpenForm({ onFinished }: ITexturesExplorerOpenFo
     }
 
     await mode.open(field.value, { assetRoot: assetRoot.value, catalogService, selectionService });
-
-    onFinished?.();
-  }, [assetRoot.value, catalogService, field.value, log, mode, onFinished, selectionService]);
+  }, [assetRoot.value, catalogService, field.value, log, mode, selectionService]);
 
   return (
     <PickerForm

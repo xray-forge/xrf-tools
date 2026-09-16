@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement } from "react";
 
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
@@ -19,16 +19,12 @@ export function TexturesExplorerApplication({
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const isOpen: boolean = catalogService.isBrowsing || selectionService.selected.value !== null;
 
-  const [isPickerOpen, setPickerOpen] = useState<boolean>(false);
-
-  const onFinished = useCallback(() => setPickerOpen(false), []);
-
   if (!catalogService.isReady) {
     return <ApplicationLoader />;
   }
 
-  if (isPickerOpen || !isOpen) {
-    return <TexturesExplorerOpenForm data-testid={dataTestId} onFinished={onFinished} />;
+  if (!isOpen) {
+    return <TexturesExplorerOpenForm />;
   }
 
   return <TexturesExplorerWorkspace data-testid={dataTestId} />;

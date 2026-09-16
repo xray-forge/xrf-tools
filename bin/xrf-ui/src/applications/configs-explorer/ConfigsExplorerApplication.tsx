@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement } from "react";
 
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
@@ -16,16 +16,12 @@ export function ConfigsExplorerApplication({
 }: BaseComponentProps): ReactElement {
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
 
-  const [isPickerOpen, setPickerOpen] = useState<boolean>(false);
-
-  const onFinished = useCallback(() => setPickerOpen(false), []);
-
   if (!projectService.isReady) {
     return <ApplicationLoader />;
   }
 
-  if (isPickerOpen || !projectService.isOpen) {
-    return <ConfigsExplorerOpenForm data-testid={dataTestId} onFinished={onFinished} />;
+  if (!projectService.isOpen) {
+    return <ConfigsExplorerOpenForm data-testid={dataTestId} />;
   }
 
   return <ConfigsExplorerWorkspace data-testid={dataTestId} />;
