@@ -1,4 +1,4 @@
-import { ArchiveLevelBounds } from "@/core/ipc/types/xrf-app";
+import { ArchiveBounds } from "@/core/ipc/types/xrf-app";
 import { formatNumber } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
@@ -14,7 +14,7 @@ const SPACING_DIGITS: number = 2;
  * @param bounds - Extents the piece declares.
  * @returns The three extents in engine units, which are metres.
  */
-export function formatLevelBounds(bounds: ArchiveLevelBounds): string {
+export function formatLevelBounds(bounds: ArchiveBounds): string {
   const width: string = formatNumber(bounds.width, EXTENT_DIGITS);
   const height: string = formatNumber(bounds.height, EXTENT_DIGITS);
   const depth: string = formatNumber(bounds.depth, EXTENT_DIGITS);

@@ -2,9 +2,9 @@ use serde::Serialize;
 use xrf_db::LevelCformHeader;
 use xrf_error::XrfResult;
 
+use crate::plugins::archives::describe::archive_bounds::ArchiveBounds;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_entry_reader::ArchiveEntryReader;
-use crate::plugins::archives::describe::level::archive_level_bounds::ArchiveLevelBounds;
 
 /// What a level's collision mesh weighs, from the 36 bytes that say so.
 ///
@@ -18,7 +18,7 @@ pub struct ArchiveLevelCollisionDescription {
   pub version: u32,
   pub vertices: u32,
   pub faces: u32,
-  pub bounds: ArchiveLevelBounds,
+  pub bounds: ArchiveBounds,
   pub size: u64,
 }
 
@@ -37,7 +37,7 @@ impl ArchiveLevelCollisionDescription {
       version: header.version,
       vertices: header.vertex_count,
       faces: header.face_count,
-      bounds: ArchiveLevelBounds::of(&header.aabb_min, &header.aabb_max),
+      bounds: ArchiveBounds::of(&header.aabb_min, &header.aabb_max),
       size,
     })
   }

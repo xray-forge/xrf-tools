@@ -53,12 +53,7 @@ export type ArchiveAnimationBehavior =
   /** A value the engine gives no name, kept as the number the file stores. */
   | { kind: "unnamed"; value: number };
 
-/**
- * One animated channel: what it drives, and the keys that drive it.
- *
- * Shared by every format built on `CEnvelope`, which is why it is named for the envelope rather than for a channel
- * of one of them: an object motion's six and a post-process effect's seventeen are described identically.
- */
+/** One animated channel: what it drives, and the keys that drive it. */
 export type ArchiveAnimationChannel = {
   /** What the channel animates, which is its position in the file rather than anything the file names. */
   name: string;
@@ -97,6 +92,18 @@ export type ArchiveAnmDescription = {
   keyedSeconds: number | null;
   /** One entry per channel, in the order the format stores them. */
   channels: Array<ArchiveAnimationChannel>;
+};
+
+/**
+ * How much space something covers, as the extent of the box it declares rather than where that box sits.
+ *
+ * Shared: a level's collision mesh and navigation grid answer it in hundreds of metres and a detail model in
+ * fractions of one, and the question is the same either way.
+ */
+export type ArchiveBounds = {
+  width: number | null;
+  height: number | null;
+  depth: number | null;
 };
 
 /** One chunk of a container, and whatever its payload turned out to hold. */
@@ -159,6 +166,57 @@ export type ArchiveDescribeScope =
   /** Every source a mounted world searches, which is what the engine would search. */
   | { kind: "world" };
 
+/** One object of a level's detail library, and how much of the level it is planted across. */
+export type ArchiveDetailEntry = {
+  /** Position in the library, which is what a slot's six bits address. */
+  index: number;
+  /** Slot corners planting this object across the whole grid. */
+  plantedCorners: number;
+  model: ArchiveDetailModel;
+};
+
+/** Everything the viewer says about a level's detail layer. */
+export type ArchiveDetailLibraryDescription = {
+  version: number;
+  sizeX: number;
+  sizeZ: number;
+  /** Cells the grid holds, which is `size_x * size_z`. */
+  slots: number;
+  /** Cells planting at least one object, which is what says how much of the level is actually dressed. */
+  plantedSlots: number;
+  /** Ground the grid covers along each axis, in engine units, which are metres. */
+  coversX: number | null;
+  coversZ: number | null;
+  /** The library, in the order the file numbers it. */
+  entries: Array<ArchiveDetailEntry>;
+};
+
+/**
+ * Everything the viewer says about one detail object.
+ *
+ * The same description serves a whole `.dm` and one entry of a level's library, because the two are the same
+ * record: `CRender::model_CreateDM` is `CDetail::Load` over the file.
+ */
+export type ArchiveDetailModel = {
+  /**
+   * The blender it draws through, which names a definition inside `shaders.xr` rather than a file, so it crosses as
+   * text and not as a reference.
+   */
+  shader: string;
+  /** The texture it draws with, absent when the object names none. */
+  texture: ArchiveReference | null;
+  minScale: number | null;
+  maxScale: number | null;
+  /** Whether the renderer sways it in the wind, which is `DO_NO_WAVING` being clear rather than set. */
+  isWaving: boolean;
+  /** Bits of the flag word no name here claims. */
+  unnamedFlags: number;
+  vertices: number;
+  triangles: number;
+  /** The box the mesh occupies as authored, before a slot's own scale applies; absent for a model carrying no mesh. */
+  bounds: ArchiveBounds | null;
+};
+
 /** One described entry, and what the lookups behind it searched. */
 export type ArchiveFileDescription = {
   scope: ArchiveDescribeScope;
@@ -170,6 +228,8 @@ export enum EArchiveFormatDescription {
   CHUNKS = "chunks",
   SPAWN = "spawn",
   ANM = "anm",
+  DETAIL = "detail",
+  DETAIL_LIBRARY = "detailLibrary",
   LEVEL = "level",
   LEVEL_AI = "levelAi",
   LEVEL_COLLISION = "levelCollision",
@@ -186,6 +246,8 @@ export type ArchiveFormatDescription =
   | { kind: "chunks"; description: ArchiveChunksDescription }
   | { kind: "spawn"; description: ArchiveSpawnDescription }
   | { kind: "anm"; description: ArchiveAnmDescription }
+  | { kind: "detail"; description: ArchiveDetailModel }
+  | { kind: "detailLibrary"; description: ArchiveDetailLibraryDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "levelAi"; description: ArchiveLevelAiDescription }
   | { kind: "levelCollision"; description: ArchiveLevelCollisionDescription }
@@ -204,17 +266,10 @@ export type ArchiveLevelAiDescription = {
   nodeSize: number | null;
   /** Height one node spans, which is what decides whether a step is walkable. */
   nodeHeight: number | null;
-  bounds: ArchiveLevelBounds;
+  bounds: ArchiveBounds;
   /** Identity the spawn set built against this grid carries as its graph guid. */
   guid: string;
   size: number;
-};
-
-/** How much world a level piece covers, as the extent of the box it declares. */
-export type ArchiveLevelBounds = {
-  width: number | null;
-  height: number | null;
-  depth: number | null;
 };
 
 /** What the bundle holds, taken over the whole of it. */
@@ -250,7 +305,7 @@ export type ArchiveLevelCollisionDescription = {
   version: number;
   vertices: number;
   faces: number;
-  bounds: ArchiveLevelBounds;
+  bounds: ArchiveBounds;
   size: number;
 };
 

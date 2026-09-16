@@ -6,6 +6,7 @@
 
 mod animation;
 mod anm;
+mod archive_bounds;
 mod archive_describe_scope;
 mod archive_describe_source;
 mod archive_described_format;
@@ -14,6 +15,7 @@ mod archive_file_description;
 mod archive_reference;
 mod chunks;
 pub mod commands;
+mod detail;
 mod level;
 mod omf;
 mod particles;

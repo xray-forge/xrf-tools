@@ -5,6 +5,7 @@ use xrf_vfs::XrayLogicalPath;
 use crate::plugins::archives::describe::anm::ArchiveAnmDescription;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
+use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::plugins::archives::describe::level::{
   ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
 };
@@ -20,6 +21,10 @@ use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 pub enum ArchiveDescribedFormat {
   /// An object motion, `.anm` and `.anm1`, which the two spellings of share a format.
   Anm,
+  /// A standalone detail object, `.dm`.
+  Detail,
+  /// A level's detail layer, `level.details`.
+  DetailLibrary,
   /// A level's navigation grid, `level.ai`.
   LevelAi,
   /// A level's collision mesh, `level.cform`.
@@ -43,12 +48,14 @@ pub enum ArchiveDescribedFormat {
 impl ArchiveDescribedFormat {
   /// Files the engine loads by a name of their own rather than by a kind, folded as engine paths.
   ///
-  /// Two different reasons land here. `.xr` says only that a file is a chunked X-Ray library, and six unrelated
-  /// formats share it; `level` has no extension at all. Either way the name the engine loads the file under is the
-  /// whole of the answer. `gamemtl.xr`, `lanims.xr`, `senvironment.xr` and `shaders_xrlc.xr` are absent because
-  /// nothing reads them yet, not because they are anything else.
-  const NAMED: [(&'static str, Self); 3] = [
+  /// Three reasons land here. `.xr` says only that a file is a chunked X-Ray library, and six unrelated formats share
+  /// it; `level` has no extension at all; `.details` is a real format, but vanilla also ships a compiler intermediate
+  /// under it, so only the file called `level.details` is the detail layer. Either way the name the engine loads the
+  /// file under is the whole of the answer. `gamemtl.xr`, `lanims.xr`, `senvironment.xr` and `shaders_xrlc.xr` are
+  /// absent because nothing reads them yet, not because they are anything else.
+  const NAMED: [(&'static str, Self); 4] = [
     ("level", Self::Level),
+    ("level.details", Self::DetailLibrary),
     ("particles.xr", Self::Particles),
     ("shaders.xr", Self::Shaders),
   ];
@@ -59,13 +66,16 @@ impl ArchiveDescribedFormat {
       Some(XrayExtension::Anm | XrayExtension::Anm1) => Some(Self::Anm),
       Some(XrayExtension::Ai) => Some(Self::LevelAi),
       Some(XrayExtension::CForm) => Some(Self::LevelCollision),
+      Some(XrayExtension::Dm) => Some(Self::Detail),
       Some(XrayExtension::Omf) => Some(Self::Omf),
       Some(XrayExtension::Ppe) => Some(Self::Ppe),
       Some(XrayExtension::Spawn) => Some(Self::Spawn),
       Some(XrayExtension::Thm) => Some(Self::Thm),
       // An extension that names a container rather than a format, and a name carrying none at all, ask the same
-      // question: which file is this, by the name the engine loads it under.
-      Some(XrayExtension::Xr) | None => Self::of_named(name),
+      // question: which file is this, by the name the engine loads it under. `.details` is here for the narrower
+      // version of the same reason: vanilla ships one that is a compiler intermediate, so only `level.details` is
+      // the detail layer.
+      Some(XrayExtension::Details | XrayExtension::Xr) | None => Self::of_named(name),
       Some(_) => None,
     }
   }
@@ -84,6 +94,12 @@ impl ArchiveDescribedFormat {
     Ok(match self {
       Self::Anm => Some(ArchiveFormatDescription::Anm {
         description: Box::new(ArchiveAnmDescription::read(source, name)?),
+      }),
+      Self::Detail => Some(ArchiveFormatDescription::Detail {
+        description: Box::new(ArchiveDetailModel::read(source, name)?),
+      }),
+      Self::DetailLibrary => Some(ArchiveFormatDescription::DetailLibrary {
+        description: Box::new(ArchiveDetailLibraryDescription::read(source, name)?),
       }),
       Self::LevelAi => Some(ArchiveFormatDescription::LevelAi {
         description: Box::new(ArchiveLevelAiDescription::read(source, name)?),
@@ -182,6 +198,28 @@ mod tests {
     assert_eq!(
       ArchiveDescribedFormat::of("anims\\BLINK.PPE"),
       Some(ArchiveDescribedFormat::Ppe)
+    );
+  }
+
+  #[test]
+  fn a_detail_layer_is_claimed_by_its_name_and_a_detail_object_by_its_extension() {
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\level.details"),
+      Some(ArchiveDescribedFormat::DetailLibrary)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("meshes\\dm\\rain.dm"),
+      Some(ArchiveDescribedFormat::Detail)
+    );
+  }
+
+  #[test]
+  fn a_file_that_only_shares_the_detail_extension_is_left_to_the_container_walk() {
+    // Vanilla ships `recalculation_data_slots.details` beside a real one, and it is a different format: a four byte
+    // first chunk where a library has a twenty-four byte header. Keying the layer by name is what keeps it out.
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\mp_pripyat\\recalculation_data_slots.details"),
+      None
     );
   }
 

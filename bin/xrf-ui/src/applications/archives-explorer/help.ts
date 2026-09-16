@@ -55,9 +55,9 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "The explorer previews engine text, `dds` images, `ogg` audio, and `ogf` models. Engine text covers configs, " +
       "scripts and every shader stage, so a `gs` or an `hlsl` reads like the `vs` beside it.",
     "A binary file the explorer cannot draw is described in words instead, where a reader for its format exists: " +
-      "`thm` descriptors, `omf` motion banks, `anm` object motions, `ppe` post-process effects, `particles.xr`, " +
-      "`shaders.xr`, a compiled `level` and a spawn set. A description names the files it refers to, and a name the " +
-      "open subject holds selects it in the tree.",
+      "`thm` descriptors, `omf` motion banks, `anm` object motions, `ppe` post-process effects, `dm` detail objects, " +
+      "`particles.xr`, `shaders.xr`, a compiled `level` and a spawn set. A description names the files it refers to, " +
+      "and a name the open subject holds selects it in the tree.",
     "An `anm` is a camera or object path over six channels, and is described by what the engine would play: the " +
       "frame range counts both its ends, so a range of 0 to 59 runs for 60 frames. Where the keys reach past that " +
       "range, or stop short of it, the description says so - 101 of the shipped animations do one or the other.",
@@ -68,6 +68,11 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "A spawn set is summarised from its header alone: how many objects over how many levels, and what each section " +
       "of the file weighs. Its objects are not read - vanilla's set is 6,464 of them behind a game graph that is most " +
       "of a 29 MB file.",
+    "A `level.details` is the grass and litter layer, and it is described by what it plants: how many of the grid's " +
+      "slots carry anything, how much ground that grid covers, and what each object in the library draws with. A " +
+      "`dm` is one of those objects as a file of its own, so the two read the same. A slot addresses an object with " +
+      "six bits, which is why a library holds at most 63 of them, and plants up to four a slot - so an object's " +
+      "count is of corners rather than of slots.",
     "A `level.cform` and a `level.ai` are summarised from their leading header: how many faces the collision mesh " +
       "holds, how many nodes the navigation grid does, and how much world each covers. Neither payload is read, " +
       "which is why a 191 MB collision mesh opens at all.",

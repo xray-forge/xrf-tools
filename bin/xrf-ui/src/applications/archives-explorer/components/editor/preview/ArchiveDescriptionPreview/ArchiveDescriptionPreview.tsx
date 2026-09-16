@@ -20,6 +20,8 @@ import { Nullable } from "@/lib/types/general";
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
+import { ArchiveDetailDescriptionView } from "./ArchiveDetailDescriptionView";
+import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescriptionView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
@@ -105,6 +107,27 @@ export function ArchiveDescriptionPreview({
     case EArchiveFormatDescription.CHUNKS:
       return (
         <ArchiveChunksDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.DETAIL:
+      return (
+        <ArchiveDetailDescriptionView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.DETAIL_LIBRARY:
+      return (
+        <ArchiveDetailLibraryDescriptionView
           data-testid={dataTestId}
           id={id}
           className={className}

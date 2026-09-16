@@ -3,6 +3,9 @@ import {
   ArchiveAnmDescription,
   ArchiveChunksDescription,
   ArchiveDescribeScope,
+  ArchiveDetailEntry,
+  ArchiveDetailLibraryDescription,
+  ArchiveDetailModel,
   ArchiveFileDescription,
   ArchiveFormatDescription,
   ArchiveLevelAiDescription,
@@ -45,6 +48,7 @@ import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { EXrayAssetContainer, EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * Creates the complete result of a packing run.
@@ -691,6 +695,84 @@ export function mockArchivePpeDescription(overrides: Partial<ArchivePpeDescripti
       influence: mockArchiveAnimationChannel("colour map influence", { keys: 1, firstSeconds: 0, lastSeconds: 0 }),
       isUsed: true,
     },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one detail object: a swaying mesh drawn with a texture the open subject holds.
+ *
+ * @param texture - Engine path of the texture it draws with, or null for an object naming none.
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about one detail object.
+ */
+export function mockArchiveDetailModel(
+  texture: Nullable<string> = "detail\\detail_grass",
+  overrides: Partial<ArchiveDetailModel> = {}
+): ArchiveDetailModel {
+  return {
+    shader: "details\\blend",
+    texture: texture ? mockArchiveReference({ name: texture, path: `textures\\${texture}.dds` }) : null,
+    minScale: 0.5,
+    maxScale: 1.5,
+    isWaving: true,
+    unnamedFlags: 0,
+    vertices: 24,
+    triangles: 12,
+    bounds: { width: 0.35, height: 0.6, depth: 0.35 },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one entry of a level's detail library.
+ *
+ * @param index - Position in the library, which is what a slot addresses.
+ * @param overrides - Field values to override.
+ * @returns One library entry, as a description carries it.
+ */
+export function mockArchiveDetailEntry(
+  index: number = 0,
+  overrides: Partial<ArchiveDetailEntry> = {}
+): ArchiveDetailEntry {
+  return {
+    index,
+    plantedCorners: 4820,
+    model: mockArchiveDetailModel(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a detail layer description: a 351 by 351 grid planted across most of itself, from three objects.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a level's detail layer.
+ */
+export function mockArchiveDetailLibraryDescription(
+  overrides: Partial<ArchiveDetailLibraryDescription> = {}
+): ArchiveDetailLibraryDescription {
+  return {
+    version: 3,
+    sizeX: 351,
+    sizeZ: 351,
+    slots: 123_201,
+    plantedSlots: 87_842,
+    coversX: 702,
+    coversZ: 702,
+    entries: [
+      mockArchiveDetailEntry(0),
+      mockArchiveDetailEntry(1, {
+        plantedCorners: 0,
+        model: mockArchiveDetailModel("detail\\detail_stone", {
+          isWaving: false,
+          bounds: null,
+          vertices: 0,
+          triangles: 0,
+        }),
+      }),
+      mockArchiveDetailEntry(2, { plantedCorners: 1, model: mockArchiveDetailModel(null) }),
+    ],
     ...overrides,
   };
 }

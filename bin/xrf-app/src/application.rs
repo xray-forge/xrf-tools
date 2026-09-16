@@ -23,6 +23,8 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init());
 
+  log::info!("Registering domain plugins");
+
   let builder: Builder<Wry> = domain_plugins()
     .into_iter()
     .fold(builder, Builder::plugin)
@@ -70,6 +72,8 @@ fn build_main_window(application: &mut App) -> Result<(), Box<dyn Error>> {
   WebviewWindowBuilder::from_config(application.handle(), window)?
     .with_dev_extensions()
     .build()?;
+
+  log::info!("Built main window");
 
   Ok(())
 }

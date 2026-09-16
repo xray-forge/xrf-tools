@@ -8,6 +8,7 @@ use crate::plugins::archives::describe::archive_describe_scope::ArchiveDescribeS
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
 use crate::plugins::archives::describe::chunks::ArchiveChunksDescription;
+use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::plugins::archives::describe::level::{
   ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
 };
@@ -34,6 +35,12 @@ pub enum ArchiveFormatDescription {
   },
   Anm {
     description: Box<ArchiveAnmDescription>,
+  },
+  Detail {
+    description: Box<ArchiveDetailModel>,
+  },
+  DetailLibrary {
+    description: Box<ArchiveDetailLibraryDescription>,
   },
   Level {
     description: Box<ArchiveLevelDescription>,
