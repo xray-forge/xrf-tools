@@ -71,6 +71,7 @@ describe("archive overrides dialog", () => {
       ["plugin:archives|describe_statistics"]: mockStatistics(),
       ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject([PATCHED, TEXTURE])),
       ["plugin:archives|list_overrides"]: { overridden: [PATCHED, TEXTURE], unreachable: [] },
+      ["plugin:archives|read_file"]: { name: PATCHED.name, content: "[system]", size: PATCHED.sizeReal },
     });
   });
 

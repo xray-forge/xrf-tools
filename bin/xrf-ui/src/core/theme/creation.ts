@@ -35,6 +35,8 @@ declare module "@mui/material/styles" {
   interface TypeAction {
     /** What the editor has open, as opposed to where the keyboard stands. */
     current: string;
+    /** Authored rather than derived, see {@link toChannel}. Optional: MUI derives it when it is absent. */
+    selectedChannel?: string;
   }
 }
 
@@ -47,6 +49,18 @@ const SHADOW_OVERLAY: string = "var(--xrf-shadow-overlay)";
 /** A neutral state scrim, translucent so it composites over whichever level hosts it. */
 function toScrim(scheme: ColorScheme, share: number): string {
   return `color-mix(in srgb, ${STATE_TONE[scheme]} ${toSharePercent(share)}, transparent)`;
+}
+
+/**
+ * Splits an opaque `#rrggbb` tone into the channels a MUI `<key>Channel` token carries.
+ *
+ * @param tone - Opaque colour in `#rrggbb` form.
+ * @returns The tone's red, green, and blue channels, space separated.
+ */
+function toChannel(tone: string): string {
+  const value: number = Number.parseInt(tone.slice(1), 16);
+
+  return `${(value >> 16) & 0xff} ${(value >> 8) & 0xff} ${value & 0xff}`;
 }
 
 /**
@@ -69,12 +83,6 @@ function createColorSchemePalette(scheme: ColorScheme): PaletteOptions {
     },
     text: { primary: TEXT.primary[scheme], secondary: TEXT.secondary[scheme] },
     divider: DIVIDER[scheme],
-    // Translucent throughout, so a state composites over whichever level hosts it and inherits that level's wash.
-    //
-    // The `*Opacity` half is not decoration. MUI's own components never read the colours above: `ListItemButton`,
-    // `ToggleButton`, `MenuItem`, `Chip`, `Button`, `IconButton` and `TableRow` all compute
-    // `alpha(<some colour>, action.<state>Opacity)` instead. Leaving those at MUI's stock values is what left a 4%
-    // black hover invisible on a light plane while the themed colours looked correct in the palette.
     action: {
       hover: toScrim(scheme, STATE.hover[scheme]),
       hoverOpacity: STATE.hover[scheme],
@@ -84,6 +92,7 @@ function createColorSchemePalette(scheme: ColorScheme): PaletteOptions {
       activatedOpacity: STATE.current[scheme],
       selected: toScrim(scheme, STATE.selected[scheme]),
       selectedOpacity: STATE.accentSelected[scheme],
+      selectedChannel: toChannel(STATE_TONE[scheme]),
       disabledOpacity: STATE.disabledOpacity,
     },
   };
