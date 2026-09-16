@@ -60,6 +60,21 @@ export function EditorPopoverAction({
         icon={icon}
         isActive={isActive}
         isDisabled={isDisabled}
+        // Says there is something behind this one, which is a kind rather than a state.
+        sx={{
+          position: "relative",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            right: 2,
+            bottom: 2,
+            width: 0,
+            height: 0,
+            borderLeft: "4px solid transparent",
+            borderBottom: "4px solid currentColor",
+            opacity: 0.7,
+          },
+        }}
         onClick={onOpen}
       />
 
