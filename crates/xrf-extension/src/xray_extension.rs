@@ -146,6 +146,8 @@ declare_xray_extensions! {
   /// Named the way `s_` is, beside `seq` in the same trees.
   Seq_ => "seq_",
   SndStatic => "snd_static",
+  /// A level's sound occlusion mesh, which sits beside `hom` and was missing from this list.
+  Som => "som",
   Spawn => "spawn",
   Tga => "tga",
   Thm => "thm",

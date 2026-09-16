@@ -9,8 +9,12 @@ use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribe
 use crate::plugins::archives::describe::archive_described_format::ArchiveDescribedFormat;
 use crate::plugins::archives::describe::chunks::ArchiveChunksDescription;
 use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
+use crate::plugins::archives::describe::efd::ArchiveEfdDescription;
 use crate::plugins::archives::describe::level::{
-  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
+  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
+  ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelHomDescription,
+  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
+  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
 };
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
@@ -41,6 +45,36 @@ pub enum ArchiveFormatDescription {
   },
   DetailLibrary {
     description: Box<ArchiveDetailLibraryDescription>,
+  },
+  LevelEnvMod {
+    description: Box<ArchiveLevelEnvModDescription>,
+  },
+  LevelFogVol {
+    description: Box<ArchiveLevelFogVolDescription>,
+  },
+  LevelGame {
+    description: Box<ArchiveLevelGameDescription>,
+  },
+  LevelHom {
+    description: Box<ArchiveLevelHomDescription>,
+  },
+  LevelLights {
+    description: Box<ArchiveLevelLightsDescription>,
+  },
+  LevelPsStatic {
+    description: Box<ArchiveLevelPsStaticDescription>,
+  },
+  LevelSndStatic {
+    description: Box<ArchiveLevelSndStaticDescription>,
+  },
+  LevelSom {
+    description: Box<ArchiveLevelSomDescription>,
+  },
+  LevelWallmarks {
+    description: Box<ArchiveLevelWallmarksDescription>,
+  },
+  Efd {
+    description: Box<ArchiveEfdDescription>,
   },
   Level {
     description: Box<ArchiveLevelDescription>,

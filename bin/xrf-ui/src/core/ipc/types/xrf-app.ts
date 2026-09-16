@@ -94,12 +94,7 @@ export type ArchiveAnmDescription = {
   channels: Array<ArchiveAnimationChannel>;
 };
 
-/**
- * How much space something covers, as the extent of the box it declares rather than where that box sits.
- *
- * Shared: a level's collision mesh and navigation grid answer it in hundreds of metres and a detail model in
- * fractions of one, and the question is the same either way.
- */
+/** How much space something covers, as the extent of the box it declares rather than where that box sits. */
 export type ArchiveBounds = {
   width: number | null;
   height: number | null;
@@ -191,12 +186,7 @@ export type ArchiveDetailLibraryDescription = {
   entries: Array<ArchiveDetailEntry>;
 };
 
-/**
- * Everything the viewer says about one detail object.
- *
- * The same description serves a whole `.dm` and one entry of a level's library, because the two are the same
- * record: `CRender::model_CreateDM` is `CDetail::Load` over the file.
- */
+/** Everything the viewer says about one detail object. */
 export type ArchiveDetailModel = {
   /**
    * The blender it draws through, which names a definition inside `shaders.xr` rather than a file, so it crosses as
@@ -217,6 +207,31 @@ export type ArchiveDetailModel = {
   bounds: ArchiveBounds | null;
 };
 
+/** Everything the viewer says about one trained evaluation function. */
+export type ArchiveEfdDescription = {
+  builderVersion: number;
+  dataFormat: number;
+  /** Which base function this one registers itself as. */
+  functionType: number;
+  minimumResult: number | null;
+  maximumResult: number | null;
+  /** Discrete buckets each input is divided into, in the order the function declares them. */
+  variableRanges: Array<number>;
+  /** The base function each input reads its value from. */
+  variableKinds: Array<number>;
+  patterns: Array<ArchiveEfdPattern>;
+  /** Weights the table holds, which the file never stores and the patterns alone decide. */
+  weights: number;
+};
+
+/** One term of an evaluation function, as the viewer reads it. */
+export type ArchiveEfdPattern = {
+  /** Inputs the term reads, by their positions in the function's own variable list. */
+  variables: Array<number>;
+  /** Weights the term claims, which is the product of its inputs' ranges and a number the file never stores. */
+  weights: number | null;
+};
+
 /** One described entry, and what the lookups behind it searched. */
 export type ArchiveFileDescription = {
   scope: ArchiveDescribeScope;
@@ -230,6 +245,16 @@ export enum EArchiveFormatDescription {
   ANM = "anm",
   DETAIL = "detail",
   DETAIL_LIBRARY = "detailLibrary",
+  LEVEL_ENV_MOD = "levelEnvMod",
+  LEVEL_FOG_VOL = "levelFogVol",
+  LEVEL_GAME = "levelGame",
+  LEVEL_HOM = "levelHom",
+  LEVEL_LIGHTS = "levelLights",
+  LEVEL_PS_STATIC = "levelPsStatic",
+  LEVEL_SND_STATIC = "levelSndStatic",
+  LEVEL_SOM = "levelSom",
+  LEVEL_WALLMARKS = "levelWallmarks",
+  EFD = "efd",
   LEVEL = "level",
   LEVEL_AI = "levelAi",
   LEVEL_COLLISION = "levelCollision",
@@ -248,6 +273,16 @@ export type ArchiveFormatDescription =
   | { kind: "anm"; description: ArchiveAnmDescription }
   | { kind: "detail"; description: ArchiveDetailModel }
   | { kind: "detailLibrary"; description: ArchiveDetailLibraryDescription }
+  | { kind: "levelEnvMod"; description: ArchiveLevelEnvModDescription }
+  | { kind: "levelFogVol"; description: ArchiveLevelFogVolDescription }
+  | { kind: "levelGame"; description: ArchiveLevelGameDescription }
+  | { kind: "levelHom"; description: ArchiveLevelHomDescription }
+  | { kind: "levelLights"; description: ArchiveLevelLightsDescription }
+  | { kind: "levelPsStatic"; description: ArchiveLevelPsStaticDescription }
+  | { kind: "levelSndStatic"; description: ArchiveLevelSndStaticDescription }
+  | { kind: "levelSom"; description: ArchiveLevelSomDescription }
+  | { kind: "levelWallmarks"; description: ArchiveLevelWallmarksDescription }
+  | { kind: "efd"; description: ArchiveEfdDescription }
   | { kind: "level"; description: ArchiveLevelDescription }
   | { kind: "levelAi"; description: ArchiveLevelAiDescription }
   | { kind: "levelCollision"; description: ArchiveLevelCollisionDescription }
@@ -328,16 +363,195 @@ export type ArchiveLevelEntry =
   | { kind: "unusable"; raw: string }
   | { kind: "drawn"; shader: ArchiveLevelShader; textures: Array<ArchiveReference> };
 
+/** Everything the viewer says about a level's local weather overrides. */
+export type ArchiveLevelEnvModDescription = {
+  version: number;
+  modifiers: Array<ArchiveLevelEnvModifier>;
+};
+
+/** One local weather override of a level, as the viewer reads it. */
+export type ArchiveLevelEnvModifier = {
+  /** How far the override reaches, falling off linearly to that edge. */
+  radius: number | null;
+  /** How much of itself it mixes in at the centre. */
+  power: number | null;
+  farPlane: number | null;
+  fogDensity: number | null;
+  /**
+   * Which of its values the engine mixes in, named. A file below version `0x0016` carries no flag word and the
+   * engine mixes in all of them, which is what `use_flags.one()` does before the read.
+   */
+  usedParameters: Array<string>;
+  /** Whether the file said which values to use, rather than the reader assuming all of them. */
+  declaresParameters: boolean;
+};
+
+/** Everything the viewer says about a level's volumetric fog. */
+export type ArchiveLevelFogVolDescription = {
+  version: number;
+  volumes: Array<ArchiveLevelFogVolume>;
+  /** Obstacles across every body. */
+  obstacles: number;
+};
+
+/** One volumetric fog body of a level, as the viewer reads it. */
+export type ArchiveLevelFogVolume = {
+  /**
+   * The config its simulation settings come from, which is an LTX under `$game_config$` rather than anything the
+   * file itself holds. Absent where the body names none.
+   */
+  profile: ArchiveReference | null;
+  /** Bodies the simulation flows around. */
+  obstacles: number;
+};
+
+/** Everything the viewer says about a level's game data. */
+export type ArchiveLevelGameDescription = {
+  /** Respawn points, grouped by what they spawn. */
+  spawns: Array<ArchiveLevelGameSpawn>;
+  rpoints: number;
+  ways: number;
+  /** Nodes across every patrol path. */
+  wayPoints: number;
+  /** Paths carrying no nodes at all, which are a path in name only. */
+  emptyWays: number;
+};
+
+/** One kind of respawn point a level declares, and how many of them there are. */
+export type ArchiveLevelGameSpawn = {
+  /** What the points spawn, named where the engine names the kind. */
+  label: string | null;
+  /** The stored kind, kept because a file may carry one the engine gives no name. */
+  kind: number;
+  points: number;
+  /** Points of this kind naming a spawn preset, which only item points do. */
+  profiled: number;
+};
+
+/** Everything the viewer says about a level's occlusion mesh. */
+export type ArchiveLevelHomDescription = {
+  version: number;
+  triangles: number;
+  /** How much world the occluders span, absent for a mesh carrying none. */
+  bounds: ArchiveBounds | null;
+};
+
+/** Everything the viewer says about a level's compiled lights. */
+export type ArchiveLevelLightsDescription = {
+  lights: number;
+  /** Lights the runtime turns into light sources, which are the point ones of the chunk it opens. */
+  used: number;
+  /** Every chunk, including any the compiler wrote that is not a run of lights. */
+  groups: Array<ArchiveLevelLightsGroup>;
+  /** How much world the lights stand in, absent for a file carrying none. */
+  bounds: ArchiveBounds | null;
+};
+
+/** One chunk of a level's compiled light list, as the viewer reads it. */
+export type ArchiveLevelLightsGroup = {
+  /** The chunk id the compiler wrote the run under. */
+  id: number;
+  lights: number;
+  /** Lights the runtime would make a light source of, which are the point ones. */
+  point: number;
+  /** Whether the engine opens this chunk at all: `CLight_DB::LoadHemi` takes `fsL_HEADER` and ignores the rest. */
+  isReadByEngine: boolean;
+  /** Whether the payload was a run of lights at all, rather than something kept verbatim. */
+  isLights: boolean;
+};
+
+/** Everything the viewer says about the particle effects a level plants. */
+export type ArchiveLevelPsStaticDescription = {
+  version: number;
+  placements: number;
+  /** Placements only some multiplayer modes load, which a single-player session never plays. */
+  restricted: number;
+  /** The effects planted, grouped by name. */
+  effects: Array<ArchiveLevelPsStaticEffect>;
+};
+
+/** One particle effect a level plants, and how widely. */
+export type ArchiveLevelPsStaticEffect = {
+  /** The effect played, which names a definition inside `particles.xr` rather than a file, so it crosses as text. */
+  name: string;
+  placements: number;
+  /** Placements of this effect that only some multiplayer modes load, which a single-player session never plays. */
+  restricted: number;
+};
+
 /** The blender a surface draws with, and whether the subject being browsed defines it. */
 export type ArchiveLevelShader = {
   name: string;
   status: ArchiveReferenceStatus;
 };
 
+/** Everything the viewer says about the sounds a level plants. */
+export type ArchiveLevelSndStaticDescription = {
+  /** Sounds that only play inside a window of the day. */
+  scheduled: number;
+  sounds: Array<ArchiveLevelSndStaticSound>;
+};
+
+/** One sound a level plants, as the viewer reads it. */
+export type ArchiveLevelSndStaticSound = {
+  /** The sound played, which does name a file. Absent where the record names none. */
+  sound: ArchiveReference | null;
+  volume: number | null;
+  frequency: number | null;
+  /**
+   * Whether the sound only plays inside a window of the day, which four of the 670 shipped ones do. A pair of
+   * zeroes is no window at all rather than a window of no length.
+   */
+  isScheduled: boolean;
+  activeFrom: number;
+  activeTo: number;
+};
+
+/** Everything the viewer says about a level's sound occlusion mesh. */
+export type ArchiveLevelSomDescription = {
+  version: number;
+  triangles: number;
+  /** Triangles that occlude from both sides, which the loader turns into a second, reversed face each. */
+  twoSided: number;
+  /** Faces the sound renderer ends up with, which is more than the triangle count wherever one is two-sided. */
+  faces: number;
+  /** How much sound the quietest and loudest faces let through, absent for a mesh carrying none. */
+  minimumOcclusion: number | null;
+  maximumOcclusion: number | null;
+  /** How much world the occluders span, absent for a mesh carrying none. */
+  bounds: ArchiveBounds | null;
+};
+
 /** One row of the level's shader table. */
 export type ArchiveLevelSurface = {
   index: number;
   entry: ArchiveLevelEntry;
+};
+
+/** One material of a level's baked decals, as the viewer reads it. */
+export type ArchiveLevelWallmarkSlot = {
+  /** The blender the decals draw through, which names a definition inside `shaders.xr` rather than a file. */
+  shader: string;
+  /**
+   * The texture they draw with, which does name a file. Absent for a slot holding nothing, because the exporter
+   * writes no names for one.
+   */
+  texture: ArchiveReference | null;
+  marks: number;
+  /** Vertices across the slot's decals, which is what it costs to draw. */
+  vertices: number;
+};
+
+/**
+ * Everything the viewer says about a level's baked decals.
+ *
+ * Authored by the level editor and read by nothing in the runtime, which places its own wallmarks at play time.
+ */
+export type ArchiveLevelWallmarksDescription = {
+  slots: Array<ArchiveLevelWallmarkSlot>;
+  marks: number;
+  /** Vertices across every decal, which is what the layer costs to draw. */
+  vertices: number;
 };
 
 /** What a bank holds, taken over the whole of it. */

@@ -16,6 +16,7 @@ mod archive_reference;
 mod chunks;
 pub mod commands;
 mod detail;
+mod efd;
 mod level;
 mod omf;
 mod particles;

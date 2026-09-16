@@ -6,8 +6,12 @@ use crate::plugins::archives::describe::anm::ArchiveAnmDescription;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
 use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
+use crate::plugins::archives::describe::efd::ArchiveEfdDescription;
 use crate::plugins::archives::describe::level::{
-  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription,
+  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
+  ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelHomDescription,
+  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
+  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
 };
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
@@ -25,6 +29,26 @@ pub enum ArchiveDescribedFormat {
   Detail,
   /// A level's detail layer, `level.details`.
   DetailLibrary,
+  /// A trained evaluation function, `.efd`.
+  Efd,
+  /// A level's local weather overrides, `level.env_mod`.
+  LevelEnvMod,
+  /// A level's volumetric fog, `level.fog_vol`.
+  LevelFogVol,
+  /// A level's respawn points and patrol paths, `level.game`.
+  LevelGame,
+  /// A level's occlusion mesh, `level.hom`.
+  LevelHom,
+  /// A level's compiled lights, `build.lights`.
+  LevelLights,
+  /// The particle effects a level plants, `level.ps_static`.
+  LevelPsStatic,
+  /// The sounds a level plants, `level.snd_static`.
+  LevelSndStatic,
+  /// A level's sound occlusion mesh, `level.som`.
+  LevelSom,
+  /// A level's baked decals, `level.wallmarks`.
+  LevelWallmarks,
   /// A level's navigation grid, `level.ai`.
   LevelAi,
   /// A level's collision mesh, `level.cform`.
@@ -64,6 +88,16 @@ impl ArchiveDescribedFormat {
   pub fn of(name: &str) -> Option<Self> {
     match XrayExtensionOf::of(name).known() {
       Some(XrayExtension::Anm | XrayExtension::Anm1) => Some(Self::Anm),
+      Some(XrayExtension::EnvMod) => Some(Self::LevelEnvMod),
+      Some(XrayExtension::FogVol) => Some(Self::LevelFogVol),
+      Some(XrayExtension::Game) => Some(Self::LevelGame),
+      Some(XrayExtension::Hom) => Some(Self::LevelHom),
+      Some(XrayExtension::Lights) => Some(Self::LevelLights),
+      Some(XrayExtension::PsStatic) => Some(Self::LevelPsStatic),
+      Some(XrayExtension::SndStatic) => Some(Self::LevelSndStatic),
+      Some(XrayExtension::Som) => Some(Self::LevelSom),
+      Some(XrayExtension::Wallmarks) => Some(Self::LevelWallmarks),
+      Some(XrayExtension::Efd) => Some(Self::Efd),
       Some(XrayExtension::Ai) => Some(Self::LevelAi),
       Some(XrayExtension::CForm) => Some(Self::LevelCollision),
       Some(XrayExtension::Dm) => Some(Self::Detail),
@@ -100,6 +134,36 @@ impl ArchiveDescribedFormat {
       }),
       Self::DetailLibrary => Some(ArchiveFormatDescription::DetailLibrary {
         description: Box::new(ArchiveDetailLibraryDescription::read(source, name)?),
+      }),
+      Self::LevelEnvMod => Some(ArchiveFormatDescription::LevelEnvMod {
+        description: Box::new(ArchiveLevelEnvModDescription::read(source, name)?),
+      }),
+      Self::LevelFogVol => Some(ArchiveFormatDescription::LevelFogVol {
+        description: Box::new(ArchiveLevelFogVolDescription::read(source, name)?),
+      }),
+      Self::LevelGame => Some(ArchiveFormatDescription::LevelGame {
+        description: Box::new(ArchiveLevelGameDescription::read(source, name)?),
+      }),
+      Self::LevelHom => Some(ArchiveFormatDescription::LevelHom {
+        description: Box::new(ArchiveLevelHomDescription::read(source, name)?),
+      }),
+      Self::LevelLights => Some(ArchiveFormatDescription::LevelLights {
+        description: Box::new(ArchiveLevelLightsDescription::read(source, name)?),
+      }),
+      Self::LevelPsStatic => Some(ArchiveFormatDescription::LevelPsStatic {
+        description: Box::new(ArchiveLevelPsStaticDescription::read(source, name)?),
+      }),
+      Self::LevelSndStatic => Some(ArchiveFormatDescription::LevelSndStatic {
+        description: Box::new(ArchiveLevelSndStaticDescription::read(source, name)?),
+      }),
+      Self::LevelSom => Some(ArchiveFormatDescription::LevelSom {
+        description: Box::new(ArchiveLevelSomDescription::read(source, name)?),
+      }),
+      Self::LevelWallmarks => Some(ArchiveFormatDescription::LevelWallmarks {
+        description: Box::new(ArchiveLevelWallmarksDescription::read(source, name)?),
+      }),
+      Self::Efd => Some(ArchiveFormatDescription::Efd {
+        description: Box::new(ArchiveEfdDescription::read(source, name)?),
       }),
       Self::LevelAi => Some(ArchiveFormatDescription::LevelAi {
         description: Box::new(ArchiveLevelAiDescription::read(source, name)?),
@@ -220,6 +284,66 @@ mod tests {
     assert_eq!(
       ArchiveDescribedFormat::of("levels\\mp_pripyat\\recalculation_data_slots.details"),
       None
+    );
+  }
+
+  #[test]
+  fn every_level_companion_is_claimed_by_its_extension() {
+    for (name, expected) in [
+      ("levels\\l01_escape\\level.hom", ArchiveDescribedFormat::LevelHom),
+      ("levels\\l01_escape\\level.som", ArchiveDescribedFormat::LevelSom),
+      ("levels\\l01_escape\\level.env_mod", ArchiveDescribedFormat::LevelEnvMod),
+      ("levels\\l01_escape\\level.fog_vol", ArchiveDescribedFormat::LevelFogVol),
+      (
+        "levels\\l01_escape\\level.ps_static",
+        ArchiveDescribedFormat::LevelPsStatic,
+      ),
+      (
+        "levels\\l01_escape\\level.snd_static",
+        ArchiveDescribedFormat::LevelSndStatic,
+      ),
+      ("levels\\l01_escape\\level.game", ArchiveDescribedFormat::LevelGame),
+      (
+        "levels\\l01_escape\\level.wallmarks",
+        ArchiveDescribedFormat::LevelWallmarks,
+      ),
+    ] {
+      assert_eq!(
+        ArchiveDescribedFormat::of(name),
+        Some(expected),
+        "'{name}' is a level companion"
+      );
+    }
+  }
+
+  #[test]
+  fn a_companion_the_compiler_names_for_itself_is_still_claimed() {
+    // The light list is `build.lights`, not `level.lights`, and the two atmosphere files also ship disabled under a
+    // renamed stem. Keying by extension claims all three where keying by file name would miss them.
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\build.lights"),
+      Some(ArchiveDescribedFormat::LevelLights)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\_disabled_level.env_mod"),
+      Some(ArchiveDescribedFormat::LevelEnvMod)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\_disabled_level.fog_vol"),
+      Some(ArchiveDescribedFormat::LevelFogVol)
+    );
+  }
+
+  #[test]
+  fn an_evaluation_function_is_claimed_wherever_it_sits() {
+    // Unlike the companions these carry no shared stem at all: every one is named for what it evaluates.
+    assert_eq!(
+      ArchiveDescribedFormat::of("common\\WeaponEffectiveness.efd"),
+      Some(ArchiveDescribedFormat::Efd)
+    );
+    assert_eq!(
+      ArchiveDescribedFormat::of("common\\birthpercentage.EFD"),
+      Some(ArchiveDescribedFormat::Efd)
     );
   }
 

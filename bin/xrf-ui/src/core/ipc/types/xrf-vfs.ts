@@ -63,6 +63,7 @@ export enum EXrayAssetType {
   PPE = "ppe",
   PS_STATIC = "psStatic",
   SND_STATIC = "sndStatic",
+  SOM = "som",
   SCRIPT = "script",
   SEQ = "seq",
   SHADER = "shader",
