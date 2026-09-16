@@ -20,11 +20,19 @@ import { Nullable } from "@/lib/types/general";
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";
 import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
-import { ArchiveDescriptionPendingView } from "./ArchiveDescriptionPendingView";
 import { ArchiveDetailDescriptionView } from "./ArchiveDetailDescriptionView";
 import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescriptionView";
+import { ArchiveEfdView } from "./ArchiveEfdView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
+import { ArchiveLevelEnvModView } from "./ArchiveLevelEnvModView";
+import { ArchiveLevelFogVolView } from "./ArchiveLevelFogVolView";
+import { ArchiveLevelGameView } from "./ArchiveLevelGameView";
+import { ArchiveLevelLightsView } from "./ArchiveLevelLightsView";
+import { ArchiveLevelHomView, ArchiveLevelSomView } from "./ArchiveLevelOcclusionView";
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
+import { ArchiveLevelPsStaticView } from "./ArchiveLevelPsStaticView";
+import { ArchiveLevelSndStaticView } from "./ArchiveLevelSndStaticView";
+import { ArchiveLevelWallmarksView } from "./ArchiveLevelWallmarksView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
 import { ArchivePpeDescriptionView } from "./ArchivePpeDescriptionView";
@@ -137,21 +145,12 @@ export function ArchiveDescriptionPreview({
       );
 
     case EArchiveFormatDescription.EFD:
-    case EArchiveFormatDescription.LEVEL_ENV_MOD:
-    case EArchiveFormatDescription.LEVEL_FOG_VOL:
-    case EArchiveFormatDescription.LEVEL_GAME:
-    case EArchiveFormatDescription.LEVEL_HOM:
-    case EArchiveFormatDescription.LEVEL_LIGHTS:
-    case EArchiveFormatDescription.LEVEL_PS_STATIC:
-    case EArchiveFormatDescription.LEVEL_SND_STATIC:
-    case EArchiveFormatDescription.LEVEL_SOM:
-    case EArchiveFormatDescription.LEVEL_WALLMARKS:
       return (
-        <ArchiveDescriptionPendingView
+        <ArchiveEfdView
           data-testid={dataTestId}
           id={id}
           className={className}
-          kind={description.format.kind}
+          description={description.format.description}
         />
       );
 
@@ -183,6 +182,99 @@ export function ArchiveDescriptionPreview({
           id={id}
           className={className}
           description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_ENV_MOD:
+      return (
+        <ArchiveLevelEnvModView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_FOG_VOL:
+      return (
+        <ArchiveLevelFogVolView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_GAME:
+      return (
+        <ArchiveLevelGameView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_HOM:
+      return (
+        <ArchiveLevelHomView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_LIGHTS:
+      return (
+        <ArchiveLevelLightsView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_PS_STATIC:
+      return (
+        <ArchiveLevelPsStaticView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_SND_STATIC:
+      return (
+        <ArchiveLevelSndStaticView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_SOM:
+      return (
+        <ArchiveLevelSomView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_WALLMARKS:
+      return (
+        <ArchiveLevelWallmarksView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+          scope={description.scope}
         />
       );
 

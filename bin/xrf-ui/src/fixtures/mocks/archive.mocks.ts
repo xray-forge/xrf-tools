@@ -6,12 +6,24 @@ import {
   ArchiveDetailEntry,
   ArchiveDetailLibraryDescription,
   ArchiveDetailModel,
+  ArchiveEfdDescription,
   ArchiveFileDescription,
   ArchiveFormatDescription,
   ArchiveLevelAiDescription,
   ArchiveLevelCollisionDescription,
   ArchiveLevelDescription,
+  ArchiveLevelEnvModDescription,
+  ArchiveLevelEnvModifier,
+  ArchiveLevelFogVolDescription,
+  ArchiveLevelGameDescription,
+  ArchiveLevelHomDescription,
+  ArchiveLevelLightsDescription,
+  ArchiveLevelPsStaticDescription,
+  ArchiveLevelSndStaticDescription,
+  ArchiveLevelSndStaticSound,
+  ArchiveLevelSomDescription,
   ArchiveLevelSurface,
+  ArchiveLevelWallmarksDescription,
   ArchiveOmfDescription,
   ArchiveOmfMotion,
   ArchiveParticlesDescription,
@@ -1102,4 +1114,281 @@ export function mockArchiveFileDescription(
   scope: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volumes: 3 }
 ): ArchiveFileDescription {
   return { scope, format };
+}
+
+/**
+ * Creates a level occlusion mesh description of the size a mid-sized level reaches.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.hom`.
+ */
+export function mockArchiveLevelHomDescription(
+  overrides: Partial<ArchiveLevelHomDescription> = {}
+): ArchiveLevelHomDescription {
+  return {
+    version: 2,
+    triangles: 1860,
+    bounds: { width: 512, height: 128, depth: 512 },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level sound occlusion mesh description, half of whose faces occlude both ways.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.som`.
+ */
+export function mockArchiveLevelSomDescription(
+  overrides: Partial<ArchiveLevelSomDescription> = {}
+): ArchiveLevelSomDescription {
+  return {
+    version: 0,
+    triangles: 218,
+    twoSided: 96,
+    faces: 314,
+    minimumOcclusion: 0.1,
+    maximumOcclusion: 0.85,
+    bounds: { width: 256, height: 64, depth: 256 },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one local weather override.
+ *
+ * @param overrides - Field values to override.
+ * @returns One modifier, as a description carries it.
+ */
+export function mockArchiveLevelEnvModifier(overrides: Partial<ArchiveLevelEnvModifier> = {}): ArchiveLevelEnvModifier {
+  return {
+    radius: 40,
+    power: 1,
+    farPlane: 300,
+    fogDensity: 0.85,
+    usedParameters: ["fog colour", "fog density"],
+    declaresParameters: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level weather override description holding one modifier.
+ *
+ * Most shipped levels carry none at all, which `modifiers: []` is the fixture for.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.env_mod`.
+ */
+export function mockArchiveLevelEnvModDescription(
+  overrides: Partial<ArchiveLevelEnvModDescription> = {}
+): ArchiveLevelEnvModDescription {
+  return {
+    version: 22,
+    modifiers: [mockArchiveLevelEnvModifier()],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level particle placement description, whose few effects are planted many times over.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.ps_static`.
+ */
+export function mockArchiveLevelPsStaticDescription(
+  overrides: Partial<ArchiveLevelPsStaticDescription> = {}
+): ArchiveLevelPsStaticDescription {
+  return {
+    version: 1,
+    placements: 129,
+    restricted: 12,
+    effects: [
+      { name: "industrial\\steam_01", placements: 65, restricted: 0 },
+      { name: "zones\\zone_acidic_idle", placements: 52, restricted: 12 },
+      { name: "weather\\rain_splash", placements: 12, restricted: 0 },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one sound a level plants.
+ *
+ * @param overrides - Field values to override.
+ * @returns One planted sound, as a description carries it.
+ */
+export function mockArchiveLevelSndStaticSound(
+  overrides: Partial<ArchiveLevelSndStaticSound> = {}
+): ArchiveLevelSndStaticSound {
+  return {
+    sound: mockArchiveReference({
+      name: "ambient\\day\\birds_1",
+      path: "sounds\\ambient\\day\\birds_1.ogg",
+      entry: "sounds\\ambient\\day\\birds_1.ogg",
+    }),
+    volume: 0.7,
+    frequency: 1,
+    isScheduled: false,
+    activeFrom: 0,
+    activeTo: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level planted sound description, one of whose sounds only plays at night.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.snd_static`.
+ */
+export function mockArchiveLevelSndStaticDescription(
+  overrides: Partial<ArchiveLevelSndStaticDescription> = {}
+): ArchiveLevelSndStaticDescription {
+  return {
+    scheduled: 1,
+    sounds: [
+      mockArchiveLevelSndStaticSound(),
+      mockArchiveLevelSndStaticSound({
+        sound: mockArchiveReference({
+          name: "ambient\\night\\owl_2",
+          path: null,
+          entry: null,
+          status: EArchiveReferenceStatus.ABSENT,
+        }),
+        volume: 0.35,
+        frequency: 1.25,
+        isScheduled: true,
+        activeFrom: 22,
+        activeTo: 4,
+      }),
+      mockArchiveLevelSndStaticSound({ sound: null }),
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level game data description of the size vanilla's larger levels reach.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.game`.
+ */
+export function mockArchiveLevelGameDescription(
+  overrides: Partial<ArchiveLevelGameDescription> = {}
+): ArchiveLevelGameDescription {
+  return {
+    spawns: [
+      { label: "actor spawn", kind: 0, points: 4444, profiled: 0 },
+      { label: "artefact spawn", kind: 1, points: 334, profiled: 0 },
+      { label: "item spawn", kind: 2, points: 173, profiled: 173 },
+    ],
+    rpoints: 4951,
+    ways: 1510,
+    wayPoints: 8204,
+    emptyWays: 3,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level volumetric fog description holding one body.
+ *
+ * Every shipped level but one carries no body at all, which `volumes: []` is the fixture for.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.fog_vol`.
+ */
+export function mockArchiveLevelFogVolDescription(
+  overrides: Partial<ArchiveLevelFogVolDescription> = {}
+): ArchiveLevelFogVolDescription {
+  return {
+    version: 1,
+    obstacles: 144,
+    volumes: [
+      {
+        profile: mockArchiveReference({
+          name: "fog_vol_default",
+          path: "configs\\environment\\fog_vol_default.ltx",
+          entry: "configs\\environment\\fog_vol_default.ltx",
+        }),
+        obstacles: 144,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a compiled light list description, whose header chunk is the only one the runtime opens.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `build.lights`.
+ */
+export function mockArchiveLevelLightsDescription(
+  overrides: Partial<ArchiveLevelLightsDescription> = {}
+): ArchiveLevelLightsDescription {
+  return {
+    lights: 2203,
+    used: 918,
+    groups: [
+      { id: 1, lights: 926, point: 918, isReadByEngine: true, isLights: true },
+      { id: 2, lights: 1277, point: 1180, isReadByEngine: false, isLights: true },
+      { id: 3, lights: 0, point: 0, isReadByEngine: false, isLights: false },
+    ],
+    bounds: { width: 512, height: 128, depth: 512 },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a baked decal description, one of whose slots names no texture.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.wallmarks`.
+ */
+export function mockArchiveLevelWallmarksDescription(
+  overrides: Partial<ArchiveLevelWallmarksDescription> = {}
+): ArchiveLevelWallmarksDescription {
+  return {
+    marks: 441,
+    vertices: 5292,
+    slots: [
+      {
+        shader: "effects\\wallmark",
+        texture: mockArchiveReference({
+          name: "wm\\wm_blood",
+          path: "textures\\wm\\wm_blood.dds",
+          entry: "textures\\wm\\wm_blood.dds",
+        }),
+        marks: 347,
+        vertices: 4164,
+      },
+      { shader: "effects\\wallmark", texture: null, marks: 94, vertices: 1128 },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a trained evaluation function description of the shape every shipped one has.
+ *
+ * Every `.efd` in the workspace trees carries exactly one term over one to four inputs.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about an `.efd`.
+ */
+export function mockArchiveEfdDescription(overrides: Partial<ArchiveEfdDescription> = {}): ArchiveEfdDescription {
+  return {
+    builderVersion: 3,
+    dataFormat: 1,
+    functionType: 70,
+    minimumResult: 0,
+    maximumResult: 1,
+    variableRanges: [10, 4],
+    variableKinds: [21, 46],
+    patterns: [{ variables: [0, 1], weights: 40 }],
+    weights: 40,
+    ...overrides,
+  };
 }
