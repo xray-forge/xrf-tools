@@ -29,7 +29,6 @@ describe("ArchivesService file selection", () => {
 
     expect(isComputedProp(service, "entries")).toBe(true);
     expect(isComputedProp(service, "selectedEntry")).toBe(true);
-    expect(isComputedProp(service, "selectedDirectory")).toBe(true);
     expect(isComputedProp(service, "isWriting")).toBe(true);
   });
 

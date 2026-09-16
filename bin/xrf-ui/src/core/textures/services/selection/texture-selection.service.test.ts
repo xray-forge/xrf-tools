@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 import { createRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { ETextureSource, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
@@ -62,7 +62,7 @@ describe("TextureSelectionService", () => {
 
     service.setAssetRoot(INSTALLATION);
 
-    await service.openReference("textures\\wall", browsed);
+    await service.open({ kind: ETextureSource.ASSET, reference: "textures\\wall" }, browsed);
 
     expect(describeTexture).toHaveBeenCalledWith({ kind: "asset", reference: "textures\\wall" }, browsed);
   });
@@ -116,7 +116,7 @@ describe("TextureSelectionService", () => {
 
     readTexture.mockRejectedValueOnce(new Error("Cannot decode texture"));
 
-    await service.openReference("textures\\wall", roots);
+    await service.open({ kind: ETextureSource.ASSET, reference: "textures\\wall" }, roots);
 
     expect(service.selected.value).toEqual(description);
     expect(service.selected.error).toBeNull();
@@ -239,7 +239,7 @@ describe("TextureSelectionService", () => {
     describeTexture.mockResolvedValueOnce(current);
     readTexture.mockResolvedValueOnce(currentPreview);
 
-    await service.openReference(current.reference, current.roots);
+    await service.open({ kind: ETextureSource.ASSET, reference: current.reference }, current.roots);
 
     finishRead(new ArrayBuffer(4));
 

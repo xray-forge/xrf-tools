@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -50,7 +51,7 @@ describe("ArchivesService directory extraction", () => {
 
     service.selectArchiveDirectory("");
 
-    expect(service.selectedDirectory).toBe("");
+    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "" });
 
     await service.extractArchiveDirectory("", "C:\\out");
 
@@ -83,14 +84,17 @@ describe("ArchivesService directory extraction", () => {
     service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
     service.selectArchiveDirectory("configs");
-    expect(service.selectedDirectory).toBe("configs");
+    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
 
     // Both being set at once would leave the content area with two things claiming to be selected.
-    await service.selectArchiveFile(mockArchiveFileDescriptor({ name: "configs\\system.ltx" }));
-    expect(service.selectedDirectory).toBeNull();
-    expect(service.selectedEntry).not.toBeNull();
+    const entry = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+
+    await service.selectArchiveFile(entry);
+    expect(service.selection).toEqual({ kind: EPathEntryKind.FILE, entry });
+    expect(service.selectedEntry).toEqual(entry);
 
     service.selectArchiveDirectory("configs");
+    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
     expect(service.selectedEntry).toBeNull();
   });
 });

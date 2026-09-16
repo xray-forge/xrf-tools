@@ -205,14 +205,6 @@ export class ArchivesService {
   }
 
   /**
-   * @returns The engine directory path, with an empty string for the tree root, or null.
-   */
-  @Computed()
-  public get selectedDirectory(): Nullable<string> {
-    return this.selection.kind === EPathEntryKind.DIRECTORY ? this.selection.path : null;
-  }
-
-  /**
    * @returns Whether an extraction would race with another command.
    */
   @Computed()

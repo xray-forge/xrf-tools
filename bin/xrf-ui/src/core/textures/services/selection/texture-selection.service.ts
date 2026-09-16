@@ -105,17 +105,6 @@ export class TextureSelectionService {
   }
 
   /**
-   * Open a texture of an already browsed root set, loose or archived alike.
-   *
-   * @param reference - Engine reference of the texture, as a listing reported it.
-   * @param roots - Roots that listing came from, so both read the same world.
-   */
-  @LatestFlow("selected")
-  public *openReference(reference: string, roots: XrayRoots): TFlow {
-    yield* this.describe({ kind: ETextureSource.ASSET, reference }, roots);
-  }
-
-  /**
    * Open whatever a listing addressed, however it addressed it.
    *
    * @param source - What to inspect, as the listing reported it.

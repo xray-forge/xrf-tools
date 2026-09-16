@@ -6,6 +6,7 @@ import { runInAction } from "@wirestate/mobx";
 import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -69,11 +70,11 @@ describe("ArchivesMenu", () => {
 
     fireEvent.click(render.getByText("configs"));
 
-    expect(service.selectedDirectory).toBeNull();
+    expect(service.selection).toEqual({ kind: "none" });
 
     fireEvent.dblClick(render.getByText("configs"));
 
-    expect(service.selectedDirectory).toBe("configs");
+    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
     expect(await render.findByText("system.ltx")).toBeInTheDocument();
   });
 

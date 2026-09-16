@@ -278,11 +278,6 @@ export class SpawnFileService {
     this.selectedRow = { id, row, source };
   }
 
-  @BoundAction()
-  public clearSelectedRow(): void {
-    this.selectedRow = null;
-  }
-
   @ExclusiveFlow()
   public *loadAlifeSpawn(): TFlow {
     yield* this.fetchChunk("alifeSpawn", spawnCommands.getAlifeSpawns);

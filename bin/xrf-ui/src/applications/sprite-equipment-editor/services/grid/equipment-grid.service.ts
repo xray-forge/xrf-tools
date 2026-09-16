@@ -2,7 +2,6 @@ import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import {
   IEquipmentLayout,
   isCellWithin,
@@ -10,10 +9,7 @@ import {
   TEquipmentCell,
   toEquipmentLayout,
 } from "@/core/sprite-equipment/lib";
-import { EMPTY_ARRAY } from "@/lib/types/array";
 import { Nullable } from "@/lib/types/general";
-
-/** Nothing occupies a cell nobody has selected, and every reader gets the same array back for it. */
 
 /**
  * The lattice over the open sheet, and which cell of it is being explained.
@@ -46,13 +42,6 @@ export class EquipmentGridService {
     const layout: Nullable<IEquipmentLayout> = this.layout;
 
     return layout && this.picked && isCellWithin(layout.grid, this.picked) ? this.picked : null;
-  }
-
-  @Computed()
-  public get selectedOccupants(): ReadonlyArray<EquipmentSlotOccupant> {
-    const cell: Nullable<TEquipmentCell> = this.selectedCell;
-
-    return cell ? (this.layout?.at(cell) ?? EMPTY_ARRAY) : EMPTY_ARRAY;
   }
 
   /**
