@@ -1,11 +1,11 @@
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { Divider } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 import { Nullable } from "@/lib/types/general";
@@ -51,9 +51,7 @@ export function TextureWorkspaceToolbar({
         <>
           <EditorViewToggle label={"Lit surface"} icon={<ViewInArIcon />} isOn={isSurface} onToggle={onToggleMode} />
 
-          <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
-
-          <TextureBodyOptions options={options} onChangeOptions={onChangeOptions} />
+          <EditorToolbarSeparator />
 
           <EditorViewToggle
             label={"Light"}
@@ -72,6 +70,8 @@ export function TextureWorkspaceToolbar({
             unavailableTitle={describeUnavailableBump(isSurface, hasBump, options.isLit)}
             onToggle={() => onChangeOptions({ ...options, isBumped: !options.isBumped })}
           />
+
+          <TextureBodyOptions options={options} onChangeOptions={onChangeOptions} />
         </>
       }
     />

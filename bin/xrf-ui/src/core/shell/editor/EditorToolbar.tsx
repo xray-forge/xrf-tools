@@ -7,6 +7,7 @@ import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
 import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPathSeparator";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -122,11 +123,7 @@ export function EditorToolbar({
             <ApplicationHelp />
           </Box>
 
-          <Box
-            data-testid={"editor-toolbar-divider"}
-            aria-hidden={true}
-            sx={{ width: "1px", height: 18, marginLeft: 0.5, flexShrink: 0, backgroundColor: "divider" }}
-          />
+          <EditorToolbarSeparator />
         </>
       ) : null}
     </Box>

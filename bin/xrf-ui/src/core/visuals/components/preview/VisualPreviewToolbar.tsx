@@ -6,11 +6,11 @@ import { default as OpacityIcon } from "@mui/icons-material/Opacity";
 import { default as PolylineIcon } from "@mui/icons-material/Polyline";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
-import { Divider } from "@mui/material";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -78,17 +78,17 @@ export function VisualPreviewToolbar({
       actions={
         <>
           {onBrowse ? (
-            <EditorIconAction
-              label={"Browse folder"}
-              description={"Browse the folder this model sits in"}
-              icon={<AccountTreeIcon />}
-              onClick={onBrowse}
-            />
+            <>
+              <EditorIconAction
+                label={"Browse folder"}
+                description={"Browse the folder this model sits in"}
+                icon={<AccountTreeIcon />}
+                onClick={onBrowse}
+              />
+
+              <EditorToolbarSeparator />
+            </>
           ) : null}
-
-          <VisualMeshDetail detail={detail} hasDetailLevels={hasDetailLevels} onChange={onChangeDetail} />
-
-          <Divider orientation={"vertical"} flexItem sx={{ marginX: 0.5, marginY: 1 }} />
 
           <EditorViewToggle
             label={"Wireframe"}
@@ -122,6 +122,8 @@ export function VisualPreviewToolbar({
             onToggle={() => onToggle("isBumpVisible")}
           />
 
+          <EditorToolbarSeparator />
+
           <EditorViewToggle
             label={"Skeleton"}
             icon={<PolylineIcon />}
@@ -144,6 +146,10 @@ export function VisualPreviewToolbar({
             isOn={options.isAxesVisible}
             onToggle={() => onToggle("isAxesVisible")}
           />
+
+          <EditorToolbarSeparator />
+
+          <VisualMeshDetail detail={detail} hasDetailLevels={hasDetailLevels} onChange={onChangeDetail} />
         </>
       }
     />

@@ -26,6 +26,71 @@ function renderToolbar(
   );
 }
 
+describe("VisualPreviewToolbar order", () => {
+  it("reads as session, then how the surface is drawn, then what is drawn over it, then what you set", () => {
+    const { getByTestId } = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        detail={0}
+        hasDetailLevels
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={true}
+        onChangeOptions={jest.fn()}
+        onChangeDetail={jest.fn()}
+        onBrowse={jest.fn()}
+      />
+    );
+    const labels: Array<Nullable<string>> = [...getByTestId("editor-toolbar-actions").querySelectorAll("button")].map(
+      (it: Element) => it.getAttribute("aria-label")
+    );
+
+    // A value picker goes last in every toolbar of this application, so a row always reads as things you flip and
+    // then the thing you set. Mesh detail led this row until the rule was settled.
+    expect(labels).toEqual([
+      "Browse folder",
+      "Wireframe",
+      "Uv checkerboard",
+      "Alpha",
+      "Bump",
+      "Skeleton",
+      "Grid",
+      "Axes",
+      "Mesh detail",
+    ]);
+  });
+
+  it("rules the groups off from each other, and drops the session rule with the session control", () => {
+    const browsing: RenderResult = renderToolbar(0, true);
+
+    // Surface from overlays, overlays from the picker. No session zone here: a session already browsing has nothing
+    // to promote, so `onBrowse` is absent and its rule would divide nothing from nothing.
+    expect(
+      browsing.getByTestId("editor-toolbar-actions").querySelectorAll('[data-testid="editor-toolbar-separator"]')
+    ).toHaveLength(2);
+
+    browsing.unmount();
+
+    const single: RenderResult = renderWithProviders(
+      <VisualPreviewToolbar
+        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        detail={0}
+        hasDetailLevels
+        hasSkeleton={true}
+        hasBump={true}
+        hasAlpha={true}
+        onChangeOptions={jest.fn()}
+        onChangeDetail={jest.fn()}
+        onBrowse={jest.fn()}
+      />
+    );
+
+    expect(
+      single.getByTestId("editor-toolbar-actions").querySelectorAll('[data-testid="editor-toolbar-separator"]')
+    ).toHaveLength(3);
+  });
+});
+
 describe("VisualPreviewToolbar skeleton toggle", () => {
   it("offers nothing to draw on a model with no bind pose", () => {
     // Every model measured in gamedata carries one, so this state cannot be reached by opening a real file there -

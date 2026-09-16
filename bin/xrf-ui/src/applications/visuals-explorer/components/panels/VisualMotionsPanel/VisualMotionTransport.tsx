@@ -6,6 +6,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
@@ -58,7 +59,7 @@ export function VisualMotionTransport({
           </Typography>
         </Tooltip>
 
-        <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
+        <EditorToolbarSeparator />
 
         <EditorViewToggle
           label={"Loop"}
@@ -67,6 +68,8 @@ export function VisualMotionTransport({
           isOn={service.isLooping}
           onToggle={service.toggleLoop}
         />
+
+        <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
       </Box>
 
       {service.posed.error ? (

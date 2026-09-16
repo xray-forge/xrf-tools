@@ -85,7 +85,7 @@ describe("EditorToolbar", () => {
 
     // With nothing to its left the rule was floating in empty space between the breadcrumb and the
     // window buttons, dividing nothing from nothing.
-    expect(bare.queryByTestId("editor-toolbar-divider")).not.toBeInTheDocument();
+    expect(bare.queryByTestId("editor-toolbar-separator")).not.toBeInTheDocument();
 
     bare.unmount();
 
@@ -93,7 +93,7 @@ describe("EditorToolbar", () => {
       route: "/characters-explorer",
     });
 
-    expect(acting.getByTestId("editor-toolbar-divider")).toBeInTheDocument();
+    expect(acting.getByTestId("editor-toolbar-separator")).toBeInTheDocument();
   });
 
   it("carries the application's help inside its own action group rather than beside the window buttons", () => {
@@ -102,7 +102,7 @@ describe("EditorToolbar", () => {
     // Help is something the open application offers, so the rule divides it from the window too. It used to
     // be dressed as a caption button, where it read as a fourth thing the window itself did.
     expect(getByTestId("editor-toolbar-actions")).toContainElement(getByLabelText("Help"));
-    expect(getByTestId("editor-toolbar-divider")).toBeInTheDocument();
+    expect(getByTestId("editor-toolbar-separator")).toBeInTheDocument();
   });
 
   it("sizes its controls against the caption rather than a toolbar that no longer exists", () => {

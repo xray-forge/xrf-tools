@@ -9,6 +9,7 @@ import { ReactElement, useCallback } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { LAYOUT } from "@/core/theme/tokens";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
@@ -90,7 +91,7 @@ export function SequencerTransport(): ReactElement {
         {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
       </Typography>
 
-      <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
+      <EditorToolbarSeparator />
 
       <EditorViewToggle
         label={"Loop"}
@@ -99,6 +100,8 @@ export function SequencerTransport(): ReactElement {
         isOn={service.isLooping}
         onToggle={service.toggleLoop}
       />
+
+      <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
     </Paper>
   );
 }
