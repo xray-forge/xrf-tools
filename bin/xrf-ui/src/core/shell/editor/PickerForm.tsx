@@ -1,12 +1,13 @@
 import { default as ExpandLessIcon } from "@mui/icons-material/ExpandLess";
 import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import { Alert, Button, Card, CircularProgress, Divider, IconButton, Tooltip, Typography } from "@mui/material";
+import { Alert, Button, Card, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
 import { FormEvent, KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
+import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -137,8 +138,13 @@ export function PickerForm({
         onKeyDown={onFormKeyDown}
       >
         <div className={result ? "flex shrink-0 justify-center p-6 pb-4" : "flex shrink-0 justify-center p-6"}>
-          <Card className={"relative w-full max-w-320"} variant={"elevation"} elevation={0}>
-            <div className={"flex items-start gap-2 p-4"}>
+          <Card
+            className={"relative flex w-full max-w-reading flex-col gap-6 p-6"}
+            sx={FORM_SURFACE_SX}
+            variant={"elevation"}
+            elevation={0}
+          >
+            <div className={"flex items-start gap-2"}>
               <div className={"min-w-0 grow"}>
                 {title ? (
                   <Typography component={"h1"} variant={"subtitle1"}>
@@ -167,32 +173,20 @@ export function PickerForm({
             </div>
 
             {isCollapsed ? null : (
-              <>
-                <Divider />
+              <div ref={parametersRef} className={"flex flex-col gap-6"}>
+                <FormCommitContext.Provider value={fields}>{children}</FormCommitContext.Provider>
 
-                <div ref={parametersRef} className={"flex flex-col gap-4 p-4"}>
-                  <FormCommitContext.Provider value={fields}>{children}</FormCommitContext.Provider>
-
-                  {error ? (
-                    <Alert severity={"error"} variant={"outlined"}>
-                      {String(error)}
-                    </Alert>
-                  ) : null}
-                </div>
-              </>
+                {error ? (
+                  <Alert severity={"error"} variant={"outlined"}>
+                    {String(error)}
+                  </Alert>
+                ) : null}
+              </div>
             )}
 
-            {status ? (
-              <>
-                <Divider />
+            {status ? <div>{status}</div> : null}
 
-                <div className={"p-4"}>{status}</div>
-              </>
-            ) : null}
-
-            <Divider />
-
-            <div className={"flex items-center gap-2 p-3"}>
+            <div className={"flex items-center gap-2"}>
               <Button type={"button"} color={"inherit"} disabled={isLoading} onClick={onLeave}>
                 Back
               </Button>

@@ -1,6 +1,7 @@
-import { Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { ReactElement, useId, useState } from "react";
 
+import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
 
@@ -60,7 +61,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
           ))}
         </List>
 
-        <div className={"min-w-0 grow overflow-y-auto px-dialog py-6"}>
+        <Box className={"min-w-0 grow overflow-y-auto px-dialog py-6"} sx={FORM_SURFACE_SX}>
           {inline(() => {
             switch (section) {
               case EDetailSection.GENERAL:
@@ -75,7 +76,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
                 return <SettingsAboutSection />;
             }
           })}
-        </div>
+        </Box>
       </DialogContent>
 
       <DialogActions>

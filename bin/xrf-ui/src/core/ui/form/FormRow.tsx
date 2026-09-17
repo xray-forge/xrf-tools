@@ -91,6 +91,7 @@ export function FormRow({
   return (
     <div
       data-testid={dataTestId}
+      data-form-row={isInline ? "inline" : "stacked"}
       id={id}
       className={cn(isInline ? "flex items-center justify-between gap-4" : "flex flex-col gap-1.5", className)}
     >

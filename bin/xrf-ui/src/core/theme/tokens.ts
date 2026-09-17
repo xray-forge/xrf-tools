@@ -45,7 +45,7 @@ export const LAYOUT = {
    * The corner a framed surface turns: the workspace edge, a form card, and the first-paint skeleton that stands in
    * for both. Named once so the three cannot drift, which a reader would only ever notice as a jump on load.
    */
-  surfaceRadius: RADIUS.md,
+  surfaceRadius: RADIUS.lg,
   /**
    * The band a surface names itself in: the file header over the body, and a panel's title row. One value, so the
    * three run as a single line across the window instead of three headers that each end somewhere else.
@@ -65,15 +65,11 @@ export const LAYOUT = {
   /** Dense `MuiToolbar` and `MuiTab` still measure themselves against this; the window caption does not. */
   toolbarHeight: 40,
   statusBarHeight: 28,
-  /**
-   * The window's only top band: caption and the active application's toolbar in one row.
-   */
+  /** The window's only top band: caption and the active application's toolbar in one row. */
   titleBarHeight: 36,
   windowControlWidth: 36,
   windowControlHeight: 36,
-  /**
-   * A slider hosted in a toolbar popover.
-   */
+  /** A slider hosted in a toolbar popover. */
   toolbarSliderWidth: 200,
   /** The motion picker, wide enough for a name like `norm_walk_fwd_1` without truncating it. */
   motionPickerWidth: 260,
@@ -85,13 +81,7 @@ export const LAYOUT = {
   readingLabelWidth: 200,
 } as const;
 
-/**
- * Form controls, shared by every surface that renders one.
- *
- * MUI derives an input's height from its font size (a `1.4375em` line box plus padding), so a field that
- * shrinks its own type -- a monospace path, say -- renders shorter than the fields beside it. These pin the
- * box instead, and `creation.ts` applies them to every small input so font size and height stay independent.
- */
+/** Form controls, shared by every surface that renders one. */
 export const CONTROL = {
   /** Compact editor actions, both in the caption and beside content. */
   editorActionSize: 24,
@@ -103,6 +93,14 @@ export const CONTROL = {
   smallInputPaddingY: 8.5,
 } as const;
 
+/** A form somebody sits down and fills: the picker screens' card and the settings dialog. */
+export const FORM = {
+  controlRadius: RADIUS.md,
+  controlHeight: 32,
+  inlineRowPaddingX: 8,
+  inlineRowPaddingY: 8,
+} as const;
+
 /** Shared dialog spacing in theme spacing units; the header minimum is in pixels. */
 export const DIALOG = {
   paddingX: 3,
@@ -111,34 +109,23 @@ export const DIALOG = {
   actionsPaddingY: 1.5,
   gap: 1,
   headerMinHeight: 56,
-  /** Ceiling on a dialog's own height, so a tall one still leaves the window it floats over visible. */
   maxHeight: "64vh",
 } as const;
 
 /**
  * Explorer trees, shared by every surface that renders one.
- *
- * Sized against `LAYOUT.railButtonSize` rather than freely: a tree row sits in the same panels as the rail's controls,
- * and rows that disagree with them read as a different application.
  */
 export const TREE = {
-  /** Row height, dense enough that a mesh directory is scannable without becoming a hit-target problem. */
   rowHeight: 28,
-  /** A panel row's own controls, one step below the severity icon so they do not read as part of the outcome. */
   actionIconSize: 16,
-  /** Expand and collapse chevron column. */
   iconWidth: 18,
   iconSize: 17,
   iconGap: 4,
-  /** Indent per nesting level, which is the chevron column plus its gap. */
   indent: 14,
 } as const;
 
 /**
  * Source listings, shared by every surface that renders lines with a gutter.
- *
- * `lineHeight` is a pixel count rather than a ratio because a virtualized listing positions rows by
- * arithmetic: where line 200,000 sits has to be known without laying the 199,999 above it out.
  */
 export const CODE = {
   /** One line, sized so a screenful of {@link MONOSPACE} is dense without the rows touching. */
@@ -157,18 +144,13 @@ export const CODE = {
   contentPaddingX: 10,
 } as const;
 
-/**
- * Side panels, same on both sides.
- */
+/** Side panels, same on both sides. */
 export const PANEL = {
   defaultWidth: 300,
   minWidth: 200,
   maxWidth: 640,
-  /** Share of the window every open panel may occupy together, so the content keeps the rest. */
   maxWidthRatio: 0.5,
-  /** A panel row's own controls, one step below the severity icon so they do not read as part of the outcome. */
   actionIconSize: 16,
-  /** Shared spacing for panel headings, sections, and stacked properties, in theme units. */
   contentPadding: 2,
   headerPaddingY: 1.5,
   sectionPaddingY: 1.5,
@@ -178,13 +160,7 @@ export const PANEL = {
   contentLineHeight: 1.6,
 } as const;
 
-/**
- * Text compared by eye rather than read as prose: identifiers, engine paths, archive entry names, file positions.
- *
- * One definition, because the theme's `.monospace` class and the surfaces that style their own rows have to agree - a
- * path in a panel and the same path in a grid cell that disagree on size read as two different kinds of thing. The
- * size is smaller than `body2` on purpose: these strings are long, and a panel is narrow.
- */
+/** Text compared by eye rather than read as prose: identifiers, engine paths, archive entry names, file positions. */
 export const MONOSPACE = {
   fontFamily: "'Cascadia Mono', 'Consolas', monospace",
   fontSize: "0.75rem",
@@ -241,11 +217,7 @@ export const STATE_TONE = { light: "#000000", dark: "#ffffff" } as const;
 /** The tone a well is mixed from. A control that is not elevated must not gain lightness, so it recedes in both. */
 export const RECESS_TONE: string = "#000000";
 
-/**
- * States, applied over a level as translucent scrims so they composite over any surface and inherit its wash.
- *
- * Shares of {@link STATE_TONE}, except `selected`, which is a share of `secondary`.
- */
+/** States, applied over a level as translucent scrims so they composite over any surface and inherit its wash. */
 export const STATE = {
   hover: { light: 0.06, dark: 0.07 },
   /** What the editor has open. Its own value, so a hovered row and an open row are never drawn the same. */
@@ -254,13 +226,7 @@ export const STATE = {
   selected: { light: 0.18, dark: 0.2 },
   /** A recess holding input or a nested listing. Always bordered: on the dark content plane fill alone is ~1.05:1. */
   well: { light: 0.08, dark: 0.3 },
-  /**
-   * MUI's own `selectedOpacity`, which several components apply to an *accent* rather than to a neutral.
-   *
-   * A separate number from `selected` because the jobs differ: `selected` tints a neutral hard enough to read as a
-   * cursor, while this tints `primary` or `text.primary`, where the same share would shout. MUI's stock 0.08 is too
-   * faint to see on a light plane.
-   */
+  /** MUI's own `selectedOpacity`, which several components apply to an *accent* rather than to a neutral. */
   accentSelected: { light: 0.12, dark: 0.16 },
   disabledOpacity: 0.38,
 } as const;
@@ -317,9 +283,7 @@ export const DIVIDER = {
   dark: "#434343",
 } as const;
 
-/**
- * The title band's own sheen.
- */
+/** The title band's own sheen. */
 export const HEADER_GLOSS = {
   highlight: { light: 0.6, dark: 0.01 },
   shade: { light: 0.05, dark: 0.1 },

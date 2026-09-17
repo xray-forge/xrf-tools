@@ -9,6 +9,9 @@ export function getWashImage(scheme: ColorScheme): string {
   );
 }
 
+/** A well's own fill, published per scheme by `variables.ts`. It is a recess on a level, not a level of its own. */
+export const WELL_FILL: string = "var(--xrf-well)";
+
 /**
  * A recess holding input or a nested listing, as a translucent scrim so it composites over whichever level hosts it.
  */

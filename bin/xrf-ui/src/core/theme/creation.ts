@@ -6,7 +6,7 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { getHeaderGlossImage, getWashImage } from "./surface";
+import { getHeaderGlossImage, getWashImage, WELL_FILL } from "./surface";
 import {
   ACCENT,
   ColorScheme,
@@ -39,9 +39,6 @@ declare module "@mui/material/styles" {
     selectedChannel?: string;
   }
 }
-
-/** A well's own fill, published per scheme by `variables.ts`. It is a recess on a level, not a level of its own. */
-const WELL_FILL: string = "var(--xrf-well)";
 
 /** Shadows flip per scheme, which MUI's flat `shadows` tuple cannot express, so the tuple holds variables. */
 const SHADOW_RAISED: string = "var(--xrf-shadow-raised)";
