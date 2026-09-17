@@ -4,7 +4,8 @@ use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 use crate::project::constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_CHUNK_TREE_SIZE, ALLOWED_DESCRIBE_SIZE,
-  ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE,
+  ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_NATIVE_IMAGE_EXTENSIONS, ALLOWED_NATIVE_IMAGE_SIZE,
+  ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE,
 };
 
 /// What a viewer may read out of a mounted tree, by extension and size.
@@ -24,6 +25,9 @@ pub struct ArchiveReadPolicy {
   /// Extensions decoded into a picture. Compression does not apply: it is undone before decoding.
   pub image_extensions: &'static [XrayExtension],
   pub maximum_image_size: u32,
+  /// Extensions the webview renders itself, so the backend hands the bytes over rather than decoding them.
+  pub native_image_extensions: &'static [XrayExtension],
+  pub maximum_native_image_size: u32,
   /// Extensions played by the webview itself, so the backend only has to hand over the bytes.
   pub audio_extensions: &'static [XrayExtension],
   pub maximum_audio_size: u32,
@@ -83,6 +87,8 @@ impl Default for ArchiveReadPolicy {
       maximum_size: ALLOWED_TEXT_SIZE,
       image_extensions: ALLOWED_IMAGE_EXTENSIONS,
       maximum_image_size: ALLOWED_IMAGE_SIZE,
+      native_image_extensions: ALLOWED_NATIVE_IMAGE_EXTENSIONS,
+      maximum_native_image_size: ALLOWED_NATIVE_IMAGE_SIZE,
       audio_extensions: ALLOWED_AUDIO_EXTENSIONS,
       maximum_audio_size: ALLOWED_AUDIO_SIZE,
       maximum_describe_size: ALLOWED_DESCRIBE_SIZE,

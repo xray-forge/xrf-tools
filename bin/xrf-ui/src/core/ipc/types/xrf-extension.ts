@@ -80,6 +80,7 @@ export enum EXrayExtension {
   TS = "ts",
   VS = "vs",
   WALLMARKS = "wallmarks",
+  WAV = "wav",
   XML = "xml",
   /** The shader library container, `shaders.xr`. Nothing else in a tree carries it. */
   XR = "xr",

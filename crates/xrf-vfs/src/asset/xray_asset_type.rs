@@ -164,6 +164,7 @@ impl XrayAssetType {
       | XrayExtension::Png
       | XrayExtension::Jpg
       | XrayExtension::Jpeg
+      | XrayExtension::Wav
       | XrayExtension::Htm
       | XrayExtension::Html
       | XrayExtension::Json

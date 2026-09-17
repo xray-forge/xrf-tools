@@ -607,13 +607,7 @@ export type ArchiveLevelSomDescription = {
   bounds: ArchiveBounds | null;
 };
 
-/**
- * Everything the viewer says about the objects a level spawns.
- *
- * The other format under `.spawn`, and the commoner one: 131 of the 141 files in the trees are this rather than a
- * set. There is no header to read - the engine walks the chunks and hands each one to `Process_spawn` - so
- * everything said here is counted from the objects themselves.
- */
+/** Everything the viewer says about the objects a level spawns. */
 export type ArchiveLevelSpawnDescription = {
   objects: number;
   /** What is spawned, grouped by the section each object is built from. */

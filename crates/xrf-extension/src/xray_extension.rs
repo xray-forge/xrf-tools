@@ -156,12 +156,25 @@ declare_xray_extensions! {
   Ts => "ts",
   Vs => "vs",
   Wallmarks => "wallmarks",
+  Wav => "wav",
   Xml => "xml",
   /// The shader library container, `shaders.xr`. Nothing else in a tree carries it.
   Xr => "xr",
 }
 
 impl XrayExtension {
+  /// The media type a webview needs to render or play these bytes as they stand, or `None` where it cannot.
+  pub const fn get_media_type(self) -> Option<&'static str> {
+    match self {
+      Self::Bmp => Some("image/bmp"),
+      Self::Jpeg | Self::Jpg => Some("image/jpeg"),
+      Self::Png => Some("image/png"),
+      Self::Ogg => Some("audio/ogg"),
+      Self::Wav => Some("audio/wav"),
+      _ => None,
+    }
+  }
+
   /// Whether `name` carries this extension, compared the way [`has_extension`] compares one.
   pub fn matches(self, name: &str) -> bool {
     has_extension(name, self.as_str())
@@ -267,7 +280,38 @@ mod tests {
   fn the_vocabulary_holds_every_spelling_it_held_before() {
     // Nothing else fails when a variant is deleted: `of` in `xrf-vfs` matches exhaustively and would simply stop
     // naming the kind, and every policy list would quietly shrink. Adding one is a decision; losing one is not.
-    assert_eq!(XrayExtension::ALL.len(), 58);
+    assert_eq!(XrayExtension::ALL.len(), 59);
+  }
+
+  #[test]
+  fn only_the_spellings_a_webview_handles_name_a_media_type() {
+    for (extension, expected) in [
+      (XrayExtension::Png, Some("image/png")),
+      (XrayExtension::Jpg, Some("image/jpeg")),
+      (XrayExtension::Jpeg, Some("image/jpeg")),
+      (XrayExtension::Bmp, Some("image/bmp")),
+      (XrayExtension::Ogg, Some("audio/ogg")),
+      (XrayExtension::Wav, Some("audio/wav")),
+    ] {
+      assert_eq!(
+        extension.get_media_type(),
+        expected,
+        "{extension} is handed over as it stands"
+      );
+    }
+  }
+
+  #[test]
+  fn a_picture_no_browser_renders_names_no_media_type() {
+    // Both are pictures and neither displays: a browser has never rendered a targa, and `dds` is the format this
+    // whole workspace exists around. Naming a type for either would promise a display that quietly fails.
+    for extension in [XrayExtension::Dds, XrayExtension::Tga] {
+      assert_eq!(
+        extension.get_media_type(),
+        None,
+        "{extension} needs a transcode, not a media type"
+      );
+    }
   }
 
   #[test]

@@ -24,4 +24,4 @@ pub use crate::equipment::{
   PackEquipmentProcessor, PackEquipmentResult, UnpackEquipmentOptions, UnpackEquipmentProcessor,
   VerifyEquipmentGridProcessor,
 };
-pub use crate::image_file::read_image_as_rgba;
+pub use crate::image_file::{NativeImageShape, read_image_as_rgba};

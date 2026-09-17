@@ -3,8 +3,10 @@
 mod image_fit;
 mod image_reader;
 mod image_writer;
+mod native_image_shape;
 
 pub(crate) use image_fit::fit_image_into_bounds;
 pub use image_reader::read_image_as_rgba;
 pub(crate) use image_writer::warn_on_reshaped_ui_dds;
 pub(crate) use image_writer::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, save_image_as_ui_png};
+pub use native_image_shape::NativeImageShape;

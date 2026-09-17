@@ -112,6 +112,9 @@ export type ArchiveReadPolicy = {
   /** Extensions decoded into a picture. Compression does not apply: it is undone before decoding. */
   imageExtensions: Array<XrayExtension>;
   maximumImageSize: number;
+  /** Extensions the webview renders itself, so the backend hands the bytes over rather than decoding them. */
+  nativeImageExtensions: Array<XrayExtension>;
+  maximumNativeImageSize: number;
   /** Extensions played by the webview itself, so the backend only has to hand over the bytes. */
   audioExtensions: Array<XrayExtension>;
   maximumAudioSize: number;
