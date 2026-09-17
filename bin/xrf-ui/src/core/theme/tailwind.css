@@ -62,6 +62,8 @@
   --radius-control: var(--xrf-radius-control);
 
   --spacing-dialog: var(--xrf-dialog-padding-x);
+  /* A dialog's ceiling, so a tall one still leaves the window it floats over visible. */
+  --spacing-dialog-height: var(--xrf-dialog-max-height);
   --spacing-panel-property: var(--xrf-panel-property-padding);
   --spacing-panel-property-gap: var(--xrf-panel-property-gap);
   --spacing-panel-content: var(--xrf-panel-content-padding);
@@ -73,11 +75,13 @@
   --spacing-rail-button: var(--xrf-rail-button-size);
   --spacing-rail: var(--xrf-rail-width);
   --spacing-title-bar: var(--xrf-title-bar-height);
+  --spacing-toolbar-slider: var(--xrf-toolbar-slider-width);
   --spacing-status-bar: var(--xrf-status-bar-height);
 
   /* The face on its own. `.monospace` also sets a size, which is wrong for a heading. */
   --font-monospace: var(--xrf-monospace-family);
   --leading-panel: var(--xrf-panel-line-height);
+  --leading-code: var(--xrf-code-leading);
 
   /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
   --container-reading: var(--xrf-reading-column);
@@ -85,9 +89,9 @@
   --container-content-state-description: var(--xrf-content-state-description);
 }
 
-/* A dialog's ceiling. Viewport-relative, so it belongs to no spacing scale and has to be named on its own. */
-@utility max-h-dialog {
-  max-height: var(--xrf-dialog-max-height);
+/* Tailwind ships no `tab-size` utility, and a source listing must not render a tab as eight columns. */
+@utility tab-2 {
+  tab-size: 2;
 }
 
 /* The reading plane and its wash. `bg-surface-content` is the flat fill alone, for a caller that wants no wash. */

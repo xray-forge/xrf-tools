@@ -3,6 +3,7 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ISequenceMotionRowProps extends BaseComponentProps {
@@ -24,15 +25,15 @@ export function SequenceMotionRow({
     <Box
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "center", gap: 1, paddingLeft: 1, paddingY: 0.2, lineHeight: 1.6 }}
+      className={cn("flex items-center gap-2 pl-2 leading-panel", className)}
+      sx={{ paddingY: 0.2 }}
     >
-      <Typography variant={"body2"} sx={{ flexGrow: 1, wordBreak: "break-all" }}>
+      <Typography className={"grow break-all"} variant={"body2"}>
         {motion}
       </Typography>
 
       {usageCount > 0 ? (
-        <Typography variant={"caption"} sx={{ color: "text.disabled", flexShrink: 0 }}>
+        <Typography className={"shrink-0 text-text-disabled"} variant={"caption"}>
           {`×${usageCount}`}
         </Typography>
       ) : null}

@@ -73,11 +73,11 @@ export function EquipmentRepackAction({
         description={
           <>
             The sprite is rebuilt from the icons in
-            <Typography component={"div"} variant={"caption"} className={"monospace"} sx={{ paddingY: 0.5 }}>
+            <Typography className={"monospace py-1"} component={"div"} variant={"caption"}>
               {repackSourcePath}
             </Typography>
             overwriting
-            <Typography component={"div"} variant={"caption"} className={"monospace"} sx={{ paddingY: 0.5 }}>
+            <Typography className={"monospace py-1"} component={"div"} variant={"caption"}>
               {targets?.sheet}
             </Typography>
             This cannot be undone.

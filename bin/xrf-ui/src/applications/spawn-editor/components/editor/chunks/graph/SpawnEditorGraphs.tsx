@@ -1,4 +1,4 @@
-import { Box, Tab, Tabs } from "@mui/material";
+import { Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -35,7 +35,7 @@ export function SpawnEditorGraphs({
       chunk={spawnFileService.chunks.graphs}
       render={(chunk: SpawnGraphsChunk) => (
         <>
-          <Tabs value={activeTab} variant={"scrollable"} sx={{ marginBottom: 1, flexShrink: 0 }} onChange={onChangeTab}>
+          <Tabs className={"mb-2 shrink-0"} value={activeTab} variant={"scrollable"} onChange={onChangeTab}>
             <Tab value={"header"} label={"Header"} />
             <Tab value={"levels"} label={"Levels"} />
             <Tab value={"vertices"} label={"Vertices"} />
@@ -44,14 +44,14 @@ export function SpawnEditorGraphs({
             <Tab value={"cross-tables"} label={"Cross tables"} />
           </Tabs>
 
-          <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
+          <div className={"flex min-h-0 grow"}>
             {activeTab === "levels" ? <SpawnEditorGraphLevelsTable levels={chunk.levels} /> : null}
             {activeTab === "vertices" ? <SpawnEditorGraphVerticesTable vertices={chunk.vertices} /> : null}
             {activeTab === "edges" ? <SpawnEditorGraphEdgesTable edges={chunk.edges} /> : null}
             {activeTab === "points" ? <SpawnEditorGraphPointsTable points={chunk.points} /> : null}
             {activeTab === "cross-tables" ? <SpawnEditorGraphCrossTable crossTables={chunk.crossTables} /> : null}
             {activeTab === "header" ? <SpawnEditorGraphHeaderTable header={chunk.header} /> : null}
-          </Box>
+          </div>
         </>
       )}
       onLoad={spawnFileService.loadGraphs}

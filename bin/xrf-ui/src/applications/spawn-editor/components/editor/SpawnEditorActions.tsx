@@ -1,6 +1,5 @@
 import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
 import { default as SaveIcon } from "@mui/icons-material/Save";
-import { Box } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
@@ -9,6 +8,7 @@ import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -60,7 +60,7 @@ export function SpawnEditorActions({
   }, [exportPath, spawnFileService]);
 
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ display: "flex", alignItems: "center" }}>
+    <div data-testid={dataTestId} id={id} className={cn("flex items-center", className)}>
       <EditorIconAction
         label={"Save spawn file"}
         description={"Write the open spawn file to a chosen path"}
@@ -86,6 +86,6 @@ export function SpawnEditorActions({
         onClose={() => setExportPath(null)}
         onConfirm={onConfirmExport}
       />
-    </Box>
+    </div>
   );
 }

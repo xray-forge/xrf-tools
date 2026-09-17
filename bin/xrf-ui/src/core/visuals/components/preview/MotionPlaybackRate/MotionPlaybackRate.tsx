@@ -41,7 +41,7 @@ export function MotionPlaybackRate({
       isActive={fps !== MOTION_SAMPLE_FPS}
       placement={"top"}
     >
-      <div className={"w-50 px-4 py-2"}>
+      <div className={"w-toolbar-slider px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           Playback rate
         </Typography>

@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
@@ -12,6 +11,7 @@ import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -52,8 +52,8 @@ export function VisualMotionsPanel({
   }
 
   return (
-    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <EditorPanel data-testid={dataTestId} id={id} className={cn("h-full", className)} title={"Motions"}>
+      <div className={"flex h-full min-h-0 flex-col"}>
         <div className={"sticky top-0 z-1 shrink-0 border-b border-divider surface-frame px-4 pt-2 pb-3"}>
           <VisualMotionTransport />
 
@@ -76,7 +76,7 @@ export function VisualMotionsPanel({
           <VisualMotionList filter={filter} />
         </EditorPanelSection>
 
-        <Box sx={{ flexShrink: 0, maxHeight: "25%", overflowY: "auto" }}>
+        <div className={"max-h-1/4 shrink-0 overflow-y-auto"}>
           {refs.length > 0 ? (
             <EditorPanelSection title={`Motion refs (${refs.length})`} caption={"Omf files the engine loads"}>
               {refs.map((motion: VisualMotionDependency) => (
@@ -90,8 +90,8 @@ export function VisualMotionsPanel({
               <VisualMotionNames names={embedded} />
             </EditorPanelSection>
           ) : null}
-        </Box>
-      </Box>
+        </div>
+      </div>
     </EditorPanel>
   );
 }

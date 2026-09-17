@@ -1,7 +1,7 @@
 import { default as AddIcon } from "@mui/icons-material/AddCircle";
 import { default as GridIcon } from "@mui/icons-material/GridOn";
 import { default as RemoveIcon } from "@mui/icons-material/RemoveCircle";
-import { Box, FormControlLabel, Switch, Typography } from "@mui/material";
+import { FormControlLabel, Switch, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -54,8 +54,8 @@ export function EquipmentGridOptions({
       // A size the engine never reads is worth noticing from the toolbar, without opening anything.
       isActive={!isEngineSize}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, paddingX: 2, paddingY: 1 }}>
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+      <div className={"flex flex-col gap-2 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Grid
         </Typography>
 
@@ -64,11 +64,11 @@ export function EquipmentGridOptions({
           control={<Switch size={"small"} checked={isGridVisible} onChange={onToggle} />}
         />
 
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Cell size
         </Typography>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <div className={"flex items-center gap-1"}>
           <EditorIconAction
             label={"Decrease grid size"}
             description={`Decrease the grid cell size by ${GRID_SIZE_STEP} pixels`}
@@ -76,7 +76,7 @@ export function EquipmentGridOptions({
             onClick={onDecrease}
           />
 
-          <Typography variant={"body2"} sx={{ minWidth: 40, textAlign: "center" }}>
+          <Typography className={"min-w-10 text-center"} variant={"body2"}>
             {`${gridSize}px`}
           </Typography>
 
@@ -86,14 +86,14 @@ export function EquipmentGridOptions({
             icon={<AddIcon />}
             onClick={onIncrease}
           />
-        </Box>
+        </div>
 
-        <Typography variant={"caption"} sx={{ color: "text.secondary", maxWidth: 240 }}>
+        <Typography className={"max-w-60 text-text-secondary"} variant={"caption"}>
           {isEngineSize
             ? `${ENGINE_GRID_SQUARE}px is what the engine reads, so a cell here is one inv_grid unit.`
             : `The engine reads ${ENGINE_GRID_SQUARE}px cells. At this size the lattice is a guide, and the readout no longer matches inv_grid_x.`}
         </Typography>
-      </Box>
+      </div>
     </EditorPopoverAction>
   );
 }

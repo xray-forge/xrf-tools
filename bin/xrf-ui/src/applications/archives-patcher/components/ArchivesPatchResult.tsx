@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
@@ -9,6 +8,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
@@ -17,12 +17,6 @@ import { Nullable } from "@/lib/types/general";
 const CHANGE_LABELS: Record<ArchivePatchClass, string> = {
   added: "Added",
   modified: "Modified",
-};
-
-/** Colour per class, so the table is read by scanning rather than by reading every label. */
-const CHANGE_COLORS: Record<ArchivePatchClass, string> = {
-  added: "success.main",
-  modified: "warning.main",
 };
 
 /** Read from is off by default: two loose trees repeat one of two roots on every row. */
@@ -50,9 +44,11 @@ export function ArchivesPatchResult({
         headerName: "Change",
         width: 110,
         renderCell: (params: GridRenderCellParams<IPatchChangeRow>) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%", color: CHANGE_COLORS[params.row.class] }}>
+          <div
+            className={cn("flex h-full items-center", params.row.class === "added" ? "text-success" : "text-warning")}
+          >
             {CHANGE_LABELS[params.row.class]}
-          </Box>
+          </div>
         ),
       },
       {

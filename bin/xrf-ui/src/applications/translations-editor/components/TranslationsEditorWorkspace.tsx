@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -82,17 +81,17 @@ export function TranslationsEditorWorkspace(): ReactElement {
   }
 
   return (
-    <Box sx={{ display: "flex", width: "100%", height: "100%", minHeight: 0 }}>
-      <Box sx={{ width: 280, flexShrink: 0, borderRight: 1, borderColor: "divider" }}>
+    <div className={"flex h-full min-h-0 w-full"}>
+      <div className={"w-70 shrink-0 border-r border-divider"}>
         <TranslationsFilesMenu
           files={project.files}
           dirtyFiles={translationsService.dirtyFiles}
           selected={selectedFile}
           onSelect={setSelectedFile}
         />
-      </Box>
+      </div>
 
-      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+      <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {selectedFile ? (
           <EditorFileHeader
             data-testid={"translations-file-header"}
@@ -104,17 +103,7 @@ export function TranslationsEditorWorkspace(): ReactElement {
           />
         ) : null}
 
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            flexGrow: 1,
-            minWidth: 0,
-            minHeight: 0,
-            gap: 1,
-            padding: 1.5,
-          }}
-        >
+        <div className={"flex min-h-0 min-w-0 grow flex-col gap-2 p-3"}>
           <TranslationsLanguageBar
             languages={languages}
             encodings={project.encodings}
@@ -136,8 +125,8 @@ export function TranslationsEditorWorkspace(): ReactElement {
           ) : (
             <EmptyState title={"Select a file"} description={"Pick a translation file to see its entries."} />
           )}
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

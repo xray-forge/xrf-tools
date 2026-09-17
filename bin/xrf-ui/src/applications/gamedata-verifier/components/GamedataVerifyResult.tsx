@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
@@ -6,6 +5,7 @@ import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describ
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -36,11 +36,22 @@ export function GamedataVerifyResult({
         field: "status",
         headerName: "Verdict",
         width: 120,
-        renderCell: ({ row }: GridRenderCellParams<GamedataCheckSummary>) => (
-          <Box component={"span"} sx={{ color: `${STATUS_TONES[row.status] ?? "info"}.main` }}>
-            {row.status}
-          </Box>
-        ),
+        renderCell: ({ row }: GridRenderCellParams<GamedataCheckSummary>) => {
+          const tone: TCommandResultTone = STATUS_TONES[row.status] ?? "info";
+
+          return (
+            <span
+              className={cn(
+                tone === "success" ? "text-success" : null,
+                tone === "warning" ? "text-warning" : null,
+                tone === "error" ? "text-error" : null,
+                tone === "info" ? "text-info" : null
+              )}
+            >
+              {row.status}
+            </span>
+          );
+        },
       },
       { field: "findings", headerName: "Findings", width: 110 },
       { field: "summary", headerName: "Summary", flex: 1, minWidth: 260 },

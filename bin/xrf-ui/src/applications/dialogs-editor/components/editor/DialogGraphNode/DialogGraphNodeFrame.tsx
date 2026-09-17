@@ -4,10 +4,8 @@ import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { GRAPH_LAYOUT_DEFAULTS } from "@/core/graph/lib";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** Lines of text a node shows before clamping. Past this the node stops being scannable at a glance. */
-const LABEL_LINES: number = 3;
 
 export interface IDialogGraphNodeFrameProps extends BaseComponentProps {
   data: IDialogGraphNodeData;
@@ -62,8 +60,8 @@ export function DialogGraphNodeFrame({
     >
       {hasTarget ? <Handle type={"target"} position={Position.Top} isConnectable={false} /> : null}
 
-      <Stack direction={"row"} spacing={0.5} sx={{ alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant={"caption"} noWrap sx={{ color: "text.secondary", fontFamily: "monospace" }}>
+      <Stack className={"items-center justify-between"} direction={"row"} spacing={0.5}>
+        <Typography className={"text-text-secondary"} variant={"caption"} noWrap sx={{ fontFamily: "monospace" }}>
           {data.name}
         </Typography>
 
@@ -73,28 +71,23 @@ export function DialogGraphNodeFrame({
       <Typography
         variant={"body2"}
         title={data.label}
-        sx={{
-          color: data.isUnresolved ? "text.secondary" : "text.primary",
-          display: "-webkit-box",
-          fontStyle: data.isUnresolved ? "italic" : "normal",
-          overflow: "hidden",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: LABEL_LINES,
-          wordBreak: "break-word",
-        }}
+        className={cn(
+          "line-clamp-3 wrap-anywhere",
+          data.isUnresolved ? "text-text-secondary italic" : "text-text-primary not-italic"
+        )}
       >
         {data.label}
       </Typography>
 
       {data.badges.length ? (
-        <Stack direction={"row"} spacing={0.25} sx={{ flexWrap: "wrap", marginTop: 0.5, rowGap: 0.25 }}>
+        <Stack direction={"row"} spacing={0.25} className={"mt-1 flex-wrap gap-y-0.5"}>
           {data.badges.map((badge: string, index: number) => (
             <Chip
               key={`${badge}-${index}`}
+              className={"h-4.5 text-badge"}
               size={"small"}
               variant={"outlined"}
               label={badge}
-              sx={{ height: 18, fontSize: 10 }}
             />
           ))}
         </Stack>

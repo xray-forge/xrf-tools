@@ -33,28 +33,26 @@ export function CallableExportDetails({ declaration }: ICallableExportDetailsPro
                     {parameter.isOptional ? "?" : ""}
                   </TableCell>
 
-                  <TableCell className={"monospace"} sx={{ overflowWrap: "anywhere" }}>
-                    {parameter.typing}
-                  </TableCell>
+                  <TableCell className={"monospace wrap-anywhere"}>{parameter.typing}</TableCell>
                   <TableCell>{parameter.description ?? "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             No parameters.
           </Typography>
         )}
       </ExportSection>
 
       <ExportSection title={"Returns"}>
-        <Typography variant={"body2"} className={"monospace"} sx={{ overflowWrap: "anywhere" }}>
+        <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
           {declaration.returns.typing}
         </Typography>
 
         {declaration.returns.description ? (
-          <Typography variant={"body2"} sx={{ marginTop: 0.75, whiteSpace: "pre-wrap" }}>
+          <Typography className={"mt-1.5 whitespace-pre-wrap"} variant={"body2"}>
             {declaration.returns.description}
           </Typography>
         ) : null}

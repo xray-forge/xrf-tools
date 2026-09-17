@@ -1,4 +1,4 @@
-import { Alert, Box, Button, List, Stack, Typography } from "@mui/material";
+import { Alert, Button, List, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -61,7 +61,7 @@ export function TextureFormatsPanel({
         title={"Candidates"}
         caption={"Every figure is what a re-encode adds on top of the file as it stands"}
       >
-        <Stack direction={"row"} spacing={1} sx={{ mb: 1 }}>
+        <Stack className={"mb-2"} direction={"row"} spacing={1}>
           <Button
             data-testid={"texture-formats-compare"}
             size={"small"}
@@ -102,7 +102,7 @@ export function TextureFormatsPanel({
         )}
 
         {comparison?.outcome === "cancelled" ? (
-          <Alert severity={"info"} sx={{ mt: 1 }}>
+          <Alert className={"mt-2"} severity={"info"}>
             Stopped before every format was weighed. The ones listed are real measurements and can still be saved.
           </Alert>
         ) : null}
@@ -110,12 +110,12 @@ export function TextureFormatsPanel({
 
       {encodingService.chosenReport ? (
         <EditorPanelSection title={"Pending"}>
-          <Box>
+          <div>
             <Alert severity={"info"}>
               {`Saving writes this texture as ${encodingService.chosenReport.label}. The descriptor's own format is ` +
                 "updated with it, except for BC7, which ETFormat cannot name."}
             </Alert>
-          </Box>
+          </div>
         </EditorPanelSection>
       ) : null}
     </EditorPanel>

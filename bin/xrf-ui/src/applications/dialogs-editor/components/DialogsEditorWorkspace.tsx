@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -33,7 +32,7 @@ export function DialogsEditorWorkspace(): ReactElement {
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+    <div className={"flex min-h-0 min-w-0 grow flex-col"}>
       <EditorFileHeader
         data-testid={"dialog-header"}
         name={selection.id}
@@ -43,7 +42,7 @@ export function DialogsEditorWorkspace(): ReactElement {
         onClose={dialogsService.clearSelection}
       />
 
-      <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+      <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           if (dialog.value) {
             return <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />;
@@ -55,7 +54,7 @@ export function DialogsEditorWorkspace(): ReactElement {
 
           return <ErrorState title={"Could not read this dialog"} description={String(dialog.error)} />;
         })}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
@@ -19,11 +19,11 @@ export interface IExportDeclarationViewProps extends BaseComponentProps {
 
 export function ExportDeclarationView({ declaration, onDeselect }: IExportDeclarationViewProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+    <div className={"flex min-h-0 min-w-0 grow flex-col"}>
       <EditorFileHeader
         data-testid={"export-declaration-header"}
         name={declaration.name}
-        icon={<DataObjectIcon fontSize={"small"} sx={{ color: "text.secondary" }} />}
+        icon={<DataObjectIcon fontSize={"small"} className={"text-text-secondary"} />}
         actions={
           <Chip size={"small"} variant={"outlined"} label={declaration.kind === "callable" ? "Callable" : "Value"} />
         }
@@ -32,21 +32,17 @@ export function ExportDeclarationView({ declaration, onDeselect }: IExportDeclar
         onClose={onDeselect}
       />
 
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", padding: 3 }}>
-        <Box sx={{ width: "100%", maxWidth: 1440 }}>
+      <div className={"min-h-0 grow overflow-y-auto p-6"}>
+        <div className={"w-full max-w-360"}>
           <ExportSection title={"Signature"}>
-            <Typography
-              component={"pre"}
-              className={"monospace"}
-              sx={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
-            >
+            <Typography component={"pre"} className={"monospace m-0 wrap-anywhere whitespace-pre-wrap"}>
               {formatExportSignature(declaration)}
             </Typography>
           </ExportSection>
 
           {declaration.description ? (
             <ExportSection title={"Description"}>
-              <Typography variant={"body2"} sx={{ whiteSpace: "pre-wrap" }}>
+              <Typography className={"whitespace-pre-wrap"} variant={"body2"}>
                 {declaration.description}
               </Typography>
             </ExportSection>
@@ -56,25 +52,21 @@ export function ExportDeclarationView({ declaration, onDeselect }: IExportDeclar
             <CallableExportDetails declaration={declaration} />
           ) : (
             <ExportSection title={"Value type"}>
-              <Typography variant={"body2"} className={"monospace"} sx={{ overflowWrap: "anywhere" }}>
+              <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
                 {declaration.typing}
               </Typography>
             </ExportSection>
           )}
 
           <ExportSection title={"Source"} isLast={true}>
-            <Typography
-              className={"monospace"}
-              variant={"body2"}
-              sx={{ marginBottom: 1, color: "text.secondary", overflowWrap: "anywhere" }}
-            >
+            <Typography className={"monospace mb-2 wrap-anywhere text-text-secondary"} variant={"body2"}>
               {declaration.source.path}:{declaration.source.line}:{declaration.source.column}
             </Typography>
 
             <ExportSourceView key={declaration.name} name={declaration.name} />
           </ExportSection>
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

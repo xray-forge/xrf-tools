@@ -1,6 +1,7 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IExportSectionProps extends BaseComponentProps {
@@ -11,14 +12,14 @@ export interface IExportSectionProps extends BaseComponentProps {
 
 export function ExportSection({ children, isLast = false, title }: IExportSectionProps): ReactElement {
   return (
-    <Box component={"section"} sx={{ paddingBottom: isLast ? 0 : 2.5 }}>
-      <Typography variant={"subtitle2"} sx={{ marginBottom: 1 }}>
+    <section className={cn(isLast ? null : "pb-5")}>
+      <Typography className={"mb-2"} variant={"subtitle2"}>
         {title}
       </Typography>
 
       {children}
 
-      {isLast ? null : <Divider sx={{ marginTop: 2.5 }} />}
-    </Box>
+      {isLast ? null : <Divider className={"mt-5"} />}
+    </section>
   );
 }

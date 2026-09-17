@@ -71,7 +71,7 @@ export function ArchiveStatisticsDialog({
         onClose={onClose}
       />
 
-      <DialogContent className={"flex h-115 max-h-dialog p-0"}>
+      <DialogContent className={"flex h-115 max-h-dialog-height p-0"}>
         <List
           className={"w-37 shrink-0 overflow-y-auto border-r border-divider bg-well"}
           dense={true}

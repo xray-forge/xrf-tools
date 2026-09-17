@@ -1,4 +1,4 @@
-import { Box, Tab, Tabs } from "@mui/material";
+import { Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -32,17 +32,17 @@ export function SpawnEditorPatrols({
       chunk={spawnFileService.chunks.patrols}
       render={(chunk: SpawnPatrolsChunk) => (
         <>
-          <Tabs value={activeTab} sx={{ marginBottom: 1, flexShrink: 0 }} onChange={onChangeTab}>
+          <Tabs className={"mb-2 shrink-0"} value={activeTab} onChange={onChangeTab}>
             <Tab value={"patrols"} label={"Patrols"} />
             <Tab value={"points"} label={"Points"} />
             <Tab value={"links"} label={"Links"} />
           </Tabs>
 
-          <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
+          <div className={"flex min-h-0 grow"}>
             {activeTab === "points" ? <SpawnEditorPatrolPointsTable patrols={chunk.patrols} /> : null}
             {activeTab === "links" ? <SpawnEditorPatrolLinksTable patrols={chunk.patrols} /> : null}
             {activeTab === "patrols" ? <SpawnEditorPatrolsTable patrols={chunk.patrols} /> : null}
-          </Box>
+          </div>
         </>
       )}
       onLoad={spawnFileService.loadPatrols}

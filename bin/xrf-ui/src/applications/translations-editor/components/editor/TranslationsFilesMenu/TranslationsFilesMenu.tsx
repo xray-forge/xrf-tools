@@ -1,5 +1,5 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationFile } from "@/core/ipc/types/xrf-translation";
@@ -21,8 +21,9 @@ function toFileRow(entry: IFileEntry): IEditorSearchResultRow {
     id: entry.name,
     label: entry.name,
     description: `${entry.entryCount} entries`,
+    // The 8px dot names no step of the type scale, so its size stays a raw value.
     icon: entry.isDirty ? (
-      <CircleIcon aria-label={"Unsaved changes"} sx={{ fontSize: 8, color: "warning.main" }} />
+      <CircleIcon aria-label={"Unsaved changes"} className={"text-warning"} sx={{ fontSize: 8 }} />
     ) : undefined,
   };
 }
@@ -71,11 +72,11 @@ export function TranslationsFilesMenu({
       sections={sections}
     >
       {entries.length ? null : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             No translation files found.
           </Typography>
-        </Box>
+        </div>
       )}
     </EditorSearchMenu>
   );

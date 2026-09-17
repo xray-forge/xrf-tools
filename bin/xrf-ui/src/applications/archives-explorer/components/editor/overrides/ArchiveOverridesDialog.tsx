@@ -112,7 +112,7 @@ export function ArchiveOverridesDialog({
         onClose={onClose}
       />
 
-      <DialogContent className={"flex h-115 max-h-dialog flex-col gap-4 px-dialog"}>
+      <DialogContent className={"flex h-115 max-h-dialog-height flex-col gap-4 px-dialog"}>
         {archivesService.overrides.error ? (
           <Alert severity={"error"}>
             {`Could not describe what this overrides: ${archivesService.overrides.error.message}`}

@@ -1,4 +1,4 @@
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Tooltip, Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@mui/x-data-grid";
 import { ReactElement, useMemo, useState } from "react";
 
@@ -27,14 +27,14 @@ function renderValue(value: Nullable<string>): ReactElement {
   // Absent is not empty: the engine falls back to the id, so the gap is a real state worth seeing.
   if (value === null) {
     return (
-      <Typography variant={"body2"} sx={{ color: "text.disabled", fontStyle: "italic" }}>
+      <Typography className={"text-text-disabled italic"} variant={"body2"}>
         not translated
       </Typography>
     );
   }
 
   return (
-    <Typography variant={"body2"} sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+    <Typography className={"truncate"} variant={"body2"}>
       {value}
     </Typography>
   );
@@ -90,9 +90,7 @@ export function TranslationsTable({
         renderCell: (params: GridRenderCellParams<ITranslationRow>) =>
           params.row.error ? (
             <Tooltip describeChild title={params.row.error}>
-              <Box sx={{ display: "flex", alignItems: "center", width: "100%", color: "error.main" }}>
-                {renderValue(params.row.target)}
-              </Box>
+              <div className={"flex w-full items-center text-error"}>{renderValue(params.row.target)}</div>
             </Tooltip>
           ) : (
             renderValue(params.row.target)
@@ -103,17 +101,18 @@ export function TranslationsTable({
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, gap: 1 }}>
-      <Box sx={{ maxWidth: 320 }}>
+    <div className={"flex min-h-0 grow flex-col gap-2"}>
+      <div className={"max-w-80"}>
         <EditorFilterInput
           ariaLabel={"Filter translations"}
           query={search}
           placeholder={"Filter by id or text"}
           onQueryChange={setSearch}
         />
-      </Box>
+      </div>
 
-      <DataGrid<ITranslationRow>
+      <DataGrid
+        className={"min-h-0 grow"}
         rows={filtered}
         columns={columns}
         getRowId={(row: ITranslationRow) => row.id}
@@ -122,11 +121,7 @@ export function TranslationsTable({
         rowSelectionModel={selectedId ? { type: "include", ids: new Set([selectedId]) } : undefined}
         initialState={{ pagination: { paginationModel: { pageSize: 100 } } }}
         pageSizeOptions={[100, 250, 500]}
-        sx={{
-          flexGrow: 1,
-          minHeight: 0,
-          [`& .${EDITED_ROW_CLASS}`]: { backgroundColor: "action.hover" },
-        }}
+        sx={{ [`& .${EDITED_ROW_CLASS}`]: { backgroundColor: "action.hover" } }}
         getRowClassName={(params: GridRowParams<ITranslationRow>) => (params.row.isEdited ? EDITED_ROW_CLASS : "")}
         processRowUpdate={(updated: ITranslationRow, original: ITranslationRow) => {
           if (updated.target !== original.target) {
@@ -137,6 +132,6 @@ export function TranslationsTable({
         }}
         onRowClick={(params: GridRowParams<ITranslationRow>) => onSelect(params.row.id)}
       />
-    </Box>
+    </div>
   );
 }

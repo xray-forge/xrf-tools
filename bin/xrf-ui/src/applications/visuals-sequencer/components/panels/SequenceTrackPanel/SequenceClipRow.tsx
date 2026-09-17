@@ -1,13 +1,14 @@
 import { default as ArrowDownwardIcon } from "@mui/icons-material/ArrowDownward";
 import { default as ArrowUpwardIcon } from "@mui/icons-material/ArrowUpward";
 import { default as DeleteOutlinedIcon } from "@mui/icons-material/DeleteOutlined";
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatSeconds } from "@/lib/format/duration";
 import { Nullable } from "@/lib/types/general";
@@ -38,49 +39,36 @@ export function SequenceClipRow({
   const frames: number = motion?.bake?.frameCount ?? 0;
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        paddingX: 1,
-        paddingY: 0.5,
-        borderRadius: 1,
-        backgroundColor: isPlaying ? "action.current" : "transparent",
-      }}
+      className={cn(
+        "flex items-center gap-1 rounded-surface px-2 py-1",
+        isPlaying ? "bg-action-current" : "bg-transparent",
+        className
+      )}
     >
-      <Typography variant={"caption"} sx={{ color: "text.disabled", flexShrink: 0, minWidth: 20 }}>
+      <Typography className={"min-w-5 shrink-0 text-text-disabled"} variant={"caption"}>
         {position + 1}
       </Typography>
 
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+      <div className={"min-w-0 grow"}>
         <Typography
+          aria-label={`Seek to ${clip.motion}`}
+          className={
+            "block cursor-pointer border-0 bg-transparent p-0 text-left break-all text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          }
           component={"button"}
           type={"button"}
-          aria-label={`Seek to ${clip.motion}`}
           variant={"body2"}
-          sx={{
-            display: "block",
-            padding: 0,
-            border: 0,
-            borderRadius: 0.5,
-            background: "none",
-            color: "inherit",
-            textAlign: "left",
-            wordBreak: "break-all",
-            cursor: "pointer",
-            "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 },
-          }}
+          sx={{ borderRadius: 0.5 }}
           onClick={() => service.seek(position, 0)}
         >
           {clip.motion}
         </Typography>
 
         {motion?.state === ESequenceMotionState.READY ? (
-          <Typography variant={"caption"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"caption"}>
             {`${frames} frames · ${formatSeconds(motion.bake?.duration ?? 0)}`}
           </Typography>
         ) : null}
@@ -90,15 +78,15 @@ export function SequenceClipRow({
         ) : null}
 
         {motion?.state === ESequenceMotionState.UNAVAILABLE ? (
-          <Box>
+          <div>
             <Chip size={"small"} color={"error"} variant={"outlined"} label={"Unavailable"} />
 
-            <Typography variant={"caption"} sx={{ display: "block", color: "error.main", wordBreak: "break-word" }}>
+            <Typography className={"block break-words text-error"} variant={"caption"}>
               {motion.reason}
             </Typography>
-          </Box>
+          </div>
         ) : null}
-      </Box>
+      </div>
 
       <EditorIconAction
         label={`Move ${clip.motion} earlier`}
@@ -122,6 +110,6 @@ export function SequenceClipRow({
         icon={<DeleteOutlinedIcon />}
         onClick={() => service.remove(clip.id)}
       />
-    </Box>
+    </div>
   );
 }

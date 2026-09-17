@@ -1,7 +1,7 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { TEquipmentCell } from "@/core/sprite-equipment/lib";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentGridMoveOver extends BaseComponentProps {
@@ -15,8 +15,8 @@ export function EquipmentGridMoveOver({
   cell,
 }: IEquipmentGridMoveOver): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ position: "absolute", left: 4, bottom: 4 }}>
+    <div data-testid={dataTestId} id={id} className={cn("absolute bottom-1 left-1", className)}>
       {`${cell[0]}:${cell[1]}`}
-    </Box>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Stack } from "@mui/material";
+import { Alert, Button, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -68,13 +68,13 @@ export function TextureDescriptorPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Descriptor"}>
       {description.targets === null ? (
-        <Alert severity={"info"} sx={{ mb: 1 }}>
+        <Alert className={"mb-2"} severity={"info"}>
           This texture is served out of an archive, so there is no file to write. Fields can be read, not saved.
         </Alert>
       ) : null}
 
       {isAuthoring ? (
-        <Alert severity={"info"} sx={{ mb: 1 }}>
+        <Alert className={"mb-2"} severity={"info"}>
           No .thm sits beside this texture. Saving writes one, starting from the defaults the SDK begins a new
           descriptor at.
         </Alert>
@@ -120,7 +120,7 @@ export function TextureDescriptorPanel({
           onChange={(detailScale: number) => onEdit({ detailScale })}
         />
 
-        <Box sx={{ display: "flex", flexDirection: "column", mt: 1 }}>
+        <div className={"mt-2 flex flex-col"}>
           {primaryFlags.map((flag: TextureFlagEntry) => (
             <TextureFlagField
               key={flag.bit}
@@ -130,7 +130,7 @@ export function TextureDescriptorPanel({
               onChange={(isSet: boolean) => onFlag(flag.bit, isSet)}
             />
           ))}
-        </Box>
+        </div>
       </EditorPanelSection>
 
       <EditorPanelSection
@@ -201,7 +201,7 @@ export function TextureDescriptorPanel({
 
         <TextureNumberField data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
 
-        <Box sx={{ display: "flex", flexDirection: "column", mt: 1 }}>
+        <div className={"mt-2 flex flex-col"}>
           {vocabulary.flags
             .filter((flag: TextureFlagEntry) => !PRIMARY_FLAG_LABELS.includes(flag.label))
             .map((flag: TextureFlagEntry) => (
@@ -213,7 +213,7 @@ export function TextureDescriptorPanel({
                 onChange={(isSet: boolean) => onFlag(flag.bit, isSet)}
               />
             ))}
-        </Box>
+        </div>
       </EditorPanelSection>
 
       <EditorPanelSection title={"Changes"}>
@@ -240,7 +240,7 @@ export function TextureDescriptorPanel({
         </Stack>
 
         {editorService.save.error ? (
-          <Alert severity={"error"} sx={{ mt: 1 }}>
+          <Alert className={"mt-2"} severity={"error"}>
             {editorService.save.error}
           </Alert>
         ) : null}

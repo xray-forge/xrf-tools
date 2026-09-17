@@ -49,7 +49,7 @@ export function VisualMeshDetail({
       isDisabled={!hasDetailLevels}
       isActive={detail !== 0 && hasDetailLevels}
     >
-      <div className={"w-50 px-4 py-2"}>
+      <div className={"w-toolbar-slider px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           Mesh detail
         </Typography>

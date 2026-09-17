@@ -19,8 +19,6 @@ interface ICodeViewProps extends StyledComponentProps {
   label?: string;
 }
 
-const CODE_LINE_HEIGHT: number = 1.6;
-
 /**
  * Source text with a line gutter, coloured by its grammar.
  */
@@ -48,22 +46,18 @@ export function CodeView({
       className={className}
       sx={mergeSx({ display: "flex", minWidth: 0, overflow: "auto" }, sx)}
     >
-      <Box
+      <pre
         aria-hidden={true}
-        component={"pre"}
-        className={"monospace m-0 shrink-0 border-r border-divider p-3 text-right text-text-secondary select-none"}
-        sx={{ lineHeight: CODE_LINE_HEIGHT }}
+        className={
+          "monospace m-0 shrink-0 border-r border-divider p-3 text-right leading-code text-text-secondary select-none"
+        }
       >
         {lineNumbers}
-      </Box>
+      </pre>
 
-      <Box
-        component={"pre"}
-        className={"monospace m-0 min-h-full min-w-max p-3 whitespace-pre text-text-primary"}
-        sx={{ lineHeight: CODE_LINE_HEIGHT, tabSize: 2 }}
-      >
+      <pre className={"monospace m-0 min-h-full min-w-max p-3 leading-code whitespace-pre tab-2 text-text-primary"}>
         <SyntaxContent content={content} language={language} />
-      </Box>
+      </pre>
     </Box>
   );
 }

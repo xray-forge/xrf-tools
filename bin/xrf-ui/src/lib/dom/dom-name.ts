@@ -27,7 +27,7 @@ const merge = extendTailwindMerge({
     theme: {
       container: ["reading", "reading-label", "content-state-description"],
       font: ["monospace"],
-      leading: ["panel"],
+      leading: ["code", "panel"],
       radius: ["surface", "control"],
       spacing: [
         "tree-row",
@@ -36,6 +36,7 @@ const merge = extendTailwindMerge({
         "code-line",
         "header",
         "dialog",
+        "dialog-height",
         "panel-property",
         "panel-property-gap",
         "panel-content",
@@ -47,6 +48,7 @@ const merge = extendTailwindMerge({
         "rail-button",
         "rail",
         "title-bar",
+        "toolbar-slider",
         "status-bar",
       ],
       text: ["tree-icon", "content-state-icon", "badge", "panel-action-icon", "editor-action-icon"],

@@ -151,6 +151,8 @@ export const CODE = {
   minimumGutterDigits: 3,
   /** A gutter mark, one step below the number so it reads as an annotation rather than a digit. */
   markIconSize: 13,
+  /** Leading of a rendered line. A ratio, unlike `lineHeight`, which is the virtualizer's row pitch in pixels. */
+  lineHeightRatio: 1.6,
   /** Space between the gutter and the first character of a line. */
   contentPaddingX: 10,
 } as const;

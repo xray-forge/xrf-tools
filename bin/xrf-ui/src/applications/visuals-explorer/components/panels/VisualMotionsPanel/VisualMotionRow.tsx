@@ -24,36 +24,32 @@ export function VisualMotionRow({
 
   return (
     <Box data-testid={dataTestId} id={id} className={className} sx={{ paddingY: 0.4 }}>
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
-        <Typography variant={"body2"} sx={{ minWidth: 0, wordBreak: "break-all" }}>
+      <div className={"flex items-baseline justify-between gap-2"}>
+        <Typography className={"min-w-0 break-all"} variant={"body2"}>
           {motion.reference}
         </Typography>
 
         {assets.length > 0 ? (
           <Chip
+            className={"shrink-0"}
             size={"small"}
             color={"success"}
             variant={"outlined"}
             label={assets.length > 1 ? `${assets.length} files` : "Found"}
-            sx={{ flexShrink: 0 }}
           />
         ) : (
           <Chip
+            className={"shrink-0"}
             size={"small"}
             color={resolution.kind === "rejected" ? "error" : "warning"}
             variant={"outlined"}
             label={resolution.kind === "rejected" ? "Unusable" : "Not found"}
-            sx={{ flexShrink: 0 }}
           />
         )}
-      </Box>
+      </div>
 
       {assets.map((asset: XrayAsset) => (
-        <Typography
-          key={asset.logicalPath}
-          variant={"caption"}
-          sx={{ display: "block", color: "text.secondary", wordBreak: "break-all" }}
-        >
+        <Typography key={asset.logicalPath} className={"block break-all text-text-secondary"} variant={"caption"}>
           {asset.logicalPath}
         </Typography>
       ))}

@@ -62,7 +62,7 @@ export function PackerDirectoryList({
           />
 
           <FormControlLabel
-            sx={{ flexShrink: 0, mr: 0 }}
+            className={"mr-0 shrink-0"}
             control={
               <Switch
                 size={"small"}

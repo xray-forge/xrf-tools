@@ -1,4 +1,4 @@
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { CircularProgress, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -9,6 +9,7 @@ import {
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
 import { IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IPanZoomPoint } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
@@ -58,12 +59,7 @@ export function EquipmentSpriteViewer({
 
   if (!sprite || !layout) {
     return (
-      <Box
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}
-      >
+      <div data-testid={dataTestId} id={id} className={cn("flex h-full w-full items-center justify-center", className)}>
         {isLoading ? (
           <CircularProgress size={28} />
         ) : (
@@ -71,17 +67,12 @@ export function EquipmentSpriteViewer({
             No sprite open
           </Typography>
         )}
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ position: "relative", display: "flex", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("relative flex h-full min-h-0 w-full min-w-0", className)}>
       <ImageViewport
         src={sprite.image.src}
         alt={sprite.metadata.name}
@@ -93,6 +84,6 @@ export function EquipmentSpriteViewer({
       />
 
       {hover.hoveredCell ? <EquipmentGridMoveOver cell={hover.hoveredCell} /> : null}
-    </Box>
+    </div>
   );
 }

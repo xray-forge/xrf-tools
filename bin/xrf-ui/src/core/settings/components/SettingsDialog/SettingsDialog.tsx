@@ -51,7 +51,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
     <Dialog aria-labelledby={titleId} fullWidth maxWidth={"md"} open={isOpen} onClose={onClose}>
       <DialogHeader title={"Settings"} titleId={titleId} closeLabel={"Close settings"} onClose={onClose} />
 
-      <DialogContent className={"flex h-105 max-h-dialog p-0"}>
+      <DialogContent className={"flex h-105 max-h-dialog-height p-0"}>
         <List className={"w-37 shrink-0 border-r border-divider bg-well"} dense={true} disablePadding={true}>
           {SECTIONS.map((it: EDetailSection) => (
             <ListItemButton key={it} selected={section === it} onClick={() => setSection(it)}>

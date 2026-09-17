@@ -1,7 +1,8 @@
-import { Box, Chip, ListItemButton, Typography } from "@mui/material";
+import { Chip, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentOccupantRowProps extends BaseComponentProps {
@@ -25,13 +26,12 @@ export function EquipmentOccupantRow({
     <ListItemButton
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("block py-1", className)}
       selected={isSelected}
-      sx={{ display: "block", paddingY: 0.5 }}
       onClick={onReveal}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-        <Typography variant={"body2"} sx={{ wordBreak: "break-all", flexGrow: 1 }}>
+      <div className={"flex items-center gap-1"}>
+        <Typography className={"grow break-all"} variant={"body2"}>
           {occupant.section}
         </Typography>
 
@@ -48,10 +48,10 @@ export function EquipmentOccupantRow({
         <Typography variant={"caption"} color={"text.secondary"}>
           {`${occupant.x}:${occupant.y}`}
         </Typography>
-      </Box>
+      </div>
 
       {occupant.origin ? (
-        <Typography variant={"caption"} color={"text.secondary"} sx={{ wordBreak: "break-all" }}>
+        <Typography className={"break-all"} variant={"caption"} color={"text.secondary"}>
           {occupant.origin}
         </Typography>
       ) : null}

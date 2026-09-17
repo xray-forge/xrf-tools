@@ -1,7 +1,7 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EquipmentSpriteViewer } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentSpriteViewer";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export function EquipmentSpriteEditorWorkspace({
@@ -10,20 +10,12 @@ export function EquipmentSpriteEditorWorkspace({
   className,
 }: BaseComponentProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className ? `workspace ${className}` : "workspace"}
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        maxWidth: "100%",
-        maxHeight: "100%",
-        flexGrow: 1,
-      }}
+      className={cn("workspace flex max-h-full max-w-full grow items-center justify-center", className)}
     >
       <EquipmentSpriteViewer />
-    </Box>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo, useState } from "react";
 
@@ -78,7 +78,7 @@ export function SequenceMotionsPanel({
         />
       </div>
 
-      <Box sx={{ paddingX: 1, paddingY: 1 }}>
+      <div className={"p-2"}>
         {matched.slice(0, SHOWN_LIMIT).map((name: string) => (
           <SequenceMotionRow key={name} motion={name} usageCount={used.get(name) ?? 0} onAdd={sequenceService.add} />
         ))}
@@ -88,11 +88,11 @@ export function SequenceMotionsPanel({
         ) : null}
 
         {matched.length > SHOWN_LIMIT ? (
-          <Typography variant={"caption"} sx={{ display: "block", padding: 1, color: "text.disabled" }}>
+          <Typography className={"block p-2 text-text-disabled"} variant={"caption"}>
             {`Showing ${SHOWN_LIMIT} of ${matched.length} matches. Narrow the filter to reach the rest.`}
           </Typography>
         ) : null}
-      </Box>
+      </div>
     </EditorPanel>
   );
 }

@@ -1,7 +1,8 @@
-import { Box, Slider, Typography } from "@mui/material";
+import { Slider, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureGlossFieldProps extends BaseComponentProps {
@@ -26,7 +27,7 @@ export function TextureGlossField({
   onChange,
 }: ITextureGlossFieldProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ px: 1 }}>
+    <div data-testid={dataTestId} id={id} className={cn("px-2", className)}>
       <Typography variant={"caption"} color={"text.secondary"}>
         {`Gloss level ${value.toFixed(2)}`}
       </Typography>
@@ -47,6 +48,6 @@ export function TextureGlossField({
           {`Below ${MINIMUM_GLOSS_POWER}, the surface shows almost no specular response. The pair is still written.`}
         </Typography>
       ) : null}
-    </Box>
+    </div>
   );
 }

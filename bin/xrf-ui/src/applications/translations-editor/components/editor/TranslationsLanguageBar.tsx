@@ -1,6 +1,7 @@
-import { Box, MenuItem, TextField, Typography } from "@mui/material";
+import { MenuItem, TextField, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 function describe(language: string, encodings: Record<string, string>): string {
@@ -31,18 +32,13 @@ export function TranslationsLanguageBar({
   onTargetChange,
 }: ITranslationsLanguageBarProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-wrap items-center gap-3", className)}>
       <TextField
-        select
+        className={"min-w-45"}
+        select={true}
         size={"small"}
         label={"Reference"}
         value={languages.includes(reference) ? reference : ""}
-        sx={{ minWidth: 180 }}
         onChange={(event) => onReferenceChange(event.target.value)}
       >
         {languages.map((it: string) => (
@@ -52,16 +48,16 @@ export function TranslationsLanguageBar({
         ))}
       </TextField>
 
-      <Typography aria-hidden={true} variant={"body2"} sx={{ color: "text.secondary" }}>
+      <Typography aria-hidden={true} className={"text-text-secondary"} variant={"body2"}>
         →
       </Typography>
 
       <TextField
-        select
+        className={"min-w-45"}
+        select={true}
         size={"small"}
         label={"Target"}
         value={languages.includes(target) ? target : ""}
-        sx={{ minWidth: 180 }}
         onChange={(event) => onTargetChange(event.target.value)}
       >
         {languages.map((it: string) => (
@@ -70,6 +66,6 @@ export function TranslationsLanguageBar({
           </MenuItem>
         ))}
       </TextField>
-    </Box>
+    </div>
   );
 }

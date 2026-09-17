@@ -3,6 +3,7 @@ import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "rea
 
 import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { IImageViewportView } from "@/core/ui/media/ImageViewport";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { toPanZoomTransform } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
@@ -70,11 +71,10 @@ export function EquipmentGridCanvas({
     <Box
       ref={canvasRef}
       data-testid={dataTestId}
-      id={id}
-      className={className}
-      component={"canvas"}
       aria-hidden={true}
-      sx={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
+      id={id}
+      className={cn("absolute top-0 left-0 h-full w-full", className)}
+      component={"canvas"}
     />
   );
 }

@@ -1,5 +1,5 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Alert, Box, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
@@ -188,8 +188,8 @@ export function ArchivesPackerApplication(): ReactElement {
         />
       }
     >
-      <Box sx={{ flexGrow: 1, minWidth: 0, overflowY: "auto", p: 3 }}>
-        <Stack spacing={2} sx={{ maxWidth: 860 }}>
+      <div className={"min-w-0 grow overflow-y-auto p-6"}>
+        <Stack className={"max-w-reading"} spacing={2}>
           {packerService.error ? <Alert severity={"error"}>{packerService.error}</Alert> : null}
 
           {job ? <JobProgressView job={job} onCancel={packerService.operation.cancel} /> : null}
@@ -232,7 +232,7 @@ export function ArchivesPackerApplication(): ReactElement {
             </>
           ) : null}
         </Stack>
-      </Box>
+      </div>
 
       {resolved ? (
         <ConfirmDialog

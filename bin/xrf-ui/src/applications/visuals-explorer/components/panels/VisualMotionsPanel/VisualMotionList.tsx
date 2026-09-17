@@ -1,5 +1,5 @@
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { Box, Tooltip } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
@@ -13,6 +13,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -51,15 +52,13 @@ export function VisualMotionList({
   const renderLabel = useCallback(
     (item: ITreeNode<string>): ReactNode =>
       item.payload === posed ? (
-        <Box sx={{ alignItems: "center", display: "flex", gap: 0.5, minWidth: 0 }}>
-          <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-            {item.label}
-          </Box>
+        <div className={"flex min-w-0 items-center gap-1"}>
+          <span className={"min-w-0 overflow-hidden text-ellipsis"}>{item.label}</span>
 
           <Tooltip title={"Posed in the viewport"}>
-            <PlayArrowIcon fontSize={"inherit"} sx={{ color: "primary.main", flexShrink: 0 }} />
+            <PlayArrowIcon fontSize={"inherit"} className={"shrink-0 text-primary"} />
           </Tooltip>
-        </Box>
+        </div>
       ) : (
         item.label
       ),
@@ -125,13 +124,12 @@ export function VisualMotionList({
     <VirtualizedTree<string>
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("min-h-40 p-0", className)}
       ariaLabel={"Motions"}
       items={nodes}
       expandedIds={tree.expandedIds}
       selectedId={tree.selectedId}
       renderLabel={renderLabel}
-      sx={{ minHeight: 160, padding: 0 }}
       onSelect={onSelect}
       onActivate={onActivate}
       onToggleExpanded={tree.toggleExpanded}

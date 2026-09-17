@@ -7,6 +7,7 @@ import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherToolbarActionsProps extends BaseComponentProps {
@@ -38,10 +39,9 @@ export function PatcherToolbarActions({
     <Stack
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("mr-1 items-center", className)}
       direction={"row"}
       spacing={0.5}
-      sx={{ alignItems: "center", mr: 0.5 }}
     >
       <EditorIconAction
         label={"Import patching configuration"}

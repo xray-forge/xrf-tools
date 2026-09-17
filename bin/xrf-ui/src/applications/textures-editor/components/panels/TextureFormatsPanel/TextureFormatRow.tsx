@@ -1,9 +1,9 @@
-import { Box, Chip, ListItemButton, Typography } from "@mui/material";
+import { Chip, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { TextureEncodingReport } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -28,12 +28,11 @@ export function TextureFormatRow({
     <ListItemButton
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("flex-col items-stretch gap-2 rounded-surface py-2", className)}
       selected={isChosen}
       onClick={onChoose}
-      sx={{ alignItems: "stretch", borderRadius: 1, flexDirection: "column", gap: PANEL.sectionContentGap, py: 1 }}
     >
-      <Box sx={{ alignItems: "center", display: "flex", gap: 1, justifyContent: "space-between", width: "100%" }}>
+      <div className={"flex w-full items-center justify-between gap-2"}>
         <Typography variant={"body2"}>{candidate.label}</Typography>
 
         <Chip
@@ -42,9 +41,9 @@ export function TextureFormatRow({
           color={candidate.supportSummary.startsWith("all renderers") ? "default" : "warning"}
           label={candidate.supportSummary}
         />
-      </Box>
+      </div>
 
-      <Box>
+      <div>
         <EditorPanelProperty label={"On disk"} value={formatBytes(candidate.fileBytes)} />
         <EditorPanelProperty label={"Uploaded"} value={formatBytes(candidate.gpuBytes)} />
         <EditorPanelProperty
@@ -52,7 +51,7 @@ export function TextureFormatRow({
           value={candidate.psnr === null ? "lossless" : `${candidate.psnr.toFixed(1)} dB additional`}
         />
         <EditorPanelProperty label={"Encoding time"} value={`${candidate.encodeDuration} ms`} />
-      </Box>
+      </div>
     </ListItemButton>
   );
 }

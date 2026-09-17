@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -15,12 +15,12 @@ export function VisualMotionNames({
   names,
 }: IVisualMotionNamesProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className}>
+    <div data-testid={dataTestId} id={id} className={className}>
       {names.map((name) => (
-        <Typography key={name} variant={"body2"} sx={{ paddingY: 0.4, lineHeight: 1.6, wordBreak: "break-all" }}>
+        <Typography key={name} className={"leading-panel break-all"} variant={"body2"} sx={{ paddingY: 0.4 }}>
           {name}
         </Typography>
       ))}
-    </Box>
+    </div>
   );
 }

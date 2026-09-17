@@ -102,7 +102,7 @@ export function TextureBumpPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
       {bumpService.destination === null ? (
-        <Alert severity={"info"} sx={{ mb: 1 }}>
+        <Alert className={"mb-2"} severity={"info"}>
           This texture is served out of an archive, so there is nowhere beside it to write a pair.
         </Alert>
       ) : null}
@@ -158,12 +158,12 @@ export function TextureBumpPanel({
           ) : null}
         </Stack>
 
-        <Typography variant={"caption"} color={"text.secondary"} sx={{ display: "block", mt: 1 }}>
+        <Typography className={"mt-2 block"} variant={"caption"} color={"text.secondary"}>
           Both halves are written at once, and the descriptor is pointed at them. Saving is still a separate act.
         </Typography>
 
         {bumpService.generate.error ? (
-          <Alert severity={"error"} sx={{ mt: 1 }}>
+          <Alert className={"mt-2"} severity={"error"}>
             {bumpService.generate.error}
           </Alert>
         ) : null}

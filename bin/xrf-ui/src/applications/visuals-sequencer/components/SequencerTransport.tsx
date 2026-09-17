@@ -11,7 +11,6 @@ import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-seq
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { LAYOUT } from "@/core/theme/tokens";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 
 /**
@@ -30,19 +29,7 @@ export function SequencerTransport(): ReactElement {
   const onStep = useCallback((offset: number) => service.seek(service.clipIndex + offset, 0), [service]);
 
   return (
-    <Paper
-      square
-      elevation={3}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        paddingX: 1,
-        paddingY: 1,
-        flexShrink: 0,
-        backgroundColor: "background.frame",
-      }}
-    >
+    <Paper className={"flex shrink-0 items-center gap-2 bg-surface-frame p-2"} square={true} elevation={3}>
       <EditorIconAction
         label={"Previous clip"}
         description={"Previous clip"}
@@ -67,27 +54,19 @@ export function SequencerTransport(): ReactElement {
         onClick={() => onStep(1)}
       />
 
-      <Typography
-        noWrap
-        variant={"caption"}
-        title={service.clip?.motion}
-        sx={{ flexShrink: 0, maxWidth: LAYOUT.motionPickerWidth * 0.75 }}
-      >
+      <Typography className={"max-w-48.75 shrink-0"} noWrap={true} variant={"caption"} title={service.clip?.motion}>
         {service.clip ? `${service.clipIndex + 1} / ${clips.length} · ${service.clip.motion}` : "Track is empty"}
       </Typography>
 
       <MotionFrameSlider
         ariaLabel={"Clip frame"}
+        className={"mx-2 min-w-12.5 grow basis-0"}
         frameCount={frames}
         frame={service.frame}
-        sx={{ marginX: 1, flexGrow: 1, flexBasis: 0, minWidth: LAYOUT.toolbarSliderWidth / 4 }}
         onSeek={onSeek}
       />
 
-      <Typography
-        variant={"caption"}
-        sx={{ flexShrink: 0, minWidth: LAYOUT.motionCounterWidth / 2, textAlign: "right" }}
-      >
+      <Typography className={"min-w-14.75 shrink-0 text-right"} variant={"caption"}>
         {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
       </Typography>
 

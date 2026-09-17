@@ -1,10 +1,11 @@
-import { Box, List, Typography } from "@mui/material";
+import { List, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { isSameCell, TEquipmentCell } from "@/core/sprite-equipment/lib";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -32,12 +33,7 @@ export function EquipmentOccupantsPanel({
   const onClear = useCallback(() => setQuery(""), []);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 flex-col", className)}>
       <EditorSearchHeader
         title={"Occupants"}
         count={rows.length}
@@ -48,7 +44,7 @@ export function EquipmentOccupantsPanel({
         onQueryChange={setQuery}
       />
 
-      <List dense={true} sx={{ flexGrow: 1, minHeight: 0, overflow: "auto", paddingY: 0 }}>
+      <List dense={true} className={"min-h-0 grow overflow-auto py-0"}>
         {rows.map((row: IEquipmentOccupantRow) => (
           <EquipmentOccupantRow
             key={row.occupant.section}
@@ -60,10 +56,10 @@ export function EquipmentOccupantsPanel({
       </List>
 
       {rows.length ? null : (
-        <Typography variant={"caption"} color={"text.secondary"} sx={{ padding: 1 }}>
+        <Typography className={"p-2"} variant={"caption"} color={"text.secondary"}>
           {gridService.layout ? "Nothing matches" : "No sheet open"}
         </Typography>
       )}
-    </Box>
+    </div>
   );
 }

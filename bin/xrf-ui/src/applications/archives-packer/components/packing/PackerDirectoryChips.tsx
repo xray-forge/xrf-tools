@@ -2,6 +2,7 @@ import { Chip, Stack } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchivePackDirectory } from "@/core/ipc/types/xrf-pack";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerDirectoryChipsProps extends BaseComponentProps {
@@ -22,10 +23,9 @@ export function PackerDirectoryChips({
     <Stack
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("flex-wrap gap-1", className)}
       direction={"row"}
       spacing={0.5}
-      sx={{ flexWrap: "wrap", gap: 0.5 }}
     >
       {directories.map((directory, index) => (
         <Chip

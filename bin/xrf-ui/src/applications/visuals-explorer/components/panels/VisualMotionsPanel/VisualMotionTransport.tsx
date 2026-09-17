@@ -1,7 +1,7 @@
 import { default as PauseIcon } from "@mui/icons-material/Pause";
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -32,8 +32,8 @@ export function VisualMotionTransport({
   const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
 
   return (
-    <Box data-testid={dataTestId} id={id} className={className}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <div data-testid={dataTestId} id={id} className={className}>
+      <div className={"flex items-center gap-2"}>
         <EditorIconAction
           label={service.isPlaying ? "Pause" : "Play"}
           description={service.isPlaying ? "Pause playback" : "Start playback"}
@@ -44,16 +44,16 @@ export function VisualMotionTransport({
 
         <MotionFrameSlider
           ariaLabel={"Motion frame"}
+          className={"mx-2"}
           frameCount={frames}
           frame={service.frame}
-          sx={{ marginX: 1 }}
           onSeek={service.seek}
         />
-      </Box>
+      </div>
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+      <div className={"flex items-center gap-1"}>
         <Tooltip title={frames ? formatMotionTiming(frames, speed) : ""}>
-          <Typography variant={"caption"} sx={{ flexGrow: 1, color: "text.secondary" }}>
+          <Typography className={"grow text-text-secondary"} variant={"caption"}>
             {frames ? `${service.frame + 1} / ${frames}` : "0 / 0"}
             {duration ? ` · ${formatDuration(Math.round(duration * 1000))}` : ""}
           </Typography>
@@ -70,13 +70,13 @@ export function VisualMotionTransport({
         />
 
         <MotionPlaybackRate fps={service.fps} onChange={service.setFps} />
-      </Box>
+      </div>
 
       {service.posed.error ? (
-        <Typography variant={"caption"} sx={{ color: "error.main", wordBreak: "break-word" }}>
+        <Typography className={"break-words text-error"} variant={"caption"}>
           {service.posed.error.message}
         </Typography>
       ) : null}
-    </Box>
+    </div>
   );
 }

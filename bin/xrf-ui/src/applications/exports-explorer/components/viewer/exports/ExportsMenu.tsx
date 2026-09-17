@@ -1,7 +1,7 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
@@ -110,11 +110,11 @@ export function ExportsMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             No externs found.
           </Typography>
-        </Box>
+        </div>
       )}
     </EditorSearchMenu>
   );

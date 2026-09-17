@@ -1,10 +1,10 @@
-import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useMountEffect } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
@@ -61,21 +61,12 @@ export function SpawnChunkView<T>({
   }
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100%",
-        minHeight: 0,
-        padding: 2,
-        flexWrap: "nowrap",
-      }}
+      className={cn("flex h-full min-h-0 w-full flex-col flex-nowrap p-4", className)}
     >
       {render(chunk.value)}
-    </Box>
+    </div>
   );
 }

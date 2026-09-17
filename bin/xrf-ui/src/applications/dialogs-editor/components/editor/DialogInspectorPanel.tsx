@@ -97,7 +97,7 @@ export function DialogInspectorPanel({
         )}
 
         {badges.length ? (
-          <Stack direction={"row"} spacing={0.75} sx={{ flexWrap: "wrap", marginTop: 1.25, rowGap: 0.75 }}>
+          <Stack className={"mt-2.5 flex-wrap gap-y-1.5"} direction={"row"} spacing={0.75}>
             {badges}
           </Stack>
         ) : null}

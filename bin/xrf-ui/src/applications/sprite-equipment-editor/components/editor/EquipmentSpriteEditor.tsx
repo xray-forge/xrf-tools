@@ -108,7 +108,7 @@ export function EquipmentSpriteEditor({
       banner={
         error ? (
           <Alert severity={"error"} variant={"outlined"} onClose={spriteEquipmentService.clearSpriteError}>
-            <Typography variant={"caption"} sx={{ wordBreak: "break-word" }}>
+            <Typography className={"wrap-anywhere"} variant={"caption"}>
               {String(error)}
             </Typography>
           </Alert>
