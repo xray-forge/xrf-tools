@@ -13,7 +13,16 @@ interface IVectorLike {
 }
 
 function isVectorLike(value: unknown): value is IVectorLike {
-  return typeof value === "object" && value !== null && "x" in value && "y" in value && "z" in value;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "x" in value &&
+    typeof value.x === "number" &&
+    "y" in value &&
+    typeof value.y === "number" &&
+    "z" in value &&
+    typeof value.z === "number"
+  );
 }
 
 /**

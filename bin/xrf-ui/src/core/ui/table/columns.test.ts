@@ -43,6 +43,22 @@ describe("table columns", () => {
     expect(readCell(vectorColumn("position", "Position"), 4)).toBeNull();
   });
 
+  it("leaves vectors with string components empty", () => {
+    const column: GridColDef = vectorColumn("position", "Position");
+
+    expect(readCell(column, { x: "1", y: 2, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: "2", z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: 2, z: "3" })).toBeNull();
+  });
+
+  it("leaves vectors with null components empty", () => {
+    const column: GridColDef = vectorColumn("position", "Position");
+
+    expect(readCell(column, { x: null, y: 2, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: null, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: 2, z: null })).toBeNull();
+  });
+
   it("renders flags as hex, since decimal bit fields cannot be read as flags", () => {
     const column: GridColDef = flagsColumn("scriptFlags", "Script flags");
 
