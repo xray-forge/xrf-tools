@@ -55,7 +55,11 @@ describe("table columns", () => {
   });
 
   it("renders a float at fixed precision", () => {
-    expect(readCell(decimalColumn("distance", "Distance"), 1.23456)).toBe("1.23");
-    expect(readCell(decimalColumn("distance", "Distance"), null)).toBeNull();
+    const column: GridColDef = decimalColumn("distance", "Distance");
+
+    expect(readCell(column, 1.23456)).toBe(1.23456);
+    expect(readCell(column, null)).toBeNull();
+    expect(column.valueFormatter?.(1.23456 as never, {} as never, column, {} as never)).toBe("1.23");
+    expect(column.valueFormatter?.(null as never, {} as never, column, {} as never)).toBeNull();
   });
 });

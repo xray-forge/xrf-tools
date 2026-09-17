@@ -119,8 +119,11 @@ export function decimalColumn(field: string, headerName: string, width: number =
     field,
     headerName,
     width,
+    type: "number",
+    align: "left",
+    headerAlign: "left",
     cellClassName: MONOSPACE_CLASS,
-    valueGetter: ((value: unknown) =>
-      typeof value === "number" ? value.toFixed(VECTOR_PRECISION) : null) as GridValueGetter<GridValidRowModel>,
+    valueGetter: ((value: unknown) => (typeof value === "number" ? value : null)) as GridValueGetter<GridValidRowModel>,
+    valueFormatter: (value: unknown) => (typeof value === "number" ? value.toFixed(VECTOR_PRECISION) : null),
   };
 }
