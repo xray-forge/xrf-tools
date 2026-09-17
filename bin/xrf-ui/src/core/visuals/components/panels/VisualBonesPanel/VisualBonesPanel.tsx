@@ -56,11 +56,10 @@ export function VisualBonesPanel({
         >
           <VirtualizedTree
             ariaLabel={"Skeleton bones"}
-            className={"min-h-40"}
+            className={"min-h-40 p-0"}
             items={items}
             expandedIds={tree.expandedIds}
             selectedId={boneControls?.highlightedBone ?? null}
-            sx={{ padding: 0 }}
             onSelect={onSelectBone}
             onActivate={onActivateBone}
             onToggleExpanded={tree.toggleExpanded}

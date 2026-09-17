@@ -4,9 +4,9 @@ import { IUseRankedSearchOptions, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IEditorSearchMenuProps<T> extends StyledComponentProps, IUseRankedSearchOptions<T> {
+export interface IEditorSearchMenuProps<T> extends BaseComponentProps, IUseRankedSearchOptions<T> {
   title: string;
   searchLabel: string;
   resultsLabel: string;
@@ -28,7 +28,6 @@ export function EditorSearchMenu<T>({
   "data-testid": dataTestId,
   id,
   className,
-  sx,
   title,
   searchLabel,
   resultsLabel,
@@ -61,7 +60,6 @@ export function EditorSearchMenu<T>({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       header={
         <>
           <EditorSearchHeader

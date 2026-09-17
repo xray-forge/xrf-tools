@@ -19,7 +19,7 @@ export function JobsPanel(): ReactElement {
   const onCancel = useCallback((id: string) => jobsService.cancel(id), [jobsService]);
 
   return (
-    <EditorPanel title={"Jobs"} sx={{ height: "100%" }}>
+    <EditorPanel className={"h-full"} title={"Jobs"}>
       <div className={"h-full overflow-y-auto p-4"}>
         {listed.length ? (
           listed.map((job: JobDescription) => <JobRow key={job.id} job={job} onCancel={onCancel} />)

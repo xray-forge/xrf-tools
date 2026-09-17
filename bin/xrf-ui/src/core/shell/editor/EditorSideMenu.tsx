@@ -1,8 +1,8 @@
-import { Box, Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
+import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorSideMenuItem {
   label: string;
@@ -13,7 +13,7 @@ export interface IEditorSideMenuItem {
   onClick?: () => void;
 }
 
-interface IEditorSideMenuProps extends StyledComponentProps {
+interface IEditorSideMenuProps extends BaseComponentProps {
   header?: ReactNode;
   sections?: Array<IEditorSideMenuItem>;
   actions?: Array<IEditorSideMenuItem>;
@@ -41,7 +41,6 @@ export function EditorSideMenu({
   "data-testid": dataTestId = "editor-side-menu",
   id,
   className,
-  sx,
   header,
   sections,
   actions,
@@ -49,7 +48,7 @@ export function EditorSideMenu({
   children,
 }: IEditorSideMenuProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 w-full flex-col", className)} sx={sx}>
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 w-full flex-col", className)}>
       {header ? <div className={"shrink-0"}>{header}</div> : null}
 
       <div className={"min-h-0 grow"} style={{ overflowY: "auto" }}>
@@ -67,6 +66,6 @@ export function EditorSideMenu({
           </List>
         </>
       ) : null}
-    </Box>
+    </div>
   );
 }

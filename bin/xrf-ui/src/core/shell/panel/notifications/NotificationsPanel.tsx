@@ -43,8 +43,8 @@ export function NotificationsPanel(): ReactElement {
 
   return (
     <EditorPanel
+      className={"h-full"}
       title={"Notifications"}
-      sx={{ height: "100%" }}
       actions={
         <Tooltip describeChild title={"Clear all"} placement={"left"}>
           <span>

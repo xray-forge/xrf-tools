@@ -1,8 +1,8 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
 
@@ -19,7 +19,7 @@ export interface ICommandResultStat {
   tone?: TCommandResultTone;
 }
 
-interface ICommandResultProps extends StyledComponentProps {
+interface ICommandResultProps extends BaseComponentProps {
   /** The one sentence answer to "how did it go". */
   headline: string;
   tone: TCommandResultTone;
@@ -39,7 +39,6 @@ export function CommandResult({
   "data-testid": dataTestId,
   id,
   className,
-  sx,
   headline,
   tone,
   stats,
@@ -47,7 +46,7 @@ export function CommandResult({
   children,
 }: ICommandResultProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={cn("flex min-h-0 w-full grow flex-col", className)} sx={sx}>
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 w-full grow flex-col", className)}>
       <div className={"flex items-center justify-between gap-4"}>
         <Typography variant={"subtitle2"} sx={{ color: TONE_COLORS[tone] }}>
           {headline}
@@ -76,6 +75,6 @@ export function CommandResult({
           <div className={"flex min-h-0 grow flex-col"}>{children}</div>
         </>
       ) : null}
-    </Box>
+    </div>
   );
 }

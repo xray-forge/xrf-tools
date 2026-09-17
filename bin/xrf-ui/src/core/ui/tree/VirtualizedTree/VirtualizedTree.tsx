@@ -1,15 +1,13 @@
-import { Box } from "@mui/material";
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
 import { TREE } from "@/core/theme/tokens";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
 import { cn } from "@/lib/dom/dom-name";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -32,7 +30,7 @@ export interface IVirtualizedTreeIcons {
   leaf: ReactNode;
 }
 
-interface IVirtualizedTreeProps<T> extends StyledComponentProps {
+interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   items: ReadonlyArray<ITreeNode<T>>;
   expandedIds: ReadonlySet<string>;
   /** Where the keyboard stands. Moving it opens nothing, so it is safe to move on every arrow key. */
@@ -65,7 +63,6 @@ export function VirtualizedTree<T>({
   "data-testid": dataTestId = "virtualized-tree",
   id,
   className,
-  sx,
   items,
   expandedIds,
   selectedId,
@@ -294,7 +291,7 @@ export function VirtualizedTree<T>({
   useEffect(() => revealRow(selectedIndex), [revealRow, selectedIndex]);
 
   return (
-    <Box
+    <div
       {...containerProps}
       ref={handleScrollerRef}
       aria-activedescendant={selectedIndex === -1 ? undefined : rowIdOf(selectedIndex)}
@@ -302,12 +299,10 @@ export function VirtualizedTree<T>({
       data-testid={dataTestId}
       id={id}
       className={cn(
-        "h-full overflow-auto outline-none [&:focus_[aria-selected=true]]:outline-1 [&:focus_[aria-selected=true]]:-outline-offset-1 [&:focus_[aria-selected=true]]:outline-primary",
+        "h-full overflow-auto p-1 outline-none [&:focus_[aria-selected=true]]:outline-1 [&:focus_[aria-selected=true]]:-outline-offset-1 [&:focus_[aria-selected=true]]:outline-primary",
         className
       )}
       role={"tree"}
-      // Padding stays in `sx`: an unlayered utility outranks a caller's `sx`, and a panel tree turns this off.
-      sx={mergeSx({ padding: 0.5 }, sx)}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
@@ -315,6 +310,6 @@ export function VirtualizedTree<T>({
       <div {...positionerProps} role={"presentation"} />
 
       {virtualizer.api.getters.getRows()}
-    </Box>
+    </div>
   );
 }
