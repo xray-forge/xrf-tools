@@ -14,7 +14,7 @@ import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/Virtualiz
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-import { exportGroupsToTree, getExportSearchText, groupExports, IExportGroup } from "./exports-groups";
+import { exportGroupsToTree, getExportSearchText, IExportGroup } from "./exports-groups";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 const EXPORT_TREE_ICONS: IVirtualizedTreeIcons = {
@@ -25,6 +25,7 @@ const EXPORT_TREE_ICONS: IVirtualizedTreeIcons = {
 
 export interface IExportsMenuProps extends BaseComponentProps {
   declarations: Array<ExportDescriptor>;
+  groups: ReadonlyArray<IExportGroup>;
   selectedName: Nullable<string>;
   onSelect: (name: string) => void;
 }
@@ -34,13 +35,13 @@ export function ExportsMenu({
   id,
   className,
   declarations,
+  groups,
   selectedName,
   onSelect,
 }: IExportsMenuProps): ReactElement {
   const tree: IUseTreeState = useTreeState();
   const { reveal } = tree;
 
-  const groups: Array<IExportGroup> = useMemo(() => groupExports(declarations), [declarations]);
   const items: Array<IPathTreeItem<ExportDescriptor>> = useMemo(() => exportGroupsToTree(groups), [groups]);
 
   const onSelectDeclaration = useCallback(

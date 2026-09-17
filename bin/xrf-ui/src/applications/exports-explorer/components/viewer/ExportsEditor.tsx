@@ -69,11 +69,13 @@ export function ExportsEditor(): ReactElement {
         id: "declarations",
         isOpenByDefault: true,
         label: "Declarations",
-        render: () => <ExportsMenu declarations={declarations} selectedName={selectedName} onSelect={onSelect} />,
+        render: () => (
+          <ExportsMenu declarations={declarations} groups={groups} selectedName={selectedName} onSelect={onSelect} />
+        ),
         side: "left",
       },
     ],
-    [declarations, onSelect, selectedName]
+    [declarations, groups, onSelect, selectedName]
   );
 
   useEditorBusy(isBusy);

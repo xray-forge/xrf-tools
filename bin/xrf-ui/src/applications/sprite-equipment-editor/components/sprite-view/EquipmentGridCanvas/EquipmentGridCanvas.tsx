@@ -1,4 +1,4 @@
-import { Box, Theme, useTheme } from "@mui/material";
+import { Theme, useTheme } from "@mui/material";
 import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
@@ -68,13 +68,12 @@ export function EquipmentGridCanvas({
   }, [draw, view.controller]);
 
   return (
-    <Box
+    <canvas
       ref={canvasRef}
       data-testid={dataTestId}
       aria-hidden={true}
       id={id}
       className={cn("absolute top-0 left-0 h-full w-full", className)}
-      component={"canvas"}
     />
   );
 }
