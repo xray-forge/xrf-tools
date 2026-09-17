@@ -1,23 +1,18 @@
 /**
- * Shows the window as soon as the skeleton below it is parsed, inlined at the end of `index.html`.
+ * Shows the window once the webview has had time to put its first frame on screen, inlined at the end of `index.html`.
  */
 ((): void => {
-  interface ITauriInternals {
-    metadata?: { currentWindow?: { label?: string } };
-    invoke?: (command: string, args: Record<string, unknown>) => Promise<unknown>;
-  }
+  setTimeout(() => {
+    const tauriInternals = (window as Record<string, any>)["__TAURI_INTERNALS__"];
+    const label = tauriInternals?.metadata?.currentWindow?.label;
 
-  const internals: ITauriInternals | undefined = (window as { __TAURI_INTERNALS__?: ITauriInternals })
-    .__TAURI_INTERNALS__;
+    if (!tauriInternals?.invoke || !label) {
+      return;
+    }
 
-  const label: string | undefined = internals?.metadata?.currentWindow?.label;
-
-  if (!internals?.invoke || label === undefined) {
-    return;
-  }
-
-  internals
-    .invoke("plugin:window|show", { label })
-    .then(() => internals.invoke?.("plugin:window|set_focus", { label }))
-    .catch(console.error);
+    tauriInternals
+      ?.invoke?.("plugin:window|show", { label })
+      .then(() => tauriInternals?.invoke?.("plugin:window|set_focus", { label }))
+      .catch(console.error);
+  }, 10);
 })();
