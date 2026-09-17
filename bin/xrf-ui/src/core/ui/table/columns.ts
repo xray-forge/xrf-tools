@@ -80,9 +80,12 @@ export function flagsColumn(field: string, headerName: string, width: number = 1
     field,
     headerName,
     width,
+    type: "number",
+    align: "left",
+    headerAlign: "left",
     cellClassName: MONOSPACE_CLASS,
-    valueGetter: ((value: unknown) =>
-      typeof value === "number" ? `0x${value.toString(16).toUpperCase()}` : null) as GridValueGetter<GridValidRowModel>,
+    valueGetter: ((value: unknown) => (typeof value === "number" ? value : null)) as GridValueGetter<GridValidRowModel>,
+    valueFormatter: (value: unknown) => (typeof value === "number" ? `0x${value.toString(16).toUpperCase()}` : null),
   };
 }
 

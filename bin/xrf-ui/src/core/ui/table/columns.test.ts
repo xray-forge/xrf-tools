@@ -44,9 +44,14 @@ describe("table columns", () => {
   });
 
   it("renders flags as hex, since decimal bit fields cannot be read as flags", () => {
-    expect(readCell(flagsColumn("scriptFlags", "Script flags"), 255)).toBe("0xFF");
-    expect(readCell(flagsColumn("scriptFlags", "Script flags"), 0)).toBe("0x0");
-    expect(readCell(flagsColumn("scriptFlags", "Script flags"), null)).toBeNull();
+    const column: GridColDef = flagsColumn("scriptFlags", "Script flags");
+
+    expect(readCell(column, 255)).toBe(255);
+    expect(readCell(column, 0)).toBe(0);
+    expect(readCell(column, null)).toBeNull();
+    expect(column.valueFormatter?.(255 as never, {} as never, column, {} as never)).toBe("0xFF");
+    expect(column.valueFormatter?.(0 as never, {} as never, column, {} as never)).toBe("0x0");
+    expect(column.valueFormatter?.(null as never, {} as never, column, {} as never)).toBeNull();
   });
 
   it("renders a tuple as a compact list", () => {
