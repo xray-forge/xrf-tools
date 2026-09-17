@@ -3,6 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
+import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
 import { EJobKind } from "@/core/ipc/types/xrf-app";
@@ -14,7 +15,6 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
-import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -118,7 +118,7 @@ export class PackerService {
    */
   @Computed()
   public get maxVolumeSizeMegabytes(): number {
-    return this.config ? bytesToWholeMegabytes(this.config.maxVolumeSize) : 0;
+    return this.resolvedVolumeSize.maxMegabytes;
   }
 
   /**
@@ -126,15 +126,7 @@ export class PackerService {
    */
   @Computed()
   public get volumeSizeError(): Nullable<string> {
-    const value: number = Number(this.volumeSize);
-
-    if (!this.volumeSize.trim()) {
-      return null;
-    }
-
-    return !Number.isInteger(value) || value < 1 || value > this.maxVolumeSizeMegabytes
-      ? `Enter a whole number between 1 and ${this.maxVolumeSizeMegabytes}`
-      : null;
+    return this.resolvedVolumeSize.error;
   }
 
   /**
@@ -142,13 +134,12 @@ export class PackerService {
    */
   @Computed()
   public get volumeSizeBytes(): number {
-    if (!this.config) {
-      return 0;
-    }
+    return this.resolvedVolumeSize.bytes;
+  }
 
-    return this.volumeSize.trim() && !this.volumeSizeError
-      ? megabytesToBytes(Number(this.volumeSize))
-      : this.config.maxVolumeSize;
+  @Computed()
+  private get resolvedVolumeSize(): IResolvedArchiveVolumeSize {
+    return resolveArchiveVolumeSize(this.volumeSize, this.config?.maxVolumeSize ?? 0);
   }
 
   public constructor(
