@@ -80,6 +80,10 @@
   --spacing-toolbar-slider: var(--xrf-toolbar-slider-width);
   --spacing-status-bar: var(--xrf-status-bar-height);
 
+  /* Loaders reveal themselves rather than being timed: `invisible` holds them until the delay has run. */
+  --animate-delayed-reveal: xrf-reveal 0s var(--xrf-reveal-delay) forwards;
+  --animate-delayed-reveal-short: xrf-reveal 0s var(--xrf-reveal-delay-short) forwards;
+
   /* The face on its own. `.monospace` also sets a size, which is wrong for a heading. */
   --font-monospace: var(--xrf-monospace-family);
   --leading-panel: var(--xrf-panel-line-height);
@@ -89,6 +93,17 @@
   --container-reading: var(--xrf-reading-column);
   --container-reading-label: var(--xrf-reading-label);
   --container-content-state-description: var(--xrf-content-state-description);
+}
+
+/* Declared at the top level rather than inside `@theme`, so it ships whether or not a candidate scan finds the name. */
+@keyframes xrf-reveal {
+  from {
+    visibility: hidden;
+  }
+
+  to {
+    visibility: visible;
+  }
 }
 
 /* Tailwind ships no `tab-size` utility, and a source listing must not render a tab as eight columns. */

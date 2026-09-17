@@ -9,7 +9,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
-import { DELAYED_REVEAL_SHORT_SX } from "@/core/ui/layout/delayed-reveal";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
@@ -202,7 +201,11 @@ export function PickerForm({
                   disabled={isSubmitDisabled || isLoading}
                   startIcon={
                     isLoading ? (
-                      <CircularProgress size={16} color={"inherit"} sx={DELAYED_REVEAL_SHORT_SX} />
+                      <CircularProgress
+                        className={"invisible animate-delayed-reveal-short"}
+                        size={16}
+                        color={"inherit"}
+                      />
                     ) : undefined
                   }
                 >

@@ -12,6 +12,6 @@ describe("DelayedProgress", () => {
 
     expect(getByRole("progressbar", { hidden: true })).toHaveAttribute("aria-label", "Reading export source…");
     expect(getByRole("status", { hidden: true })).toHaveTextContent("Reading export source…");
-    expect(getByTestId("loading-source")).toHaveStyle({ visibility: "hidden", animationDelay: "500ms" });
+    expect(getByTestId("loading-source")).toHaveClass("invisible", "animate-delayed-reveal");
   });
 });

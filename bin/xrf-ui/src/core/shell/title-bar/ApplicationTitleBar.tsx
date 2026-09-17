@@ -3,7 +3,6 @@ import { ReactElement, Ref } from "react";
 
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
 import { WindowControls } from "@/core/shell/title-bar/WindowControls";
-import { DELAYED_REVEAL_SX } from "@/core/ui/layout/delayed-reveal";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -37,7 +36,9 @@ export function ApplicationTitleBar({
 
       <WindowControls />
 
-      {isBusy ? <LinearProgress className={"absolute right-0 bottom-0 left-0 h-0.5"} sx={DELAYED_REVEAL_SX} /> : null}
+      {isBusy ? (
+        <LinearProgress className={"invisible absolute right-0 bottom-0 left-0 h-0.5 animate-delayed-reveal"} />
+      ) : null}
     </div>
   );
 }

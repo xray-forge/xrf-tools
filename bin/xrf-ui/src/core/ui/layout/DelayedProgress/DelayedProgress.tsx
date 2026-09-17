@@ -2,7 +2,6 @@ import { CircularProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { DELAYED_REVEAL_SX } from "@/core/ui/layout/delayed-reveal";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -21,7 +20,11 @@ export function DelayedProgress({
   isOnViewport = false,
 }: IDelayedProgressProps): ReactElement {
   return (
-    <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)} sx={DELAYED_REVEAL_SX}>
+    <CenteredColumn
+      data-testid={dataTestId}
+      id={id}
+      className={cn("invisible animate-delayed-reveal gap-2 p-6", className)}
+    >
       <CircularProgress aria-label={label} className={cn(isOnViewport && "text-viewport-accent")} />
 
       <Typography

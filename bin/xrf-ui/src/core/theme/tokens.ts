@@ -26,6 +26,13 @@ export const VIEWPORT = {
   checkerboardSquare: 10,
 } as const;
 
+/**  How long an operation may run before a loader for it is worth drawing at all. */
+export const REVEAL = {
+  delay: 500,
+  /** For a surface that answers fast enough that half a second reads as a hang. */
+  shortDelay: 100,
+} as const;
+
 /** Diagonal accent wash over the frame and the reading plane. */
 export const WASH = {
   angle: "135deg",

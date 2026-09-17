@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ICenteredColumnProps extends StyledComponentProps {
+interface ICenteredColumnProps extends BaseComponentProps {
   children: ReactNode;
 }
 
@@ -16,16 +15,14 @@ export function CenteredColumn({
   id,
   className,
   children,
-  sx,
 }: ICenteredColumnProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
       className={cn("flex h-full w-full flex-col items-center justify-center gap-2", className)}
-      sx={sx}
     >
       {children}
-    </Box>
+    </div>
   );
 }

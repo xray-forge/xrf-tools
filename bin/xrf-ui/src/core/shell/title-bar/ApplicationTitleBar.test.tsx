@@ -3,7 +3,6 @@ import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { REVEAL_DELAY_MS } from "@/core/ui/layout/delayed-reveal";
 import { mockAppWindow, setMockWindowMaximized } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -74,12 +73,7 @@ describe("ApplicationTitleBar", () => {
   it("holds the progress line back so fast commands do not flash one", () => {
     const { getByRole } = renderWithProviders(<ApplicationTitleBar isBusy />);
 
-    // Most commands answer in tens of milliseconds. Appearing and vanishing inside that reads as a
-    // glitch, so the bar waits the same delay every other loader in the application waits.
-    const style: CSSStyleDeclaration = getComputedStyle(getByRole("progressbar", { hidden: true }));
-
-    expect(style.visibility).toBe("hidden");
-    expect(style.animationDelay).toBe(`${REVEAL_DELAY_MS}ms`);
+    expect(getByRole("progressbar", { hidden: true })).toHaveClass("invisible", "animate-delayed-reveal");
   });
 
   it("reserves the space between the icon and the controls", () => {
