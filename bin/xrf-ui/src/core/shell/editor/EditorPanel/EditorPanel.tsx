@@ -24,10 +24,10 @@ export function EditorPanel({
   children,
 }: IEditorPanelProps): ReactElement {
   return (
-    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 flex-col", className)}>
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 min-w-0 flex-col", className)}>
       <EditorPanelHeader title={title} actions={actions} />
 
-      <div className={"min-h-0 min-w-0 grow"}>{children}</div>
+      <div className={"min-h-0 min-w-0 grow overflow-y-auto"}>{children}</div>
     </div>
   );
 }
