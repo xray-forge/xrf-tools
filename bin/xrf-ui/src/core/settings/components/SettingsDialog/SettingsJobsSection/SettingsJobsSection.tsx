@@ -63,7 +63,12 @@ export function SettingsJobsSection({
         )}
       </DetailSection>
 
-      <DetailSection title={"By kind"} description={"Every kind of work in the listing, and what its runs came to."}>
+      <DetailSection
+        title={"By kind"}
+        description={
+          "Every kind of work in the listing, and what its runs came to. Durations include finished runs only."
+        }
+      >
         <Stack className={"mt-2"} divider={<Divider flexItem />}>
           {summaries.map((it: IJobKindSummary) => (
             <div key={it.kind} className={"flex items-center gap-4 py-1.5"}>
@@ -83,9 +88,19 @@ export function SettingsJobsSection({
                 {it.runs}
               </Typography>
 
-              <Typography className={"w-19 shrink-0 text-right"} variant={"body2"}>
-                {formatDuration(it.slowest)}
-              </Typography>
+              <div className={"w-19 shrink-0 text-right"}>
+                <Typography className={"text-text-secondary"} variant={"caption"}>
+                  Total
+                </Typography>
+                <Typography variant={"body2"}>{formatDuration(it.duration)}</Typography>
+              </div>
+
+              <div className={"w-19 shrink-0 text-right"}>
+                <Typography className={"text-text-secondary"} variant={"caption"}>
+                  Slowest
+                </Typography>
+                <Typography variant={"body2"}>{formatDuration(it.slowest)}</Typography>
+              </div>
             </div>
           ))}
         </Stack>
