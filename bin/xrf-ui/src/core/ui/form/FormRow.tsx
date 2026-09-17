@@ -1,6 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -62,7 +63,7 @@ export function FormRow({
   const describedBy: Optional<string> = [descriptionId, messageId].filter(Boolean).join(" ") || undefined;
 
   const heading: ReactElement = (
-    <Box sx={{ minWidth: 0 }}>
+    <div className={"min-w-0"}>
       <Typography
         id={labelId}
         component={isGroup ? "span" : "label"}
@@ -84,23 +85,18 @@ export function FormRow({
           {description}
         </Typography>
       ) : null}
-    </Box>
+    </div>
   );
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={
-        isInline
-          ? { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }
-          : { display: "flex", flexDirection: "column", gap: 0.75 }
-      }
+      className={cn(isInline ? "flex items-center justify-between gap-4" : "flex flex-col gap-1.5", className)}
     >
       {heading}
 
-      <Box sx={{ minWidth: 0, flexShrink: isInline ? 0 : undefined }}>
+      <div className={isInline ? "min-w-0 shrink-0" : "min-w-0"}>
         {typeof children === "function"
           ? children({
               id: fieldId,
@@ -109,13 +105,13 @@ export function FormRow({
               "aria-labelledby": labelId,
             })
           : children}
-      </Box>
+      </div>
 
       {message ? (
         <Typography id={messageId} variant={"caption"} sx={{ color: error ? "error.main" : "text.secondary" }}>
           {message}
         </Typography>
       ) : null}
-    </Box>
+    </div>
   );
 }

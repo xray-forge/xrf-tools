@@ -1,6 +1,6 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IStatBarProps extends BaseComponentProps {
@@ -26,31 +26,18 @@ export function StatBar({
   const share: number = total > 0 ? Math.min(1, Math.max(0, value / total)) : 0;
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("relative h-1.5 min-w-10 overflow-hidden rounded-surface bg-action-hover", className)}
       role={"img"}
       aria-label={label}
-      sx={{
-        position: "relative",
-        height: 6,
-        minWidth: 40,
-        borderRadius: 1,
-        overflow: "hidden",
-        backgroundColor: "action.hover",
-      }}
     >
-      <Box
+      <div
         aria-hidden={true}
-        sx={{
-          // A hairline for anything that rounds to nothing: a row present in the table but invisible in the bar reads
-          // as a rendering fault rather than as a small share.
-          width: share > 0 ? `max(2px, ${(share * 100).toFixed(2)}%)` : 0,
-          height: "100%",
-          backgroundColor: "primary.main",
-        }}
+        className={"h-full bg-primary"}
+        style={{ width: share > 0 ? `max(2px, ${(share * 100).toFixed(2)}%)` : 0 }}
       />
-    </Box>
+    </div>
   );
 }

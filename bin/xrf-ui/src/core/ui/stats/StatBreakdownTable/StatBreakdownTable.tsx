@@ -1,9 +1,10 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { MONOSPACE } from "@/core/theme/tokens";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { StatBar } from "@/core/ui/stats/StatBar";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -72,27 +73,21 @@ export function StatBreakdownTable({
   }, [rows, isBytes, isPreordered]);
 
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ display: "grid", rowGap: 0.5 }}>
+    <div data-testid={dataTestId} id={id} className={cn("grid gap-y-1", className)}>
       {ordered.map((row: IStatBreakdownRow) => (
-        <Box
+        <div
           key={row.id}
           data-testid={"stat-breakdown-row"}
           aria-pressed={onSelect ? row.id === selectedId : undefined}
+          className={cn(
+            "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-surface p-1 aria-pressed:bg-action-selected aria-pressed:hover:bg-action-selected",
+            onSelect && "cursor-pointer hover:bg-action-hover"
+          )}
           role={onSelect ? "button" : undefined}
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) 72px 90px",
-            alignItems: "center",
-            columnGap: 1.5,
-            padding: 0.5,
-            borderRadius: 1,
-            ...(onSelect ? { cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } } : {}),
-            ...(row.id === selectedId ? { backgroundColor: "action.selected" } : {}),
-          }}
           onClick={onSelect ? () => onSelect(row.id) : undefined}
         >
-          <Box sx={{ minWidth: 0 }}>
-            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, minWidth: 0 }}>
+          <div className={"min-w-0"}>
+            <div className={"flex min-w-0 items-baseline gap-1.5"}>
               <Typography
                 variant={"body2"}
                 sx={{ ...MONOSPACE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -101,16 +96,17 @@ export function StatBreakdownTable({
               </Typography>
 
               {row.note}
-            </Box>
+            </div>
 
             <StatBar
               value={isBytes ? row.sizeReal : row.files}
               total={isBytes ? totals.sizeReal : totals.files}
               label={`${row.label}: ${isBytes ? formatBytes(row.sizeReal) : `${row.files} files`}`}
             />
-          </Box>
+          </div>
 
           <Typography
+            className={"w-18"}
             variant={"caption"}
             sx={{ textAlign: "right", color: isBytes ? "text.secondary" : "text.primary" }}
           >
@@ -118,13 +114,14 @@ export function StatBreakdownTable({
           </Typography>
 
           <Typography
+            className={"w-22.5"}
             variant={"caption"}
             sx={{ textAlign: "right", color: isBytes ? "text.primary" : "text.secondary" }}
           >
             {formatBytes(row.sizeReal)}
           </Typography>
-        </Box>
+        </div>
       ))}
-    </Box>
+    </div>
   );
 }

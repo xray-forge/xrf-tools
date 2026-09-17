@@ -1,8 +1,9 @@
 import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
-import { Box, Button } from "@mui/material";
+import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EmptyState } from "@/core/ui/layout/EmptyState";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IErrorStateProps extends BaseComponentProps {
@@ -22,13 +23,7 @@ export function ErrorState({
   onRetry,
 }: IErrorStateProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      role={"alert"}
-      sx={{ width: "100%", height: "100%", minWidth: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("h-full w-full min-w-0", className)} role={"alert"}>
       <EmptyState
         title={title}
         description={description}
@@ -41,6 +36,6 @@ export function ErrorState({
           ) : undefined
         }
       />
-    </Box>
+    </div>
   );
 }

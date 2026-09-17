@@ -1,7 +1,8 @@
 import { default as AddIcon } from "@mui/icons-material/Add";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditableListProps extends BaseComponentProps {
@@ -26,7 +27,7 @@ export function EditableList({
   children,
 }: IEditableListProps): ReactElement {
   return (
-    <Stack data-testid={dataTestId} id={id} className={className} spacing={1}>
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-2", className)}>
       {children.length ? (
         children
       ) : (
@@ -35,11 +36,11 @@ export function EditableList({
         </Typography>
       )}
 
-      <Box>
+      <div>
         <Button size={"small"} disabled={isDisabled} startIcon={<AddIcon />} onClick={onAdd}>
           {addLabel}
         </Button>
-      </Box>
-    </Stack>
+      </div>
+    </div>
   );
 }

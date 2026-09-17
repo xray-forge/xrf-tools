@@ -1,6 +1,6 @@
 import { default as CheckIcon } from "@mui/icons-material/Check";
 import { default as CloseIcon } from "@mui/icons-material/Close";
-import { Box, IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
+import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { formatDistanceToNowStrict } from "date-fns";
 import { MouseEvent, ReactElement } from "react";
 
@@ -17,9 +17,6 @@ const MINIMUM_LABEL_LIMIT: number = 16;
 
 /** Used until the field has been measured, and when it reports nothing. */
 const FALLBACK_MENU_WIDTH: number = 560;
-
-/** Width of the column holding the mark, kept whether or not a row carries one. */
-const MARK_COLUMN_WIDTH: number = 20;
 
 /**
  * How many characters of a path one row can show.
@@ -64,7 +61,7 @@ export function FilePickerRecentsMenu({
       anchorEl={anchor}
       anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
       transformOrigin={{ horizontal: "left", vertical: "top" }}
-      slotProps={{ paper: { sx: { maxWidth: "100%", width } } }}
+      slotProps={{ paper: { className: "max-w-full", style: { width } } }}
       onClose={onClose}
     >
       {recents.records.map((it: IPathRecord) => {
@@ -80,9 +77,9 @@ export function FilePickerRecentsMenu({
               onClose();
             }}
           >
-            <Box sx={{ display: "flex", flexShrink: 0, justifyContent: "center", width: MARK_COLUMN_WIDTH }}>
+            <div className={"flex w-5 shrink-0 justify-center"}>
               {isCurrent ? <CheckIcon fontSize={"small"} color={"primary"} /> : null}
-            </Box>
+            </div>
 
             <Tooltip describeChild placement={"top"} title={it.path}>
               <ListItemText

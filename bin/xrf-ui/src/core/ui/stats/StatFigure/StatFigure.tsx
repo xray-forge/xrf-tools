@@ -1,6 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -21,7 +22,7 @@ export function StatFigure({
   hint = null,
 }: IStatFigureProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} className={className} id={id} sx={{ minWidth: 104 }}>
+    <div data-testid={dataTestId} id={id} className={cn("min-w-26", className)}>
       <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block" }}>
         {label}
       </Typography>
@@ -33,6 +34,6 @@ export function StatFigure({
           {hint}
         </Typography>
       ) : null}
-    </Box>
+    </div>
   );
 }

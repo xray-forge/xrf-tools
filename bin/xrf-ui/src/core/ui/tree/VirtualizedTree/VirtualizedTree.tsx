@@ -8,6 +8,7 @@ import { TREE } from "@/core/theme/tokens";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -300,24 +301,13 @@ export function VirtualizedTree<T>({
       aria-label={ariaLabel}
       data-testid={dataTestId}
       id={id}
-      className={className}
-      role={"tree"}
-      sx={mergeSx(
-        {
-          height: "100%",
-          outline: "none",
-          overflow: "auto",
-          padding: 0.5,
-          // Every tree draws its selection; the ring says which one the keyboard is talking to, a live question
-          // beside a graph canvas or a viewport.
-          "&:focus [aria-selected=true]": {
-            outline: "1px solid",
-            outlineColor: "primary.main",
-            outlineOffset: "-1px",
-          },
-        },
-        sx
+      className={cn(
+        "h-full overflow-auto outline-none [&:focus_[aria-selected=true]]:outline-1 [&:focus_[aria-selected=true]]:-outline-offset-1 [&:focus_[aria-selected=true]]:outline-primary",
+        className
       )}
+      role={"tree"}
+      // Padding stays in `sx`: an unlayered utility outranks a caller's `sx`, and a panel tree turns this off.
+      sx={mergeSx({ padding: 0.5 }, sx)}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >

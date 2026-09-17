@@ -1,8 +1,8 @@
 import { default as DeleteIcon } from "@mui/icons-material/Delete";
-import { Stack } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditableListItemProps extends BaseComponentProps {
@@ -25,14 +25,7 @@ export function EditableListItem({
   children,
 }: IEditableListItemProps): ReactElement {
   return (
-    <Stack
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      direction={"row"}
-      spacing={1}
-      sx={{ alignItems: "center" }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-row items-center gap-2", className)}>
       {children}
 
       <EditorIconAction
@@ -42,6 +35,6 @@ export function EditableListItem({
         isDisabled={isDisabled}
         onClick={onRemove}
       />
-    </Stack>
+    </div>
   );
 }

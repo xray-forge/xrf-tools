@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 interface ICenteredColumnProps extends StyledComponentProps {
@@ -22,19 +22,8 @@ export function CenteredColumn({
     <Box
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={mergeSx(
-        {
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          height: "100%",
-          gap: 1,
-        },
-        sx
-      )}
+      className={cn("flex h-full w-full flex-col items-center justify-center gap-2", className)}
+      sx={sx}
     >
       {children}
     </Box>

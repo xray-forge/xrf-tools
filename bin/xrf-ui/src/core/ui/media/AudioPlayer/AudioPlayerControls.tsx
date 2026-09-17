@@ -2,7 +2,7 @@ import { default as PauseIcon } from "@mui/icons-material/Pause";
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
 import { default as VolumeUpIcon } from "@mui/icons-material/VolumeUp";
-import { Box, IconButton, Slider, Tooltip, Typography } from "@mui/material";
+import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { formatPlaybackTime } from "@/lib/media/waveform";
@@ -30,7 +30,7 @@ export function AudioPlayerControls({
   onVolumeChange,
 }: IAudioPlayerControlsProps): ReactElement {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <div className={"flex items-center gap-2"}>
       <Tooltip describeChild title={isPlaying ? "Pause" : "Play"}>
         <IconButton aria-label={isPlaying ? "Pause" : "Play"} color={"primary"} onClick={onTogglePlay}>
           {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
@@ -41,7 +41,7 @@ export function AudioPlayerControls({
         {formatPlaybackTime(position)} / {formatPlaybackTime(duration)}
       </Typography>
 
-      <Box sx={{ flexGrow: 1 }} />
+      <div className={"grow"} />
 
       <Tooltip describeChild title={"Loop"}>
         <IconButton
@@ -71,6 +71,6 @@ export function AudioPlayerControls({
           }
         }}
       />
-    </Box>
+    </div>
   );
 }

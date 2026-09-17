@@ -1,9 +1,9 @@
 import { CircularProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { CONTENT_STATE } from "@/core/theme/tokens";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DELAYED_REVEAL_SX } from "@/core/ui/layout/delayed-reveal";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IDelayedProgressProps extends BaseComponentProps {
@@ -19,12 +19,7 @@ export function DelayedProgress({
   label = "Loading…",
 }: IDelayedProgressProps): ReactElement {
   return (
-    <CenteredColumn
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={[{ padding: CONTENT_STATE.padding, gap: CONTENT_STATE.gap }, DELAYED_REVEAL_SX]}
-    >
+    <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)} sx={DELAYED_REVEAL_SX}>
       <CircularProgress aria-label={label} />
 
       <Typography role={"status"} variant={"body2"} sx={{ color: "text.secondary" }}>

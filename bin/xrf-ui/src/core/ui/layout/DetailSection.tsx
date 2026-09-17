@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -30,8 +30,8 @@ export function DetailSection({
   children,
 }: IDetailSectionProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} className={className} id={id}>
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
+    <div data-testid={dataTestId} className={className} id={id}>
+      <div className={"flex items-baseline justify-between gap-2"}>
         <Typography variant={"subtitle2"} sx={{ color: "text.primary" }}>
           {title}
         </Typography>
@@ -41,25 +41,21 @@ export function DetailSection({
             {fact}
           </Typography>
         ) : null}
-      </Box>
+      </div>
 
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
-          marginBottom: children ? 1 : 0,
-        }}
+      <div
+        className={
+          children ? "mb-2 flex items-center justify-between gap-2" : "flex items-center justify-between gap-2"
+        }
       >
         <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
           {description}
         </Typography>
 
-        {action ? <Box sx={{ flexShrink: 0 }}>{action}</Box> : null}
-      </Box>
+        {action ? <div className={"shrink-0"}>{action}</div> : null}
+      </div>
 
       {children}
-    </Box>
+    </div>
   );
 }

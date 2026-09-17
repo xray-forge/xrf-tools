@@ -25,10 +25,12 @@ export function uid(...values: Array<Maybe<string | false>>): Optional<string> {
 const merge = extendTailwindMerge({
   extend: {
     theme: {
-      container: ["reading"],
+      container: ["reading", "reading-label"],
+      font: ["monospace"],
+      leading: ["panel"],
       radius: ["surface"],
-      spacing: ["tree-row", "tree-icon", "tree-gap", "code-line", "header"],
-      text: ["tree-icon"],
+      spacing: ["tree-row", "tree-icon", "tree-gap", "code-line", "header", "dialog", "panel-property"],
+      text: ["tree-icon", "content-state-icon", "badge"],
     },
   },
 });

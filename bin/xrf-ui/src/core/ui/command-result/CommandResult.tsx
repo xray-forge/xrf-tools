@@ -1,7 +1,7 @@
 import { Box, Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
@@ -47,23 +47,18 @@ export function CommandResult({
   children,
 }: ICommandResultProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0 }, sx)}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+    <Box data-testid={dataTestId} id={id} className={cn("flex min-h-0 w-full grow flex-col", className)} sx={sx}>
+      <div className={"flex items-center justify-between gap-4"}>
         <Typography variant={"subtitle2"} sx={{ color: TONE_COLORS[tone] }}>
           {headline}
         </Typography>
 
-        {actions ? <Box sx={{ display: "flex", flexShrink: 0, gap: 1 }}>{actions}</Box> : null}
-      </Box>
+        {actions ? <div className={"flex shrink-0 gap-2"}>{actions}</div> : null}
+      </div>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", columnGap: 3, rowGap: 0.5, marginTop: 1 }}>
+      <div className={"mt-2 flex flex-wrap gap-x-6 gap-y-1"}>
         {stats.map((stat: ICommandResultStat) => (
-          <Box key={stat.label} sx={{ display: "flex", alignItems: "baseline", gap: 0.75 }}>
+          <div key={stat.label} className={"flex items-baseline gap-1.5"}>
             <Typography variant={"body2"} sx={{ color: stat.tone ? TONE_COLORS[stat.tone] : "text.primary" }}>
               {stat.value}
             </Typography>
@@ -71,14 +66,14 @@ export function CommandResult({
             <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
               {stat.label}
             </Typography>
-          </Box>
+          </div>
         ))}
-      </Box>
+      </div>
 
       {children ? (
         <>
           <Divider sx={{ marginY: 2 }} />
-          <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 }}>{children}</Box>
+          <div className={"flex min-h-0 grow flex-col"}>{children}</div>
         </>
       ) : null}
     </Box>

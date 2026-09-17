@@ -1,9 +1,10 @@
 import { default as DescriptionOutlinedIcon } from "@mui/icons-material/DescriptionOutlined";
-import { Box, svgIconClasses, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { CONTENT_STATE } from "@/core/theme/tokens";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEmptyStateProps extends BaseComponentProps {
@@ -28,18 +29,10 @@ export function EmptyState({
   title,
 }: IEmptyStateProps): ReactElement {
   return (
-    <CenteredColumn
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ padding: CONTENT_STATE.padding, gap: CONTENT_STATE.gap, minWidth: 0, textAlign: "center" }}
-    >
-      <Box
-        aria-hidden={true}
-        sx={{ display: "flex", [`& .${svgIconClasses.root}`]: { fontSize: CONTENT_STATE.iconSize } }}
-      >
+    <CenteredColumn data-testid={dataTestId} id={id} className={cn("min-w-0 gap-2 p-6 text-center", className)}>
+      <span aria-hidden={true} className={"flex [&>svg]:text-content-state-icon"}>
         {icon ?? <DescriptionOutlinedIcon sx={{ color: "text.secondary", opacity: 0.55 }} />}
-      </Box>
+      </span>
 
       <Typography variant={"subtitle1"}>{title}</Typography>
 

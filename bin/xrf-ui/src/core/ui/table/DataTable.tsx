@@ -1,8 +1,9 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@mui/x-data-grid";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -80,18 +81,13 @@ export function DataTable<T extends GridValidRowModel>({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%", flexGrow: 1, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 w-full grow flex-col gap-2", className)}>
       {getSearchText ? (
         <EditorFilterInput
           ariaLabel={searchLabel}
           placeholder={searchPlaceholder}
           query={search}
-          sx={{ maxWidth: 320 }}
+          className={"max-w-80"}
           onQueryChange={setSearch}
         />
       ) : null}
@@ -102,7 +98,7 @@ export function DataTable<T extends GridValidRowModel>({
           : `${filtered.length} of ${rows.length} ${countNoun}(s)`}
       </Typography>
 
-      <Box sx={{ flexGrow: 1, minHeight: 200, width: "100%" }}>
+      <div className={"min-h-50 w-full grow"}>
         <DataGrid
           columns={columns}
           getRowId={getRowId}
@@ -116,7 +112,7 @@ export function DataTable<T extends GridValidRowModel>({
           rows={filtered}
           onRowClick={onRowSelect ? onRowClick : undefined}
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

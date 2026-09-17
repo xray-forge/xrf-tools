@@ -3,10 +3,10 @@ import { useForkRef } from "@mui/material/utils";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -299,17 +299,9 @@ export function VirtualizedLines({
       aria-label={ariaLabel}
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("h-full overflow-auto outline-none", className)}
       role={"listbox"}
-      sx={mergeSx(
-        {
-          // A definite height, or the listing grows to its content instead of windowing it.
-          height: "100%",
-          outline: "none",
-          overflow: "auto",
-        },
-        sx
-      )}
+      sx={sx}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >

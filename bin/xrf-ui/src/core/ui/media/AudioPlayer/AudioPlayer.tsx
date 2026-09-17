@@ -1,4 +1,4 @@
-import { Alert, Box } from "@mui/material";
+import { Alert } from "@mui/material";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
@@ -113,13 +113,12 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
   }, [src]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
-      <Box
-        component={"audio"}
+    <div className={"flex w-full flex-col gap-2"}>
+      <audio
         ref={audioRef}
+        className={"hidden"}
         src={src}
         loop={isLooping}
-        sx={{ display: "none" }}
         onPlay={onPlaying}
         onPause={onStopped}
         onEnded={onStopped}
@@ -149,6 +148,6 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
         onToggleLoop={onToggleLoop}
         onVolumeChange={volume.set}
       />
-    </Box>
+    </div>
   );
 }

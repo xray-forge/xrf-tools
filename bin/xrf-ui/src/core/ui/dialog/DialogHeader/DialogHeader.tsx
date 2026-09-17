@@ -1,5 +1,5 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
-import { Box, DialogTitle, IconButton, Tooltip, Typography } from "@mui/material";
+import { DialogTitle, IconButton, Tooltip, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { DIALOG } from "@/core/theme/tokens";
@@ -35,9 +35,9 @@ export function DialogHeader({
       sx={{ display: "flex", alignItems: "center", gap: DIALOG.gap }}
     >
       {icon ? (
-        <Box component={"span"} aria-hidden={true} sx={{ display: "inline-flex" }}>
+        <span aria-hidden={true} className={"inline-flex"}>
           {icon}
-        </Box>
+        </span>
       ) : null}
 
       <Typography

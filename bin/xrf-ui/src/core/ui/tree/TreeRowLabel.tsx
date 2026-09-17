@@ -1,4 +1,4 @@
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Tooltip, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -21,10 +21,8 @@ interface ITreeRowLabelProps extends BaseComponentProps {
  */
 export function TreeRowLabel({ label, caption = null, captionTitle }: ITreeRowLabelProps): ReactElement {
   return caption ? (
-    <Box sx={{ alignItems: "center", display: "flex", gap: 0.75, minWidth: 0 }}>
-      <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-        {label}
-      </Box>
+    <div className={"flex min-w-0 items-center gap-1.5"}>
+      <span className={"min-w-0 overflow-hidden text-ellipsis"}>{label}</span>
 
       <Tooltip title={captionTitle ?? ""}>
         <Typography
@@ -35,7 +33,7 @@ export function TreeRowLabel({ label, caption = null, captionTitle }: ITreeRowLa
           {caption}
         </Typography>
       </Tooltip>
-    </Box>
+    </div>
   ) : (
     (label as ReactNode as ReactElement)
   );

@@ -1,7 +1,7 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as HistoryIcon } from "@mui/icons-material/History";
-import { Box, IconButton, inputBaseClasses, TextField, Tooltip } from "@mui/material";
+import { IconButton, inputBaseClasses, TextField, Tooltip } from "@mui/material";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { MONOSPACE } from "@/core/theme/tokens";
@@ -79,7 +79,7 @@ export function FilePickerInput({
         input: {
           readOnly: !onChange,
           endAdornment: (
-            <Box sx={{ display: "flex", flexShrink: 0 }}>
+            <div className={"flex shrink-0"}>
               {value && onClear ? (
                 <Tooltip describeChild title={"Clear"}>
                   <span>
@@ -107,7 +107,7 @@ export function FilePickerInput({
                   </IconButton>
                 </span>
               </Tooltip>
-            </Box>
+            </div>
           ),
         },
       }}
