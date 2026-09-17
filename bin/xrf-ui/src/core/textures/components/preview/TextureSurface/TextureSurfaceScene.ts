@@ -19,6 +19,7 @@ import {
   listTextureSurfaceTextures,
 } from "@/core/textures/lib/texture-surface";
 import { applyXrayBumpShading, IVisualBumpShading } from "@/core/visuals/lib/visual-bump";
+import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
@@ -65,6 +66,9 @@ export class TextureSurfaceScene {
   private readonly edgeMaterial: MeshStandardMaterial;
   private readonly resizeObserver: ResizeObserver;
 
+  /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
+  private readonly unbindDragCursor: () => void;
+
   private mesh: Nullable<Mesh<BufferGeometry, MeshStandardMaterial | Array<MeshStandardMaterial>>> = null;
   private shading: Nullable<IVisualBumpShading> = null;
   private textures: ITextureSurfaceTextures = EMPTY_TEXTURE_SURFACE;
@@ -109,6 +113,7 @@ export class TextureSurfaceScene {
     this.resizeObserver = new ResizeObserver(() => this.resize());
 
     this.setShape(this.options.shape);
+    this.unbindDragCursor = bindDragCursor(this.controls, this.renderer.domElement);
   }
 
   /**
@@ -132,6 +137,7 @@ export class TextureSurfaceScene {
    */
   public dispose(): void {
     cancelAnimationFrame(this.frameHandle);
+    this.unbindDragCursor();
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.mesh?.geometry.dispose();

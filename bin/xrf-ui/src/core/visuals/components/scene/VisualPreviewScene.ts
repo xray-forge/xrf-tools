@@ -24,6 +24,7 @@ import { VisualPreviewModel } from "@/core/visuals/components/scene/VisualPrevie
 import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
@@ -104,6 +105,9 @@ export class VisualPreviewScene {
   private readonly axes: AxesHelper;
   private readonly resizeObserver: ResizeObserver;
 
+  /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
+  private readonly unbindDragCursor: () => void;
+
   /** The model on screen, or null when nothing is open. */
   private model: Nullable<VisualPreviewModel> = null;
   /** The marker for a joint named elsewhere, kept across models rather than rebuilt. */
@@ -114,27 +118,13 @@ export class VisualPreviewScene {
   private viewOptions: Nullable<IVisualPreviewViewOptions> = null;
   /** What the backend packed, kept for the extent the camera and the helpers are sized against. */
   private views: Nullable<IVisualModelViews> = null;
-  /**
-   * How far down its collapse chain every mesh is currently drawing, 0 being full detail.
-   *
-   * Held here so a model replaced while detail is reduced arrives reduced, rather than snapping back to full and
-   * leaving the toolbar saying otherwise.
-   */
+  /** How far down its collapse chain every mesh is currently drawing, 0 being full detail. */
   private detail: number = 0;
-  /**
-   * Whether the camera has ever been fitted to anything in this scene.
-   */
+  /** Whether the camera has ever been fitted to anything in this scene. */
   private hasFramed: boolean = false;
-  /**
-   * Whether the last fit was measured against a viewport that had no size yet.
-   */
+  /** Whether the last fit was measured against a viewport that had no size yet. */
   private isFitUnmeasured: boolean = false;
-  /**
-   * The pose and the hidden bones last asked for, kept because they outlive any one model.
-   *
-   * Both are stated against a skeleton rather than against one model's geometry, so a replacement wears them straight
-   * away instead of flashing its bind pose with every part attached until the owner sends the same state again.
-   */
+  /** The pose and the hidden bones last asked for, kept because they outlive any one model. */
   private pose: { transforms: Nullable<Float32Array>; frame: number; floatsPerBone: number } = {
     floatsPerBone: 0,
     frame: 0,
@@ -181,16 +171,11 @@ export class VisualPreviewScene {
     this.resizeObserver = new ResizeObserver(() => this.resize());
 
     this.setModel(model);
+    this.unbindDragCursor = bindDragCursor(this.controls, this.renderer.domElement);
   }
 
   /**
    * Replace whatever is on screen with a different model, or with nothing.
-   *
-   * Geometry is rebuilt while the renderer and controls survive. The camera is fitted for the first model this scene
-   * shows and held for every one after it: stepping through a tree is comparing models, and a refit per model throws
-   * away the angle and the distance the comparison is being made from. Held across the empty viewport between two
-   * models as well, since a load clears the screen before the replacement lands. A model of a very different size can
-   * end up out of frame that way, which is what the viewport's reset is for.
    *
    * @param views - Model views to display, or `null` to clear the scene.
    */
@@ -426,6 +411,7 @@ export class VisualPreviewScene {
 
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.unbindDragCursor();
     this.clearModel();
 
     if (this.highlight) {

@@ -244,7 +244,7 @@ export function ImageViewport({
     <div className={"flex min-h-0 min-w-0 grow flex-col"}>
       <div
         ref={viewportRef}
-        className={"relative min-h-0 grow cursor-grab overflow-hidden bg-viewport-backdrop active:cursor-grabbing"}
+        className={"relative min-h-0 grow overflow-hidden bg-viewport-backdrop active:cursor-grabbing"}
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
