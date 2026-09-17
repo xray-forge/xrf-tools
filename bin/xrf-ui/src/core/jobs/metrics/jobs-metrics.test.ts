@@ -112,7 +112,6 @@ describe("JobProfileRecorder", () => {
     JOB_PROFILES.sample("unknown", mockReport(100, [mockLevel("write", 10)]));
 
     expect(JOB_PROFILES.read("unknown")).toBeNull();
-    expect(JOB_PROFILES.list()).toEqual([]);
   });
 
   it("keeps no more profiles than the backend keeps listings, so neither runs out before the other", () => {
@@ -120,9 +119,13 @@ describe("JobProfileRecorder", () => {
       JOB_PROFILES.begin(`job-${index}`, "archives.pack");
     }
 
-    expect(JOB_PROFILES.list()).toHaveLength(20);
-    expect(JOB_PROFILES.read("job-0")).toBeNull();
-    expect(JOB_PROFILES.read("job-24")).not.toBeNull();
+    for (let index: number = 0; index < 5; index += 1) {
+      expect(JOB_PROFILES.read(`job-${index}`)).toBeNull();
+    }
+
+    for (let index: number = 5; index < 25; index += 1) {
+      expect(JOB_PROFILES.read(`job-${index}`)).not.toBeNull();
+    }
   });
 
   it("hands out copies, so a render cannot see a phase grow underneath it", () => {

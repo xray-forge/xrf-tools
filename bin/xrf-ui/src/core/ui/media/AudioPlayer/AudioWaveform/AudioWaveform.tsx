@@ -1,6 +1,7 @@
 import { useTheme } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
-import { KeyboardEvent, MouseEvent, ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useForkRef } from "@mui/material/utils";
+import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
@@ -49,13 +50,7 @@ export function AudioWaveform({
     [samples, width]
   );
 
-  const attach = useCallback(
-    (canvas: Nullable<HTMLCanvasElement>) => {
-      canvasRef.current = canvas;
-      measure(canvas);
-    },
-    [measure]
-  );
+  const attach = useForkRef(canvasRef, measure);
 
   function seek(next: number): void {
     if (length > 0) {

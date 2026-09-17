@@ -124,11 +124,6 @@ export class JobProfileRecorder {
     return state ? JobProfileRecorder.toProfile(state) : null;
   }
 
-  /** @returns Every profile held, oldest first, copied so a render cannot see one move underneath it. */
-  public list(): Array<IJobProfile> {
-    return Array.from(this.profiles.values(), JobProfileRecorder.toProfile);
-  }
-
   /** Forgets every profile, which the listing beside it cannot do to the backend's own retention. */
   public reset(): void {
     this.profiles.clear();

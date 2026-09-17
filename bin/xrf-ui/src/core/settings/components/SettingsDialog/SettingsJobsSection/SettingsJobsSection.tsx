@@ -4,7 +4,7 @@ import { ReactElement, useCallback } from "react";
 import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
-import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
+import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { cn } from "@/lib/dom/dom-name";
@@ -30,9 +30,6 @@ export function SettingsJobsSection({
   const summaries: Array<IJobKindSummary> = summarizeJobKinds(listed);
   const leases: Array<IJobLease> = listHeldLeases(listed);
   const running: number = listed.filter((it: JobDescription) => it.conclusion === null).length;
-  const profiles: Map<string, IJobProfile> = new Map(
-    JOB_PROFILES.list().map((it: IJobProfile) => [it.id, it] as const)
-  );
 
   const onClear = useCallback(() => {
     JOB_PROFILES.reset();
@@ -56,7 +53,7 @@ export function SettingsJobsSection({
         {listed.length ? (
           <Stack className={"mt-2"} divider={<Divider flexItem />}>
             {listed.map((job: JobDescription) => (
-              <SettingsJobsRun key={job.id} job={job} profile={profiles.get(job.id) ?? null} />
+              <SettingsJobsRun key={job.id} job={job} profile={JOB_PROFILES.read(job.id)} />
             ))}
           </Stack>
         ) : (
