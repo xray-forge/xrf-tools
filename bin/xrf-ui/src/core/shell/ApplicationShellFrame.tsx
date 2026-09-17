@@ -31,9 +31,8 @@ import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getSurfaceSx } from "@/core/theme/surface";
-import { LAYOUT } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -120,36 +119,19 @@ export function ApplicationShellFrame({
       <Box
         data-testid={dataTestId}
         id={id}
-        className={className}
-        sx={mergeSx(getSurfaceSx("frame"), {
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          height: "100%",
-          flexWrap: "nowrap",
-        })}
+        className={cn("flex h-full w-full flex-col flex-nowrap", className)}
+        sx={getSurfaceSx("frame")}
       >
         <ApplicationTitleBar toolbarRef={setToolbarHost} isBusy={isBusy} />
 
-        <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0, flexWrap: "nowrap" }}>
+        <div className={"flex min-h-0 grow flex-nowrap"}>
           <ApplicationRail
             panels={leftPanels}
             activePanelId={leftSelection.activePanelId}
             onTogglePanel={leftSelection.onTogglePanel}
           />
 
-          <Box
-            sx={{
-              display: "flex",
-              flexGrow: 1,
-              minWidth: 0,
-              minHeight: 0,
-              overflow: "hidden",
-              border: 1,
-              borderColor: "divider",
-              borderRadius: `${LAYOUT.surfaceRadius}px`,
-            }}
-          >
+          <div className={"flex min-h-0 min-w-0 grow overflow-hidden rounded-surface border border-divider"}>
             <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
               <Suspense key={applicationPath} fallback={<ApplicationLoader />}>
                 <ApplicationScope application={application}>
@@ -160,11 +142,11 @@ export function ApplicationShellFrame({
                     onResize={leftSizing.onResize}
                   />
 
-                  <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+                  <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
                     <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
                       {children}
                     </ErrorBoundary>
-                  </Box>
+                  </div>
 
                   <ApplicationPanelSlot
                     side={"right"}
@@ -175,7 +157,7 @@ export function ApplicationShellFrame({
                 </ApplicationScope>
               </Suspense>
             </ErrorBoundary>
-          </Box>
+          </div>
 
           <ApplicationPanelStripe
             side={"right"}
@@ -202,7 +184,7 @@ export function ApplicationShellFrame({
             }
             onTogglePanel={rightSelection.onTogglePanel}
           />
-        </Box>
+        </div>
 
         <ApplicationStatusBar />
       </Box>

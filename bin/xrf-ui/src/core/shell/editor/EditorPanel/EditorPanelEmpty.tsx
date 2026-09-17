@@ -1,7 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelEmptyProps extends BaseComponentProps {
@@ -19,10 +20,10 @@ export function EditorPanelEmpty({
   label,
 }: IEditorPanelEmptyProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ padding: PANEL.contentPadding }}>
+    <div data-testid={dataTestId} id={id} className={cn("p-panel-content", className)}>
       <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
         {label}
       </Typography>
-    </Box>
+    </div>
   );
 }

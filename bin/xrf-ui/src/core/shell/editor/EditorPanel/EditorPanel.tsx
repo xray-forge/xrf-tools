@@ -34,7 +34,7 @@ export function EditorPanel({
     >
       <EditorPanelHeader title={title} actions={actions} />
 
-      <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}>{children}</Box>
+      <div className={"min-h-0 min-w-0 grow"}>{children}</div>
     </Box>
   );
 }

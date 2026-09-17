@@ -51,11 +51,25 @@
   --text-tree-icon: var(--xrf-tree-icon-size);
   --text-content-state-icon: var(--xrf-content-state-icon);
   --text-badge: var(--xrf-badge-font-size);
+  --text-panel-action-icon: var(--xrf-panel-action-icon);
+  --text-editor-action-icon: var(--xrf-editor-action-icon);
 
   --radius-surface: var(--xrf-radius-surface);
+  --radius-control: var(--xrf-radius-control);
 
   --spacing-dialog: var(--xrf-dialog-padding-x);
   --spacing-panel-property: var(--xrf-panel-property-padding);
+  --spacing-panel-property-gap: var(--xrf-panel-property-gap);
+  --spacing-panel-content: var(--xrf-panel-content-padding);
+  --spacing-panel-section: var(--xrf-panel-section-padding);
+  --spacing-panel-section-gap: var(--xrf-panel-section-gap);
+  --spacing-content-state: var(--xrf-content-state-padding);
+  --spacing-content-state-gap: var(--xrf-content-state-gap);
+  --spacing-editor-action: var(--xrf-editor-action-size);
+  --spacing-rail-button: var(--xrf-rail-button-size);
+  --spacing-rail: var(--xrf-rail-width);
+  --spacing-title-bar: var(--xrf-title-bar-height);
+  --spacing-status-bar: var(--xrf-status-bar-height);
 
   /* The face on its own. `.monospace` also sets a size, which is wrong for a heading. */
   --font-monospace: var(--xrf-monospace-family);
