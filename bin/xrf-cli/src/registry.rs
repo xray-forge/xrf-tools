@@ -1,5 +1,6 @@
 use crate::commands::{
-  archive, dds, dialog, docs, externs, gamedata, ltx, ogf, omf, particle, profile, spawn, sprite, thm, translation,
+  archive, dds, dialog, docs, externs, gamedata, level, ltx, ogf, omf, particle, profile, spawn, sprite, thm,
+  translation,
 };
 use crate::core::generic_command::{CommandGroup, GenericCommand};
 
@@ -58,6 +59,12 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
         gamedata::list::ListCommand::new_box(),
         gamedata::verify::VerifyCommand::new_box(),
       ],
+    },
+    CommandGroup {
+      slug: "level",
+      label: "Level",
+      about: "Compiled level tools",
+      commands: vec![level::info::InfoCommand::new_box()],
     },
     CommandGroup {
       slug: "ltx",
