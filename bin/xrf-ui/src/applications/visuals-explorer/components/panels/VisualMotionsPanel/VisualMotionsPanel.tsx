@@ -11,8 +11,6 @@ import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -56,30 +54,18 @@ export function VisualMotionsPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"} sx={{ height: "100%" }}>
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-        <Box
-          sx={mergeSx(getSurfaceSx("frame"), {
-            position: "sticky",
-            top: 0,
-            zIndex: 1,
-            flexShrink: 0,
-            paddingX: 2,
-            paddingTop: 1,
-            paddingBottom: 1.5,
-            borderBottom: 1,
-            borderColor: "divider",
-          })}
-        >
+        <div className={"sticky top-0 z-1 shrink-0 border-b border-divider surface-frame px-4 pt-2 pb-3"}>
           <VisualMotionTransport />
 
-          <Box sx={{ marginTop: 1 }}>
+          <div className={"mt-2"}>
             <EditorFilterInput
               query={filter}
               placeholder={"Filter motions"}
               ariaLabel={"Filter motions"}
               onQueryChange={setFilter}
             />
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         <EditorPanelSection
           title={playable ? `Playable (${playable})` : "Playable"}

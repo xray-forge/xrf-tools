@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
@@ -26,7 +25,7 @@ export function SettingsGeneralSection(): ReactElement {
   const { mode, setMode } = useColorScheme();
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className={"flex flex-col gap-6"}>
       <ChoiceFormRow
         label={"Appearance"}
         description={"Follow the system theme, or pin the application to one."}
@@ -41,6 +40,6 @@ export function SettingsGeneralSection(): ReactElement {
         isChecked={settingsService.isDevModeEnabled}
         onChange={settingsService.setDevModeEnabled}
       />
-    </Box>
+    </div>
   );
 }

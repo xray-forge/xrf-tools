@@ -1,7 +1,7 @@
-import { Box, Link, Typography } from "@mui/material";
+import { Link, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -24,26 +24,20 @@ export function SettingsAboutRow({
   href = null,
 }: ISettingsAboutRowProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} className={className} id={id} sx={{ display: "flex", gap: 1 }}>
-      <Typography variant={"caption"} sx={{ minWidth: 96, opacity: 0.7 }}>
+    <div data-testid={dataTestId} className={cn("flex gap-2", className)} id={id}>
+      <Typography className={"min-w-24 opacity-70"} variant={"caption"}>
         {label}
       </Typography>
 
       {href ? (
-        <Link
-          variant={"caption"}
-          href={href}
-          target={"_blank"}
-          rel={"noreferrer"}
-          sx={{ ...MONOSPACE, wordBreak: "break-all" }}
-        >
+        <Link className={"monospace break-all"} href={href} target={"_blank"} rel={"noreferrer"} variant={"caption"}>
           {value}
         </Link>
       ) : (
-        <Typography variant={"caption"} sx={{ ...MONOSPACE, wordBreak: "break-all" }}>
+        <Typography className={"monospace break-all"} variant={"caption"}>
           {value}
         </Typography>
       )}
-    </Box>
+    </div>
   );
 }

@@ -9,6 +9,7 @@ import type {} from "@mui/x-data-grid/themeAugmentation";
 import { getHeaderGlossImage, getWashImage } from "./surface";
 import {
   ACCENT,
+  ColorScheme,
   CONTROL,
   DIALOG,
   DIVIDER,
@@ -16,7 +17,6 @@ import {
   MONOSPACE,
   OVERLAY_BORDER,
   RADIUS,
-  RECESS_TONE,
   SHADOW,
   STATE,
   STATE_TONE,
@@ -40,7 +40,8 @@ declare module "@mui/material/styles" {
   }
 }
 
-type ColorScheme = "light" | "dark";
+/** A well's own fill, published per scheme by `variables.ts`. It is a recess on a level, not a level of its own. */
+const WELL_FILL: string = "var(--xrf-well)";
 
 /** Shadows flip per scheme, which MUI's flat `shadows` tuple cannot express, so the tuple holds variables. */
 const SHADOW_RAISED: string = "var(--xrf-shadow-raised)";
@@ -105,11 +106,6 @@ function createShadows(): Theme["shadows"] {
     ...new Array<string>(4).fill(SHADOW_RAISED),
     ...new Array<string>(20).fill(SHADOW_OVERLAY),
   ] as Theme["shadows"];
-}
-
-/** A well's own fill. Kept out of the palette: it is a recess on a level, not a level of its own. */
-function toWellFill(scheme: ColorScheme): string {
-  return `color-mix(in srgb, ${RECESS_TONE} ${toSharePercent(STATE.well[scheme])}, transparent)`;
 }
 
 export function createApplicationTheme(): Theme {
@@ -222,11 +218,10 @@ export function createApplicationTheme(): Theme {
         defaultProps: { elevation: 0, disableGutters: true },
         styleOverrides: {
           root: ({ theme }) => ({
-            backgroundColor: toWellFill("light"),
+            backgroundColor: WELL_FILL,
             border: `1px solid ${(theme.vars ?? theme).palette.divider}`,
             borderRadius: RADIUS.md,
             "&::before": { display: "none" },
-            ...theme.applyStyles("dark", { backgroundColor: toWellFill("dark") }),
           }),
         },
       },
@@ -379,7 +374,7 @@ export function createApplicationTheme(): Theme {
         styleOverrides: {
           root: ({ theme }) => ({
             borderRadius: RADIUS.sm,
-            backgroundColor: toWellFill("light"),
+            backgroundColor: WELL_FILL,
             [`& .${outlinedInputClasses.notchedOutline}`]: {
               borderColor: (theme.vars ?? theme).palette.divider,
             },
@@ -388,7 +383,6 @@ export function createApplicationTheme(): Theme {
               height: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
               minHeight: CONTROL.smallHeight - CONTROL.smallInputPaddingY * 2,
             },
-            ...theme.applyStyles("dark", { backgroundColor: toWellFill("dark") }),
           }),
         },
       },

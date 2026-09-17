@@ -1,9 +1,8 @@
-import { Box, useTheme } from "@mui/material";
+import { useTheme } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { KeyboardEvent, MouseEvent, ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getWellSx } from "@/core/theme/surface";
+import { cn } from "@/lib/dom/dom-name";
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
 import { useElementSize } from "@/lib/react/use-element-size";
 import { Nullable } from "@/lib/types/general";
@@ -12,7 +11,6 @@ import { useAudioSamples } from "./use-audio-samples";
 
 /** One peak per two pixels preserves short transients without crowding the strip. */
 const PEAKS_PER_PIXEL: number = 0.5;
-const WAVEFORM_HEIGHT: number = 96;
 
 /** Arrow keys move by seconds, independent of the waveform's pixel width. */
 const SEEK_STEP: number = 5;
@@ -134,24 +132,20 @@ export function AudioWaveform({
   }, [size, peaks, current, length, palette]);
 
   return (
-    <Box
+    <canvas
       aria-label={"Seek"}
       aria-valuemin={0}
       aria-valuemax={length}
       aria-valuenow={current}
       aria-valuetext={`${formatPlaybackTime(current)} of ${formatPlaybackTime(length)}`}
       aria-disabled={length === 0}
-      component={"canvas"}
       ref={attach}
+      className={cn(
+        "h-24 w-full cursor-pointer rounded-surface border border-divider bg-well",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      )}
       role={"slider"}
       tabIndex={0}
-      sx={mergeSx(getWellSx, {
-        width: "100%",
-        height: WAVEFORM_HEIGHT,
-        cursor: "pointer",
-        borderRadius: 1,
-        "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 },
-      })}
       onClick={onClick}
       onKeyDown={onKeyDown}
     />

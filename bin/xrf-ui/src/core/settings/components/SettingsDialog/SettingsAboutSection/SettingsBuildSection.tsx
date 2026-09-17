@@ -34,7 +34,7 @@ export function SettingsBuildSection(): ReactElement {
       title={"Build"}
       description={"Which build of the application is running, and where it came from."}
     >
-      <Stack spacing={0.5} sx={{ marginTop: 1 }}>
+      <Stack className={"mt-2"} spacing={0.5}>
         {build ? (
           describeBuild(build).map((it: IAboutRow) => (
             <SettingsAboutRow key={it.label} label={it.label} value={it.value} href={it.href} />

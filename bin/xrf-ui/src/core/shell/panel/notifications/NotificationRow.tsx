@@ -14,7 +14,6 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
-import { getWellSx } from "@/core/theme/surface";
 import { MONOSPACE, PANEL } from "@/core/theme/tokens";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
@@ -167,7 +166,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
       </div>
 
       {isBodyShown ? (
-        <Box className={"mt-1 rounded-surface p-2"} sx={getWellSx}>
+        <div className={"mt-1 rounded-surface border border-divider bg-well p-2"}>
           <Typography
             component={"pre"}
             sx={{
@@ -192,7 +191,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
               Show all {lines.length} lines
             </Button>
           ) : null}
-        </Box>
+        </div>
       ) : null}
     </Box>
   );

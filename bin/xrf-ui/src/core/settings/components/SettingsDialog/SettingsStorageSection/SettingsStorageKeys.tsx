@@ -1,7 +1,6 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -26,19 +25,19 @@ export function SettingsStorageKeys({ entries }: ISettingsStorageKeysProps): Rea
       description={"Every key and what it occupies, largest first."}
       fact={describeKeyCount(entries.length)}
     >
-      <Stack sx={{ marginTop: 1 }}>
+      <Stack className={"mt-2"}>
         {listed.map((it: IStorageEntry) => (
-          <Box key={it.key} sx={{ display: "flex", gap: 2, paddingY: 0.25 }}>
-            <Typography sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>{it.key}</Typography>
+          <div key={it.key} className={"flex gap-4 py-0.5"}>
+            <Typography className={"monospace min-w-0 grow wrap-anywhere"}>{it.key}</Typography>
 
-            <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+            <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
               {formatBytes(it.size)}
             </Typography>
-          </Box>
+          </div>
         ))}
 
         {entries.length > listed.length ? (
-          <Typography variant={"caption"} sx={{ color: "text.secondary", marginTop: 1 }}>
+          <Typography className={"mt-2 text-text-secondary"} variant={"caption"}>
             {`${entries.length - listed.length} more not listed.`}
           </Typography>
         ) : null}

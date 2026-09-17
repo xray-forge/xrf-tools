@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
@@ -31,7 +30,6 @@ import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -116,11 +114,10 @@ export function ApplicationShellFrame({
 
   return (
     <EditorToolbarHostContext.Provider value={toolbarHost}>
-      <Box
+      <div
         data-testid={dataTestId}
         id={id}
-        className={cn("flex h-full w-full flex-col flex-nowrap", className)}
-        sx={getSurfaceSx("frame")}
+        className={cn("flex h-full w-full flex-col flex-nowrap surface-frame", className)}
       >
         <ApplicationTitleBar toolbarRef={setToolbarHost} isBusy={isBusy} />
 
@@ -187,7 +184,7 @@ export function ApplicationShellFrame({
         </div>
 
         <ApplicationStatusBar />
-      </Box>
+      </div>
     </EditorToolbarHostContext.Provider>
   );
 }

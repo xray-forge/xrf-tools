@@ -1,9 +1,7 @@
-/**
- * Color scheme modes the application offers.
- *
- * `system` is not a scheme of its own: `main-init.ts` resolves it against the OS preference before
- * first paint, so it must stay in sync with what that script accepts.
- */
+/** The two schemes every scheme-dependent token is stated for. */
+export type ColorScheme = "light" | "dark";
+
+/** Color scheme modes the application offers. */
 export const COLOR_SCHEME_MODES = ["light", "dark", "system"] as const;
 
 export type ColorSchemeMode = (typeof COLOR_SCHEME_MODES)[number];
@@ -19,9 +17,7 @@ export const RADIUS = {
 
 export const BADGE_FONT_SIZE = "0.625rem";
 
-/**
- * The plane a picture is judged against, and the alpha checkerboard drawn behind it.
- */
+/** The plane a picture is judged against, and the alpha checkerboard drawn behind it. */
 export const VIEWPORT = {
   backdrop: "#353535",
   checkerboardDark: "#707070",
@@ -30,9 +26,7 @@ export const VIEWPORT = {
   checkerboardSquare: 10,
 } as const;
 
-/**
- * Diagonal accent wash over the frame and the reading plane.
- */
+/** Diagonal accent wash over the frame and the reading plane. */
 export const WASH = {
   angle: "135deg",
   /** Cool end, at the gradient's origin. */

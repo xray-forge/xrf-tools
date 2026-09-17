@@ -1,10 +1,8 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualPreviewEmptyProps extends BaseComponentProps {
@@ -25,17 +23,12 @@ export function VisualPreviewEmpty({
   onRetry,
 }: IVisualPreviewEmptyProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx(getSurfaceSx("content"), { position: "absolute", inset: 0, display: "flex" })}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("absolute inset-0 flex surface-content", className)}>
       {error ? (
         <ErrorState title={"Could not open this visual"} description={error} onRetry={onRetry} />
       ) : (
         <EmptyState title={"No visual open"} description={"Pick a model from the tree to preview it."} />
       )}
-    </Box>
+    </div>
   );
 }

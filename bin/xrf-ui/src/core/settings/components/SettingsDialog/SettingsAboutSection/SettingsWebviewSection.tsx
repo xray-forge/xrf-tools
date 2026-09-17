@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -27,7 +26,7 @@ export function SettingsWebviewSection(): ReactElement {
       description={"What this window reports about itself, which a reload resets and the backend above does not."}
       fact={stats ? formatDuration(stats.age) : null}
     >
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
+      <div className={"mt-2 flex flex-wrap gap-4"}>
         <StatFigure
           label={"Script heap"}
           value={stats?.heap ? heapUsed : "not reported"}
@@ -44,7 +43,7 @@ export function SettingsWebviewSection(): ReactElement {
           value={stats?.loadDuration ? formatDuration(stats.loadDuration) : "still loading"}
           hint={"to the load event"}
         />
-      </Box>
+      </div>
     </DetailSection>
   );
 }

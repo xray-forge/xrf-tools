@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
@@ -36,7 +36,7 @@ export function SettingsRuntimeSection(): ReactElement {
       fact={snapshot ? formatDuration(snapshot.uptime) : null}
     >
       {snapshot ? (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
+        <div className={"mt-2 flex flex-wrap gap-4"}>
           <StatFigure label={"Started"} value={formatInstant(snapshot.startedAt)} />
           <StatFigure label={"Uptime"} value={formatDuration(snapshot.uptime)} />
           <StatFigure label={"Backend"} value={formatBytes(snapshot.process.residentMemory)} hint={"resident"} />
@@ -51,7 +51,7 @@ export function SettingsRuntimeSection(): ReactElement {
             value={formatBytes(snapshot.machine.usedMemory)}
             hint={`${formatBytes(snapshot.machine.availableMemory)} free`}
           />
-        </Box>
+        </div>
       ) : (
         <Typography variant={"caption"}>Reading runtime details...</Typography>
       )}

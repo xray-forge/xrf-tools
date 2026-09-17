@@ -1,10 +1,10 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
 import { default as DescriptionOutlinedIcon } from "@mui/icons-material/DescriptionOutlined";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { getHeaderBandSx, MONOSPACE } from "@/core/theme";
+import { MONOSPACE } from "@/core/theme";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -43,11 +43,10 @@ export function EditorFileHeader({
   onClose,
 }: IEditorFileHeaderProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={cn("flex min-h-header items-center gap-2 border-b border-divider px-3", className)}
-      sx={getHeaderBandSx}
+      className={cn("flex min-h-header items-center gap-2 border-b border-divider header-band px-3", className)}
     >
       {icon}
 
@@ -75,6 +74,6 @@ export function EditorFileHeader({
         icon={<CloseIcon />}
         onClick={onClose}
       />
-    </Box>
+    </div>
   );
 }

@@ -34,7 +34,7 @@ export function SettingsEnvironmentSection(): ReactElement {
       title={"Environment"}
       description={"The machine and the runtime the application found when it started."}
     >
-      <Stack spacing={0.5} sx={{ marginTop: 1 }}>
+      <Stack className={"mt-2"} spacing={0.5}>
         {host ? (
           describeHost(host).map((it: IAboutRow) => (
             <SettingsAboutRow key={it.label} label={it.label} value={it.value} href={it.href} />

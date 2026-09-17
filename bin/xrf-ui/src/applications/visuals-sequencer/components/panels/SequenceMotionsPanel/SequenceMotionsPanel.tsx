@@ -7,8 +7,6 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -71,24 +69,14 @@ export function SequenceMotionsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Motions"}>
-      <Box
-        sx={mergeSx(getSurfaceSx("frame"), {
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
-          paddingX: 2,
-          paddingY: 1.5,
-          borderBottom: 1,
-          borderColor: "divider",
-        })}
-      >
+      <div className={"sticky top-0 z-1 border-b border-divider surface-frame px-4 py-3"}>
         <EditorFilterInput
           query={filter}
           placeholder={"Filter motions"}
           ariaLabel={"Filter motions"}
           onQueryChange={setFilter}
         />
-      </Box>
+      </div>
 
       <Box sx={{ paddingX: 1, paddingY: 1 }}>
         {matched.slice(0, SHOWN_LIMIT).map((name: string) => (

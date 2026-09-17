@@ -1,13 +1,13 @@
-import { Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { Button, Divider, Stack, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
-import { MONOSPACE } from "@/core/theme/tokens";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { useForceUpdate } from "@/lib/react";
@@ -40,46 +40,39 @@ export function SettingsJobsSection({
   }, [forceUpdate]);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", gap: 3 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-6", className)}>
       <DetailSection
         title={"Runs"}
         description={"What the backend is running and the last it finished."}
         fact={listed.length === 1 ? "1 run" : `${listed.length} runs`}
       >
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 1 }}>
+        <div className={"mt-2 flex flex-wrap gap-4"}>
           <StatFigure label={"Running"} value={String(running)} />
           <StatFigure label={"Finished"} value={String(listed.length - running)} />
           <StatFigure label={"Kinds"} value={String(summaries.length)} />
           <StatFigure label={"Held leases"} value={String(leases.length)} />
-        </Box>
+        </div>
 
         {listed.length ? (
-          <Stack divider={<Divider flexItem />} sx={{ marginTop: 1 }}>
+          <Stack className={"mt-2"} divider={<Divider flexItem />}>
             {listed.map((job: JobDescription) => (
               <SettingsJobsRun key={job.id} job={job} profile={profiles.get(job.id) ?? null} />
             ))}
           </Stack>
         ) : (
-          <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 1 }}>
+          <Typography className={"mt-2 block text-text-secondary"} variant={"caption"}>
             Nothing has run yet.
           </Typography>
         )}
       </DetailSection>
 
       <DetailSection title={"By kind"} description={"Every kind of work in the listing, and what its runs came to."}>
-        <Stack divider={<Divider flexItem />} sx={{ marginTop: 1 }}>
+        <Stack className={"mt-2"} divider={<Divider flexItem />}>
           {summaries.map((it: IJobKindSummary) => (
-            <Box key={it.kind} sx={{ alignItems: "center", display: "flex", gap: 2, paddingY: 0.75 }}>
-              <Typography sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-                {it.kind}
-              </Typography>
+            <div key={it.kind} className={"flex items-center gap-4 py-1.5"}>
+              <Typography className={"monospace min-w-0 grow wrap-anywhere"}>{it.kind}</Typography>
 
-              <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+              <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
                 {[
                   it.completed ? `${it.completed} ok` : null,
                   it.cancelled ? `${it.cancelled} cancelled` : null,
@@ -89,19 +82,19 @@ export function SettingsJobsSection({
                   .join(" · ")}
               </Typography>
 
-              <Typography variant={"body2"} sx={{ flexShrink: 0, textAlign: "right", width: 76 }}>
+              <Typography className={"w-19 shrink-0 text-right"} variant={"body2"}>
                 {it.runs}
               </Typography>
 
-              <Typography variant={"body2"} sx={{ flexShrink: 0, textAlign: "right", width: 76 }}>
+              <Typography className={"w-19 shrink-0 text-right"} variant={"body2"}>
                 {formatDuration(it.slowest)}
               </Typography>
-            </Box>
+            </div>
           ))}
         </Stack>
 
         {summaries.length ? null : (
-          <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 1 }}>
+          <Typography className={"mt-2 block text-text-secondary"} variant={"caption"}>
             Nothing has run yet.
           </Typography>
         )}
@@ -112,31 +105,29 @@ export function SettingsJobsSection({
           title={"Held exclusively"}
           description={"What the running jobs hold, which is what a refused start would be pointing at."}
         >
-          <Stack sx={{ marginTop: 1 }}>
+          <Stack className={"mt-2"}>
             {leases.map((it: IJobLease) => (
-              <Box key={`${it.id}:${it.key}`} sx={{ display: "flex", gap: 2, paddingY: 0.25 }}>
-                <Typography sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-                  {it.key}
-                </Typography>
+              <div key={`${it.id}:${it.key}`} className={"flex gap-4 py-0.5"}>
+                <Typography className={"monospace min-w-0 grow wrap-anywhere"}>{it.key}</Typography>
 
-                <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+                <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
                   {it.kind}
                 </Typography>
-              </Box>
+              </div>
             ))}
           </Stack>
         </DetailSection>
       ) : null}
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div className={"flex flex-col gap-4"}>
         <Divider />
 
-        <Box>
+        <div>
           <Button color={"error"} size={"small"} variant={"outlined"} onClick={onClear}>
             Clear
           </Button>
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

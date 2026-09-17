@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -19,9 +19,6 @@ import {
   measureLocalStorage,
   STORAGE_BUDGET_BYTES,
 } from "./SettingsStorageSection.utils";
-
-/** Room the size and clear columns keep, so the group rows line up whatever they hold. */
-const ACTION_COLUMN_WIDTH: number = 72;
 
 /** Every measured key across the groups, largest first. */
 function everyEntry(usage: IStorageUsage): Array<IStorageEntry> {
@@ -52,7 +49,7 @@ export function SettingsStorageSection(): ReactElement {
   useLocalStorageRevision();
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className={"flex flex-col gap-6"}>
       <DetailSection
         title={"Local storage"}
         description={
@@ -61,33 +58,33 @@ export function SettingsStorageSection(): ReactElement {
         }
         fact={`${formatBytes(usage.total)} of ${formatBytes(STORAGE_BUDGET_BYTES)}`}
       >
-        <Stack divider={<Divider flexItem />} sx={{ marginTop: 1 }}>
+        <Stack className={"mt-2"} divider={<Divider flexItem />}>
           {usage.groups.map((group: IStorageGroupUsage) => (
-            <Box key={group.descriptor.id} sx={{ alignItems: "center", display: "flex", gap: 2, paddingY: 1 }}>
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <div key={group.descriptor.id} className={"flex items-center gap-4 py-2"}>
+              <div className={"min-w-0 grow"}>
                 <Typography variant={"body2"}>{group.descriptor.label}</Typography>
 
-                <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block" }}>
+                <Typography className={"block text-text-secondary"} variant={"caption"}>
                   {group.descriptor.description}
                 </Typography>
-              </Box>
+              </div>
 
-              <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+              <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
                 {describeKeyCount(group.entries.length)}
               </Typography>
 
-              <Typography variant={"body2"} sx={{ flexShrink: 0, minWidth: ACTION_COLUMN_WIDTH, textAlign: "right" }}>
+              <Typography className={"w-18 shrink-0 text-right"} variant={"body2"}>
                 {formatBytes(group.size)}
               </Typography>
 
-              <Box sx={{ flexShrink: 0, width: ACTION_COLUMN_WIDTH }}>
+              <div className={"w-18 shrink-0"}>
                 {group.descriptor.isClearable && group.entries.length ? (
                   <Button color={"inherit"} size={"small"} onClick={() => setPending(group)}>
                     Clear
                   </Button>
                 ) : null}
-              </Box>
-            </Box>
+              </div>
+            </div>
           ))}
         </Stack>
       </DetailSection>
@@ -108,6 +105,6 @@ export function SettingsStorageSection(): ReactElement {
         onConfirm={onConfirmClear}
         onClose={() => setPending(null)}
       />
-    </Box>
+    </div>
   );
 }

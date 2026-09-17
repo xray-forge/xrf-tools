@@ -1,6 +1,6 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SettingsBuildSection } from "./SettingsBuildSection";
@@ -17,16 +17,11 @@ export function SettingsAboutSection({
   id,
 }: BaseComponentProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      className={className}
-      id={id}
-      sx={{ display: "flex", flexDirection: "column", gap: 3 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-6", className)}>
       <SettingsBuildSection />
       <SettingsRuntimeSection />
       <SettingsWebviewSection />
       <SettingsEnvironmentSection />
-    </Box>
+    </div>
   );
 }

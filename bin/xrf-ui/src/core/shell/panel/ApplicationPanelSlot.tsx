@@ -1,9 +1,7 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
-import { getSurfaceSx } from "@/core/theme/surface";
 import { cn } from "@/lib/dom/dom-name";
 import { Nullable } from "@/lib/types/general";
 
@@ -31,17 +29,19 @@ export function ApplicationPanelSlot({
   }
 
   return (
-    <Box
+    <div
       data-testid={`application-panel-slot-${side}`}
       data-panel-side={side}
-      className={cn("relative flex min-h-0 flex-col border-divider", side === "left" ? "border-r" : "border-l")}
+      className={cn(
+        "relative flex min-h-0 flex-col border-divider surface-frame",
+        side === "left" ? "border-r" : "border-l"
+      )}
       // Measured rather than authored: the slot's width is whatever the drag and the window budget left it.
       style={{ minWidth: width, width }}
-      sx={getSurfaceSx("frame")}
     >
       <div className={"min-h-0 grow overflow-y-auto"}>{panel.render()}</div>
 
       <PanelResizer side={side} width={width} onResize={onResize} />
-    </Box>
+    </div>
   );
 }

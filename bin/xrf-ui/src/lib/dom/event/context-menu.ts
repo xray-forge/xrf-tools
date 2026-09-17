@@ -19,14 +19,6 @@ function isEditableTarget(target: Nullable<EventTarget>): boolean {
 /**
  * Suppresses the webview's own context menu so the application can own that gesture.
  *
- * The webview only shows its menu - reload, save as, inspect - when the page lets the event through,
- * and tauri exposes no configuration switch for it, so preventing the event is the whole mechanism.
- * Devtools stay reachable in development builds through the browser accelerator keys.
- *
- * Listens on the document, which means element handlers see the event first. One that opens its own
- * menu must still prevent the default itself: stopping propagation here would hand the gesture back to
- * the webview.
- *
  * @returns Disposer that restores the webview menu.
  */
 export function suppressNativeContextMenu(): () => void {

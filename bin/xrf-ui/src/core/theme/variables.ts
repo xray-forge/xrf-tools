@@ -1,8 +1,10 @@
 import { Theme } from "@mui/material";
 
+import { getHeaderGlossImage, getWashImage, getWellFill } from "./surface";
 import {
   BADGE_FONT_SIZE,
   CODE,
+  ColorScheme,
   CONTENT_STATE,
   CONTROL,
   DIALOG,
@@ -15,7 +17,8 @@ import {
 } from "./tokens";
 
 /** Every published property, so a consumer and a test name the same thing. */
-export type TThemeVariableName = keyof ReturnType<typeof getThemeVariables>;
+export type TThemeVariableName =
+  keyof ReturnType<typeof getThemeVariables> | keyof ReturnType<typeof getSchemeVariables>;
 
 /** A measurement declared as a number of pixels, which is how `tokens.ts` states every length. */
 function px(value: number): string {
@@ -64,5 +67,19 @@ export function getThemeVariables(theme: Theme) {
     "--xrf-tree-icon-width": px(TREE.iconWidth),
     "--xrf-tree-row-height": px(TREE.rowHeight),
     "--xrf-viewport-backdrop": VIEWPORT.backdrop,
+  } as const;
+}
+
+/**
+ * The values that differ per colour scheme, and so cannot be a single declaration like the rest.
+ *
+ * @param scheme - Colour scheme the values are wanted for.
+ * @returns Custom property names mapped to their CSS values in that scheme.
+ */
+export function getSchemeVariables(scheme: ColorScheme) {
+  return {
+    "--xrf-header-gloss": getHeaderGlossImage(scheme),
+    "--xrf-wash": getWashImage(scheme),
+    "--xrf-well": getWellFill(scheme),
   } as const;
 }

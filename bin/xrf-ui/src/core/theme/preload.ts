@@ -1,8 +1,7 @@
 import { Theme } from "@mui/material";
 
 import { createApplicationTheme } from "./creation";
-import { getWashImage } from "./surface";
-import { getThemeVariables } from "./variables";
+import { getSchemeVariables, getThemeVariables } from "./variables";
 
 /** Serializes one of MUI's generated style objects, which arrive as selector-keyed rule trees rather than as text. */
 function toCssRules(rule: Record<string, unknown>, selector?: string): string {
@@ -33,8 +32,8 @@ function toDeclarations(variables: Record<string, string>): string {
  *
  * Emits the application's own stylesheet rather than a parallel vocabulary of its own, so a level that exists in React
  * cannot fail to exist here. Three things land: MUI's generated palette sheets, the design tokens from
- * `getThemeVariables`, and the wash, which is the one value that differs per colour scheme and so cannot be a single
- * declaration.
+ * `getThemeVariables`, and the scheme-dependent paints from `getSchemeVariables`, which are declared twice because a
+ * single declaration cannot hold two values.
  */
 export function getPreloadThemeCss(): string {
   const theme: Theme = createApplicationTheme();
@@ -44,11 +43,11 @@ export function getPreloadThemeCss(): string {
     ...sheets.map((sheet: Record<string, unknown>) => toCssRules(sheet)),
     `html {
       ${toDeclarations(getThemeVariables(theme))}
-      --xrf-wash: ${getWashImage("dark")};
+      ${toDeclarations(getSchemeVariables("dark"))}
       color-scheme: dark;
     }`,
     `html[data-color-scheme="light"] {
-      --xrf-wash: ${getWashImage("light")};
+      ${toDeclarations(getSchemeVariables("light"))}
       color-scheme: light;
     }`,
   ].join("\n");

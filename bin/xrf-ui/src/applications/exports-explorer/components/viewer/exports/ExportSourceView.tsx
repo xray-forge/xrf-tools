@@ -6,12 +6,11 @@ import { transformError } from "@/core/error/lib";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getWellSx } from "@/core/theme/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { AsyncState } from "@/lib/async-state";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -72,12 +71,11 @@ export function ExportSourceView({
     <CodeView
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("rounded-surface border border-divider bg-well", className)}
       label={`Source of ${source.value.name}`}
       content={source.value.content}
       language={getSyntaxLanguage(source.value.path)}
       firstLine={source.value.line}
-      sx={mergeSx(getWellSx, { borderRadius: 1 })}
     />
   ) : (
     <EmptyState

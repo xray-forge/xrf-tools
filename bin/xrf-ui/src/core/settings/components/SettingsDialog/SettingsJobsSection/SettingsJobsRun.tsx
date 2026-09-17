@@ -1,19 +1,16 @@
-import { Box, Collapse, Divider, Typography } from "@mui/material";
+import { Collapse, Divider, Typography } from "@mui/material";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progress-format";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { Nullable } from "@/lib/types/general";
 
 import { describeJobOutcome, toPhaseShare } from "./SettingsJobsSection.utils";
-
-/** Room the timestamp and duration columns keep, so the rows line up. */
-const STAMP_WIDTH: number = 64;
 
 export interface ISettingsJobsRunProps extends BaseComponentProps {
   job: JobDescription;
@@ -36,70 +33,67 @@ export function SettingsJobsRun({
   const sampled: number = (profile?.phases ?? []).reduce((total: number, it: IJobPhase) => total + it.duration, 0);
 
   return (
-    <Box data-testid={dataTestId} className={className} id={id}>
-      <Box
-        sx={{ alignItems: "center", cursor: profile ? "pointer" : "default", display: "flex", gap: 2, paddingY: 0.75 }}
+    <div data-testid={dataTestId} className={className} id={id}>
+      <div
+        className={cn("flex items-center gap-4 py-1.5", profile ? "cursor-pointer" : "cursor-default")}
         onClick={() => setOpen(profile ? !isOpen : false)}
       >
-        <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, width: STAMP_WIDTH }}>
+        <Typography className={"w-16 shrink-0 text-text-secondary"} variant={"caption"}>
           {format(job.startedAt, "HH:mm:ss")}
         </Typography>
 
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>{job.kind}</Typography>
+        <div className={"min-w-0 grow"}>
+          <Typography className={"monospace wrap-anywhere"}>{job.kind}</Typography>
 
           {job.error ? (
-            <Typography variant={"caption"} sx={{ color: "error.main", display: "block", overflowWrap: "anywhere" }}>
+            <Typography className={"block wrap-anywhere text-error"} variant={"caption"}>
               {job.error}
             </Typography>
           ) : null}
-        </Box>
+        </div>
 
-        <Typography variant={"caption"} sx={{ color: outcome.color, flexShrink: 0 }}>
+        <Typography className={"shrink-0"} variant={"caption"} sx={{ color: outcome.color }}>
           {outcome.label}
         </Typography>
 
-        <Typography variant={"body2"} sx={{ flexShrink: 0, textAlign: "right", width: STAMP_WIDTH }}>
+        <Typography className={"w-16 shrink-0 text-right"} variant={"body2"}>
           {formatDuration(job.duration)}
         </Typography>
-      </Box>
+      </div>
 
       <Collapse in={isOpen} unmountOnExit>
-        <Box sx={{ paddingBottom: 1, paddingLeft: STAMP_WIDTH / 8 }}>
-          <Divider sx={{ marginBottom: 1 }} />
+        <div className={"pb-2 pl-16"}>
+          <Divider className={"mb-2"} />
 
           {profile?.phases.length ? (
             profile.phases.map((phase: IJobPhase) => {
               const share: Nullable<number> = toPhaseShare(phase.duration, sampled);
 
               return (
-                <Box key={phase.id} sx={{ display: "flex", gap: 2, paddingY: 0.25 }}>
-                  <Typography sx={{ ...MONOSPACE, flexGrow: 1, minWidth: 0 }}>{phase.label ?? phase.id}</Typography>
+                <div key={phase.id} className={"flex gap-4 py-0.5"}>
+                  <Typography className={"monospace min-w-0 grow"}>{phase.label ?? phase.id}</Typography>
 
-                  <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0, width: 96 }}>
+                  <Typography className={"w-24 shrink-0 text-text-secondary"} variant={"caption"}>
                     {formatProgressUnits(phase.completed, phase.unit)}
                   </Typography>
 
-                  <Typography variant={"caption"} sx={{ flexShrink: 0, textAlign: "right", width: STAMP_WIDTH }}>
+                  <Typography className={"w-16 shrink-0 text-right"} variant={"caption"}>
                     {formatDuration(phase.duration)}
                   </Typography>
 
-                  <Typography
-                    variant={"caption"}
-                    sx={{ color: "text.secondary", flexShrink: 0, textAlign: "right", width: 44 }}
-                  >
+                  <Typography className={"w-11 shrink-0 text-right text-text-secondary"} variant={"caption"}>
                     {share === null ? "—" : `${Math.round(share)}%`}
                   </Typography>
-                </Box>
+                </div>
               );
             })
           ) : (
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               No phases were sampled.
             </Typography>
           )}
 
-          <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 1 }}>
+          <Typography className={"mt-2 block text-text-secondary"} variant={"caption"}>
             {[
               `${profile?.samples ?? 0} reports`,
               profile?.peakRate && profile.peakUnit
@@ -111,8 +105,8 @@ export function SettingsJobsRun({
               .filter(Boolean)
               .join(" · ")}
           </Typography>
-        </Box>
+        </div>
       </Collapse>
-    </Box>
+    </div>
   );
 }

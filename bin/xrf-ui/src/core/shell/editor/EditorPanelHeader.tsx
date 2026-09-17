@@ -2,7 +2,6 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
-import { getHeaderBandSx } from "@/core/theme/surface";
 import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
@@ -32,7 +31,7 @@ export function EditorPanelHeader({
 }: IEditorPanelHeaderProps): ReactElement {
   return (
     <Box data-testid={dataTestId} id={id} className={cn("flex shrink-0 flex-col", className)} sx={sx}>
-      <Box className={"flex min-h-header items-center border-b border-divider px-panel-content"} sx={getHeaderBandSx}>
+      <div className={"flex min-h-header items-center border-b border-divider header-band px-panel-content"}>
         <div className={"flex min-w-0 grow items-baseline justify-between gap-2"}>
           <Typography
             component={"h2"}
@@ -54,7 +53,7 @@ export function EditorPanelHeader({
 
           <PanelCloseAction />
         </div>
-      </Box>
+      </div>
 
       {children ? (
         <div className={"flex flex-col gap-panel-section-gap border-b border-divider px-panel-content py-3"}>

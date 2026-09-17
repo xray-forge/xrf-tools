@@ -1,9 +1,6 @@
-import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { ReactElement, useId, useState } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
-import { getWellFillSx } from "@/core/theme/surface";
-import { DIALOG } from "@/core/theme/tokens";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
 
@@ -54,17 +51,8 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
     <Dialog aria-labelledby={titleId} fullWidth maxWidth={"md"} open={isOpen} onClose={onClose}>
       <DialogHeader title={"Settings"} titleId={titleId} closeLabel={"Close settings"} onClose={onClose} />
 
-      <DialogContent sx={{ display: "flex", padding: 0, height: 420, maxHeight: "60vh" }}>
-        <List
-          dense
-          disablePadding
-          sx={mergeSx(getWellFillSx, {
-            width: 148,
-            flexShrink: 0,
-            borderRight: 1,
-            borderColor: "divider",
-          })}
-        >
+      <DialogContent className={"flex h-105 max-h-[60vh] p-0"}>
+        <List className={"w-37 shrink-0 border-r border-divider bg-well"} dense={true} disablePadding={true}>
           {SECTIONS.map((it: EDetailSection) => (
             <ListItemButton key={it} selected={section === it} onClick={() => setSection(it)}>
               <ListItemText primary={SECTION_LABELS[it]} />
@@ -72,15 +60,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
           ))}
         </List>
 
-        <Box
-          sx={{
-            flexGrow: 1,
-            minWidth: 0,
-            overflowY: "auto",
-            paddingX: DIALOG.paddingX,
-            paddingY: DIALOG.contentPaddingY,
-          }}
-        >
+        <div className={"min-w-0 grow overflow-y-auto px-dialog py-6"}>
           {inline(() => {
             switch (section) {
               case EDetailSection.GENERAL:
@@ -95,7 +75,7 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
                 return <SettingsAboutSection />;
             }
           })}
-        </Box>
+        </div>
       </DialogContent>
 
       <DialogActions>
