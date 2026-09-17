@@ -1,4 +1,4 @@
-import { GridColDef, GridValidRowModel, GridValueGetter } from "@mui/x-data-grid";
+import { GridColDef } from "@mui/x-data-grid";
 
 /** Applied by the theme to render a cell in monospace. */
 const MONOSPACE_CLASS: string = "monospace";
@@ -58,12 +58,12 @@ export function vectorColumn(field: string, headerName: string, width: number = 
     width,
     cellClassName: MONOSPACE_CLASS,
     sortable: false,
-    valueGetter: ((value: unknown) =>
+    valueGetter: (value: unknown) =>
       isVectorLike(value)
         ? `${value.x.toFixed(VECTOR_PRECISION)}, ${value.y.toFixed(VECTOR_PRECISION)}, ${value.z.toFixed(
             VECTOR_PRECISION
           )}`
-        : null) as GridValueGetter<GridValidRowModel>,
+        : null,
   };
 }
 
@@ -84,7 +84,7 @@ export function flagsColumn(field: string, headerName: string, width: number = 1
     align: "left",
     headerAlign: "left",
     cellClassName: MONOSPACE_CLASS,
-    valueGetter: ((value: unknown) => (typeof value === "number" ? value : null)) as GridValueGetter<GridValidRowModel>,
+    valueGetter: (value: unknown) => (typeof value === "number" ? value : null),
     valueFormatter: (value: unknown) => (typeof value === "number" ? `0x${value.toString(16).toUpperCase()}` : null),
   };
 }
@@ -104,8 +104,7 @@ export function tupleColumn(field: string, headerName: string, width: number = 1
     width,
     cellClassName: MONOSPACE_CLASS,
     sortable: false,
-    valueGetter: ((value: unknown) =>
-      Array.isArray(value) ? value.join(", ") : null) as GridValueGetter<GridValidRowModel>,
+    valueGetter: (value: unknown) => (Array.isArray(value) ? value.join(", ") : null),
   };
 }
 
@@ -126,7 +125,7 @@ export function decimalColumn(field: string, headerName: string, width: number =
     align: "left",
     headerAlign: "left",
     cellClassName: MONOSPACE_CLASS,
-    valueGetter: ((value: unknown) => (typeof value === "number" ? value : null)) as GridValueGetter<GridValidRowModel>,
+    valueGetter: (value: unknown) => (typeof value === "number" ? value : null),
     valueFormatter: (value: unknown) => (typeof value === "number" ? value.toFixed(VECTOR_PRECISION) : null),
   };
 }
