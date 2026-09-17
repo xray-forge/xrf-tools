@@ -1,4 +1,4 @@
-import { Box, Chip, List, ListItem, ListItemButton, Typography } from "@mui/material";
+import { Chip, List, ListItem, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -64,7 +64,7 @@ export function EditorProblemsPanel({
             const location: Optional<IEditorProblemLocation> = onSelect ? finding.location : undefined;
             const content: ReactElement = (
               <>
-                <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.75, minWidth: 0 }}>
+                <div className={"flex min-w-0 flex-wrap items-center gap-1.5"}>
                   <Chip
                     size={"small"}
                     variant={"outlined"}
@@ -83,7 +83,7 @@ export function EditorProblemsPanel({
                       {subject}
                     </Typography>
                   ) : null}
-                </Box>
+                </div>
 
                 <Typography
                   variant={"body2"}

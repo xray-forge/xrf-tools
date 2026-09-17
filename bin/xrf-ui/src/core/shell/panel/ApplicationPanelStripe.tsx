@@ -1,8 +1,6 @@
-import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
-import { LAYOUT } from "@/core/theme/tokens";
 import { Nullable } from "@/lib/types/general";
 
 import { PanelStripeButton } from "./rail";
@@ -32,17 +30,7 @@ export function ApplicationPanelStripe({
   onTogglePanel,
 }: IApplicationPanelStripeProps): ReactElement {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 0.75,
-        width: LAYOUT.railWidth,
-        minWidth: LAYOUT.railWidth,
-        paddingY: 1,
-      }}
-    >
+    <div className={"flex w-rail min-w-rail flex-col items-center gap-1.5 py-2"}>
       {panels.map((panel: IEditorPanel) => (
         <PanelStripeButton
           key={panel.id}
@@ -53,9 +41,9 @@ export function ApplicationPanelStripe({
         />
       ))}
 
-      <Box sx={{ flexGrow: 1 }} />
+      <div className={"grow"} />
 
       {footer}
-    </Box>
+    </div>
   );
 }

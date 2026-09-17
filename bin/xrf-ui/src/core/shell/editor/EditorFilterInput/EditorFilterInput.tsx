@@ -1,6 +1,6 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
-import { Box, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
+import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useForkRef } from "@mui/material/utils";
 import { KeyboardEvent, ReactElement, Ref, RefObject, useRef } from "react";
 
@@ -80,21 +80,14 @@ export function EditorFilterInput({
             </InputAdornment>
           ) : chord ? (
             <InputAdornment position={"end"}>
-              <Box
+              <div
                 aria-hidden={true}
-                sx={{
-                  paddingX: 0.5,
-                  color: "text.secondary",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  fontSize: "0.625rem",
-                  lineHeight: "16px",
-                  whiteSpace: "nowrap",
-                }}
+                className={
+                  "rounded-surface border border-divider px-1 text-badge leading-4 whitespace-nowrap text-text-secondary"
+                }
               >
                 {chord}
-              </Box>
+              </div>
             </InputAdornment>
           ) : null,
         },

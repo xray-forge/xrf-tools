@@ -1,5 +1,5 @@
 import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -23,7 +23,7 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
 
   return (
     <EditorLayout toolbar={<EditorToolbar title={"Something went wrong"} />}>
-      <Box sx={{ width: "100%", height: "100%", overflowY: "auto", padding: 3 }}>
+      <div className={"h-full w-full overflow-y-auto p-6"}>
         <Typography variant={"subtitle1"}>This tool stopped rendering</Typography>
 
         <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.5, marginBottom: 2 }}>
@@ -31,7 +31,7 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
           rail.
         </Typography>
 
-        <Stack direction={"row"} spacing={1} sx={{ marginBottom: 3 }}>
+        <div className={"mb-6 flex flex-row gap-2"}>
           <Button variant={"contained"} onClick={onRetry}>
             Try again
           </Button>
@@ -43,7 +43,7 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
           <Button color={"inherit"} onClick={onReload}>
             Reload window
           </Button>
-        </Stack>
+        </div>
 
         <Accordion disableGutters variant={"outlined"}>
           <AccordionSummary expandIcon={<ExpandMoreIcon fontSize={"small"} />}>
@@ -61,7 +61,7 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
             </Typography>
           </AccordionDetails>
         </Accordion>
-      </Box>
+      </div>
     </EditorLayout>
   );
 }

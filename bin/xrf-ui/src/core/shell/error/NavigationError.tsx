@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -10,7 +10,7 @@ export function NavigationError(): ReactElement {
 
   return (
     <EditorLayout toolbar={<EditorToolbar title={"Not found"} />}>
-      <Box sx={{ width: "100%", height: "100%", overflowY: "auto", padding: 3 }}>
+      <div className={"h-full w-full overflow-y-auto p-6"}>
         <Typography variant={"subtitle1"}>This route does not exist</Typography>
 
         <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.5, marginBottom: 2 }}>
@@ -20,7 +20,7 @@ export function NavigationError(): ReactElement {
         <Button variant={"contained"} onClick={() => navigate("/", { replace: true })}>
           Go home
         </Button>
-      </Box>
+      </div>
     </EditorLayout>
   );
 }

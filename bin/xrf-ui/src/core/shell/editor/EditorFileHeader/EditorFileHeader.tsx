@@ -4,8 +4,8 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { getHeaderBandSx, LAYOUT, MONOSPACE } from "@/core/theme";
-import { mergeSx } from "@/core/theme/merge-sx";
+import { getHeaderBandSx, MONOSPACE } from "@/core/theme";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {
@@ -46,16 +46,8 @@ export function EditorFileHeader({
     <Box
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={mergeSx(getHeaderBandSx, {
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        minHeight: LAYOUT.headerHeight,
-        paddingX: 1.5,
-        borderBottom: 1,
-        borderColor: "divider",
-      })}
+      className={cn("flex min-h-header items-center gap-2 border-b border-divider px-3", className)}
+      sx={getHeaderBandSx}
     >
       {icon}
 

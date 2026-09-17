@@ -1,4 +1,4 @@
-import { Box, Button, buttonClasses, Tooltip } from "@mui/material";
+import { Button, buttonClasses, Tooltip } from "@mui/material";
 import { MouseEventHandler, ReactElement, ReactNode } from "react";
 
 import { mergeSx } from "@/core/theme/merge-sx";
@@ -29,7 +29,7 @@ export function EditorTextAction({
 }: IEditorTextActionProps): ReactElement {
   return (
     <Tooltip describeChild title={description}>
-      <Box component={"span"} sx={{ display: "inline-flex" }}>
+      <span className={"inline-flex"}>
         <Button
           data-testid={dataTestId}
           id={id}
@@ -53,7 +53,7 @@ export function EditorTextAction({
         >
           {label}
         </Button>
-      </Box>
+      </span>
     </Tooltip>
   );
 }

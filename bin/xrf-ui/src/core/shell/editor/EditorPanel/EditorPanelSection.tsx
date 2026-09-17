@@ -1,7 +1,8 @@
-import { Box, Divider, Typography } from "@mui/material";
+import { Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelSectionProps extends BaseComponentProps {
@@ -31,17 +32,15 @@ export function EditorPanelSection({
   isFilling,
 }: IEditorPanelSectionProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        minWidth: 0,
-        paddingX: PANEL.contentPadding,
-        paddingTop: isFirst ? PANEL.contentPadding : PANEL.sectionPaddingY,
-        paddingBottom: PANEL.sectionPaddingY,
-        ...(isFilling ? { display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 } : null),
-      }}
+      className={cn(
+        "min-w-0 px-panel-content pb-panel-section",
+        isFirst ? "pt-panel-content" : "pt-panel-section",
+        isFilling ? "flex min-h-0 grow flex-col" : null,
+        className
+      )}
     >
       {isFirst ? null : <Divider sx={{ marginBottom: PANEL.sectionPaddingY, marginX: -PANEL.contentPadding }} />}
 
@@ -55,11 +54,7 @@ export function EditorPanelSection({
         </Typography>
       ) : null}
 
-      <Box
-        sx={{ marginTop: PANEL.sectionContentGap, minWidth: 0, ...(isFilling ? { flexGrow: 1, minHeight: 0 } : null) }}
-      >
-        {children}
-      </Box>
-    </Box>
+      <div className={cn("mt-panel-section-gap min-w-0", isFilling ? "min-h-0 grow" : null)}>{children}</div>
+    </div>
   );
 }

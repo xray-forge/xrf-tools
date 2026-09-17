@@ -2,9 +2,8 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getHeaderBandSx } from "@/core/theme/surface";
-import { LAYOUT, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelHeaderProps extends StyledComponentProps {
@@ -32,32 +31,9 @@ export function EditorPanelHeader({
   children,
 }: IEditorPanelHeaderProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", flexDirection: "column", flexShrink: 0 }, sx)}
-    >
-      <Box
-        sx={mergeSx(getHeaderBandSx, {
-          display: "flex",
-          alignItems: "center",
-          minHeight: LAYOUT.headerHeight,
-          paddingX: PANEL.contentPadding,
-          borderBottom: 1,
-          borderColor: "divider",
-        })}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: 1,
-            minWidth: 0,
-            flexGrow: 1,
-          }}
-        >
+    <Box data-testid={dataTestId} id={id} className={cn("flex shrink-0 flex-col", className)} sx={sx}>
+      <Box className={"flex min-h-header items-center border-b border-divider px-panel-content"} sx={getHeaderBandSx}>
+        <div className={"flex min-w-0 grow items-baseline justify-between gap-2"}>
           <Typography
             component={"h2"}
             variant={"subtitle2"}
@@ -71,36 +47,19 @@ export function EditorPanelHeader({
               {caption}
             </Typography>
           ) : null}
-        </Box>
+        </div>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            flexShrink: 0,
-            marginLeft: 1,
-          }}
-        >
+        <div className={"ml-2 flex shrink-0 items-center"}>
           {actions}
 
           <PanelCloseAction />
-        </Box>
+        </div>
       </Box>
 
       {children ? (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: PANEL.sectionContentGap,
-            paddingX: PANEL.contentPadding,
-            paddingY: PANEL.headerPaddingY,
-            borderBottom: 1,
-            borderColor: "divider",
-          }}
-        >
+        <div className={"flex flex-col gap-panel-section-gap border-b border-divider px-panel-content py-3"}>
           {children}
-        </Box>
+        </div>
       ) : null}
     </Box>
   );

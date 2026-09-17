@@ -1,5 +1,5 @@
 import { default as ClearAllIcon } from "@mui/icons-material/ClearAll";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
+import { IconButton, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -60,7 +60,7 @@ export function NotificationsPanel(): ReactElement {
         </Tooltip>
       }
     >
-      <Box sx={{ height: "100%", overflowY: "auto" }}>
+      <div className={"h-full overflow-y-auto"}>
         {entries.length ? (
           entries.map((entry: INotificationEntry) => (
             <NotificationRow
@@ -71,13 +71,13 @@ export function NotificationsPanel(): ReactElement {
             />
           ))
         ) : (
-          <Box sx={{ padding: 2 }}>
+          <div className={"p-4"}>
             <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
               Nothing has been reported yet. Command outcomes from every tool collect here.
             </Typography>
-          </Box>
+          </div>
         )}
-      </Box>
+      </div>
     </EditorPanel>
   );
 }

@@ -10,6 +10,7 @@ import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPat
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { CONTROL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -56,12 +57,7 @@ export function EditorToolbar({
   }, [onBack, requestLeave]);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", alignItems: "center", gap: 0.75, width: "100%", height: "100%", minWidth: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full w-full min-w-0 items-center gap-1.5", className)}>
       <EditorToolbarCrumb label={"XRF"} isDisabled={isBusy} hint={"Back to all tools"} onClick={onGoHome} />
 
       {label ? (
@@ -100,7 +96,7 @@ export function EditorToolbar({
         </>
       ) : null}
 
-      <Box sx={{ flexGrow: 1, minWidth: 8 }} />
+      <div className={"min-w-2 grow"} />
 
       {hasActions ? (
         <>
@@ -126,6 +122,6 @@ export function EditorToolbar({
           <EditorToolbarSeparator />
         </>
       ) : null}
-    </Box>
+    </div>
   );
 }

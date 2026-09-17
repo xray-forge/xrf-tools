@@ -3,8 +3,8 @@ import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getSurfaceSx } from "@/core/theme/surface";
+import { cn } from "@/lib/dom/dom-name";
 import { Nullable } from "@/lib/types/general";
 
 interface IApplicationPanelSlotProps {
@@ -34,18 +34,12 @@ export function ApplicationPanelSlot({
     <Box
       data-testid={`application-panel-slot-${side}`}
       data-panel-side={side}
-      sx={mergeSx(getSurfaceSx("frame"), {
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        width,
-        minWidth: width,
-        minHeight: 0,
-        ...(side === "left" ? { borderRight: 1 } : { borderLeft: 1 }),
-        borderColor: "divider",
-      })}
+      className={cn("relative flex min-h-0 flex-col border-divider", side === "left" ? "border-r" : "border-l")}
+      // Measured rather than authored: the slot's width is whatever the drag and the window budget left it.
+      style={{ minWidth: width, width }}
+      sx={getSurfaceSx("frame")}
     >
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>{panel.render()}</Box>
+      <div className={"min-h-0 grow overflow-y-auto"}>{panel.render()}</div>
 
       <PanelResizer side={side} width={width} onResize={onResize} />
     </Box>

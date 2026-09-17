@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { useEditorStatusSegments } from "@/core/shell/editor-shell";
-import { LAYOUT } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
@@ -16,19 +16,10 @@ export function ApplicationStatusBar({
   const segments: ReadonlyArray<string> = useEditorStatusSegments();
 
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={className}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        gap: 1.5,
-        height: LAYOUT.statusBarHeight,
-        minHeight: LAYOUT.statusBarHeight,
-        paddingX: 5,
-      }}
+      className={cn("flex h-status-bar min-h-status-bar items-center justify-end gap-3 px-10", className)}
     >
       {segments.length
         ? segments.map((segment: string, index: number) => (
@@ -37,6 +28,6 @@ export function ApplicationStatusBar({
             </Typography>
           ))
         : null}
-    </Box>
+    </div>
   );
 }

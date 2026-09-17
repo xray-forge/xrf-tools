@@ -14,7 +14,6 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
-import { mergeSx } from "@/core/theme/merge-sx";
 import { getWellSx } from "@/core/theme/surface";
 import { MONOSPACE, PANEL } from "@/core/theme/tokens";
 import { Logger, useLogger } from "@/lib/logging";
@@ -94,22 +93,19 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
   return (
     <Box
+      className={"border-b border-divider px-3 py-1.5"}
       sx={{
-        paddingX: 1.5,
-        paddingY: 0.75,
-        borderBottom: 1,
-        borderColor: "divider",
         // Revealed rather than laid out: a control parked beside the details holds its width for the
         // whole height of the block, and `focus-within` keeps it reachable without a pointer.
         "&:hover .notification-row-actions, &:focus-within .notification-row-actions": { opacity: 1 },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-        <Box sx={{ display: "flex", flexShrink: 0, paddingTop: 0.25, color: SEVERITY_COLORS[notification.severity] }}>
+      <div className={"flex items-start gap-2"}>
+        <Box className={"flex shrink-0 pt-0.5"} sx={{ color: SEVERITY_COLORS[notification.severity] }}>
           {SEVERITY_ICONS[notification.severity]}
         </Box>
 
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <div className={"min-w-0 grow"}>
           <Typography
             variant={"body2"}
             sx={{
@@ -121,7 +117,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
             {notification.title}
           </Typography>
 
-          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.75 }}>
+          <div className={"flex flex-wrap items-center gap-1.5"}>
             {repeatCount > 1 ? (
               <Typography
                 variant={"caption"}
@@ -140,11 +136,11 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
                 {format(createdAt, "HH:mm:ss")}
               </Typography>
             </Tooltip>
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {notification.details ? (
-          <Box sx={{ display: "flex", flexShrink: 0 }}>
+          <div className={"flex shrink-0"}>
             <Box className={"notification-row-actions"} sx={{ display: "flex", opacity: 0 }}>
               <Tooltip describeChild title={"Copy details"} placement={"left"}>
                 <IconButton aria-label={"Copy details"} size={"small"} sx={{ padding: 0.25 }} onClick={onCopyDetails}>
@@ -166,18 +162,12 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
                 <ExpandMoreIcon sx={{ fontSize: PANEL.actionIconSize }} />
               )}
             </IconButton>
-          </Box>
+          </div>
         ) : null}
-      </Box>
+      </div>
 
       {isBodyShown ? (
-        <Box
-          sx={mergeSx(getWellSx, {
-            marginTop: 0.5,
-            padding: 1,
-            borderRadius: 1,
-          })}
-        >
+        <Box className={"mt-1 rounded-surface p-2"} sx={getWellSx}>
           <Typography
             component={"pre"}
             sx={{

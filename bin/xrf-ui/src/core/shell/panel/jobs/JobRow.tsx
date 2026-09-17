@@ -1,4 +1,4 @@
-import { Box, Button, Chip, LinearProgress, Typography } from "@mui/material";
+import { Button, Chip, LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
@@ -32,8 +32,8 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
   const percent: Nullable<number> = active ? toProgressPercent(active) : null;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, paddingX: 1.5, paddingY: 1 }}>
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
+    <div className={"flex flex-col gap-1 px-3 py-2"}>
+      <div className={"flex items-baseline justify-between gap-2"}>
         <Typography variant={"body2"} noWrap={true}>
           {described?.label ?? job.kind}
         </Typography>
@@ -44,18 +44,18 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
         >
           {job.conclusion ?? (job.isCancelRequested ? "stopping" : "running")}
         </Typography>
-      </Box>
+      </div>
 
       {job.conclusion ? null : (
         <LinearProgress variant={percent === null ? "indeterminate" : "determinate"} value={percent ?? undefined} />
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+      <div className={"flex items-center justify-between gap-2"}>
         <Typography variant={"caption"} color={"text.secondary"} noWrap={true}>
           {active ? `${active.label ?? active.id} ${formatProgressCounts(active)}` : job.kind}
         </Typography>
 
-        <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0, gap: 1 }}>
+        <div className={"flex shrink-0 items-center gap-2"}>
           <Typography variant={"caption"} color={"text.secondary"}>
             {formatDuration(job.duration)}
           </Typography>
@@ -65,8 +65,8 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
               {job.isCancelRequested ? "Stopping" : "Cancel"}
             </Button>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {job.error ? (
         <Typography variant={"caption"} color={"error.main"}>
@@ -74,14 +74,13 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
         </Typography>
       ) : null}
 
-      {/* The leases are why a second run was refused, so they are the first thing to look at when one was. */}
       {job.leaseKeys.length ? (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+        <div className={"flex flex-wrap gap-1"}>
           {job.leaseKeys.map((key: string) => (
             <Chip key={key} size={"small"} variant={"outlined"} label={key} />
           ))}
-        </Box>
+        </div>
       ) : null}
-    </Box>
+    </div>
   );
 }

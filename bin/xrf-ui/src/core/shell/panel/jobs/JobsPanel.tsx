@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
@@ -20,7 +20,7 @@ export function JobsPanel(): ReactElement {
 
   return (
     <EditorPanel title={"Jobs"} sx={{ height: "100%" }}>
-      <Box sx={{ height: "100%", overflowY: "auto", padding: 2 }}>
+      <div className={"h-full overflow-y-auto p-4"}>
         {listed.length ? (
           listed.map((job: JobDescription) => <JobRow key={job.id} job={job} onCancel={onCancel} />)
         ) : (
@@ -28,7 +28,7 @@ export function JobsPanel(): ReactElement {
             Nothing is running, and nothing has finished recently.
           </Typography>
         )}
-      </Box>
+      </div>
     </EditorPanel>
   );
 }

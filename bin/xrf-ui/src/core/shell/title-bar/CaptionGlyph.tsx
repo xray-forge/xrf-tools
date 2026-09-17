@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 interface ICaptionGlyphProps {
@@ -13,14 +12,9 @@ interface ICaptionGlyphProps {
  */
 export function CaptionGlyph({ children }: ICaptionGlyphProps): ReactElement {
   return (
-    <Box
-      component={"svg"}
-      viewBox={"0 0 10 10"}
-      aria-hidden={true}
-      sx={{ width: 10, height: 10, fill: "none", stroke: "currentColor", strokeWidth: 1 }}
-    >
+    <svg viewBox={"0 0 10 10"} aria-hidden={true} className={"size-2.5 fill-none stroke-current stroke-1"}>
       {children}
-    </Box>
+    </svg>
   );
 }
 

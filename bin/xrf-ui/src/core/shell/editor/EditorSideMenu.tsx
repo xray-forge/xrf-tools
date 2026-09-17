@@ -1,7 +1,7 @@
 import { Box, Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorSideMenuItem {
@@ -49,20 +49,15 @@ export function EditorSideMenu({
   children,
 }: IEditorSideMenuProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 }, sx)}
-    >
-      {header ? <Box sx={{ flexShrink: 0 }}>{header}</Box> : null}
+    <Box data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 w-full flex-col", className)} sx={sx}>
+      {header ? <div className={"shrink-0"}>{header}</div> : null}
 
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
+      <div className={"min-h-0 grow"} style={{ overflowY: "auto" }}>
         {sections?.length ? <List disablePadding>{sections.map(renderItem)}</List> : null}
         {children}
-      </Box>
+      </div>
 
-      {footer ? <Box sx={{ flexShrink: 0 }}>{footer}</Box> : null}
+      {footer ? <div className={"shrink-0"}>{footer}</div> : null}
 
       {actions?.length ? (
         <>

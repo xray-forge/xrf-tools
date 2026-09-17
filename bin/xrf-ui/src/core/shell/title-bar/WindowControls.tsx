@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { CloseGlyph, MaximizeGlyph, MinimizeGlyph, RestoreGlyph } from "@/core/shell/title-bar/CaptionGlyph";
@@ -17,7 +16,7 @@ export function WindowControls(): Nullable<ReactElement> {
   const { isAvailable, isMaximized, minimize, toggleMaximize, close }: IWindowControls = useWindowControls();
 
   return isAvailable ? (
-    <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+    <div className={"flex shrink-0 items-center"}>
       <WindowControlButton label={"Minimize"} onClick={minimize}>
         <MinimizeGlyph />
       </WindowControlButton>
@@ -29,6 +28,6 @@ export function WindowControls(): Nullable<ReactElement> {
       <WindowControlButton isDanger={true} label={"Close"} onClick={close}>
         <CloseGlyph />
       </WindowControlButton>
-    </Box>
+    </div>
   ) : null;
 }

@@ -1,4 +1,4 @@
-import { Box, IconButton, svgIconClasses, Tooltip } from "@mui/material";
+import { IconButton, svgIconClasses, Tooltip } from "@mui/material";
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
 import { getControlStateSx } from "@/core/theme/control-state";
@@ -37,7 +37,7 @@ export function EditorIconAction({
 }: IEditorIconActionProps): ReactElement {
   return (
     <Tooltip describeChild title={description}>
-      <Box component={"span"} sx={{ display: "inline-flex" }}>
+      <span className={"inline-flex"}>
         <IconButton
           {...rest}
           data-testid={dataTestId}
@@ -61,7 +61,7 @@ export function EditorIconAction({
         >
           {icon}
         </IconButton>
-      </Box>
+      </span>
     </Tooltip>
   );
 }

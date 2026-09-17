@@ -1,17 +1,6 @@
 import { default as ExpandLessIcon } from "@mui/icons-material/ExpandLess";
 import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CircularProgress,
-  Divider,
-  IconButton,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Alert, Button, Card, CircularProgress, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 import { FormEvent, KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -26,11 +15,6 @@ import { Maybe } from "@/lib/types/general";
 
 /** Wide enough for a full windows path at the monospace size the picker rows use. */
 const PANEL_WIDTH: number = 1280;
-
-/**
- * The least room a result keeps, whatever the parameters above it are doing.
- */
-const RESULT_MIN_HEIGHT: number = 380;
 
 interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;
@@ -149,32 +133,16 @@ export function PickerForm({
 
   return (
     <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
-      <Box
-        component={"form"}
+      <form
         noValidate={true}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          height: "100%",
-          minHeight: 0,
-          overflowY: "auto",
-        }}
+        className={"flex h-full min-h-0 w-full flex-col overflow-y-auto"}
         onSubmit={onFormSubmit}
         onKeyDown={onFormKeyDown}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexShrink: 0,
-            padding: 3,
-            paddingBottom: result ? 2 : 3,
-            justifyContent: "center",
-          }}
-        >
+        <div className={result ? "flex shrink-0 justify-center p-6 pb-4" : "flex shrink-0 justify-center p-6"}>
           <Card variant={"elevation"} elevation={0} sx={{ position: "relative", width: "100%", maxWidth: PANEL_WIDTH }}>
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, padding: 2 }}>
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <div className={"flex items-start gap-2 p-4"}>
+              <div className={"min-w-0 grow"}>
                 {title ? (
                   <Typography component={"h1"} variant={"subtitle1"}>
                     {title}
@@ -186,7 +154,7 @@ export function PickerForm({
                     {description}
                   </Typography>
                 ) : null}
-              </Box>
+              </div>
 
               {result ? (
                 <Tooltip title={isCollapsed ? "Show parameters" : "Hide parameters"}>
@@ -199,13 +167,13 @@ export function PickerForm({
                   </IconButton>
                 </Tooltip>
               ) : null}
-            </Box>
+            </div>
 
             {isCollapsed ? null : (
               <>
                 <Divider />
 
-                <Stack ref={parametersRef} spacing={2} sx={{ padding: 2 }}>
+                <div ref={parametersRef} className={"flex flex-col gap-4 p-4"}>
                   <FormCommitContext.Provider value={fields}>{children}</FormCommitContext.Provider>
 
                   {error ? (
@@ -213,7 +181,7 @@ export function PickerForm({
                       {String(error)}
                     </Alert>
                   ) : null}
-                </Stack>
+                </div>
               </>
             )}
 
@@ -221,18 +189,18 @@ export function PickerForm({
               <>
                 <Divider />
 
-                <Box sx={{ padding: 2 }}>{status}</Box>
+                <div className={"p-4"}>{status}</div>
               </>
             ) : null}
 
             <Divider />
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, padding: 1.5 }}>
+            <div className={"flex items-center gap-2 p-3"}>
               <Button type={"button"} color={"inherit"} disabled={isLoading} onClick={onLeave}>
                 Back
               </Button>
 
-              <Box sx={{ flexGrow: 1 }} />
+              <div className={"grow"} />
 
               {secondaryActions}
 
@@ -250,26 +218,12 @@ export function PickerForm({
                   {submitLabel}
                 </Button>
               ) : null}
-            </Box>
+            </div>
           </Card>
-        </Box>
+        </div>
 
-        {result ? (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              flexGrow: 1,
-              minHeight: RESULT_MIN_HEIGHT,
-              overflow: "hidden",
-              paddingX: 3,
-              marginBottom: 3,
-            }}
-          >
-            {result}
-          </Box>
-        ) : null}
-      </Box>
+        {result ? <div className={"mb-6 flex min-h-95 grow flex-col overflow-hidden px-6"}>{result}</div> : null}
+      </form>
     </EditorLayout>
   );
 }

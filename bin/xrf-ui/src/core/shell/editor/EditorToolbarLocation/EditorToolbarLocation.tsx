@@ -1,7 +1,7 @@
-import { Box, Tooltip } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import { ReactElement } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
@@ -31,15 +31,9 @@ export function EditorToolbarLocation({
 }: IEditorToolbarLocationProps): ReactElement {
   return (
     <Tooltip title={location.path}>
-      <Box
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        component={"span"}
-        sx={{ fontFamily: MONOSPACE.fontFamily }}
-      >
+      <span data-testid={dataTestId} id={id} className={cn("font-monospace", className)}>
         {location.path}
-      </Box>
+      </span>
     </Tooltip>
   );
 }

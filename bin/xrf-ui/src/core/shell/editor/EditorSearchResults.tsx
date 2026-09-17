@@ -1,4 +1,4 @@
-import { Box, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { ReactElement, ReactNode, useEffect, useRef } from "react";
 
 export interface IEditorSearchResultRow {
@@ -48,22 +48,22 @@ export function EditorSearchResults<T extends IEditorSearchResultRow>({
     // While stale the list belongs to an older query, so an empty one means "not filtered yet", not
     // "nothing matches". Claiming the latter makes every first keystroke flash a false negative.
     return isStale ? (
-      <Box sx={{ height: 2, flexShrink: 0 }}>
+      <div className={"h-0.5 shrink-0"}>
         <LinearProgress sx={{ height: 2 }} />
-      </Box>
+      </div>
     ) : (
-      <Box sx={{ padding: 2, textAlign: "center" }}>
+      <div className={"p-4 text-center"}>
         <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
           {emptyLabel}
         </Typography>
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+    <div className={"flex min-h-0 flex-col"}>
       {/* Only appears while the list belongs to an older query than the field. */}
-      <Box sx={{ height: 2, flexShrink: 0 }}>{isStale ? <LinearProgress sx={{ height: 2 }} /> : null}</Box>
+      <div className={"h-0.5 shrink-0"}>{isStale ? <LinearProgress sx={{ height: 2 }} /> : null}</div>
 
       {total > rows.length ? (
         <Typography variant={"caption"} sx={{ paddingX: 1.5, paddingY: 0.5, color: "text.secondary", flexShrink: 0 }}>
@@ -95,6 +95,6 @@ export function EditorSearchResults<T extends IEditorSearchResultRow>({
           </ListItemButton>
         ))}
       </List>
-    </Box>
+    </div>
   );
 }

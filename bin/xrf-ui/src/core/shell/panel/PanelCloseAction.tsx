@@ -1,5 +1,4 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
-import { Box } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useRef, useState } from "react";
@@ -29,7 +28,7 @@ export function PanelCloseAction(): ReactElement {
   }, []);
 
   return (
-    <Box ref={ref} component={"span"} sx={{ display: "inline-flex" }}>
+    <span ref={ref} className={"inline-flex"}>
       {side === null ? null : (
         <EditorIconAction
           data-testid={"panel-close"}
@@ -39,6 +38,6 @@ export function PanelCloseAction(): ReactElement {
           onClick={() => commandBus.execute<void, IPanelSideCommand>(PANEL_CLOSE_COMMAND, { side }, { optional: true })}
         />
       )}
-    </Box>
+    </span>
   );
 }
