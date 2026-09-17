@@ -75,6 +75,9 @@ function getInitialVendorChunk(id: string): string | null {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  root: path.resolve(__dirname, "./src"),
+  publicDir: path.resolve(__dirname, "./public"),
+  cacheDir: path.resolve(__dirname, "./node_modules/.vite"),
   define: {
     __REPOSITORY_URL__: JSON.stringify(repository.url),
   },
@@ -88,7 +91,8 @@ export default defineConfig({
     reactObserverPlugin(),
   ],
   build: {
-    outDir: "target",
+    outDir: path.resolve(__dirname, "./target"),
+    emptyOutDir: true,
     rolldownOptions: {
       output: {
         codeSplitting: {
