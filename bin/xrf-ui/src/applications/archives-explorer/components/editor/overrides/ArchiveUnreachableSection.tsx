@@ -27,13 +27,9 @@ export function ArchiveUnreachableSection({
       title={"Unreachable copies"}
       description={
         collisions.length
-          ? "Two entries of one source fold to one engine identity, and inside a single source there is no search " +
-            "order to appeal to - so one of them can never be reached. That makes it an authoring fault in the " +
-            "archive rather than layering: an override is a different source winning as intended. Both spellings " +
-            "are given as authored, because case folding is what destroys them and which one to remove depends on " +
-            "knowing them."
-          : "Every source here reaches each of its own entries. No two entries of one source fold to the same " +
-            "engine identity, so nothing is hidden by an authoring fault."
+          ? "Two entries of one source fold to one engine identity, so one can never be reached - an authoring " +
+            "fault in the archive rather than layering."
+          : "Every source here reaches each of its own entries, so nothing is hidden by an authoring fault."
       }
       fact={`${collisions.length} cop${collisions.length === 1 ? "y" : "ies"}`}
     >

@@ -11,6 +11,7 @@ import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { IStatBreakdownRow, StatBreakdownTable } from "@/core/ui/stats/StatBreakdownTable";
 import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
@@ -112,7 +113,7 @@ export function ArchiveOverridesDialog({
         onClose={onClose}
       />
 
-      <DialogContent className={"flex h-115 max-h-dialog-height flex-col gap-4 px-dialog"}>
+      <DialogContent className={cn("flex flex-col gap-4 px-dialog", overridden.length ? "h-dialog-height" : null)}>
         {archivesService.overrides.error ? (
           <Alert severity={"error"}>
             {`Could not describe what this overrides: ${archivesService.overrides.error.message}`}
@@ -130,8 +131,7 @@ export function ArchiveOverridesDialog({
             data-testid={"archive-overrides-empty-section"}
             title={"Overridden paths"}
             description={
-              "No engine path here is held more than once, so nothing is being replaced and nothing is buried. " +
-              "Every file the tree lists is the only copy of itself."
+              "No engine path here is held more than once, so every file the tree lists is the only copy of itself."
             }
             fact={"0 paths"}
           />
@@ -144,10 +144,8 @@ export function ArchiveOverridesDialog({
               className={"shrink-0"}
               title={"By source"}
               description={
-                "A source claims an engine path a lower-priority one also holds, and the lower copy stays on disk " +
-                "unread. Resolution says why the order is what it is; it counts mounts, while these are the volumes " +
-                "and loose roots inside them, so the two lists are different lengths. Pick one to narrow the paths " +
-                "below, and pick it again to clear."
+                "What each source claims from the sources below it; pick one to narrow the paths, and pick it " +
+                "again to clear."
               }
               fact={`${formatBytes(statistics?.origins.hidden.sizeReal ?? 0)} hidden`}
               action={<StatMeasureToggle measure={measure} onChange={setMeasure} />}
@@ -162,11 +160,9 @@ export function ArchiveOverridesDialog({
               className={"flex min-h-0 grow flex-col"}
               title={"Overridden paths"}
               description={
-                "Each path with every copy claiming it, highest priority first. The top copy is the one the engine " +
-                "loads; the rest stay on disk and are never read. This is how a mod replaces a file, not an error. " +
-                `${overridden.length} path(s) are held more than once, by ${hiddenCopies} buried cop(ies).`
+                "Each path with every copy claiming it, highest priority first; the top one is what the engine loads."
               }
-              fact={`${entries.length} of ${overridden.length} path(s)`}
+              fact={`${entries.length} of ${overridden.length} path(s) · ${hiddenCopies} buried`}
             >
               <TextField
                 className={"mb-2 shrink-0"}
