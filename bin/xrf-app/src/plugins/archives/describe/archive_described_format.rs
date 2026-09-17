@@ -10,9 +10,9 @@ use crate::plugins::archives::describe::efd::ArchiveEfdDescription;
 use crate::plugins::archives::describe::gamemtl::ArchiveGameMtlDescription;
 use crate::plugins::archives::describe::level::{
   ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
-  ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelHomDescription,
-  ArchiveLevelGeomDescription, ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription,
-  ArchiveLevelSndStaticDescription, ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
+  ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelGeomDescription, ArchiveLevelHomDescription,
+  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
+  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
 };
 use crate::plugins::archives::describe::light_anim::ArchiveLightAnimDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
@@ -475,7 +475,10 @@ mod tests {
   #[test]
   fn render_geometry_is_read_by_seeking_rather_than_held() {
     // A `level.geom` reaches 143 MB, so a describer answering to the size ceiling would refuse most of them.
-    for format in [ArchiveDescribedFormat::LevelGeom, ArchiveDescribedFormat::LevelGeomDetail] {
+    for format in [
+      ArchiveDescribedFormat::LevelGeom,
+      ArchiveDescribedFormat::LevelGeomDetail,
+    ] {
       assert!(format.reads_by_seeking(), "{format:?} is too large to hold whole");
     }
   }
@@ -491,7 +494,11 @@ mod tests {
       ("shaders.xr", ArchiveDescribedFormat::Shaders),
       ("shaders_xrlc.xr", ArchiveDescribedFormat::ShaderCompiler),
     ] {
-      assert_eq!(ArchiveDescribedFormat::of(name), Some(expected), "'{name}' is a library");
+      assert_eq!(
+        ArchiveDescribedFormat::of(name),
+        Some(expected),
+        "'{name}' is a library"
+      );
     }
   }
 

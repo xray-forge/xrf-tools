@@ -23,20 +23,25 @@ import { ArchiveChunksDescriptionView } from "./ArchiveChunksDescriptionView";
 import { ArchiveDetailDescriptionView } from "./ArchiveDetailDescriptionView";
 import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescriptionView";
 import { ArchiveEfdView } from "./ArchiveEfdView";
+import { ArchiveGameMtlView } from "./ArchiveGameMtlView";
 import { ArchiveLevelDescriptionView } from "./ArchiveLevelDescriptionView";
 import { ArchiveLevelEnvModView } from "./ArchiveLevelEnvModView";
 import { ArchiveLevelFogVolView } from "./ArchiveLevelFogVolView";
 import { ArchiveLevelGameView } from "./ArchiveLevelGameView";
+import { ArchiveLevelGeomView } from "./ArchiveLevelGeomView";
 import { ArchiveLevelLightsView } from "./ArchiveLevelLightsView";
 import { ArchiveLevelHomView, ArchiveLevelSomView } from "./ArchiveLevelOcclusionView";
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
 import { ArchiveLevelPsStaticView } from "./ArchiveLevelPsStaticView";
 import { ArchiveLevelSndStaticView } from "./ArchiveLevelSndStaticView";
 import { ArchiveLevelWallmarksView } from "./ArchiveLevelWallmarksView";
+import { ArchiveLightAnimView } from "./ArchiveLightAnimView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
 import { ArchivePpeDescriptionView } from "./ArchivePpeDescriptionView";
+import { ArchiveShaderCompilerView } from "./ArchiveShaderCompilerView";
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
+import { ArchiveSoundEnvironmentView } from "./ArchiveSoundEnvironmentView";
 import { ArchiveSpawnDescriptionView } from "./ArchiveSpawnDescriptionView";
 import { ArchiveThmDescriptionView } from "./ArchiveThmDescriptionView";
 
@@ -154,6 +159,16 @@ export function ArchiveDescriptionPreview({
         />
       );
 
+    case EArchiveFormatDescription.GAME_MTL:
+      return (
+        <ArchiveGameMtlView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
     case EArchiveFormatDescription.LEVEL:
       return (
         <ArchiveLevelDescriptionView
@@ -209,6 +224,16 @@ export function ArchiveDescriptionPreview({
     case EArchiveFormatDescription.LEVEL_GAME:
       return (
         <ArchiveLevelGameView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_GEOM:
+      return (
+        <ArchiveLevelGeomView
           data-testid={dataTestId}
           id={id}
           className={className}
@@ -275,6 +300,36 @@ export function ArchiveDescriptionPreview({
           className={className}
           description={description.format.description}
           scope={description.scope}
+        />
+      );
+
+    case EArchiveFormatDescription.LIGHT_ANIM:
+      return (
+        <ArchiveLightAnimView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.SHADER_COMPILER:
+      return (
+        <ArchiveShaderCompilerView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.SOUND_ENVIRONMENT:
+      return (
+        <ArchiveSoundEnvironmentView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
         />
       );
 

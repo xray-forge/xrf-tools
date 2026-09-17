@@ -9,6 +9,8 @@ import {
   ArchiveEfdDescription,
   ArchiveFileDescription,
   ArchiveFormatDescription,
+  ArchiveGameMtlDescription,
+  ArchiveGameMtlMaterial,
   ArchiveLevelAiDescription,
   ArchiveLevelCollisionDescription,
   ArchiveLevelDescription,
@@ -16,6 +18,7 @@ import {
   ArchiveLevelEnvModifier,
   ArchiveLevelFogVolDescription,
   ArchiveLevelGameDescription,
+  ArchiveLevelGeomDescription,
   ArchiveLevelHomDescription,
   ArchiveLevelLightsDescription,
   ArchiveLevelPsStaticDescription,
@@ -24,6 +27,7 @@ import {
   ArchiveLevelSomDescription,
   ArchiveLevelSurface,
   ArchiveLevelWallmarksDescription,
+  ArchiveLightAnimDescription,
   ArchiveOmfDescription,
   ArchiveOmfMotion,
   ArchiveParticlesDescription,
@@ -33,9 +37,11 @@ import {
   ArchivePpeDescription,
   ArchiveReference,
   ArchiveResolution,
+  ArchiveShaderCompilerDescription,
   ArchiveShadersBlender,
   ArchiveShadersDescription,
   ArchiveShadowedCopy,
+  ArchiveSoundEnvironmentDescription,
   ArchiveSpawnDescription,
   ArchiveSubject,
   ArchiveThmDescription,
@@ -1389,6 +1395,179 @@ export function mockArchiveEfdDescription(overrides: Partial<ArchiveEfdDescripti
     variableKinds: [21, 46],
     patterns: [{ variables: [0, 1], weights: 40 }],
     weights: 40,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level render geometry description of the size a large level reaches.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.geom`.
+ */
+export function mockArchiveLevelGeomDescription(
+  overrides: Partial<ArchiveLevelGeomDescription> = {}
+): ArchiveLevelGeomDescription {
+  return {
+    isDetail: false,
+    vertexBuffers: 33,
+    indexBuffers: 12,
+    vertices: 1_204_331,
+    indices: 4_211_508,
+    triangles: 1_403_836,
+    progressiveMeshes: 190,
+    detailLevels: 812,
+    layouts: [
+      { stride: 32, elements: 6, buffers: 24, vertices: 980_114 },
+      { stride: 12, elements: 1, buffers: 9, vertices: 224_217 },
+    ],
+    size: 143_310_992,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates one game material.
+ *
+ * @param overrides - Field values to override.
+ * @returns One material, as a description carries it.
+ */
+export function mockArchiveGameMtlMaterial(overrides: Partial<ArchiveGameMtlMaterial> = {}): ArchiveGameMtlMaterial {
+  return {
+    id: 0,
+    name: "default",
+    description: "everything not named otherwise",
+    flags: ["skidmark", "shootable"],
+    friction: 1,
+    bouncing: 0.1,
+    shootFactor: 0.5,
+    flotationFactor: 1,
+    injuriousSpeed: 0,
+    soundOcclusionFactor: 0.25,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a game material library of the size vanilla's is.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about `gamemtl.xr`.
+ */
+export function mockArchiveGameMtlDescription(
+  overrides: Partial<ArchiveGameMtlDescription> = {}
+): ArchiveGameMtlDescription {
+  return {
+    version: 1,
+    pairs: 1421,
+    inheritingPairs: 968,
+    properties: [
+      { name: "breaking sounds", pairs: 12 },
+      { name: "step sounds", pairs: 240 },
+      { name: "collide sounds", pairs: 453 },
+      { name: "collide particles", pairs: 453 },
+      { name: "collide marks", pairs: 453 },
+    ],
+    materials: [
+      mockArchiveGameMtlMaterial(),
+      mockArchiveGameMtlMaterial({
+        id: 4,
+        name: "materials\\acid",
+        description: null,
+        flags: ["liquid", "injurious"],
+        friction: 0.2,
+        bouncing: 0,
+        shootFactor: 1,
+        soundOcclusionFactor: 0.9,
+        injuriousSpeed: 0.35,
+      }),
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a colour animation library of the size vanilla's is.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about `lanims.xr`.
+ */
+export function mockArchiveLightAnimDescription(
+  overrides: Partial<ArchiveLightAnimDescription> = {}
+): ArchiveLightAnimDescription {
+  return {
+    version: 1,
+    isBgr: false,
+    keys: 620,
+    items: [
+      { name: "campfire", fps: 15, frames: 30, durationSeconds: 2, keys: 4 },
+      { name: "lamp_flicker", fps: 30, frames: 60, durationSeconds: 2, keys: 62 },
+      { name: "still", fps: 0, frames: 1, durationSeconds: null, keys: 1 },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a sound environment library of the size every shipped one is.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about `senvironment.xr`.
+ */
+export function mockArchiveSoundEnvironmentDescription(
+  overrides: Partial<ArchiveSoundEnvironmentDescription> = {}
+): ArchiveSoundEnvironmentDescription {
+  return {
+    environments: [
+      {
+        name: "cave",
+        version: 4,
+        decayTime: 2.91,
+        room: -1000,
+        roomHf: -602,
+        environmentSize: 14.6,
+        environment: 26,
+      },
+      {
+        name: "sewerpipe",
+        version: 3,
+        decayTime: 2.81,
+        room: -1000,
+        roomHf: -1000,
+        environmentSize: 1.7,
+        environment: null,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a compiler shader library of the size vanilla's is.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about `shaders_xrlc.xr`.
+ */
+export function mockArchiveShaderCompilerDescription(
+  overrides: Partial<ArchiveShaderCompilerDescription> = {}
+): ArchiveShaderCompilerDescription {
+  return {
+    shaders: [
+      {
+        name: "default",
+        flags: ["collision", "rendering", "optimize UV", "casts shadow", "sharp light"],
+        vertexTranslucency: 0.5,
+        vertexAmbient: 0,
+        lightmapDensity: 1,
+      },
+      {
+        name: "def_shadow",
+        flags: [],
+        vertexTranslucency: 0.5,
+        vertexAmbient: 0,
+        lightmapDensity: 0.25,
+      },
+    ],
     ...overrides,
   };
 }
