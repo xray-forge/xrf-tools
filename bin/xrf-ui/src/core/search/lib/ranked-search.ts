@@ -26,14 +26,8 @@ export interface ISearchIndexEntry<T> {
   secondary: string;
 }
 
-export interface ISearchResult<T> {
-  item: T;
-  /** Offset of the match in the searched text, or -1 when only secondary text matched. */
-  matchAt: number;
-}
-
 export interface IRankedSearchOutcome<T> {
-  results: Array<ISearchResult<T>>;
+  results: Array<T>;
   /** Every match, not just the returned ones, so the caller can say how many were left out. */
   total: number;
 }
@@ -117,24 +111,24 @@ export function rankedSearch<T>(
     return { results: [], total: 0 };
   }
 
-  const matches: Array<{ entry: ISearchIndexEntry<T>; matchAt: number; rank: ESearchRank }> = [];
+  const matches: Array<{ entry: ISearchIndexEntry<T>; rank: ESearchRank }> = [];
 
   for (const entry of index) {
     const matchAt: number = entry.text.indexOf(query);
 
     if (matchAt !== -1) {
-      matches.push({ entry, matchAt, rank: getRank(entry, query, matchAt) });
+      matches.push({ entry, rank: getRank(entry, query, matchAt) });
     } else if (entry.secondary.includes(query)) {
       // Found in documentation rather than in the name, so it sorts below every name match instead of
       // competing with them on an offset that means nothing in the label.
-      matches.push({ entry, matchAt: -1, rank: ESearchRank.SECONDARY });
+      matches.push({ entry, rank: ESearchRank.SECONDARY });
     }
   }
 
   matches.sort((first, second) => first.rank - second.rank || first.entry.text.localeCompare(second.entry.text));
 
   return {
-    results: matches.slice(0, limit).map((match) => ({ item: match.entry.item, matchAt: match.matchAt })),
+    results: matches.slice(0, limit).map((match) => match.entry.item),
     total: matches.length,
   };
 }

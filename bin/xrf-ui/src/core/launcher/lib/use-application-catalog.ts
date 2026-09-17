@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { ISearchResult, IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
+import { IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { Nullable } from "@/lib/types/general";
 
 import {
@@ -75,10 +75,7 @@ export function useApplicationCatalog({
   });
 
   const sections: Array<ICatalogSection> = useMemo(
-    () =>
-      search.isSearching
-        ? toRankedSections(search.results.map(({ item }: ISearchResult<ICatalogEntry>) => item))
-        : visibleSections,
+    () => (search.isSearching ? toRankedSections(search.results) : visibleSections),
     [search.isSearching, search.results, visibleSections]
   );
 

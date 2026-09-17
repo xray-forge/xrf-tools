@@ -37,7 +37,7 @@ function renderHarness(onSelect: (file: IFile) => void, limit?: number): RenderR
         <div data-testid={"total"}>{search.total}</div>
         <ol>
           {search.results.map((result) => (
-            <li key={result.item.name}>{result.item.name}</li>
+            <li key={result.name}>{result.name}</li>
           ))}
         </ol>
       </div>
@@ -140,6 +140,7 @@ describe("useRankedSearch", () => {
     // Focus never leaves the field, which is the whole point of driving the list from the input.
     expect(input).toHaveFocus();
     expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(FILES[2]);
   });
 
   it("wraps around at both ends of the list", async () => {

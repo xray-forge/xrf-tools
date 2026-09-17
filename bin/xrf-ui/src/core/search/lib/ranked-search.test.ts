@@ -13,15 +13,15 @@ function indexOf(names: Array<string>): Array<ISearchIndexEntry<IFile>> {
   );
 }
 
-function namesOf(names: Array<string>, query: string, limit: number = 50): Array<string> {
-  return rankedSearch(indexOf(names), query, limit).results.map((result) => result.item.name);
+function getNamesOf(names: Array<string>, query: string, limit: number = 50): Array<string> {
+  return rankedSearch(indexOf(names), query, limit).results.map((result) => result.name);
 }
 
 describe("rankedSearch", () => {
   it("puts the closest match first rather than the alphabetically earliest", () => {
     // Ordering is what makes capping safe: alphabetically, `aaa_dialogs_old` wins and the file the
     // user actually named never appears once the limit bites.
-    const ranked: Array<string> = namesOf(
+    const ranked: Array<string> = getNamesOf(
       ["configs\\aaa_dialogs_old.xml", "dialogs.xml", "configs\\dialogs_zaton.xml", "st_dialogs_jupiter.json"],
       "dialogs"
     );
@@ -31,7 +31,7 @@ describe("rankedSearch", () => {
   });
 
   it("prefers a file name match over one buried in a directory", () => {
-    const ranked: Array<string> = namesOf(["dialogs\\other.xml", "configs\\dialogs.xml"], "dialogs");
+    const ranked: Array<string> = getNamesOf(["dialogs\\other.xml", "configs\\dialogs.xml"], "dialogs");
 
     expect(ranked[0]).toBe("configs\\dialogs.xml");
   });
@@ -47,8 +47,8 @@ describe("rankedSearch", () => {
   });
 
   it("matches case-insensitively without lowercasing per query", () => {
-    expect(namesOf(["Configs\\DIALOGS.xml"], "dialogs")).toHaveLength(1);
-    expect(namesOf(["configs\\dialogs.xml"], "DIALOGS")).toHaveLength(1);
+    expect(getNamesOf(["Configs\\DIALOGS.xml"], "dialogs")).toHaveLength(1);
+    expect(getNamesOf(["configs\\dialogs.xml"], "DIALOGS")).toHaveLength(1);
   });
 
   it("returns nothing for an empty or whitespace query", () => {
@@ -68,14 +68,14 @@ describe("rankedSearch", () => {
     const outcome = rankedSearch(index, "sound", 10);
 
     expect(outcome.total).toBe(2);
-    expect(outcome.results[0].item.name).toBe("xr_effects.play_sound");
-    // A secondary hit has no meaningful offset into the label, and says so.
-    expect(outcome.results[1].matchAt).toBe(-1);
+    expect(outcome.results.map((result) => result.name)).toEqual(["xr_effects.play_sound", "unrelated.helper"]);
   });
 
-  it("reports where the match landed, so callers can highlight it", () => {
-    const outcome = rankedSearch(indexOf(["configs\\dialogs.xml"]), "dialogs", 10);
+  it("returns the original item so selection retains its identity", () => {
+    const file: IFile = { name: "configs\\dialogs.xml" };
+    const index = buildSearchIndex([file], (item: IFile) => item.name);
+    const outcome = rankedSearch(index, "dialogs", 10);
 
-    expect(outcome.results[0].matchAt).toBe("configs\\".length);
+    expect(outcome.results[0]).toBe(file);
   });
 });

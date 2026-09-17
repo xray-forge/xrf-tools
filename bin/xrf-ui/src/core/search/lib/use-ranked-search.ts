@@ -4,7 +4,6 @@ import {
   buildSearchIndex,
   IRankedSearchOutcome,
   ISearchIndexEntry,
-  ISearchResult,
   rankedSearch,
 } from "@/core/search/lib/ranked-search";
 
@@ -31,7 +30,7 @@ export interface IUseRankedSearch<T> {
   query: string;
   setQuery: (query: string) => void;
   clear: () => void;
-  results: Array<ISearchResult<T>>;
+  results: Array<T>;
   /** Matches found, which is not the same as results returned once the limit applies. */
   total: number;
   isSearching: boolean;
@@ -115,7 +114,7 @@ export function useRankedSearch<T>({
         );
       } else if (event.key === "Enter") {
         event.preventDefault();
-        onSelect?.(results[currentIndex].item);
+        onSelect?.(results[currentIndex]);
       }
     },
     [currentIndex, onSelect, outcome]

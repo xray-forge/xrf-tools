@@ -53,7 +53,7 @@ export function EditorSearchMenu<T>({
   );
 
   const search = useRankedSearch({ items, toSearchText, toSecondaryText, limit, onSelect: onSelectResult });
-  const rows = useMemo(() => search.results.map(({ item }) => ({ ...toRow(item), item })), [search.results, toRow]);
+  const rows = useMemo(() => search.results.map((item) => ({ ...toRow(item), item })), [search.results, toRow]);
 
   return (
     <EditorSideMenu
