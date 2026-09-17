@@ -1,10 +1,14 @@
 import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
-import { toLexicalLines } from "@/core/ltx/lib/lexical";
+import { toLexicalLine } from "@/core/ltx/lib/lexical";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
-import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
+import { Maybe } from "@/lib/types/general";
+
+/** Shared, because a config is mostly blank lines and each of them would otherwise allocate. */
+const NO_SPANS: ReadonlyArray<ISyntaxSpan> = Object.freeze([]);
 
 /**
- * Turn one config's text and structure into the lines a viewer renders.
+ * Turn one config's text and structure into a source a viewer renders.
  *
  * Two layers, as an editor draws them. The lexical one colours every line from its own characters, locally and at
  * keystroke speed. The semantic one replaces the lines only the parser can be right about - a section header, an
@@ -15,36 +19,51 @@ import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
  * @param structure - What the backend made of the same file, or null when nothing judged it.
  * @param marks - What is wrong, by the line it sits on. Findings are the one source of a gutter mark, so a listing
  *   never has two answers about the same line.
- * @returns One entry per line, numbered from one.
+ * @returns A source over its lines, numbered from one.
  */
-export function toDocumentLines(
+export function toDocumentLineSource(
   text: ReadonlyArray<string>,
   structure: LtxFileStructure | null,
   marks: ReadonlyMap<number, ECodeLineMark> = new Map()
-): Array<ICodeLine> {
-  const lexical: Array<Array<ISyntaxSpan>> = toLexicalLines(text);
-  const lines: Array<ICodeLine> = lexical.map((spans: Array<ISyntaxSpan>, index: number) => ({
-    number: index + 1,
-    spans,
-  }));
+): ICodeLineSource {
+  const sections: ReadonlyMap<number, LtxStructureSection> = new Map(
+    (structure?.sections ?? []).map((section: LtxStructureSection) => [section.line, section])
+  );
+  // Built after the sections and read before them, so a file declaring both on one line draws as it did when the
+  // two passes ran in order.
+  const includes: ReadonlyMap<number, LtxStructureInclude> = new Map(
+    (structure?.includes ?? []).map((include: LtxStructureInclude) => [include.line, include])
+  );
 
-  for (const [line, mark] of marks) {
-    markLine(lines, line, mark);
+  function getSpans(number: number): ReadonlyArray<ISyntaxSpan> {
+    const line: string = text[number - 1];
+    const include: Maybe<LtxStructureInclude> = includes.get(number);
+
+    if (include) {
+      return toIncludeSpans(include, line ?? "");
+    }
+
+    const section: Maybe<LtxStructureSection> = sections.get(number);
+
+    if (section) {
+      return toSectionSpans(section, line ?? "");
+    }
+
+    return line ? toLexicalLine(line) : NO_SPANS;
   }
 
-  if (!structure) {
-    return lines;
-  }
-
-  for (const section of structure.sections) {
-    replaceLine(lines, section.line, toSectionSpans(section, text[section.line - 1] ?? ""));
-  }
-
-  for (const include of structure.includes) {
-    replaceLine(lines, include.line, toIncludeSpans(include, text[include.line - 1] ?? ""));
-  }
-
-  return lines;
+  return {
+    count: text.length,
+    getLine: (index: number): ICodeLine => ({
+      mark: marks.get(index + 1),
+      number: index + 1,
+      spans: getSpans(index + 1),
+    }),
+    // The text itself, which is what a different config brings and what marks arriving do not.
+    layout: text,
+    indexOfLine: (number: number): number => (number >= 1 && number <= text.length ? number - 1 : -1),
+    widestNumber: Math.max(text.length, 1),
+  };
 }
 
 /**
@@ -111,27 +130,4 @@ function toIncludeSpans(include: LtxStructureInclude, line: string): Array<ISynt
       text: line,
     },
   ];
-}
-
-/**
- * Replaces one line's colouring, when the line exists.
- *
- * A structure describing a line the text does not hold is a disagreement between two reads of one file, and dropping
- * it is better than writing past the end of the document.
- */
-function replaceLine(lines: Array<ICodeLine>, line: number, spans: Array<ISyntaxSpan>): void {
-  const at: number = line - 1;
-
-  if (at >= 0 && at < lines.length) {
-    lines[at] = { ...lines[at], spans };
-  }
-}
-
-/** Marks one line's gutter, when the line exists. */
-function markLine(lines: Array<ICodeLine>, line: number, mark: ECodeLineMark): void {
-  const at: number = line - 1;
-
-  if (at >= 0 && at < lines.length) {
-    lines[at] = { ...lines[at], mark };
-  }
 }

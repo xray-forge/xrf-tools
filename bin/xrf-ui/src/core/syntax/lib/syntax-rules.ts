@@ -15,6 +15,18 @@ const SYNTAX_RULES: Record<ESyntaxLanguage, Array<ISyntaxRule>> = {
 };
 
 /**
+ * Whether a grammar answers the same for a line read alone as for that line inside its file.
+ */
+const LINE_LOCAL_SYNTAX: Readonly<Record<ESyntaxLanguage, boolean>> = {
+  [ESyntaxLanguage.PLAIN]: true,
+  [ESyntaxLanguage.LTX]: true,
+  [ESyntaxLanguage.LUA]: false,
+  [ESyntaxLanguage.SHADER]: false,
+  [ESyntaxLanguage.TYPESCRIPT]: false,
+  [ESyntaxLanguage.XML]: false,
+};
+
+/**
  * Rules colouring one language, in the order they take precedence at a given position.
  *
  * @param language - Language to describe.
@@ -22,4 +34,14 @@ const SYNTAX_RULES: Record<ESyntaxLanguage, Array<ISyntaxRule>> = {
  */
 export function getSyntaxRules(language: ESyntaxLanguage): Array<ISyntaxRule> {
   return SYNTAX_RULES[language] ?? [];
+}
+
+/**
+ * Whether one language can be coloured a line at a time.
+ *
+ * @param language - Language to describe.
+ * @returns True when no rule of that language can match across a newline.
+ */
+export function isLineLocalSyntax(language: ESyntaxLanguage): boolean {
+  return LINE_LOCAL_SYNTAX[language] ?? false;
 }

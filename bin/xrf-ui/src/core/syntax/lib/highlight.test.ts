@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { highlightSyntax, MAXIMUM_HIGHLIGHT_LENGTH } from "@/core/syntax/lib/highlight";
-import { getSyntaxRules } from "@/core/syntax/lib/syntax-rules";
+import { highlightSyntax } from "@/core/syntax/lib/highlight";
+import { getSyntaxRules, isLineLocalSyntax } from "@/core/syntax/lib/syntax-rules";
 import { ESyntaxLanguage, ESyntaxToken, ISyntaxRule, ISyntaxSpan } from "@/core/syntax/lib/syntax.types";
 
 const LANGUAGES: Array<ESyntaxLanguage> = [
@@ -40,13 +40,6 @@ describe("highlightSyntax", () => {
     const spans: Array<ISyntaxSpan> = highlightSyntax("anything at all", ESyntaxLanguage.PLAIN);
 
     expect(spans).toEqual([{ token: ESyntaxToken.PLAIN, text: "anything at all" }]);
-  });
-
-  it("gives up on a file too large to be worth colouring", () => {
-    // Every span is a DOM node, so past the cap the colour costs more than it returns.
-    const content: string = ";".repeat(MAXIMUM_HIGHLIGHT_LENGTH + 1);
-
-    expect(highlightSyntax(content, ESyntaxLanguage.LTX)).toEqual([{ token: ESyntaxToken.PLAIN, text: content }]);
   });
 
   it("handles empty content", () => {
@@ -173,6 +166,30 @@ describe("syntax rules", () => {
 
       expect({ pattern: rule.pattern, groups }).toEqual({ pattern: rule.pattern, groups: 0 });
     }
+  });
+
+  it.each(LANGUAGES)("agrees with what its rules do to a newline in %s", (language: ESyntaxLanguage) => {
+    // A listing colours a line at a time only where this holds, so a rule added without moving the language
+    // out of the line-local set would silently mis-colour every window drawn after the one it opens.
+    // Every construct that reaches past a newline in any of these grammars, opened and closed a line apart.
+    const probe: string = [
+      "; comment",
+      "[section]:parent",
+      'key = "unterminated',
+      "--[[ long",
+      "still here ]]",
+      "/* block",
+      "still here */",
+      "<!-- markup",
+      "still here -->",
+      "`template",
+      "still here`",
+    ].join("\n");
+    const crossing: Array<ISyntaxSpan> = highlightSyntax(probe, language).filter(
+      (span: ISyntaxSpan) => span.token !== ESyntaxToken.PLAIN && span.text.includes("\n")
+    );
+
+    expect({ crosses: crossing.length > 0, language }).toEqual({ crosses: !isLineLocalSyntax(language), language });
   });
 
   it.each(LANGUAGES)("declares no rule that can match nothing in %s", (language: ESyntaxLanguage) => {

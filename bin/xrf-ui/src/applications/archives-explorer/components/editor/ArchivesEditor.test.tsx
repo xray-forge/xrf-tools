@@ -137,10 +137,10 @@ describe("opened archives editor", () => {
     await userEvent.dblClick(await findByText("readme.ltx"));
 
     const viewer: HTMLElement = await findByLabelText("Contents of readme.ltx");
-    const [lineNumbers, contents] = Array.from(viewer.querySelectorAll("pre"));
+    const lines: Array<HTMLElement> = Array.from(viewer.querySelectorAll<HTMLElement>("[role='option']"));
 
-    expect(lineNumbers).toHaveTextContent("1 2");
-    expect(contents).toHaveTextContent("line one line two");
+    // Each row carries its own number, since the listing draws only the lines on screen.
+    expect(lines.map((line: HTMLElement) => line.textContent)).toEqual(["1line one", "2line two"]);
   });
 
   it("decodes a texture into a picture rather than refusing it", async () => {

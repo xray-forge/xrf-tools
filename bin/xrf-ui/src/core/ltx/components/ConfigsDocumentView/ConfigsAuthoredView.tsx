@@ -7,10 +7,10 @@ import { LtxAnchoredFinding, LtxStructureSection } from "@/core/ipc/types/xrf-lt
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { toFindingMarks } from "@/core/ltx/lib/findings";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
-import { toDocumentLines } from "@/core/ltx/lib/semantic";
+import { toDocumentLineSource } from "@/core/ltx/lib/semantic";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
-import { ECodeLineMark, ICodeLine, ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -44,10 +44,11 @@ export function ConfigsAuthoredView({
     [document, found]
   );
 
-  // Held whole rather than built a line at a time: a config as authored is thousands of lines, and each is coloured
-  // from text the backend has already sent.
+  // Built a line at a time, so the largest config in a tree opens at the cost of the screenful on show. Marks
+  // arriving make a new source over the same text, which the listing reads as the same document and does not
+  // scroll back to the top of.
   const source: ICodeLineSource = useMemo(
-    () => toCodeLineSource(toDocumentLines(document.text.lines, document.structure, marks)),
+    () => toDocumentLineSource(document.text.lines, document.structure, marks),
     [document, marks]
   );
 

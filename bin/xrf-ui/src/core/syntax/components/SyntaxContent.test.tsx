@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { SyntaxContent } from "@/core/syntax/components/SyntaxContent";
+import { MAXIMUM_HIGHLIGHT_LENGTH, SyntaxContent } from "@/core/syntax/components/SyntaxContent";
 import { ESyntaxLanguage } from "@/core/syntax/lib";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -25,6 +25,14 @@ describe("SyntaxContent", () => {
     expect(colored).toContain("ammo_mag_size");
     // Whitespace and plain runs stay unwrapped: at one node per run, a large file cannot afford them.
     expect(colored).not.toContain("\n");
+  });
+
+  it("gives up on text too large to be worth a node per span", () => {
+    const content: string = "; comment\n".repeat(MAXIMUM_HIGHLIGHT_LENGTH / 10 + 1);
+    const { container } = renderWithProviders(<SyntaxContent content={content} language={ESyntaxLanguage.LTX} />);
+
+    expect(container.childElementCount).toBe(0);
+    expect(container.textContent).toBe(content);
   });
 
   it("emits no elements for a language it does not colour", () => {

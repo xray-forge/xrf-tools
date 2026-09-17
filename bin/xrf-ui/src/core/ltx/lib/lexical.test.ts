@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toLexicalLines } from "@/core/ltx/lib/lexical";
-import { ESyntaxToken, ISyntaxSpan, MAXIMUM_HIGHLIGHT_LENGTH } from "@/core/syntax/lib";
+import { toLexicalLine } from "@/core/ltx/lib/lexical";
+import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 
 /**
  * Text of every span carrying a token, which is how these tests ask "was this coloured".
@@ -21,17 +21,18 @@ function textOf(spans: Array<ISyntaxSpan>, token: ESyntaxToken): Array<string> {
  * @returns Its spans.
  */
 function lex(line: string): Array<ISyntaxSpan> {
-  return toLexicalLines([line])[0];
+  return toLexicalLine(line);
 }
 
-describe("toLexicalLines", () => {
-  it("answers one entry per input line, in order", () => {
-    const lines: Array<string> = ["[wpn_ak74]", "cost = 1000", "", "; end"];
-
-    expect(toLexicalLines(lines)).toHaveLength(4);
-    expect(toLexicalLines(lines).map((spans: Array<ISyntaxSpan>) => spans.map((it) => it.text).join(""))).toEqual(
-      lines
-    );
+describe("toLexicalLine", () => {
+  it("reproduces the line it colours", () => {
+    for (const line of ["[wpn_ak74]", "cost = 1000", "; end"]) {
+      expect(
+        lex(line)
+          .map((span: ISyntaxSpan) => span.text)
+          .join("")
+      ).toBe(line);
+    }
   });
 
   it("colours nothing on an empty line and leaves a whitespace-only one plain", () => {
@@ -124,14 +125,5 @@ describe("toLexicalLines", () => {
 
   it("colours a scheme binding like any other key", () => {
     expect(textOf(lex("$scheme = weapon"), ESyntaxToken.KEY)).toEqual(["$scheme"]);
-  });
-
-  it("gives up colouring a document larger than the highlight budget", () => {
-    // Past the budget the spans themselves are the cost, since the listing above this renders a window
-    // rather than the document.
-    const line: string = "cost = 1000";
-    const lines: Array<string> = new Array(Math.ceil(MAXIMUM_HIGHLIGHT_LENGTH / line.length) + 1).fill(line);
-
-    expect(toLexicalLines(lines)[0]).toEqual([{ token: ESyntaxToken.PLAIN, text: line }]);
   });
 });

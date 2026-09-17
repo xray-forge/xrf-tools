@@ -2,15 +2,6 @@ import { getSyntaxRules } from "@/core/syntax/lib/syntax-rules";
 import { ESyntaxLanguage, ESyntaxToken, ISyntaxRule, ISyntaxSpan } from "@/core/syntax/lib/syntax.types";
 import { Nullable } from "@/lib/types/general";
 
-/**
- * Size past which a file is shown uncoloured.
- *
- * Colouring is linear, but every span becomes a DOM node, and the archive read policy allows files up
- * to 10 MB. Half a megabyte of dense config is already tens of thousands of nodes, which is where
- * scrolling starts to cost more than the colour is worth.
- */
-export const MAXIMUM_HIGHLIGHT_LENGTH: number = 512 * 1024;
-
 const SCANNERS: Map<ESyntaxLanguage, Nullable<RegExp>> = new Map();
 
 /**
@@ -58,7 +49,7 @@ export function highlightSyntax(content: string, language: ESyntaxLanguage): Arr
     return [];
   }
 
-  if (!scanner || content.length > MAXIMUM_HIGHLIGHT_LENGTH) {
+  if (!scanner) {
     return [{ token: ESyntaxToken.PLAIN, text: content }];
   }
 
