@@ -273,6 +273,14 @@ export const TEXT = {
 } as const;
 
 /**
+ * Ink carried on {@link VIEWPORT}'s backdrop, which is dark whatever scheme the rest of the window is in.
+ */
+export const VIEWPORT_INK = {
+  text: TEXT.secondary.dark,
+  accent: ACCENT.primary.main.dark,
+} as const;
+
+/**
  * Per-group wayfinding hues for the launcher, hand-authored because a categorical palette needs hue distinctness
  * that a lightness formula does not give. They tint icons rather than text, so they answer to the 3:1 tier.
  */

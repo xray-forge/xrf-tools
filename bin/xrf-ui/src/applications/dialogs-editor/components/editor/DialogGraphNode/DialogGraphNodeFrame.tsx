@@ -61,7 +61,7 @@ export function DialogGraphNodeFrame({
       {hasTarget ? <Handle type={"target"} position={Position.Top} isConnectable={false} /> : null}
 
       <Stack className={"items-center justify-between"} direction={"row"} spacing={0.5}>
-        <Typography className={"text-text-secondary"} variant={"caption"} noWrap sx={{ fontFamily: "monospace" }}>
+        <Typography className={"font-monospace text-text-secondary"} variant={"caption"} noWrap>
           {data.name}
         </Typography>
 

@@ -14,6 +14,7 @@ import {
   RADIUS,
   TREE,
   VIEWPORT,
+  VIEWPORT_INK,
 } from "./tokens";
 
 /** Every published property, so a consumer and a test name the same thing. */
@@ -70,7 +71,9 @@ export function getThemeVariables(theme: Theme) {
     "--xrf-tree-icon-size": px(TREE.iconSize),
     "--xrf-tree-icon-width": px(TREE.iconWidth),
     "--xrf-tree-row-height": px(TREE.rowHeight),
+    "--xrf-viewport-accent": VIEWPORT_INK.accent,
     "--xrf-viewport-backdrop": VIEWPORT.backdrop,
+    "--xrf-viewport-text": VIEWPORT_INK.text,
   } as const;
 }
 

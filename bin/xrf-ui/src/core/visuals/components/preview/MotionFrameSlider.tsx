@@ -1,8 +1,7 @@
 import { Slider, sliderClasses } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Kills the easing MUI gives a slider's thumb and track.
@@ -11,7 +10,7 @@ const PLAYHEAD_TRANSITION = {
   [`& .${sliderClasses.thumb}, & .${sliderClasses.track}`]: { transition: "none" },
 } as const;
 
-interface IMotionFrameSliderProps extends StyledComponentProps {
+interface IMotionFrameSliderProps extends BaseComponentProps {
   /** Frames the posed motion holds. Zero disables the control, because there is no frame to be on. */
   frameCount: number;
   /** Frame on screen, counted from zero. */
@@ -28,7 +27,6 @@ export function MotionFrameSlider({
   "data-testid": dataTestId = "motion-frame-slider",
   id,
   className,
-  sx,
   ariaLabel,
   frameCount,
   frame,
@@ -47,7 +45,7 @@ export function MotionFrameSlider({
       max={Math.max(0, frameCount - 1)}
       value={frame}
       disabled={!frameCount}
-      sx={mergeSx(PLAYHEAD_TRANSITION, sx)}
+      sx={PLAYHEAD_TRANSITION}
       onChange={onChange}
     />
   );

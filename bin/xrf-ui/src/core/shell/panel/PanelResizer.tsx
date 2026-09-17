@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
@@ -47,23 +46,13 @@ export function PanelResizer({ side, width, onResize }: IPanelResizerProps): Rea
   }, []);
 
   return (
-    <Box
+    <div
       aria-hidden={true}
       className={cn(
         "absolute top-0 bottom-0 z-2 w-1.75 cursor-col-resize",
+        "after:absolute after:inset-y-0 after:left-0.75 after:w-px after:bg-transparent hover:after:bg-primary",
         side === "left" ? "-right-0.75" : "-left-0.75"
       )}
-      sx={{
-        // Only shows while pointed at; at rest the panel's own border is all there is to see.
-        "&:hover::after": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: 3,
-          width: "1px",
-        },
-      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

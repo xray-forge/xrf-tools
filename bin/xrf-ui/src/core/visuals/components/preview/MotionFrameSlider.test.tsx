@@ -40,20 +40,4 @@ describe("MotionFrameSlider", () => {
 
     expect(seeks).toEqual([34]);
   });
-
-  it("keeps the layout its caller poses beside the transition it owns", () => {
-    // The two are merged as an array rather than spread, so a caller's own `sx` cannot drop the playhead rule and a
-    // function or array `sx` survives.
-    const { getByTestId } = renderWithProviders(
-      <MotionFrameSlider
-        ariaLabel={"Clip frame"}
-        frameCount={10}
-        frame={1}
-        sx={{ marginX: 1, flexGrow: 1 }}
-        onSeek={jest.fn()}
-      />
-    );
-
-    expect(getByTestId("motion-frame-slider")).toHaveStyle({ flexGrow: 1 });
-  });
 });

@@ -1,12 +1,10 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { Box, circularProgressClasses, typographyClasses } from "@mui/material";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 import { Texture } from "three";
 
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { ACCENT, TEXT } from "@/core/theme/tokens";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import {
   IVisualPreviewViewportProps,
@@ -187,16 +185,9 @@ export function VisualPreviewLayout({
           {!model && !isLoading ? <VisualPreviewEmpty error={error} onRetry={onRetry} /> : null}
 
           {isLoading ? (
-            <Box
-              className={"pointer-events-none absolute inset-0 flex items-center justify-center"}
-              sx={{
-                // The viewport stays dark in both application themes.
-                [`& .${typographyClasses.root}`]: { color: TEXT.secondary.dark },
-                [`& .${circularProgressClasses.root}`]: { color: ACCENT.primary.main.dark },
-              }}
-            >
-              <DelayedProgress label={"Loading visual…"} />
-            </Box>
+            <div className={"pointer-events-none absolute inset-0 flex items-center justify-center"}>
+              <DelayedProgress isOnViewport={true} label={"Loading visual…"} />
+            </div>
           ) : null}
         </div>
       </div>

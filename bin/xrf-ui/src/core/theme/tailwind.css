@@ -43,8 +43,10 @@
   /* A recess holding input or a nested listing. Always bordered: fill alone is ~1.05:1 on the dark content plane. */
   --color-well: var(--xrf-well);
 
-  /* The plane a picture is judged against, deliberately outside the surface ramp. */
+  /* The plane a picture is judged against, deliberately outside the surface ramp, and the ink it carries. */
   --color-viewport-backdrop: var(--xrf-viewport-backdrop);
+  --color-viewport-text: var(--xrf-viewport-text);
+  --color-viewport-accent: var(--xrf-viewport-accent);
 
   --spacing-tree-row: var(--xrf-tree-row-height);
   --spacing-tree-icon: var(--xrf-tree-icon-width);
