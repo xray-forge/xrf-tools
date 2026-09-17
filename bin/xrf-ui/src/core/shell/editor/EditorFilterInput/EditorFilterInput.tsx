@@ -4,10 +4,10 @@ import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useForkRef } from "@mui/material/utils";
 import { KeyboardEvent, ReactElement, Ref, RefObject, useRef } from "react";
 
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IEditorFilterInputProps extends StyledComponentProps {
+export interface IEditorFilterInputProps extends BaseComponentProps {
   ariaLabel: string;
   /** Lets an owner reach the input it does not render, to hand it the caret. */
   inputRef?: RefObject<Nullable<HTMLInputElement>>;
@@ -35,7 +35,6 @@ export function EditorFilterInput({
   onClear,
   onKeyDown,
   onQueryChange,
-  sx,
 }: IEditorFilterInputProps): ReactElement {
   const ownRef = useRef<Nullable<HTMLInputElement>>(null);
   const handleRef: Ref<HTMLInputElement> = useForkRef(ownRef, inputRef);
@@ -55,7 +54,6 @@ export function EditorFilterInput({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       inputRef={handleRef}
       fullWidth
       size={"small"}

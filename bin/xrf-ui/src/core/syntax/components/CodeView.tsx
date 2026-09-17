@@ -1,12 +1,11 @@
-import { Box } from "@mui/material";
 import { ReactElement, useMemo } from "react";
 
 import { SyntaxContent } from "@/core/syntax/components/SyntaxContent";
 import { ESyntaxLanguage } from "@/core/syntax/lib";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { cn } from "@/lib/dom/dom-name";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ICodeViewProps extends StyledComponentProps {
+interface ICodeViewProps extends BaseComponentProps {
   content: string;
   language: ESyntaxLanguage;
   /**
@@ -30,7 +29,6 @@ export function CodeView({
   language,
   firstLine = 1,
   label,
-  sx,
 }: ICodeViewProps): ReactElement {
   const lineNumbers: string = useMemo(() => {
     const count: number = Math.max(1, content.split("\n").length);
@@ -39,13 +37,7 @@ export function CodeView({
   }, [content, firstLine]);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      aria-label={label}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", minWidth: 0, overflow: "auto" }, sx)}
-    >
+    <div data-testid={dataTestId} aria-label={label} id={id} className={cn("flex min-w-0 overflow-auto", className)}>
       <pre
         aria-hidden={true}
         className={
@@ -58,6 +50,6 @@ export function CodeView({
       <pre className={"monospace m-0 min-h-full min-w-max p-3 leading-code whitespace-pre tab-2 text-text-primary"}>
         <SyntaxContent content={content} language={language} />
       </pre>
-    </Box>
+    </div>
   );
 }

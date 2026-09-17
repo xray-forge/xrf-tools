@@ -1,11 +1,11 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Fragment, ReactElement } from "react";
 
 import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /** One command and the chords it currently answers to. */
@@ -21,8 +21,7 @@ export function ApplicationHelpShortcuts({
   "data-testid": dataTestId = "application-help-shortcuts",
   id,
   className,
-  sx,
-}: StyledComponentProps): Nullable<ReactElement> {
+}: BaseComponentProps): Nullable<ReactElement> {
   const keymapService: KeymapService = useInjection(KeymapService);
 
   const rows: Array<IShortcutRow> = keymapService.commands
@@ -38,7 +37,7 @@ export function ApplicationHelpShortcuts({
   ).filter((category: EKeybindCommandCategory) => rows.some((row: IShortcutRow) => row.command.category === category));
 
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
+    <div data-testid={dataTestId} id={id} className={className}>
       <Typography className={"mb-1 text-text-primary"} variant={"subtitle2"}>
         Shortcuts
       </Typography>
@@ -64,6 +63,6 @@ export function ApplicationHelpShortcuts({
             ))}
         </Fragment>
       ))}
-    </Box>
+    </div>
   );
 }

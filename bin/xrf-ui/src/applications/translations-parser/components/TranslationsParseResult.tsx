@@ -6,10 +6,10 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface ITranslationsParseResultProps extends StyledComponentProps {
+export interface ITranslationsParseResultProps extends BaseComponentProps {
   result: TranslationParseSummary;
   /** Where the sources were written, so the run can be opened; absent while nothing was written. */
   outputPath: Nullable<string>;
@@ -19,7 +19,6 @@ export function TranslationsParseResult({
   "data-testid": dataTestId = "translations-parse-result",
   id,
   className,
-  sx,
   result,
   outputPath,
 }: ITranslationsParseResultProps): ReactElement {
@@ -64,7 +63,6 @@ export function TranslationsParseResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       headline={headline}
       tone={tone}
       stats={stats}

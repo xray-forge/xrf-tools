@@ -1,13 +1,13 @@
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { selectRelatedApplications } from "@/core/help/lib/related";
 import { EApplicationId, IApplicationDescriptor } from "@/core/routing/application";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
-export interface IApplicationHelpRelatedProps extends StyledComponentProps {
+export interface IApplicationHelpRelatedProps extends BaseComponentProps {
   relatedTools: ReadonlyArray<EApplicationId>;
   /** Called after a related tool is navigated to, so the hosting surface can dismiss itself. */
   onNavigated?: () => void;
@@ -20,7 +20,6 @@ export function ApplicationHelpRelated({
   "data-testid": dataTestId = "application-help-related",
   id,
   className,
-  sx,
   relatedTools,
   onNavigated,
 }: IApplicationHelpRelatedProps): Nullable<ReactElement> {
@@ -28,7 +27,7 @@ export function ApplicationHelpRelated({
   const applications: Array<IApplicationDescriptor> = selectRelatedApplications(relatedTools);
 
   return applications.length ? (
-    <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
+    <div data-testid={dataTestId} id={id} className={className}>
       <Typography className={"mb-1.5 text-text-primary"} variant={"subtitle2"}>
         Related tools
       </Typography>
@@ -50,6 +49,6 @@ export function ApplicationHelpRelated({
           />
         ))}
       </div>
-    </Box>
+    </div>
   ) : null;
 }

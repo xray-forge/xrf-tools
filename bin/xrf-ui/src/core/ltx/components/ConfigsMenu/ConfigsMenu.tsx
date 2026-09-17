@@ -10,11 +10,11 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
-interface IConfigsMenuProps extends StyledComponentProps {
+interface IConfigsMenuProps extends BaseComponentProps {
   files: ReadonlyArray<LtxInventoryFile>;
   /** Config that is on screen, whoever opened it. */
   selected: Nullable<string>;
@@ -28,7 +28,6 @@ export function ConfigsMenu({
   "data-testid": dataTestId = "configs-menu",
   id,
   className,
-  sx,
   files,
   selected,
   onOpen,
@@ -91,7 +90,6 @@ export function ConfigsMenu({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       title={"Configs"}
       searchLabel={"Filter configs"}
       resultsLabel={"Config search results"}

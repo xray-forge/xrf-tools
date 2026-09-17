@@ -2,9 +2,9 @@ import { default as HelpOutlineIcon } from "@mui/icons-material/HelpOutlineOutli
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpButtonProps extends StyledComponentProps {
+export interface IApplicationHelpButtonProps extends BaseComponentProps {
   onClick: () => void;
 }
 
@@ -15,7 +15,6 @@ export function ApplicationHelpButton({
   "data-testid": dataTestId = "application-help-button",
   id,
   className,
-  sx,
   onClick,
 }: IApplicationHelpButtonProps): ReactElement {
   return (
@@ -26,7 +25,6 @@ export function ApplicationHelpButton({
       label={"Help"}
       description={"Help (F1)"}
       icon={<HelpOutlineIcon />}
-      sx={sx}
       onClick={onClick}
     />
   );

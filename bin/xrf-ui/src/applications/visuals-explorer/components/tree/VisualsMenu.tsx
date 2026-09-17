@@ -16,7 +16,7 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 import { Nullable } from "@/lib/types/general";
@@ -35,8 +35,7 @@ export function VisualsMenu({
   "data-testid": dataTestId = "visuals-menu",
   id,
   className,
-  sx,
-}: StyledComponentProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
   const visualsService: VisualsService = useInjection(VisualsService);
 
@@ -106,7 +105,6 @@ export function VisualsMenu({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       title={"Visuals"}
       searchLabel={"Filter visuals"}
       resultsLabel={"Visual search results"}

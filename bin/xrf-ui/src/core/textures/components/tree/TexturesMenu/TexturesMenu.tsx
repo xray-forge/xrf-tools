@@ -23,7 +23,7 @@ import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -55,8 +55,7 @@ export function TexturesMenu({
   "data-testid": dataTestId = "textures-menu",
   id,
   className,
-  sx,
-}: StyledComponentProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
 
@@ -130,7 +129,6 @@ export function TexturesMenu({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       title={"Textures"}
       searchLabel={"Filter textures"}
       resultsLabel={"Texture search results"}

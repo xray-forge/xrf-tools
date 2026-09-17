@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
@@ -7,7 +6,7 @@ import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
 import { cn } from "@/lib/dom/dom-name";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -37,7 +36,7 @@ interface IReportedWindow {
   range: ICodeLineRange;
 }
 
-interface IVirtualizedLinesProps extends StyledComponentProps {
+interface IVirtualizedLinesProps extends BaseComponentProps {
   /**
    * The document to draw.
    *
@@ -75,7 +74,6 @@ export function VirtualizedLines({
   "data-testid": dataTestId = "virtualized-lines",
   id,
   className,
-  sx,
   source,
   ariaLabel,
   selectedLine = null,
@@ -289,7 +287,7 @@ export function VirtualizedLines({
   }, [count, onVisibleRangeChange, renderContext, source]);
 
   return (
-    <Box
+    <div
       {...containerProps}
       ref={handleScrollerRef}
       // `LayoutList` pins `overflowX` to hidden for a listing with no columns declared, which is right
@@ -301,7 +299,6 @@ export function VirtualizedLines({
       id={id}
       className={cn("h-full overflow-auto outline-none", className)}
       role={"listbox"}
-      sx={sx}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
@@ -309,6 +306,6 @@ export function VirtualizedLines({
       <div {...positionerProps} role={"presentation"} />
 
       {virtualizer.api.getters.getRows()}
-    </Box>
+    </div>
   );
 }

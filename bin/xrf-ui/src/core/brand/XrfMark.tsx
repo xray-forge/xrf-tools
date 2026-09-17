@@ -1,10 +1,9 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
-import { mergeSx } from "@/core/theme/merge-sx";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { cn } from "@/lib/dom/dom-name";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IXrfMarkProps extends StyledComponentProps {
+interface IXrfMarkProps extends BaseComponentProps {
   /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
   size?: number;
   /** Names the mark for assistive technology. Omit where a label already sits beside it. */
@@ -15,21 +14,19 @@ export function XrfMark({
   "data-testid": dataTestId = "xrf-mark",
   id,
   className,
-  sx,
   size = 16,
   title,
 }: IXrfMarkProps): ReactElement {
   return (
-    <Box
+    <svg
       data-testid={dataTestId}
       aria-label={title}
       aria-hidden={title === undefined || undefined}
       id={id}
-      className={className}
-      component={"svg"}
+      className={cn("shrink-0", className)}
       viewBox={"0 0 256 256"}
       role={"img"}
-      sx={mergeSx({ width: size, height: size, flexShrink: 0 }, sx)}
+      style={{ width: size, height: size }}
     >
       <path
         d={
@@ -41,6 +38,6 @@ export function XrfMark({
       />
       <circle cx={128} cy={128} r={116} fill={"none"} stroke={"currentColor"} strokeWidth={18} />
       <polygon points={"161 128 144.5 99.421 111.5 99.421 95 128 111.5 156.579 144.5 156.579"} fill={"#FFA200"} />
-    </Box>
+    </svg>
   );
 }

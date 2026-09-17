@@ -2,9 +2,9 @@ import { Box, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpSectionProps extends StyledComponentProps {
+export interface IApplicationHelpSectionProps extends BaseComponentProps {
   title: string;
   items: ReadonlyArray<string>;
   isOrdered?: boolean;
@@ -17,13 +17,12 @@ export function ApplicationHelpSection({
   "data-testid": dataTestId = "application-help-section",
   id,
   className,
-  sx,
   title,
   items,
   isOrdered,
 }: IApplicationHelpSectionProps): ReactElement {
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
+    <div data-testid={dataTestId} id={id} className={className}>
       <Typography className={"mb-1 text-text-primary"} variant={"subtitle2"}>
         {title}
       </Typography>
@@ -35,6 +34,6 @@ export function ApplicationHelpSection({
           </Typography>
         ))}
       </Box>
-    </Box>
+    </div>
   );
 }

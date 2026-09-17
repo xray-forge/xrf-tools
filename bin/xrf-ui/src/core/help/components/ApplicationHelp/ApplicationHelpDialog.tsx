@@ -4,9 +4,9 @@ import { ReactElement, useId } from "react";
 import { ApplicationHelpContent } from "@/core/help/components/ApplicationHelpContent";
 import { IApplicationDescriptor, IApplicationHelp } from "@/core/routing/application";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpDialogProps extends StyledComponentProps {
+export interface IApplicationHelpDialogProps extends BaseComponentProps {
   application: IApplicationDescriptor;
   help: IApplicationHelp;
   isOpen: boolean;
@@ -20,7 +20,6 @@ export function ApplicationHelpDialog({
   "data-testid": dataTestId = "application-help-dialog",
   id,
   className,
-  sx,
   application,
   help,
   isOpen,
@@ -34,7 +33,6 @@ export function ApplicationHelpDialog({
       aria-labelledby={titleId}
       id={id}
       className={className}
-      sx={sx}
       open={isOpen}
       maxWidth={"md"}
       fullWidth={true}

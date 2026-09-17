@@ -7,12 +7,12 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 
-export interface ITranslationsBuildResultProps extends StyledComponentProps {
+export interface ITranslationsBuildResultProps extends BaseComponentProps {
   result: TranslationBuildSummary;
   /** Where the build was told to write; the summary does not carry an address. */
   outputPath: Nullable<string>;
@@ -22,7 +22,6 @@ export function TranslationsBuildResult({
   "data-testid": dataTestId = "translations-build-result",
   id,
   className,
-  sx,
   result,
   outputPath,
 }: ITranslationsBuildResultProps): ReactElement {
@@ -54,7 +53,6 @@ export function TranslationsBuildResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       headline={`Built ${result.files} string table(s) from ${result.sources} source(s)`}
       tone={"success"}
       stats={stats}

@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { ApplicationHelpRelated } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpRelated";
@@ -6,10 +6,10 @@ import { ApplicationHelpSection } from "@/core/help/components/ApplicationHelpCo
 import { ApplicationHelpShortcuts } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpShortcuts";
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { cn } from "@/lib/dom/dom-name";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface IApplicationHelpContentProps extends StyledComponentProps {
+export interface IApplicationHelpContentProps extends BaseComponentProps {
   help: IApplicationHelp;
   /** Called after a related tool is navigated to, so the hosting surface can dismiss itself. */
   onNavigated?: () => void;
@@ -22,7 +22,6 @@ export function ApplicationHelpContent({
   "data-testid": dataTestId = "application-help-content",
   id,
   className,
-  sx,
   help,
   onNavigated,
 }: IApplicationHelpContentProps): ReactElement {
@@ -43,12 +42,7 @@ export function ApplicationHelpContent({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", flexDirection: "column", gap: 2 }, sx)}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-4", className)}>
       <Typography variant={"body2"} sx={{ lineHeight: 1.55 }}>
         {renderHelpText(help.summary)}
       </Typography>
@@ -60,6 +54,6 @@ export function ApplicationHelpContent({
       {help.relatedTools?.length ? (
         <ApplicationHelpRelated relatedTools={help.relatedTools} onNavigated={onNavigated} />
       ) : null}
-    </Box>
+    </div>
   );
 }

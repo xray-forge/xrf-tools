@@ -5,11 +5,11 @@ import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
 import { TranslationVerifyLanguageSummary } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
 
-export interface ITranslationsVerifyResultProps extends StyledComponentProps {
+export interface ITranslationsVerifyResultProps extends BaseComponentProps {
   result: TranslationVerifySummary;
 }
 
@@ -17,7 +17,6 @@ export function TranslationsVerifyResult({
   "data-testid": dataTestId = "translations-verify-result",
   id,
   className,
-  sx,
   result,
 }: ITranslationsVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
@@ -73,7 +72,6 @@ export function TranslationsVerifyResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sx={sx}
       headline={
         result.missing
           ? `${result.missing} translation(s) missing across ${incompleteLanguages.length} language(s)`

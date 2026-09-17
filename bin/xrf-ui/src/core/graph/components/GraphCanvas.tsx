@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import {
   Background,
@@ -17,8 +16,8 @@ import {
 import { ReactElement, ReactNode } from "react";
 
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
-import { mergeSx } from "@/core/theme/merge-sx";
-import { StyledComponentProps } from "@/lib/dom/element-types";
+import { cn } from "@/lib/dom/dom-name";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import "@xyflow/react/dist/style.css";
 
@@ -28,7 +27,7 @@ const PRO_OPTIONS: ProOptions = { hideAttribution: true };
 // which is how every node editor in this domain expects to be driven.
 const PAN_MOUSE_BUTTONS: Array<number> = [1];
 
-interface IGraphCanvasProps extends StyledComponentProps {
+interface IGraphCanvasProps extends BaseComponentProps {
   nodes: Array<TGraphNode>;
   edges: Array<TGraphEdge>;
   nodeTypes?: NodeTypes;
@@ -57,7 +56,6 @@ export function GraphCanvas({
   "data-testid": dataTestId = "graph-canvas",
   id,
   className,
-  sx,
   nodes,
   edges,
   nodeTypes,
@@ -73,12 +71,7 @@ export function GraphCanvas({
   const { mode } = useColorScheme();
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={mergeSx({ display: "flex", flexGrow: 1, width: "100%", height: "100%", minWidth: 0, minHeight: 0 }, sx)}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 w-full min-w-0 grow", className)}>
       <ReactFlow
         colorMode={(mode ?? "system") as ColorMode}
         nodes={nodes}
@@ -101,6 +94,6 @@ export function GraphCanvas({
         <Controls position={"bottom-right"} />
         {children}
       </ReactFlow>
-    </Box>
+    </div>
   );
 }
