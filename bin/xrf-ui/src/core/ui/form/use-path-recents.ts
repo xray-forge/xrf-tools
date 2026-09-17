@@ -34,13 +34,12 @@ export interface IPathRecents {
 export function usePathRecents(storageKey: string): IPathRecents {
   const [records, setRecords] = useState<ReadonlyArray<IPathRecord>>(() => readRecentPaths(storageKey));
 
-  // Held as well as rendered, so both actions stay stable while reading the list they are changing.
   const recordsRef = useRef<ReadonlyArray<IPathRecord>>(records);
-
-  recordsRef.current = records;
 
   const apply = useCallback(
     (next: Array<IPathRecord>): void => {
+      recordsRef.current = next;
+
       setRecords(next);
       writeRecentPaths(storageKey, next);
     },
