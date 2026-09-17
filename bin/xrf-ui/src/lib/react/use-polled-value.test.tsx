@@ -86,6 +86,85 @@ describe("usePolledValue", () => {
     }
   });
 
+  it("ignores a pending response after unmount and does not resume polling", async () => {
+    jest.useFakeTimers();
+
+    try {
+      let resolve: (value: string) => void = noop;
+      const pending = new Promise<string>((settle) => {
+        resolve = settle;
+      });
+      const read = jest.fn<() => Promise<string>>().mockReturnValue(pending);
+      const { result, unmount } = renderHook(() => usePolledValue(read, 1000));
+
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(result.current).toBeNull();
+
+      unmount();
+
+      await act(async () => {
+        resolve("late");
+      });
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(result.current).toBeNull();
+      expect(read).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("ignores the previous interval's pending response and polls at the new interval", async () => {
+    jest.useFakeTimers();
+
+    try {
+      let resolve: (value: string) => void = noop;
+      const pending = new Promise<string>((settle) => {
+        resolve = settle;
+      });
+      const read = jest
+        .fn<() => Promise<string>>()
+        .mockReturnValueOnce(pending)
+        .mockResolvedValueOnce("current")
+        .mockResolvedValue("next");
+      const { result, rerender } = renderHook((intervalMs: number) => usePolledValue(read, intervalMs), {
+        initialProps: 1000,
+      });
+
+      expect(read).toHaveBeenCalledTimes(1);
+
+      rerender(2000);
+
+      await waitFor(() => expect(result.current).toBe("current"));
+
+      expect(read).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        resolve("stale");
+      });
+
+      expect(result.current).toBe("current");
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1000);
+      });
+
+      expect(read).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1000);
+      });
+
+      expect(read).toHaveBeenCalledTimes(3);
+      expect(result.current).toBe("next");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("keeps the last value after rejection and resumes on the next tick", async () => {
     jest.useFakeTimers();
 
