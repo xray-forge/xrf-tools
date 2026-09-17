@@ -7,7 +7,7 @@ use tauri::Runtime;
 use tauri::webview::WebviewWindow;
 
 /// How long the window stays hidden waiting for the document to reveal itself.
-const REVEAL_TIMEOUT: Duration = Duration::from_secs(5);
+const REVEAL_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Reveal the window after [`REVEAL_TIMEOUT`] unless the document already has.
 pub fn reveal_window_on_timeout<R: Runtime>(window: WebviewWindow<R>) {
