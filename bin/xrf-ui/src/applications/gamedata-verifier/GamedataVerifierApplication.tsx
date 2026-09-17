@@ -44,8 +44,6 @@ export function GamedataVerifierApplication(): ReactElement {
     await verifierService.verify(root, isStrict);
   }, [isStrict, log, root, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
-
   useEffect(() => {
     verifierService.operation.reset();
   }, [root, isStrict, verifierService]);
@@ -58,7 +56,7 @@ export function GamedataVerifierApplication(): ReactElement {
       description={"Runs every check over a gamedata tree: configs, meshes, textures, sounds, scripts and the rest."}
       error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={verifierService.operation.cancel} /> : null}
       result={
         verifierService.operation.result ? <GamedataVerifyResult result={verifierService.operation.result} /> : null
       }

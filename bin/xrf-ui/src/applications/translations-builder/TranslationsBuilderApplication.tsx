@@ -57,8 +57,6 @@ export function TranslationsBuilderApplication(): ReactElement {
     await builderService.build(sourcesPath, language, outputPath, isSorted);
   }, [builderService, isSorted, language, outputPath, sourcesPath]);
 
-  const onCancel = useCallback(() => builderService.operation.cancel(), [builderService]);
-
   // Anything the build depends on invalidates whatever the previous run reported.
   useEffect(() => {
     builderService.operation.reset();
@@ -72,7 +70,7 @@ export function TranslationsBuilderApplication(): ReactElement {
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}
       error={builderService.operation.error ?? undefined}
       submitLabel={"Build"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={builderService.operation.cancel} /> : null}
       result={
         builderService.operation.result ? (
           <TranslationsBuildResult result={builderService.operation.result} outputPath={outputPath} />

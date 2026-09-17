@@ -44,8 +44,6 @@ export function TranslationsVerifierApplication(): ReactElement {
     await verifierService.verify(sourcesPath, language);
   }, [language, sourcesPath, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
-
   // A different tree or language invalidates whatever the previous run reported.
   useEffect(() => {
     verifierService.operation.reset();
@@ -59,7 +57,7 @@ export function TranslationsVerifierApplication(): ReactElement {
       description={"Checks every JSON source for ids a language has no text for. Nothing is written."}
       error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={verifierService.operation.cancel} /> : null}
       result={
         verifierService.operation.result ? <TranslationsVerifyResult result={verifierService.operation.result} /> : null
       }

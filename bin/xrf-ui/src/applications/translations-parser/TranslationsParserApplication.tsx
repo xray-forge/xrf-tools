@@ -63,8 +63,6 @@ export function TranslationsParserApplication(): ReactElement {
     [isOverwrite, language, outputPath, parserService, sourcePath]
   );
 
-  const onCancel = useCallback(() => parserService.operation.cancel(), [parserService]);
-
   const onPreviewClicked = useCallback(() => void onRun(true), [onRun]);
 
   const onImportClicked = useCallback(() => void onRun(false), [onRun]);
@@ -93,7 +91,7 @@ export function TranslationsParserApplication(): ReactElement {
           Preview
         </Button>
       }
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={parserService.operation.cancel} /> : null}
       result={
         parserService.operation.result ? (
           <TranslationsParseResult result={parserService.operation.result} outputPath={outputPath} />

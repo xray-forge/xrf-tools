@@ -181,15 +181,6 @@ export function ArchivesPatcherApplication(): ReactElement {
     await (confirming === "compare" ? patcherService.compare(request) : patcherService.patch(request));
   }, [confirming, destination, input, isDeliveringOwnTree, log, patcherService, request, target]);
 
-  const onCancel = useCallback(() => patcherService.operation.cancel(), [patcherService]);
-
-  const onVolumeSizeChange = useCallback(
-    (value: string) => {
-      patcherService.setVolumeSize(value);
-    },
-    [patcherService]
-  );
-
   // Changing what is compared invalidates whatever the previous run reported.
   useEffect(() => {
     patcherService.resetResult();
@@ -251,7 +242,7 @@ export function ArchivesPatcherApplication(): ReactElement {
         <Stack className={"max-w-reading"} spacing={2}>
           {patcherService.error ? <Alert severity={"error"}>{patcherService.error}</Alert> : null}
 
-          {job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+          {job ? <JobProgressView job={job} onCancel={patcherService.operation.cancel} /> : null}
 
           {patcherService.section === EPatcherSection.COMPARISON ? (
             <PatcherComparisonSection
@@ -288,7 +279,7 @@ export function ArchivesPatcherApplication(): ReactElement {
               volumeSizeError={patcherService.volumeSizeError}
               isVerifyingPayload={isVerifyingPayload}
               isDisabled={isBusy}
-              onVolumeSizeChange={onVolumeSizeChange}
+              onVolumeSizeChange={patcherService.setVolumeSize}
               onVerifyingPayloadChange={setIsVerifyingPayload}
               onChange={patcherService.patchConfig}
             />

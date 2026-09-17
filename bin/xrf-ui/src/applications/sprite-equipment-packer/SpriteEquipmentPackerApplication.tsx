@@ -69,8 +69,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     }
   }, [packerService, log, output.value, source.value, systemLtx.value, isDltx]);
 
-  const onCancel = useCallback(() => packerService.operation.cancel(), [packerService]);
-
   useEffect(() => {
     packerService.operation.reset();
   }, [source.value, output.value, systemLtx.value, isDltx, packerService]);
@@ -83,7 +81,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
       description={"Builds one sprite from a directory of icons. The output file is overwritten."}
       error={packerService.operation.error ?? undefined}
       submitLabel={"Pack"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={packerService.operation.cancel} /> : null}
       result={packerService.operation.result ? <EquipmentPackResult result={packerService.operation.result} /> : null}
       onSubmit={onPackEquipmentClicked}
     >

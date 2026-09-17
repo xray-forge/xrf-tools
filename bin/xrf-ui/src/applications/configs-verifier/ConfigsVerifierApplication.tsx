@@ -45,8 +45,6 @@ export function ConfigsVerifierApplication(): ReactElement {
     await verifierService.verify(directory, isDltx);
   }, [directory, isDltx, log, verifierService]);
 
-  const onCancel = useCallback(() => verifierService.operation.cancel(), [verifierService]);
-
   useEffect(() => {
     verifierService.operation.reset();
   }, [directory, isDltx, verifierService]);
@@ -59,7 +57,7 @@ export function ConfigsVerifierApplication(): ReactElement {
       description={"Checks every LTX file in the directory. Nothing is written."}
       error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={verifierService.operation.cancel} /> : null}
       result={
         verifierService.operation.result ? <ConfigsVerifyResult result={verifierService.operation.result} /> : null
       }

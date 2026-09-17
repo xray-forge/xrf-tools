@@ -52,8 +52,6 @@ export function ArchivesUnpackerApplication(): ReactElement {
     await unpackerService.unpack(archivesPath, archivesUnpackPath);
   }, [archivesPath, archivesUnpackPath, log, unpackerService]);
 
-  const onCancel = useCallback(() => unpackerService.operation.cancel(), [unpackerService]);
-
   // Changing either path invalidates whatever the previous run reported.
   useEffect(() => {
     unpackerService.operation.reset();
@@ -67,7 +65,7 @@ export function ArchivesUnpackerApplication(): ReactElement {
       description={"Reads every archive in the source directory and writes its files into the output directory."}
       error={unpackerService.operation.error ?? undefined}
       submitLabel={"Unpack"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={unpackerService.operation.cancel} /> : null}
       result={
         unpackerService.operation.result ? (
           <ArchivesUnpackResult result={unpackerService.operation.result} outputPath={archivesUnpackPath} />

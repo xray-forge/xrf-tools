@@ -44,8 +44,6 @@ export function ConfigsFormatterApplication(): ReactElement {
     await formatterService.format(directory, isCheck);
   }, [directory, formatterService, isCheck, log]);
 
-  const onCancel = useCallback(() => formatterService.operation.cancel(), [formatterService]);
-
   useEffect(() => {
     formatterService.operation.reset();
   }, [directory, isCheck, formatterService]);
@@ -62,7 +60,7 @@ export function ConfigsFormatterApplication(): ReactElement {
       }
       error={formatterService.operation.error ?? undefined}
       submitLabel={isCheck ? "Check" : "Format"}
-      status={job ? <JobProgressView job={job} onCancel={onCancel} /> : null}
+      status={job ? <JobProgressView job={job} onCancel={formatterService.operation.cancel} /> : null}
       result={
         formatterService.operation.result ? (
           <ConfigsFormatResult isCheck={isCheck} result={formatterService.operation.result} />
